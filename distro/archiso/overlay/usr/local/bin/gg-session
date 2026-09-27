@@ -3,4 +3,26 @@
 export XDG_CURRENT_DESKTOP=Hyprland
 export XDG_SESSION_TYPE=wayland
 export XDG_SESSION_DESKTOP=golden-gate
-exec Hyprland
+
+# Newer Hyprland ships start-hyprland, a launcher that restarts it after a crash.
+if command -v start-hyprland >/dev/null; then start-hyprland; else Hyprland; fi
+status=$?
+[ "$status" -eq 0 ] && exit 0
+
+# The compositor failed. Stay on this terminal rather than logging out, which
+# would autologin and fail again in a loop.
+log=$(ls -t "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"/hypr/*/hyprland.log 2>/dev/null | head -n 1)
+printf '\n\033[1mThe desktop could not start (Hyprland exited with status %s).\033[0m\n' "$status"
+if [ -n "$log" ]; then
+  printf 'Last lines of %s:\n\n' "$log"
+  tail -n 15 "$log"
+fi
+cat <<'MSG'
+
+In a virtual machine, enable 3D acceleration, then reboot:
+  QEMU        -device virtio-vga-gl -display gtk,gl=on
+  VirtualBox  Display → VMSVGA, Enable 3D Acceleration
+  VMware      Display → Accelerate 3D graphics
+Type gg-session to try again.
+
+MSG

@@ -67,14 +67,21 @@ sudo scripts/install.sh --extras   # optional (needs keyd, sddm, plymouth): ⌘ 
 
 Then log into Hyprland.
 
-**As a bootable ISO** (Arch host, or run the *Build ISO* GitHub Action):
+**As a bootable ISO.** The *Build ISO* GitHub Action builds one whenever
+`distro/`, the installer or the workflow changes, and attaches it to the run
+as the `golden-gate-iso` artifact. On an Arch host:
 
 ```sh
-sudo pacman -S archiso librsvg nodejs
-sudo distro/archiso/build.sh     # → out/golden-gate-<date>-x86_64.iso
+sudo pacman -S archiso librsvg nodejs base-devel git
+sudo GG_BUILD_AUR=1 distro/archiso/build.sh   # → out/golden-gate-<date>-x86_64.iso
 ```
 
-The live session logs in as `golden` and starts the desktop automatically.
+`GG_BUILD_AUR=1` builds anything in `packages.extra` that isn't in the official
+repositories from the AUR. The live session logs in as `golden` (no password)
+and starts the desktop. In a virtual machine, turn on 3D acceleration
+(QEMU `-device virtio-vga-gl -display gtk,gl=on`, VirtualBox VMSVGA with 3D,
+VMware "Accelerate 3D graphics"); without it Hyprland may not start, and the
+session drops to a shell that says why.
 
 ## Testing
 

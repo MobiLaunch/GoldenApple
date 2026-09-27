@@ -39,17 +39,25 @@ Scope {
                 userName: Quickshell.env("USER") ? Quickshell.env("USER").charAt(0).toUpperCase() + Quickshell.env("USER").slice(1) : "Golden User"
                 Component.onCompleted: { root.surfaces = root.surfaces.concat([surface]); reset() }
                 Component.onDestruction: root.surfaces = root.surfaces.filter((s) => s !== surface)
+                // Store the password before starting PAM: it may ask for it at once. An empty
+                // password is a valid answer (the live session's user has none).
                 onSubmitted: (password) => {
                     if (pam.active) return;
-                    pam.start();
                     pendingPassword = password;
+                    awaiting = true;
+                    pam.start();
                 }
                 property string pendingPassword
+                property bool awaiting: false
                 Connections {
                     target: pam
                     function onResponseRequiredChanged() {
-                        if (pam.responseRequired && surface.pendingPassword !== "") { pam.respond(surface.pendingPassword); surface.pendingPassword = "" }
+                        if (!pam.responseRequired || !surface.awaiting) return;
+                        surface.awaiting = false;
+                        pam.respond(surface.pendingPassword);
+                        surface.pendingPassword = "";
                     }
+                    function onCompleted() { surface.awaiting = false }
                 }
             }
         }

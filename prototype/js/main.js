@@ -48,7 +48,10 @@ function applyAppearance(animated) {
     toneMenubar(wall);
   };
   // Appearance changes cross-fade the whole screen, like the system does.
-  if (animated && document.startViewTransition) document.startViewTransition(apply); else apply();
+  if (!animated || !document.startViewTransition) return apply();
+  // A newer change skips this transition; its promises then reject, which is expected.
+  const t = document.startViewTransition(apply);
+  t.ready.catch(() => {}); t.finished.catch(() => {});
 }
 // The menu bar has no material of its own, so each half picks light or dark text
 // from the brightness of the wallpaper behind it (like the system does).
@@ -72,8 +75,15 @@ function toneMenubar(src) {
   };
   img.src = src;
 }
-bus.on("state", ({ key }) => { if (["theme", "accent", "wallpaper"].includes(key)) applyAppearance(true); if (key === "iconStyle") requestAnimationFrame(() => refreshIcons()); });
-darkQuery.addEventListener("change", () => state.theme === "auto" && applyAppearance(true));
+// Changes made together (theme + accent, say) share one cross-fade.
+let appearanceQueued = false;
+function queueAppearance() {
+  if (appearanceQueued) return;
+  appearanceQueued = true;
+  queueMicrotask(() => { appearanceQueued = false; applyAppearance(true); });
+}
+bus.on("state", ({ key }) => { if (["theme", "accent", "wallpaper"].includes(key)) queueAppearance(); if (key === "iconStyle") requestAnimationFrame(() => refreshIcons()); });
+darkQuery.addEventListener("change", () => state.theme === "auto" && queueAppearance());
 applyAppearance(false);
 
 // Brightness dims the whole screen; volume shows the system HUD.

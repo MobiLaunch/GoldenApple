@@ -24,7 +24,7 @@ async function scenario(name, query, steps) {
     await page.waitForTimeout(700);
     await steps(page);
     await page.waitForTimeout(400);
-    if (shots) await page.screenshot({ path: join(shots, `${name}.png`) });
+    if (shots) await page.screenshot({ path: join(shots, `${name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}.png`) });
   } catch (e) { errors.push(`step failed: ${e.message.split("\n")[0]}`); }
   await page.close();
   console.log(`${errors.length ? "✗" : "✓"} ${name}${errors.length ? `\n    ${errors.join("\n    ")}` : ""}`);
@@ -65,13 +65,15 @@ await scenario("menus and context menus", "?quiet&open=files", async (p) => {
 await scenario("files: folder, rename, quick look, trash", "?quiet&open=files", async (p) => {
   await p.click(".side-row:has-text('Documents')"); await wait(p);
   await p.keyboard.press("Control+Shift+N"); await wait(p);
-  await p.keyboard.type("Launch Plans"); await p.keyboard.press("Enter"); await wait(p);
-  if (!(await p.$(".cell:has-text('Launch Plans')"))) throw new Error("folder not created");
-  await p.click(".cell:has-text('Roadmap.md')"); await p.keyboard.press(" "); await wait(p, 700);
-  if (!(await p.$(".ql"))) throw new Error("no quick look");
-  await p.keyboard.press(" "); await wait(p);
-  await p.keyboard.press("Control+Backspace"); await wait(p, 900);
-  if (await p.$(".cell:has-text('Roadmap.md')")) throw new Error("not trashed");
+  await p.keyboard.type("Launch Plans"); await p.keyboard.press("Enter");
+  await p.waitForSelector(".cell:has-text('Launch Plans')", { timeout: 5000 }).catch(() => { throw new Error("folder not created"); });
+  await p.click(".cell:has-text('Roadmap.md')"); await p.keyboard.press(" ");
+  await p.waitForSelector(".ql", { timeout: 5000 }).catch(() => { throw new Error("no quick look"); });
+  await wait(p, 400); await p.keyboard.press(" ");
+  await p.waitForSelector(".ql", { state: "detached", timeout: 5000 });
+  await p.keyboard.press("Control+Backspace");
+  await p.waitForFunction(() => ![...document.querySelectorAll(".cell")].some((c) => c.textContent.includes("Roadmap.md")), null, { timeout: 5000 })
+    .catch(() => { throw new Error("not trashed"); });
   for (const view of ["List", "Columns", "Gallery", "Icons"]) { await p.click(`.toolbar .tb[data-tip="${view}"], .toolbar .tb[title="${view}"]`); await wait(p, 300); }
 });
 await scenario("windows: minimise, restore, mission control, tiling", "?quiet&open=files,notes", async (p) => {

@@ -5,6 +5,9 @@
 # .github/workflows/iso.yml), root, and: pacman -S archiso librsvg nodejs
 #
 #   sudo distro/archiso/build.sh            → out/golden-gate-YYYY.MM.DD-x86_64.iso
+#   sudo GG_BUILD_AUR=1 distro/archiso/build.sh
+#                                           also builds packages.extra entries that
+#                                           exist only in the AUR (CI does this)
 #
 # Starts from archiso's `releng` profile and layers the Golden Gate desktop on top,
 # so bootloader and hardware support stay in sync with upstream Arch.
@@ -43,6 +46,32 @@ file_permissions+=(
 )
 EOF
 
+# Builds AUR packages into distro/localrepo/ as an unprivileged user (makepkg
+# refuses to run as root). AUR-only dependencies of these packages are not resolved.
+build_aur() {
+  say "building from the AUR: $*"
+  pacman -S --needed --noconfirm base-devel git sudo >/dev/null
+  id gg-builder &>/dev/null || useradd -m gg-builder
+  echo 'gg-builder ALL=(ALL) NOPASSWD: /usr/bin/pacman' > /etc/sudoers.d/gg-builder
+  local src pkg f built
+  src="$(mktemp -d)"
+  chown gg-builder: "$src"
+  mkdir -p "$REPO/distro/localrepo"
+  for pkg in "$@"; do
+    sudo -u gg-builder git clone -q "https://aur.archlinux.org/$pkg.git" "$src/$pkg"
+    # The AUR hands out an empty repository for names it doesn't know.
+    [[ -f $src/$pkg/PKGBUILD ]] || { echo "$pkg is not in the AUR either"; exit 1; }
+    (cd "$src/$pkg" && sudo -u gg-builder makepkg --syncdeps --noconfirm --needed)
+    built=0
+    for f in "$src/$pkg"/*.pkg.tar.zst; do
+      [[ -e $f && $f != *-debug-* ]] || continue
+      cp "$f" "$REPO/distro/localrepo/"
+      built=1
+    done
+    ((built)) || { echo "makepkg produced no package for $pkg"; exit 1; }
+  done
+}
+
 # ---------------------------------------------------------------- packages
 cat "$HERE/packages.x86_64" >> "$PROFILE/packages.x86_64"
 missing=()
@@ -51,6 +80,7 @@ while read -r pkg; do
   if pacman -Si "$pkg" >/dev/null 2>&1; then echo "$pkg" >> "$PROFILE/packages.x86_64"; else missing+=("$pkg"); fi
 done < "$HERE/packages.extra"
 if ((${#missing[@]})); then
+  if [[ ${GG_BUILD_AUR:-0} == 1 ]]; then build_aur "${missing[@]}"; fi
   if compgen -G "$REPO/distro/localrepo/*.pkg.tar.zst" >/dev/null; then
     say "local repo for: ${missing[*]}"
     repo-add -q "$REPO/distro/localrepo/golden-gate-local.db.tar.gz" "$REPO"/distro/localrepo/*.pkg.tar.zst
@@ -78,6 +108,8 @@ rm -f "$WANTS/systemd-networkd.service" "$AIR/etc/systemd/system/network-online.
 ln -sf /usr/lib/systemd/system/NetworkManager.service "$WANTS/NetworkManager.service"
 ln -sf /usr/lib/systemd/system/bluetooth.service "$WANTS/bluetooth.service"
 ln -sf /usr/lib/systemd/system/keyd.service "$WANTS/keyd.service"
+# mkarchiso drops file ownership, so the live user's home is handed over at boot.
+ln -sf /etc/systemd/system/gg-live-home.service "$WANTS/gg-live-home.service"
 
 # ---------------------------------------------------------------- desktop
 say "installing the Golden Gate desktop into the image"
@@ -86,9 +118,19 @@ mkdir -p "$AIR/home/golden"
 cp -a "$AIR/etc/skel/." "$AIR/home/golden/"
 cat > "$AIR/home/golden/.bash_profile" <<'EOF'
 [[ -f ~/.bashrc ]] && . ~/.bashrc
-# Autologin lands on tty1; go straight to the desktop.
-if [[ -z $WAYLAND_DISPLAY && $(tty) == /dev/tty1 ]]; then exec gg-session; fi
+# Autologin lands on tty1; go straight to the desktop. gg-session returns to this
+# shell if the compositor can't start, instead of looping through autologin.
+if [[ -z $WAYLAND_DISPLAY && $(tty) == /dev/tty1 ]]; then gg-session; fi
 EOF
+# The live user has no password, so there is nothing for an idle lock to protect.
+# Drop the listener that locks and the lock-before-sleep line; keep the rest.
+awk '
+  /^listener *\{/ { block = $0 "\n"; inblock = 1; next }
+  inblock { block = block $0 "\n"; if (/^\}/) { if (block !~ /lock-session/) printf "%s", block; inblock = 0 } next }
+  /before_sleep_cmd/ { next }
+  { print }
+' "$AIR/home/golden/.config/hypr/hypridle.conf" > "$WORK/hypridle.conf"
+mv "$WORK/hypridle.conf" "$AIR/home/golden/.config/hypr/hypridle.conf"
 
 # ---------------------------------------------------------------- build
 say "mkarchiso"

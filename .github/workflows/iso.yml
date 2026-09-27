@@ -1,22 +1,44 @@
 name: Build ISO
 
+# Runs by hand, and on pushes that change what goes into the image.
 on:
   workflow_dispatch:
+  push:
+    paths:
+      - distro/**
+      - scripts/install.sh
+      - .github/workflows/iso.yml
+
+concurrency:
+  group: iso-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   iso:
     runs-on: ubuntu-latest
-    container:
-      image: archlinux:latest
-      options: --privileged
+    timeout-minutes: 150
     steps:
       - uses: actions/checkout@v4
-      - name: Install build tools
-        run: pacman -Syu --noconfirm archiso librsvg nodejs git
-      - name: Build
-        run: distro/archiso/build.sh
+
+      # The image and its work tree need ~20 GB; the runner's preinstalled SDKs don't.
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/.ghcup \
+                      /opt/hostedtoolcache/CodeQL /usr/local/share/boost /usr/share/swift
+          sudo docker image prune --all --force >/dev/null
+          df -h /
+
+      - name: Build in an Arch Linux container
+        run: |
+          docker run --rm --privileged -v "$PWD:/repo" -w /repo -e GG_BUILD_AUR=1 archlinux:latest bash -euo pipefail -c '
+            pacman -Syu --noconfirm --needed archiso librsvg nodejs git base-devel sudo
+            distro/archiso/build.sh
+          '
+          ls -lh out/
+
       - uses: actions/upload-artifact@v4
         with:
           name: golden-gate-iso
           path: out/*.iso
           retention-days: 7
+          compression-level: 0   # the ISO is already compressed
