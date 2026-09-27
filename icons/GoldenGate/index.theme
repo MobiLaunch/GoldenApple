@@ -1,0 +1,40 @@
+[Icon Theme]
+Name=Golden Gate
+Comment=Original icon theme for the Golden Gate desktop
+Inherits=Adwaita,hicolor
+Directories=scalable/apps,scalable/places,scalable/mimetypes,scalable/devices,symbolic/actions
+
+[scalable/apps]
+Size=128
+MinSize=16
+MaxSize=512
+Type=Scalable
+Context=Applications
+
+[scalable/places]
+Size=128
+MinSize=16
+MaxSize=512
+Type=Scalable
+Context=Places
+
+[scalable/mimetypes]
+Size=128
+MinSize=16
+MaxSize=512
+Type=Scalable
+Context=MimeTypes
+
+[scalable/devices]
+Size=128
+MinSize=16
+MaxSize=512
+Type=Scalable
+Context=Devices
+
+[symbolic/actions]
+Size=16
+MinSize=8
+MaxSize=512
+Type=Scalable
+Context=Actions

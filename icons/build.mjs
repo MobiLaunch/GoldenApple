@@ -1,0 +1,133 @@
+#!/usr/bin/env node
+// Writes the freedesktop icon theme (icons/GoldenGate) and the prototype bundle
+// (prototype/assets/icons.js) from icons/source.mjs.
+import { writeFileSync, mkdirSync, rmSync, symlinkSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { symbols, apps, places } from "./source.mjs";
+
+const here = dirname(fileURLToPath(import.meta.url));
+const root = join(here, "GoldenGate");
+const darkBg = `<linearGradient id="dark-bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3a3a3f"/><stop offset="1" stop-color="#141416"/></linearGradient>`;
+
+// Dark icon appearance: graphite body, white glyphs take the icon's accent colour.
+function darkVariant(svg) {
+  const accent = svg.match(/data-accent="([^"]+)"/)[1];
+  return svg
+    .replace("<defs>", `<defs>${darkBg}`)
+    .replace(/class="bg" fill="[^"]*"/g, 'class="bg" fill="url(#dark-bg)"')
+    .replace(/class="tint" fill="[^"]*"/g, `class="tint" fill="${accent}"`)
+    .replace(/class="tint-stroke"([^>]*?)stroke="#fff"/g, `class="tint-stroke"$1stroke="${accent}"`)
+    .replace(/class="tint-text"([^>]*?)fill="[^"]*"/g, `class="tint-text"$1fill="#f2f2f7"`);
+}
+
+// freedesktop names each artwork is published under (first entry is canonical).
+const appNames = {
+  files: ["system-file-manager", "org.gnome.Nautilus", "org.kde.dolphin", "thunar"],
+  browser: ["web-browser", "firefox", "org.mozilla.firefox", "chromium", "google-chrome"],
+  mail: ["internet-mail", "thunderbird", "org.mozilla.Thunderbird", "org.gnome.Evolution"],
+  messages: ["internet-chat", "org.gnome.Fractal", "signal-desktop"],
+  music: ["multimedia-audio-player", "org.gnome.Music", "rhythmbox", "elisa"],
+  photos: ["multimedia-photo-viewer", "org.gnome.Loupe", "shotwell", "gthumb"],
+  settings: ["preferences-system", "org.gnome.Settings", "systemsettings"],
+  terminal: ["utilities-terminal", "org.gnome.Console", "com.mitchellh.ghostty", "kitty", "foot", "Alacritty"],
+  notes: ["accessories-text-editor", "org.gnome.TextEditor", "gnome-notes"],
+  calendar: ["office-calendar", "org.gnome.Calendar"],
+  calculator: ["accessories-calculator", "org.gnome.Calculator"],
+  maps: ["maps", "org.gnome.Maps"],
+  store: ["system-software-install", "org.gnome.Software", "org.kde.discover"],
+  launcher: ["view-app-grid", "start-here"],
+  weather: ["weather", "org.gnome.Weather"],
+};
+const placeNames = { trash: ["user-trash"], folder: ["folder"], document: ["text-x-generic"], audio: ["audio-x-generic"], image: ["image-x-generic"], disk: ["drive-harddisk"] };
+const symbolNames = {
+  wifi: "network-wireless-symbolic", bluetooth: "bluetooth-active-symbolic", moon: "weather-clear-night-symbolic",
+  search: "system-search-symbolic", "speaker-wave": "audio-volume-high-symbolic", speaker: "audio-volume-low-symbolic",
+  sun: "display-brightness-symbolic", play: "media-playback-start-symbolic", pause: "media-playback-pause-symbolic",
+  backward: "media-skip-backward-symbolic", forward: "media-skip-forward-symbolic", "chevron-left": "go-previous-symbolic",
+  "chevron-right": "go-next-symbolic", "chevron-down": "pan-down-symbolic", grid: "view-grid-symbolic", list: "view-list-symbolic",
+  share: "send-to-symbolic", ellipsis: "view-more-symbolic", clock: "document-open-recent-symbolic", house: "user-home-symbolic",
+  doc: "folder-documents-symbolic", download: "folder-download-symbolic", photo: "folder-pictures-symbolic",
+  music: "folder-music-symbolic", film: "folder-videos-symbolic", trash: "user-trash-symbolic", plus: "list-add-symbolic",
+  minus: "list-remove-symbolic", sidebar: "sidebar-show-symbolic", screenshot: "applets-screenshooter-symbolic",
+  gear: "emblem-system-symbolic", power: "system-shutdown-symbolic", lock: "system-lock-screen-symbolic",
+  bell: "preferences-system-notifications-symbolic", xmark: "window-close-symbolic", checkmark: "object-select-symbolic",
+  folder: "folder-symbolic", drive: "drive-harddisk-symbolic", cloud: "folder-remote-symbolic", headphones: "audio-headphones-symbolic",
+  logo: "start-here-symbolic", people: "system-users-symbolic", globe: "web-browser-symbolic",
+};
+
+rmSync(root, { recursive: true, force: true });
+for (const d of ["scalable/apps", "scalable/places", "scalable/mimetypes", "scalable/devices", "symbolic/actions"]) mkdirSync(join(root, d), { recursive: true });
+
+const link = (target, path) => { try { symlinkSync(target, path); } catch {} };
+for (const [key, svg] of Object.entries(apps)) {
+  const [canon, ...aliases] = appNames[key];
+  writeFileSync(join(root, "scalable/apps", `${canon}.svg`), svg);
+  aliases.forEach((a) => link(`${canon}.svg`, join(root, "scalable/apps", `${a}.svg`)));
+}
+const placeDir = { trash: "places", folder: "places", document: "mimetypes", audio: "mimetypes", image: "mimetypes", disk: "devices" };
+for (const [key, svg] of Object.entries(places)) writeFileSync(join(root, "scalable", placeDir[key], `${placeNames[key][0]}.svg`), svg);
+for (const [key, svg] of Object.entries(symbols)) {
+  const name = symbolNames[key] ?? `goldengate-${key}-symbolic`;
+  // GTK recolours symbolic icons that use #bebebe / currentColor-free fills; keep currentColor-compatible stroke.
+  writeFileSync(join(root, "symbolic/actions", `${name}.svg`), svg.replace(/currentColor/g, "#2e3436"));
+}
+writeFileSync(join(root, "index.theme"), `[Icon Theme]
+Name=Golden Gate
+Comment=Original icon theme for the Golden Gate desktop
+Inherits=Adwaita,hicolor
+Directories=scalable/apps,scalable/places,scalable/mimetypes,scalable/devices,symbolic/actions
+
+[scalable/apps]
+Size=128
+MinSize=16
+MaxSize=512
+Type=Scalable
+Context=Applications
+
+[scalable/places]
+Size=128
+MinSize=16
+MaxSize=512
+Type=Scalable
+Context=Places
+
+[scalable/mimetypes]
+Size=128
+MinSize=16
+MaxSize=512
+Type=Scalable
+Context=MimeTypes
+
+[scalable/devices]
+Size=128
+MinSize=16
+MaxSize=512
+Type=Scalable
+Context=Devices
+
+[symbolic/actions]
+Size=16
+MinSize=8
+MaxSize=512
+Type=Scalable
+Context=Actions
+`);
+
+// ---------------------------------------------------------------- prototype bundle
+const uri = (svg) => "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg.replace(/\s*\n\s*/g, " "));
+const sprite = Object.entries(symbols)
+  .map(([k, svg]) => svg.replace(/^<svg[^>]*?viewBox="([^"]+)"([^>]*)>/, (_, vb, attrs) => `<symbol id="sym-${k}" viewBox="${vb}"${attrs.replace(/ xmlns="[^"]+"/, "")}>`).replace(/<\/svg>$/, "</symbol>"))
+  .join("");
+const bundle = {
+  apps: Object.fromEntries(Object.entries(apps).map(([k, v]) => [k, { light: uri(v), dark: uri(darkVariant(v)) }])),
+  places: Object.fromEntries(Object.entries(places).map(([k, v]) => [k, uri(v)])),
+};
+const protoAssets = join(here, "..", "prototype", "assets");
+mkdirSync(protoAssets, { recursive: true });
+writeFileSync(join(protoAssets, "icons.js"),
+  `// Generated by icons/build.mjs. Do not edit.
+export const ICONS = ${JSON.stringify(bundle)};
+export const SPRITE = ${JSON.stringify(`<svg xmlns="http://www.w3.org/2000/svg" style="display:none">${sprite}</svg>`)};
+`);
+console.log(`icons: ${Object.keys(apps).length} apps, ${Object.keys(places).length} places, ${Object.keys(symbols).length} symbols`);
