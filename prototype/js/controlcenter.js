@@ -39,8 +39,15 @@ export function initControlCenter() {
 
   const playBtn = h("button.play", { on: { click: () => (state.playing = !state.playing) } }, sym("play"));
   bus.on("state:playing", (p) => playBtn.replaceChildren(sym(p ? "pause" : "play")));
-  const nowPlaying = h("div.cc-mod.cc-now.glass",
-    h("div.art", sym("music")), h("div.t", "Fog Horns"), h("div.s", "The Presidio Quartet"),
+  const npArt = h("div.art", sym("music")), npTitle = h("div.t"), npSub = h("div.s");
+  const syncNow = () => {
+    const np = state.nowPlaying;
+    npTitle.textContent = np?.title ?? "Not Playing"; npSub.textContent = np?.artist ?? "";
+    npArt.style.backgroundImage = np?.art ? `url("${np.art}")` : "";
+    npArt.classList.toggle("has-art", !!np?.art);
+  };
+  bus.on("state:nowPlaying", syncNow); syncNow();
+  const nowPlaying = h("div.cc-mod.cc-now.glass", npArt, npTitle, npSub,
     h("div.ctl", h("button", sym("backward")), playBtn, h("button", sym("forward"))));
 
   function modules() {

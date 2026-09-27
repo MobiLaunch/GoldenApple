@@ -146,6 +146,7 @@ img { -webkit-user-drag: none; }
 .cc-wide .s { font-size: 12px; opacity: .72; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 80px; }
 .cc-now { grid-column: span 2; grid-row: span 2; padding: 14px 14px 12px; display: flex; flex-direction: column; }
 .cc-now .art { width: 44px; height: 44px; border-radius: 10px; background: linear-gradient(135deg, #ff5f6d, #ffc371); box-shadow: 0 4px 10px rgba(0,0,0,.2); display: grid; place-items: center; color: #fff; font-size: 22px; }
+.cc-now .art.has-art { background-size: cover; } .cc-now .art.has-art svg { display: none; }
 .cc-now .t { font-weight: 600; font-size: 14px; margin-top: auto; }
 .cc-now .s { font-size: 12px; opacity: .72; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cc-now .ctl { display: flex; justify-content: space-around; align-items: center; font-size: 22px; margin-top: 8px; }

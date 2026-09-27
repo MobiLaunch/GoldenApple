@@ -14,6 +14,14 @@ import "./apps/files.js";
 import "./apps/photos.js";
 import "./apps/settings.js";
 import "./apps/small.js";
+import "./apps/web.js";
+import "./apps/mail.js";
+import "./apps/messages.js";
+import "./apps/music.js";
+import "./apps/calendar.js";
+import "./apps/maps.js";
+import "./apps/weather.js";
+import "./apps/store.js";
 
 document.body.insertAdjacentHTML("afterbegin", SPRITE);
 const root = document.documentElement;

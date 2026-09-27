@@ -27,7 +27,11 @@ PanelWindow {
     // Only the shelf (and the magnified icons above it while hovering) take input.
     mask: Region { item: hitbox }
 
-    readonly property var entries: pinned.map((id) => DesktopEntries.byId(id)).filter((e) => e)
+    // Reading applications.values makes this re-evaluate once the entry scan finishes.
+    readonly property var entries: {
+        DesktopEntries.applications.values;
+        return pinned.map((id) => DesktopEntries.byId(id)).filter((e) => e)
+    }
     function windowsFor(entry) {
         return ToplevelManager.toplevels.values.filter((t) => t.appId === entry.id || t.appId.toLowerCase() === entry.id.split(".").pop().toLowerCase())
     }

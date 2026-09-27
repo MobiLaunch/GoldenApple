@@ -9,7 +9,7 @@ PopupWindow {
     id: menu
     property var items: []
     property bool open: false
-    signal closed()
+    signal dismissed()
 
     visible: open || fade.running
     color: "transparent"
@@ -59,14 +59,14 @@ PopupWindow {
                                 Text {
                                     text: modelData.shortcut ?? ""
                                     color: hover.containsMouse ? "#ffffff" : Theme.secondaryLabel
-                                    font { family: Theme.fontUi; pixelSize: 12.5 }
+                                    font { family: Theme.fontUi; pixelSize: 12 }
                                 }
                             }
                             MouseArea {
                                 id: hover
                                 anchors.fill: parent
                                 hoverEnabled: true
-                                onClicked: { menu.open = false; menu.closed(); modelData.action?.() }
+                                onClicked: { menu.open = false; menu.dismissed(); modelData.action?.() }
                             }
                         }
                     }

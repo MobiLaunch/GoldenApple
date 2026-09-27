@@ -54,7 +54,7 @@ PanelWindow {
             RowLayout {
                 anchors { fill: parent; leftMargin: 20; rightMargin: 20 }
                 spacing: 12
-                Symbol { name: "search"; size: 21; color: Theme.secondaryLabel }
+                Symbol { name: "search"; size: 21; tone: "gray" }
                 TextInput {
                     id: input
                     Layout.fillWidth: true
@@ -96,7 +96,7 @@ PanelWindow {
                         spacing: 12
                         Image { source: Quickshell.iconPath(modelData.icon, "application-x-executable"); sourceSize: Qt.size(60, 60); Layout.preferredWidth: 30; Layout.preferredHeight: 30 }
                         Text { Layout.fillWidth: true; text: modelData.name; color: index === spot.selected ? "#ffffff" : Theme.label; font { family: Theme.fontUi; pixelSize: 14 } }
-                        Text { text: "Application"; color: index === spot.selected ? "#ccffffff" : Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: 12.5 } }
+                        Text { text: "Application"; color: index === spot.selected ? "#ccffffff" : Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: 12 } }
                     }
                     MouseArea { anchors.fill: parent; hoverEnabled: true; onEntered: spot.selected = index; onClicked: spot.launch(index) }
                 }

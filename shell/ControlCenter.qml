@@ -63,14 +63,21 @@ PanelWindow {
     // ---------------------------------------------------------------- building blocks
     // Stagger: each module springs in slightly after the previous one.
     component Module: Glass {
+        id: mod
         property int order: 0
+        // Stagger: each module springs in slightly after the previous one. A timer
+        // flips `shown` (a zero-length PauseAnimation inside a Behavior corrupts the
+        // heap in Qt 6.11, so the delay is not expressed as an animation).
+        property bool shown: false
+        Timer { interval: 1 + mod.order * 14; running: cc.open && !mod.shown; onTriggered: mod.shown = true }
+        Connections { target: cc; function onOpenChanged() { if (!cc.open) mod.shown = false } }
         // Faint cool tint so white glyphs stay legible over bright windows.
         tint: "#3d1c3060"
-        opacity: cc.open ? 1 : 0
-        scale: cc.open ? 1 : 0.72
+        opacity: shown ? 1 : 0
+        scale: shown ? 1 : 0.72
         transformOrigin: Item.TopRight
-        Behavior on opacity { SequentialAnimation { PauseAnimation { duration: cc.open ? order * 14 : 0 } NumberAnimation { duration: cc.open ? 260 : 160 } } }
-        Behavior on scale { SequentialAnimation { PauseAnimation { duration: cc.open ? order * 14 : 0 } Spring { spring: Theme.popover } } }
+        Behavior on opacity { NumberAnimation { duration: mod.shown ? 260 : 160 } }
+        Behavior on scale { Spring { spring: Theme.popover } }
     }
     component Circle: Module {
         id: c
@@ -80,7 +87,7 @@ PanelWindow {
         Layout.preferredWidth: 64; Layout.preferredHeight: 64
         radius: 32
         filled: on
-        Symbol { anchors.centerIn: parent; name: c.icon; size: 25; color: c.on ? Theme.accent : "#ffffff" }
+        Symbol { anchors.centerIn: parent; name: c.icon; size: 25; tone: c.on ? "accent" : "white" }
         MouseArea { anchors.fill: parent; onClicked: c.activated() }
     }
     component Wide: Module {
@@ -99,7 +106,7 @@ PanelWindow {
                 implicitWidth: 48; implicitHeight: 48; radius: 24
                 color: w.on ? "#ffffff" : Qt.rgba(1, 1, 1, 0.2)
                 Behavior on color { ColorAnimation { duration: 180 } }
-                Symbol { anchors.centerIn: parent; name: w.icon; size: 22; color: w.on ? Theme.accent : "#ffffff" }
+                Symbol { anchors.centerIn: parent; name: w.icon; size: 22; tone: w.on ? "accent" : "white" }
                 MouseArea { anchors.fill: parent; onClicked: w.activated() }
             }
             ColumnLayout {

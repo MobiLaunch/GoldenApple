@@ -26,9 +26,11 @@ export function createWindow(o) {
   w.toolbar = h("div.toolbar", o.toolbar ?? []);
   w.content = h("div.win-content", { className: `win-content ${o.noToolbar ? "no-toolbar" : ""}` }, o.content ?? []);
   w.edge = h("div.scroll-edge");
-  w.main = h("div.win-main", { style: { "--main-left": o.sidebar ? `${w.sidebarWidth + 8}px` : "0px" } },
+  // overlaySidebar: content runs full-bleed underneath the floating sidebar (Maps, Weather).
+  w.main = h("div.win-main", { style: { "--main-left": o.sidebar && !o.overlaySidebar ? `${w.sidebarWidth + 8}px` : "0px" } },
     o.noToolbar ? null : w.toolbar, w.edge, w.content, o.statusbar ?? null);
   if (!o.sidebar) w.toolbar.style.paddingLeft = "92px";
+  else if (o.overlaySidebar) w.toolbar.style.paddingLeft = `${w.sidebarWidth + 22}px`;
   w.sidebar = o.sidebar ? h("aside.win-sidebar", { style: { "--sidebar-w": `${w.sidebarWidth}px` } }, o.sidebar) : null;
 
   w.el = h("section.win", { className: `win ${o.className ?? ""}`, style: { left: `${x}px`, top: `${y}px`, width: `${width}px`, height: `${height}px` } },

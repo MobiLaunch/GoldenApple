@@ -168,7 +168,9 @@ rmSync(shellSyms, { recursive: true, force: true });
 mkdirSync(shellSyms, { recursive: true });
 for (const [key, svg] of Object.entries(symbols)) {
   const sized = svg.replace(/^<svg/, '<svg width="48" height="48"').replace(/\s(width|height)="\d+"(?=[^>]*width="48")/g, "");
-  writeFileSync(join(shellSyms, `${key}.svg`), sized.replace(/currentColor/g, "#ffffff"));
+  // Pre-tinted variants: the shell never needs a shader just to colour a glyph.
+  for (const [tone, color] of Object.entries({ "": "#ffffff", "@accent": "#0a84ff", "@dark": "#1d1d1f", "@gray": "#8e8e93" }))
+    writeFileSync(join(shellSyms, `${key}${tone}.svg`), sized.replace(/currentColor/g, color));
 }
 
 // ---------------------------------------------------------------- prototype bundle
