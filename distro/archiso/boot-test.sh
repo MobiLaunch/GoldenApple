@@ -6,6 +6,8 @@
 # DISPLAY  std     plain VGA, no 3D (like QEMU on Windows or macOS)
 #          virtio  virtio-gpu without 3D
 #          virgl   virtio-gpu with 3D (needs a GL-capable host; runs under Xvfb if no $DISPLAY)
+#          tcg     plain VGA, no hardware virtualisation and QEMU's default CPU model
+#                  (QEMU on Windows or macOS without WHPX/HVF): slow, but must still work
 #
 # The ISO's own kernel is booted directly so the console can go to a serial log,
 # with the journal forwarded to it: gg-session, Hyprland's log on failure, and
@@ -41,6 +43,8 @@ case "$VARIANT" in
   std)    display=(-vga std -display none) ;;
   virtio) display=(-vga none -device virtio-vga -display none) ;;
   virgl)  display=(-vga none -device virtio-vga-gl -display gtk,gl=on) ;;
+  tcg)    display=(-vga std -display none); accel=(-accel tcg -cpu qemu64)
+          TIMEOUT="${TIMEOUT_TCG:-1800}"; SETTLE="${SETTLE_TCG:-120}" ;;
   *) echo "unknown display: $VARIANT"; exit 1 ;;
 esac
 wrap=(); [[ $VARIANT == virgl && -z ${DISPLAY:-} ]] && wrap=(xvfb-run -a -s "-screen 0 1920x1200x24")
@@ -65,6 +69,18 @@ for ((t = 0; t < TIMEOUT; t += 5)); do
   kill -0 "$qemu" 2>/dev/null || { result=qemu-exited; break; }
 done
 say "result: $result after ${t}s"
+
+# Hyprland is up; the desktop (wallpaper, menu bar, Dock) appears once the shell
+# has loaded. Without it the screen is just the background colour and a cursor.
+if [[ $result == started ]]; then
+  result=no-shell
+  for ((; t < TIMEOUT; t += 5)); do
+    if grep -aq 'quickshell.*Configuration Loaded' "$OUT/serial.log" 2>/dev/null; then result=started; break; fi
+    kill -0 "$qemu" 2>/dev/null || { result=qemu-exited; break; }
+    sleep 5
+  done
+  say "shell: $( [[ $result == started ]] && echo "loaded after ${t}s" || echo "$result after ${t}s")"
+fi
 
 if kill -0 "$qemu" 2>/dev/null; then
   sleep "$SETTLE"

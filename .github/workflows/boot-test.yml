@@ -1,10 +1,15 @@
 name: Boot test
 
 # Boots an ISO in QEMU and checks the desktop starts, with and without 3D.
-# Build ISO calls this for every new image. Run it by hand to re-test an image
-# without rebuilding (by default the newest ISO built on the chosen branch).
+# Build ISO calls this for every new image. Changing the test re-runs it on the
+# newest ISO built on the branch, unless the image has changed since (then the
+# rebuild tests it). It can also be run by hand.
 # Each run uploads boot-<display>: the serial/journal log and a screenshot.
 on:
+  push:
+    paths:
+      - distro/archiso/boot-test.sh
+      - .github/workflows/boot-test.yml
   workflow_dispatch:
     inputs:
       iso-run-id:
@@ -25,13 +30,15 @@ permissions:
 jobs:
   boot:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 60                 # tcg emulates every instruction
     strategy:
       fail-fast: false
       matrix:
-        display: [std, virtio, virgl]
+        display: [std, virtio, virgl, tcg]
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0                # to compare the ISO's commit with this one
 
       - name: Find the ISO
         id: iso
@@ -47,8 +54,19 @@ jobs:
           [ -n "$RUN_ID" ] && [ "$RUN_ID" != null ] || { echo "No ISO built on $GITHUB_REF_NAME yet; run Build ISO first."; exit 1; }
           echo "Using the ISO from run $RUN_ID"
           echo "run-id=$RUN_ID" >> "$GITHUB_OUTPUT"
+          # A push that also changed the image rebuilds it (Build ISO), and that run
+          # tests the new ISO; testing the old one here would only mislead.
+          if [ "$GITHUB_EVENT_NAME" = push ]; then
+            ISO_SHA=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID" -q .head_sha)
+            if ! git diff --quiet "$ISO_SHA" HEAD -- distro scripts/install.sh compositor shell themes \
+                 ':(exclude)distro/archiso/boot-test.sh' ':(exclude)compositor/liquid-glass'; then
+              echo "::notice::The image changed since the ISO from $ISO_SHA; the Build ISO run for this push boot-tests the new one."
+              echo "skip=true" >> "$GITHUB_OUTPUT"
+            fi
+          fi
 
       - uses: actions/download-artifact@v4
+        if: steps.iso.outputs.skip != 'true'
         with:
           name: golden-gate-iso
           path: out
@@ -56,12 +74,14 @@ jobs:
           github-token: ${{ github.token }}
 
       - name: Enable KVM
+        if: steps.iso.outputs.skip != 'true'
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
       - name: Install QEMU
+        if: steps.iso.outputs.skip != 'true'
         run: |
           sudo apt-get update -q
           sudo apt-get install -yq --no-install-recommends qemu-system-x86 qemu-system-gui \
@@ -69,10 +89,11 @@ jobs:
             libegl1 libgl1 libgles2 libgl1-mesa-dri libegl-mesa0
 
       - name: Boot (${{ matrix.display }})
+        if: steps.iso.outputs.skip != 'true'
         run: distro/archiso/boot-test.sh out/*.iso ${{ matrix.display }} boot-${{ matrix.display }}
 
       - uses: actions/upload-artifact@v4
-        if: always()
+        if: always() && steps.iso.outputs.skip != 'true'
         with:
           name: boot-${{ matrix.display }}
           path: |
