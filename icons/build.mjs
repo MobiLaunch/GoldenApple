@@ -126,6 +126,24 @@ for (const [key, svg] of Object.entries(places)) {
   if (svg == null) copyFileSync(P.pngs[key], join(root, "512x512", placeDir[key], `${placeNames[key][0]}.png`));
   else writeFileSync(join(root, "scalable", placeDir[key], `${placeNames[key][0]}.svg`), svg);
 }
+// Special folders: the folder with its symbol embossed on the front, as in Finder.
+// Skipped when the folder or the symbol is a custom PNG.
+const specialFolders = {
+  "user-home": "house", "user-desktop": "window", "folder-documents": "doc", "folder-download": "download",
+  "folder-music": "music", "folder-pictures": "photo", "folder-videos": "film", "folder-publicshare": "people",
+  "folder-templates": "copy", "folder-remote": "cloud",
+};
+const emboss = (folder, sym) => {
+  const [, attrs, body] = sym.match(/<svg([^>]*)>([\s\S]*)<\/svg>/);
+  const own = attrs.replace(/\s(xmlns|viewBox)="[^"]*"/g, "");
+  const glyph = (dy, color, opacity) =>
+    `<svg x="34" y="${41 + dy}" width="32" height="32" viewBox="0 0 24 24" opacity="${opacity}"${own.replace(/currentColor/g, color)}>${body.replace(/currentColor/g, color)}</svg>`;
+  return folder.replace(/<\/svg>\s*$/, `${glyph(0.9, "#ffffff", 0.5)}${glyph(0, "#2b7fca", 0.85)}</svg>`);
+};
+if (places.folder != null)
+  for (const [name, key] of Object.entries(specialFolders))
+    if (symbols[key] != null) writeFileSync(join(root, "scalable/places", `${name}.svg`), emboss(places.folder, symbols[key]));
+
 for (const [key, svg] of Object.entries(symbols)) {
   const name = symbolNames[key] ?? `goldengate-${key}-symbolic`;
   const file = join(root, "symbolic/actions", `${name}.svg`);

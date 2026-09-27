@@ -56,7 +56,7 @@ toolbarview > .top-bar.raised headerbar { background: var(--gg-scroll-edge); }
 
 /* Glass controls: each toolbar item is a pill; grouped items share one. */
 headerbar button,
-headerbar .linked,
+headerbar .linked:not(.vertical):not(.search):not(.entry-combo),
 headerbar splitbutton,
 headerbar viewswitcher,
 headerbar toggle-group {
@@ -75,8 +75,9 @@ headerbar button:hover { background: var(--gg-pill-hover); }
 headerbar button:active, headerbar button:checked { background: var(--gg-pill-active); }
 headerbar button:disabled > image, headerbar button:disabled > label { opacity: 0.3; }
 
-headerbar .linked, headerbar splitbutton, headerbar viewswitcher, headerbar toggle-group { padding: 3px; min-width: 0; }
-headerbar .linked > button, headerbar .linked > menubutton > button,
+/* (The .linked selectors repeat the segmented-control rule's :not()s below so they outrank it.) */
+headerbar .linked:not(.vertical):not(.search):not(.entry-combo), headerbar splitbutton, headerbar viewswitcher, headerbar toggle-group { padding: 3px; min-width: 0; }
+headerbar .linked:not(.vertical):not(.search):not(.entry-combo) > button, headerbar .linked:not(.vertical):not(.search):not(.entry-combo) > menubutton > button,
 headerbar splitbutton > button, headerbar splitbutton > menubutton > button,
 headerbar viewswitcher button, headerbar toggle-group > toggle {
   min-height: 30px;
@@ -86,9 +87,9 @@ headerbar viewswitcher button, headerbar toggle-group > toggle {
   background: none;
   box-shadow: none;
 }
-headerbar .linked > button:hover, headerbar splitbutton > button:hover,
+headerbar .linked:not(.vertical):not(.search):not(.entry-combo) > button:hover, headerbar splitbutton > button:hover,
 headerbar splitbutton > menubutton > button:hover, headerbar viewswitcher button:hover { background: var(--gg-fill); }
-headerbar .linked > button:checked, headerbar viewswitcher button:checked,
+headerbar .linked:not(.vertical):not(.search):not(.entry-combo) > button:checked, headerbar viewswitcher button:checked,
 headerbar toggle-group > toggle:checked { background: var(--gg-selection); }
 headerbar splitbutton > menubutton > button { min-width: 20px; padding: 0 4px; }
 headerbar splitbutton > separator, headerbar .linked > separator { min-width: 1px; margin: 6px 0; background: var(--gg-separator); }
@@ -148,6 +149,8 @@ headerbar:backdrop > windowhandle windowcontrols { filter: none; }
 }
 .sidebar-pane.end, .sidebar-pane:dir(rtl) { margin: 8px 8px 8px 0; }
 .sidebar-pane .sidebar-pane { margin: 0; border-radius: 0; background: none; box-shadow: none; }
+/* Mac sidebars carry only the traffic lights and tools; the window title lives in the toolbar. */
+.sidebar-pane headerbar windowtitle, .sidebar-pane headerbar .title { opacity: 0; }
 /* The sidebar starts 8 px down, so its header is 36 px: the traffic lights then sit
    on the toolbar's centre line (26 px from the top), as in the prototype. */
 .sidebar-pane headerbar { min-height: 36px; }

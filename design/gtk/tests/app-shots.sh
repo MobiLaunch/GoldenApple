@@ -18,6 +18,11 @@ REPO="$(cd "$HERE/../../.." && pwd)"
 OUT="$(mkdir -p "${1:?usage: app-shots.sh OUTDIR [shot...]}" && cd "$1" && pwd)"; shift
 # Files refuses to run as root (CI containers run as root): use a plain user.
 if [[ $EUID == 0 ]]; then
+  # Settings won't start without a system bus (containers have none).
+  if ! dbus-send --system --print-reply --dest=org.freedesktop.DBus / org.freedesktop.DBus.GetId >/dev/null 2>&1; then
+    rm -f /run/dbus/pid /run/dbus/system_bus_socket; mkdir -p /run/dbus
+    dbus-daemon --system --fork 2>/dev/null || true
+  fi
   id gg-shots >/dev/null 2>&1 || useradd -m gg-shots
   chown -R gg-shots "$OUT"
   exec runuser -u gg-shots -- env ${SHOTS_B64:+SHOTS_B64=$SHOTS_B64} ${SETTLE:+SETTLE=$SETTLE} "$0" "$OUT" "$@"
@@ -31,10 +36,10 @@ declare -A CMD=(
   [gallery-menu]="gjs -m $HERE/gallery.js menu"
   [gallery-dialog]="gjs -m $HERE/gallery.js dialog"
   [gallery-finder]="gjs -m $HERE/gallery.js finder"
-  [files]="nautilus --new-window"
+  [files]='nautilus --new-window --select $HOME/Documents'
   [text-editor]='gnome-text-editor --standalone $HOME/Documents/Notes.txt'   # expanded below
   [calculator]="gnome-calculator"
-  [settings]="env XDG_CURRENT_DESKTOP=GNOME gnome-control-center wifi"
+  [settings]="env XDG_CURRENT_DESKTOP=GNOME gnome-control-center background"
   [clocks]="gnome-clocks"
   [calendar]="gnome-calendar"
   [weather]="gnome-weather"
