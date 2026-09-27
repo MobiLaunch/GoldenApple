@@ -6,7 +6,7 @@
 #
 # Shots (default: all that are installed):
 #   gallery gallery-menu gallery-dialog gallery-finder   every control (tests/gallery.js)
-#   files text-editor calculator settings clocks calendar weather maps
+#   files text-editor calculator settings settings-mouse clocks calendar weather maps
 #   loupe music software fractal ghostty mail (Geary, GTK 3)
 # Writes OUTDIR/<shot>-light.png and -dark.png: the window plus 40 px around it,
 # over the default wallpaper. SHOTS_B64=1 also prints each as a JPEG in base64
@@ -41,6 +41,7 @@ declare -A CMD=(
   [text-editor]='gnome-text-editor --standalone $HOME/Documents/Notes.txt'   # expanded below
   [calculator]="gnome-calculator"
   [settings]="env XDG_CURRENT_DESKTOP=GNOME gnome-control-center background"
+  [settings-mouse]="env XDG_CURRENT_DESKTOP=GNOME gnome-control-center mouse"
   [clocks]="gnome-clocks"
   [calendar]="gnome-calendar"
   [weather]="gnome-weather"
@@ -58,7 +59,7 @@ declare -A PREP=(
   [files]="gsettings set org.gnome.nautilus.preferences default-folder-viewer icon-view"
   [files-list]="gsettings set org.gnome.nautilus.preferences default-folder-viewer list-view"
 )
-ORDER=(gallery gallery-menu gallery-dialog gallery-finder files files-list text-editor calculator settings clocks calendar weather maps loupe music software fractal ghostty mail)
+ORDER=(gallery gallery-menu gallery-dialog gallery-finder files files-list text-editor calculator settings settings-mouse clocks calendar weather maps loupe music software fractal ghostty mail)
 shots=("$@"); [[ ${#shots[@]} -gt 0 ]] || shots=("${ORDER[@]}")
 
 # ---------------------------------------------------------------- a clean home with the theme
