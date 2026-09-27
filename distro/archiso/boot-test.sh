@@ -50,7 +50,10 @@ say "booting ($VARIANT, ${accel[*]})"
   -cdrom "$ISO" -kernel "$work/vmlinuz" -initrd "$work/initramfs.img" -append "$cmdline" \
   "${display[@]}" -serial "file:$OUT/serial.log" -monitor "unix:$OUT/mon.sock,server,nowait" &
 qemu=$!
-trap 'kill $qemu 2>/dev/null || true; rm -rf "$work"' EXIT
+# Cleanup must not change the result: keep the exit status, ignore its own failures
+# (QEMU is usually gone already; files from the ISO keep their read-only modes).
+cleanup() { local status=$?; set +e; kill "$qemu" 2>/dev/null; chmod -R u+w "$work"; rm -rf "$work"; exit "$status"; }
+trap cleanup EXIT
 monitor() { printf '%s\n' "$1" | socat - "UNIX-CONNECT:$OUT/mon.sock" >/dev/null; }
 
 # ---------------------------------------------------------------- wait for the session
@@ -73,10 +76,15 @@ wait "$qemu" 2>/dev/null || true
 
 # ---------------------------------------------------------------- report
 say "session log"
-grep -aE 'gg-session|golden-gate|hyprland-log|quickshell|Hyprland|Failed|failed|segfault|core dump' "$OUT/serial.log" | tail -n 150 || true
+grep -aE 'gg-session|golden-gate|hyprland-log|hyprland-config|quickshell|Hyprland|Failed|failed|segfault|core dump' "$OUT/serial.log" | tail -n 150 || true
 if [[ -f $OUT/screen.png ]]; then
   # A small copy in the job log, so the screen can be checked from the log alone.
   convert "$OUT/screen.png" -resize 960x -quality 70 "$OUT/screen-small.jpg"
   echo "--- screen-small.jpg base64 begin ---"; base64 -w0 "$OUT/screen-small.jpg"; echo; echo "--- end ---"
+fi
+# A session that starts with config errors (shown as a red banner) still fails.
+if grep -aq 'hyprland-config\[' "$OUT/serial.log" 2>/dev/null; then
+  say "Hyprland reported config errors:"; grep -a 'hyprland-config\[' "$OUT/serial.log"
+  result=config-errors
 fi
 [[ $result == started ]]

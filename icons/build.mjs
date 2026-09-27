@@ -64,7 +64,7 @@ function darkVariant(svg) {
 const appNames = {
   files: ["system-file-manager", "org.gnome.Nautilus", "org.kde.dolphin", "thunar"],
   browser: ["web-browser", "firefox", "org.mozilla.firefox", "chromium", "google-chrome"],
-  mail: ["internet-mail", "thunderbird", "org.mozilla.Thunderbird", "org.gnome.Evolution"],
+  mail: ["internet-mail", "thunderbird", "org.mozilla.Thunderbird", "org.gnome.Evolution", "org.gnome.Geary"],
   messages: ["internet-chat", "org.gnome.Fractal", "signal-desktop"],
   music: ["multimedia-audio-player", "org.gnome.Music", "rhythmbox", "elisa"],
   photos: ["multimedia-photo-viewer", "org.gnome.Loupe", "shotwell", "gthumb"],
