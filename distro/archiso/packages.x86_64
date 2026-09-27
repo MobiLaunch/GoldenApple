@@ -37,6 +37,7 @@ keyd
 grim
 slurp
 wl-clipboard
+xdg-user-dirs
 
 # Apps (themed via gtk.css + the Golden Gate icon theme)
 nautilus

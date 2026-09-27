@@ -76,6 +76,9 @@ gsettings set org.gnome.desktop.interface monospace-font-name "JetBrains Mono 10
 gsettings set org.gnome.desktop.interface accent-color blue 2>/dev/null || true
 # Something to look at in Files and Text Editor.
 mkdir -p "$HOME"/{Desktop,Documents,Downloads,Music,Pictures,Videos}
+for d in DESKTOP:Desktop DOCUMENTS:Documents DOWNLOAD:Downloads MUSIC:Music PICTURES:Pictures VIDEOS:Videos; do
+  echo "XDG_${d%%:*}_DIR=\"\$HOME/${d#*:}\""
+done > "$XDG_CONFIG_HOME/user-dirs.dirs"
 printf 'Golden Gate\n\nA Linux desktop with Liquid Glass.\n' > "$HOME/Documents/Notes.txt"
 for f in "Budget 2026.ods" "Trip itinerary.pdf" "Presentation.odp"; do : > "$HOME/Documents/$f"; done
 rsvg-convert -w 1600 "$REPO/prototype/assets/wallpapers/tide.svg" -o "$HOME/Pictures/Tide.png"
