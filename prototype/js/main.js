@@ -7,6 +7,7 @@ import { initDock } from "./dock.js";
 import { initSpotlight } from "./spotlight.js";
 import { initNotifications } from "./notifications.js";
 import { initGlass } from "./glass.js";
+import { initPolish } from "./polish.js";
 import { openMenu } from "./menus.js";
 import { boot, lock } from "./lock.js";
 import "./mission.js";
@@ -29,6 +30,7 @@ document.body.insertAdjacentHTML("afterbegin", SPRITE);
 const root = document.documentElement;
 const ACCENTS = { blue: "#0a84ff", purple: "#bf5af2", pink: "#ff375f", red: "#ff453a", orange: "#ff9f0a", yellow: "#ffd60a", green: "#30d158", graphite: "#8e8e93" };
 const WALL = { tide: "assets/wallpapers/tide.svg", dusk: "assets/wallpapers/dusk.svg" };
+// "Dynamic" follows the appearance: Tide by day (light), Dusk by night (dark).
 const darkQuery = matchMedia("(prefers-color-scheme: dark)");
 
 // URL overrides make every state reproducible for screenshots: ?theme=dark&open=files,photos
@@ -37,7 +39,7 @@ if (params.get("theme")) state.theme = params.get("theme");
 
 function applyAppearance(animated) {
   const theme = state.theme === "auto" ? (darkQuery.matches ? "dark" : "light") : state.theme;
-  const wall = WALL[state.wallpaper] ?? WALL.tide;
+  const wall = state.wallpaper === "dynamic" ? WALL[theme === "dark" ? "dusk" : "tide"] : (WALL[state.wallpaper] ?? WALL.tide);
   const apply = () => {
     root.dataset.theme = theme;
     root.style.setProperty("--accent", ACCENTS[state.accent] ?? ACCENTS.blue);
@@ -70,7 +72,7 @@ function toneMenubar(src) {
   };
   img.src = src;
 }
-bus.on("state", ({ key }) => { if (["theme", "accent", "wallpaper"].includes(key)) applyAppearance(true); });
+bus.on("state", ({ key }) => { if (["theme", "accent", "wallpaper"].includes(key)) applyAppearance(true); if (key === "iconStyle") requestAnimationFrame(() => refreshIcons()); });
 darkQuery.addEventListener("change", () => state.theme === "auto" && applyAppearance(true));
 applyAppearance(false);
 
@@ -84,6 +86,7 @@ const notes = initNotifications();
 initMenubar(document.getElementById("menubar"), { toggleCC: (b) => cc.toggle(b), toggleWidgets: (b) => notes.toggle(b), openSpotlight: (t, c) => spotlight.open(t, c) });
 initDock();
 initGlass();
+initPolish();
 
 // Desktop icons + wallpaper context menu
 const deskIcons = document.getElementById("desktop-icons");
@@ -116,9 +119,9 @@ document.getElementById("desktop").addEventListener("contextmenu", (e) => {
   e.preventDefault();
   if (e.target !== wallpaper && e.target.id !== "windows") return;
   openMenu([
-    { label: "New Folder" }, "-", { label: "Get Info" }, { label: "Change Wallpaper…", action: () => launch("settings", "wallpaper") }, { label: "Edit Widgets…" }, "-",
-    { label: "Use Stacks" }, { label: "Sort By", submenu: [{ label: "None" }, { label: "Snap to Grid", checked: true }, "-", { label: "Name" }, { label: "Kind" }, { label: "Date Modified" }] },
-    { label: "Clean Up" }, { label: "Show View Options" },
+    { label: "New Folder", icon: "folder" }, "-", { label: "Get Info", icon: "info" }, { label: "Change Wallpaper…", icon: "wallpaper", action: () => launch("settings", "wallpaper") }, { label: "Edit Widgets…", icon: "grid" }, "-",
+    { label: "Use Stacks", icon: "layers" }, { label: "Sort By", icon: "list", submenu: [{ label: "None" }, { label: "Snap to Grid", checked: true }, "-", { label: "Name" }, { label: "Kind" }, { label: "Date Modified" }] },
+    { label: "Clean Up", icon: "sparkles" }, { label: "Show View Options", icon: "gear" },
   ], { x: e.clientX, y: e.clientY });
 });
 
@@ -166,7 +169,8 @@ addEventListener("keydown", (e) => {
   const mod = e.metaKey || e.ctrlKey;
   if (mod && e.code === "Space") { spotlight.toggle(); e.preventDefault(); return; }
   if ((mod || e.altKey) && e.key === "Tab") { showSwitcher(e.shiftKey ? -1 : 1); e.preventDefault(); return; }
-  if (!mod || e.target.matches("input, textarea")) return;
+  // Plain ⌘ + key only: ⇧⌘N, ⌥⌘H and friends belong to the app.
+  if (!mod || e.shiftKey || e.altKey || e.target.matches("input, textarea, [contenteditable]")) return;
   const w = activeWindow();
   const k = e.key.toLowerCase();
   if (k === "w" && w) { w.close(); e.preventDefault(); }

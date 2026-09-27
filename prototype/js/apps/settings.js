@@ -13,7 +13,7 @@ const PANES = [
   ["wallpaper", "Wallpaper", "wallpaper", "#32ade6"], null,
   ["privacy", "Privacy & Security", "lock", "#0a84ff"], ["keyboard", "Keyboard", "keyboard", "#8e8e93"],
 ];
-export const WALLPAPERS = { tide: "assets/wallpapers/tide.svg", dusk: "assets/wallpapers/dusk.svg" };
+export const WALLPAPERS = { dynamic: "assets/wallpapers/tide.svg", tide: "assets/wallpapers/tide.svg", dusk: "assets/wallpapers/dusk.svg" };
 
 const group = (...rows) => h("div.form-group", rows);
 const row = (label, control, sub) => h("div.form-row", h("div.grow", label, sub ? h("small", sub) : null), control ?? null);
@@ -24,6 +24,11 @@ const range = (key, min = 0, max = 1, step = 0.01, onInput) => {
   r.addEventListener("input", () => { state[key] = +r.value; paint(); onInput?.(); });
   paint();
   return r;
+};
+// Segmented control bound to a state key (values are the lower-cased labels).
+const seg = (key, labels) => {
+  const el = h("div.seg", labels.map((l) => h("button", { className: state[key] === l.toLowerCase() ? "on" : "", on: { click: (e) => { state[key] = l.toLowerCase(); el.querySelectorAll("button").forEach((b) => b.classList.toggle("on", b === e.currentTarget)); } } }, l)));
+  return el;
 };
 const heroCard = (icon, color, title, text) => h("div.form-group", h("div.hero-card", h("span.sq", { style: { "--c": color } }, sym(icon)), h("b", title), h("small", text)));
 
@@ -39,11 +44,13 @@ const panes = {
       h("span.thumb", { style: { backgroundImage: `url(${WALLPAPERS[k === "dark" ? "dusk" : "tide"]})`, "--w": w } }), label)));
     const acc = h("div.accents", Object.entries(ACCENTS).map(([k, c]) => h("button", { title: k, className: state.accent === k ? "on" : "", style: { "--c": c }, on: { click: (e) => { state.accent = k; acc.querySelectorAll("button").forEach((b) => b.classList.toggle("on", b === e.currentTarget)); } } })));
     return [group(row("Appearance", wrap)), group(row("Accent colour", acc), row("Highlight colour", h("span", { style: { color: "var(--secondary-label)" } }, "Accent colour"))),
-      group(row("Icon & widget style", h("div.seg", ["Default", "Dark", "Clear", "Tinted"].map((l, i) => h("button", { className: i === 0 ? "on" : "" }, l)))), row("Liquid Glass", h("div.seg", ["Clear", "Tinted"].map((l, i) => h("button", { className: i === 0 ? "on" : "" }, l))), "Tinted increases opacity for legibility.")),
+      group(row("Icon & widget style", seg("iconStyle", ["Default", "Dark", "Clear", "Tinted"])), row("Liquid Glass", seg("glass", ["Clear", "Tinted"]), "Tinted increases opacity for legibility.")),
       group(row("Show scroll bars", h("div.seg", ["Automatically", "When scrolling", "Always"].map((l, i) => h("button", { className: i === 0 ? "on" : "" }, l)))))];
   },
   wallpaper: () => {
-    const walls = h("div.walls", Object.entries(WALLPAPERS).map(([k, src]) => h("button", { title: k, className: state.wallpaper === k ? "on" : "", style: { backgroundImage: `url(${src})` }, on: { click: (e) => { state.wallpaper = k; walls.querySelectorAll("button").forEach((b) => b.classList.toggle("on", b === e.currentTarget)); } } })));
+    const walls = h("div.walls", Object.entries(WALLPAPERS).map(([k, src]) => h("div.wall-pick",
+      h("button", { title: k, className: `${state.wallpaper === k ? "on" : ""} ${k === "dynamic" ? "dynamic" : ""}`, style: { backgroundImage: k === "dynamic" ? `url(${WALLPAPERS.tide}), url(${WALLPAPERS.dusk})` : `url(${src})` }, on: { click: (e) => { state.wallpaper = k; walls.querySelectorAll("button").forEach((b) => b.classList.toggle("on", b === e.currentTarget)); } } }),
+      h("span", { dynamic: "Dynamic", tide: "Tide", dusk: "Dusk" }[k]))));
     return [h("div.form-group", walls), group(row("Show on all Spaces", toggle("wifi")))];
   },
   dock: () => [group(row("Size", range("dockSize", 36, 80, 1)), row("Magnification", toggle("magnify")), row("Position on screen", h("div.seg", ["Left", "Bottom", "Right"].map((l, i) => h("button", { className: i === 1 ? "on" : "" }, l)))),
@@ -54,6 +61,25 @@ const panes = {
   bluetooth: () => [group(row(h("b", "Bluetooth"), toggle("bluetooth"), "This computer is discoverable as “golden-gate”.")), h("h2", "My Devices"),
     group(row("Studio Headphones", h("span", { style: { color: "var(--secondary-label)" } }, "Connected")), row("Magic Trackpad", h("span", { style: { color: "var(--secondary-label)" } }, "Connected")), row("Keyboard", h("span", { style: { color: "var(--secondary-label)" } }, "Not Connected")))],
   sound: () => [h("h2", "Output & Input"), group(row("Output volume", range("volume")), row("Alert sound", h("span", { style: { color: "var(--secondary-label)" } }, "Glass")), row("Play feedback when volume is changed", toggle("airdrop")))],
+  notifications: () => [h("h2", "Notification Center"), group(row("Show previews", h("div.seg", ["Always", "When Unlocked", "Never"].map((l, i) => h("button", { className: i === 1 ? "on" : "" }, l)))), row("Allow notifications when the display is sleeping", toggle("airdrop"))),
+    h("h2", "Application Notifications"), group(...["Calendar", "Mail", "Messages", "Music", "Software", "System Settings"].map((n) => row(n, h("span", { style: { color: "var(--secondary-label)" } }, "Banners, Sounds, Badges"))))],
+  focus: () => [group(row(h("b", "Do Not Disturb"), toggle("focus"), "Silence notifications and calls.")), h("h2", "Focus modes"),
+    group(...[["Personal", "person"], ["Work", "briefcase"], ["Sleep", "moon"]].map(([n, i]) => row(h("span", { style: { display: "flex", alignItems: "center", gap: "10px" } }, h("span.sq", { style: { "--c": "#5e5ce6" } }, sym(i)), n), sym("chevron-right")))),
+    group(row("Share across devices", toggle("wifi")), row("Focus status", h("span", { style: { color: "var(--secondary-label)" } }, "On")))],
+  controlcenter: () => [h("h2", "Control Center Modules"), group(...["Wi-Fi", "Bluetooth", "Nearby Share", "Focus", "Stage Manager", "Screen Mirroring", "Display", "Sound", "Now Playing"].map((n) => row(n, h("span", { style: { color: "var(--secondary-label)" } }, "Always Show in Control Center")))),
+    h("h2", "Menu Bar Only"), group(row("Clock", h("button.btn", "Clock Options…")), row("Battery", toggle("wifi")), row("Spotlight", toggle("wifi")))],
+  accessibility: () => [h("h2", "Vision"), group(row("Zoom", toggle("stage")), row("Display", h("span", { style: { color: "var(--secondary-label)" } }, "Reduce motion, contrast")), row("Reduce transparency", h("button.switch", { className: "switch", on: { click: (e) => { e.currentTarget.classList.toggle("on"); state.glass = e.currentTarget.classList.contains("on") ? "tinted" : "clear"; } } }), "Uses the Tinted Liquid Glass material everywhere.")),
+    h("h2", "Motor"), group(row("Keyboard", h("span", { style: { color: "var(--secondary-label)" } }, "Sticky Keys off")), row("Pointer Control", h("span", { style: { color: "var(--secondary-label)" } }, "Default")))],
+  privacy: () => [heroCard("lock", "#0a84ff", "Privacy & Security", "Apps request access to your location, camera, microphone and files through portals."),
+    group(...[["Location Services", "location", "Off"], ["Camera", "video", "2 apps"], ["Microphone", "mic", "1 app"], ["Files & Folders", "folder", "4 apps"], ["Screen Recording", "screenshot", "None"]].map(([n, i, v]) => row(h("span", { style: { display: "flex", alignItems: "center", gap: "10px" } }, h("span.sq", { style: { "--c": "#0a84ff" } }, sym(i)), n), h("span", { style: { color: "var(--secondary-label)" } }, v)))),
+    group(row("FileVault-style disk encryption (LUKS)", h("span", { style: { color: "var(--secondary-label)" } }, "On")), row("Firewall", h("span", { style: { color: "var(--secondary-label)" } }, "Active")))],
+  keyboard: () => [group(row("Key repeat rate", range("volume")), row("Delay until repeat", range("brightness"))),
+    h("h2", "Shortcuts"), group(...[["Spotlight", "⌘ Space"], ["App Switcher", "⌘ Tab"], ["Mission Control", "⌃ ↑"], ["Lock Screen", "⌃ ⌘ Q"], ["Screenshot of selection", "⇧ ⌘ 4"], ["Copy · Paste (keyd)", "⌘ C · ⌘ V"]].map(([n, k]) => row(n, h("span.kbd-chip", k)))),
+    group(row("Use ⌘ for app shortcuts", toggle("wifi"), "keyd maps ⌘ + letter to Ctrl + letter, with Ctrl + Shift in terminals."))],
+  network: () => [group(row(h("span", { style: { display: "flex", alignItems: "center", gap: "10px" } }, h("span.sq", { style: { "--c": "#0a84ff" } }, sym("wifi")), "Wi-Fi"), h("span", { style: { color: "var(--accent-green)" } }, "● Connected")),
+    row(h("span", { style: { display: "flex", alignItems: "center", gap: "10px" } }, h("span.sq", { style: { "--c": "#8e8e93" } }, sym("globe")), "Ethernet"), h("span", { style: { color: "var(--secondary-label)" } }, "● Not Connected")),
+    row(h("span", { style: { display: "flex", alignItems: "center", gap: "10px" } }, h("span.sq", { style: { "--c": "#30d158" } }, sym("shield")), "VPN"), h("span", { style: { color: "var(--secondary-label)" } }, "WireGuard · Off"))),
+    group(row("Firewall", toggle("wifi")))],
   displays: () => [group(row("Brightness", range("brightness")), row("Automatically adjust brightness", toggle("wifi")), row("Night Shift", h("button.btn", "Schedule…")))],
 };
 

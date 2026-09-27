@@ -1,6 +1,7 @@
 // Dock: glass shelf with cosine magnification, running indicators, launch
 // bounce and tooltips. Pinned apps are desktop-entry ids.
 import Quickshell
+import Quickshell.Io
 import Quickshell.Wayland
 import QtQuick
 import QtQuick.Layouts
@@ -28,6 +29,20 @@ PanelWindow {
     mask: Region { item: hitbox }
 
     // Reading applications.values makes this re-evaluate once the entry scan finishes.
+    // Right of the separator: Downloads and the Trash (full or empty).
+    property bool trashFull: false
+    Process {
+        id: trashCheck
+        running: true
+        command: ["sh", "-c", "ls -A \"${XDG_DATA_HOME:-$HOME/.local/share}/Trash/files\" 2>/dev/null | head -1"]
+        stdout: SplitParser { onRead: (line) => dock.trashFull = line.length > 0 }
+    }
+    Timer { interval: 5000; running: true; repeat: true; onTriggered: trashCheck.running = true }
+    readonly property var places: [
+        { name: "Downloads", icon: "folder", exec: ["xdg-open", Quickshell.env("HOME") + "/Downloads"] },
+        { name: "Trash", icon: trashFull ? "user-trash-full" : "user-trash", exec: ["xdg-open", "trash:///"] },
+    ]
+
     readonly property var entries: {
         DesktopEntries.applications.values;
         return pinned.map((id) => DesktopEntries.byId(id)).filter((e) => e)
@@ -117,6 +132,24 @@ PanelWindow {
                             else { bounce.restart(); tile.modelData.execute() }
                         }
                     }
+                }
+            }
+            Rectangle { width: 1; height: dock.baseSize - 14; anchors.bottom: parent.bottom; anchors.bottomMargin: 5; color: "#66ffffff" }
+            Repeater {
+                model: dock.places
+                delegate: Item {
+                    required property var modelData
+                    required property int index
+                    width: dock.sizeAt(dock.entries.length + index + 0.35)
+                    height: width
+                    Behavior on width { enabled: dock.pointerX < 0; Spring { spring: Theme.dock } }
+                    Image {
+                        anchors.fill: parent
+                        source: Quickshell.iconPath(modelData.icon, "folder")
+                        sourceSize: Qt.size(dock.maxSize * 2, dock.maxSize * 2)
+                        smooth: true; mipmap: true
+                    }
+                    MouseArea { anchors.fill: parent; onClicked: Quickshell.execDetached(modelData.exec) }
                 }
             }
         }

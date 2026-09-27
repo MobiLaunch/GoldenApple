@@ -11,13 +11,13 @@ export function initMenubar(el, { toggleCC, toggleWidgets, openSpotlight }) {
   let current = null;
 
   const systemMenu = () => [
-    { label: "About This Computer", action: () => launch("settings", "general") }, "-",
-    { label: "System Settings…", action: () => launch("settings") },
-    { label: "Software…", action: () => launch("store") }, "-",
-    { label: "Recent Items", submenu: [{ header: "Applications" }, { label: "Files", icon: "folder", action: () => launch("files") }, { label: "Photos", icon: "photo", action: () => launch("photos") }, { label: "Terminal", icon: "apps", action: () => launch("terminal") }] }, "-",
-    { label: "Force Quit…", kbd: "⌥⌘⎋" }, "-",
-    { label: "Sleep", action: () => bus.emit("sleep") }, { label: "Restart…" }, { label: "Shut Down…" }, "-",
-    { label: "Lock Screen", kbd: "⌃⌘Q", action: () => bus.emit("lock") }, { label: "Log Out golden…", kbd: "⇧⌘Q" },
+    { label: "About This Computer", icon: "info", action: () => launch("settings", "general") }, "-",
+    { label: "System Settings…", icon: "gear", action: () => launch("settings") },
+    { label: "Software…", icon: "download", action: () => launch("store") }, "-",
+    { label: "Recent Items", icon: "clock", submenu: [{ header: "Applications" }, { label: "Files", icon: "folder", action: () => launch("files") }, { label: "Photos", icon: "photo", action: () => launch("photos") }, { label: "Terminal", icon: "apps", action: () => launch("terminal") }] }, "-",
+    { label: "Force Quit…", icon: "xmark", kbd: "⌥⌘⎋" }, "-",
+    { label: "Sleep", icon: "moon", action: () => bus.emit("sleep") }, { label: "Restart…", icon: "arrow-clockwise" }, { label: "Shut Down…", icon: "power" }, "-",
+    { label: "Lock Screen", icon: "lock", kbd: "⌃⌘Q", action: () => bus.emit("lock") }, { label: "Log Out golden…", icon: "person", kbd: "⇧⌘Q" },
   ];
 
   function openFor(item, items) {

@@ -21,7 +21,7 @@ export function createWindow(o) {
   const lights = h("div.lights",
     h("button.close", { title: "Close", on: { click: () => w.close() } }, sym("xmark")),
     h("button.min", { title: "Minimize", on: { click: () => w.minimize() } }, sym("minus")),
-    h("button.zoom", { title: "Zoom", on: { click: () => w.zoom() } }, sym("plus")));
+    h("button.zoom", { title: "Zoom", on: { click: () => w.zoom() } }, sym("fullscreen")));
   lights.addEventListener("mousedown", (e) => e.stopPropagation());
 
   w.toolbar = h("div.toolbar", o.toolbar ?? []);
@@ -47,7 +47,8 @@ export function createWindow(o) {
   };
   w.toolbar.addEventListener("mousedown", dragStart);
   w.toolbar.addEventListener("dblclick", (e) => { if (!e.target.closest("button, input, .pill")) w.zoom(); });
-  w.sidebar?.addEventListener("mousedown", (e) => { if (e.offsetY < 44 && e.target === w.sidebar) dragStart(e); });
+  // The strip beside the traffic lights drags the window, whatever the sidebar puts there.
+  w.sidebar?.addEventListener("mousedown", (e) => { if (e.clientY - w.sidebar.getBoundingClientRect().top < 44 && !e.target.closest(".note-row, .convo, .mrow, a")) dragStart(e); });
   if (o.noToolbar) w.el.addEventListener("mousedown", (e) => { if (e.target === w.el || e.target.dataset.drag != null) dragStart(e); });
 
   w.focus = () => focus(w);
@@ -135,7 +136,8 @@ async function minimize(w) {
 }
 async function restore(w) {
   if (!w.minimized) return focus(w);
-  const frames = genieFrames(w).reverse();   // measured while the tile still exists
+  // Measured while the tile still exists; offsets mirror so they stay ascending.
+  const frames = genieFrames(w).reverse().map((f) => (f.offset == null ? f : { ...f, offset: 1 - f.offset }));
   w.minimized = false;
   w.el.style.visibility = "";
   focus(w);

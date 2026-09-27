@@ -64,35 +64,36 @@ export function menusFor(id) {
   const w = () => activeWindow();
   const std = {
     [a.name]: [
-      { label: `About ${a.name}`, action: () => launch("settings", "general") }, "-",
-      { label: "Settings…", kbd: `${K},`, action: () => launch("settings") }, "-",
+      { label: `About ${a.name}`, icon: "info", action: () => launch("settings", "general") }, "-",
+      { label: "Settings…", icon: "gear", kbd: `${K},`, action: () => launch("settings") }, "-",
       { label: "Services", submenu: [{ label: "No Services Apply", disabled: true }] }, "-",
-      { label: `Hide ${a.name}`, kbd: `${K}H` }, { label: "Hide Others", kbd: `⌥${K}H` }, "-",
-      { label: `Quit ${a.name}`, kbd: `${K}Q`, action: () => windowsOf(id).forEach((x) => x.close()) },
+      { label: `Hide ${a.name}`, icon: "eye", kbd: `${K}H` }, { label: "Hide Others", kbd: `⌥${K}H` }, "-",
+      { label: `Quit ${a.name}`, icon: "xmark", kbd: `${K}Q`, action: () => windowsOf(id).forEach((x) => x.close()) },
     ],
     File: [
-      { label: "New Window", kbd: `${K}N`, action: () => launch(id, "new") },
-      { label: "New Folder", kbd: `⇧${K}N`, disabled: id !== "files" },
-      { label: "Open…", kbd: `${K}O` }, "-",
-      { label: "Close Window", kbd: `${K}W`, action: () => w()?.close() },
+      { label: "New Window", icon: "window", kbd: `${K}N`, action: () => launch(id, "new") },
+      { label: "New Folder", icon: "folder", kbd: `⇧${K}N`, disabled: id !== "files" },
+      { label: "Open…", icon: "doc", kbd: `${K}O` }, "-",
+      { label: "Close Window", icon: "xmark", kbd: `${K}W`, action: () => w()?.close() }, "-",
+      { label: "Share…", icon: "share" }, { label: "Print…", icon: "printer", kbd: `${K}P` },
     ],
     Edit: [
-      { label: "Undo", kbd: `${K}Z`, disabled: true }, { label: "Redo", kbd: `⇧${K}Z`, disabled: true }, "-",
-      { label: "Cut", kbd: `${K}X` }, { label: "Copy", kbd: `${K}C` }, { label: "Paste", kbd: `${K}V` }, { label: "Select All", kbd: `${K}A` }, "-",
+      { label: "Undo", icon: "undo", kbd: `${K}Z`, disabled: true }, { label: "Redo", icon: "redo", kbd: `⇧${K}Z`, disabled: true }, "-",
+      { label: "Cut", icon: "scissors", kbd: `${K}X` }, { label: "Copy", icon: "copy", kbd: `${K}C` }, { label: "Paste", icon: "paste", kbd: `${K}V` }, { label: "Select All", icon: "text-cursor", kbd: `${K}A` }, "-",
       { label: "Writing Tools", icon: "sparkles", submenu: [{ label: "Proofread" }, { label: "Rewrite" }, { label: "Summarize" }] },
-      { label: "Emoji & Symbols", kbd: "fn E" },
+      { label: "Emoji & Symbols", icon: "smile", kbd: "fn E" },
     ],
     View: [
-      { label: "as Icons", kbd: `${K}1` }, { label: "as List", kbd: `${K}2` }, { label: "as Columns", kbd: `${K}3` }, { label: "as Gallery", kbd: `${K}4` }, "-",
-      { label: "Show Sidebar", kbd: `⌃${K}S` }, { label: "Enter Full Screen", kbd: "fn F", action: () => w()?.zoom() },
+      { label: "as Icons", icon: "grid", kbd: `${K}1` }, { label: "as List", icon: "list", kbd: `${K}2` }, { label: "as Columns", icon: "columns", kbd: `${K}3` }, { label: "as Gallery", icon: "gallery", kbd: `${K}4` }, "-",
+      { label: "Show Sidebar", icon: "sidebar", kbd: `⌃${K}S` }, { label: "Enter Full Screen", icon: "fullscreen", kbd: "fn F", action: () => w()?.zoom() },
     ],
     Window: [
-      { label: "Minimize", kbd: `${K}M`, action: () => w()?.minimize() }, { label: "Zoom", action: () => w()?.zoom() },
+      { label: "Minimize", icon: "minus", kbd: `${K}M`, action: () => w()?.minimize() }, { label: "Zoom", icon: "plus", action: () => w()?.zoom() },
       { label: "Tile Window to Left of Screen", action: () => tile(w(), "left") }, { label: "Tile Window to Right of Screen", action: () => tile(w(), "right") }, "-",
-      { label: "Mission Control", kbd: "⌃↑", action: () => bus.emit("mission") },
+      { label: "Mission Control", icon: "grid", kbd: "⌃↑", action: () => bus.emit("mission") },
       { label: "Bring All to Front" },
     ],
-    Help: [{ label: `${a.name} Help` }, { label: "Keyboard Shortcuts", action: () => bus.emit("notify", { app: "settings", title: "Keyboard Shortcuts", body: "⌘Space Spotlight · ⌘Tab switch apps · ⌘W close · ⌘M minimize · ⌘, Settings" }) }],
+    Help: [{ label: `${a.name} Help`, icon: "info" }, { label: "Keyboard Shortcuts", icon: "keyboard", action: () => bus.emit("notify", { app: "settings", title: "Keyboard Shortcuts", body: "⌘Space Spotlight · ⌘Tab switch apps · ⌘W close · ⌘M minimize · ⌘, Settings" }) }],
   };
   const { Window, Help, ...rest } = std;
   return { ...rest, ...(a.menus ?? {}), Window, Help };

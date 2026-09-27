@@ -93,7 +93,7 @@ function openCalendar() {
     const col = (d) => {
       const evs = EV.filter((e) => sameDay(e.date, d) && visible(e) && e.len < 24);
       return h("div.t-col", { className: `t-col ${sameDay(d, TODAY) ? "today" : ""}` },
-        ...evs.map((e) => h("button.t-ev", { style: { top: `${e.start * HOUR}px`, height: `${Math.max(22, e.len * HOUR - 3)}px`, "--c": CALS[e.cal][1] }, on: { click: (ev) => eventPopover(e, ev.currentTarget) } },
+        ...evs.map((e) => h("button.t-ev", { className: `t-ev ${e.len < 1.1 ? "compact" : ""}`, style: { top: `${e.start * HOUR}px`, height: `${Math.max(22, e.len * HOUR - 3)}px`, "--c": CALS[e.cal][1] }, on: { click: (ev) => eventPopover(e, ev.currentTarget) } },
           h("b", e.title), h("span", fmtTime(e.start)))),
         sameDay(d, TODAY) ? h("div.now", { style: { top: `${21.68 * HOUR}px` } }) : null);
     };

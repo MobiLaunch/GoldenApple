@@ -89,7 +89,21 @@ function openPhotos() {
     img.style.transformOrigin = "top left";
     animate(img, [{ transform: t, borderRadius: "0" }, { transform: "none" }], "bouncy");
     animate(v, [{ backgroundColor: "transparent" }, {}], "smooth");
+    // Arrow keys step through the library; Escape or Space closes.
+    const tiles = [...grid.children];
+    let idx = tiles.indexOf(tile);
+    const onKey = (e) => {
+      if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
+        idx = Math.max(0, Math.min(tiles.length - 1, idx + (e.key === "ArrowRight" ? 1 : -1)));
+        tile = tiles[idx];
+        img.src = photos[idx].src;
+        animate(img, [{ opacity: 0.4, transform: `translateX(${e.key === "ArrowRight" ? 30 : -30}px)` }, { opacity: 1, transform: "none" }], "snappy");
+        e.preventDefault();
+      } else if (e.key === "Escape" || e.key === " ") { shut(); e.preventDefault(); }
+    };
+    addEventListener("keydown", onKey);
     async function shut() {
+      removeEventListener("keydown", onKey);
       const back = tile.getBoundingClientRect(), now = img.getBoundingClientRect();
       close.remove();
       v.animate([{ backgroundColor: getComputedStyle(v).backgroundColor }, { backgroundColor: "transparent" }], { duration: 300, fill: "forwards" });

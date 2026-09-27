@@ -143,3 +143,12 @@
 .drop-hot { background: color-mix(in srgb, var(--accent) 22%, transparent) !important; border-radius: 10px; box-shadow: inset 0 0 0 2px var(--accent); }
 .dock-item.drop-hot { background: none !important; box-shadow: none; }
 .dock-item.drop-hot img { transform: scale(1.18); transition: transform 300ms var(--spring-bouncy); }
+.settings .walls .wall-pick { display: flex; flex-direction: column; gap: 6px; align-items: center; font-size: 12px; color: var(--secondary-label); }
+.settings .walls .wall-pick button { width: 100%; }
+.settings .walls button.dynamic { background-size: cover, cover; background-position: center, center; -webkit-mask: none; position: relative; overflow: hidden; }
+.settings .walls button.dynamic::after { content: ""; position: absolute; inset: 0 0 0 50%; background: url("../assets/wallpapers/dusk.svg") right center / 200% 100%; }
+
+.notes .note-date { text-align: center; font-size: 12px; color: var(--secondary-label); padding: 2px 0 6px; }
+.notes .note-edit { min-height: calc(100% - 30px); outline: 0; padding: 4px 40px 40px; white-space: pre-wrap; font: 14px/1.6 var(--font-ui); color: var(--label); user-select: text; cursor: text; }
+.notes .note-edit::first-line { font-size: 24px; font-weight: 700; letter-spacing: -.02em; line-height: 1.9; }
+.settings .kbd-chip { font-size: 12px; padding: 2px 8px; border-radius: 6px; background: var(--fill); box-shadow: inset 0 0 0 .5px var(--separator); color: var(--secondary-label); letter-spacing: .04em; }

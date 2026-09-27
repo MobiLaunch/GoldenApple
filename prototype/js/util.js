@@ -30,7 +30,13 @@ export function sym(name, cls = "") {
 }
 
 export const isDark = () => document.documentElement.dataset.theme === "dark";
-export const appIconURL = (key) => (ICONS.apps[key] ? ICONS.apps[key][isDark() ? "dark" : "light"] : ICONS.places[key]);
+export function appIconURL(key) {
+  const url = ICONS.apps[key] ? ICONS.apps[key][isDark() || document.documentElement.dataset.icons === "dark" ? "dark" : "light"] : ICONS.places[key];
+  if (key !== "calendar") return url;
+  // Like the real thing, the Calendar icon shows today's date.
+  const now = new Date(), day = now.toLocaleDateString("en-US", { weekday: "short" }).toUpperCase();
+  return url.replace("%3ESAT%3C", `%3E${day}%3C`).replace("%3E26%3C", `%3E${now.getDate()}%3C`);
+}
 export function appIcon(key, cls = "") {
   const img = h("img", { src: appIconURL(key), alt: "", draggable: false, className: cls });
   img.dataset.icon = key;
@@ -79,15 +85,16 @@ export const bus = {
 };
 export const state = new Proxy(
   {
-    theme: prefs.get("theme", "light"), accent: prefs.get("accent", "blue"), wallpaper: prefs.get("wallpaper", "tide"),
+    theme: prefs.get("theme", "light"), accent: prefs.get("accent", "blue"), wallpaper: prefs.get("wallpaper", "dynamic"),
     wifi: true, bluetooth: true, airdrop: true, focus: false, stage: false, volume: 0.62, brightness: 0.58,
     playing: false, nowPlaying: { title: "Fog Horns", artist: "The Presidio Quartet", album: "Fog Horns", art: null, progress: 0.3 }, magnify: prefs.get("magnify", true), dockSize: prefs.get("dockSize", 54),
+    iconStyle: prefs.get("iconStyle", "default"), glass: prefs.get("glass", "clear"),
   },
   {
     set(t, k, v) {
       if (t[k] === v) return true;
       t[k] = v;
-      if (["theme", "accent", "wallpaper", "magnify", "dockSize"].includes(k)) prefs.set(k, v);
+      if (["theme", "accent", "wallpaper", "magnify", "dockSize", "iconStyle", "glass"].includes(k)) prefs.set(k, v);
       bus.emit("state", { key: k, value: v });
       bus.emit(`state:${k}`, v);
       return true;

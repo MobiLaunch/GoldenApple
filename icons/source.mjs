@@ -141,6 +141,17 @@ export const symbols = {
   gauge: S(`<path d="M4.5 17a8.5 8.5 0 1 1 15 0"/><path d="M12 13l3.5-4"/>${dot(12, 13, 1.3)}`),
   sunset: S(`<path d="M3 17.5h18M6.5 17.5a5.5 5.5 0 0 1 11 0M12 3.5v4M8.5 6L12 9.5 15.5 6M4 12.5l1.2.7M20 12.5l-1.2.7M6 21h12"/>`),
   airplay: S(`<path d="M6.5 17H5a2 2 0 0 1-2-2V6.5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2V15a2 2 0 0 1-2 2h-1.5"/><path d="M12 14l4.5 6h-9z" fill="currentColor"/>`),
+  scissors: S(`<circle cx="6.5" cy="17.5" r="2.8"/><circle cx="17.5" cy="17.5" r="2.8"/><path d="M8.5 15.5L18 4M15.5 15.5L6 4"/>`),
+  copy: S(`<rect x="8" y="8" width="12" height="12.5" rx="2.2"/><path d="M16 8V5.7A1.7 1.7 0 0 0 14.3 4H5.7A1.7 1.7 0 0 0 4 5.7v8.6A1.7 1.7 0 0 0 5.7 16H8"/>`),
+  paste: S(`<rect x="5" y="4.5" width="14" height="16.5" rx="2.2"/><rect x="9" y="3" width="6" height="3.5" rx="1.2" fill="currentColor"/>`),
+  undo: S(`<path d="M9 14L4 9l5-5M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>`),
+  redo: S(`<path d="M15 14l5-5-5-5M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/>`),
+  pencil: S(`<path d="M16.5 4.2a2 2 0 0 1 2.9 2.9L8.6 17.9l-4 1 1-4z"/><path d="M14.5 6.2l2.9 2.9"/>`),
+  link: S(`<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1.2 1.2"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1.2-1.2"/>`),
+  fullscreen: S(`<path d="M14.5 3.5h6v6M20.5 3.5l-6.5 6.5M9.5 20.5h-6v-6M3.5 20.5l6.5-6.5"/>`),
+  window: S(`<rect x="3" y="4.5" width="18" height="15" rx="2.5"/><path d="M3 8.5h18"/>${dot(6, 6.5, .8)}${dot(8.5, 6.5, .8)}${dot(11, 6.5, .8)}`),
+  "text-cursor": S(`<path d="M9 4h6M9 20h6M12 4v16"/>`),
+  printer: S(`<path d="M7 9V3.5h10V9M7 17H5a1.5 1.5 0 0 1-1.5-1.5v-5A1.5 1.5 0 0 1 5 9h14a1.5 1.5 0 0 1 1.5 1.5v5A1.5 1.5 0 0 1 19 17h-2"/><rect x="7" y="14" width="10" height="6.5" rx="1"/>`),
   quote: S(`<path d="M5 18c2.5-1 4-3.4 4-6.5V7H4.5v5H9M15 18c2.5-1 4-3.4 4-6.5V7h-4.5v5H19"/>`),
 };
 

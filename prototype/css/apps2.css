@@ -386,3 +386,7 @@
 .ess b { font-size: 22px; letter-spacing: -.02em; max-width: 60%; margin-top: 4px; }
 .ess img { position: absolute; right: 18px; bottom: 16px; width: 96px; height: 96px; filter: drop-shadow(0 8px 16px rgba(0,0,0,.25)); transform: rotate(-8deg); }
 .updates .update { display: flex; gap: 14px; align-items: flex-start; padding: 16px 0; border-bottom: 1px solid var(--separator); }
+.t-ev.compact { flex-direction: row; gap: 5px; align-items: baseline; white-space: nowrap; }
+.t-ev.compact b { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.t-ev.compact span { flex: none; font-size: 10.5px; }
+.terminal .term input { caret-shape: block; }

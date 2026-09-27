@@ -112,11 +112,11 @@ export function initDock() {
     const open = windowsOf(id).length > 0;
     openMenu([
       ...(open ? windowsOf(id).map((w) => ({ label: w.title || APPS[id].name, action: () => w.restore() })).concat("-") : []),
-      { label: "Options", submenu: [{ label: "Keep in Dock", checked: PINNED.includes(id) }, { label: "Open at Login" }, { label: "Show in Files", action: () => launch("files", "/Applications") }] },
+      { label: "Options", icon: "gear", submenu: [{ label: "Keep in Dock", checked: PINNED.includes(id) }, { label: "Open at Login" }, { label: "Show in Files", icon: "folder", action: () => launch("files", "/Applications") }] },
       "-",
-      { label: "Show All Windows", disabled: !open },
-      { label: open ? "Hide" : "Open", action: () => launch(id) },
-      ...(open ? [{ label: "Quit", action: () => windowsOf(id).forEach((w) => w.close()) }] : []),
+      { label: "Show All Windows", icon: "grid", disabled: !open, action: () => bus.emit("mission") },
+      { label: open ? "Hide" : "Open", icon: open ? "eye" : "doc", action: () => launch(id) },
+      ...(open ? [{ label: "Quit", icon: "xmark", action: () => windowsOf(id).forEach((w) => w.close()) }] : []),
     ], { x: r.left + r.width / 2 - 20, y: r.top - 10 - 26 * 6 });
   }
 

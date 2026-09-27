@@ -97,13 +97,15 @@ const NOTES = [
 function openNotes() {
   let cur = 0;
   const list = h("div");
-  const ta = h("textarea", { spellcheck: false });
+  // The first line of a note is its title (styled with ::first-line).
+  const ta = h("div.note-edit", { contentEditable: "plaintext-only", spellcheck: false });
+  Object.defineProperty(ta, "value", { get: () => ta.innerText, set: (v) => { ta.textContent = v; } });
   const renderList = () => list.replaceChildren(h("div.sec", "Today"), ...NOTES.map((n, i) => h("div.note-row", { className: `note-row ${i === cur ? "sel" : ""}`, on: { click: () => { cur = i; ta.value = n.b; renderList(); } } }, h("b", n.b.split("\n")[0] || "New Note"), h("small", n.b.split("\n").filter(Boolean)[1] ?? "No additional text"))));
   ta.addEventListener("input", () => { NOTES[cur].b = ta.value; renderList(); });
   ta.value = NOTES[0].b;
   renderList();
   return createWindow({
-    app: "notes", w: 820, h: 520, sidebar: list, sidebarWidth: 230, className: "notes", content: ta,
+    app: "notes", w: 820, h: 520, sidebar: list, sidebarWidth: 230, className: "notes", content: [h("div.note-date", "September 26, 2026 at 9:41 PM"), ta],
     toolbar: [h("div.grow"), pill(tb("list"), tb("grid")), pill(tb("doc", { title: "New note", click: () => { NOTES.unshift({ b: "" }); cur = 0; ta.value = ""; renderList(); ta.focus(); } })), pill(tb("checkmark"), tb("photo"), tb("lock")), h("label.pill.search", sym("search"), h("input", { placeholder: "Search" }))],
   });
 }

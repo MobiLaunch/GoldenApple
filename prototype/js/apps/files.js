@@ -10,7 +10,7 @@ const HOME = `/Users/${fs.USER}`;
 const SIDEBAR = [
   { rows: [["Recents", "clock", "@recents"], ["Shared", "people", "@shared"]] },
   { title: "Favourites", rows: [["Applications", "apps", "/Applications"], ["Desktop", "rectangle-fill", `${HOME}/Desktop`], ["Documents", "doc", `${HOME}/Documents`], ["Downloads", "download", `${HOME}/Downloads`], ["Pictures", "photo", `${HOME}/Pictures`], ["Music", "music", `${HOME}/Music`], ["Movies", "film", `${HOME}/Movies`]] },
-  { title: "Locations", rows: [["Cloud Drive", "cloud", `${HOME}/Documents`], [fs.USER, "house", HOME], ["System HD", "drive", "/"], ["Network", "globe", "@network"]] },
+  { title: "Locations", rows: [["Cloud Drive", "cloud", `${HOME}/Cloud Drive`], [fs.USER, "house", HOME], ["System HD", "drive", "/"], ["Network", "globe", "@network"]] },
   { title: "Tags", rows: [["Red", null, "@tag", "#ff453a"], ["Orange", null, "@tag", "#ff9f0a"], ["Blue", null, "@tag", "#0a84ff"], ["Green", null, "@tag", "#30d158"]] },
 ];
 const QL_TEXT = [
@@ -26,7 +26,7 @@ function openFiles(_id, arg) {
   const sidebar = h("div");
   const title = h("div.title");
   const views = ["icons", "list", "columns", "gallery"];
-  const viewBtns = Object.fromEntries(views.map((v) => [v, tb({ icons: "grid", list: "list", columns: "columns", gallery: "gallery" }[v], { title: `View as ${v}`, click: () => setView(v) })]));
+  const viewBtns = Object.fromEntries(views.map((v) => [v, tb({ icons: "grid", list: "list", columns: "columns", gallery: "gallery" }[v], { title: v[0].toUpperCase() + v.slice(1), click: () => setView(v) })]));
   const backBtn = tb("chevron-left", { title: "Back", click: () => go(st.back.pop(), "back") });
   const fwdBtn = tb("chevron-right", { title: "Forward", click: () => go(st.fwd.pop(), "fwd") });
   const search = h("input", { placeholder: "Search", on: { input: (e) => { st.query = e.target.value.trim().toLowerCase(); render(); } } });
@@ -190,27 +190,27 @@ function openFiles(_id, arg) {
   function itemMenu(e, n) {
     openMenu([
       { label: "Ask Assistant", icon: h("span.mb-orb", { style: { width: "15px", height: "15px" } }), hero: true, action: () => bus.emit("spotlight", `About “${n.name}”`) },
-      { label: "Open", action: () => open(n) },
+      { label: "Open", icon: "doc", action: () => open(n) },
       { label: "Open With", submenu: [{ label: "Photos", icon: appIcon("photos"), action: () => launch("photos") }, { label: "Notes", icon: appIcon("notes"), action: () => launch("notes") }, "-", { label: "App Store…" }] },
       "-",
       { label: "Move to Trash", icon: "trash", kbd: "⌘⌫", action: () => trashItems([n.path]) },
       "-",
-      { label: "Get Info", kbd: "⌘I" }, { label: "Rename", action: () => rename(n.path) }, { label: `Compress “${n.name}”` }, { label: "Duplicate" }, { label: "Make Alias" }, { label: "Quick Look", kbd: "Space", action: () => quickLook(n.path) },
+      { label: "Get Info", icon: "info", kbd: "⌘I" }, { label: "Rename", icon: "pencil", action: () => rename(n.path) }, { label: `Compress “${n.name}”`, icon: "archive" }, { label: "Duplicate", icon: "mirror" }, { label: "Make Alias", icon: "link" }, { label: "Quick Look", icon: "eye", kbd: "Space", action: () => quickLook(n.path) },
       "-",
-      { label: "Copy" }, { label: "Share…", icon: "share" },
+      { label: "Copy", icon: "copy" }, { label: "Share…", icon: "share" },
       "-",
-      { tags: TAG_COLORS }, { label: "Tags…" },
+      { tags: TAG_COLORS }, { label: "Tags…", icon: "tag" },
       "-",
-      { label: "Quick Actions", submenu: [{ label: "Rotate Left", icon: "arrow-clockwise" }, { label: "Create PDF", icon: "doc" }, { label: "Remove Background", icon: "sparkles" }, "-", { label: "Customize…" }] },
-      { label: "Services", submenu: [{ label: "Open in Terminal", action: () => launch("terminal") }, { label: "New Note With Selection", action: () => launch("notes") }] },
+      { label: "Quick Actions", icon: "sparkles", submenu: [{ label: "Rotate Left", icon: "arrow-clockwise" }, { label: "Create PDF", icon: "doc" }, { label: "Remove Background", icon: "sparkles" }, "-", { label: "Customize…" }] },
+      { label: "Services", icon: "gear", submenu: [{ label: "Open in Terminal", action: () => launch("terminal") }, { label: "New Note With Selection", action: () => launch("notes") }] },
     ], { x: e.clientX, y: e.clientY });
   }
   function backgroundMenu(e) {
     openMenu([
-      { label: "New Folder", kbd: "⇧⌘N", action: newFolder }, "-", { label: "Get Info" }, "-",
-      { label: "View", submenu: views.map((v) => ({ label: `as ${v[0].toUpperCase() + v.slice(1)}`, checked: st.view === v, action: () => setView(v) })) },
-      { label: "Use Groups" }, { label: "Sort By", submenu: [{ label: "Name", checked: true }, { label: "Kind" }, { label: "Date Last Opened" }, { label: "Date Added" }, { label: "Date Modified" }, { label: "Size" }] },
-      { label: "Show View Options", kbd: "⌘J" },
+      { label: "New Folder", icon: "folder", kbd: "⇧⌘N", action: newFolder }, "-", { label: "Get Info", icon: "info" }, "-",
+      { label: "View", icon: "grid", submenu: views.map((v) => ({ label: `as ${v[0].toUpperCase() + v.slice(1)}`, checked: st.view === v, action: () => setView(v) })) },
+      { label: "Use Groups", icon: "rectangle-fill" }, { label: "Sort By", icon: "list", submenu: [{ label: "Name", checked: true }, { label: "Kind" }, { label: "Date Last Opened" }, { label: "Date Added" }, { label: "Date Modified" }, { label: "Size" }] },
+      { label: "Show View Options", icon: "gear", kbd: "⌘J" },
     ], { x: e.clientX, y: e.clientY });
   }
   const at = (e) => { const r = e.currentTarget.getBoundingClientRect(); return { x: r.left, y: r.bottom + 6 }; };

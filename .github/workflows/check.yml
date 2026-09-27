@@ -18,3 +18,20 @@ jobs:
         run: git diff --exit-code
       - name: Lint shell scripts
         run: bash -n scripts/install.sh distro/archiso/build.sh
+
+  ui:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --no-package-lock
+      - run: npx playwright install --with-deps chromium
+      - name: Click through the reference shell
+        run: SHOTS=out/ui npm run test:ui
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-screenshots
+          path: out/ui

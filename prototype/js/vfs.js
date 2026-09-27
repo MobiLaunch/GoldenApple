@@ -30,6 +30,7 @@ export const root = dir("System HD", [
         f("Shoreline.m4a", "audio", "2026-07-15T09:18", 4_700_000), f("Drift.mov", "video", "2026-07-15T09:20", 48_000_000),
       ]),
       dir("Movies", [f("Bridge Timelapse.mov", "video", "2026-05-04T06:30", 310_000_000)]),
+      dir("Cloud Drive", [dir("Shared Albums", [], "2026-09-02T10:00"), f("Trip Itinerary.pdf", "doc", "2026-09-14T08:30", 640_000), f("Keynote Draft.key", "doc", "2026-09-21T16:45", 22_000_000)], "2026-09-21T16:45"),
     ]),
   ]),
 ]);
