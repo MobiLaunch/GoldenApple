@@ -2,7 +2,7 @@
 // filter whose map is generated per element size, so the backdrop bends towards the
 // rim like a lens. Chromium currently drops the blur when a url() filter is chained
 // in backdrop-filter, so this stays off by default; on Linux the compositor shader
-// (compositor/hyprland/liquid-glass.frag) does the real refraction.
+// is where real refraction belongs (see compositor/liquid-glass/).
 const NS = "http://www.w3.org/2000/svg";
 let defs, count = 0;
 const cache = new Map();

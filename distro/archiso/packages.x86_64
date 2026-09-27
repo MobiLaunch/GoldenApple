@@ -1,0 +1,52 @@
+# Golden Gate additions on top of archiso's releng package list.
+# Official Arch repositories only; see packages.extra for the rest.
+
+# Compositor + session
+hyprland
+hyprpaper
+hypridle
+hyprlock
+hyprsunset
+xdg-desktop-portal-hyprland
+xdg-desktop-portal-gtk
+polkit-gnome
+qt6-svg
+qt6-wayland
+
+# Look
+inter-font
+ttf-jetbrains-mono
+noto-fonts
+noto-fonts-emoji
+adwaita-icon-theme
+gsettings-desktop-schemas
+librsvg
+
+# Services the shell talks to
+pipewire
+pipewire-pulse
+wireplumber
+networkmanager
+bluez
+bluez-utils
+brightnessctl
+playerctl
+upower
+mako
+grim
+slurp
+wl-clipboard
+
+# Apps (themed via gtk.css + the Golden Gate icon theme)
+nautilus
+gnome-control-center
+gnome-calculator
+gnome-clocks
+gnome-text-editor
+gnome-calendar
+gnome-weather
+gnome-maps
+loupe
+firefox
+ghostty
+sudo

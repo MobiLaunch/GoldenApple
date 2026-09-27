@@ -1,0 +1,6 @@
+# Packages that may not be in the official repositories. build.sh checks each one:
+# if the sync repos have it, it is installed normally; otherwise it must be built
+# (e.g. from the AUR with makepkg) into distro/localrepo/, which build.sh adds as
+# a local pacman repository.
+quickshell
+localsend-bin

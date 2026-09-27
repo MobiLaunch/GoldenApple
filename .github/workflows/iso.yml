@@ -1,0 +1,22 @@
+name: Build ISO
+
+on:
+  workflow_dispatch:
+
+jobs:
+  iso:
+    runs-on: ubuntu-latest
+    container:
+      image: archlinux:latest
+      options: --privileged
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install build tools
+        run: pacman -Syu --noconfirm archiso librsvg nodejs git
+      - name: Build
+        run: distro/archiso/build.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: golden-gate-iso
+          path: out/*.iso
+          retention-days: 7

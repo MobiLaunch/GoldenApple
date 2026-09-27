@@ -17,10 +17,10 @@
       <stop offset=".4" stop-color="#ffe2a8" stop-opacity=".55"/>
       <stop offset="1" stop-color="#fff4d6" stop-opacity="0"/>
     </linearGradient>
-    <filter id="b60" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="60"/></filter>
-    <filter id="b28" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="28"/></filter>
-    <filter id="b10" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="10"/></filter>
-    <filter id="b2"><feGaussianBlur stdDeviation="2"/></filter>
+    <filter id="b60" filterUnits="userSpaceOnUse" x="-300" y="-300" width="2520" height="1800"><feGaussianBlur stdDeviation="60"/></filter>
+    <filter id="b28" filterUnits="userSpaceOnUse" x="-300" y="-300" width="2520" height="1800"><feGaussianBlur stdDeviation="28"/></filter>
+    <filter id="b10" filterUnits="userSpaceOnUse" x="-300" y="-300" width="2520" height="1800"><feGaussianBlur stdDeviation="10"/></filter>
+    <filter id="b2" filterUnits="userSpaceOnUse" x="-300" y="-300" width="2520" height="1800"><feGaussianBlur stdDeviation="2"/></filter>
   </defs>
   <rect width="1920" height="1200" fill="url(#sky)"/>
   <ellipse cx="380" cy="260" rx="620" ry="340" fill="#fff6e6" opacity=".7" filter="url(#b60)"/>

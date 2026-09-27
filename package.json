@@ -1,0 +1,11 @@
+{
+  "name": "golden-gate",
+  "private": true,
+  "description": "Golden Gate: a Linux distribution with a Liquid Glass desktop.",
+  "type": "module",
+  "scripts": {
+    "build": "node design/build.mjs && node icons/build.mjs",
+    "dev": "npm run build && npx --yes http-server prototype -p 8080 -c-1",
+    "icons:list": "node icons/build.mjs --list"
+  }
+}

@@ -161,6 +161,16 @@ Type=Scalable
 Context=Actions
 ${hasPng ? ["apps", "places", "mimetypes", "devices"].map((c) => `\n[512x512/${c}]\nSize=512\nType=Threshold\nContext=${c[0].toUpperCase() + c.slice(1)}\n`).join("") : ""}`);
 
+// ---------------------------------------------------------------- Quickshell assets
+// White symbols for the shell (tinted at runtime with MultiEffect when needed).
+const shellSyms = join(here, "..", "shell", "assets", "symbols");
+rmSync(shellSyms, { recursive: true, force: true });
+mkdirSync(shellSyms, { recursive: true });
+for (const [key, svg] of Object.entries(symbols)) {
+  const sized = svg.replace(/^<svg/, '<svg width="48" height="48"').replace(/\s(width|height)="\d+"(?=[^>]*width="48")/g, "");
+  writeFileSync(join(shellSyms, `${key}.svg`), sized.replace(/currentColor/g, "#ffffff"));
+}
+
 // ---------------------------------------------------------------- prototype bundle
 const uri = (svg) => "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg.replace(/\s*\n\s*/g, " "));
 const pngUri = (f) => "data:image/png;base64," + readFileSync(f).toString("base64");

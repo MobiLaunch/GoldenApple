@@ -1,0 +1,20 @@
+name: Check
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  generated:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Rebuild tokens and icons
+        run: npm run build
+      - name: Generated files are up to date
+        run: git diff --exit-code
+      - name: Lint shell scripts
+        run: bash -n scripts/install.sh distro/archiso/build.sh

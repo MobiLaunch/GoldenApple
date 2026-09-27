@@ -149,6 +149,11 @@ function material(name, m) {
   q.push("}", "");
   writeFileSync(join(out, "Theme.qml"), q.join("\n"));
   writeFileSync(join(out, "qmldir"), "singleton Theme 1.0 Theme.qml\n");
+  // The Quickshell shell imports the theme as a local module.
+  const shellTheme = join(here, "..", "shell", "theme");
+  mkdirSync(shellTheme, { recursive: true });
+  writeFileSync(join(shellTheme, "Theme.qml"), q.join("\n"));
+  writeFileSync(join(shellTheme, "qmldir"), "singleton Theme 1.0 Theme.qml\n");
 }
 
 // QML wants #AARRGGBB.
