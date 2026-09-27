@@ -57,7 +57,7 @@
   display: flex; align-items: center; gap: 10px; padding: 0 10px 0 12px;
 }
 .toolbar .grow { flex: 1; min-width: 0; }
-.toolbar .title { font-weight: 700; font-size: 15px; display: flex; align-items: center; gap: 7px; white-space: nowrap; overflow: hidden; letter-spacing: -0.012em; }
+.toolbar .title { flex: none; font-weight: 700; font-size: 15px; display: flex; align-items: center; gap: 7px; white-space: nowrap; overflow: hidden; letter-spacing: -0.012em; }
 .toolbar .title img { width: 20px; height: 20px; }
 .toolbar .title .subtitle { display: block; font-weight: 400; font-size: 11.5px; color: var(--secondary-label); letter-spacing: 0; }
 .toolbar .title .stack { display: flex; flex-direction: column; line-height: 1.15; }
@@ -83,7 +83,7 @@
 .pill .tb .chev { font-size: 10px; }
 .pill .tb.text { font-size: 13px; font-weight: 500; padding: 0 12px; }
 .pill .div { width: 1px; height: 18px; background: var(--separator); }
-.pill.search { width: 240px; padding: 0 11px; gap: 7px; color: var(--secondary-label); font-size: 13px; }
+.pill.search { flex: 0 1 220px; min-width: 110px; padding: 0 11px; gap: 7px; color: var(--secondary-label); font-size: 13px; }
 .pill.search svg { font-size: 15px; }
 .pill.search input { flex: 1; border: 0; outline: 0; background: none; min-width: 0; }
 .pill.search input::placeholder { color: var(--secondary-label); }

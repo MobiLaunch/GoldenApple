@@ -33,9 +33,32 @@ function applyAppearance(animated) {
     root.style.setProperty("--accent", ACCENTS[state.accent] ?? ACCENTS.blue);
     root.style.setProperty("--wallpaper", `url("${new URL(wall, location.href)}")`);
     refreshIcons();
+    toneMenubar(wall);
   };
   // Appearance changes cross-fade the whole screen, like the system does.
   if (animated && document.startViewTransition) document.startViewTransition(apply); else apply();
+}
+// The menu bar has no material of its own, so each half picks light or dark text
+// from the brightness of the wallpaper behind it (like the system does).
+function toneMenubar(src) {
+  const img = new Image();
+  img.onload = () => {
+    const W = 288, H = 180, c = document.createElement("canvas");
+    c.width = W; c.height = H;
+    const ctx = c.getContext("2d");
+    const s = Math.max(W / img.width, H / img.height);
+    ctx.drawImage(img, (W - img.width * s) / 2, (H - img.height * s) / 2, img.width * s, img.height * s);
+    const lum = (x0, x1) => {
+      const d = ctx.getImageData(x0, 0, x1 - x0, 7).data;
+      let t = 0;
+      for (let i = 0; i < d.length; i += 4) t += (0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2]) / 255;
+      return t / (d.length / 4);
+    };
+    const sides = document.querySelectorAll("#menubar .side");
+    sides[0]?.classList.toggle("tone-dark", lum(0, W * 0.45) > 0.66);
+    sides[1]?.classList.toggle("tone-dark", lum(W * 0.55, W) > 0.66);
+  };
+  img.src = src;
 }
 bus.on("state", ({ key }) => { if (["theme", "accent", "wallpaper"].includes(key)) applyAppearance(true); });
 darkQuery.addEventListener("change", () => state.theme === "auto" && applyAppearance(true));

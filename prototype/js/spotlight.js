@@ -20,8 +20,8 @@ export function initSpotlight() {
   const results = h("div.results.glass-menu");
   const cats = { apps: ["apps", "Applications"], files: ["folder", "Files"], actions: ["sparkles", "Actions"], clipboard: ["doc", "Clipboard"] };
   let cat = null, sel = 0, items = [];
-  const catBtns = Object.entries(cats).map(([k, [icon, title]]) => h("button.cat.glass", { title, "data-cat": k, on: { click: () => { cat = cat === k ? null : k; update(); input.focus(); } } }, sym(icon)));
-  const field = h("div.field.glass", sym("search"), input);
+  const catBtns = Object.entries(cats).map(([k, [icon, title]]) => h("button.cat.glass-regular", { title, "data-cat": k, on: { click: () => { cat = cat === k ? null : k; update(); input.focus(); } } }, sym(icon)));
+  const field = h("div.field.glass-regular", sym("search"), input);
   const wrap = h("div.wrap", h("div.bar", field, ...catBtns), results);
   const root = h("div#spotlight", { hidden: true }, wrap);
   document.getElementById("desktop").append(root);

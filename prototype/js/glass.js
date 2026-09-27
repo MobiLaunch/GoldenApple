@@ -1,6 +1,8 @@
-// Liquid Glass refraction for Chromium: an SVG displacement filter whose map is
-// generated per element size, so the backdrop bends towards the rim like a lens.
-// Other engines keep the plain blur material from shell.css.
+// Experimental Liquid Glass refraction (opt-in with ?refract): an SVG displacement
+// filter whose map is generated per element size, so the backdrop bends towards the
+// rim like a lens. Chromium currently drops the blur when a url() filter is chained
+// in backdrop-filter, so this stays off by default; on Linux the compositor shader
+// (compositor/hyprland/liquid-glass.frag) does the real refraction.
 const NS = "http://www.w3.org/2000/svg";
 let defs, count = 0;
 const cache = new Map();
@@ -55,13 +57,14 @@ export function refract(el, { radius, bezel = 16, scale = 28 } = {}) {
 }
 
 export function initGlass() {
-  const isChromium = !!window.chrome && CSS.supports("backdrop-filter", "url(#x)");
+  const q = new URLSearchParams(location.search);
+  const enabled = q.has("refract") && CSS.supports("backdrop-filter", "url(#x)");
   const svg = document.createElementNS(NS, "svg");
   svg.setAttribute("style", "position:absolute;width:0;height:0");
   defs = document.createElementNS(NS, "defs");
   svg.append(defs);
   document.body.append(svg);
-  if (!isChromium || new URLSearchParams(location.search).has("norefract")) return;
+  if (!enabled) return;
   // Apply to the Dock and Control Center modules whenever they (re)render.
   const apply = () => document.querySelectorAll("#dock, #cc .glass").forEach((el) => refract(el, { bezel: el.id === "dock" ? 14 : 12, scale: el.id === "dock" ? 30 : 22 }));
   new MutationObserver(() => requestAnimationFrame(apply)).observe(document.getElementById("cc"), { childList: true });
