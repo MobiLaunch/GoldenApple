@@ -91,7 +91,7 @@ function openSettings(_id, pane = "appearance") {
   const win = createWindow({ app: "settings", w: 780, h: 600, sidebar, sidebarWidth: 220, className: "settings", content, toolbar: [pill(tb("chevron-left"), div(), tb("chevron-right")), title] });
   const renderSide = () => sidebar.replaceChildren(
     h("label.side-search", sym("search"), h("input", { placeholder: "Search" })),
-    h("div.account", h("span.avatar", "GG"), h("div", h("b", "Golden User"), h("small", "Account & Sync"))),
+    h("div.account", h("span.avatar", "GU"), h("div", h("b", "Golden User"), h("small", "Account & Sync"))),
     ...PANES.map((p) => p ? h("div.side-row", { className: `side-row ${p[0] === cur ? "sel" : ""}`, on: { click: () => show(p[0]) } }, h("span.sq", { style: { "--c": p[3] } }, sym(p[2])), p[1]) : h("div.gap")));
   function show(k) {
     cur = k; renderSide();

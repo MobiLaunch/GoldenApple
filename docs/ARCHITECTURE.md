@@ -21,7 +21,8 @@ Runtime on Linux
 ┌───────────────┐  ┌──────────────────────────────┐  ┌───────────────────────┐
 │ Apps          │  │ Quickshell shell (shell/)     │  │ Hyprland compositor   │
 │ GTK4/libadw.  │  │  MenuBar · ControlCenter ·    │  │  blur on gg-* layers, │
-│ + gtk.css     │  │  Dock · Spotlight             │  │  squircle rounding,   │
+│ + gtk.css     │  │  Dock · Spotlight · Switcher ·│  │  squircle rounding,   │
+│               │  │  Notifications · LockScreen   │  │                       │
 │ Qt (gtk3 plat)│  │  layer-shell surfaces gg-*    │  │  spring beziers,      │
 │ icon theme    │  │  talks to NM, BlueZ, PipeWire,│  │  key bindings         │
 │ Inter (fontc.)│  │  MPRIS, UPower, brightnessctl │  │  (+ hyprglass plugin) │
@@ -51,11 +52,27 @@ Module map:
 
 | File | Role |
 |---|---|
-| `js/wm.js` | window manager: stacking, drag, resize, zoom, genie-style minimise |
+| `js/wm.js` | window manager: stacking, drag, resize, zoom, edge tiling, genie minimise |
 | `js/menus.js` | menus and submenus, keyboard navigation, selection blink |
 | `js/menubar.js`, `controlcenter.js`, `dock.js`, `spotlight.js`, `notifications.js` | shell surfaces |
-| `js/apps/*.js` | Files, Photos, Settings, Terminal, Calculator, Notes |
+| `js/lock.js`, `mission.js` | boot and lock screen, Mission Control |
+| `js/polish.js` | pointer-following glass light, tooltips, icon and glass styles |
+| `js/vfs.js` | in-memory filesystem behind Files, Spotlight and the Desktop |
+| `js/apps/*.js` | Files, Photos, Settings, Web, Mail, Messages, Music, Calendar, Maps, Weather, Software, Terminal, Calculator, Notes |
 | `js/glass.js` | experimental SVG refraction (`?refract`) |
+| `tests/` | Playwright smoke test and the screenshot generator |
+
+The QML shell mirrors the surfaces one to one:
+
+| File | Surface |
+|---|---|
+| `MenuBar.qml` | menu bar; samples the wallpaper to pick light or dark text per side |
+| `ControlCenter.qml` | modules, sliders, Now Playing (MPRIS), Focus |
+| `Dock.qml` | pinned apps, running indicators, magnification, Downloads and Trash |
+| `Spotlight.qml` | app and file search |
+| `Notifications.qml` | freedesktop notification server, banners with actions, swipe to dismiss |
+| `Switcher.qml` | ⌘Tab app switcher (Hyprland global shortcuts or IPC) |
+| `LockScreen.qml` | `ext-session-lock` surface with PAM authentication |
 
 ## Springs, once
 
@@ -63,7 +80,8 @@ A spring is `{ response, dampingFraction }` (the SwiftUI parameterisation).
 `design/build.mjs` integrates the damped oscillator analytically and emits:
 
 - **CSS**: a 41-point `linear()` easing plus its settle duration
-- **QML**: a 12-segment `Easing.BezierSpline` fitted with Hermite tangents
+- **QML**: an 8-segment `Easing.BezierSpline` fitted with Hermite tangents
+  (Qt stores at most 8 segments; more overflow its buffer)
 - **Hyprland**: a single cubic Bézier approximation, with overshoot folded into y₁
 
 So a Control Center module overshoots by the same amount everywhere.

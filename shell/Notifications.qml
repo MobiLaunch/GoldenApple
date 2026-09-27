@@ -82,11 +82,27 @@ PanelWindow {
                     id: content
                     anchors { fill: parent; margins: 12; leftMargin: 14 }
                     spacing: 11
-                    Image {
+                    Item {
                         Layout.alignment: Qt.AlignTop
                         Layout.preferredWidth: 36; Layout.preferredHeight: 36
-                        sourceSize: Qt.size(72, 72)
-                        source: banner.n.image || Quickshell.iconPath(banner.n.appIcon || banner.n.desktopEntry, "preferences-system-notifications")
+                        // The notification's image, else the sender's icon, else a bell tile.
+                        // iconPath(…, true) returns "" for a missing icon instead of Qt's checkerboard.
+                        readonly property string resolved: {
+                            if (banner.n.image) return banner.n.image
+                            const entry = banner.n.appName ? DesktopEntries.heuristicLookup(banner.n.appName) : null
+                            for (const name of [banner.n.appIcon, banner.n.desktopEntry, entry?.icon ?? ""]) {
+                                const path = name ? Quickshell.iconPath(name, true) : ""
+                                if (path) return path
+                            }
+                            return ""
+                        }
+                        Image { anchors.fill: parent; sourceSize: Qt.size(72, 72); source: parent.resolved; visible: parent.resolved !== "" }
+                        Rectangle {
+                            anchors.fill: parent; radius: 9
+                            visible: parent.resolved === ""
+                            gradient: Gradient { GradientStop { position: 0; color: "#ff6b5f" } GradientStop { position: 1; color: "#ff2d55" } }
+                            Symbol { anchors.centerIn: parent; name: "bell"; size: 20 }
+                        }
                     }
                     ColumnLayout {
                         Layout.fillWidth: true

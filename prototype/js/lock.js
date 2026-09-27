@@ -33,7 +33,7 @@ export function lock({ fromBoot = false } = {}) {
   const status = h("div.lk-status", h("span.bat", h("i")), sym("wifi"));
   const el = h("div#lock", h("div.lk-veil"), status,
     h("div.lk-clock", date, clock),
-    h("div.lk-user", h("span.avatar.lk-avatar", "GG"), h("b", "Golden User"), field, h("small", "Enter any password · type “wrong” to see a shake")));
+    h("div.lk-user", h("span.avatar.lk-avatar", "GU"), h("b", "Golden User"), field, h("small", "Enter any password · type “wrong” to see a shake")));
   desk().append(el);
   desk().classList.add("locked");
   let resolve;

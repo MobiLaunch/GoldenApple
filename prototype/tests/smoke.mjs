@@ -3,27 +3,16 @@
 // with Playwright through the main flows and fails on any page error.
 //
 //   npm run test:ui                     (SHOTS=dir to also save screenshots)
-import { createServer } from "node:http";
-import { readFile, mkdir } from "node:fs/promises";
-import { extname, join, dirname } from "node:path";
-import { fileURLToPath } from "node:url";
+import { mkdir } from "node:fs/promises";
+import { join } from "node:path";
 import { chromium } from "playwright";
+import { serve } from "./serve.mjs";
 
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
-const TYPES = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".png": "image/png" };
-const server = createServer(async (req, res) => {
-  let path = decodeURIComponent(new URL(req.url, "http://x").pathname);
-  if (path.endsWith("/")) path += "index.html";
-  try {
-    const body = await readFile(join(ROOT, path));
-    res.writeHead(200, { "content-type": TYPES[extname(path)] ?? "application/octet-stream" }).end(body);
-  } catch { res.writeHead(404).end(); }
-}).listen(0);
-const base = `http://localhost:${server.address().port}/`;
+const server = serve(), base = server.base;
 const shots = process.env.SHOTS;
 if (shots) await mkdir(shots, { recursive: true });
 
-const browser = await chromium.launch({ args: ["--ignore-certificate-errors"] });
+const browser = await chromium.launch();
 const failures = [];
 async function scenario(name, query, steps) {
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });

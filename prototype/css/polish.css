@@ -93,5 +93,6 @@ input, textarea, [contenteditable] { cursor: text; }
   *, *::before, *::after { transition-duration: 1ms !important; animation-duration: 1ms !important; }
 }
 .menu .item.disabled .ico { opacity: .35; }
-/* Text editors show a caret, not a focus ring. */
-[contenteditable]:focus-visible, .term input:focus-visible { box-shadow: none; }
+/* Text fields live inside styled capsules (search pills, Spotlight, the lock
+   field), so the caret and the capsule show focus, never a ring on the input. */
+input:focus-visible, textarea:focus-visible, [contenteditable]:focus-visible { box-shadow: none; }

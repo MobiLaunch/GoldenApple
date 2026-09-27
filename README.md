@@ -10,19 +10,29 @@ and built entirely from original artwork.
 | | |
 |---|---|
 | ![Control Center](docs/screenshots/control-center.jpg) | ![Dark mode and context menu](docs/screenshots/files-dark-menu.jpg) |
-| ![Photos](docs/screenshots/photos.jpg) | ![Settings](docs/screenshots/settings-dark.jpg) |
-| ![Spotlight](docs/screenshots/spotlight.jpg) | ![Dock magnification](docs/screenshots/dock-magnify.jpg) |
+| ![Mission Control](docs/screenshots/mission-control.jpg) | ![Spotlight](docs/screenshots/spotlight.jpg) |
+| ![Maps](docs/screenshots/maps.jpg) | ![Weather](docs/screenshots/weather.jpg) |
+| ![Music, dark](docs/screenshots/music.jpg) | ![Settings, dark](docs/screenshots/settings-dark.jpg) |
+| ![Mail](docs/screenshots/mail.jpg) | ![Calendar](docs/screenshots/calendar.jpg) |
+| ![Lock screen](docs/screenshots/lock.jpg) | ![Control Center detail](docs/screenshots/control-center-detail.jpg) |
+
+**The real Linux shell** (Quickshell, captured in a headless Wayland session):
+
+| | |
+|---|---|
+| ![Desktop](docs/screenshots/shell-desktop.jpg) | ![Control Center](docs/screenshots/shell-control-center.jpg) |
+| ![Notification](docs/screenshots/shell-notification.jpg) | ![Lock screen](docs/screenshots/shell-lock.jpg) |
 
 ## What's here
 
 | Layer | Path | Status |
 |---|---|---|
 | **Design tokens**: materials, colour, type, radii, spring physics | `design/` | Done. One JSON compiles to CSS, QML, GTK and Hyprland config |
-| **Icons**: 15 app icons (light + dark), file icons, 63 symbols | `icons/` | Done. Freedesktop theme; [bring your own](icons/custom/README.md) |
-| **Reference shell**: the whole desktop, interactive, in the browser | `prototype/` | Done. The pixel spec every other layer is checked against |
-| **Linux shell**: menu bar, Control Center, Dock, Spotlight | `shell/` | Written for Quickshell (QML). Syntax-checked, not yet run on hardware |
+| **Icons**: 15 app icons (light + dark), file icons, 115 symbols | `icons/` | Done. Freedesktop theme; [bring your own](icons/custom/README.md) |
+| **Reference shell**: the whole desktop and 14 apps, interactive, in the browser | `prototype/` | Done. The spec every other layer is checked against; 25-scenario click-through test in CI |
+| **Linux shell**: menu bar, Control Center, Dock, Spotlight, notifications, app switcher, lock screen | `shell/` | Quickshell (QML). Runs in a headless Wayland session (see [Testing](#testing)); not yet run on hardware |
 | **Compositor**: blur, squircle corners, springs, key bindings | `compositor/` | Hyprland config done; refraction shader written, plugin pending |
-| **Theming**: GTK 4 / libadwaita, fonts | `design/dist/gtk.css`, `themes/` | Done |
+| **Theming**: GTK 4 / libadwaita, fonts, ⌘ key layer, login screen, boot splash | `design/dist/gtk.css`, `themes/` | Done: fontconfig, keyd, SDDM theme, Plymouth theme |
 | **Distro**: bootable live ISO | `distro/archiso/` | Build script done; first ISO build pending (see below) |
 
 ## Try it
@@ -33,24 +43,26 @@ and built entirely from original artwork.
 npm run dev          # builds tokens + icons, serves prototype/ on :8080
 ```
 
-Open http://localhost:8080. Useful things to try:
+Open http://localhost:8080. The session boots, then locks: type any password.
+Things to try:
 
-- ⌘/Ctrl-Space for Spotlight
-- right-click anything
-- the Control Center button in the menu bar
-- hover the Dock
-- double-click a photo
-- the yellow light to minimise
-- Settings → Appearance for dark mode and accent colours
+- ⌘/Ctrl-Space for Spotlight (try `12*(3+4)` or an app name)
+- right-click anything; right-click or long-press a Control Center button for its details
+- Ctrl-↑ for Mission Control, Ctrl-Tab for the app switcher
+- hover the Dock; minimise a window with the yellow light, restore it from the Dock
+- in Files: Space for Quick Look, Return to rename, ⇧⌘N for a folder, drag onto the Trash
+- Settings → Appearance for dark mode, accent colours, icon and glass styles
 
-URL flags such as `?theme=dark&open=photos,terminal&cc=1` reproduce a scene.
+URL flags reproduce a scene: `?quiet&theme=dark&open=photos,terminal&cc=1`
+skips the boot and opens those apps; `?lock` starts at the lock screen.
 
 **On an existing Arch Linux + Hyprland machine:**
 
 ```sh
-sudo pacman -S hyprland hyprpaper hypridle quickshell qt6-svg inter-font ttf-jetbrains-mono \
-               networkmanager bluez brightnessctl playerctl mako grim slurp librsvg
-scripts/install.sh   # backs up anything it replaces (*.bak-<timestamp>)
+sudo pacman -S hyprland hyprpaper hypridle quickshell qt6-svg qt6-wayland inter-font \
+               ttf-jetbrains-mono networkmanager bluez brightnessctl playerctl grim slurp librsvg
+scripts/install.sh           # backs up anything it replaces (*.bak-<timestamp>)
+sudo scripts/install.sh --extras   # optional (needs keyd, sddm, plymouth): ⌘ layer, login theme, boot splash
 ```
 
 Then log into Hyprland.
@@ -63,6 +75,28 @@ sudo distro/archiso/build.sh     # → out/golden-gate-<date>-x86_64.iso
 ```
 
 The live session logs in as `golden` and starts the desktop automatically.
+
+## Testing
+
+```sh
+npm run test:ui       # Playwright clicks through every app and system surface
+npm run screenshots   # regenerates docs/screenshots from the prototype
+shell/tests/screenshot.sh out/   # runs the real Quickshell shell in headless Sway
+```
+
+The UI test fails on any page error and checks the flows end to end: boot and
+unlock, all 14 apps, Control Center details, Spotlight maths, menus and submenus,
+Files (new folder, rename, Quick Look, trash), minimise and restore, Mission
+Control, edge tiling, and every appearance combination.
+
+`shell/tests/screenshot.sh` starts Sway with the pixman renderer and Mesa's
+llvmpipe, loads the shell, drives it over IPC and captures the screenshots
+above. No GPU needed. Two things this turned up that static checks never would:
+
+- Qt's `BezierEase` keeps at most 8 spline segments; longer curves corrupt the
+  heap. The QML springs are fitted with exactly 8.
+- Qt's SVG renderer ignores `clip-path`, so the app icons fill their squircle
+  through a pattern instead.
 
 ## Why a distribution, not a kernel fork
 

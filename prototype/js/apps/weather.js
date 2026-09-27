@@ -15,11 +15,11 @@ const ICON = {
 const wx = (k, size = 26) => h("span.wx-icon", { style: { width: `${size}px`, height: `${size}px` }, html: `<svg viewBox="0 0 24 24">${ICON[k]}</svg>` });
 
 const CITIES = [
-  { name: "San Francisco", time: "9:41 PM", sky: "fog", temp: 64, cond: "Fog", hi: 68, lo: 55, icon: "fog", uv: 0, wind: 12, dir: 250, hum: 84, vis: 3, feels: 62, sunset: "7:02 PM", note: "Fog will continue through the night. Wind gusts are up to 18 mph." },
-  { name: "Cupertino", time: "9:41 PM", sky: "night", temp: 72, cond: "Clear", hi: 91, lo: 62, icon: "moon", uv: 0, wind: 4, dir: 320, hum: 38, vis: 10, feels: 72, sunset: "7:05 PM", note: "Clear conditions will continue for the rest of the night." },
-  { name: "Tokyo", time: "1:41 PM", sky: "rain", temp: 71, cond: "Rain", hi: 74, lo: 66, icon: "rain", uv: 2, wind: 9, dir: 120, hum: 92, vis: 5, feels: 73, sunset: "5:36 PM", note: "Rain expected around 4 PM. Take an umbrella." },
-  { name: "Sydney", time: "2:41 PM", sky: "day", temp: 68, cond: "Partly Cloudy", hi: 72, lo: 57, icon: "cloud-sun", uv: 6, wind: 11, dir: 40, hum: 55, vis: 10, feels: 68, sunset: "5:48 PM", note: "Partly cloudy conditions will continue for the rest of the day." },
-  { name: "Reykjavik", time: "4:41 AM", sky: "night", temp: 41, cond: "Clear", hi: 45, lo: 36, icon: "moon", uv: 0, wind: 15, dir: 10, hum: 70, vis: 10, feels: 34, sunset: "7:21 PM", note: "Aurora activity is high tonight. Skies stay clear until dawn." },
+  { name: "San Francisco", time: "9:41 PM", sky: "fog", temp: 64, cond: "Fog", hi: 68, lo: 55, icon: "fog", uv: 0, wind: 12, dir: 250, hum: 84, vis: 3, feels: 62, sunset: "7:02 PM", sunrise: "6:58 AM", note: "Fog will continue through the night. Wind gusts are up to 18 mph." },
+  { name: "Cupertino", time: "9:41 PM", sky: "night", temp: 72, cond: "Clear", hi: 91, lo: 62, icon: "moon", uv: 0, wind: 4, dir: 320, hum: 38, vis: 10, feels: 72, sunset: "7:05 PM", sunrise: "6:57 AM", note: "Clear conditions will continue for the rest of the night." },
+  { name: "Tokyo", time: "1:41 PM", sky: "rain", temp: 71, cond: "Rain", hi: 74, lo: 66, icon: "rain", uv: 2, wind: 9, dir: 120, hum: 92, vis: 5, feels: 73, sunset: "5:36 PM", sunrise: "5:31 AM", note: "Rain expected around 4 PM. Take an umbrella." },
+  { name: "Sydney", time: "2:41 PM", sky: "day", temp: 68, cond: "Partly Cloudy", hi: 72, lo: 57, icon: "cloud-sun", uv: 6, wind: 11, dir: 40, hum: 55, vis: 10, feels: 68, sunset: "5:48 PM", sunrise: "5:47 AM", note: "Partly cloudy conditions will continue for the rest of the day." },
+  { name: "Reykjavik", time: "4:41 AM", sky: "night", temp: 41, cond: "Clear", hi: 45, lo: 36, icon: "moon", uv: 0, wind: 15, dir: 10, hum: 70, vis: 10, feels: 34, sunset: "7:21 PM", sunrise: "7:22 AM", note: "Aurora activity is high tonight. Skies stay clear until dawn." },
 ];
 const SKY = { fog: ["#7b8a9c", "#aebbc9"], night: ["#0b1026", "#28427a"], rain: ["#3a4c61", "#6b7f96"], day: ["#2f7fe0", "#8ec5fc"] };
 
@@ -76,7 +76,7 @@ function openWeather() {
           h("span.hi", `${hi}°`)))),
         h("div.tiles",
           tile("sun", "UV Index", String(c.uv), c.uv < 3 ? "Low for the rest of the day." : "Use sun protection until 4 PM.", h("div.uvbar", h("em", { style: { left: `${(c.uv / 11) * 100}%` } }))),
-          tile("sunset", "Sunset", c.sunset, "Sunrise: 7:02 AM", h("div.sunarc", { html: `<svg viewBox="0 0 100 34"><path d="M0 30 Q50 -18 100 30" fill="none" stroke="rgba(255,255,255,.5)" stroke-width="1.5"/><line x1="0" y1="24" x2="100" y2="24" stroke="rgba(255,255,255,.3)" stroke-width=".8"/><circle cx="82" cy="18" r="3" fill="#fff"/></svg>` })),
+          tile("sunset", "Sunset", c.sunset, `Sunrise: ${c.sunrise}`, h("div.sunarc", { html: `<svg viewBox="0 0 100 34"><path d="M0 30 Q50 -18 100 30" fill="none" stroke="rgba(255,255,255,.5)" stroke-width="1.5"/><line x1="0" y1="24" x2="100" y2="24" stroke="rgba(255,255,255,.3)" stroke-width=".8"/><circle cx="82" cy="18" r="3" fill="#fff"/></svg>` })),
           h("div.wx-card.tile.wind", h("div.wx-h", sym("wind"), "Wind"), h("div.dial", h("span.n", "N"), h("span.e", "E"), h("span.s", "S"), h("span.w", "W"),
             h("i.needle", { style: { transform: `rotate(${c.dir}deg)` } }), h("b", String(c.wind), h("small", "mph")))),
           tile("thermometer", "Feels Like", `${c.feels}°`, c.feels < c.temp ? "Wind is making it feel cooler." : "Similar to the actual temperature."),

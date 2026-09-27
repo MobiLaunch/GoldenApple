@@ -75,7 +75,8 @@ the brightness of the wallpaper behind it.
 Signature moments:
 
 - **Control Center** modules spring from the menu-bar button with a 14ms stagger,
-  scaling from 0.72 and unblurring. The Wi-Fi module morphs into its detail panel.
+  scaling from 0.72 and unblurring. Wi-Fi, Bluetooth, Focus, Display and Sound
+  morph into their detail panels (right-click or long-press).
 - **Dock** magnification is a cosine falloff over about 3.2 icon widths, measured
   against the resting layout. Launch is a two-hop bounce.
 - **Minimise** is a two-stage genie: pinch and fall into the Dock tile.

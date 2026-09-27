@@ -47,7 +47,8 @@ Item {
         Text {
             id: time
             Layout.alignment: Qt.AlignHCenter
-            text: Qt.formatTime(clock.now, "h:mm")
+            // "h" is 24-hour unless an AM/PM marker is present; the lock clock shows 1:34, not 13:34.
+            text: Qt.formatTime(clock.now, "h:mm AP").replace(/\s*[AP]M$/i, "")
             font { family: Theme.fontUi; pixelSize: 132; weight: Font.Bold; letterSpacing: -6 }
             color: "#d8ffffff"
             style: Text.Raised

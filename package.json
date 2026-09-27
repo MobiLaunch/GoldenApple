@@ -7,7 +7,8 @@
     "build": "node design/build.mjs && node icons/build.mjs",
     "dev": "npm run build && npx --yes http-server prototype -p 8080 -c-1",
     "icons:list": "node icons/build.mjs --list",
-    "test:ui": "node prototype/tests/smoke.mjs"
+    "test:ui": "node prototype/tests/smoke.mjs",
+    "screenshots": "node prototype/tests/screenshots.mjs"
   },
   "devDependencies": {
     "playwright": "^1.56.1"
