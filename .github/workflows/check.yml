@@ -17,7 +17,7 @@ jobs:
       - name: Generated files are up to date
         run: git diff --exit-code
       - name: Lint shell scripts
-        run: bash -n scripts/install.sh distro/archiso/build.sh
+        run: bash -n scripts/install.sh distro/archiso/build.sh distro/archiso/boot-test.sh
 
   ui:
     runs-on: ubuntu-latest
