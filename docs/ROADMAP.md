@@ -28,10 +28,16 @@
 
 ## 0.3: boot it
 
-- [ ] First ISO build via the *Build ISO* action; fix whatever it surfaces
-      (package availability, the Quickshell version in the repos)
-- [ ] Run the QML shell on hardware under Hyprland: blur, the focus grab,
+- [x] First ISO build via the *Build ISO* action (AUR fallback for packages
+      outside the official repos; Quickshell comes from the official repos)
+- [x] Boot test: every ISO is booted in QEMU on plain VGA, virtio-gpu and
+      virtio-gpu with 3D, and must reach the desktop with no Hyprland config
+      errors. It surfaced and fixed the Hyprland 0.53+ rule syntax, the move
+      away from hyprpaper, and the live session's home ownership and lockout
+- [ ] Screenshot for the 3D boot test (QEMU's screendump can't read a GL display)
+- [ ] Run on hardware under Hyprland with a GPU: blur, the focus grab,
       global shortcuts and the PAM lock can only be checked there
+- [ ] Port hyprland.conf to Lua (the .conf format is deprecated since 0.54)
 - [ ] Verify the keyd per-app classes against real window classes
 - [ ] Compare the QML shell with the prototype screenshot by screenshot
 

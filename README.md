@@ -23,6 +23,11 @@ and built entirely from original artwork.
 | ![Desktop](docs/screenshots/shell-desktop.jpg) | ![Control Center](docs/screenshots/shell-control-center.jpg) |
 | ![Notification](docs/screenshots/shell-notification.jpg) | ![Lock screen](docs/screenshots/shell-lock.jpg) |
 
+**The live ISO**, booted in QEMU with plain VGA graphics and no 3D acceleration
+(from the automatic boot test that runs after every ISO build):
+
+![Golden Gate ISO booted in QEMU](docs/screenshots/iso-boot-qemu.jpg)
+
 ## What's here
 
 | Layer | Path | Status |
