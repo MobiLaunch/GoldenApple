@@ -88,8 +88,12 @@ QEMU: use `-accel kvm` (Linux) or `-accel whpx` (Windows, after enabling the
 Windows Hypervisor Platform feature); `-vga std` works, and
 `-device virtio-vga-gl -display gtk,gl=on` adds 3D on Linux. VirtualBox:
 VMSVGA graphics; the desktop renders in software there, with or without 3D
-acceleration. If the desktop can't start, the session drops to a shell that
-says why.
+acceleration. If VirtualBox shows a green turtle in its status bar, it is running
+on top of Hyper-V and everything is many times slower: turn off Hyper-V, Windows
+Hypervisor Platform and Memory Integrity, or use QEMU with `-accel whpx`. In a
+virtual machine the desktop always runs at 1× scale, and without a GPU it uses
+lighter effects (`compositor/hyprland/machine-conf.sh`). If the desktop can't
+start, the session drops to a shell that says why.
 
 ## Testing
 

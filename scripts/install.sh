@@ -97,6 +97,15 @@ place "$REPO/design/dist/hyprland-motion.conf" "$CONF/hypr/golden-gate/motion.co
 place "$REPO/compositor/hyprland/hypridle.conf" "$CONF/hypr/hypridle.conf"
 place "$REPO/compositor/hyprland/report-config-errors.sh" "$CONF/hypr/golden-gate/report-config-errors.sh"
 chmod +x "$CONF/hypr/golden-gate/report-config-errors.sh"
+place "$REPO/compositor/hyprland/machine-conf.sh" "$CONF/hypr/golden-gate/machine-conf.sh"
+chmod +x "$CONF/hypr/golden-gate/machine-conf.sh"
+if [[ $MODE == system ]]; then
+  # An image is built on another machine: leave the file empty; gg-session fills
+  # it in on the machine that boots.
+  echo "# Filled in by machine-conf.sh when the session starts." > "$CONF/hypr/golden-gate/machine.conf"
+else
+  sh "$CONF/hypr/golden-gate/machine-conf.sh" "$CONF/hypr/golden-gate/machine.conf"
+fi
 
 # 3. Shell
 say "Quickshell shell → $CONF/quickshell/golden-gate"

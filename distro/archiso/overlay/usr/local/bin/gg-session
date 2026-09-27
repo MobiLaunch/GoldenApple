@@ -12,6 +12,10 @@ if [ "${GG_RENDERER:-auto}" = auto ] && grep -qs '^DRIVER=vmwgfx$' /sys/class/dr
   logger -t gg-session "vmwgfx (VirtualBox/VMware): using software rendering"
 fi
 
+# Screen scale and effects for this machine (virtual screen, no GPU).
+conf="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/golden-gate"
+sh "$conf/machine-conf.sh" && head -n 1 "$conf/machine.conf" | logger -t gg-session
+
 logger -t gg-session "starting Hyprland"
 started=$(date +%s)
 # Newer Hyprland ships start-hyprland, a launcher that restarts it after a crash.
