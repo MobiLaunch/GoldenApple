@@ -33,10 +33,12 @@ async function scenario(name, query, steps) {
 const wait = (p, ms = 500) => p.waitForTimeout(ms);
 
 await scenario("boot, lock and unlock", "?boot", async (p) => {
-  await wait(p, 2600);
-  await p.keyboard.type("wrong"); await p.keyboard.press("Enter"); await wait(p);
-  await p.keyboard.type("golden"); await p.keyboard.press("Enter"); await wait(p, 1500);
-  if (await p.$("#lock")) throw new Error("still locked");
+  // The lock screen appears after the boot animation; wait for its field to take focus.
+  await p.waitForFunction(() => document.activeElement?.closest?.(".lk-field"), null, { timeout: 15000 })
+    .catch(() => { throw new Error("lock screen never focused its password field"); });
+  await p.keyboard.type("wrong"); await p.keyboard.press("Enter"); await wait(p, 800);
+  await p.keyboard.type("golden"); await p.keyboard.press("Enter");
+  await p.waitForSelector("#lock", { state: "detached", timeout: 8000 }).catch(() => { throw new Error("still locked"); });
 });
 for (const app of ["files", "photos", "settings", "browser", "mail", "messages", "music", "calendar", "maps", "weather", "store", "notes", "terminal", "calculator"]) {
   await scenario(`open ${app}`, `?quiet&open=${app}`, async (p) => { await wait(p, 600); if (!(await p.$(".win"))) throw new Error("no window"); });

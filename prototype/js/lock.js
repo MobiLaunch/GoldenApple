@@ -43,7 +43,7 @@ export function lock({ fromBoot = false } = {}) {
   animate(el.querySelector(".lk-clock"), [{ opacity: 0, transform: "translateY(-18px) scale(.96)" }, { opacity: 1, transform: "none" }], "smooth", { delay: fromBoot ? 150 : 0 });
   animate(el.querySelector(".lk-user"), [{ opacity: 0, transform: "translateY(20px)" }, { opacity: 1, transform: "none" }], "smooth", { delay: fromBoot ? 300 : 120 });
   if (!fromBoot) animate(el.querySelector(".lk-veil"), [{ opacity: 0 }, { opacity: 1 }], "smooth");
-  setTimeout(() => input.focus(), 400);
+  input.focus({ preventScroll: true });   // typing works the moment the lock screen appears
   input.addEventListener("input", () => go.classList.toggle("show", !!input.value));
 
   async function attempt() {
