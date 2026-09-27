@@ -8,7 +8,8 @@
 // window in (windowsIn popin 96% in hyprland.conf), so the two hand over cleanly.
 //
 // Launch with launch(entry, rect) where rect is the icon in this screen's
-// coordinates. Off in software rendering, where the Dock's bounce stands in.
+// coordinates. It also runs under Qt's software renderer (VMs without 3D): the
+// card is plain rectangles and images, and only its area is redrawn.
 import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Wayland
@@ -18,7 +19,7 @@ import "components"
 
 PanelWindow {
     id: launcher
-    readonly property bool enabled: Quickshell.env("QT_QUICK_BACKEND") !== "software"
+    readonly property bool enabled: true
 
     anchors { top: true; bottom: true; left: true; right: true }
     exclusionMode: ExclusionMode.Ignore
