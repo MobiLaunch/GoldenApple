@@ -34,7 +34,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        display: [std, virtio, virgl, vmware, tcg]
+        display: [std, virtio, virgl, tcg]   # no VirtualBox equivalent in QEMU; see boot-test.sh
     steps:
       - uses: actions/checkout@v4
         with:
