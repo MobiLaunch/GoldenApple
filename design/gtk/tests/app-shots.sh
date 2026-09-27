@@ -37,6 +37,7 @@ declare -A CMD=(
   [gallery-dialog]="gjs -m $HERE/gallery.js dialog"
   [gallery-finder]="gjs -m $HERE/gallery.js finder"
   [files]='nautilus --new-window --select $HOME/Documents'
+  [files-list]='nautilus --new-window --select $HOME/Documents'
   [text-editor]='gnome-text-editor --standalone $HOME/Documents/Notes.txt'   # expanded below
   [calculator]="gnome-calculator"
   [settings]="env XDG_CURRENT_DESKTOP=GNOME gnome-control-center background"
@@ -52,7 +53,12 @@ declare -A CMD=(
   [mail]="geary"
 )
 GTK3_SHOTS=(mail)
-ORDER=(gallery gallery-menu gallery-dialog gallery-finder files text-editor calculator settings clocks calendar weather maps loupe music software fractal ghostty mail)
+# Settings a shot needs first.
+declare -A PREP=(
+  [files]="gsettings set org.gnome.nautilus.preferences default-folder-viewer icon-view"
+  [files-list]="gsettings set org.gnome.nautilus.preferences default-folder-viewer list-view"
+)
+ORDER=(gallery gallery-menu gallery-dialog gallery-finder files files-list text-editor calculator settings clocks calendar weather maps loupe music software fractal ghostty mail)
 shots=("$@"); [[ ${#shots[@]} -gt 0 ]] || shots=("${ORDER[@]}")
 
 # ---------------------------------------------------------------- a clean home with the theme
@@ -60,6 +66,8 @@ export HOME="$(mktemp -d)" XDG_RUNTIME_DIR="$(mktemp -d)"
 chmod 700 "$XDG_RUNTIME_DIR"
 export XDG_CONFIG_HOME="$HOME/.config" XDG_DATA_HOME="$HOME/.local/share" XDG_CACHE_HOME="$HOME/.cache"
 for c in "${!CMD[@]}"; do CMD[$c]="${CMD[$c]//\$HOME/$HOME}"; done
+# Services D-Bus starts from here on (dconf, which stores GSettings) must use this home.
+dbus-update-activation-environment HOME XDG_CONFIG_HOME XDG_DATA_HOME XDG_CACHE_HOME XDG_RUNTIME_DIR
 mkdir -p "$XDG_CONFIG_HOME/gtk-4.0" "$XDG_CONFIG_HOME/gtk-3.0" "$XDG_CONFIG_HOME/fontconfig/conf.d" "$XDG_DATA_HOME/icons"
 cp "$REPO/design/dist/gtk.css" "$XDG_CONFIG_HOME/gtk-4.0/gtk.css"
 [[ -f $REPO/design/dist/gtk3.css ]] && cp "$REPO/design/dist/gtk3.css" "$XDG_CONFIG_HOME/gtk-3.0/gtk.css"
@@ -70,6 +78,10 @@ for d in gtk-4.0 gtk-3.0; do
   printf '[Settings]\ngtk-icon-theme-name=GoldenGate\ngtk-font-name=%s\ngtk-decoration-layout=close,minimize,maximize:\n' \
     "${GG_FONT:-Inter Variable 10}" > "$XDG_CONFIG_HOME/$d/settings.ini"
 done
+# The image's GSettings defaults (themes/gsettings), compiled over the system schemas.
+mkdir -p "$HOME/.schemas" && cp /usr/share/glib-2.0/schemas/*.xml "$REPO/themes/gsettings/"*.override "$HOME/.schemas/"
+glib-compile-schemas "$HOME/.schemas" && export GSETTINGS_SCHEMA_DIR="$HOME/.schemas"
+dbus-update-activation-environment GSETTINGS_SCHEMA_DIR
 # GTK 4 on Wayland takes these from GSettings (the session sets them the same way
 # in hyprland.conf), not from settings.ini.
 gsettings set org.gnome.desktop.wm.preferences button-layout 'close,minimize,maximize:'
@@ -112,6 +124,7 @@ shoot() { # shoot NAME SCHEME
   local name=$1 scheme=$2 cmd=${CMD[$1]} bin geo=
   bin=${cmd##*env XDG_CURRENT_DESKTOP=GNOME }; bin=${bin%% *}
   command -v "$bin" >/dev/null || { say "$name: $bin not installed, skipped"; return; }
+  [[ -n ${PREP[$name]:-} ]] && ${PREP[$name]}
   # GTK 3 has no colour scheme, only a dark theme; libadwaita must not see GTK_THEME.
   local theme=(-u GTK_THEME); [[ " ${GTK3_SHOTS[*]} " == *" $name "* && $scheme == dark ]] && theme=(GTK_THEME=Adwaita:dark)
   env "${theme[@]}" ADW_DEBUG_COLOR_SCHEME=prefer-$scheme ADW_DEBUG_ACCENT_COLOR=blue $cmd >"$OUT/$name-$scheme.log" 2>&1 &

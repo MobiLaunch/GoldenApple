@@ -28,6 +28,14 @@ headerbar .nautilus-pathbar.linked:not(.vertical):not(.search):not(.entry-combo)
 .nautilus-pathbar > scrolledwindow undershoot.left,
 .nautilus-pathbar > scrolledwindow undershoot.right { background: none; border: none; }
 
+/* Nautilus paints the accent grey inside its views; Finder selects in the accent.
+   --gg-accent keeps the system accent (resolved at the root) to hand back. */
+:root { --gg-accent: var(--accent-bg-color); }
+.nautilus-list-view listview, .nautilus-grid-view gridview, .nautilus-network-view listview {
+  --accent-bg-color: var(--gg-accent);
+  --accent-color: var(--gg-accent);
+}
+
 /* Icon view: the selected icon sits on a soft grey tile and its name on an accent
    capsule, as in Finder. */
 .nautilus-grid-view gridview { padding: 14px 20px; border-spacing: 2px; }

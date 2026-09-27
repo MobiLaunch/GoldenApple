@@ -27,6 +27,11 @@ say() { printf '\033[1;33m›\033[0m %s\n' "$*"; }
 # System pieces: keyd ⌘ layer, SDDM theme, Plymouth splash. $1 = root prefix.
 install_extras() {
   local R=$1
+  say "GNOME defaults (fonts, icons, Finder-style list view) → $R/usr/share/glib-2.0/schemas"
+  mkdir -p "$R/usr/share/glib-2.0/schemas"
+  cp "$REPO/themes/gsettings/90_golden-gate.gschema.override" "$R/usr/share/glib-2.0/schemas/"
+  if command -v glib-compile-schemas >/dev/null; then glib-compile-schemas "$R/usr/share/glib-2.0/schemas"; fi
+
   say "keyd ⌘ layer → $R/etc/keyd"
   mkdir -p "$R/etc/keyd"
   cp "$REPO/themes/keyd/default.conf" "$REPO/themes/keyd/app.conf" "$R/etc/keyd/"
