@@ -64,6 +64,8 @@ PanelWindow {
     // Stagger: each module springs in slightly after the previous one.
     component Module: Glass {
         property int order: 0
+        // Faint cool tint so white glyphs stay legible over bright windows.
+        tint: "#3d1c3060"
         opacity: cc.open ? 1 : 0
         scale: cc.open ? 1 : 0.72
         transformOrigin: Item.TopRight

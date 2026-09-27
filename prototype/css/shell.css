@@ -126,6 +126,12 @@ img { -webkit-user-drag: none; }
 }
 #cc[hidden] { display: none; }
 .cc-mod { border-radius: 32px; transform-origin: 90% -40px; }
+/* Control Center sits over anything, including white windows: a faint cool tint
+   and a firmer label shadow keep white glyphs legible on bright backdrops. */
+#cc .glass:not(.on) { --tint: rgba(28, 48, 96, .24); }
+#cc { text-shadow: 0 1px 3px rgba(0, 16, 48, .35); }
+#cc svg.sym { filter: drop-shadow(0 1px 2px rgba(0, 16, 48, .3)); }
+#cc .on svg.sym, #cc .cc-wide.on .cc-dot svg.sym { filter: none; }
 .cc-circle { display: grid; place-items: center; font-size: 25px; border-radius: 50%; transition: background var(--dur-fade), color var(--dur-fade), transform 260ms var(--spring-snappy); }
 .cc-circle:active, .cc-dot:active { transform: scale(.92); }
 .cc-circle.on { --tint: #fff; color: var(--accent); text-shadow: none; }
