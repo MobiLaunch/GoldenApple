@@ -65,9 +65,8 @@ PanelWindow {
     component Module: Glass {
         id: mod
         property int order: 0
-        // Stagger: each module springs in slightly after the previous one. A timer
-        // flips `shown` (a zero-length PauseAnimation inside a Behavior corrupts the
-        // heap in Qt 6.11, so the delay is not expressed as an animation).
+        // Stagger: each module springs in slightly after the previous one; a timer
+        // flips `shown` so the Behaviors below stay simple.
         property bool shown: false
         Timer { interval: 1 + mod.order * 14; running: cc.open && !mod.shown; onTriggered: mod.shown = true }
         Connections { target: cc; function onOpenChanged() { if (!cc.open) mod.shown = false } }

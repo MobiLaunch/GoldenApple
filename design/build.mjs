@@ -49,7 +49,9 @@ function cssLinear(s, samples = 40) {
 
 // Qt's Easing.BezierSpline takes consecutive cubic segments [c1x,c1y,c2x,c2y,x,y,...]
 // starting at (0,0) and ending at (1,1). We fit a Hermite spline through samples.
-function qtBezierSpline(s, segments = 12) {
+// Qt's BezierEase keeps its segments in a fixed 8-entry buffer: longer splines
+// write out of bounds and corrupt the heap (found with valgrind). Stay at 8.
+function qtBezierSpline(s, segments = 8) {
   const T = s.duration / 1000;
   const f = (x) => (x >= 1 ? 1 : s.pos(x * T));
   const d = (x) => (f(Math.min(1, x + 1e-4)) - f(Math.max(0, x - 1e-4))) / (Math.min(1, x + 1e-4) - Math.max(0, x - 1e-4));

@@ -19,7 +19,7 @@ ShellRoot {
         stdout: SplitParser { onRead: (line) => Theme.dark = line.includes("dark") }
     }
 
-    Spotlight { id: spotlight }
+    Spotlight { id: spotlightPanel }
 
     Variants {
         model: Quickshell.screens
@@ -28,7 +28,7 @@ ShellRoot {
             required property var modelData
 
             ControlCenter { id: cc; screen: perScreen.modelData }
-            MenuBar { screen: perScreen.modelData; controlCenter: cc; spotlight: spotlight }
+            MenuBar { screen: perScreen.modelData; controlCenter: cc; spotlight: spotlightPanel }
             Dock { screen: perScreen.modelData }
 
             IpcHandler {

@@ -23,6 +23,32 @@ PanelWindow {
     WlrLayershell.namespace: "gg-menubar"
     WlrLayershell.layer: WlrLayer.Top
 
+    // The bar has no material, so each half picks white or dark text from the
+    // brightness of the wallpaper behind it (sampled once per wallpaper).
+    property string wallpaper: Quickshell.env("GG_WALLPAPER") || "/usr/share/backgrounds/golden-gate/tide.png"
+    property bool darkLeft: false
+    property bool darkRight: false
+    Canvas {
+        id: sampler
+        visible: false
+        width: 96; height: 60
+        Component.onCompleted: loadImage(bar.wallpaper)
+        onImageLoaded: requestPaint()
+        onPaint: {
+            const ctx = getContext("2d");
+            if (!isImageLoaded(bar.wallpaper)) return;
+            ctx.drawImage(bar.wallpaper, 0, 0, width, height);
+            const lum = (x0, x1) => {
+                const d = ctx.getImageData(x0, 0, x1 - x0, 3).data;
+                let t = 0;
+                for (let i = 0; i < d.length; i += 4) t += (0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2]) / 255;
+                return t / (d.length / 4);
+            };
+            bar.darkLeft = lum(0, width * 0.45) > 0.66;
+            bar.darkRight = lum(width * 0.55, width) > 0.66;
+        }
+    }
+
     readonly property var active: ToplevelManager.activeToplevel
     readonly property string appName: {
         if (!active) return "Files";
@@ -46,7 +72,8 @@ PanelWindow {
         MouseArea { anchors.fill: parent; onClicked: item.clicked() }
     }
     component BarText: Text {
-        color: "#ffffff"
+        property bool dark: false
+        color: dark ? "#d6000000" : "#ffffff"
         font { family: Theme.fontUi; pixelSize: 13; weight: Font.Medium }
         // Soft legibility shadow on the GPU renderer (shader effects need it).
         layer.enabled: GraphicsInfo.api !== GraphicsInfo.Software
@@ -60,10 +87,10 @@ PanelWindow {
             id: logo
             highlighted: systemMenu.open
             onClicked: systemMenu.open = !systemMenu.open
-            Symbol { name: "logo"; size: 18 }
+            Symbol { name: "logo"; size: 18; tone: bar.darkLeft ? "dark" : "white" }
         }
         BarItem {
-            BarText { text: bar.appName; font.weight: Font.Bold }
+            BarText { text: bar.appName; font.weight: Font.Bold; dark: bar.darkLeft }
         }
     }
 
@@ -85,16 +112,16 @@ PanelWindow {
                 Rectangle { implicitWidth: 1.8; implicitHeight: 4.5; color: Qt.rgba(1, 1, 1, 0.55) }
             }
         }
-        BarItem { Symbol { name: "wifi"; size: 16 } onClicked: bar.controlCenter.toggle() }
-        BarItem { Symbol { name: "search"; size: 15 } onClicked: bar.spotlight.toggle() }
+        BarItem { Symbol { name: "wifi"; size: 16; tone: bar.darkRight ? "dark" : "white" } onClicked: bar.controlCenter.toggle() }
+        BarItem { Symbol { name: "search"; size: 15; tone: bar.darkRight ? "dark" : "white" } onClicked: bar.spotlight.toggle() }
         BarItem {
             highlighted: bar.controlCenter.open
             onClicked: bar.controlCenter.toggle()
-            Symbol { name: "control-center"; size: 16 }
+            Symbol { name: "control-center"; size: 16; tone: bar.darkRight ? "dark" : "white" }
         }
         BarItem {
             SystemClock { id: clock; precision: SystemClock.Minutes }
-            BarText { text: Qt.formatDateTime(clock.date, "ddd MMM d   h:mm AP") }
+            BarText { text: Qt.formatDateTime(clock.date, "ddd MMM d   h:mm AP"); dark: bar.darkRight }
         }
     }
 
