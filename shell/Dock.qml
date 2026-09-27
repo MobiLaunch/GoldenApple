@@ -28,7 +28,15 @@ PanelWindow {
     // Only the shelf (and the magnified icons above it while hovering) take input.
     mask: Region { item: hitbox }
 
-    // Reading applications.values makes this re-evaluate once the entry scan finishes.
+    SystemClock { id: clock; precision: SystemClock.Minutes }
+    // Written by icons/build.mjs unless a custom Calendar icon replaces the default.
+    Image {
+        id: calBlank
+        readonly property bool loaded: status === Image.Ready
+        visible: false
+        source: Qt.resolvedUrl("assets/calendar-blank.svg")
+    }
+
     // Right of the separator: Downloads and the Trash (full or empty).
     property bool trashFull: false
     Process {
@@ -43,6 +51,7 @@ PanelWindow {
         { name: "Trash", icon: trashFull ? "user-trash-full" : "user-trash", exec: ["xdg-open", "trash:///"] },
     ]
 
+    // Reading applications.values makes this re-evaluate once the entry scan finishes.
     readonly property var entries: {
         DesktopEntries.applications.values;
         return pinned.map((id) => DesktopEntries.byId(id)).filter((e) => e)
@@ -93,10 +102,13 @@ PanelWindow {
                     height: width
                     Behavior on width { enabled: dock.pointerX < 0; Spring { spring: Theme.dock } }
 
+                    // Calendar apps show today's date, drawn over a date-less icon.
+                    readonly property bool calendar: /calendar/i.test(modelData.icon ?? "") && calBlank.loaded
+
                     Image {
                         id: icon
                         width: parent.width; height: parent.height
-                        source: Quickshell.iconPath(tile.modelData.icon, "application-x-executable")
+                        source: tile.calendar ? calBlank.source : Quickshell.iconPath(tile.modelData.icon, "application-x-executable")
                         sourceSize: Qt.size(dock.maxSize * 2, dock.maxSize * 2)
                         smooth: true; mipmap: true
                         SequentialAnimation on y {
@@ -106,6 +118,22 @@ PanelWindow {
                             NumberAnimation { to: 0; duration: 190; easing.type: Easing.InQuad }
                             NumberAnimation { to: -8; duration: 130; easing.type: Easing.OutQuad }
                             NumberAnimation { to: 0; duration: 130; easing.type: Easing.InQuad }
+                        }
+                        Text {
+                            visible: tile.calendar
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            y: parent.height * 0.30 - baselineOffset
+                            text: Qt.formatDate(clock.date, "ddd").toUpperCase()
+                            color: "#ff3b30"
+                            font { family: Theme.fontUi; pixelSize: Math.max(6, Math.round(parent.height * 0.13)); weight: Font.DemiBold; letterSpacing: 0.5 }
+                        }
+                        Text {
+                            visible: tile.calendar
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            y: parent.height * 0.76 - baselineOffset
+                            text: clock.date.getDate()
+                            color: "#1c1c1e"
+                            font { family: Theme.fontUi; pixelSize: Math.max(12, Math.round(parent.height * 0.46)); weight: Font.Light; letterSpacing: -2 }
                         }
                     }
                     Rectangle {
@@ -134,7 +162,11 @@ PanelWindow {
                     }
                 }
             }
-            Rectangle { width: 1; height: dock.baseSize - 14; anchors.bottom: parent.bottom; anchors.bottomMargin: 5; color: "#66ffffff" }
+            Item {
+                width: 11; height: dock.baseSize
+                anchors.bottom: parent.bottom
+                Rectangle { anchors.centerIn: parent; width: 1; height: parent.height - 12; color: Theme.dark ? "#40ffffff" : "#2e000000" }
+            }
             Repeater {
                 model: dock.places
                 delegate: Item {

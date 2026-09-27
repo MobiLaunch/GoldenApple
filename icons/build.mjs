@@ -172,6 +172,11 @@ for (const [key, svg] of Object.entries(symbols)) {
   for (const [tone, color] of Object.entries({ "": "#ffffff", "@accent": "#0a84ff", "@dark": "#1d1d1f", "@gray": "#8e8e93" }))
     writeFileSync(join(shellSyms, `${key}${tone}.svg`), sized.replace(/currentColor/g, color));
 }
+// The Dock draws today's date on the Calendar icon, so it needs the icon without one.
+// A custom Calendar icon is used as is.
+const calBlank = join(here, "..", "shell", "assets", "calendar-blank.svg");
+rmSync(calBlank, { force: true });
+if (apps.calendar === baseApps.calendar) writeFileSync(calBlank, apps.calendar.replace(/<text[^>]*>[^<]*<\/text>/g, ""));
 
 // ---------------------------------------------------------------- prototype bundle
 const uri = (svg) => "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg.replace(/\s*\n\s*/g, " "));

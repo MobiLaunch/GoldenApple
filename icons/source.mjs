@@ -162,11 +162,15 @@ const lin = (id, a, b, x1 = 0, y1 = 0, x2 = 0, y2 = 1) =>
 
 // Wraps artwork in the squircle, adds the Liquid Glass rim and top sheen.
 function app(name, accent, defs, body) {
+  // The background and sheen are drawn as the squircle itself: Qt's SVG renderer
+  // (Dock, Spotlight, SDDM) ignores clip-path, so the clip is only a second line of defence.
+  body = body.replace(/<rect class="bg" (fill="[^"]*") width="100" height="100"\/>/, `<path class="bg" $1 d="${SQ}"/>`);
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" data-accent="${accent}">
 <defs><clipPath id="${name}-clip"><path d="${SQ}"/></clipPath>${defs}
 <linearGradient id="${name}-sheen" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".28"/><stop offset=".45" stop-color="#fff" stop-opacity="0"/></linearGradient>
-<linearGradient id="${name}-rim" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".75"/><stop offset=".5" stop-color="#fff" stop-opacity=".08"/><stop offset="1" stop-color="#fff" stop-opacity=".45"/></linearGradient></defs>
-<g clip-path="url(#${name}-clip)">${body}<rect width="100" height="100" fill="url(#${name}-sheen)"/></g>
+<linearGradient id="${name}-rim" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".75"/><stop offset=".5" stop-color="#fff" stop-opacity=".08"/><stop offset="1" stop-color="#fff" stop-opacity=".45"/></linearGradient>
+<pattern id="${name}-art" patternUnits="userSpaceOnUse" width="100" height="100">${body}</pattern></defs>
+<g clip-path="url(#${name}-clip)"><path d="${SQ}" fill="url(#${name}-art)"/><path d="${SQ}" fill="url(#${name}-sheen)"/></g>
 <path d="${SQ}" fill="none" stroke="url(#${name}-rim)" stroke-width="1.2"/></svg>`;
 }
 
