@@ -20,6 +20,11 @@ ShellRoot {
     }
 
     Spotlight { id: spotlightPanel }
+    Notifications { id: notificationCenter }
+    Switcher {}
+    // Loaded separately so a Quickshell built without PAM still runs the shell.
+    LazyLoader { active: true; source: "LockScreen.qml" }
+    LazyLoader { active: Quickshell.env("GG_LOCK_PREVIEW") === "1"; source: "LockPreview.qml" }
 
     Variants {
         model: Quickshell.screens
@@ -27,7 +32,7 @@ ShellRoot {
             id: perScreen
             required property var modelData
 
-            ControlCenter { id: cc; screen: perScreen.modelData }
+            ControlCenter { id: cc; screen: perScreen.modelData; notifications: notificationCenter }
             MenuBar { screen: perScreen.modelData; controlCenter: cc; spotlight: spotlightPanel }
             Dock { screen: perScreen.modelData }
 

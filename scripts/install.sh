@@ -2,8 +2,10 @@
 # Install the Golden Gate desktop.
 #
 #   scripts/install.sh                 into your home directory (existing Arch + Hyprland)
-#   scripts/install.sh --system ROOT   into a root filesystem: /etc/skel + /usr/share
-#                                      (used by distro/archiso/build.sh)
+#   scripts/install.sh --system ROOT   into a root filesystem: /etc/skel + /usr/share,
+#                                      plus the system pieces below (used by the ISO build)
+#   sudo scripts/install.sh --extras   only the system pieces, into / on this machine:
+#                                      keyd ⌘ layer, SDDM login theme, Plymouth splash
 #
 # Existing files are backed up next to themselves as *.bak-YYYYmmdd-HHMMSS.
 set -euo pipefail
@@ -14,6 +16,48 @@ ROOT=""
 if [[ "${1:-}" == "--system" ]]; then
   MODE=system
   ROOT="$(realpath -m "${2:?usage: install.sh --system ROOT}")"
+elif [[ "${1:-}" == "--extras" ]]; then
+  MODE=extras
+  ROOT=""
+  [[ $EUID -eq 0 ]] || { echo "--extras writes to /etc and /usr: run with sudo"; exit 1; }
+fi
+
+say() { printf '\033[1;33m›\033[0m %s\n' "$*"; }
+
+# System pieces: keyd ⌘ layer, SDDM theme, Plymouth splash. $1 = root prefix.
+install_extras() {
+  local R=$1
+  say "keyd ⌘ layer → $R/etc/keyd"
+  mkdir -p "$R/etc/keyd"
+  cp "$REPO/themes/keyd/default.conf" "$REPO/themes/keyd/app.conf" "$R/etc/keyd/"
+
+  say "SDDM theme → $R/usr/share/sddm/themes/golden-gate"
+  local T="$R/usr/share/sddm/themes/golden-gate"
+  rm -rf "$T"; mkdir -p "$T/assets"
+  cp "$REPO"/themes/sddm/golden-gate/* "$T/"
+  cp -a "$REPO/shell/components" "$REPO/shell/theme" "$T/"
+  cp -a "$REPO/shell/assets/symbols" "$T/assets/"
+  mkdir -p "$R/etc/sddm.conf.d"
+  printf '[Theme]\nCurrent=golden-gate\n\n[General]\nGreeterEnvironment=QT_WAYLAND_SHELL_INTEGRATION=layer-shell\n' > "$R/etc/sddm.conf.d/golden-gate.conf"
+
+  say "Plymouth splash → $R/usr/share/plymouth/themes/golden-gate"
+  local P="$R/usr/share/plymouth/themes/golden-gate"
+  mkdir -p "$P"
+  cp "$REPO"/themes/plymouth/golden-gate/* "$P/"
+  if command -v rsvg-convert >/dev/null; then
+    rsvg-convert -w 96 -h 96 -o "$P/logo.png" "$REPO/shell/assets/symbols/logo.svg"
+    printf '<svg xmlns="http://www.w3.org/2000/svg" width="180" height="5"><rect width="180" height="5" rx="2.5" fill="#fff" fill-opacity=".22"/></svg>' | rsvg-convert -o "$P/track.png"
+    printf '<svg xmlns="http://www.w3.org/2000/svg" width="180" height="5"><rect width="180" height="5" rx="2.5" fill="#fff"/></svg>' | rsvg-convert -o "$P/fill.png"
+    printf '<svg xmlns="http://www.w3.org/2000/svg" width="220" height="34"><rect x=".5" y=".5" width="219" height="33" rx="16.5" fill="#fff" fill-opacity=".14" stroke="#fff" stroke-opacity=".45"/></svg>' | rsvg-convert -o "$P/field.png"
+  else
+    say "rsvg-convert not found (install librsvg); Plymouth images skipped"
+  fi
+}
+
+if [[ $MODE == extras ]]; then
+  install_extras ""
+  say "done. Enable with: systemctl enable --now keyd; systemctl enable sddm; plymouth-set-default-theme -R golden-gate"
+  exit 0
 fi
 
 if [[ $MODE == user ]]; then
@@ -26,8 +70,6 @@ else
   BG_PATH="/usr/share/backgrounds/golden-gate"
 fi
 STAMP="$(date +%Y%m%d-%H%M%S)"
-
-say() { printf '\033[1;33m›\033[0m %s\n' "$*"; }
 place() { # place SRC DEST: copy with backup of a differing existing file
   local src=$1 dest=$2
   mkdir -p "$(dirname "$dest")"
@@ -47,7 +89,10 @@ fi
 
 # 2. Compositor
 say "Hyprland config → $CONF/hypr"
-place "$REPO/compositor/hyprland/hyprland.conf" "$CONF/hypr/hyprland.conf"
+BG_ABS="${BG_PATH/#\~/$HOME}"
+sed "s#__GG_WALLPAPER__#$BG_ABS/tide.png#" "$REPO/compositor/hyprland/hyprland.conf" > "$REPO/.hyprland.tmp"
+place "$REPO/.hyprland.tmp" "$CONF/hypr/hyprland.conf"
+rm -f "$REPO/.hyprland.tmp"
 place "$REPO/design/dist/hyprland-motion.conf" "$CONF/hypr/golden-gate/motion.conf"
 place "$REPO/compositor/hyprland/hypridle.conf" "$CONF/hypr/hypridle.conf"
 sed "s#~/.local/share/backgrounds/golden-gate#$BG_PATH#g" "$REPO/compositor/hyprland/hyprpaper.conf" > "$REPO/.hyprpaper.tmp"
@@ -84,5 +129,11 @@ for svg in "$REPO"/prototype/assets/wallpapers/*.svg; do
     say "rsvg-convert not found (install librsvg); skipping $name.png"
   fi
 done
+
+if [[ $MODE == system ]]; then
+  install_extras "$ROOT"
+else
+  say "system pieces (keyd ⌘ layer, login screen, boot splash): sudo scripts/install.sh --extras"
+fi
 
 say "done. Log into a Hyprland session (or run: hyprctl reload && qs -c golden-gate)."

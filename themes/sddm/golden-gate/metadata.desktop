@@ -1,0 +1,10 @@
+[SddmGreeterTheme]
+Name=Golden Gate
+Description=Liquid Glass login screen for the Golden Gate desktop
+Author=Golden Gate
+Type=sddm-theme
+Version=0.1
+Website=https://github.com/mobilaunch/goldenapple
+MainScript=Main.qml
+ConfigFile=theme.conf
+QtVersion=6

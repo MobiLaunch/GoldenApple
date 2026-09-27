@@ -1,0 +1,57 @@
+# Golden Gate boot splash: bridge mark centred, progress hairline below it,
+# and a glass password capsule for encrypted disks. Images are rendered from
+# icons/source.mjs by scripts/install.sh (logo.png, track.png, fill.png, field.png).
+Window.SetBackgroundTopColor(0, 0, 0);
+Window.SetBackgroundBottomColor(0, 0, 0);
+
+cx = Window.GetX() + Window.GetWidth() / 2;
+cy = Window.GetY() + Window.GetHeight() / 2;
+
+logo.image = Image("logo.png");
+logo.sprite = Sprite(logo.image);
+logo.sprite.SetPosition(cx - logo.image.GetWidth() / 2, cy - logo.image.GetHeight() / 2 - 40, 10);
+
+track.image = Image("track.png");
+track.sprite = Sprite(track.image);
+track.x = cx - track.image.GetWidth() / 2;
+track.y = cy + logo.image.GetHeight() / 2 + 30;
+track.sprite.SetPosition(track.x, track.y, 10);
+
+fill.original = Image("fill.png");
+fill.sprite = Sprite();
+fill.sprite.SetPosition(track.x, track.y, 11);
+
+fun progress_callback(duration, progress) {
+    w = Math.Int(track.image.GetWidth() * progress);
+    if (w < 2) w = 2;
+    fill.sprite.SetImage(fill.original.Scale(w, fill.original.GetHeight()));
+}
+Plymouth.SetBootProgressFunction(progress_callback);
+
+# Password prompt (LUKS)
+field.image = Image("field.png");
+field.sprite = Sprite(field.image);
+field.sprite.SetOpacity(0);
+bullets.sprite = Sprite();
+
+fun display_password(prompt, bullet_count) {
+    field.sprite.SetPosition(cx - field.image.GetWidth() / 2, track.y + 40, 20);
+    field.sprite.SetOpacity(1);
+    track.sprite.SetOpacity(0);
+    fill.sprite.SetOpacity(0);
+    text = "";
+    for (i = 0; i < bullet_count; i++) text += "●";
+    if (bullet_count == 0) text = prompt;
+    bullets.image = Image.Text(text, 1, 1, 1, 0.9, "Inter 11");
+    bullets.sprite.SetImage(bullets.image);
+    bullets.sprite.SetPosition(cx - bullets.image.GetWidth() / 2, track.y + 40 + field.image.GetHeight() / 2 - bullets.image.GetHeight() / 2, 21);
+    bullets.sprite.SetOpacity(1);
+}
+fun display_normal() {
+    field.sprite.SetOpacity(0);
+    bullets.sprite.SetOpacity(0);
+    track.sprite.SetOpacity(1);
+    fill.sprite.SetOpacity(1);
+}
+Plymouth.SetDisplayPasswordFunction(display_password);
+Plymouth.SetDisplayNormalFunction(display_normal);

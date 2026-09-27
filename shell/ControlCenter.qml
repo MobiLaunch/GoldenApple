@@ -15,6 +15,7 @@ import "components"
 PanelWindow {
     id: cc
     property bool open: false
+    property var notifications
     function toggle() { open = !open; if (open) refresh() }
 
     visible: open || closeTimer.running
@@ -35,7 +36,6 @@ PanelWindow {
     property bool wifiOn: true
     property string ssid: ""
     property real brightness: 0.6
-    property bool dnd: false
     property bool nightShift: false
     readonly property var sink: Pipewire.defaultAudioSink
     readonly property var player: Mpris.players.values.length ? Mpris.players.values[0] : null
@@ -166,8 +166,8 @@ PanelWindow {
             onActivated: cc.run("localsend_app")   // nearby sharing via LocalSend
         }
         Wide {
-            order: 4; icon: "moon"; title: "Focus"; on: cc.dnd
-            onActivated: { cc.dnd = !cc.dnd; cc.run("makoctl mode -t do-not-disturb") }
+            order: 4; icon: "moon"; title: "Focus"; on: cc.notifications?.dnd ?? false
+            onActivated: if (cc.notifications) cc.notifications.dnd = !cc.notifications.dnd
         }
         Circle {
             order: 5; icon: "sun"; on: cc.nightShift

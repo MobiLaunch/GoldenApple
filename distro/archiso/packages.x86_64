@@ -10,6 +10,9 @@ hyprsunset
 xdg-desktop-portal-hyprland
 xdg-desktop-portal-gtk
 polkit-gnome
+plymouth
+sddm
+qt6-declarative
 qt6-svg
 qt6-wayland
 
@@ -32,7 +35,7 @@ bluez-utils
 brightnessctl
 playerctl
 upower
-mako
+keyd
 grim
 slurp
 wl-clipboard
