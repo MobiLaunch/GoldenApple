@@ -233,7 +233,9 @@ function qmlColor(c) {
   for (const [k, s] of Object.entries(springs)) lines.push(`    bezier = ${k}, ${hyprBezier(s.dampingFraction).join(", ")}`);
   const ds = (k) => Math.max(1, Math.round(springs[k].duration / 100));
   lines.push(
-    `    animation = windowsIn, 1, ${ds("window")}, window, popin 86%`,
+    // The shell's launch card (shell/AppLaunch.qml) carries the motion of an app
+    // opening; the window itself only settles in underneath it.
+    `    animation = windowsIn, 1, ${ds("smooth")}, smooth, popin 96%`,
     `    animation = windowsOut, 1, ${ds("snappy")}, smooth, popin 92%`,
     `    animation = windowsMove, 1, ${ds("snappy")}, snappy`,
     `    animation = layersIn, 1, ${ds("popover")}, popover, popin 90%`,

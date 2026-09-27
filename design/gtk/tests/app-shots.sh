@@ -39,7 +39,7 @@ declare -A CMD=(
   [files]='nautilus --new-window --select $HOME/Documents'
   [files-list]='nautilus --new-window --select $HOME/Documents'
   [text-editor]='gnome-text-editor --standalone $HOME/Documents/Notes.txt'   # expanded below
-  [calculator]="gnome-calculator"
+  [calculator]="gnome-calculator --equation 1234*5.6"
   [settings]="env XDG_CURRENT_DESKTOP=GNOME gnome-control-center background"
   [settings-mouse]="env XDG_CURRENT_DESKTOP=GNOME gnome-control-center mouse"
   [clocks]="gnome-clocks"
@@ -110,6 +110,7 @@ default_border none
 default_floating_border none
 for_window [app_id=".*"] floating enable, move position center
 EOF
+export LANG=C.UTF-8 LC_ALL=C.UTF-8
 export WLR_BACKENDS=headless WLR_RENDERER=pixman WLR_LIBINPUT_NO_DEVICES=1
 export LIBGL_ALWAYS_SOFTWARE=1 GDK_BACKEND=wayland NO_AT_BRIDGE=1 GTK_A11Y=none
 sway -c "$XDG_RUNTIME_DIR/sway.conf" >"$OUT/sway.log" 2>&1 &

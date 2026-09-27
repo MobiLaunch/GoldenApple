@@ -7,6 +7,9 @@ import QtQuick
 import "theme"
 
 ShellRoot {
+    id: root
+    // One AppLaunch per screen; Spotlight picks the one on its own screen.
+    property var launchers: []
     // Follow the system appearance set by Control Center, GNOME Settings or gsettings.
     // GTK 3 apps (Mail) have no colour scheme, only a dark theme, so mirror it there.
     function followScheme(line) {
@@ -24,7 +27,17 @@ ShellRoot {
         stdout: SplitParser { onRead: (line) => followScheme(line) }
     }
 
-    Spotlight { id: spotlightPanel }
+    Spotlight { id: spotlightPanel; launchers: root.launchers }
+    // For tests: launch an app as if from the middle of the Dock, and stand in for
+    // Hyprland's "window opened" where there is no Hyprland (qs ipc call launch …).
+    IpcHandler {
+        target: "launch"
+        function app(id: string): void {
+            const l = root.launchers[0], e = DesktopEntries.byId(id)
+            if (l && e) l.launch(e, Qt.rect(l.width / 2 - 27, l.height - 68, 54, 54))
+        }
+        function opened(x: int, y: int, w: int, h: int): void { root.launchers[0]?.landOn(Qt.rect(x, y, w, h)) }
+    }
     Notifications { id: notificationCenter }
     Switcher {}
     // Loaded separately so a Quickshell built without PAM still runs the shell.
@@ -40,7 +53,13 @@ ShellRoot {
             Wallpaper { screen: perScreen.modelData }
             ControlCenter { id: cc; screen: perScreen.modelData; notifications: notificationCenter }
             MenuBar { screen: perScreen.modelData; controlCenter: cc; spotlight: spotlightPanel }
-            Dock { screen: perScreen.modelData }
+            AppLaunch {
+                id: launch
+                screen: perScreen.modelData
+                Component.onCompleted: root.launchers = root.launchers.concat([launch])
+                Component.onDestruction: root.launchers = root.launchers.filter((l) => l !== launch)
+            }
+            Dock { screen: perScreen.modelData; launcher: launch }
 
             IpcHandler {
                 target: "controlcenter"

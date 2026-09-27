@@ -770,48 +770,58 @@ headerbar .nautilus-pathbar.linked:not(.vertical):not(.search):not(.entry-combo)
 .floating-bar { border-radius: 10px; background: var(--gg-menu); box-shadow: var(--gg-menu-shadow); font-size: 11.5px; }
 
 /* ================================================================== Calculator */
-/* macOS Calculator: round keys, lighter digits, darker functions, orange operators. */
+/* macOS Calculator: round keys (each key is inset 4 px in its grid cell and as
+   tall as it is wide: 56 px at the default window width), lighter digits, darker
+   functions, orange operators, and a display with large light numbers. */
 .math-buttons grid.buttons,
-box.math-buttons, .math-buttons grid.buttons > grid { border-spacing: 8px; }
+box.math-buttons, .math-buttons grid.buttons > grid { border-spacing: 8px 10px; }
 .math-buttons grid > button,
 .math-buttons grid > menubutton > button,
 .math-buttons grid > stack > button {
-  min-height: 44px;
-  border-radius: 22px;
-  font-size: 17px;
+  min-height: 56px;
+  margin: 0 4px;
+  padding: 0;
+  border-radius: 999px;
+  font-size: 19px;
   font-weight: 500;
   background: var(--gg-calc-function);
   box-shadow: none;
   color: var(--gg-label);
 }
+.math-buttons grid > menubutton, .math-buttons grid > stack { margin: 0; }
 .math-buttons .number-button, .math-buttons .numeric-point-button {
-  font-size: 20px;
-  font-weight: 500;
+  font-size: 24px;
+  font-weight: 400;
   background: var(--gg-calc-digit);
   box-shadow: var(--gg-calc-digit-shadow);
 }
 .math-buttons .number-button:hover, .math-buttons .numeric-point-button:hover { background: var(--gg-calc-digit-hover); }
-.math-buttons .number-button:active, .math-buttons .number-button.keyboard-activating { filter: brightness(0.9); }
-.math-buttons .clear-button { font-size: 17px; font-weight: 600; }
+.math-buttons button:active, .math-buttons button.keyboard-activating { filter: brightness(0.88); }
+.math-buttons .clear-button { font-size: 20px; font-weight: 500; }
 .math-buttons .operator-button,
 .math-buttons button.suggested-action,
 .math-buttons .operator-button:hover,
 .math-buttons button.suggested-action:hover {
-  font-size: 22px;
-  font-weight: 500;
+  font-size: 28px;
+  font-weight: 400;
   background: var(--gg-orange);
   color: #ffffff;
   box-shadow: none;
 }
-.math-buttons .operator-button:active, .math-buttons button.suggested-action:active { filter: brightness(0.88); }
-/* The display: no card, just the window, with large light numbers. */
-.display-container { background: none; box-shadow: none; }
-.history-view { background: none; border-bottom: 1px solid var(--gg-separator); }
-.history-entry { border-top-color: var(--gg-separator-soft); font-size: 15px; }
-mathdisplay { min-height: 60px; }
-mathdisplay .sourceview, .sourceview { font-size: 30px; font-weight: 300; }
-mathdisplay textview, mathdisplay textview text { background: none; }
-.display-scrolled + button { background: none; box-shadow: none; }
+/* The display: no card, just the window, with large light digits. */
+.display-container, clamp > .small .display-container { margin: 6px 12px 0; background: none; box-shadow: none; border-radius: 0; }
+.history-view { background: none; border-bottom: none; }
+/* One surface, like the Mac: the display and history take the window's colour. */
+.display-container, .display-container *, .history-view list { background-color: transparent; }
+.history-entry { border-top: none; padding: 2px 8px; font-size: 15px; color: var(--gg-secondary-label); }
+.history-entry .answer-label { font-weight: 500; color: var(--gg-label); }
+mathdisplay { min-height: 76px; }
+mathdisplay .display-scrolled { min-height: 62px; }
+mathdisplay .sourceview, .sourceview { font-size: 34px; font-weight: 300; letter-spacing: -0.02em; }
+mathdisplay scrolledwindow, mathdisplay textview, mathdisplay textview > text,
+mathdisplay .sourceview > text { background: none; background-color: transparent; }
+.display-scrolled + button { min-width: 32px; min-height: 32px; margin: 6px; background: none; box-shadow: none; color: var(--gg-secondary-label); }
+.info-view { color: var(--gg-secondary-label); font-size: 12px; }
 
 /* ================================================================== Text Editor → TextEdit */
 .editor textview, textview.editor { font-size: 13px; }

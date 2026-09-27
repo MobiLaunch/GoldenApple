@@ -18,6 +18,7 @@ PanelWindow {
     property real baseSize: Theme.sizeDockIcon
     property real maxSize: Theme.sizeDockMagnified
     property real pointerX: -1
+    property var launcher: null   // AppLaunch on this screen: the icon grows into the window
 
     anchors { bottom: true; left: true; right: true }
     implicitHeight: maxSize + 30
@@ -157,7 +158,11 @@ PanelWindow {
                         hoverEnabled: true
                         onClicked: {
                             if (tile.wins.length) tile.wins[0].activate()
-                            else { bounce.restart(); tile.modelData.execute() }
+                            else if (dock.launcher?.enabled) {
+                                // The Dock window sits at the bottom of the launcher's full-screen one.
+                                const p = icon.mapToItem(null, 0, 0)
+                                dock.launcher.launch(tile.modelData, Qt.rect(p.x, dock.launcher.height - dock.height + p.y, icon.width, icon.height))
+                            } else { bounce.restart(); tile.modelData.execute() }
                         }
                     }
                 }

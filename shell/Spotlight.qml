@@ -35,7 +35,19 @@ PanelWindow {
             .slice(0, 8)
     }
     property int selected: 0
-    function launch(i) { const e = results[i]; if (e) { e.execute(); open = false } }
+    property var launchers: []
+    function launch(i) {
+        const e = results[i]
+        if (!e) return
+        const l = launchers.find((x) => x.screen === spot.screen) ?? launchers[0]
+        const row = list.itemAtIndex(i)
+        if (l?.enabled && row) {
+            // Spotlight covers its screen, so the row icon's position is already in screen space.
+            const icon = row.appIcon, p = icon.mapToItem(null, 0, 0)
+            l.launch(e, Qt.rect(p.x, p.y, icon.width, icon.height))
+        } else e.execute()
+        open = false
+    }
 
     MouseArea { anchors.fill: parent; onClicked: spot.open = false }
 
@@ -89,12 +101,13 @@ PanelWindow {
                 delegate: Rectangle {
                     required property var modelData
                     required property int index
+                    readonly property Item appIcon: rowIcon
                     width: list.width; height: 44; radius: 12
                     color: index === spot.selected ? Theme.accent : "transparent"
                     RowLayout {
                         anchors { fill: parent; leftMargin: 12; rightMargin: 12 }
                         spacing: 12
-                        Image { source: Quickshell.iconPath(modelData.icon, "application-x-executable"); sourceSize: Qt.size(60, 60); Layout.preferredWidth: 30; Layout.preferredHeight: 30 }
+                        Image { id: rowIcon; source: Quickshell.iconPath(modelData.icon, "application-x-executable"); sourceSize: Qt.size(60, 60); Layout.preferredWidth: 30; Layout.preferredHeight: 30 }
                         Text { Layout.fillWidth: true; text: modelData.name; color: index === spot.selected ? "#ffffff" : Theme.label; font { family: Theme.fontUi; pixelSize: 14 } }
                         Text { text: "Application"; color: index === spot.selected ? "#ccffffff" : Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: 12 } }
                     }
