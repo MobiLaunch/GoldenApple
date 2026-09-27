@@ -95,7 +95,8 @@ export LIBGL_ALWAYS_SOFTWARE=1 GDK_BACKEND=wayland NO_AT_BRIDGE=1 GTK_A11Y=none
 sway -c "$XDG_RUNTIME_DIR/sway.conf" >"$OUT/sway.log" 2>&1 &
 SWAY=$!
 trap 'kill $SWAY 2>/dev/null || true' EXIT
-for _ in $(seq 50); do [[ -S $XDG_RUNTIME_DIR/wayland-1 ]] && break; sleep 0.1; done
+for _ in $(seq 300); do [[ -S $XDG_RUNTIME_DIR/wayland-1 ]] && ls "$XDG_RUNTIME_DIR"/sway-ipc.*.sock >/dev/null 2>&1 && break; sleep 0.1; done
+if ! ls "$XDG_RUNTIME_DIR"/sway-ipc.*.sock >/dev/null 2>&1; then echo "Sway did not start:"; tail -30 "$OUT/sway.log"; exit 1; fi
 export WAYLAND_DISPLAY=wayland-1 SWAYSOCK="$(ls "$XDG_RUNTIME_DIR"/sway-ipc.*.sock)"
 
 window() { swaymsg -t get_tree | jq -r '[.. | objects | select(.pid? != null)] | last | if . == null then empty else "\(.rect.x),\(.rect.y) \(.rect.width)x\(.rect.height)" end'; }

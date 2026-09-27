@@ -38,7 +38,8 @@ jobs:
               dbus dconf nodejs util-linux mesa inter-font ttf-jetbrains-mono adwaita-icon-theme \
               nautilus gnome-text-editor gnome-calculator gnome-control-center gnome-clocks gnome-calendar \
               gnome-weather gnome-maps loupe gnome-music gnome-software fractal ghostty >/dev/null
-            pacman -Q gtk4 libadwaita nautilus
+            pacman -Q gtk4 libadwaita nautilus sway
+            fc-cache -f >/dev/null
             node design/build.mjs >/dev/null   # the committed gtk.css, rebuilt from its sources
             SHOTS_B64=1 design/gtk/tests/app-shots.sh out/gtk-shots $SHOTS
             if grep -h "Theme parser error" out/gtk-shots/*.log | sort -u | grep .; then
