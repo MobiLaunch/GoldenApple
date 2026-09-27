@@ -22,8 +22,11 @@ Control Center adds a faint cool tint (`rgba(28,48,96,.24)`) so white glyphs sta
 legible when a bright window is behind it.
 
 Refraction (the backdrop bending near the rim) is specified in
-`compositor/liquid-glass/liquid-glass.frag`: a smoothstep lens across a 12–16px
-bezel with slight chromatic dispersion.
+`compositor/liquid-glass/liquid-glass.frag`: a shallow lens across the body and a
+stronger bend in a 12–16px rim (strongest at the corners), multi-tap sampling for
+thickness, slight dispersion, and a light-facing highlight ribbon with Fresnel
+falloff. [compositor/liquid-glass/README.md](../compositor/liquid-glass/README.md)
+has a preview.
 
 ## Shape
 

@@ -9,6 +9,7 @@ on:
       - '!distro/archiso/boot-test.sh'   # re-test an existing ISO with the Boot test workflow instead
       - scripts/install.sh
       - compositor/**
+      - '!compositor/liquid-glass/**'    # the shader isn't in the image yet (plugin pending)
       - shell/**
       - themes/**
       - .github/workflows/iso.yml

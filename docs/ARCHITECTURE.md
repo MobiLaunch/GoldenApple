@@ -35,7 +35,7 @@ Runtime on Linux
 | Need | Choice | Why |
 |---|---|---|
 | Base | Arch + archiso | Current Mesa/kernel for good compositor performance. archiso's `releng` profile gives a bootable ISO with little code. |
-| Compositor | Hyprland | Built-in blur on layer surfaces with `ignorealpha`, `rounding_power` for continuous corners, configurable animations, a plugin API for the refraction shader. |
+| Compositor | Hyprland | Built-in blur on layer surfaces with `ignore_alpha`, `rounding_power` for continuous corners, configurable animations, a plugin API for the refraction shader. |
 | Shell | Quickshell (QML) | Layer-shell windows, Wayland toplevel tracking, and service bindings (PipeWire, MPRIS, UPower, Bluetooth, Hyprland IPC) in declarative QML. Qt Quick is GPU-rendered and animates smoothly. |
 | Apps | GNOME apps + libadwaita CSS | libadwaita ≥ 1.6 exposes its palette as CSS variables, so one generated `gtk.css` re-skins every app. |
 | Type | Inter + fontconfig | Closest open neo-grotesque to the reference; grayscale AA and light hinting match the rendering style. |
