@@ -37,7 +37,8 @@ and built entirely from original artwork.
 | **Reference shell**: the whole desktop and 14 apps, interactive, in the browser | `prototype/` | Done. The spec every other layer is checked against; 25-scenario click-through test in CI |
 | **Linux shell**: menu bar, Control Center, Dock, Spotlight, notifications, app switcher, lock screen | `shell/` | Quickshell (QML). Runs in a headless Wayland session (see [Testing](#testing)); not yet run on hardware |
 | **Compositor**: blur, squircle corners, springs, key bindings | `compositor/` | Hyprland config done; refraction shader written, plugin pending |
-| **Theming**: GTK 4 / libadwaita, fonts, ⌘ key layer, login screen, boot splash | `design/dist/gtk.css`, `themes/` | Done: fontconfig, keyd, SDDM theme, Plymouth theme |
+| **App theme**: every GNOME app restyled to macOS metrics (traffic lights, floating sidebar, glass toolbar pills, capsule buttons, Finder tables, Mac menus), light and dark; GTK 3 apps too | `design/gtk/`, `design/dist/gtk*.css` | Done for GTK 4 and GTK 3; per-app passes for Files, Calculator, Settings, Calendar, Terminal |
+| **Theming**: fonts, ⌘ key layer, login screen, boot splash, terminal | `themes/` | Done: fontconfig, keyd, SDDM theme, Plymouth theme, Ghostty |
 | **Distro**: bootable live ISO | `distro/archiso/` | Build script done; first ISO build pending (see below) |
 
 ## Try it
@@ -101,12 +102,21 @@ start, the session drops to a shell that says why.
 npm run test:ui       # Playwright clicks through every app and system surface
 npm run screenshots   # regenerates docs/screenshots from the prototype
 shell/tests/screenshot.sh out/   # runs the real Quickshell shell in headless Sway
+design/gtk/tests/app-shots.sh out/   # the GNOME apps with the Golden Gate theme
 ```
 
 The UI test fails on any page error and checks the flows end to end: boot and
 unlock, all 14 apps, Control Center details, Spotlight maths, menus and submenus,
 Files (new folder, rename, Quick Look, trash), minimise and restore, Mission
 Control, edge tiling, and every appearance combination.
+
+`design/gtk/tests/app-shots.sh out/` runs the ISO's GTK apps with the theme in a
+headless Sway session and screenshots each, light and dark, plus a gallery of every
+control (`gallery.js`). The *GTK theme* workflow runs it on Arch, the same GTK and
+libadwaita as the image, and fails on any CSS the toolkit rejects. It found three
+bugs in the image: `GTK_THEME` in the session disabled libadwaita's own stylesheet,
+GTK 4.20+ drew our stroked symbolic icons as solid blobs (they are now outlined at
+build time), and GNOME Settings refused to start outside GNOME.
 
 `shell/tests/screenshot.sh` starts Sway with the pixman renderer and Mesa's
 llvmpipe, loads the shell, drives it over IPC and captures the screenshots

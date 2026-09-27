@@ -7,7 +7,7 @@
 # Shots (default: all that are installed):
 #   gallery gallery-menu gallery-dialog gallery-finder   every control (tests/gallery.js)
 #   files text-editor calculator settings clocks calendar weather maps
-#   loupe music software fractal ghostty
+#   loupe music software fractal ghostty mail (Geary, GTK 3)
 # Writes OUTDIR/<shot>-light.png and -dark.png: the window plus 40 px around it,
 # over the default wallpaper. SHOTS_B64=1 also prints each as a JPEG in base64
 # ("--- shot <name> ---" … "--- end ---"), so they can be read from a CI log.
@@ -49,8 +49,10 @@ declare -A CMD=(
   [software]="gnome-software"
   [fractal]="fractal"
   [ghostty]="ghostty"
+  [mail]="geary"
 )
-ORDER=(gallery gallery-menu gallery-dialog gallery-finder files text-editor calculator settings clocks calendar weather maps loupe music software fractal ghostty)
+GTK3_SHOTS=(mail)
+ORDER=(gallery gallery-menu gallery-dialog gallery-finder files text-editor calculator settings clocks calendar weather maps loupe music software fractal ghostty mail)
 shots=("$@"); [[ ${#shots[@]} -gt 0 ]] || shots=("${ORDER[@]}")
 
 # ---------------------------------------------------------------- a clean home with the theme
@@ -110,7 +112,9 @@ shoot() { # shoot NAME SCHEME
   local name=$1 scheme=$2 cmd=${CMD[$1]} bin geo=
   bin=${cmd##*env XDG_CURRENT_DESKTOP=GNOME }; bin=${bin%% *}
   command -v "$bin" >/dev/null || { say "$name: $bin not installed, skipped"; return; }
-  env -u GTK_THEME ADW_DEBUG_COLOR_SCHEME=prefer-$scheme ADW_DEBUG_ACCENT_COLOR=blue $cmd >"$OUT/$name-$scheme.log" 2>&1 &
+  # GTK 3 has no colour scheme, only a dark theme; libadwaita must not see GTK_THEME.
+  local theme=(-u GTK_THEME); [[ " ${GTK3_SHOTS[*]} " == *" $name "* && $scheme == dark ]] && theme=(GTK_THEME=Adwaita:dark)
+  env "${theme[@]}" ADW_DEBUG_COLOR_SCHEME=prefer-$scheme ADW_DEBUG_ACCENT_COLOR=blue $cmd >"$OUT/$name-$scheme.log" 2>&1 &
   local pid=$!
   for _ in $(seq 60); do geo=$(window); [[ -n $geo ]] && break; sleep 0.5; done
   if [[ -z $geo ]]; then say "$name ($scheme): no window"; tail -5 "$OUT/$name-$scheme.log"; kill $pid 2>/dev/null || true; return; fi

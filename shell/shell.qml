@@ -7,16 +7,21 @@ import QtQuick
 import "theme"
 
 ShellRoot {
-    // Follow the system appearance set by Control Center / gsettings.
+    // Follow the system appearance set by Control Center, GNOME Settings or gsettings.
+    // GTK 3 apps (Mail) have no colour scheme, only a dark theme, so mirror it there.
+    function followScheme(line) {
+        Theme.dark = line.includes("dark")
+        Quickshell.execDetached(["gsettings", "set", "org.gnome.desktop.interface", "gtk-theme", Theme.dark ? "Adwaita-dark" : "Adwaita"])
+    }
     Process {
         running: true
         command: ["gsettings", "monitor", "org.gnome.desktop.interface", "color-scheme"]
-        stdout: SplitParser { onRead: (line) => Theme.dark = line.includes("dark") }
+        stdout: SplitParser { onRead: (line) => followScheme(line) }
     }
     Process {
         running: true
         command: ["gsettings", "get", "org.gnome.desktop.interface", "color-scheme"]
-        stdout: SplitParser { onRead: (line) => Theme.dark = line.includes("dark") }
+        stdout: SplitParser { onRead: (line) => followScheme(line) }
     }
 
     Spotlight { id: spotlightPanel }

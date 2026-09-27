@@ -120,6 +120,7 @@ for f in "$REPO"/themes/ghostty/themes/*; do place "$f" "$CONF/ghostty/themes/$(
 # 4. Toolkit theming + fonts
 say "GTK 4 / libadwaita overrides, fontconfig"
 place "$REPO/design/dist/gtk.css" "$CONF/gtk-4.0/gtk.css"
+place "$REPO/design/dist/gtk3.css" "$CONF/gtk-3.0/gtk.css"
 place "$REPO/themes/fontconfig/60-golden-gate.conf" "$CONF/fontconfig/conf.d/60-golden-gate.conf"
 
 # 5. Icons
