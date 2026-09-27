@@ -109,6 +109,9 @@ rm -f "$WANTS/systemd-networkd.service" "$AIR/etc/systemd/system/network-online.
 ln -sf /usr/lib/systemd/system/NetworkManager.service "$WANTS/NetworkManager.service"
 ln -sf /usr/lib/systemd/system/bluetooth.service "$WANTS/bluetooth.service"
 ln -sf /usr/lib/systemd/system/keyd.service "$WANTS/keyd.service"
+# A Secret Service for apps that keep passwords (Fractal, Geary, Web).
+mkdir -p "$AIR/etc/systemd/user/sockets.target.wants"
+ln -sf /usr/lib/systemd/user/gnome-keyring-daemon.socket "$AIR/etc/systemd/user/sockets.target.wants/gnome-keyring-daemon.socket"
 # mkarchiso drops file ownership, so the live user's home is handed over at boot.
 ln -sf /etc/systemd/system/gg-live-home.service "$WANTS/gg-live-home.service"
 

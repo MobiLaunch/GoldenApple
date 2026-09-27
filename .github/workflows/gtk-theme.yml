@@ -37,7 +37,7 @@ jobs:
             pacman -Syu --noconfirm --needed sway swaybg grim jq gjs gtk4 libadwaita librsvg imagemagick \
               dbus dconf nodejs util-linux libcap mesa inter-font ttf-jetbrains-mono adwaita-icon-theme \
               nautilus gnome-text-editor gnome-calculator gnome-control-center gnome-clocks gnome-calendar \
-              gnome-weather gnome-maps loupe gnome-music gnome-software fractal ghostty >/dev/null
+              gnome-weather gnome-maps loupe gnome-music gnome-software fractal ghostty gnome-keyring >/dev/null
             pacman -Q gtk4 libadwaita nautilus sway
             fc-cache -f >/dev/null
             # Arch gives sway cap_sys_nice, which a container user may not exec with.

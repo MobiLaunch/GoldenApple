@@ -75,6 +75,10 @@ gsettings set org.gnome.desktop.interface icon-theme GoldenGate
 gsettings set org.gnome.desktop.interface font-name "${GG_FONT:-Inter Variable 10}"
 gsettings set org.gnome.desktop.interface monospace-font-name "JetBrains Mono 10"
 gsettings set org.gnome.desktop.interface accent-color blue 2>/dev/null || true
+# A Secret Service (Fractal won't start without one), unlocked without a prompt.
+if command -v gnome-keyring-daemon >/dev/null; then
+  eval "$(printf '' | gnome-keyring-daemon --unlock --components=secrets 2>/dev/null)" || true
+fi
 # Something to look at in Files and Text Editor.
 mkdir -p "$HOME"/{Desktop,Documents,Downloads,Music,Pictures,Videos}
 for d in DESKTOP:Desktop DOCUMENTS:Documents DOWNLOAD:Downloads MUSIC:Music PICTURES:Pictures VIDEOS:Videos; do

@@ -8,6 +8,7 @@ hyprsunset
 xdg-desktop-portal-hyprland
 xdg-desktop-portal-gtk
 polkit-gnome
+gnome-keyring
 plymouth
 sddm
 qt6-declarative
