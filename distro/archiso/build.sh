@@ -41,6 +41,7 @@ sed -i \
 cat >> "$PROFILE/profiledef.sh" <<'EOF'
 file_permissions+=(
   ["/usr/local/bin/gg-session"]="0:0:755"
+  ["/usr/local/bin/gnome-control-center"]="0:0:755"
   ["/etc/sudoers.d/10-golden-live"]="0:0:440"
   ["/home/golden"]="1000:1000:750"
 )

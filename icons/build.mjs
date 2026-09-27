@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Writes the freedesktop icon theme (icons/GoldenGate) and the prototype bundle
 // (prototype/assets/icons.js) from icons/source.mjs.
-import { writeFileSync, mkdirSync, rmSync, symlinkSync, existsSync, readFileSync, copyFileSync } from "node:fs";
+import { writeFileSync, mkdirSync, rmSync, symlinkSync, existsSync, readFileSync, readdirSync, copyFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { symbols as baseSymbols, apps as baseApps, places as basePlaces } from "./source.mjs";
@@ -95,6 +95,18 @@ const symbolNames = {
   logo: "start-here-symbolic", people: "system-users-symbolic", globe: "web-browser-symbolic",
 };
 
+// Symbolic icons are outlined for GTK (see outline.mjs). Without the npm
+// dependency (a build that skipped `npm install`), keep the outlined files that
+// are already in the tree instead of writing stroked ones GTK can't draw.
+let outline = null;
+const keptSymbolic = new Map();
+try {
+  outline = await (await import("./outline.mjs")).loadOutliner();
+} catch {
+  console.warn("icons: pathkit-wasm not installed (npm install); keeping the existing symbolic icons");
+  const dir = join(root, "symbolic/actions");
+  if (existsSync(dir)) for (const f of readdirSync(dir)) keptSymbolic.set(f, readFileSync(join(dir, f)));
+}
 rmSync(root, { recursive: true, force: true });
 for (const d of ["scalable/apps", "scalable/places", "scalable/mimetypes", "scalable/devices", "symbolic/actions"]) mkdirSync(join(root, d), { recursive: true });
 
@@ -116,8 +128,12 @@ for (const [key, svg] of Object.entries(places)) {
 }
 for (const [key, svg] of Object.entries(symbols)) {
   const name = symbolNames[key] ?? `goldengate-${key}-symbolic`;
-  // GTK recolours symbolic icons that use #bebebe / currentColor-free fills; keep currentColor-compatible stroke.
-  writeFileSync(join(root, "symbolic/actions", `${name}.svg`), svg.replace(/currentColor/g, "#2e3436"));
+  const file = join(root, "symbolic/actions", `${name}.svg`);
+  if (!outline) { if (keptSymbolic.has(`${name}.svg`)) writeFileSync(file, keptSymbolic.get(`${name}.svg`)); continue; }
+  // GTK recolours symbolic icons by their fill; one outlined path draws the same in every renderer.
+  let out;
+  try { out = outline(svg); } catch (e) { console.warn(`icons: ${name} kept stroked (${e.message})`); out = svg.replace(/currentColor/g, "#2e3436"); }
+  writeFileSync(file, out);
 }
 writeFileSync(join(root, "index.theme"), `[Icon Theme]
 Name=Golden Gate

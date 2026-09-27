@@ -1,0 +1,4 @@
+#!/bin/sh
+# GNOME Settings exits at once unless the desktop calls itself GNOME, so every
+# launcher (Dock, Spotlight, ⌘,) goes through this. /usr/local/bin comes first in PATH.
+XDG_CURRENT_DESKTOP=GNOME exec /usr/bin/gnome-control-center "$@"

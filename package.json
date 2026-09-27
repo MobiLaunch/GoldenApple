@@ -12,6 +12,7 @@
     "test:shader": "node compositor/liquid-glass/test/render.mjs"
   },
   "devDependencies": {
+    "pathkit-wasm": "^1.0.0",
     "playwright": "^1.56.1"
   }
 }

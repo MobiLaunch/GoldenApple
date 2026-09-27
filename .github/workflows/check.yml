@@ -12,12 +12,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - run: npm install --no-package-lock   # pathkit-wasm outlines the symbolic icons
       - name: Rebuild tokens and icons
         run: npm run build
       - name: Generated files are up to date
         run: git diff --exit-code
       - name: Lint shell scripts
-        run: bash -n scripts/install.sh distro/archiso/build.sh distro/archiso/boot-test.sh
+        run: bash -n scripts/install.sh distro/archiso/build.sh distro/archiso/boot-test.sh design/gtk/tests/app-shots.sh
 
   ui:
     runs-on: ubuntu-latest
