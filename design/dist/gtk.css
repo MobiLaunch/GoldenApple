@@ -313,6 +313,10 @@ headerbar entry, headerbar searchbar entry, headerbar entry.search {
 
 /* ------------------------------------------------------------------ traffic lights */
 windowcontrols { border-spacing: 8px; margin: 0; }
+/* The first light sits 20 px from the window edge: 12 px header padding + 8 px here
+   (in a sidebar, its 8 px inset takes the place of this margin). */
+headerbar windowcontrols.start { margin-left: 8px; }
+.sidebar-pane headerbar windowcontrols.start { margin-left: 0; }
 windowcontrols > button,
 windowcontrols > button.image-button,
 windowcontrols > button:hover,
@@ -816,3 +820,20 @@ button.accent-button, button.accent-button:hover, button.accent-button:checked {
   box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.12);
 }
 button.accent-button:checked { box-shadow: 0 0 0 2px var(--view-bg-color), 0 0 0 4px var(--accent-bg-color); }
+
+/* ================================================================== Calendar */
+/* Today is a red disc and the first of a month is simply bold, as in Calendar on the Mac. */
+monthcell .day-label { font-size: 13px; }
+monthcell.today label.day-label {
+  min-width: 14px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--gg-red);
+  color: #ffffff;
+  font-weight: 700;
+}
+monthcell label.first-day, monthcell label.first-day:dir(ltr) { background: none; color: var(--gg-label); font-weight: 700; }
+monthcell:selected { background-color: var(--gg-selection); }
+monthcell:selected label.day-label { font-weight: 600; }
+datechooser button.day.today { color: var(--gg-red); font-weight: 700; }
+label.month-name { color: var(--gg-red); font-size: 20px; }

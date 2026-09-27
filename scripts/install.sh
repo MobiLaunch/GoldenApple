@@ -113,6 +113,10 @@ rm -rf "$CONF/quickshell/golden-gate"
 mkdir -p "$CONF/quickshell"
 cp -a "$REPO/shell" "$CONF/quickshell/golden-gate"
 
+# Terminal: its own title bar and Terminal.app's look
+place "$REPO/themes/ghostty/config" "$CONF/ghostty/config"
+for f in "$REPO"/themes/ghostty/themes/*; do place "$f" "$CONF/ghostty/themes/$(basename "$f")"; done
+
 # 4. Toolkit theming + fonts
 say "GTK 4 / libadwaita overrides, fontconfig"
 place "$REPO/design/dist/gtk.css" "$CONF/gtk-4.0/gtk.css"

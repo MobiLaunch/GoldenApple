@@ -62,6 +62,7 @@ mkdir -p "$XDG_CONFIG_HOME/gtk-4.0" "$XDG_CONFIG_HOME/gtk-3.0" "$XDG_CONFIG_HOME
 cp "$REPO/design/dist/gtk.css" "$XDG_CONFIG_HOME/gtk-4.0/gtk.css"
 [[ -f $REPO/design/dist/gtk3.css ]] && cp "$REPO/design/dist/gtk3.css" "$XDG_CONFIG_HOME/gtk-3.0/gtk.css"
 cp "$REPO/themes/fontconfig/60-golden-gate.conf" "$XDG_CONFIG_HOME/fontconfig/conf.d/"
+mkdir -p "$XDG_CONFIG_HOME/ghostty" && cp -r "$REPO"/themes/ghostty/* "$XDG_CONFIG_HOME/ghostty/"
 [[ -d $REPO/icons/GoldenGate ]] && cp -a "$REPO/icons/GoldenGate" "$XDG_DATA_HOME/icons/"
 for d in gtk-4.0 gtk-3.0; do
   printf '[Settings]\ngtk-icon-theme-name=GoldenGate\ngtk-font-name=%s\ngtk-decoration-layout=close,minimize,maximize:\n' \

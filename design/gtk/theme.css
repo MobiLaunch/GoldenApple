@@ -104,6 +104,10 @@ headerbar entry, headerbar searchbar entry, headerbar entry.search {
 
 /* ------------------------------------------------------------------ traffic lights */
 windowcontrols { border-spacing: 8px; margin: 0; }
+/* The first light sits 20 px from the window edge: 12 px header padding + 8 px here
+   (in a sidebar, its 8 px inset takes the place of this margin). */
+headerbar windowcontrols.start { margin-left: 8px; }
+.sidebar-pane headerbar windowcontrols.start { margin-left: 0; }
 windowcontrols > button,
 windowcontrols > button.image-button,
 windowcontrols > button:hover,

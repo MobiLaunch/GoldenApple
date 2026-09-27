@@ -1,0 +1,21 @@
+# Golden Gate: Ghostty set up like Terminal on the Mac.
+# Installed to ~/.config/ghostty/config by scripts/install.sh.
+
+# Draw our own title bar (traffic lights, glass toolbar) instead of asking the
+# compositor, which draws none, so windows would otherwise have no title bar.
+window-decoration = client
+gtk-titlebar = true
+gtk-tabs-location = top
+
+# Terminal's "Basic" profile, following the system appearance.
+theme = light:Golden Gate Light,dark:Golden Gate Dark
+font-family = JetBrains Mono
+font-size = 11
+window-padding-x = 6
+window-padding-y = 4
+window-width = 80
+window-height = 24
+cursor-style = block
+cursor-style-blink = true
+mouse-hide-while-typing = true
+confirm-close-surface = false
