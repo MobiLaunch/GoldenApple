@@ -37,7 +37,7 @@
 - [ ] Screenshot for the 3D boot test (QEMU's screendump can't read a GL display)
 - [ ] Run on hardware under Hyprland with a GPU: blur, the focus grab,
       global shortcuts and the PAM lock can only be checked there
-- [ ] Port hyprland.conf to Lua (the .conf format is deprecated since 0.54)
+- [ ] Port hyprland.conf to Lua (Hyprland 0.56 loads .conf as its legacy format)
 - [ ] Verify the keyd per-app classes against real window classes
 - [ ] Compare the QML shell with the prototype screenshot by screenshot
 
