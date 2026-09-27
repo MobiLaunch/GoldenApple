@@ -32,6 +32,7 @@ ShellRoot {
             id: perScreen
             required property var modelData
 
+            Wallpaper { screen: perScreen.modelData }
             ControlCenter { id: cc; screen: perScreen.modelData; notifications: notificationCenter }
             MenuBar { screen: perScreen.modelData; controlCenter: cc; spotlight: spotlightPanel }
             Dock { screen: perScreen.modelData }

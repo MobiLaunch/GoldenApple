@@ -19,7 +19,8 @@ chmod 700 "$XDG_RUNTIME_DIR"
 WALL="${GG_WALLPAPER:-/usr/share/backgrounds/golden-gate/tide.png}"
 export GG_WALLPAPER="$WALL"
 cat > "$XDG_RUNTIME_DIR/sway.conf" <<EOF
-output HEADLESS-1 resolution 1440x900 bg $WALL fill
+# No bg: the shell draws the wallpaper (a swaybg would cover it).
+output HEADLESS-1 resolution 1440x900
 default_border none
 EOF
 

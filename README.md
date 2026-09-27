@@ -59,7 +59,7 @@ skips the boot and opens those apps; `?lock` starts at the lock screen.
 **On an existing Arch Linux + Hyprland machine:**
 
 ```sh
-sudo pacman -S hyprland hyprpaper hypridle quickshell qt6-svg qt6-wayland inter-font \
+sudo pacman -S hyprland hypridle quickshell qt6-svg qt6-wayland inter-font \
                ttf-jetbrains-mono networkmanager bluez brightnessctl playerctl grim slurp librsvg
 scripts/install.sh           # backs up anything it replaces (*.bak-<timestamp>)
 sudo scripts/install.sh --extras   # optional (needs keyd, sddm, plymouth): ⌘ layer, login theme, boot splash

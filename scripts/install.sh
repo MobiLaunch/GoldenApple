@@ -95,9 +95,8 @@ place "$REPO/.hyprland.tmp" "$CONF/hypr/hyprland.conf"
 rm -f "$REPO/.hyprland.tmp"
 place "$REPO/design/dist/hyprland-motion.conf" "$CONF/hypr/golden-gate/motion.conf"
 place "$REPO/compositor/hyprland/hypridle.conf" "$CONF/hypr/hypridle.conf"
-sed "s#~/.local/share/backgrounds/golden-gate#$BG_PATH#g" "$REPO/compositor/hyprland/hyprpaper.conf" > "$REPO/.hyprpaper.tmp"
-place "$REPO/.hyprpaper.tmp" "$CONF/hypr/hyprpaper.conf"
-rm -f "$REPO/.hyprpaper.tmp"
+place "$REPO/compositor/hyprland/report-config-errors.sh" "$CONF/hypr/golden-gate/report-config-errors.sh"
+chmod +x "$CONF/hypr/golden-gate/report-config-errors.sh"
 
 # 3. Shell
 say "Quickshell shell → $CONF/quickshell/golden-gate"
@@ -117,7 +116,7 @@ mkdir -p "$DATA/icons"
 cp -a "$REPO/icons/GoldenGate" "$DATA/icons/GoldenGate"
 command -v gtk-update-icon-cache >/dev/null && gtk-update-icon-cache -q -f "$DATA/icons/GoldenGate" || true
 
-# 6. Wallpapers (hyprpaper needs raster images)
+# 6. Wallpapers: PNGs for the shell, lock screen and menu-bar sampling
 BG_DIR="$DATA/backgrounds/golden-gate"
 mkdir -p "$BG_DIR"
 for svg in "$REPO"/prototype/assets/wallpapers/*.svg; do
