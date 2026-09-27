@@ -4,6 +4,14 @@ export XDG_CURRENT_DESKTOP=Hyprland
 export XDG_SESSION_TYPE=wayland
 export XDG_SESSION_DESKTOP=golden-gate
 
+# VirtualBox (VMSVGA) and VMware use the vmwgfx driver. With 3D acceleration on,
+# its GL path leaves Hyprland and the shell black with only a hardware cursor
+# showing, so render in software (Mesa llvmpipe) there. GG_RENDERER=hardware opts out.
+if [ "${GG_RENDERER:-auto}" = auto ] && grep -qs '^DRIVER=vmwgfx$' /sys/class/drm/card*/device/uevent; then
+  export LIBGL_ALWAYS_SOFTWARE=1
+  logger -t gg-session "vmwgfx (VirtualBox/VMware): using software rendering"
+fi
+
 logger -t gg-session "starting Hyprland"
 started=$(date +%s)
 # Newer Hyprland ships start-hyprland, a launcher that restarts it after a crash.
@@ -29,10 +37,11 @@ fi
 [ -e /dev/dri/renderD128 ] || printf '\nNo GPU render device (/dev/dri/renderD128): this machine or VM has no 3D acceleration.\n'
 cat <<'MSG'
 
-In a virtual machine, enable 3D acceleration, then reboot:
-  QEMU on Linux  -device virtio-vga-gl -display gtk,gl=on
-  VirtualBox     Display → VMSVGA, Enable 3D Acceleration
-  VMware         Display → Accelerate 3D graphics
+In a virtual machine: give it 6 GB of memory and 4 CPUs, and use
+  QEMU        -accel kvm (Linux) or -accel whpx (Windows), with -vga std or
+              -device virtio-vga-gl -display gtk,gl=on for 3D on Linux
+  VirtualBox  Display → VMSVGA (3D acceleration on or off; the desktop
+              renders in software there either way)
 Type gg-session to try again.
 
 MSG

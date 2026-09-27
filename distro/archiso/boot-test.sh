@@ -6,6 +6,8 @@
 # DISPLAY  std     plain VGA, no 3D (like QEMU on Windows or macOS)
 #          virtio  virtio-gpu without 3D
 #          virgl   virtio-gpu with 3D (needs a GL-capable host; runs under Xvfb if no $DISPLAY)
+#          vmware  VMware SVGA, which uses the vmwgfx driver like VirtualBox's VMSVGA;
+#                  the session must switch to software rendering
 #          tcg     plain VGA, no hardware virtualisation and QEMU's default CPU model
 #                  (QEMU on Windows or macOS without WHPX/HVF): slow, but must still work
 #
@@ -43,6 +45,7 @@ case "$VARIANT" in
   std)    display=(-vga std -display none) ;;
   virtio) display=(-vga none -device virtio-vga -display none) ;;
   virgl)  display=(-vga none -device virtio-vga-gl -display gtk,gl=on) ;;
+  vmware) display=(-vga vmware -display none) ;;
   tcg)    display=(-vga std -display none); accel=(-accel tcg -cpu qemu64)
           TIMEOUT="${TIMEOUT_TCG:-1800}"; SETTLE="${SETTLE_TCG:-120}" ;;
   *) echo "unknown display: $VARIANT"; exit 1 ;;
@@ -97,6 +100,10 @@ if [[ -f $OUT/screen.png ]]; then
   # A small copy in the job log, so the screen can be checked from the log alone.
   convert "$OUT/screen.png" -resize 960x -quality 70 "$OUT/screen-small.jpg"
   echo "--- screen-small.jpg base64 begin ---"; base64 -w0 "$OUT/screen-small.jpg"; echo; echo "--- end ---"
+fi
+# On vmwgfx the session must have chosen software rendering.
+if [[ $VARIANT == vmware && $result == started ]] && ! grep -aq 'gg-session.*vmwgfx.*software rendering' "$OUT/serial.log"; then
+  say "vmwgfx detected no software-rendering switch"; result=no-vmwgfx-fallback
 fi
 # A session that starts with config errors (shown as a red banner) still fails.
 if grep -aq 'hyprland-config\[' "$OUT/serial.log" 2>/dev/null; then

@@ -83,10 +83,13 @@ sudo GG_BUILD_AUR=1 distro/archiso/build.sh   # → out/golden-gate-<date>-x86_6
 
 `GG_BUILD_AUR=1` builds anything in `packages.extra` that isn't in the official
 repositories from the AUR. The live session logs in as `golden` (no password)
-and starts the desktop. In a virtual machine, turn on 3D acceleration
-(QEMU `-device virtio-vga-gl -display gtk,gl=on`, VirtualBox VMSVGA with 3D,
-VMware "Accelerate 3D graphics"); without it Hyprland may not start, and the
-session drops to a shell that says why.
+and starts the desktop. In a virtual machine, give it 6 GB of memory and 4 CPUs.
+QEMU: use `-accel kvm` (Linux) or `-accel whpx` (Windows, after enabling the
+Windows Hypervisor Platform feature); `-vga std` works, and
+`-device virtio-vga-gl -display gtk,gl=on` adds 3D on Linux. VirtualBox:
+VMSVGA graphics; the desktop renders in software there, with or without 3D
+acceleration. If the desktop can't start, the session drops to a shell that
+says why.
 
 ## Testing
 
