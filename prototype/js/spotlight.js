@@ -32,7 +32,25 @@ export function initSpotlight() {
     catBtns.forEach((b) => b.classList.toggle("on", b.dataset.cat === cat));
     input.placeholder = cat ? `Search ${cats[cat][1]}` : "Spotlight Search";
     items = [];
+    results.classList.remove("grid-mode");
+    // Apps with an empty query: the launcher's icon grid.
+    if (cat === "apps" && !q) {
+      results.classList.add("grid-mode");
+      const apps = Object.entries(APPS).filter(([k]) => k !== "launcher");
+      items = apps.map(([k, a]) => ({ label: a.name, run: () => launch(k) }));
+      sel = -1;
+      results.replaceChildren(...apps.map(([k, a], i) => h("button.app-tile", { on: { click: () => run(i) } }, appIcon(k), h("span", a.name))));
+      [...results.children].forEach((c, i) => animate(c, [{ opacity: 0, transform: "scale(.6)" }, { opacity: 1, transform: "none" }], "bouncy", { delay: i * 16 }));
+      return;
+    }
     const add = (group, list) => list.length && items.push({ group }, ...list);
+    // Calculator: arithmetic in the field shows the answer as the top hit.
+    if (!cat && /^[\d\s.+\-*/()%^]+$/.test(q) && /\d\s*[-+*/%^]\s*[\d(]/.test(q)) {
+      try {
+        const v = Function(`"use strict"; return (${q.replace(/\^/g, "**")})`)();
+        if (Number.isFinite(v)) add("Calculator", [{ icon: h("span.ico.calc", sym("calculator")), label: `= ${+v.toPrecision(12)}`, sub: q, run: () => navigator.clipboard?.writeText(String(v)).catch(() => {}) }]);
+      } catch {}
+    }
     if (!cat || cat === "apps") add("Applications", Object.entries(APPS).filter(([k, a]) => k !== "launcher" && (!q || a.name.toLowerCase().includes(q))).slice(0, cat ? 20 : q ? 5 : 0)
       .map(([k, a]) => ({ icon: appIcon(k), label: a.name, sub: "Application", run: () => launch(k) })));
     if ((!cat && q) || cat === "files") add("Files", [...fs.walk()].filter(([n]) => n.kind !== "app" && (!q || n.name.toLowerCase().includes(q))).slice(0, 6)
@@ -44,7 +62,8 @@ export function initSpotlight() {
     results.replaceChildren(...items.map((it, i) => it.group ? h("div.group", it.group) :
       h("div.res", { className: `res ${i === sel ? "hl" : ""}`, on: { mouseenter: () => highlight(i), click: () => run(i) } }, it.icon, it.label, h("span.sub", it.sub))));
   }
-  function highlight(i) { sel = i; [...results.children].forEach((c, j) => c.classList.toggle("hl", j === i)); results.children[i]?.scrollIntoView({ block: "nearest" }); }
+  function highlight(i) {
+    if (results.classList.contains("grid-mode")) return; sel = i; [...results.children].forEach((c, j) => c.classList.toggle("hl", j === i)); results.children[i]?.scrollIntoView({ block: "nearest" }); }
   function run(i) { const it = items[i]; if (!it || it.group) return; close(); it.run(); }
 
   input.addEventListener("input", update);

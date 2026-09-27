@@ -253,6 +253,12 @@ export const places = {
     `<path d="M24 26l6 60a6 6 0 0 0 6 5.4h28a6 6 0 0 0 6-5.4l6-60z" fill="url(#tr-body)" fill-opacity=".72" stroke="#fff" stroke-width="1.2"/>
      ${[35, 43, 50, 57, 65].map((x) => `<path d="M${x} 32l${(x - 50) * 0.08} 52" stroke="#8a93a3" stroke-opacity=".38" stroke-width="2.4" stroke-linecap="round"/>`).join("")}
      <rect x="20" y="18" width="60" height="10" rx="5" fill="url(#tr-rim)" stroke="#fff" stroke-width="1"/>`),
+  "trash-full": plain(lin("tf-body", "#ffffff", "#d9dde4") + lin("tf-rim", "#f7f8fa", "#c8ccd4"),
+    `<path d="M26 22l14 -8 10 6 12 -9 10 10 -4 8z" fill="#f4f1ea" stroke="#d6d1c4" stroke-width="1"/><path d="M34 20l10-9 8 7" fill="#e9eef7" stroke="#c9d1de" stroke-width="1"/>
+     <path d="M24 26l6 60a6 6 0 0 0 6 5.4h28a6 6 0 0 0 6-5.4l6-60z" fill="url(#tf-body)" fill-opacity=".72" stroke="#fff" stroke-width="1.2"/>
+     <path d="M30 34h40l-3 18H33z" fill="#f2efe8" opacity=".9"/><path d="M34 52h32l-2 14H36z" fill="#e3e8f1" opacity=".85"/>
+     ${[35, 43, 50, 57, 65].map((x) => `<path d="M${x} 32l${(x - 50) * 0.08} 52" stroke="#8a93a3" stroke-opacity=".38" stroke-width="2.4" stroke-linecap="round"/>`).join("")}
+     <rect x="20" y="18" width="60" height="10" rx="5" fill="url(#tf-rim)" stroke="#fff" stroke-width="1"/>`),
   folder: plain(lin("fo-back", "#5ab8f2", "#3d9ee6") + lin("fo-front", "#9adcff", "#64c0f6"),
     `<path d="M10 24a6 6 0 0 1 6-6h20a5 5 0 0 1 3.8 1.8L44 25h40a6 6 0 0 1 6 6v8H10z" fill="url(#fo-back)"/>
      <path d="M8 36a6 6 0 0 1 6-6h72a6 6 0 0 1 6 6v42a6 6 0 0 1-6 6H14a6 6 0 0 1-6-6z" fill="url(#fo-front)"/>

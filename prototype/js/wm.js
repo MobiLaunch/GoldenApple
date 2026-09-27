@@ -6,10 +6,11 @@ const layer = () => document.getElementById("windows");
 export const windows = [];
 let z = 10;
 let cascade = 0;
+let winSeq = 0;
 
 export function createWindow(o) {
   const w = {
-    app: o.app, title: o.title ?? "", minimized: false, zoomed: false, onClose: o.onClose,
+    id: ++winSeq, app: o.app, title: o.title ?? "", minimized: false, zoomed: false, onClose: o.onClose,
     sidebarWidth: o.sidebar ? (o.sidebarWidth ?? 212) : 0,
   };
   const width = o.w ?? 900, height = o.h ?? 560;
@@ -88,41 +89,61 @@ async function close(w) {
   bus.emit("windows");
 }
 
-// Minimise: the window shrinks and slides into its Dock tile (a simplified genie).
+// Minimise: a genie. The window's outline funnels towards its Dock tile (a
+// clip-path polygon whose bottom edge pinches to the tile), then the whole
+// shape pours down into it. Minimised windows get their own tile in the Dock.
 function dockTarget(w) {
-  const tile = document.querySelector(`.dock-item[data-app="${w.app}"]`) ?? document.getElementById("dock");
+  const tile = document.querySelector(`.dock-item[data-win="${w.id}"]`) ?? document.querySelector(`.dock-item[data-app="${w.app}"]`) ?? document.getElementById("dock");
   return tile.getBoundingClientRect();
 }
 function genieFrames(w) {
   const r = w.el.getBoundingClientRect(), t = dockTarget(w);
-  const s = Math.min(t.width / r.width, t.height / r.height);
-  const dx = t.left + t.width / 2 - (r.left + r.width / 2), dy = t.top + t.height / 2 - (r.top + r.height / 2);
+  const cx = t.left + t.width / 2;
+  const tx = Math.max(6, Math.min(94, ((cx - r.left) / r.width) * 100));    // target x, % of window
+  const dx = cx - (r.left + (tx / 100) * r.width);
+  const dy = t.top + t.height * 0.55 - r.bottom;
+  const lerp = (a, b, k) => a + (b - a) * k;
+  const poly = (k1, k2) => {
+    // Six points: corners plus mid-sides, so the sides can bow into a funnel.
+    const top = [lerp(0, tx - 8, k2), lerp(100, tx + 8, k2)];
+    const mid = [lerp(0, tx - 7, Math.min(1, k1 * 0.5 + k2 * 0.5)), lerp(100, tx + 7, Math.min(1, k1 * 0.5 + k2 * 0.5))];
+    const bot = [lerp(0, tx - 3, k1), lerp(100, tx + 3, k1)];
+    return `polygon(${top[0]}% 0%, ${top[1]}% 0%, ${mid[1]}% 50%, ${bot[1]}% 100%, ${bot[0]}% 100%, ${mid[0]}% 50%)`;
+  };
+  w.el.style.transformOrigin = `${tx}% 100%`;
   return [
-    { transform: "none", opacity: 1, clipPath: "inset(0 round 22px)" },
-    { transform: `translate(${dx * 0.25}px, ${dy * 0.55}px) scale(${0.55}, ${0.62})`, opacity: 0.9, clipPath: "inset(0 12% 0 12% round 40px)", offset: 0.45 },
-    { transform: `translate(${dx}px, ${dy}px) scale(${s})`, opacity: 0, clipPath: "inset(0 30% 0 30% round 60px)" },
+    { clipPath: poly(0, 0), transform: "none", opacity: 1 },
+    { clipPath: poly(0.85, 0.15), transform: `translate(${dx * 0.3}px, ${dy * 0.12}px)`, opacity: 1, offset: 0.4 },
+    { clipPath: poly(1, 0.75), transform: `translate(${dx * 0.8}px, ${dy * 0.7}px) scale(.8, .45)`, opacity: 0.9, offset: 0.75 },
+    { clipPath: poly(1, 1), transform: `translate(${dx}px, ${dy}px) scale(.16, .02)`, opacity: 0 },
   ];
 }
 async function minimize(w) {
   if (w.minimized) return;
   w.minimized = true;
+  bus.emit("windows");                        // the Dock makes room for the window's tile
+  await new Promise(requestAnimationFrame);
   w.el.classList.add("animating");
-  await w.el.animate(genieFrames(w), { duration: 480, easing: "cubic-bezier(.45,0,.25,1)", fill: "forwards" }).finished;
+  await w.el.animate(genieFrames(w), { duration: 560, easing: "cubic-bezier(.5,0,.3,1)", fill: "forwards" }).finished;
   w.el.style.visibility = "hidden";
   w.el.getAnimations().forEach((a) => a.cancel());
+  w.el.style.transformOrigin = "";
   w.el.classList.remove("animating");
+  bus.emit("minimized", w);
   const next = activeWindow();
   if (next) focus(next); else bus.emit("focus", null);
-  bus.emit("windows");
 }
 async function restore(w) {
   if (!w.minimized) return focus(w);
+  const frames = genieFrames(w).reverse();   // measured while the tile still exists
   w.minimized = false;
   w.el.style.visibility = "";
   focus(w);
-  bus.emit("windows");
   w.el.classList.add("animating");
-  await w.el.animate(genieFrames(w).reverse(), { duration: 460, easing: "cubic-bezier(.2,.8,.3,1)" }).finished;
+  const a = w.el.animate(frames, { duration: 520, easing: "cubic-bezier(.2,.7,.3,1)" });
+  bus.emit("windows");
+  await a.finished;
+  w.el.style.transformOrigin = "";
   w.el.classList.remove("animating");
 }
 
@@ -140,14 +161,56 @@ function zoom(w) {
   animate(w.el, [from, to], "window");
 }
 
+// Edge tiling: drag a window to the left/right edge (halves) or the menu bar
+// (fill) and a glass preview shows where it will land.
+function snapZone(x, y) {
+  const dock = document.getElementById("dock").getBoundingClientRect();
+  const H = dock.top - 44, half = innerWidth / 2;
+  if (x <= 4) return { left: 6, top: 36, width: half - 9, height: H };
+  if (x >= innerWidth - 5) return { left: half + 3, top: 36, width: half - 9, height: H };
+  if (y <= 31) return { left: 6, top: 36, width: innerWidth - 12, height: H };
+  return null;
+}
+let preview = null;
+function showPreview(zone, w) {
+  if (!zone) { if (preview) { const p = preview; preview = null; p.animate([{ opacity: 1 }, { opacity: 0, transform: "scale(.96)" }], { duration: 160, fill: "forwards" }).finished.then(() => p.remove()); } return; }
+  const px = (r) => ({ left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px` });
+  if (!preview) {
+    preview = h("div#snap-preview.glass");
+    layer().append(preview);
+    preview.style.zIndex = String(+w.el.style.zIndex - 1);
+    const r = w.el.getBoundingClientRect();
+    Object.assign(preview.style, px(zone));
+    animate(preview, [{ ...px({ left: r.left, top: r.top, width: r.width, height: r.height }), opacity: 0 }, { ...px(zone), opacity: 1 }], "popover");
+  } else if (preview.dataset.z !== JSON.stringify(zone)) {
+    const from = { left: preview.style.left, top: preview.style.top, width: preview.style.width, height: preview.style.height };
+    Object.assign(preview.style, px(zone));
+    animate(preview, [from, px(zone)], "snappy");
+  }
+  preview.dataset.z = JSON.stringify(zone);
+}
+
 function startDrag(e, w) {
   e.preventDefault();
   const sx = e.clientX, sy = e.clientY, ox = w.el.offsetLeft, oy = w.el.offsetTop;
+  let zone = null;
   const move = (ev) => {
     w.el.style.left = `${ox + ev.clientX - sx}px`;
     w.el.style.top = `${clamp(oy + ev.clientY - sy, 30, innerHeight - 60)}px`;
+    zone = snapZone(ev.clientX, ev.clientY);
+    showPreview(zone, w);
   };
-  const up = () => { removeEventListener("mousemove", move); removeEventListener("mouseup", up); };
+  const up = () => {
+    removeEventListener("mousemove", move); removeEventListener("mouseup", up);
+    showPreview(null);
+    if (zone) {
+      const from = { left: w.el.style.left, top: w.el.style.top, width: w.el.style.width, height: w.el.style.height };
+      const to = { left: `${zone.left}px`, top: `${zone.top}px`, width: `${zone.width}px`, height: `${zone.height}px` };
+      if (!w.zoomed) w.saved = { ...from, left: `${ox}px`, top: `${oy}px` };
+      Object.assign(w.el.style, to);
+      animate(w.el, [from, to], "window");
+    }
+  };
   addEventListener("mousemove", move);
   addEventListener("mouseup", up);
 }

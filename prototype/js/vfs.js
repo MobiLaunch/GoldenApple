@@ -71,3 +71,33 @@ export function fmtDate(date) {
   if (now - date < 2 * 864e5 && now.getDate() - date.getDate() === 1) return `Yesterday at ${t}`;
   return `${date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} at ${t}`;
 }
+
+// ------------------------------------------------------------------ mutations
+export const TRASH = [];
+export function remove(path) {
+  const parent = resolve(parentOf(path));
+  const i = parent?.children?.findIndex((c) => c.name === path.split("/").pop()) ?? -1;
+  return i >= 0 ? parent.children.splice(i, 1)[0] : null;
+}
+export function uniqueName(dirPath, base) {
+  const dir = resolve(dirPath);
+  const taken = new Set((dir?.children ?? []).map((c) => c.name));
+  if (!taken.has(base)) return base;
+  const m = base.match(/^(.*?)(\.[^.]+)?$/);
+  for (let i = 2; ; i++) if (!taken.has(`${m[1]} ${i}${m[2] ?? ""}`)) return `${m[1]} ${i}${m[2] ?? ""}`;
+}
+export function moveTo(path, destDir) {
+  if (destDir === path || destDir.startsWith(path + "/") || parentOf(path) === destDir) return false;
+  const dest = resolve(destDir);
+  if (!dest?.children) return false;
+  const node = remove(path);
+  if (!node) return false;
+  node.name = uniqueName(destDir, node.name);
+  dest.children.push(node);
+  return true;
+}
+export function trash(path) {
+  const node = remove(path);
+  if (node) TRASH.push(node);
+  return node;
+}

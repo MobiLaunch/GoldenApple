@@ -50,15 +50,16 @@ export function initControlCenter() {
   const nowPlaying = h("div.cc-mod.cc-now.glass", npArt, npTitle, npSub,
     h("div.ctl", h("button", sym("backward")), playBtn, h("button", sym("forward"))));
 
+  const titled = (el, kind) => { el.querySelector(".t")?.addEventListener("click", () => showDetail(kind, el)); el.querySelector(".airplay")?.addEventListener("click", () => showDetail(kind, el)); return el; };
   function modules() {
     return [
-      wide("wifi", "wifi", "Wi-Fi", "Home", (e) => { if (!e.target.closest(".cc-dot")) showDetail(); }),
+      wide("wifi", "wifi", "Wi-Fi", "Home", (e) => { if (!e.target.closest(".cc-dot")) showDetail("wifi", e.currentTarget); }),
       nowPlaying,
-      circle("bluetooth", "bluetooth", "Bluetooth"), circle("airdrop", "broadcast", "Nearby Share"),
-      wide("focus", "moon", "Focus", null),
+      detailOn(circle("bluetooth", "bluetooth", "Bluetooth"), "bluetooth"), circle("airdrop", "broadcast", "Nearby Share"),
+      wide("focus", "moon", "Focus", null, (e) => { if (!e.target.closest(".cc-dot")) showDetail("focus", e.currentTarget); }),
       circle("stage", "stage", "Stage Manager"), circle(null, "mirror", "Screen Mirroring", () => {}),
-      slider("brightness", "Display", "sun", "sun-max"),
-      slider("volume", "Sound", "speaker", "speaker-wave", h("span.airplay", sym("broadcast"))),
+      titled(slider("brightness", "Display", "sun", "sun-max"), "display"),
+      titled(slider("volume", "Sound", "speaker", "speaker-wave", h("span.airplay", sym("airplay"))), "sound"),
       circle(null, "contrast", "Dark Mode", () => (state.theme = state.theme === "dark" ? "light" : "dark")),
       circle(null, "calculator", "Calculator", () => { close(); launch("calculator"); }),
       circle(null, "timer", "Timer", () => bus.emit("notify", { app: "calendar", title: "Timer", body: "5-minute timer started." })),
@@ -69,22 +70,55 @@ export function initControlCenter() {
   const darkBtn = () => root.querySelector('[title="Dark Mode"]');
   bus.on("state:theme", (t) => darkBtn()?.classList.toggle("on", t === "dark"));
 
-  function showDetail() {
-    const nets = ["Home", "Golden Gate Guest", "Presidio 5G", "Bay Bridge", "Crissy Field"].map((n, i) =>
-      h("div.net", { className: `net ${i === 0 ? "on" : ""}` }, h("span.ico", sym("wifi")), n, i ? h("span.lock", sym("lock")) : null));
-    const sw = h("button.switch", { className: `switch ${state.wifi ? "on" : ""}`, on: { click: () => { state.wifi = !state.wifi; sw.classList.toggle("on", state.wifi); } } });
-    const panel = h("div.cc-mod.cc-detail.glass", h("h3", "Wi-Fi", sw), h("div.header", { style: { fontSize: "12px", opacity: ".7", margin: "0 8px 4px" } }, "Known Network"), nets[0],
-      h("div.header", { style: { fontSize: "12px", opacity: ".7", margin: "10px 8px 4px" } }, "Other Networks"), ...nets.slice(1),
-      h("button.foot", { on: { click: () => { close(); launch("settings", "wifi"); } } }, "Wi-Fi Settings…"));
-    const first = root.firstChild.getBoundingClientRect();
+  // Detail panels: a module morphs into a full-height panel (spring from its own
+  // frame). Wi-Fi/Focus open from their labels, sliders from their titles, and
+  // circles on right-click or a long press.
+  const DETAILS = {
+    wifi: () => {
+      const nets = ["Home", "Golden Gate Guest", "Presidio 5G", "Bay Bridge", "Crissy Field"].map((n, i) =>
+        h("div.net", { className: `net ${i === 0 ? "on" : ""}` }, h("span.ico", sym("wifi")), n, i ? h("span.lock", sym("lock")) : null));
+      return ["Wi-Fi", "wifi", [section("Known Network"), nets[0], section("Other Networks"), ...nets.slice(1)], ["Wi-Fi Settings…", "wifi"]];
+    },
+    bluetooth: () => ["Bluetooth", "bluetooth", [section("Devices"),
+      ...[["Studio Headphones", "headphones", true], ["Magic Trackpad", "rectangle-fill", true], ["Keyboard", "keyboard", false], ["Pixel Buds", "headphones", false]]
+        .map(([n, icon, on]) => h("div.net", { className: `net ${on ? "on" : ""}`, on: { click: (e) => e.currentTarget.classList.toggle("on") } }, h("span.ico", sym(icon)), n, h("span.lock", on ? "Connected" : "")))], ["Bluetooth Settings…", "bluetooth"]],
+    focus: () => ["Focus", "focus", ["Do Not Disturb", "Personal", "Work", "Sleep"].map((n, i) => h("div.net", { className: `net ${state.focus && i === 0 ? "on" : ""}`, on: { click: (e) => { e.currentTarget.parentElement.querySelectorAll(".net").forEach((x) => x !== e.currentTarget && x.classList.remove("on")); e.currentTarget.classList.toggle("on"); state.focus = e.currentTarget.classList.contains("on"); } } },
+      h("span.ico", sym(["moon", "person", "briefcase", "bell"][i])), n)), ["Focus Settings…", "focus"]],
+    display: () => ["Display", null, [slider("brightness", "", "sun", "sun-max"), row("Dark Mode", "contrast", state.theme === "dark", (on) => (state.theme = on ? "dark" : "light")),
+      row("Night Shift", "sun", false, () => {}), row("Auto-Brightness", "sun-max", true, () => {})], ["Display Settings…", "displays"]],
+    sound: () => ["Sound", null, [slider("volume", "", "speaker", "speaker-wave"), section("Output"),
+      ...[["Built-in Speakers", "speaker-wave", true], ["Studio Headphones", "headphones", false], ["Living Room", "airplay", false]]
+        .map(([n, icon, on]) => h("div.net", { className: `net ${on ? "on" : ""}`, on: { click: (e) => { e.currentTarget.parentElement.querySelectorAll(".net").forEach((x) => x.classList.toggle("on", x === e.currentTarget)); } } }, h("span.ico", sym(icon)), n))], ["Sound Settings…", "sound"]],
+  };
+  const section = (t) => h("div.header", { style: { fontSize: "12px", opacity: ".7", margin: "10px 8px 4px" } }, t);
+  function row(label, icon, on, set) {
+    const sw = h("button.switch", { className: `switch ${on ? "on" : ""}`, on: { click: (e) => { e.stopPropagation(); sw.classList.toggle("on"); set(sw.classList.contains("on")); } } });
+    return h("div.net", h("span.ico", sym(icon)), label, h("span.lock", sw));
+  }
+
+  function showDetail(kind, fromEl) {
+    const [title, key, body, [footLabel, pane]] = DETAILS[kind]();
+    const sw = key ? h("button.switch", { className: `switch ${state[key] ? "on" : ""}`, on: { click: () => { state[key] = !state[key]; sw.classList.toggle("on", state[key]); } } }) : null;
+    const back = () => { root.replaceChildren(...modules()); darkBtn()?.classList.toggle("on", state.theme === "dark"); [...root.children].forEach((m, i) => animate(m, [{ opacity: 0, transform: "scale(.94)" }, { opacity: 1, transform: "none" }], "popover", { delay: i * 8 })); };
+    const panel = h("div.cc-mod.cc-detail.glass",
+      h("h3", h("button.cc-back", { title: "Back", on: { click: back } }, sym("chevron-left")), h("span", title), sw ?? h("span")),
+      ...body,
+      h("button.foot", { on: { click: () => { close(); launch("settings", pane); } } }, footLabel));
+    const first = (fromEl ?? root.firstChild).getBoundingClientRect();
     root.replaceChildren(panel);
     const r = panel.getBoundingClientRect();
-    // Morph: the panel starts at the Wi-Fi module's frame and springs to full size.
-    animate(panel, [{ transform: `translate(${first.left - r.left}px, ${first.top - r.top}px) scale(${first.width / r.width}, ${first.height / r.height})`, transformOrigin: "top left", borderRadius: "32px" }, { transform: "none", transformOrigin: "top left" }], "popover");
-    [...panel.children].forEach((c, i) => animate(c, [{ opacity: 0 }, { opacity: 1 }], "smooth", { delay: 80 + i * 18 }));
+    animate(panel, [{ transform: `translate(${first.left - r.left}px, ${first.top - r.top}px) scale(${first.width / r.width}, ${first.height / r.height})`, transformOrigin: "top left" }, { transform: "none", transformOrigin: "top left" }], "popover");
+    [...panel.children].forEach((c, i) => animate(c, [{ opacity: 0, transform: "translateY(-4px)" }, { opacity: 1, transform: "none" }], "smooth", { delay: 90 + i * 18 }));
     panel.addEventListener("mousedown", (e) => { if (e.target === panel) back(); });
-    const back = () => { root.replaceChildren(...modules()); darkBtn()?.classList.toggle("on", state.theme === "dark"); };
-    panel.querySelector("h3").addEventListener("dblclick", back);
+  }
+  // Long press / right-click opens a circle's details.
+  function detailOn(el, kind) {
+    let t = 0;
+    el.addEventListener("contextmenu", (e) => { e.preventDefault(); e.stopPropagation(); showDetail(kind, el); });
+    el.addEventListener("pointerdown", () => { t = setTimeout(() => { el.dataset.held = "1"; showDetail(kind, el); }, 480); });
+    ["pointerup", "pointerleave"].forEach((ev) => el.addEventListener(ev, () => clearTimeout(t)));
+    el.addEventListener("click", (e) => { if (el.dataset.held) { e.stopImmediatePropagation(); delete el.dataset.held; } }, true);
+    return el;
   }
 
   async function openCC(button) {

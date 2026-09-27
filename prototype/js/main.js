@@ -8,6 +8,8 @@ import { initSpotlight } from "./spotlight.js";
 import { initNotifications } from "./notifications.js";
 import { initGlass } from "./glass.js";
 import { openMenu } from "./menus.js";
+import { boot, lock } from "./lock.js";
+import "./mission.js";
 import { launch, APPS } from "./apps.js";
 import { activeWindow, windows } from "./wm.js";
 import "./apps/files.js";
@@ -92,7 +94,24 @@ const deskIcons = document.getElementById("desktop-icons");
   deskIcons.append(el);
 });
 const wallpaper = document.getElementById("wallpaper");
-wallpaper.addEventListener("mousedown", () => deskIcons.querySelectorAll(".sel").forEach((x) => x.classList.remove("sel")));
+// Rubber-band selection on the desktop.
+wallpaper.addEventListener("mousedown", (e) => {
+  deskIcons.querySelectorAll(".sel").forEach((x) => x.classList.remove("sel"));
+  if (e.button !== 0) return;
+  const sx = e.clientX, sy = e.clientY;
+  const band = h("div#rubber");
+  const move = (ev) => {
+    if (!band.isConnected) { if (Math.hypot(ev.clientX - sx, ev.clientY - sy) < 4) return; document.getElementById("desktop").insertBefore(band, document.getElementById("windows")); }
+    const r = { left: Math.min(sx, ev.clientX), top: Math.min(sy, ev.clientY), right: Math.max(sx, ev.clientX), bottom: Math.max(sy, ev.clientY) };
+    Object.assign(band.style, { left: `${r.left}px`, top: `${r.top}px`, width: `${r.right - r.left}px`, height: `${r.bottom - r.top}px` });
+    deskIcons.querySelectorAll(".desk-icon").forEach((ic) => {
+      const b = ic.querySelector("img").getBoundingClientRect();
+      ic.classList.toggle("sel", b.left < r.right && b.right > r.left && b.top < r.bottom && b.bottom > r.top);
+    });
+  };
+  const up = () => { removeEventListener("mousemove", move); removeEventListener("mouseup", up); band.remove(); };
+  addEventListener("mousemove", move); addEventListener("mouseup", up);
+});
 document.getElementById("desktop").addEventListener("contextmenu", (e) => {
   e.preventDefault();
   if (e.target !== wallpaper && e.target.id !== "windows") return;
@@ -109,12 +128,16 @@ bus.on("screenshot", async () => {
   await f.animate([{ opacity: 0 }, { opacity: 0.85, offset: 0.15 }, { opacity: 0 }], { duration: 420, easing: "ease-out" }).finished;
   bus.emit("notify", { app: "photos", title: "Screenshot", body: `Saved “Screenshot ${new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}.png” to Desktop.` });
 });
+// Sleep: the display fades to black; waking lands on the lock screen.
 bus.on("sleep", async () => {
   const veil = h("div", { style: { position: "absolute", inset: 0, background: "#000", zIndex: 99999 } });
   document.getElementById("desktop").append(veil);
   await animate(veil, [{ opacity: 0 }, { opacity: 1 }], "smooth", { keep: true });
-  veil.addEventListener("click", async () => { await animate(veil, [{ opacity: 1 }, { opacity: 0 }], "smooth", { keep: true }); veil.remove(); }, { once: true });
+  const wake = async () => { removeEventListener("keydown", wake); lock(); await animate(veil, [{ opacity: 1 }, { opacity: 0 }], "smooth", { keep: true }); veil.remove(); };
+  veil.addEventListener("click", wake, { once: true });
+  addEventListener("keydown", wake);
 });
+bus.on("lock", () => lock());
 
 // ------------------------------------------------------------------ app switcher (⌘/Alt + Tab)
 const switcher = h("div#switcher", { hidden: true });
@@ -156,6 +179,10 @@ addEventListener("keyup", (e) => { if (["Meta", "Control", "Alt"].includes(e.key
 
 // ------------------------------------------------------------------ boot
 (async () => {
+  // A plain URL plays the whole experience: boot, lock screen, desktop.
+  const intro = [...params.keys()].length === 0 || params.has("boot");
+  if (intro) { await boot(); await lock({ fromBoot: true }); }
+  else if (params.has("lock")) await lock();
   const open = (params.get("open") ?? "files").split(",").filter(Boolean);
   for (const id of open) { launch(id); await wait(60); }
   if (params.get("cc")) cc.open(document.querySelector("#menubar .mb-item.icon:nth-child(4)"));

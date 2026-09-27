@@ -78,7 +78,7 @@ const appNames = {
   launcher: ["view-app-grid", "start-here"],
   weather: ["weather", "org.gnome.Weather"],
 };
-const placeNames = { trash: ["user-trash"], folder: ["folder"], document: ["text-x-generic"], audio: ["audio-x-generic"], image: ["image-x-generic"], disk: ["drive-harddisk"] };
+const placeNames = { trash: ["user-trash"], "trash-full": ["user-trash-full"], folder: ["folder"], document: ["text-x-generic"], audio: ["audio-x-generic"], image: ["image-x-generic"], disk: ["drive-harddisk"] };
 const symbolNames = {
   wifi: "network-wireless-symbolic", bluetooth: "bluetooth-active-symbolic", moon: "weather-clear-night-symbolic",
   search: "system-search-symbolic", "speaker-wave": "audio-volume-high-symbolic", speaker: "audio-volume-low-symbolic",
@@ -109,7 +109,7 @@ for (const [key, svg] of Object.entries(apps)) {
   else writeFileSync(join(root, dir, `${canon}.svg`), svg);
   aliases.forEach((a) => link(`${canon}.${ext}`, join(root, dir, `${a}.${ext}`)));
 }
-const placeDir = { trash: "places", folder: "places", document: "mimetypes", audio: "mimetypes", image: "mimetypes", disk: "devices" };
+const placeDir = { trash: "places", "trash-full": "places", folder: "places", document: "mimetypes", audio: "mimetypes", image: "mimetypes", disk: "devices" };
 for (const [key, svg] of Object.entries(places)) {
   if (svg == null) copyFileSync(P.pngs[key], join(root, "512x512", placeDir[key], `${placeNames[key][0]}.png`));
   else writeFileSync(join(root, "scalable", placeDir[key], `${placeNames[key][0]}.svg`), svg);

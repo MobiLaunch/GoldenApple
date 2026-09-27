@@ -89,6 +89,7 @@ export function menusFor(id) {
     Window: [
       { label: "Minimize", kbd: `${K}M`, action: () => w()?.minimize() }, { label: "Zoom", action: () => w()?.zoom() },
       { label: "Tile Window to Left of Screen", action: () => tile(w(), "left") }, { label: "Tile Window to Right of Screen", action: () => tile(w(), "right") }, "-",
+      { label: "Mission Control", kbd: "⌃↑", action: () => bus.emit("mission") },
       { label: "Bring All to Front" },
     ],
     Help: [{ label: `${a.name} Help` }, { label: "Keyboard Shortcuts", action: () => bus.emit("notify", { app: "settings", title: "Keyboard Shortcuts", body: "⌘Space Spotlight · ⌘Tab switch apps · ⌘W close · ⌘M minimize · ⌘, Settings" }) }],

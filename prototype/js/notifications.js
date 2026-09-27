@@ -1,5 +1,5 @@
 // Notification banners and the widgets panel (opened from the clock).
-import { h, appIcon, bus, animate } from "./util.js";
+import { h, sym, appIcon, bus, animate } from "./util.js";
 import { APPS } from "./apps.js";
 
 export function initNotifications() {
@@ -7,18 +7,36 @@ export function initNotifications() {
   const banners = h("div#banners");
   desk.append(banners);
 
+  const history = [];
   bus.on("notify", ({ app = "settings", title, body }) => {
-    const b = h("div.banner.glass-regular", appIcon(app), h("div", { style: { flex: 1, minWidth: 0 } },
+    history.unshift({ app, title, body, at: new Date() });
+    history.length = Math.min(history.length, 6);
+    const close = h("button.b-close.glass-regular", { title: "Clear" }, sym("xmark"));
+    const b = h("div.banner.glass-regular", close, appIcon(app), h("div", { style: { flex: 1, minWidth: 0 } },
       h("div.t", title, h("small", "now")), h("div.b", body)));
     b.title = APPS[app]?.name ?? "";
     banners.prepend(b);
     animate(b, [{ opacity: 0, transform: "translateX(110%)" }, { opacity: 1, transform: "none" }], "snappy");
-    const dismiss = async () => {
-      await b.animate([{ opacity: 1, transform: "none" }, { opacity: 0, transform: "translateX(60%)" }], { duration: 220, easing: "ease-in", fill: "forwards" }).finished;
-      b.remove();
+    let gone = false;
+    const dismiss = async (dx = 60) => {
+      if (gone) return; gone = true;
+      await b.animate([{ opacity: 1, transform: getComputedStyle(b).transform === "none" ? "none" : getComputedStyle(b).transform }, { opacity: 0, transform: `translateX(${Math.max(dx, 60) + 260}px)` }], { duration: 240, easing: "ease-in", fill: "forwards" }).finished;
+      b.animate([{ height: `${b.offsetHeight}px`, marginBottom: "0px" }, { height: "0px", marginBottom: "-8px", paddingTop: 0, paddingBottom: 0 }], { duration: 200, fill: "forwards" }).finished.then(() => b.remove());
     };
-    b.addEventListener("click", dismiss);
-    setTimeout(dismiss, 5200);
+    close.addEventListener("click", (e) => { e.stopPropagation(); dismiss(); });
+    // Swipe right to dismiss; a short swipe springs back.
+    b.addEventListener("pointerdown", (e) => {
+      if (e.target.closest(".b-close")) return;
+      const sx = e.clientX; let dx = 0;
+      b.setPointerCapture(e.pointerId);
+      b.onpointermove = (ev) => { dx = Math.max(-20, ev.clientX - sx); b.style.transform = `translateX(${dx < 0 ? dx / 3 : dx}px)`; b.style.opacity = String(1 - Math.max(0, dx) / 400); };
+      b.onpointerup = () => {
+        b.onpointermove = b.onpointerup = null;
+        if (dx > 90) dismiss(dx);
+        else { const from = b.style.transform; b.style.transform = ""; b.style.opacity = ""; animate(b, [{ transform: from }, { transform: "none" }], "bouncy"); if (Math.abs(dx) < 4) { bus.emit("launch", { id: app }); dismiss(); } }
+      };
+    });
+    setTimeout(() => { if (!b.matches(":hover")) dismiss(); else b.addEventListener("mouseleave", () => setTimeout(dismiss, 1200), { once: true }); }, 5200);
   });
 
   // Widgets
@@ -47,6 +65,14 @@ export function initNotifications() {
   function show(b) {
     bus.emit("overlays:close");
     open = true; btn = b; b?.classList.add("active");
+    widgets.querySelector(".nc-stack")?.remove();
+    if (history.length) {
+      // Notification Center: the latest notifications as a stack above the widgets.
+      const stack = h("div.nc-stack", { className: `nc-stack ${history.length > 1 ? "stacked" : ""}`, on: { click: (e) => e.currentTarget.classList.toggle("expanded") } },
+        ...history.map((n, i) => h("div.banner.glass-regular", { style: { "--i": i } }, appIcon(n.app), h("div", { style: { flex: 1, minWidth: 0 } },
+          h("div.t", n.title, h("small", n.at.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }))), h("div.b", n.body)))));
+      widgets.prepend(stack);
+    }
     widgets.hidden = false;
     [...widgets.children].forEach((w, i) => animate(w, [{ opacity: 0, transform: "translateX(60px) scale(.94)" }, { opacity: 1, transform: "none" }], "popover", { delay: i * 40 }));
   }

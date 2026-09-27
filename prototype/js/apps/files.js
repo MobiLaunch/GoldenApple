@@ -1,7 +1,7 @@
 // Files: the Finder-equivalent. Icon / list / column / gallery views, history,
 // floating glass sidebar, search, context menus and the icon-size slider.
-import { h, sym, appIcon, bus, animate } from "../util.js";
-import { createWindow, pill, tb, div } from "../wm.js";
+import { h, sym, appIcon, bus, animate, genArt } from "../util.js";
+import { createWindow, activeWindow, pill, tb, div } from "../wm.js";
 import { registerApp, launch } from "../apps.js";
 import { openMenu } from "../menus.js";
 import * as fs from "../vfs.js";
@@ -13,10 +13,16 @@ const SIDEBAR = [
   { title: "Locations", rows: [["Cloud Drive", "cloud", `${HOME}/Documents`], [fs.USER, "house", HOME], ["System HD", "drive", "/"], ["Network", "globe", "@network"]] },
   { title: "Tags", rows: [["Red", null, "@tag", "#ff453a"], ["Orange", null, "@tag", "#ff9f0a"], ["Blue", null, "@tag", "#0a84ff"], ["Green", null, "@tag", "#30d158"]] },
 ];
+const QL_TEXT = [
+  "Golden Gate brings Liquid Glass to Linux: translucent materials with a specular rim, spring motion everywhere, and a shell that feels at home on a laptop.",
+  "This document is a preview rendered by Quick Look. Press Space again or Escape to close it, or use the arrow keys to preview the next item.",
+  "Materials, motion and type come from one set of design tokens, so the shell, the apps and the compositor always agree.",
+];
+const qlPhoto = (seed) => genArt(seed, { w: 800, h: 560 });
 const TAG_COLORS = ["#ff453a", "#ff9f0a", "#ffd60a", "#30d158", "#0a84ff", "#bf5af2", "#8e8e93"];
 
 function openFiles(_id, arg) {
-  const st = { path: typeof arg === "string" && arg.startsWith("/") ? arg : "/Applications", view: "icons", back: [], fwd: [], sel: new Set(), query: "", iconSize: 64 };
+  const st = { path: typeof arg === "string" && /^[/@]/.test(arg) ? arg : "/Applications", view: "icons", back: [], fwd: [], sel: new Set(), query: "", iconSize: 64 };
   const sidebar = h("div");
   const title = h("div.title");
   const views = ["icons", "list", "columns", "gallery"];
@@ -59,11 +65,12 @@ function openFiles(_id, arg) {
   function entries() {
     if (st.query) return [...fs.walk()].filter(([n]) => n.name.toLowerCase().includes(st.query)).map(([n, p]) => ({ ...n, path: p })).slice(0, 60);
     if (st.path === "@recents") return [...fs.walk()].filter(([n]) => n.kind !== "folder" && n.kind !== "app").sort((a, b) => b[0].date - a[0].date).slice(0, 16).map(([n, p]) => ({ ...n, path: p }));
+    if (st.path === "@trash") return fs.TRASH.map((c) => ({ ...c, path: `@trash/${c.name}` }));
     if (st.path.startsWith("@")) return [];
     const node = fs.resolve(st.path);
     return (node?.children ?? []).map((c) => ({ ...c, path: fs.join(st.path, c.name) })).sort((a, b) => a.name.localeCompare(b.name));
   }
-  const labelFor = (p) => ({ "@recents": "Recents", "@shared": "Shared", "@network": "Network", "@tag": "Tagged" }[p] ?? (p === "/" ? "System HD" : p.split("/").at(-1)));
+  const labelFor = (p) => ({ "@recents": "Recents", "@shared": "Shared", "@network": "Network", "@tag": "Tagged", "@trash": "Trash" }[p] ?? (p === "/" ? "System HD" : p.split("/").at(-1)));
 
   function open(n) {
     if (n.kind === "folder") navigate(n.path);
@@ -77,7 +84,7 @@ function openFiles(_id, arg) {
     // sidebar
     sidebar.replaceChildren(...SIDEBAR.flatMap((s) => [
       s.title ? h("div.sec", s.title) : null,
-      ...s.rows.map(([label, icon, path, color]) => h("div.side-row", { className: `side-row ${path === st.path && !st.query ? "sel" : ""}`, on: { click: () => navigate(path) } },
+      ...s.rows.map(([label, icon, path, color]) => h("div.side-row", { className: `side-row ${path === st.path && !st.query ? "sel" : ""}`, "data-path": path.startsWith("@") ? null : path, on: { click: () => navigate(path) } },
         icon ? sym(icon) : h("i", { style: { width: "10px", height: "10px", margin: "0 3px", borderRadius: "50%", background: color } }), label)),
     ]).filter(Boolean));
     // toolbar
@@ -111,6 +118,7 @@ function openFiles(_id, arg) {
       body.querySelectorAll("[data-path]").forEach((x) => st.sel.has(x.dataset.path) && x.classList.add("sel"));
       info.textContent = info.textContent.replace(/, \d+ selected|(?=, 62)/, st.sel.size ? `, ${st.sel.size} selected` : "");
       e.stopPropagation();
+      if (e.button === 0 && !n.path.startsWith("/Applications/")) armDrag(e, el, n);
     });
     el.addEventListener("dblclick", () => open(n));
     el.addEventListener("contextmenu", (e) => { e.preventDefault(); e.stopPropagation(); itemMenu(e, n); });
@@ -185,9 +193,9 @@ function openFiles(_id, arg) {
       { label: "Open", action: () => open(n) },
       { label: "Open With", submenu: [{ label: "Photos", icon: appIcon("photos"), action: () => launch("photos") }, { label: "Notes", icon: appIcon("notes"), action: () => launch("notes") }, "-", { label: "App Store…" }] },
       "-",
-      { label: "Move to Trash", icon: "trash", action: () => bus.emit("notify", { app: "files", title: "Moved to Trash", body: n.name }) },
+      { label: "Move to Trash", icon: "trash", kbd: "⌘⌫", action: () => trashItems([n.path]) },
       "-",
-      { label: "Get Info", kbd: "⌘I" }, { label: "Rename" }, { label: `Compress “${n.name}”` }, { label: "Duplicate" }, { label: "Make Alias" }, { label: "Quick Look", kbd: "Space" },
+      { label: "Get Info", kbd: "⌘I" }, { label: "Rename", action: () => rename(n.path) }, { label: `Compress “${n.name}”` }, { label: "Duplicate" }, { label: "Make Alias" }, { label: "Quick Look", kbd: "Space", action: () => quickLook(n.path) },
       "-",
       { label: "Copy" }, { label: "Share…", icon: "share" },
       "-",
@@ -199,7 +207,7 @@ function openFiles(_id, arg) {
   }
   function backgroundMenu(e) {
     openMenu([
-      { label: "New Folder" }, "-", { label: "Get Info" }, "-",
+      { label: "New Folder", kbd: "⇧⌘N", action: newFolder }, "-", { label: "Get Info" }, "-",
       { label: "View", submenu: views.map((v) => ({ label: `as ${v[0].toUpperCase() + v.slice(1)}`, checked: st.view === v, action: () => setView(v) })) },
       { label: "Use Groups" }, { label: "Sort By", submenu: [{ label: "Name", checked: true }, { label: "Kind" }, { label: "Date Last Opened" }, { label: "Date Added" }, { label: "Date Modified" }, { label: "Size" }] },
       { label: "Show View Options", kbd: "⌘J" },
@@ -208,7 +216,7 @@ function openFiles(_id, arg) {
   const at = (e) => { const r = e.currentTarget.getBoundingClientRect(); return { x: r.left, y: r.bottom + 6 }; };
   function groupMenu(e) { openMenu([{ label: "None", checked: true }, "-", { label: "Name" }, { label: "Kind" }, { label: "Application" }, { label: "Date Last Opened" }, { label: "Date Added" }, { label: "Size" }, { label: "Tags" }], at(e)); }
   function tagMenu(e) { openMenu([{ tags: TAG_COLORS }, "-", { label: "Show All Tags…" }], at(e)); }
-  function actionMenu(e) { openMenu([{ label: "New Folder" }, { label: "Show View Options" }, "-", { label: "Show Path Bar", checked: true }, { label: "Show Status Bar", checked: true }, { label: "Show Preview" }], at(e)); }
+  function actionMenu(e) { openMenu([{ label: "New Folder", action: newFolder }, { label: "Show View Options" }, "-", { label: "Show Path Bar", checked: true }, { label: "Show Status Bar", checked: true }, { label: "Show Preview" }], at(e)); }
 
   body.addEventListener("contextmenu", (e) => { e.preventDefault(); backgroundMenu(e); });
   body.addEventListener("mousedown", () => { st.sel.clear(); body.querySelectorAll(".sel").forEach((x) => x.classList.remove("sel")); });
@@ -223,6 +231,158 @@ function openFiles(_id, arg) {
   win.el.addEventListener("keydown", (e) => {
     if ((e.metaKey || e.ctrlKey) && "1234".includes(e.key)) { setView(views[+e.key - 1]); e.preventDefault(); }
   });
+
+  // ------------------------------------------------------------------ file operations
+  const cellFor = (path) => body.querySelector(`[data-path="${CSS.escape(path)}"]`);
+  const nodeAt = (path) => ({ ...fs.resolve(path), path });
+  const writable = () => !st.path.startsWith("@") && !st.query && st.path !== "/Applications";
+
+  async function trashItems(paths) {
+    paths = paths.filter((p) => !p.startsWith("/Applications/"));
+    if (!paths.length) return;
+    // Items shrink towards the Trash in the Dock ("poof").
+    const tile = document.querySelector('.dock-item[data-app="trash"]')?.getBoundingClientRect();
+    await Promise.all(paths.map((p) => {
+      const el = cellFor(p); if (!el || !tile) return null;
+      const r = el.getBoundingClientRect();
+      return el.animate([{ transform: "none", opacity: 1 }, { transform: `translate(${tile.left - r.left}px, ${tile.top - r.top}px) scale(.2)`, opacity: 0 }], { duration: 480, easing: "cubic-bezier(.5,0,.2,1)", fill: "forwards" }).finished;
+    }));
+    paths.forEach((p) => fs.trash(p));
+    st.sel.clear();
+    render();
+    bus.emit("trash");
+  }
+
+  function newFolder() {
+    if (!writable()) return;
+    const name = fs.uniqueName(st.path, "untitled folder");
+    fs.resolve(st.path).children.push({ name, kind: "folder", date: new Date(), children: [] });
+    st.sel = new Set([fs.join(st.path, name)]);
+    if (st.view !== "icons" && st.view !== "list") st.view = "icons";
+    render();
+    const el = cellFor(fs.join(st.path, name));
+    if (el) animate(el, [{ transform: "scale(.5)", opacity: 0 }, { transform: "none", opacity: 1 }], "bouncy");
+    rename(fs.join(st.path, name));
+  }
+
+  // Inline rename: the name becomes a field with the stem selected.
+  function rename(path) {
+    const el = cellFor(path); if (!el || path.startsWith("/Applications/")) return;
+    const label = el.querySelector(".name, .t"); if (!label) return;
+    const node = fs.resolve(path);
+    const input = h("input.rename", { value: node.name, spellcheck: false });
+    label.replaceWith(input);
+    input.focus();
+    const dot = node.kind !== "folder" ? node.name.lastIndexOf(".") : -1;
+    input.setSelectionRange(0, dot > 0 ? dot : node.name.length);
+    let done = false;
+    const finish = (commit) => {
+      if (done) return; done = true;
+      const v = input.value.trim().replace(/\//g, ":");
+      if (commit && v && v !== node.name) {
+        node.name = fs.uniqueName(fs.parentOf(path), v);
+        st.sel = new Set([fs.join(fs.parentOf(path), node.name)]);
+      }
+      render();
+    };
+    input.addEventListener("keydown", (e) => { e.stopPropagation(); if (e.key === "Enter") finish(true); if (e.key === "Escape") finish(false); });
+    input.addEventListener("blur", () => finish(true));
+    input.addEventListener("mousedown", (e) => e.stopPropagation());
+  }
+
+  // Quick Look: a glass preview that zooms out of the item's icon.
+  let ql = null;
+  function quickLook(path) {
+    if (ql) return closeQL();
+    const n = nodeAt(path);
+    const from = cellFor(path)?.querySelector("img")?.getBoundingClientRect();
+    let preview;
+    if (n.kind === "image") preview = h("div.ql-image", { style: { backgroundImage: `url("${qlPhoto(n.name)}")` } });
+    else if (n.kind === "doc") preview = h("div.ql-doc", h("h1", n.name.replace(/\.[^.]+$/, "")), ...QL_TEXT.map((t) => h("p", t)));
+    else preview = h("div.ql-icon", appIcon(fs.iconFor(n)), h("b", n.name), h("small", n.kind === "folder" ? `${n.children?.length ?? 0} items` : `${fs.kindLabel(n)} · ${fs.fmtSize(n)}`));
+    const panel = h("div.ql.glass-regular", h("div.ql-bar", h("button.ql-close", { title: "Close", on: { click: () => closeQL() } }, sym("xmark")), h("span", n.name), h("button.btn.ql-open", { on: { click: () => { closeQL(); open(n); } } }, `Open with ${n.kind === "image" ? "Photos" : n.kind === "audio" ? "Music" : n.kind === "app" ? n.name : "Notes"}`)), preview);
+    document.getElementById("desktop").append(panel);
+    const to = panel.getBoundingClientRect();
+    const t = from ? `translate(${from.left + from.width / 2 - (to.left + to.width / 2)}px, ${from.top + from.height / 2 - (to.top + to.height / 2)}px) scale(${from.width / to.width})` : "scale(.8)";
+    animate(panel, [{ transform: t, opacity: 0.2 }, { transform: "none", opacity: 1 }], "bouncy");
+    ql = { panel, t };
+    panel.addEventListener("mousedown", (e) => e.stopPropagation());
+  }
+  async function closeQL() {
+    if (!ql) return;
+    const { panel, t } = ql; ql = null;
+    await panel.animate([{ transform: "none", opacity: 1 }, { transform: t, opacity: 0 }], { duration: 260, easing: "cubic-bezier(.4,0,.6,1)", fill: "forwards" }).finished;
+    panel.remove();
+  }
+  addEventListener("mousedown", () => ql && closeQL());
+
+  // Keyboard: arrows move the selection, Space previews, Return renames,
+  // ⌘⌫ trashes, ⌘↓ opens, ⌘↑ goes to the enclosing folder, ⇧⌘N makes a folder.
+  function onKey(e) {
+    if (activeWindow() !== win || e.target.matches("input, textarea") || document.getElementById("spotlight")?.hidden === false) return;
+    const mod = e.metaKey || e.ctrlKey;
+    const items = [...body.querySelectorAll("[data-path]")];
+    const cur = items.findIndex((x) => st.sel.has(x.dataset.path));
+    const pick = (i) => { const el = items[Math.max(0, Math.min(items.length - 1, i))]; if (!el) return; st.sel = new Set([el.dataset.path]); items.forEach((x) => x.classList.toggle("sel", x === el)); el.scrollIntoView({ block: "nearest" }); if (ql) { closeQL(); setTimeout(() => quickLook(el.dataset.path), 280); } };
+    const cols = st.view === "icons" ? Math.max(1, Math.round(body.querySelector(".grid")?.getBoundingClientRect().width / (items[0]?.getBoundingClientRect().width || 1))) : 1;
+    if (e.key === " " ) { if (cur >= 0) quickLook(items[cur].dataset.path); else if (ql) closeQL(); }
+    else if (e.key === "Escape" && ql) closeQL();
+    else if (mod && e.key === "Backspace") trashItems([...st.sel]);
+    else if (mod && e.shiftKey && e.key.toLowerCase() === "n") newFolder();
+    else if (mod && e.key === "ArrowDown" && cur >= 0) open(nodeAt(items[cur].dataset.path));
+    else if (mod && e.key === "ArrowUp" && !st.path.startsWith("@")) navigate(fs.parentOf(st.path));
+    else if (e.key === "Enter" && cur >= 0) rename(items[cur].dataset.path);
+    else if (e.key === "ArrowRight" && st.view === "icons") pick(cur + 1);
+    else if (e.key === "ArrowLeft" && st.view === "icons") pick(cur - 1);
+    else if (e.key === "ArrowDown") pick(cur < 0 ? 0 : cur + cols);
+    else if (e.key === "ArrowUp") pick(cur - cols);
+    else return;
+    e.preventDefault(); e.stopPropagation();
+  }
+  addEventListener("keydown", onKey);
+  win.onClose = () => removeEventListener("keydown", onKey);
+
+  // Drag and drop: onto folders, sidebar places, or the Trash in the Dock.
+  function armDrag(e, el, n) {
+    const sx = e.clientX, sy = e.clientY;
+    let ghost = null, target = null;
+    const paths = st.sel.has(n.path) ? [...st.sel] : [n.path];
+    const dropTargets = () => [
+      ...[...body.querySelectorAll("[data-path]")].filter((x) => fs.resolve(x.dataset.path)?.children && !paths.includes(x.dataset.path)).map((x) => [x, x.dataset.path]),
+      ...[...sidebar.querySelectorAll(".side-row[data-path]")].map((x) => [x, x.dataset.path]),
+      ...[...document.querySelectorAll('.dock-item[data-app="trash"]')].map((x) => [x, "@trash"]),
+    ];
+    const move = (ev) => {
+      if (!ghost) {
+        if (Math.hypot(ev.clientX - sx, ev.clientY - sy) < 5) return;
+        const img = el.querySelector("img").cloneNode();
+        ghost = h("div.drag-ghost", img, paths.length > 1 ? h("span.badge", String(paths.length)) : null);
+        document.body.append(ghost);
+        animate(ghost, [{ transform: "scale(1)" }, { transform: "scale(.9)" }], "snappy");
+      }
+      ghost.style.left = `${ev.clientX - 32}px`; ghost.style.top = `${ev.clientY - 32}px`;
+      const hit = document.elementsFromPoint(ev.clientX, ev.clientY);
+      const t = dropTargets().find(([x]) => hit.includes(x));
+      if (target?.[0] !== t?.[0]) { target?.[0].classList.remove("drop-hot"); t?.[0].classList.add("drop-hot"); target = t; }
+    };
+    const up = async () => {
+      removeEventListener("mousemove", move); removeEventListener("mouseup", up);
+      if (!ghost) return;
+      target?.[0].classList.remove("drop-hot");
+      if (target) {
+        ghost.remove();
+        if (target[1] === "@trash") return trashItems(paths);
+        paths.forEach((p) => fs.moveTo(p, target[1]));
+        st.sel.clear(); render();
+        return;
+      }
+      // No target: the ghost springs back to where it came from.
+      const r = el.getBoundingClientRect(), g = ghost.getBoundingClientRect();
+      await ghost.animate([{ transform: "scale(.9)" }, { transform: `translate(${r.left + r.width / 2 - (g.left + g.width / 2)}px, ${r.top + 20 - (g.top + g.height / 2)}px) scale(1)`, opacity: 0.2 }], { duration: 380, easing: getComputedStyle(document.documentElement).getPropertyValue("--spring-snappy").trim(), fill: "forwards" }).finished;
+      ghost.remove();
+    };
+    addEventListener("mousemove", move); addEventListener("mouseup", up);
+  }
   render();
   return win;
 }

@@ -17,7 +17,7 @@ export function initMenubar(el, { toggleCC, toggleWidgets, openSpotlight }) {
     { label: "Recent Items", submenu: [{ header: "Applications" }, { label: "Files", icon: "folder", action: () => launch("files") }, { label: "Photos", icon: "photo", action: () => launch("photos") }, { label: "Terminal", icon: "apps", action: () => launch("terminal") }] }, "-",
     { label: "Force Quit…", kbd: "⌥⌘⎋" }, "-",
     { label: "Sleep", action: () => bus.emit("sleep") }, { label: "Restart…" }, { label: "Shut Down…" }, "-",
-    { label: "Lock Screen", kbd: "⌃⌘Q", action: () => bus.emit("sleep") }, { label: "Log Out golden…", kbd: "⇧⌘Q" },
+    { label: "Lock Screen", kbd: "⌃⌘Q", action: () => bus.emit("lock") }, { label: "Log Out golden…", kbd: "⇧⌘Q" },
   ];
 
   function openFor(item, items) {
