@@ -216,12 +216,13 @@
 
 /* ---------------------------------------------------------------- sidebar and tabs */
 /* The sidebar floats inside the window as a glass panel, as in Safari and the
-   Golden Gate apps. (#sidebar-main is the box, sidebar-main the element in it.) */
-#sidebar-main, sidebar-main {
+   Golden Gate apps. The box is #sidebar-container in current Firefox
+   (#sidebar-main before); sidebar-main is the element inside it. */
+#sidebar-container, #sidebar-main, sidebar-main {
   --sidebar-background-color: transparent !important;
   background: transparent !important;
 }
-#sidebar-main {
+#sidebar-container, #sidebar-main {
   margin: 8px 0 8px 8px !important;
   padding-top: 4px !important;
   border-radius: 16px !important;

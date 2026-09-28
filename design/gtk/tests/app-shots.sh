@@ -53,7 +53,7 @@ declare -A CMD=(
   [fractal]="fractal"
   [ghostty]="ghostty"
   [mail]="geary"
-  [browser]='env GG_FIREFOX_DEBUG=1 firefox --new-instance --profile $HOME/.firefox-shot file://$HOME/Documents/Welcome.html'
+  [browser]='firefox --new-instance --profile $HOME/.firefox-shot file://$HOME/Documents/Welcome.html'
 )
 GTK3_SHOTS=(mail browser)
 # Slow starters: seconds to let them settle before the shot.
