@@ -53,7 +53,7 @@ declare -A CMD=(
   [fractal]="fractal"
   [ghostty]="ghostty"
   [mail]="geary"
-  [browser]='firefox --new-instance --profile $HOME/.firefox-shot file://$HOME/Documents/Welcome.html'
+  [browser]='env GG_FIREFOX_DEBUG=1 firefox --new-instance --profile $HOME/.firefox-shot file://$HOME/Documents/Welcome.html'
 )
 GTK3_SHOTS=(mail browser)
 # Slow starters: seconds to let them settle before the shot.
@@ -154,6 +154,8 @@ shoot() { # shoot NAME SCHEME
   local x1=$(( x + w + 40 < W ? x + w + 40 : W )) y1=$(( y + h + 40 < H ? y + h + 40 : H ))
   grim -g "$x0,$y0 $((x1 - x0))x$((y1 - y0))" "$OUT/$name-$scheme.png"
   say "$name ($scheme): ${w}x${h}"
+  # Firefox prints its window layout (GG_FIREFOX_DEBUG) for checking the theme's selectors.
+  sed -n '/GG-DEBUG begin/,/GG-DEBUG end/p' "$OUT/$name-$scheme.log" | head -120
   swaymsg '[pid=".*"] kill' >/dev/null 2>&1 || true
   kill $pid 2>/dev/null || true; wait $pid 2>/dev/null || true
   pkill -f gnome-software 2>/dev/null || true   # it keeps a service running

@@ -101,6 +101,15 @@
   box-shadow: none !important;
 }
 #nav-bar-customization-target { align-items: center !important; }
+/* Safari's order whatever the saved toolbar layout (Firefox reshuffles it when
+   it moves to vertical tabs): sidebar, back, forward, the address field, then
+   everything else. */
+#nav-bar-customization-target > * { order: 10; }
+#nav-bar-customization-target > #sidebar-button { order: 1; }
+#nav-bar-customization-target > #back-button { order: 2; }
+#nav-bar-customization-target > #forward-button { order: 3; }
+#nav-bar-customization-target > #stop-reload-button { order: 4; }
+#nav-bar-customization-target > #urlbar-container { order: 5; }
 #nav-bar .toolbarbutton-1 {
   padding: 0 1px !important;
 }
