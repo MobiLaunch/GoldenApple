@@ -36,6 +36,11 @@ FloatingWindow {
     property alias toolbarRight: rightRow.data
     property alias sidebar: sidebarArea.data
     property alias toolbarCenter: centerSlot.data
+    // Buttons at the sidebar's right edge (new folder, sidebar toggle in Notes);
+    // next to the traffic lights while the sidebar is hidden.
+    property alias toolbarSidebar: sideRow.data
+    // Free-form toolbar items, placed by the app (column-aligned toolbars).
+    property alias toolbarItems: freeSlot.data
     // Drawn across the whole window under the sidebar and toolbar (Weather's sky).
     property alias backdrop: backdropArea.data
     // Above everything: menus and popovers go here.
@@ -132,6 +137,16 @@ FloatingWindow {
                 id: centerSlot
                 x: win.contentX + (parent.width - win.contentX - width) / 2
                 width: childrenRect.width; height: parent.height
+            }
+            Row {
+                id: sideRow
+                x: win.sidebarWidth > 0 ? win.inset + win.sidebarWidth - width - 8 : lights.x + lights.width + 16
+                anchors.verticalCenter: parent.verticalCenter
+                spacing: 8
+            }
+            Item {
+                id: freeSlot
+                anchors.fill: parent
             }
             Row {
                 id: rightRow

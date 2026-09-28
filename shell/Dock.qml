@@ -12,7 +12,7 @@ PanelWindow {
     id: dock
     property var pinned: [
         "org.gnome.Nautilus", "firefox", "org.gnome.Geary", "org.gnome.Fractal", "org.gnome.Maps",
-        "org.gnome.Loupe", "org.goldengate.Music", "org.gnome.Calendar", "org.gnome.TextEditor",
+        "org.gnome.Loupe", "org.goldengate.Music", "org.gnome.Calendar", "org.goldengate.Notes",
         "org.goldengate.Weather", "org.gnome.Software", "org.gnome.Settings", "com.mitchellh.ghostty"
     ]
     property real baseSize: Theme.sizeDockIcon
