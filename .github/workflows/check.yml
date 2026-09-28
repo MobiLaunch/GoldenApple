@@ -34,11 +34,14 @@ jobs:
       - name: Compile and render the Liquid Glass shader
         if: always()
         run: npm run test:shader -- compositor/liquid-glass/liquid-glass.frag out/ui/liquid-glass.png
-      - if: always()
+      - name: Upload UI screenshots
+        if: always()
+        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: ui-screenshots
           path: out/ui
+          retention-days: 3
 
 
   native-controls:
