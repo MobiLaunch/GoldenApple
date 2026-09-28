@@ -197,6 +197,9 @@ PanelWindow {
             onActivated: {
                 Theme.dark = !Theme.dark
                 cc.run("gsettings set org.gnome.desktop.interface color-scheme " + (Theme.dark ? "prefer-dark" : "default"))
+                // A choice made here ends Auto (Setup Assistant's day/night switching).
+                Quickshell.execDetached(["sh", "-c", "d=\"${XDG_CONFIG_HOME:-$HOME/.config}/golden-gate\"; mkdir -p \"$d\" && printf '{ \"mode\": \"%s\" }\\n' \"$1\" > \"$d/appearance.json\"",
+                                         "sh", Theme.dark ? "dark" : "light"])
             }
         }
         Circle { order: 10; icon: "calculator"; onActivated: { cc.open = false; cc.openApp("org.goldengate.Calculator", "gnome-calculator") } }

@@ -27,6 +27,29 @@ ShellRoot {
         stdout: SplitParser { onRead: (line) => followScheme(line) }
     }
 
+    // Appearance "Auto" (chosen in Setup Assistant): light by day, dark from 7 pm.
+    FileView {
+        id: appearance
+        path: (Quickshell.env("XDG_CONFIG_HOME") || Quickshell.env("HOME") + "/.config") + "/golden-gate/appearance.json"
+        printErrors: false
+        watchChanges: true
+        onFileChanged: reload()
+        onLoaded: autoLook.apply()
+    }
+    Timer {
+        id: autoLook
+        interval: 60000; running: true; repeat: true
+        onTriggered: apply()
+        function apply() {
+            let mode = ""
+            try { mode = JSON.parse(appearance.text()).mode } catch (e) { return }
+            if (mode !== "auto") return
+            const h = new Date().getHours(), dark = h < 7 || h >= 19
+            if (dark !== Theme.dark)
+                Quickshell.execDetached(["gsettings", "set", "org.gnome.desktop.interface", "color-scheme", dark ? "prefer-dark" : "default"])
+        }
+    }
+
     Spotlight { id: spotlightPanel; launchers: root.launchers }
     // For tests: launch an app as if from the middle of the Dock, and stand in for
     // Hyprland's "window opened" where there is no Hyprland (qs ipc call launch …).

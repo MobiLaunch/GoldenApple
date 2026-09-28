@@ -38,7 +38,7 @@ extract /loader "$work/loader" || true
 cmdline="$(grep -rhoE 'archisobasedir=[^ ]+ archisosearchuuid=[^ ]+' "$work/syslinux" "$work/loader" 2>/dev/null | head -n 1 || true)"
 [[ -s $work/vmlinuz && -s $work/initramfs.img ]] || { echo "no kernel/initramfs under /arch/boot/x86_64 in $ISO"; exit 1; }
 [[ -n $cmdline ]] || { echo "could not find the archiso kernel parameters in $ISO"; exit 1; }
-cmdline+=" console=tty0 console=ttyS0,115200 systemd.journald.forward_to_console=1"
+cmdline+=" console=tty0 console=ttyS0,115200 systemd.journald.forward_to_console=1 gg.nosetup"   # the desktop, not Setup Assistant
 say "kernel parameters: $cmdline"
 
 # ---------------------------------------------------------------- QEMU

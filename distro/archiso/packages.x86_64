@@ -44,6 +44,7 @@ keyd
 grim
 slurp
 wl-clipboard
+libnotify
 xdg-user-dirs
 
 # Apps (themed via gtk.css + the Golden Gate icon theme)

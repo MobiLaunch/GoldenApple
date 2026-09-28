@@ -103,6 +103,8 @@ place "$REPO/design/dist/hyprland-motion.conf" "$CONF/hypr/golden-gate/motion.co
 place "$REPO/compositor/hyprland/hypridle.conf" "$CONF/hypr/hypridle.conf"
 place "$REPO/compositor/hyprland/report-config-errors.sh" "$CONF/hypr/golden-gate/report-config-errors.sh"
 chmod +x "$CONF/hypr/golden-gate/report-config-errors.sh"
+# Keyboard layout, written by Setup Assistant; empty until then.
+[[ -e "$CONF/hypr/golden-gate/input.conf" ]] || { mkdir -p "$CONF/hypr/golden-gate"; echo "# Written by Setup Assistant (keyboard layout)." > "$CONF/hypr/golden-gate/input.conf"; }
 place "$REPO/compositor/hyprland/machine-conf.sh" "$CONF/hypr/golden-gate/machine-conf.sh"
 chmod +x "$CONF/hypr/golden-gate/machine-conf.sh"
 if [[ $MODE == system ]]; then
@@ -125,6 +127,11 @@ rm -rf "$DATA/golden-gate/apps"
 mkdir -p "$DATA/golden-gate" "$DATA/applications"
 cp -a "$REPO/apps" "$DATA/golden-gate/apps"
 rm -rf "$DATA/golden-gate/apps/desktop"
+# gg-diagnostics: a crash and diagnostics report you can read and send.
+if [[ $MODE == system ]]; then BIN="$ROOT/usr/local/bin"; else BIN="$HOME/.local/bin"; fi
+mkdir -p "$BIN"
+printf '#!/bin/sh\nexec bash "%s/setup/diagnostics.sh" "$@"\n' "$APPS_RUN" > "$BIN/gg-diagnostics"
+chmod +x "$BIN/gg-diagnostics"
 for f in "$REPO"/apps/desktop/*.desktop; do
   sed "s#@APPS@#$APPS_RUN#g" "$f" > "$DATA/applications/$(basename "$f")"
 done
