@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Music
+Comment=Play your music and internet radio
+Icon=org.gnome.Music
+Exec=qs -n -p @APPS@/music.qml
+StartupWMClass=org.goldengate.Music
+Categories=AudioVideo;Audio;Player;
+Keywords=songs;albums;playlist;radio;
+StartupNotify=false

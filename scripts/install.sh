@@ -95,7 +95,8 @@ fi
 # 2. Compositor
 say "Hyprland config → $CONF/hypr"
 BG_ABS="${BG_PATH/#\~/$HOME}"
-sed "s#__GG_WALLPAPER__#$BG_ABS/tide.png#" "$REPO/compositor/hyprland/hyprland.conf" > "$REPO/.hyprland.tmp"
+if [[ $MODE == system ]]; then APPS_RUN=/usr/share/golden-gate/apps; else APPS_RUN="$DATA/golden-gate/apps"; fi
+sed -e "s#__GG_WALLPAPER__#$BG_ABS/tide.png#" -e "s#__GG_APPS__#$APPS_RUN#" "$REPO/compositor/hyprland/hyprland.conf" > "$REPO/.hyprland.tmp"
 place "$REPO/.hyprland.tmp" "$CONF/hypr/hyprland.conf"
 rm -f "$REPO/.hyprland.tmp"
 place "$REPO/design/dist/hyprland-motion.conf" "$CONF/hypr/golden-gate/motion.conf"
@@ -119,7 +120,6 @@ mkdir -p "$CONF/quickshell"
 cp -a "$REPO/shell" "$CONF/quickshell/golden-gate"
 
 # Golden Gate's own apps (Calculator, …): Quickshell configs with desktop entries.
-if [[ $MODE == system ]]; then APPS_RUN=/usr/share/golden-gate/apps; else APPS_RUN="$DATA/golden-gate/apps"; fi
 say "apps → $DATA/golden-gate/apps"
 rm -rf "$DATA/golden-gate/apps"
 mkdir -p "$DATA/golden-gate" "$DATA/applications"

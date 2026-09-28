@@ -216,7 +216,10 @@ for (const syms of [join(here, "..", "shell", "assets", "symbols"), join(here, "
   for (const [key, svg] of Object.entries(symbols)) {
     const sized = svg.replace(/^<svg/, '<svg width="48" height="48"').replace(/\s(width|height)="\d+"(?=[^>]*width="48")/g, "");
     // Pre-tinted variants: the shell never needs a shader just to colour a glyph.
-    for (const [tone, color] of Object.entries({ "": "#ffffff", "@accent": "#0a84ff", "@dark": "#1d1d1f", "@gray": "#8e8e93" }))
+    const tones = { "": "#ffffff", "@accent": "#0a84ff", "@dark": "#1d1d1f", "@gray": "#8e8e93" };
+    // Music's red, for the apps only.
+    if (syms.includes(join("apps", "lib"))) tones["@red"] = "#fa2d48";
+    for (const [tone, color] of Object.entries(tones))
       writeFileSync(join(syms, `${key}${tone}.svg`), sized.replace(/currentColor/g, color));
   }
 }
