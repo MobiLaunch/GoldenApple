@@ -43,7 +43,6 @@ xdg-user-dirs
 # Apps (themed via gtk.css + the Golden Gate icon theme)
 nautilus
 gnome-control-center
-gnome-calculator
 gnome-clocks
 gnome-text-editor
 gnome-calendar

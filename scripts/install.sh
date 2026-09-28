@@ -118,6 +118,17 @@ rm -rf "$CONF/quickshell/golden-gate"
 mkdir -p "$CONF/quickshell"
 cp -a "$REPO/shell" "$CONF/quickshell/golden-gate"
 
+# Golden Gate's own apps (Calculator, …): Quickshell configs with desktop entries.
+if [[ $MODE == system ]]; then APPS_RUN=/usr/share/golden-gate/apps; else APPS_RUN="$DATA/golden-gate/apps"; fi
+say "apps → $DATA/golden-gate/apps"
+rm -rf "$DATA/golden-gate/apps"
+mkdir -p "$DATA/golden-gate" "$DATA/applications"
+cp -a "$REPO/apps" "$DATA/golden-gate/apps"
+rm -rf "$DATA/golden-gate/apps/desktop"
+for f in "$REPO"/apps/desktop/*.desktop; do
+  sed "s#@APPS@#$APPS_RUN#g" "$f" > "$DATA/applications/$(basename "$f")"
+done
+
 # Terminal: its own title bar and Terminal.app's look
 place "$REPO/themes/ghostty/config" "$CONF/ghostty/config"
 for f in "$REPO"/themes/ghostty/themes/*; do place "$f" "$CONF/ghostty/themes/$(basename "$f")"; done

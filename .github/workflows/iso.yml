@@ -11,6 +11,7 @@ on:
       - compositor/**
       - '!compositor/liquid-glass/**'    # the shader isn't in the image yet (plugin pending)
       - shell/**
+      - apps/**
       - themes/**
       - icons/GoldenGate/**              # the icon theme and GTK theme are installed into the image
       - design/dist/**

@@ -209,14 +209,16 @@ ${withPng ? ["apps", "places", "mimetypes", "devices"].map((c) => `\n[512x512/${
 
 // ---------------------------------------------------------------- Quickshell assets
 // White symbols for the shell (tinted at runtime with MultiEffect when needed).
-const shellSyms = join(here, "..", "shell", "assets", "symbols");
-rmSync(shellSyms, { recursive: true, force: true });
-mkdirSync(shellSyms, { recursive: true });
-for (const [key, svg] of Object.entries(symbols)) {
-  const sized = svg.replace(/^<svg/, '<svg width="48" height="48"').replace(/\s(width|height)="\d+"(?=[^>]*width="48")/g, "");
-  // Pre-tinted variants: the shell never needs a shader just to colour a glyph.
-  for (const [tone, color] of Object.entries({ "": "#ffffff", "@accent": "#0a84ff", "@dark": "#1d1d1f", "@gray": "#8e8e93" }))
-    writeFileSync(join(shellSyms, `${key}${tone}.svg`), sized.replace(/currentColor/g, color));
+// The Golden Gate apps (apps/lib) use the same set.
+for (const syms of [join(here, "..", "shell", "assets", "symbols"), join(here, "..", "apps", "lib", "assets", "symbols")]) {
+  rmSync(syms, { recursive: true, force: true });
+  mkdirSync(syms, { recursive: true });
+  for (const [key, svg] of Object.entries(symbols)) {
+    const sized = svg.replace(/^<svg/, '<svg width="48" height="48"').replace(/\s(width|height)="\d+"(?=[^>]*width="48")/g, "");
+    // Pre-tinted variants: the shell never needs a shader just to colour a glyph.
+    for (const [tone, color] of Object.entries({ "": "#ffffff", "@accent": "#0a84ff", "@dark": "#1d1d1f", "@gray": "#8e8e93" }))
+      writeFileSync(join(syms, `${key}${tone}.svg`), sized.replace(/currentColor/g, color));
+  }
 }
 // The Dock draws today's date on the Calendar icon, so it needs the icon without one.
 // A custom Calendar icon is used as is.

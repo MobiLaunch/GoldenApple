@@ -151,11 +151,12 @@ function material(name, m) {
   q.push("}", "");
   writeFileSync(join(out, "Theme.qml"), q.join("\n"));
   writeFileSync(join(out, "qmldir"), "singleton Theme 1.0 Theme.qml\n");
-  // The Quickshell shell imports the theme as a local module.
-  const shellTheme = join(here, "..", "shell", "theme");
-  mkdirSync(shellTheme, { recursive: true });
-  writeFileSync(join(shellTheme, "Theme.qml"), q.join("\n"));
-  writeFileSync(join(shellTheme, "qmldir"), "singleton Theme 1.0 Theme.qml\n");
+  // The Quickshell shell and the Golden Gate apps import the theme as a local module.
+  for (const dir of [join(here, "..", "shell", "theme"), join(here, "..", "apps", "lib", "theme")]) {
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, "Theme.qml"), q.join("\n"));
+    writeFileSync(join(dir, "qmldir"), "singleton Theme 1.0 Theme.qml\n");
+  }
 }
 
 // QML wants #AARRGGBB.

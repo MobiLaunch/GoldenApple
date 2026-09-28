@@ -1,4 +1,4 @@
 #!/bin/sh
-# Calculator is dark in both appearances, as on the Mac. /usr/local/bin comes
-# first in PATH, so the Dock, Spotlight and Control Center all start it this way.
-ADW_DEBUG_COLOR_SCHEME=prefer-dark exec /usr/bin/gnome-calculator "$@"
+# The image ships Golden Gate's own Calculator instead of GNOME's; anything that
+# still asks for gnome-calculator gets it.
+exec qs -n -p /usr/share/golden-gate/apps/calculator.qml

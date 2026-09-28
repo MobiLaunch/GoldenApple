@@ -42,6 +42,11 @@ PanelWindow {
     PwObjectTracker { objects: [cc.sink] }
 
     function run(cmd) { Hyprland.dispatch("exec " + cmd) }
+    // Opens an app by its desktop entry, or runs a fallback command without one.
+    function openApp(id, fallback) {
+        const e = DesktopEntries.byId(id)
+        if (e) e.execute(); else run(fallback)
+    }
     function refresh() { wifiState.running = true; ssidProc.running = true; brightProc.running = true }
 
     Process {
@@ -194,7 +199,7 @@ PanelWindow {
                 cc.run("gsettings set org.gnome.desktop.interface color-scheme " + (Theme.dark ? "prefer-dark" : "default"))
             }
         }
-        Circle { order: 10; icon: "calculator"; onActivated: { cc.open = false; cc.run("gnome-calculator") } }
+        Circle { order: 10; icon: "calculator"; onActivated: { cc.open = false; cc.openApp("org.goldengate.Calculator", "gnome-calculator") } }
         Circle { order: 11; icon: "timer"; onActivated: { cc.open = false; cc.run("gnome-clocks") } }
         Circle { order: 12; icon: "screenshot"; onActivated: { cc.open = false; cc.run("sh -c 'sleep 0.3; grim -g \"$(slurp)\" ~/Pictures/Screenshot-$(date +%F-%H%M%S).png'") } }
     }

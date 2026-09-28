@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Calculator
+Comment=Perform calculations
+Icon=accessories-calculator
+Exec=qs -n -p @APPS@/calculator.qml
+StartupWMClass=org.goldengate.Calculator
+Categories=Utility;Calculator;
+Keywords=calculation;arithmetic;math;
+StartupNotify=false

@@ -33,7 +33,10 @@ PanelWindow {
     property rect to: Qt.rect(0, 0, 0, 0)
     property string state_: "idle"           // idle | opening | handing-over | cancelling
     // Last window size per app, so the card aims for the right frame next time.
-    property var sizes: ({})
+    // Golden Gate's own apps start out known: their windows have a fixed size.
+    property var sizes: ({ "org.goldengate.Calculator": { w: 229, h: 405 } })
+    // Apps whose window isn't the usual window colour (Calculator is always dark).
+    readonly property var windowColors: ({ "org.goldengate.Calculator": "#24292d" })
 
     // Where the window will appear: Hyprland centres new windows in the space the
     // menu bar and Dock leave free.
@@ -142,7 +145,7 @@ PanelWindow {
             id: surface
             anchors.fill: parent
             radius: Math.min(width, height) * 0.2237 * (1 - card.grow) + Theme.radiusWindow * card.grow
-            color: Theme.windowBg
+            color: launcher.windowColors[launcher.entry?.id] ?? Theme.windowBg
             opacity: card.ease(0.06, 0.4, card.grow)
             border { width: 1; color: Theme.dark ? "#26ffffff" : "#1a000000" }
         }

@@ -38,6 +38,7 @@ and built entirely from original artwork.
 | **Linux shell**: menu bar, Control Center, Dock, Spotlight, notifications, app switcher, lock screen | `shell/` | Quickshell (QML). Runs in a headless Wayland session (see [Testing](#testing)); not yet run on hardware |
 | **Compositor**: blur, squircle corners, springs, key bindings | `compositor/` | Hyprland config done; refraction shader written, plugin pending |
 | **App theme**: every GNOME app restyled to macOS metrics (traffic lights, floating sidebar, glass toolbar pills, capsule buttons, Finder tables, Mac menus), light and dark; GTK 3 apps too | `design/gtk/`, `design/dist/gtk*.css` | Done for GTK 4 and GTK 3; per-app passes for Files, Calculator, Settings, Calendar, Terminal |
+| **Golden Gate apps**: the apps GNOME can't be restyled into, rebuilt in QML to the macOS 27 layouts: Calculator (Weather, Music, Photos, Notes and Maps next) | `apps/` | Calculator done and in the image, replacing GNOME Calculator |
 | **Theming**: fonts, ⌘ key layer, login screen, boot splash, terminal | `themes/` | Done: fontconfig, keyd, SDDM theme, Plymouth theme, Ghostty |
 | **Distro**: bootable live ISO | `distro/archiso/` | Build script done; first ISO build pending (see below) |
 
@@ -117,6 +118,12 @@ libadwaita as the image, and fails on any CSS the toolkit rejects. It found thre
 bugs in the image: `GTK_THEME` in the session disabled libadwaita's own stylesheet,
 GTK 4.20+ drew our stroked symbolic icons as solid blobs (they are now outlined at
 build time), and GNOME Settings refused to start outside GNOME.
+
+The apps in `apps/` are Quickshell configs, one entry file each, sharing the
+window frame in `apps/lib` (traffic lights, 52 px toolbar, glass toolbar buttons,
+a floating sidebar that Hyprland blurs). Run one on its own with
+`qs -p apps/calculator.qml`; the installer copies them to
+`/usr/share/golden-gate/apps` with a desktop entry each.
 
 `shell/tests/screenshot.sh` starts Sway with the pixman renderer and Mesa's
 llvmpipe, loads the shell, drives it over IPC and captures the screenshots
