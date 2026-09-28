@@ -13,8 +13,38 @@ Item {
     z: 100
     property var items: []
     property real menuWidth: 220
+    property int selected: -1
+    property Item returnFocus: null
+    function available(i) { return i >= 0 && i < items.length && !items[i].separator && items[i].enabled !== false }
+    function select(i) {
+        selected = i
+        const row = entries.itemAt(i)
+        if (row) flick.contentY = Math.max(0, Math.min(Math.max(0, flick.contentHeight - flick.height),
+            row.y < flick.contentY ? row.y : row.y + row.height > flick.contentY + flick.height ? row.y + row.height - flick.height : flick.contentY))
+    }
+    function move(step) {
+        for (let n = 1; n <= items.length; n++) {
+            const i = ((selected < 0 ? (step > 0 ? -1 : 0) : selected) + step * n + items.length) % items.length
+            if (available(i)) { select(i); return }
+        }
+    }
+    function activate() {
+        if (!available(selected)) return
+        const action = items[selected].action
+        close()
+        if (action) action()
+    }
+    Keys.onDownPressed: move(1)
+    Keys.onUpPressed: move(-1)
+    Keys.onReturnPressed: activate()
+    Keys.onEnterPressed: activate()
+    Keys.onSpacePressed: activate()
+    Keys.onTabPressed: close()
+    Keys.onBacktabPressed: close()
 
     function popup(from, x, y, list, scrollTo) {
+        returnFocus = from
+        selected = -1
         items = list
         const p = from.mapToItem(menu, x, y)
         box.x = Math.max(6, Math.min(p.x, width - box.width - 6))
@@ -27,12 +57,13 @@ Item {
         visible = true
         appear.restart()
         forceActiveFocus()
+        if (available(scrollTo)) select(scrollTo); else move(1)
     }
-    function close() { visible = false }
+    function close() { visible = false; if (returnFocus && returnFocus.visible && returnFocus.enabled) returnFocus.forceActiveFocus() }
     ParallelAnimation {
         id: appear
         NumberAnimation { target: box; property: "opacity"; from: 0; to: 1; duration: 120 }
-        NumberAnimation { target: box; property: "scale"; from: 0.94; to: 1; duration: 220; easing.type: Easing.OutBack; easing.overshoot: 1.2 }
+        NumberAnimation { target: box; property: "scale"; from: 0.94; to: 1; duration: Theme.reduceMotion ? 0 : 220; easing.type: Easing.OutBack; easing.overshoot: 1.2 }
     }
     Keys.onEscapePressed: close()
 
@@ -44,9 +75,9 @@ Item {
     }
     Rectangle {
         id: box
-        width: menu.menuWidth
+        width: Math.max(0, Math.min(menu.menuWidth, menu.width - 12))
         implicitHeight: col.height + 10
-        height: Math.min(implicitHeight, menu.height - 12)
+        height: Math.max(0, Math.min(implicitHeight, menu.height - 12))
         transformOrigin: Item.Top
         radius: Theme.radiusMenu
         color: Theme.dark ? "#f5323236" : "#faf6f6f8"
@@ -63,10 +94,12 @@ Item {
             id: col
             width: flick.width
             Repeater {
+                id: entries
                 model: menu.items
                 delegate: Item {
                     id: entry
                     required property var modelData
+                    required property int index
                     readonly property bool sep: !!modelData.separator
                     readonly property bool on: !sep && modelData.enabled !== false
                     width: col.width
@@ -81,21 +114,21 @@ Item {
                         anchors.fill: parent
                         radius: Theme.radiusMenuItem - 2
                         color: Theme.accent
-                        visible: entry.on && hover.hovered
+                        visible: entry.on && menu.selected === entry.index
                     }
                     Text {
                         visible: !entry.sep
                         x: 12; anchors.verticalCenter: parent.verticalCenter
                         width: parent.width - 24; elide: Text.ElideRight
                         text: entry.modelData.text ?? ""
-                        color: entry.on && hover.hovered ? "#ffffff" : entry.on ? Theme.label : Theme.tertiaryLabel
+                        color: entry.on && menu.selected === entry.index ? "#ffffff" : entry.on ? Theme.label : Theme.tertiaryLabel
                         font { family: Theme.fontUi; pixelSize: 13 }
                     }
-                    HoverHandler { id: hover }
+                    HoverHandler { id: hover; onHoveredChanged: if (hovered && entry.on) menu.select(entry.index) }
                     MouseArea {
                         anchors.fill: parent
                         enabled: entry.on
-                        onClicked: { menu.close(); entry.modelData.action?.() }
+                        onClicked: { menu.selected = entry.index; menu.activate() }
                     }
                 }
             }
@@ -103,3 +136,4 @@ Item {
         }
     }
 }
+

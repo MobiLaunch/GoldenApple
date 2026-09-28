@@ -56,6 +56,16 @@ await scenario("spotlight search and calculator", "?quiet&open=", async (p) => {
   await p.keyboard.press("Escape"); await wait(p);
   await p.click('.dock-item[data-app="launcher"]'); await wait(p, 800);
 });
+await scenario("launcher keyboard selection", "?quiet&open=", async (p) => {
+  await p.click('.dock-item[data-app="launcher"]'); await wait(p);
+  const selected = p.locator('#spotlight .app-tile.hl');
+  if (await selected.count() !== 1) throw new Error("no initial keyboard selection");
+  const first = await selected.textContent();
+  await p.keyboard.press("ArrowDown");
+  if (await selected.textContent() === first) throw new Error("selection did not move");
+  await p.keyboard.press("Enter"); await wait(p);
+  if (await p.locator('.win').count() !== 1) throw new Error("selected app did not open");
+});
 await scenario("menus and context menus", "?quiet&open=files", async (p) => {
   await p.click("#menubar .mb-item >> nth=2"); await wait(p);
   await p.hover("#menubar .mb-item >> nth=3"); await wait(p);
@@ -111,3 +121,4 @@ await browser.close();
 server.close();
 if (failures.length) { console.error(`\n${failures.length} scenario(s) failed`); process.exit(1); }
 console.log("\nall scenarios passed");
+

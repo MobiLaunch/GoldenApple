@@ -5,6 +5,14 @@ import "theme"
 
 Item {
     id: button
+    activeFocusOnTab: true
+    Accessible.role: Accessible.Button
+    Accessible.name: button.text || button.symbol
+    Accessible.onPressAction: if (button.enabled) { button.clicked() }
+    Keys.onSpacePressed: (event) => { if (!event.isAutoRepeat && button.enabled) { button.clicked() } }
+    Keys.onReturnPressed: if (button.enabled) { button.clicked() }
+    Keys.onEnterPressed: if (button.enabled) { button.clicked() }
+    FocusRing {}
     property string symbol
     property string text
     property bool checked: false
@@ -68,5 +76,6 @@ Item {
         font { family: Theme.fontUi; pixelSize: 13; weight: Font.Medium }
     }
     HoverHandler { id: hover }
-    TapHandler { id: tap; onTapped: button.clicked() }
+    TapHandler { id: tap; enabled: button.enabled; onTapped: { button.forceActiveFocus(); button.clicked() } }
 }
+

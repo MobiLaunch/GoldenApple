@@ -10,6 +10,24 @@ Item {
     property int current: 0
     property Item menuParent: null      // the window's overlay (AppWindow.overlay)
     signal picked(int index)
+    activeFocusOnTab: true
+    opacity: enabled ? 1 : 0.45
+    Accessible.role: Accessible.ComboBox
+    Accessible.name: options[current] ?? ""
+    Accessible.onPressAction: openMenu()
+    Keys.onSpacePressed: openMenu()
+    Keys.onReturnPressed: openMenu()
+    Keys.onEnterPressed: openMenu()
+    Keys.onDownPressed: openMenu()
+    FocusRing {}
+    function openMenu() {
+        if (!enabled || !menuParent || !options.length) return
+        forceActiveFocus()
+        menu.popup(pop, 0, pop.height + 4, options.map((o, i) => ({
+            text: (i === current ? "✓  " : "     ") + o,
+            action: () => { pop.current = i; pop.picked(i) }
+        })), current)
+    }
     implicitWidth: Math.max(90, label.implicitWidth + 44); implicitHeight: 24
 
     Glass {
@@ -37,13 +55,8 @@ Item {
         id: ma
         anchors.fill: parent
         hoverEnabled: true
-        onClicked: {
-            if (!pop.menuParent) return
-            menu.popup(pop, 0, pop.height + 4, pop.options.map((o, i) => ({
-                text: (i === pop.current ? "✓  " : "     ") + o,
-                action: () => { pop.current = i; pop.picked(i) }
-            })), pop.current)
-        }
+        onClicked: pop.openMenu()
     }
     PopupMenu { id: menu; parent: pop.menuParent ?? pop; menuWidth: Math.max(220, pop.width) }
 }
+

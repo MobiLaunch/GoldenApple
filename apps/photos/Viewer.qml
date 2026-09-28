@@ -2,6 +2,7 @@
 // click-to-play for videos, and an info panel (name, size, dimensions, place).
 import Quickshell
 import QtQuick
+import "../lib/paths.js" as Paths
 import QtMultimedia
 import "../lib"
 import "../lib/theme"
@@ -16,14 +17,14 @@ Item {
     signal next()
 
     readonly property bool isVideo: item?.kind === "video"
-    onItemChanged: { video.stop(); if (isVideo) video.play() }
+    onItemChanged: { video.stop(); if (isVideo && visible) Qt.callLater(() => { if (viewer.isVideo && viewer.visible) video.play() }) }
     onVisibleChanged: if (!visible) video.stop()
 
     Image {
         id: photo
         anchors { fill: parent; margins: 16; rightMargin: viewer.infoOpen ? 290 : 16 }
         visible: !viewer.isVideo
-        source: viewer.item && !viewer.isVideo ? "file://" + viewer.item.path : ""
+        source: viewer.item && !viewer.isVideo ? Paths.fileUrl(viewer.item.path) : ""
         sourceSize: Qt.size(Math.ceil(width * 2), Math.ceil(height * 2))
         fillMode: Image.PreserveAspectFit
         asynchronous: true
@@ -45,7 +46,7 @@ Item {
         id: video
         anchors { fill: parent; margins: 16; rightMargin: viewer.infoOpen ? 290 : 16 }
         visible: viewer.isVideo
-        source: viewer.item && viewer.isVideo ? "file://" + viewer.item.path : ""
+        source: viewer.item && viewer.isVideo ? Paths.fileUrl(viewer.item.path) : ""
         fillMode: VideoOutput.PreserveAspectFit
         loops: MediaPlayer.Infinite
         TapHandler { onTapped: video.playbackState === MediaPlayer.PlayingState ? video.pause() : video.play() }
@@ -65,7 +66,12 @@ Item {
             Rectangle { width: parent.width * video.position / Math.max(1, video.duration); height: parent.height; radius: 3; color: "#e6ffffff" }
             MouseArea {
                 anchors { fill: parent; margins: -8 }
-                onPressed: (m) => video.seek(Math.max(0, Math.min(1, (m.x - 8) / (width - 16))) * video.duration)
+                function seekAt(x) {
+                    if (width <= 16 || video.duration <= 0) return
+                    video.seek(Math.max(0, Math.min(1, (x - 8) / (width - 16))) * video.duration)
+                }
+                onPressed: (m) => seekAt(m.x)
+                onPositionChanged: (m) => { if (pressed) seekAt(m.x) }
             }
         }
     }
@@ -134,8 +140,9 @@ Item {
         visible: false
         readonly property int w: implicitWidth
         readonly property int h: implicitHeight
-        source: viewer.infoOpen && viewer.item && !viewer.isVideo ? "file://" + viewer.item.path : ""
+        source: viewer.infoOpen && viewer.item && !viewer.isVideo ? Paths.fileUrl(viewer.item.path) : ""
         asynchronous: true
         autoTransform: true
     }
 }
+

@@ -71,15 +71,18 @@ PanelWindow {
                 TextInput {
                     id: input
                     Layout.fillWidth: true
+                    clip: true
+                    selectByMouse: true
+                    Accessible.name: "Spotlight Search"
                     color: Theme.label
                     font { family: Theme.fontUi; pixelSize: 21 }
                     Keys.onEscapePressed: spot.open = false
-                    Keys.onDownPressed: spot.selected = Math.min(spot.results.length - 1, spot.selected + 1)
+                    Keys.onDownPressed: spot.selected = Math.max(0, Math.min(spot.results.length - 1, spot.selected + 1))
                     Keys.onUpPressed: spot.selected = Math.max(0, spot.selected - 1)
                     Keys.onReturnPressed: spot.launch(spot.selected)
                     onTextChanged: spot.selected = 0
                     Text {
-                        visible: !input.text
+                        visible: !input.text && !input.preeditText
                         text: "Spotlight Search"
                         color: Theme.secondaryLabel
                         font: input.font
@@ -91,13 +94,17 @@ PanelWindow {
         Glass {
             visible: spot.results.length > 0
             Layout.fillWidth: true
-            Layout.preferredHeight: list.contentHeight + 16
+            Layout.preferredHeight: Math.min(list.contentHeight + 16, Math.max(60, spot.height * 0.78 - 90))
             radius: 24
             tint: Theme.glassRegular.tint
             ListView {
                 id: list
                 anchors { fill: parent; margins: 8 }
-                interactive: false
+                clip: true
+                interactive: contentHeight > height
+                boundsBehavior: Flickable.StopAtBounds
+                currentIndex: spot.selected
+                onCurrentIndexChanged: positionViewAtIndex(currentIndex, ListView.Contain)
                 model: spot.results
                 delegate: Rectangle {
                     required property var modelData
@@ -109,7 +116,7 @@ PanelWindow {
                         anchors { fill: parent; leftMargin: 12; rightMargin: 12 }
                         spacing: 12
                         Image { id: rowIcon; source: Quickshell.iconPath(modelData.icon, "application-x-executable"); sourceSize: Qt.size(60, 60); Layout.preferredWidth: 30; Layout.preferredHeight: 30 }
-                        Text { Layout.fillWidth: true; text: modelData.name; color: index === spot.selected ? "#ffffff" : Theme.label; font { family: Theme.fontUi; pixelSize: 14 } }
+                        Text { Layout.fillWidth: true; text: modelData.name; elide: Text.ElideRight; color: index === spot.selected ? "#ffffff" : Theme.label; font { family: Theme.fontUi; pixelSize: 14 } }
                         Text { text: "Application"; color: index === spot.selected ? "#ccffffff" : Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: 12 } }
                     }
                     MouseArea { anchors.fill: parent; hoverEnabled: true; onEntered: spot.selected = index; onClicked: spot.launch(index) }
@@ -118,3 +125,4 @@ PanelWindow {
         }
     }
 }
+

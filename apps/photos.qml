@@ -9,6 +9,7 @@
 import Quickshell
 import Quickshell.Io
 import QtQuick
+import "lib/paths.js" as Paths
 import "lib"
 import "lib/theme"
 import "photos"
@@ -72,7 +73,7 @@ ShellRoot {
                     id: moreBtn
                     round: true; symbol: "ellipsis"
                     onClicked: menu.popup(moreBtn, 0, height + 6, app.viewing >= 0 || app.selected >= 0 ? [
-                        { text: "Open With Default App", action: () => Qt.openUrlExternally("file://" + app.focusItem.path) },
+                        { text: "Open With Default App", action: () => Qt.openUrlExternally(Paths.fileUrl(app.focusItem.path)) },
                         { text: "Show in Files", action: () => Quickshell.execDetached(["nautilus", "--select", app.focusItem.path]) },
                         { text: "Copy Path", action: () => Quickshell.clipboardText = app.focusItem.path },
                         { separator: true },
@@ -321,7 +322,7 @@ ShellRoot {
                         color: Theme.dark ? "#2c2c2e" : "#ececf0"
                         Image {
                             anchors.fill: parent
-                            source: tile.modelData.kind === "video" ? (tile.modelData.thumb ? "file://" + tile.modelData.thumb : "") : "file://" + tile.modelData.path
+                            source: tile.modelData.kind === "video" ? (tile.modelData.thumb ? Paths.fileUrl(tile.modelData.thumb) : "") : Paths.fileUrl(tile.modelData.path)
                             sourceSize: Qt.size(Math.ceil(width * 1.5), Math.ceil(height * 1.5))
                             fillMode: Image.PreserveAspectCrop
                             asynchronous: true
@@ -390,3 +391,4 @@ ShellRoot {
         PopupMenu { id: menu; parent: win.overlay }
     }
 }
+

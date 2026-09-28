@@ -66,7 +66,7 @@ PanelWindow {
 
                 Timer {
                     interval: banner.n.expireTimeout > 0 ? banner.n.expireTimeout * 1000 : 5500
-                    running: !hover.hovered && !banner.n.resident
+                    running: !hover.hovered && !banner.n.resident && banner.n.expireTimeout !== 0
                     onTriggered: banner.n.expire()
                 }
                 HoverHandler { id: hover }
@@ -108,10 +108,10 @@ PanelWindow {
                         Layout.fillWidth: true
                         spacing: 2
                         RowLayout {
-                            Text { Layout.fillWidth: true; text: banner.n.summary; elide: Text.ElideRight; color: Theme.label; font { family: Theme.fontUi; pixelSize: 13; weight: Font.DemiBold } }
+                            Text { Layout.fillWidth: true; text: banner.n.summary; textFormat: Text.PlainText; elide: Text.ElideRight; color: Theme.label; font { family: Theme.fontUi; pixelSize: 13; weight: Font.DemiBold } }
                             Text { text: "now"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: 12 } }
                         }
-                        Text { Layout.fillWidth: true; text: banner.n.body; wrapMode: Text.Wrap; maximumLineCount: 4; elide: Text.ElideRight; color: Theme.label; font { family: Theme.fontUi; pixelSize: 13 } }
+                        Text { Layout.fillWidth: true; text: banner.n.body; textFormat: Text.PlainText; wrapMode: Text.Wrap; maximumLineCount: 4; elide: Text.ElideRight; color: Theme.label; font { family: Theme.fontUi; pixelSize: 13 } }
                         RowLayout {
                             visible: banner.n.actions.length > 0
                             Layout.topMargin: 6
@@ -143,3 +143,4 @@ PanelWindow {
         }
     }
 }
+

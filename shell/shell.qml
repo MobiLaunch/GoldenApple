@@ -6,11 +6,15 @@ import Quickshell.Io
 import Quickshell.Hyprland
 import QtQuick
 import "theme"
+import "components"
 
 ShellRoot {
     id: root
     // One AppLaunch per screen; Spotlight picks the one on its own screen.
     property var launchers: []
+    Binding { target: Theme; property: "reduceMotion"; value: Prefs.reduceMotion }
+    Binding { target: Theme; property: "reduceTransparency"; value: Prefs.reduceTransparency }
+    Binding { target: Theme; property: "glassStyle"; value: Prefs.glass }
     // Follow the system appearance set by Control Center, GNOME Settings or gsettings.
     // GTK 3 apps (Mail) have no colour scheme, only a dark theme, so mirror it there.
     function followScheme(line) {
@@ -115,3 +119,4 @@ ShellRoot {
         }
     }
 }
+

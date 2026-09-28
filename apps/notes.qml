@@ -217,6 +217,7 @@ ShellRoot {
 
             function refresh() { lister.running = true }
             function newNote() {
+                if (!editor.flush()) return
                 const dir = folder && !folder.endsWith("/" + trashName) ? folder : root + "/Notes"
                 let name = "New Note.md", i = 2
                 while (notes.some((n) => n.path === dir + "/" + name)) name = "New Note " + (i++) + ".md"
@@ -228,10 +229,12 @@ ShellRoot {
             }
             function deleteNote(path) {
                 if (!path) return
+                const wasCurrent = path === app.current
+                if (!editor.flush()) return
+                if (wasCurrent) path = editor.loadedPath
                 const inTrash = path.includes("/" + trashName + "/")
                 const i = visibleNotes.findIndex((n) => n.path === path)
                 const next = visibleNotes[i + 1] ?? visibleNotes[i - 1] ?? null
-                editor.flush()
                 if (inTrash) Quickshell.execDetached(["rm", "-f", path])
                 else Quickshell.execDetached(["sh", "-c", "mkdir -p \"$1\" && mv -f \"$2\" \"$1\"/", "sh", root + "/" + trashName, path])
                 notes = notes.filter((n) => n.path !== path)
@@ -306,7 +309,7 @@ ShellRoot {
                 notes: app.visibleNotes
                 current: app.current
                 showFolder: app.folder === "" || !!app.matches
-                onPicked: (path) => { editor.flush(); app.current = path }
+                onPicked: (path) => { if (editor.flush()) app.current = path }
                 onMenu: (path, item, mx, my) => listMenu.popup(item, mx, my, [
                     { text: "Delete", action: () => app.deleteNote(path) },
                     { text: "Show in Files", action: () => Quickshell.execDetached(["nautilus", "--select", path]) },
@@ -323,6 +326,7 @@ ShellRoot {
                 mtime: app.notes.find((n) => n.path === app.current)?.mtime ?? 0
                 taken: app.notes.map((n) => n.path)
                 onSaved: (path, newPath, title, preview) => app.saved(path, newPath, title, preview)
+                onSaveFailed: app.current = editor.loadedPath
                 onMenuRequested: (items, item, mx, my) => listMenu.popup(item, mx, my, items)
             }
             Text {
@@ -337,3 +341,4 @@ ShellRoot {
         PopupMenu { id: listMenu; parent: win.overlay }
     }
 }
+

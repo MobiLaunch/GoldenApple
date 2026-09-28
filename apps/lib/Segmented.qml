@@ -9,6 +9,22 @@ Item {
     property var options: []
     property int current: 0
     signal picked(int index)
+    activeFocusOnTab: true
+    opacity: enabled ? 1 : 0.45
+    Accessible.role: Accessible.ComboBox
+    Accessible.name: options[current] ?? ""
+    function pick(i) {
+        if (!enabled || !options.length) return
+        i = Math.max(0, Math.min(options.length - 1, i))
+        if (current !== i) { current = i; picked(i) }
+    }
+    Keys.onLeftPressed: pick(current - 1)
+    Keys.onRightPressed: pick(current + 1)
+    Keys.onPressed: (event) => {
+        if (event.key === Qt.Key_Home) { pick(0); event.accepted = true }
+        else if (event.key === Qt.Key_End) { pick(options.length - 1); event.accepted = true }
+    }
+    FocusRing {}
     implicitWidth: row.implicitWidth + 4; implicitHeight: 26
 
     Rectangle {
@@ -49,8 +65,9 @@ Item {
                     Behavior on opacity { NumberAnimation { duration: 100 } }
                     font { family: Theme.fontUi; pixelSize: 12; weight: index === seg.current ? Font.DemiBold : Font.Normal }
                 }
-                MouseArea { id: segArea; anchors.fill: parent; onClicked: { seg.current = index; seg.picked(index) } }
+                MouseArea { id: segArea; anchors.fill: parent; onClicked: { seg.forceActiveFocus(); seg.pick(index) } }
             }
         }
     }
 }
+

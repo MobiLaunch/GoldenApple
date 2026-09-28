@@ -11,6 +11,21 @@ Glass {
     property real value: 0.5            // 0..1
     signal moved(real value)
     radius: 22
+    activeFocusOnTab: true
+    Accessible.role: Accessible.Slider
+    Accessible.name: title
+    function adjust(v) { if (enabled && Number.isFinite(v)) moved(Math.max(0, Math.min(1, v))) }
+    Keys.onLeftPressed: adjust(value - 0.05)
+    Keys.onRightPressed: adjust(value + 0.05)
+    Keys.onUpPressed: adjust(value + 0.05)
+    Keys.onDownPressed: adjust(value - 0.05)
+    Keys.onPressed: (event) => {
+        if (event.key === Qt.Key_Home) { adjust(0); event.accepted = true }
+        else if (event.key === Qt.Key_End) { adjust(1); event.accepted = true }
+    }
+    Accessible.onIncreaseAction: adjust(value + 0.05)
+    Accessible.onDecreaseAction: adjust(value - 0.05)
+    Rectangle { anchors { fill: parent; margins: 2 } radius: 20; color: "transparent"; border { width: 2; color: Theme.accent } visible: root.activeFocus }
 
     ColumnLayout {
         anchors { fill: parent; leftMargin: 16; rightMargin: 16; topMargin: 11; bottomMargin: 12 }
@@ -32,7 +47,7 @@ Glass {
                 Rectangle {
                     id: fill
                     height: parent.height
-                    width: Math.max(height, parent.width * root.value)
+                    width: parent.width * Math.max(0, Math.min(1, root.value))
                     radius: height / 2
                     color: "#ffffff"
                     Behavior on width { enabled: !drag.pressed; Spring { spring: Theme.snappy } }
@@ -56,8 +71,8 @@ Glass {
                     id: drag
                     anchors { fill: parent; margins: -8 }
                     hoverEnabled: true
-                    function set(x) { root.moved(Math.max(0, Math.min(1, (x - 8) / track.width))) }
-                    onPressed: (m) => set(m.x)
+                    function set(x) { if (track.width > 0) root.adjust((x - 8) / track.width) }
+                    onPressed: (m) => { root.forceActiveFocus(); set(m.x) }
                     onPositionChanged: (m) => { if (pressed) set(m.x) }
                 }
             }
@@ -65,3 +80,4 @@ Glass {
         }
     }
 }
+

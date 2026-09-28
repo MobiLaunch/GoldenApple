@@ -39,3 +39,26 @@ jobs:
         with:
           name: ui-screenshots
           path: out/ui
+
+
+  native-controls:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: sudo apt-get update && sudo apt-get install -y libegl1 libopengl0
+      - run: python -m pip install PySide6-Essentials==6.11.2
+      - name: Parse all native QML
+        run: python tests/check-qml.py
+      - name: Exercise native control keyboard and pointer behavior
+        run: python tests/native-controls.py
+        env:
+          QT_QPA_PLATFORM: offscreen
+          QT_QUICK_BACKEND: software
+      - name: Test app data and async request handling
+        run: npm run test:logic

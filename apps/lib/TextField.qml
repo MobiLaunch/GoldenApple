@@ -23,10 +23,13 @@ Rectangle {
         color: Theme.label
         selectionColor: Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.35)
         selectByMouse: true
+        activeFocusOnTab: true
+        Accessible.name: tf.placeholder
         clip: true
         echoMode: tf.password ? TextInput.Password : TextInput.Normal
         font { family: Theme.fontUi; pixelSize: 13 }
         onAccepted: tf.accepted()
-        Text { visible: !input.text && !input.preeditText; text: tf.placeholder; color: Theme.tertiaryLabel; font: input.font }
+        Text { width: input.width; elide: Text.ElideRight; visible: !input.text && !input.preeditText; text: tf.placeholder; color: Theme.tertiaryLabel; font: input.font }
     }
 }
+

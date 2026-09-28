@@ -145,6 +145,7 @@ ShellRoot {
             property string mapStyle: "standard"
             property var results: []
             property bool searching: false
+            property int searchRevision: 0
             property var place: null
             property var recents: []
             property var from: null
@@ -153,6 +154,8 @@ ShellRoot {
             property var routes: []
             property int routeIndex: 0
             property bool routing: false
+            property int routeRevision: 0
+            property string savedSnapshot: ""
             property bool routeFailed: false
             property bool stepsOpen: false
             property string editing: ""             // "from" | "to" while typing in a directions field
@@ -170,9 +173,11 @@ ShellRoot {
                 x.send()
             }
             function search(q, then) {
-                if (!q.trim()) { results = []; return }
+                const revision = ++searchRevision
+                if (!q.trim()) { searching = false; results = []; return }
                 searching = true
                 get(Api.searchUrl(q, map.lat, map.lon), "search", (j) => {
+                    if (revision !== searchRevision) return
                     searching = false
                     results = (j?.features ?? []).map(Api.place)
                     if (then) then()
@@ -217,8 +222,10 @@ ShellRoot {
             }
             function swap() { const f = from; from = to; to = f; if (from && to) route() }
             function route() {
+                const revision = ++routeRevision
                 routing = true; routeFailed = false; routes = []; routeIndex = 0
                 get(Api.routeUrl(travel, from, to), "route", (j) => {
+                    if (revision !== routeRevision) return
                     routing = false
                     routes = j?.routes ?? []
                     routeFailed = !routes.length
@@ -229,13 +236,16 @@ ShellRoot {
                 })
             }
             function save() {
+                const snapshot = JSON.stringify({ recents: recents, view: { lat: map.lat, lon: map.lon, zoom: map.zoom }, style: mapStyle }, null, 1)
+                if (snapshot === savedSnapshot) return
                 Quickshell.execDetached(["mkdir", "-p", configFile.replace(/\/[^/]+$/, "")])
-                store.setText(JSON.stringify({ recents: recents, view: { lat: map.lat, lon: map.lon, zoom: map.zoom }, style: mapStyle }, null, 1))
+                store.setText(snapshot)
             }
 
             FileView {
                 id: store
                 path: app.configFile
+                onSaved: app.savedSnapshot = text()
                 printErrors: false
                 blockWrites: true
                 onLoaded: {
@@ -293,7 +303,7 @@ ShellRoot {
                             color: Theme.label
                             font { family: Theme.fontUi; pixelSize: 15 }
                             clip: true
-                            onTextChanged: { app.mode = "search"; searchTimer.restart() }
+                            onTextChanged: { app.searchRevision++; app.searching = false; app.results = []; app.mode = "search"; searchTimer.restart() }
                             onAccepted: app.search(text, () => {
                                 if (app.results.length === 1) app.showPlace(app.results[0])
                                 else if (app.results.length > 1) map.fit(app.results.map((r) => [r.lon, r.lat]), win.contentX + app.panelWidth + 16)
@@ -393,7 +403,7 @@ ShellRoot {
                     ToolbarButton {
                         x: parent.width - width - 14; y: 12
                         round: true; symbol: "xmark"
-                        onClicked: { app.mode = "search"; app.routes = [] }
+                        onClicked: { app.routeRevision++; app.routing = false; app.mode = "search"; app.routes = [] }
                     }
                     // Car / walk / bike
                     Row {
@@ -435,7 +445,7 @@ ShellRoot {
                                 readonly property var value: endField.which === "from" ? app.from : app.to
                                 text: value?.name ?? ""
                                 onActiveFocusChanged: if (activeFocus) { app.editing = endField.which; selectAll() }
-                                onTextEdited: { app.editing = endField.which; dirTimer.restart() }
+                                onTextEdited: { app.searchRevision++; app.searching = false; app.results = []; app.editing = endField.which; dirTimer.restart() }
                                 onAccepted: app.search(text, () => { if (app.results.length) app.choose(app.results[0]) })
                                 Text { visible: !field.text; text: endField.which === "from" ? "Start" : "Destination"; color: Theme.tertiaryLabel; font: field.font }
                             }
@@ -586,3 +596,4 @@ ShellRoot {
         PopupMenu { id: menu; parent: win.overlay }
     }
 }
+

@@ -6,6 +6,7 @@
 // motion feel continuous).
 //   SpringValue { id: x; response: 0.5; dampingFraction: 0.86 }   then set x.target
 import QtQuick
+import "theme"
 
 Item {
     id: spring
@@ -22,12 +23,19 @@ Item {
     // Put the value somewhere without animating.
     function jump(v) { frames.stop(); velocity = 0; value = v; target = v }
 
-    onTargetChanged: if (Math.abs(target - value) > epsilon || Math.abs(velocity) > epsilon) frames.start()
+    onTargetChanged: {
+        if (Theme.reduceMotion) jump(target)
+        else if (Math.abs(target - value) > epsilon || Math.abs(velocity) > epsilon) frames.start()
+    }
+    Connections {
+        target: Theme
+        function onReduceMotionChanged() { if (Theme.reduceMotion) spring.jump(spring.target) }
+    }
 
     FrameAnimation {
         id: frames
         onTriggered: {
-            const w = 2 * Math.PI / spring.response
+            const w = 2 * Math.PI / Math.max(0.05, spring.response)
             const k = w * w, c = 2 * w * spring.dampingFraction
             const dt = Math.min(frameTime, 0.05)             // a stalled frame shouldn't fling it
             const steps = Math.max(1, Math.ceil(dt / 0.004))  // small steps keep stiff springs stable
@@ -45,3 +53,4 @@ Item {
         }
     }
 }
+

@@ -62,7 +62,7 @@ ShellRoot {
                     selectionColor: Theme.accent
                     font { family: Theme.fontUi; pixelSize: 13 }
                     clip: true
-                    onTextChanged: searchTimer.restart()
+                    onTextChanged: { app.searchRevision++; app.searching = false; app.results = []; searchTimer.restart() }
                     Keys.onEscapePressed: text = ""
                     Keys.onReturnPressed: if (app.results.length) app.addPlace(app.results[0])
                     Text {
@@ -154,6 +154,7 @@ ShellRoot {
             property var airs: ({})
             property var results: []
             property bool searching: false
+            property int searchRevision: 0
             property string radarBase: ""
             property bool online: true
 
@@ -204,9 +205,11 @@ ShellRoot {
                 })
             }
             function geocode(q) {
-                if (!q.trim()) { results = []; return }
+                const revision = ++searchRevision
+                if (!q.trim()) { searching = false; results = []; return }
                 searching = true
                 get(url("geocode", q), (j) => {
+                    if (revision !== searchRevision) return
                     searching = false
                     results = (j?.results ?? []).map((r) => ({ name: r.name, admin1: r.admin1 ?? "", country: r.country ?? "", lat: r.latitude, lon: r.longitude }))
                 })
@@ -524,3 +527,4 @@ ShellRoot {
         onPressed: placeMenu.visible = false
     }
 }
+

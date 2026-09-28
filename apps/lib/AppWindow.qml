@@ -127,7 +127,7 @@ FloatingWindow {
             x: win.inset; y: win.inset
             width: win.sidebarWidth; height: parent.height - 2 * win.inset
             radius: Theme.radiusSidebar
-            color: Theme.sidebarBg
+            color: Theme.reduceTransparency ? Qt.rgba(Theme.sidebarBg.r, Theme.sidebarBg.g, Theme.sidebarBg.b, 1) : Theme.sidebarBg
             border { width: 1; color: Theme.dark ? "#1affffff" : "#80ffffff" }
             Item {
                 id: sidebarArea
@@ -227,3 +227,4 @@ FloatingWindow {
         }
     }
 }
+

@@ -10,11 +10,16 @@ Item {
     property bool enabled_: true
     signal toggled(bool checked)
     implicitWidth: 38; implicitHeight: 22
-    opacity: enabled_ ? 1 : 0.4
-    activeFocusOnTab: true
+    opacity: enabled && enabled_ ? 1 : 0.4
+    Accessible.role: Accessible.CheckBox
+    Accessible.checkable: true
+    Accessible.checked: checked
+    Accessible.onPressAction: flip()
+    FocusRing { visible: sw.activeFocus && sw.enabled && sw.enabled_ }
+    activeFocusOnTab: enabled && enabled_
 
-    function flip() { if (!enabled_) return; checked = !checked; toggled(checked) }
-    Keys.onSpacePressed: flip()
+    function flip() { if (!enabled || !enabled_) return; checked = !checked; toggled(checked) }
+    Keys.onSpacePressed: (event) => { if (!event.isAutoRepeat) flip() }
 
     Rectangle {
         id: track
@@ -43,12 +48,13 @@ Item {
     }
     MouseArea {
         id: ma
+        enabled: sw.enabled && sw.enabled_
         anchors.fill: parent
         property real startX
         property bool dragged: false
-        onPressed: (m) => { startX = m.x; dragged = false }
+        onPressed: (m) => { sw.forceActiveFocus(); startX = m.x; dragged = false }
         onPositionChanged: (m) => {
-            if (Math.abs(m.x - startX) > 6) {
+            if (pressed && Math.abs(m.x - startX) > 6) {
                 dragged = true
                 const want = m.x > width / 2
                 if (want !== sw.checked) { sw.checked = want; sw.toggled(want) }
@@ -57,3 +63,4 @@ Item {
         onReleased: if (!dragged) sw.flip()
     }
 }
+

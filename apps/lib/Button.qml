@@ -5,6 +5,14 @@ import "theme"
 
 Item {
     id: b
+    activeFocusOnTab: true
+    Accessible.role: Accessible.Button
+    Accessible.name: b.text
+    Accessible.onPressAction: if (b.enabled) { b.clicked() }
+    Keys.onSpacePressed: (event) => { if (!event.isAutoRepeat && b.enabled) { b.clicked() } }
+    Keys.onReturnPressed: if (b.enabled) { b.clicked() }
+    Keys.onEnterPressed: if (b.enabled) { b.clicked() }
+    FocusRing {}
     property string text
     property string symbol
     property bool prominent: false
@@ -34,5 +42,6 @@ Item {
             font { family: Theme.fontUi; pixelSize: 13; weight: b.prominent ? Font.DemiBold : Font.Medium }
         }
     }
-    MouseArea { id: ma; anchors.fill: parent; hoverEnabled: true; enabled: b.enabled; onClicked: b.clicked() }
+    MouseArea { id: ma; anchors.fill: parent; hoverEnabled: true; enabled: b.enabled; onClicked: { b.forceActiveFocus(); b.clicked() } }
 }
+
