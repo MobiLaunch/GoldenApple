@@ -34,9 +34,9 @@ PanelWindow {
     property string state_: "idle"           // idle | opening | handing-over | cancelling
     // Last window size per app, so the card aims for the right frame next time.
     // Golden Gate's own apps start out known: their windows have a fixed size.
-    property var sizes: ({ "org.goldengate.Calculator": { w: 229, h: 405 } })
+    property var sizes: ({ "org.goldengate.Calculator": { w: 229, h: 405 }, "org.goldengate.Weather": { w: 1100, h: 860 } })
     // Apps whose window isn't the usual window colour (Calculator is always dark).
-    readonly property var windowColors: ({ "org.goldengate.Calculator": "#24292d" })
+    readonly property var windowColors: ({ "org.goldengate.Calculator": "#24292d", "org.goldengate.Weather": "#a4bcd2" })
 
     // Where the window will appear: Hyprland centres new windows in the space the
     // menu bar and Dock leave free.

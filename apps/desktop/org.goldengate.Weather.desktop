@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Weather
+Comment=Forecasts, conditions and maps for your places
+Icon=org.gnome.Weather
+Exec=qs -n -p @APPS@/weather.qml
+StartupWMClass=org.goldengate.Weather
+Categories=Utility;
+Keywords=forecast;temperature;rain;
+StartupNotify=false

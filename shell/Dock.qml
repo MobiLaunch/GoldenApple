@@ -13,7 +13,7 @@ PanelWindow {
     property var pinned: [
         "org.gnome.Nautilus", "firefox", "org.gnome.Geary", "org.gnome.Fractal", "org.gnome.Maps",
         "org.gnome.Loupe", "org.gnome.Music", "org.gnome.Calendar", "org.gnome.TextEditor",
-        "org.gnome.Weather", "org.gnome.Software", "org.gnome.Settings", "com.mitchellh.ghostty"
+        "org.goldengate.Weather", "org.gnome.Software", "org.gnome.Settings", "com.mitchellh.ghostty"
     ]
     property real baseSize: Theme.sizeDockIcon
     property real maxSize: Theme.sizeDockMagnified

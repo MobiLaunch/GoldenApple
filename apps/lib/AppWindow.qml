@@ -36,6 +36,10 @@ FloatingWindow {
     property alias toolbarRight: rightRow.data
     property alias sidebar: sidebarArea.data
     property alias toolbarCenter: centerSlot.data
+    // Drawn across the whole window under the sidebar and toolbar (Weather's sky).
+    property alias backdrop: backdropArea.data
+    // Above everything: menus and popovers go here.
+    readonly property alias overlay: overlayArea
 
     color: "transparent"
 
@@ -76,6 +80,11 @@ FloatingWindow {
             visible: win.sidebarWidth <= 0
             radius: Theme.radiusWindow
             color: win.background
+        }
+
+        Item {
+            id: backdropArea
+            anchors.fill: parent
         }
 
         // Floating glass sidebar.
@@ -144,6 +153,12 @@ FloatingWindow {
             radius: Theme.radiusWindow
             color: "transparent"
             border { width: 1; color: Theme.dark ? "#26ffffff" : "#26000000" }
+        }
+
+        Item {
+            id: overlayArea
+            anchors.fill: parent
+            z: 10
         }
 
         // Resize edges.
