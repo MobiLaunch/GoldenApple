@@ -12,7 +12,7 @@ and built entirely from original artwork.
 | ![Control Center](docs/screenshots/control-center.jpg) | ![Dark mode and context menu](docs/screenshots/files-dark-menu.jpg) |
 | ![Mission Control](docs/screenshots/mission-control.jpg) | ![Spotlight](docs/screenshots/spotlight.jpg) |
 | ![Maps](docs/screenshots/maps.jpg) | ![Weather](docs/screenshots/weather.jpg) |
-| ![Music, dark](docs/screenshots/music.jpg) | ![Settings, dark](docs/screenshots/settings-dark.jpg) |
+| ![Music, dark](docs/screenshots/music.jpg) | ![System Settings](docs/screenshots/settings.jpg) |
 | ![Mail](docs/screenshots/mail.jpg) | ![Calendar](docs/screenshots/calendar.jpg) |
 | ![Lock screen](docs/screenshots/lock.jpg) | ![Control Center detail](docs/screenshots/control-center-detail.jpg) |
 
