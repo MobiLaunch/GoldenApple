@@ -34,7 +34,7 @@ PanelWindow {
     property string state_: "idle"           // idle | opening | handing-over | cancelling
     // Last window size per app, so the card aims for the right frame next time.
     // Golden Gate's own apps start out known: their windows have a fixed size.
-    property var sizes: ({ "org.goldengate.Calculator": { w: 229, h: 405 }, "org.goldengate.Weather": { w: 1100, h: 860 }, "org.goldengate.Music": { w: 1180, h: 760 }, "org.goldengate.Notes": { w: 1120, h: 720 } })
+    property var sizes: ({ "org.goldengate.Calculator": { w: 229, h: 405 }, "org.goldengate.Weather": { w: 1100, h: 860 }, "org.goldengate.Music": { w: 1180, h: 760 }, "org.goldengate.Notes": { w: 1120, h: 720 }, "org.goldengate.Photos": { w: 1180, h: 780 } })
     // Apps whose window isn't the usual window colour (Calculator is always dark).
     readonly property var windowColors: ({ "org.goldengate.Calculator": "#24292d", "org.goldengate.Weather": "#a4bcd2" })
 

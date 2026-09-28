@@ -14,10 +14,12 @@ sddm
 qt6-declarative
 qt6-svg
 qt6-wayland
-# Golden Gate Music: playback (FFmpeg backend) and tag/artwork reading
+# Golden Gate Music and Photos: playback (FFmpeg backend), tags, artwork, video frames
 qt6-multimedia
 qt6-multimedia-ffmpeg
 ffmpeg
+# Golden Gate Photos: WebP, TIFF and other image formats
+qt6-imageformats
 
 # Look
 inter-font

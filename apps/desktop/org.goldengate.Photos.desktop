@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Photos
+Comment=Browse your photos and videos
+Icon=multimedia-photo-viewer
+Exec=qs -n -p @APPS@/photos.qml
+StartupWMClass=org.goldengate.Photos
+Categories=Graphics;Photography;Viewer;
+Keywords=pictures;images;videos;albums;gallery;
+StartupNotify=false
