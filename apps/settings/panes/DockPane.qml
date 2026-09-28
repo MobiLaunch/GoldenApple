@@ -27,7 +27,6 @@ Pane {
                 onMoved: (v) => pane.set("magnifiedSize", Math.round(60 + v * 68))
             }
         }
-        SetRow { title: "Position on screen"; Segmented { options: ["Left", "Bottom", "Right"]; current: 1; enabled: false; opacity: 0.6 } }
         SetRow { title: "Animate opening applications"; Switch { checked: pane.dock.animateLaunch ?? true; onToggled: (on) => pane.set("animateLaunch", on) } }
         SetRow { title: "Show indicators for open applications"; Switch { checked: pane.dock.indicators ?? true; onToggled: (on) => pane.set("indicators", on) } }
     }

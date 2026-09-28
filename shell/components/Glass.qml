@@ -67,27 +67,34 @@ Item {
             GradientStop { position: 0.42; color: "transparent" }
         }
     }
-    // Lens band: a ring from the edge `lens` px in, brighter at the top.
+    // Lens band: light gathering toward the edge, brighter at the top. Four
+    // nested rings of a quarter strength each, so it fades in steps too small to
+    // read as an edge (one ring drew a hard inner outline, like a smaller copy).
+    component LensRing: ShapePath {
+        property real depth
+        strokeColor: "transparent"
+        fillRule: ShapePath.OddEvenFill
+        fillGradient: LinearGradient {
+            x1: 0; y1: 0; x2: root.width * 0.35; y2: root.height
+            GradientStop { position: 0; color: Qt.rgba(1, 1, 1, 0.045) }
+            GradientStop { position: 0.55; color: Qt.rgba(1, 1, 1, 0.012) }
+            GradientStop { position: 1; color: Qt.rgba(1, 1, 1, 0.025) }
+        }
+        PathRectangle { x: 0; y: 0; width: root.width; height: root.height; radius: root.r }
+        PathRectangle {
+            x: depth; y: depth
+            width: Math.max(0, root.width - 2 * depth); height: Math.max(0, root.height - 2 * depth)
+            radius: Math.max(0, root.r - depth)
+        }
+    }
     Shape {
         anchors.fill: parent
         visible: !root.filled && root.lens > 1
         preferredRendererType: Shape.CurveRenderer
-        ShapePath {
-            strokeColor: "transparent"
-            fillRule: ShapePath.OddEvenFill
-            fillGradient: LinearGradient {
-                x1: 0; y1: 0; x2: root.width * 0.35; y2: root.height
-                GradientStop { position: 0; color: Qt.rgba(1, 1, 1, 0.16) }
-                GradientStop { position: 0.55; color: Qt.rgba(1, 1, 1, 0.04) }
-                GradientStop { position: 1; color: Qt.rgba(1, 1, 1, 0.09) }
-            }
-            PathRectangle { x: 0; y: 0; width: root.width; height: root.height; radius: root.r }
-            PathRectangle {
-                x: root.lens; y: root.lens
-                width: Math.max(0, root.width - 2 * root.lens); height: Math.max(0, root.height - 2 * root.lens)
-                radius: Math.max(0, root.r - root.lens)
-            }
-        }
+        LensRing { depth: root.lens }
+        LensRing { depth: root.lens * 0.68 }
+        LensRing { depth: root.lens * 0.42 }
+        LensRing { depth: root.lens * 0.2 }
     }
     // Rim: one hairline ring, lit from the top left.
     Shape {
