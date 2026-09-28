@@ -121,6 +121,18 @@ for (const [key, svg] of Object.entries(apps)) {
   else writeFileSync(join(root, dir, `${canon}.svg`), svg);
   aliases.forEach((a) => link(`${canon}.${ext}`, join(root, dir, `${a}.${ext}`)));
 }
+// custom/apps-extra/<freedesktop name>.png|svg: icons for Linux apps without a key
+// (import-icon-pack.sh writes these). They replace any alias of the same name.
+const extraDir = join(custom, "apps-extra");
+const extras = existsSync(extraDir) ? readdirSync(extraDir).filter((f) => /\.(png|svg)$/.test(f)).sort() : [];
+if (extras.length && !hasPng) for (const d of ["512x512/apps", "512x512/places", "512x512/mimetypes", "512x512/devices"]) mkdirSync(join(root, d), { recursive: true });
+for (const f of extras) {
+  const name = f.replace(/\.(png|svg)$/, "");
+  for (const old of [join(root, "scalable/apps", `${name}.svg`), join(root, "512x512/apps", `${name}.png`)]) rmSync(old, { force: true });
+  copyFileSync(join(extraDir, f), join(root, f.endsWith(".png") ? "512x512/apps" : "scalable/apps", f));
+  customUsed.push(`apps-extra/${f}`);
+}
+const withPng = hasPng || extras.some((f) => f.endsWith(".png"));
 const placeDir = { trash: "places", "trash-full": "places", folder: "places", document: "mimetypes", audio: "mimetypes", image: "mimetypes", disk: "devices" };
 for (const [key, svg] of Object.entries(places)) {
   if (svg == null) copyFileSync(P.pngs[key], join(root, "512x512", placeDir[key], `${placeNames[key][0]}.png`));
@@ -157,7 +169,7 @@ writeFileSync(join(root, "index.theme"), `[Icon Theme]
 Name=Golden Gate
 Comment=Original icon theme for the Golden Gate desktop
 Inherits=Adwaita,hicolor
-Directories=scalable/apps,scalable/places,scalable/mimetypes,scalable/devices,symbolic/actions${hasPng ? ",512x512/apps,512x512/places,512x512/mimetypes,512x512/devices" : ""}
+Directories=scalable/apps,scalable/places,scalable/mimetypes,scalable/devices,symbolic/actions${withPng ? ",512x512/apps,512x512/places,512x512/mimetypes,512x512/devices" : ""}
 
 [scalable/apps]
 Size=128
@@ -193,7 +205,7 @@ MinSize=8
 MaxSize=512
 Type=Scalable
 Context=Actions
-${hasPng ? ["apps", "places", "mimetypes", "devices"].map((c) => `\n[512x512/${c}]\nSize=512\nType=Threshold\nContext=${c[0].toUpperCase() + c.slice(1)}\n`).join("") : ""}`);
+${withPng ? ["apps", "places", "mimetypes", "devices"].map((c) => `\n[512x512/${c}]\nSize=512\nType=Threshold\nContext=${c[0].toUpperCase() + c.slice(1)}\n`).join("") : ""}`);
 
 // ---------------------------------------------------------------- Quickshell assets
 // White symbols for the shell (tinted at runtime with MultiEffect when needed).
@@ -208,13 +220,18 @@ for (const [key, svg] of Object.entries(symbols)) {
 }
 // The Dock draws today's date on the Calendar icon, so it needs the icon without one.
 // A custom Calendar icon is used as is.
+// A custom Calendar icon can bring its own blank (custom/apps/calendar-blank.png).
+// (wrapped in an SVG, so the Dock always loads the same file).
+const pngUri = (f) => "data:image/png;base64," + readFileSync(f).toString("base64");
 const calBlank = join(here, "..", "shell", "assets", "calendar-blank.svg");
+const customBlank = join(custom, "apps", "calendar-blank.png");
 rmSync(calBlank, { force: true });
 if (apps.calendar === baseApps.calendar) writeFileSync(calBlank, apps.calendar.replace(/<text[^>]*>[^<]*<\/text>/g, ""));
+else if (existsSync(customBlank))
+  writeFileSync(calBlank, `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 512 512"><image width="512" height="512" xlink:href="${pngUri(customBlank)}"/></svg>`);
 
 // ---------------------------------------------------------------- prototype bundle
 const uri = (svg) => "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg.replace(/\s*\n\s*/g, " "));
-const pngUri = (f) => "data:image/png;base64," + readFileSync(f).toString("base64");
 // Symbols become <symbol> elements; keep viewBox and drawing attributes, drop sizing.
 const toSymbol = (k, svg) => svg.replace(/^<svg([^>]*)>/, (_, attrs) => {
   const vb = attrs.match(/viewBox="([^"]+)"/)?.[1] ?? "0 0 24 24";

@@ -151,9 +151,13 @@ Details and sizing guidance are in [icons/custom/README.md](icons/custom/README.
 
 ## Legal notes
 
-- All artwork here (icons, symbols, wallpapers) is original. Apple's icons,
-  SF Symbols and SF Pro are licensed for Apple platforms only, so they can't ship
-  in a Linux distribution. The typeface is [Inter](https://rsms.me/inter/) (OFL).
+- **This build uses Apple's own app icons** (`icons/custom/`, imported with
+  `icons/import-icon-pack.sh` from a set exported from macOS 27). Apple licenses
+  them for Apple platforms only, so this repository and its ISOs must stay
+  private. For anything public, delete `icons/custom/apps*` and rebuild
+  (`node icons/build.mjs`): the original Golden Gate icons come back.
+- Everything else (symbols, folder icons, wallpapers) is original. SF Symbols and
+  SF Pro are not used; the typeface is [Inter](https://rsms.me/inter/) (OFL).
 - Recreating a visual *style* is common practice, but Apple's names and logos are
   trademarks. The UI avoids Apple's logo (the menu-bar mark is a bridge tower) and
   uses generic app names (Files, Photos, Web). A few feature names used for

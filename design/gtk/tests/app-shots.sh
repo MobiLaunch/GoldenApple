@@ -39,7 +39,7 @@ declare -A CMD=(
   [files]='nautilus --new-window --select $HOME/Documents'
   [files-list]='nautilus --new-window --select $HOME/Documents'
   [text-editor]='gnome-text-editor --standalone $HOME/Documents/Notes.txt'   # expanded below
-  [calculator]="gnome-calculator --equation 1234*5.6"
+  [calculator]="env ADW_DEBUG_COLOR_SCHEME=prefer-dark gnome-calculator --equation 1234*5.6"   # dark always, like the image's wrapper
   [settings]="env XDG_CURRENT_DESKTOP=GNOME gnome-control-center background"
   [settings-mouse]="env XDG_CURRENT_DESKTOP=GNOME gnome-control-center mouse"
   [clocks]="gnome-clocks"
@@ -124,7 +124,10 @@ window() { swaymsg -t get_tree | jq -r '[.. | objects | select(.pid? != null)] |
 
 shoot() { # shoot NAME SCHEME
   local name=$1 scheme=$2 cmd=${CMD[$1]} bin geo=
-  bin=${cmd##*env XDG_CURRENT_DESKTOP=GNOME }; bin=${bin%% *}
+  # The program is the first word after any leading "env VAR=value …".
+  local -a words; read -ra words <<< "$cmd"; local i=0
+  if [[ ${words[0]} == env ]]; then i=1; while [[ ${words[$i]} == *=* ]]; do i=$((i + 1)); done; fi
+  bin=${words[$i]}
   command -v "$bin" >/dev/null || { say "$name: $bin not installed, skipped"; return; }
   [[ -n ${PREP[$name]:-} ]] && ${PREP[$name]}
   # GTK 3 has no colour scheme, only a dark theme; libadwaita must not see GTK_THEME.
