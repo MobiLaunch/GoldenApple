@@ -29,6 +29,7 @@
   --gg-selected: rgba(0, 0, 0, 0.08);
   --gg-accent: AccentColor;
   --gg-menu: rgba(246, 246, 248, 0.96);
+  --gg-sidebar: rgba(234, 234, 238, 0.92);
   --gg-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.12), 0 8px 28px rgba(0, 0, 0, 0.16);
 
   /* Firefox's own variables, so everything that reads them follows. */
@@ -78,6 +79,7 @@
     --gg-press: rgba(255, 255, 255, 0.13);
     --gg-selected: rgba(255, 255, 255, 0.1);
     --gg-menu: rgba(44, 44, 48, 0.96);
+    --gg-sidebar: rgba(52, 52, 56, 0.92);
     --gg-shadow: 0 0 0 0.5px rgba(255, 255, 255, 0.12), 0 8px 28px rgba(0, 0, 0, 0.45);
   }
 }
@@ -204,22 +206,36 @@
 }
 
 /* ---------------------------------------------------------------- sidebar and tabs */
+/* The sidebar floats inside the window as a glass panel, as in Safari and the
+   Golden Gate apps. (#sidebar-main is the box, sidebar-main the element in it.) */
+#sidebar-main, sidebar-main {
+  --sidebar-background-color: transparent !important;
+  background: transparent !important;
+}
 #sidebar-main {
   margin: 8px 0 8px 8px !important;
-  border-radius: 18px !important;
-  background: color-mix(in srgb, var(--gg-window) 82%, transparent) !important;
-  box-shadow: inset 0 0.5px 0 var(--gg-glass-rim), 0 0 0 0.5px var(--gg-glass-edge), 0 4px 16px rgba(0, 0, 0, 0.08) !important;
+  padding-top: 4px !important;
+  border-radius: 16px !important;
+  background: var(--gg-sidebar) !important;
+  box-shadow: inset 0 0.5px 0 var(--gg-glass-rim), 0 0 0 0.5px var(--gg-glass-edge), 0 6px 18px rgba(0, 0, 0, 0.1) !important;
   overflow: clip !important;
+  border: 0 !important;
 }
 #sidebar-box {
   margin: 8px 0 8px 8px !important;
-  border-radius: 18px !important;
+  border-radius: 16px !important;
   overflow: clip !important;
-  background: color-mix(in srgb, var(--gg-window) 82%, transparent) !important;
+  background: var(--gg-sidebar) !important;
   box-shadow: 0 0 0 0.5px var(--gg-glass-edge) !important;
   border: 0 !important;
 }
-#sidebar-splitter { border: 0 !important; background: transparent !important; width: 4px !important; }
+#sidebar-splitter, #sidebar-launcher-splitter {
+  border: 0 !important;
+  background: transparent !important;
+  width: 6px !important;
+  min-width: 6px !important;
+}
+#tabbrowser-tabbox { border-inline-start: 0 !important; }
 #tabbrowser-tabbox, #browser { background: var(--gg-window) !important; }
 
 #vertical-tabs .tabbrowser-tab { padding-block: 1px !important; }
