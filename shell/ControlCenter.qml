@@ -91,8 +91,10 @@ PanelWindow {
         Layout.preferredWidth: 64; Layout.preferredHeight: 64
         radius: 32
         filled: on
+        pressed: cma.pressed
+        hovered: cma.containsMouse
         Symbol { anchors.centerIn: parent; name: c.icon; size: 25; tone: c.on ? "accent" : "white" }
-        MouseArea { anchors.fill: parent; onClicked: c.activated() }
+        MouseArea { id: cma; anchors.fill: parent; hoverEnabled: true; onClicked: c.activated() }
     }
     component Wide: Module {
         id: w
@@ -106,12 +108,15 @@ PanelWindow {
         RowLayout {
             anchors { fill: parent; leftMargin: 8; rightMargin: 12 }
             spacing: 10
-            Rectangle {
+            // The toggle is a glass button of its own inside the module.
+            Glass {
                 implicitWidth: 48; implicitHeight: 48; radius: 24
-                color: w.on ? "#ffffff" : Qt.rgba(1, 1, 1, 0.2)
-                Behavior on color { ColorAnimation { duration: 180 } }
+                tint: Qt.rgba(1, 1, 1, 0.18)
+                filled: w.on
+                pressed: wma.pressed
+                hovered: wma.containsMouse
                 Symbol { anchors.centerIn: parent; name: w.icon; size: 22; tone: w.on ? "accent" : "white" }
-                MouseArea { anchors.fill: parent; onClicked: w.activated() }
+                MouseArea { id: wma; anchors.fill: parent; hoverEnabled: true; onClicked: w.activated() }
             }
             ColumnLayout {
                 spacing: 0

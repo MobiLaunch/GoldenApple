@@ -30,11 +30,27 @@ Glass {
                 Behavior on implicitHeight { Spring { spring: Theme.snappy } }
                 Rectangle { anchors.fill: parent; radius: height / 2; color: Qt.rgba(1, 1, 1, 0.3) }
                 Rectangle {
+                    id: fill
                     height: parent.height
                     width: Math.max(height, parent.width * root.value)
                     radius: height / 2
                     color: "#ffffff"
                     Behavior on width { enabled: !drag.pressed; Spring { spring: Theme.snappy } }
+                }
+                // Liquid Glass knob: white at rest; while dragging it grows into a
+                // clear glass lens over the track, as in iOS and macOS 26.
+                Glass {
+                    id: knob
+                    property real size: drag.pressed ? 30 : drag.containsMouse ? 20 : 0
+                    width: size * 1.35; height: size
+                    radius: height / 2
+                    x: Math.max(0, Math.min(track.width - width, fill.width - width / 2))
+                    anchors.verticalCenter: parent.verticalCenter
+                    visible: size > 0.5
+                    filled: !drag.pressed
+                    tint: Qt.rgba(1, 1, 1, 0.12)
+                    lens: 6
+                    Behavior on size { Spring { spring: Theme.snappy } }
                 }
                 MouseArea {
                     id: drag
