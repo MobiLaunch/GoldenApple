@@ -248,6 +248,8 @@ function qmlColor(c) {
     `    animation = layersOut, 1, 2, smooth, fade`,
     `    animation = fade, 1, 2, smooth`,
     `    animation = workspaces, 1, ${ds("smooth")}, smooth, slide`,
+    // The yellow light parks windows on special:minimized; they sink and fade.
+    `    animation = specialWorkspace, 1, ${ds("window")}, window, slidefadevert 30%`,
     "}",
     "",
     "decoration {",

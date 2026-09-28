@@ -56,20 +56,31 @@ PanelWindow {
         return entry ? entry.name : active.appId;
     }
 
-    component BarItem: Rectangle {
+    // A menu bar item: a glass capsule lights up under it while pressed and while
+    // its menu is open, and the item dips a little as you press it.
+    component BarItem: Item {
         id: item
         property bool highlighted: false
         default property alias content: row.data
         signal clicked()
         implicitWidth: row.implicitWidth + 18
         implicitHeight: 24
-        radius: 12
-        color: highlighted ? Qt.rgba(1, 1, 1, 0.26) : "transparent"
-        border.width: highlighted ? 0.5 : 0
-        border.color: Qt.rgba(1, 1, 1, 0.55)
-        Behavior on color { ColorAnimation { duration: 120 } }
-        RowLayout { id: row; anchors.centerIn: parent; spacing: 6 }
-        MouseArea { anchors.fill: parent; onClicked: item.clicked() }
+        Glass {
+            anchors.fill: parent
+            radius: 12
+            lens: 3
+            tint: Qt.rgba(1, 1, 1, item.highlighted ? 0.24 : 0.18)
+            opacity: item.highlighted || barTap.pressed ? 1 : 0
+            Behavior on opacity { NumberAnimation { duration: item.highlighted || barTap.pressed ? 90 : 220 } }
+        }
+        RowLayout {
+            id: row
+            anchors.centerIn: parent
+            spacing: 6
+            scale: barTap.pressed ? 0.94 : 1
+            Behavior on scale { Spring { spring: Theme.snappy } }
+        }
+        MouseArea { id: barTap; anchors.fill: parent; onClicked: item.clicked() }
     }
     component BarText: Text {
         property bool dark: false

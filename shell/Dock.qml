@@ -6,6 +6,7 @@ import Quickshell.Wayland
 import Quickshell.Hyprland
 import QtQuick
 import QtQuick.Layouts
+import QtQuick.Effects
 import "theme"
 import "components"
 
@@ -124,6 +125,11 @@ PanelWindow {
                         source: tile.calendar ? calBlank.source : Quickshell.iconPath(tile.modelData.icon, "application-x-executable")
                         sourceSize: Qt.size(dock.maxSize * 2, dock.maxSize * 2)
                         smooth: true; mipmap: true
+                        // Pressed, the icon darkens as on the Mac (dims without shaders).
+                        readonly property bool gpu: GraphicsInfo.api !== GraphicsInfo.Software
+                        layer.enabled: gpu && tipArea.pressed
+                        layer.effect: MultiEffect { brightness: -0.28 }
+                        opacity: !gpu && tipArea.pressed ? 0.7 : 1
                         SequentialAnimation on y {
                             id: bounce
                             running: false
@@ -158,7 +164,13 @@ PanelWindow {
                     }
                     Glass {
                         id: tip
-                        visible: tipArea.containsMouse
+                        readonly property bool shown: tipArea.containsMouse && !tipArea.pressed
+                        visible: opacity > 0
+                        opacity: shown ? 1 : 0
+                        scale: shown ? 1 : 0.9
+                        transformOrigin: Item.Bottom
+                        Behavior on opacity { NumberAnimation { duration: tip.shown ? 140 : 90 } }
+                        Behavior on scale { Spring { spring: Theme.popover } }
                         anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.top; bottomMargin: 10 }
                         width: tipText.implicitWidth + 24; height: 26; radius: 13
                         tint: Theme.dark ? "#b8282830" : "#c8f4f4f6"
@@ -189,6 +201,7 @@ PanelWindow {
             Repeater {
                 model: dock.places
                 delegate: Item {
+                    id: place
                     required property var modelData
                     required property int index
                     width: dock.sizeAt(dock.entries.length + index + 0.35)
@@ -196,11 +209,29 @@ PanelWindow {
                     Behavior on width { enabled: dock.pointerX < 0; Spring { spring: Theme.dock } }
                     Image {
                         anchors.fill: parent
-                        source: Quickshell.iconPath(modelData.icon, "folder")
+                        source: Quickshell.iconPath(place.modelData.icon, "folder")
                         sourceSize: Qt.size(dock.maxSize * 2, dock.maxSize * 2)
                         smooth: true; mipmap: true
+                        readonly property bool gpu: GraphicsInfo.api !== GraphicsInfo.Software
+                        layer.enabled: gpu && placeArea.pressed
+                        layer.effect: MultiEffect { brightness: -0.28 }
+                        opacity: !gpu && placeArea.pressed ? 0.7 : 1
                     }
-                    MouseArea { anchors.fill: parent; onClicked: Quickshell.execDetached(modelData.exec) }
+                    Glass {
+                        id: placeTip
+                        readonly property bool shown: placeArea.containsMouse && !placeArea.pressed
+                        visible: opacity > 0
+                        opacity: shown ? 1 : 0
+                        scale: shown ? 1 : 0.9
+                        transformOrigin: Item.Bottom
+                        Behavior on opacity { NumberAnimation { duration: placeTip.shown ? 140 : 90 } }
+                        Behavior on scale { Spring { spring: Theme.popover } }
+                        anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.top; bottomMargin: 10 }
+                        width: placeText.implicitWidth + 24; height: 26; radius: 13
+                        tint: Theme.dark ? "#b8282830" : "#c8f4f4f6"
+                        Text { id: placeText; anchors.centerIn: parent; text: place.modelData.name; color: Theme.label; font { family: Theme.fontUi; pixelSize: 13; weight: Font.Medium } }
+                    }
+                    MouseArea { id: placeArea; anchors.fill: parent; hoverEnabled: true; onClicked: Quickshell.execDetached(place.modelData.exec) }
                 }
             }
         }
