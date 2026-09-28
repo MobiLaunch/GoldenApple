@@ -18,24 +18,42 @@ Item {
     implicitWidth: round ? 36 : Math.max(34, (label.visible ? label.implicitWidth + 20 : 0))
     opacity: enabled ? 1 : 0.35
 
-    // Round buttons carry their own glass; pill buttons share the pill's.
+    // Round buttons carry their own Liquid Glass; pill buttons share the pill's.
     Rectangle {
-        anchors.fill: parent
-        radius: height / 2
+        anchors { fill: parent; topMargin: 2; bottomMargin: -2 }
         visible: button.round
-        color: button.glassColor
-        border { width: 0.5; color: Theme.dark ? "#26ffffff" : "#14000000" }
+        radius: height / 2
+        color: Theme.dark ? "#40000000" : "#12000000"
+    }
+    Glass {
+        anchors.fill: parent
+        visible: button.round
+        radius: height / 2
+        tint: button.glassColor
+        rimLow: Theme.dark ? "#1fffffff" : "#14000000"
+        lens: 5
+        pressed: tap.pressed
+        hovered: hover.hovered && button.enabled
     }
     Rectangle {
         anchors.fill: parent
-        anchors.margins: button.round ? 0 : 0
+        visible: !button.round
         radius: height / 2
         color: Theme.dark ? "#ffffff" : "#000000"
-        opacity: button.checked ? 0.12 : hover.hovered && button.enabled ? 0.06 : 0
+        opacity: button.checked ? 0.12 : tap.pressed ? 0.1 : hover.hovered && button.enabled ? 0.06 : 0
         Behavior on opacity { NumberAnimation { duration: 120 } }
+    }
+    Rectangle {
+        anchors.fill: parent
+        visible: button.round && button.checked
+        radius: height / 2
+        color: Theme.dark ? "#ffffff" : "#000000"
+        opacity: 0.12
     }
     Symbol {
         anchors.centerIn: parent
+        scale: tap.pressed && !button.round ? 0.88 : 1
+        Behavior on scale { Spring { spring: Theme.snappy } }
         name: button.symbol
         tone: button.tone
         size: button.symbolSize
@@ -50,5 +68,5 @@ Item {
         font { family: Theme.fontUi; pixelSize: 13; weight: Font.Medium }
     }
     HoverHandler { id: hover }
-    TapHandler { onTapped: button.clicked() }
+    TapHandler { id: tap; onTapped: button.clicked() }
 }

@@ -1,0 +1,32 @@
+// A text field with the Mac's rounded look and a focus ring in the accent.
+import QtQuick
+import "theme"
+
+Rectangle {
+    id: tf
+    property alias text: input.text
+    property alias input: input
+    property string placeholder
+    property bool search: false
+    property bool password: false
+    signal accepted()
+    implicitWidth: 200; implicitHeight: 26
+    radius: search ? height / 2 : 7
+    color: Theme.dark ? "#1affffff" : "#ffffff"
+    border { width: input.activeFocus ? 3 : 0.5; color: input.activeFocus ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.5) : Theme.separator }
+    Behavior on border.width { NumberAnimation { duration: 120 } }
+    Symbol { visible: tf.search; x: 8; anchors.verticalCenter: parent.verticalCenter; name: "search"; tone: "gray"; size: 12 }
+    TextInput {
+        id: input
+        x: tf.search ? 26 : 8; width: parent.width - x - 8
+        anchors.verticalCenter: parent.verticalCenter
+        color: Theme.label
+        selectionColor: Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.35)
+        selectByMouse: true
+        clip: true
+        echoMode: tf.password ? TextInput.Password : TextInput.Normal
+        font { family: Theme.fontUi; pixelSize: 13 }
+        onAccepted: tf.accepted()
+        Text { visible: !input.text && !input.preeditText; text: tf.placeholder; color: Theme.tertiaryLabel; font: input.font }
+    }
+}
