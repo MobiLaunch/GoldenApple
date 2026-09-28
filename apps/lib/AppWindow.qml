@@ -209,6 +209,7 @@ FloatingWindow {
             model: win.resizable ? [
                 { e: Qt.LeftEdge, c: Qt.SizeHorCursor }, { e: Qt.RightEdge, c: Qt.SizeHorCursor },
                 { e: Qt.TopEdge, c: Qt.SizeVerCursor }, { e: Qt.BottomEdge, c: Qt.SizeVerCursor },
+                { e: Qt.TopEdge | Qt.LeftEdge, c: Qt.SizeFDiagCursor }, { e: Qt.TopEdge | Qt.RightEdge, c: Qt.SizeBDiagCursor },
                 { e: Qt.BottomEdge | Qt.RightEdge, c: Qt.SizeFDiagCursor }, { e: Qt.BottomEdge | Qt.LeftEdge, c: Qt.SizeBDiagCursor },
             ] : []
             delegate: MouseArea {
@@ -217,10 +218,11 @@ FloatingWindow {
                 readonly property bool r: modelData.e & Qt.RightEdge
                 readonly property bool t: modelData.e & Qt.TopEdge
                 readonly property bool b: modelData.e & Qt.BottomEdge
-                x: r ? frame.width - (b ? 14 : 5) : 0
-                y: b ? frame.height - (l || r ? 14 : 5) : 0
-                width: (l || r) ? (b ? 14 : 5) : frame.width
-                height: (t || b) && !(l || r) ? 5 : (b ? 14 : frame.height)
+                readonly property bool corner: (l || r) && (t || b)
+                x: r ? frame.width - (corner ? 14 : 5) : 0
+                y: b ? frame.height - (corner ? 14 : 5) : 0
+                width: (l || r) ? (corner ? 14 : 5) : frame.width
+                height: (t || b) ? (corner ? 14 : 5) : frame.height
                 cursorShape: modelData.c
                 onPressed: win.startSystemResize(modelData.e)
             }
