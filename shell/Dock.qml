@@ -11,7 +11,7 @@ import "components"
 PanelWindow {
     id: dock
     property var pinned: [
-        "org.gnome.Nautilus", "firefox", "org.gnome.Geary", "org.gnome.Fractal", "org.gnome.Maps",
+        "org.gnome.Nautilus", "firefox", "org.gnome.Geary", "org.gnome.Fractal", "org.goldengate.Maps",
         "org.goldengate.Photos", "org.goldengate.Music", "org.gnome.Calendar", "org.goldengate.Notes",
         "org.goldengate.Weather", "org.gnome.Software", "org.gnome.Settings", "com.mitchellh.ghostty"
     ]

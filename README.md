@@ -38,7 +38,7 @@ and built entirely from original artwork.
 | **Linux shell**: menu bar, Control Center, Dock, Spotlight, notifications, app switcher, lock screen | `shell/` | Quickshell (QML). Runs in a headless Wayland session (see [Testing](#testing)); not yet run on hardware |
 | **Compositor**: blur, squircle corners, springs, key bindings | `compositor/` | Hyprland config done; refraction shader written, plugin pending |
 | **App theme**: every GNOME app restyled to macOS metrics (traffic lights, floating sidebar, glass toolbar pills, capsule buttons, Finder tables, Mac menus), light and dark; GTK 3 apps too | `design/gtk/`, `design/dist/gtk*.css` | Done for GTK 4 and GTK 3; per-app passes for Files, Calculator, Settings, Calendar, Terminal |
-| **Golden Gate apps**: the apps GNOME can't be restyled into, rebuilt in QML to the macOS 27 layouts: Calculator, Weather, Music, Notes, Photos (Maps next) | `apps/` | Calculator, Weather, Music, Notes and Photos done and in the image, replacing GNOME's |
+| **Golden Gate apps**: the apps GNOME can't be restyled into, rebuilt in QML to the macOS 27 layouts: Calculator, Weather, Music, Notes, Photos, Maps | `apps/` | Done and in the image, replacing GNOME's |
 | **Theming**: fonts, ⌘ key layer, login screen, boot splash, terminal | `themes/` | Done: fontconfig, keyd, SDDM theme, Plymouth theme, Ghostty |
 | **Distro**: bootable live ISO | `distro/archiso/` | Build script done; first ISO build pending (see below) |
 
@@ -132,7 +132,8 @@ with ffmpeg into ~/.cache/golden-gate/music), .m3u playlists from ~/Music/Playli
 and internet radio from radio-browser.info; it has no Apple Music streaming.
 Notes keeps each note as a Markdown file in ~/Documents/Notes/<folder>/, named
 after its first line. Photos shows ~/Pictures and ~/Videos, with the folders in
-~/Pictures as albums.
+~/Pictures as albums. Maps uses OpenStreetMap throughout (CARTO tiles, Photon
+search, OSRM routes), so it needs no account.
 
 `shell/tests/screenshot.sh` starts Sway with the pixman renderer and Mesa's
 llvmpipe, loads the shell, drives it over IPC and captures the screenshots
