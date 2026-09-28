@@ -105,6 +105,10 @@ place "$REPO/compositor/hyprland/report-config-errors.sh" "$CONF/hypr/golden-gat
 chmod +x "$CONF/hypr/golden-gate/report-config-errors.sh"
 # Keyboard layout, written by Setup Assistant; empty until then.
 [[ -e "$CONF/hypr/golden-gate/input.conf" ]] || { mkdir -p "$CONF/hypr/golden-gate"; echo "# Written by Setup Assistant (keyboard layout)." > "$CONF/hypr/golden-gate/input.conf"; }
+# Written by Settings (Accessibility, Displays); empty until you change something.
+for f in accessibility displays; do
+  [[ -e "$CONF/hypr/golden-gate/$f.conf" ]] || echo "# Written by Settings." > "$CONF/hypr/golden-gate/$f.conf"
+done
 place "$REPO/compositor/hyprland/machine-conf.sh" "$CONF/hypr/golden-gate/machine-conf.sh"
 chmod +x "$CONF/hypr/golden-gate/machine-conf.sh"
 if [[ $MODE == system ]]; then
@@ -132,6 +136,8 @@ if [[ $MODE == system ]]; then BIN="$ROOT/usr/local/bin"; else BIN="$HOME/.local
 mkdir -p "$BIN"
 printf '#!/bin/sh\nexec bash "%s/setup/diagnostics.sh" "$@"\n' "$APPS_RUN" > "$BIN/gg-diagnostics"
 chmod +x "$BIN/gg-diagnostics"
+printf '#!/bin/sh\nexec bash "%s/settings/open.sh" "$@"\n' "$APPS_RUN" > "$BIN/gg-settings"
+chmod +x "$BIN/gg-settings"
 for f in "$REPO"/apps/desktop/*.desktop; do
   sed "s#@APPS@#$APPS_RUN#g" "$f" > "$DATA/applications/$(basename "$f")"
 done

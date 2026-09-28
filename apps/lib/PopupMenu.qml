@@ -1,7 +1,8 @@
 // A context menu drawn inside the window, on AppWindow's overlay layer:
 //   PopupMenu { id: menu; parent: win.overlay }
 //   menu.popup(item, x, y, [{ text: "Play Next", action: () => … }, { separator: true }, …])
-// Clicking outside or pressing Escape closes it.
+// Clicking outside or pressing Escape closes it. A long list scrolls, keeping
+// `scrollTo` (an index) in view. It fades and grows in from where it opened.
 import QtQuick
 import "theme"
 
@@ -11,16 +12,28 @@ Item {
     visible: false
     z: 100
     property var items: []
+    property real menuWidth: 220
 
-    function popup(from, x, y, list) {
+    function popup(from, x, y, list, scrollTo) {
         items = list
         const p = from.mapToItem(menu, x, y)
         box.x = Math.max(6, Math.min(p.x, width - box.width - 6))
-        box.y = Math.max(6, Math.min(p.y, height - box.implicitHeight - 6))
+        box.y = Math.max(6, Math.min(p.y, height - box.height - 6))
+        flick.contentY = 0
+        if (scrollTo > 0) {
+            const at = list.slice(0, scrollTo).reduce((h, it) => h + (it.separator ? 11 : 24), 0)
+            flick.contentY = Math.max(0, Math.min(flick.contentHeight - flick.height, at - flick.height / 2 + 12))
+        }
         visible = true
+        appear.restart()
         forceActiveFocus()
     }
     function close() { visible = false }
+    ParallelAnimation {
+        id: appear
+        NumberAnimation { target: box; property: "opacity"; from: 0; to: 1; duration: 120 }
+        NumberAnimation { target: box; property: "scale"; from: 0.94; to: 1; duration: 220; easing.type: Easing.OutBack; easing.overshoot: 1.2 }
+    }
     Keys.onEscapePressed: close()
 
     MouseArea {
@@ -31,18 +44,24 @@ Item {
     }
     Rectangle {
         id: box
-        width: 220
+        width: menu.menuWidth
         implicitHeight: col.height + 10
-        height: implicitHeight
+        height: Math.min(implicitHeight, menu.height - 12)
+        transformOrigin: Item.Top
         radius: Theme.radiusMenu
         color: Theme.dark ? "#f5323236" : "#faf6f6f8"
         border { width: 0.5; color: Theme.dark ? "#33ffffff" : "#26000000" }
         Rectangle { z: -1; anchors { fill: parent; topMargin: 4; bottomMargin: -8; leftMargin: -2; rightMargin: -2 } radius: parent.radius + 2; color: "#1f000000" }
         MouseArea { anchors.fill: parent }  // clicks inside don't close it
+        Flickable {
+            id: flick
+            anchors { fill: parent; margins: 5 }
+            contentHeight: col.height
+            clip: true
+            boundsBehavior: Flickable.StopAtBounds
         Column {
             id: col
-            x: 5; y: 5
-            width: parent.width - 10
+            width: flick.width
             Repeater {
                 model: menu.items
                 delegate: Item {
@@ -80,6 +99,7 @@ Item {
                     }
                 }
             }
+        }
         }
     }
 }

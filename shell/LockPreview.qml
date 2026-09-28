@@ -13,7 +13,7 @@ PanelWindow {
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
     LockSurface {
         anchors.fill: parent
-        wallpaper: "file://" + (Quickshell.env("GG_WALLPAPER") || "/usr/share/backgrounds/golden-gate/tide.png")
+        wallpaper: "file://" + Prefs.wallpaper
         hint: "Preview · any password shakes"
         onSubmitted: fail()
     }

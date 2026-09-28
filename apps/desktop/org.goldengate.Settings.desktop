@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=System Settings
+Comment=Wi-Fi, displays, appearance, the Dock and everything else about this computer
+Icon=org.gnome.Settings
+Exec=bash @APPS@/settings/open.sh
+StartupWMClass=org.goldengate.Settings
+Categories=Settings;System;
+Keywords=preferences;settings;control;wifi;display;wallpaper;dock;sound;keyboard;
+StartupNotify=false

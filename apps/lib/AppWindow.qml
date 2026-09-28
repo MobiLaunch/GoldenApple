@@ -62,6 +62,34 @@ FloatingWindow {
         command: ["gsettings", "get", "org.gnome.desktop.interface", "color-scheme"]
         stdout: SplitParser { onRead: (line) => win.followScheme(line) }
     }
+    // The system accent colour (Settings › Appearance › Color).
+    function followAccent(line) { const m = /'(\w+)'/.exec(line); if (m) Theme.accentName = m[1] }
+    Process {
+        running: true
+        command: ["gsettings", "monitor", "org.gnome.desktop.interface", "accent-color"]
+        stdout: SplitParser { onRead: (line) => win.followAccent(line) }
+    }
+    Process {
+        running: true
+        command: ["gsettings", "get", "org.gnome.desktop.interface", "accent-color"]
+        stdout: SplitParser { onRead: (line) => win.followAccent(line) }
+    }
+
+    // Liquid Glass clear or tinted, Reduce transparency and Reduce motion
+    // (Settings › Appearance, Accessibility), as the shell reads them.
+    FileView {
+        path: (Quickshell.env("XDG_CONFIG_HOME") || Quickshell.env("HOME") + "/.config") + "/golden-gate/desktop.json"
+        printErrors: false
+        watchChanges: true
+        onFileChanged: reload()
+        onLoaded: {
+            let d = {}
+            try { d = JSON.parse(text()) } catch (e) {}
+            Theme.glassStyle = d.glass ?? "clear"
+            Theme.reduceTransparency = d.reduceTransparency ?? false
+            Theme.reduceMotion = d.reduceMotion ?? false
+        }
+    }
 
     Item {
         id: frame

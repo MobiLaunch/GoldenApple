@@ -30,6 +30,11 @@ Item {
     default property alias content: body.data
 
     readonly property real r: Math.min(radius, width / 2, height / 2)
+    // Settings › Appearance › Liquid Glass (clear or tinted), and Accessibility ›
+    // Reduce transparency (nearly opaque).
+    readonly property color shownTint: Prefs.reduceTransparency ? Qt.rgba(tint.r, tint.g, tint.b, Math.max(tint.a, 0.94))
+                                     : Prefs.glass === "tinted" ? Qt.rgba(tint.r, tint.g, tint.b, Math.max(tint.a, Math.min(0.86, tint.a + 0.32)))
+                                     : tint
 
     // The press: a little smaller and brighter, springing back. A transform, so
     // users can still animate `scale` (Control Center's modules spring in).
@@ -41,7 +46,7 @@ Item {
         id: bodyFill
         anchors.fill: parent
         radius: root.r
-        color: root.filled ? "#ffffff" : root.tint
+        color: root.filled ? "#ffffff" : root.shownTint
         Behavior on color { ColorAnimation { duration: 180 } }
     }
     Rectangle {

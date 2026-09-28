@@ -39,6 +39,7 @@ and built entirely from original artwork.
 | **Compositor**: blur, squircle corners, springs, key bindings | `compositor/` | Hyprland config done; refraction shader written, plugin pending |
 | **App theme**: every GNOME app restyled to macOS metrics (traffic lights, floating sidebar, glass toolbar pills, capsule buttons, Finder tables, Mac menus), light and dark; GTK 3 apps too | `design/gtk/`, `design/dist/gtk*.css` | Done for GTK 4 and GTK 3; per-app passes for Files, Calculator, Settings, Calendar, Terminal |
 | **Golden Gate apps**: the apps GNOME can't be restyled into, rebuilt in QML to the macOS 27 layouts: Calculator, Weather, Music, Notes, Photos, Maps | `apps/` | Done and in the image, replacing GNOME's |
+| **System Settings**: a near copy of macOS System Settings (glass sidebar with search suggestions, back and forward, grouped panes) that changes the real system: Wi-Fi, Bluetooth, Network, Battery, General (About, Software Update, Storage, Date & Time, Language & Region), Accessibility, Appearance (mode, accent, Liquid Glass clear or tinted), Desktop & Dock, Displays, Wallpaper, Focus, Sound, Privacy & Security, Users & Groups, Keyboard, Trackpad & Mouse | `apps/settings.qml`, `apps/settings/` | Done; `gg-settings [pane]` and `gnome-control-center [panel]` open it at a pane |
 | **Setup Assistant**: the first-login hello in Liquid Glass (the compositor's shader, run over its own backdrop), then country or region, Wi-Fi, Data & Privacy, Location Services, time zone, crash and diagnostics sharing, and Choose Your Look | `apps/setup.qml`, `apps/setup/` | Done; runs once (`~/.config/golden-gate/setup-done`), `gg.nosetup` on the kernel command line skips it |
 | **Theming**: fonts, ⌘ key layer, login screen, boot splash, terminal | `themes/` | Done: fontconfig, keyd, SDDM theme, Plymouth theme, Ghostty |
 | **Distro**: bootable live ISO | `distro/archiso/` | Build script done; first ISO build pending (see below) |
@@ -136,6 +137,12 @@ with `node apps/setup/shaders/build.mjs` (needs `qsb` from qt6-shadertools); the
 `.qsb` files are committed. Crash reports: `gg-diagnostics` writes a report to
 ~/Documents/Diagnostics, and if you opted in, a notification offers one when an
 app crashes; nothing is sent until you submit it yourself.
+Settings writes what the shell and the apps watch: ~/.config/golden-gate/desktop.json
+(wallpaper, Dock size and magnification, glass style, reduce motion and
+transparency, applied at once), and Hyprland fragments in ~/.config/hypr/golden-gate
+(input.conf, accessibility.conf, displays.conf) that it also applies live with
+`hyprctl keyword`. Panels it doesn't have (printers, online accounts) still open
+GNOME Settings.
 Notes keeps each note as a Markdown file in ~/Documents/Notes/<folder>/, named
 after its first line. Photos shows ~/Pictures and ~/Videos, with the folders in
 ~/Pictures as albums. Maps uses OpenStreetMap throughout (CARTO tiles, Photon

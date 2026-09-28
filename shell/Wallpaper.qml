@@ -4,10 +4,11 @@
 import Quickshell
 import Quickshell.Wayland
 import QtQuick
+import "components"
 
 PanelWindow {
     id: wall
-    property string path: Quickshell.env("GG_WALLPAPER") || "/usr/share/backgrounds/golden-gate/tide.png"
+    property string path: Prefs.wallpaper
 
     anchors { top: true; bottom: true; left: true; right: true }
     exclusionMode: ExclusionMode.Ignore

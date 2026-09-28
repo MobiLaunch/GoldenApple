@@ -10,7 +10,7 @@ import "components"
 
 Scope {
     id: root
-    property string wallpaper: Quickshell.env("GG_WALLPAPER") || "/usr/share/backgrounds/golden-gate/tide.png"
+    property string wallpaper: Prefs.wallpaper
     property var surfaces: []
 
     IpcHandler {

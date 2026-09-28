@@ -18,9 +18,13 @@ Item {
     property bool pressed: false
     property bool hovered: false
     property real lens: Math.min(9, radius * 0.45)      // width of the lens band
+    property color shadow: "transparent"                // a contact shadow 1px below (knobs, buttons)
     default property alias content: body.data
 
     readonly property real r: Math.min(radius, width / 2, height / 2)
+    readonly property color shownTint: Theme.reduceTransparency ? Qt.rgba(tint.r, tint.g, tint.b, Math.max(tint.a, 0.94))
+                                     : Theme.glassStyle === "tinted" ? Qt.rgba(tint.r, tint.g, tint.b, Math.max(tint.a, Math.min(0.86, tint.a + 0.32)))
+                                     : tint
 
     // The press: a little smaller and brighter, springing back. A transform, so
     // users can still animate `scale` (Control Center's modules spring in).
@@ -29,10 +33,16 @@ Item {
     transform: Scale { origin.x: root.width / 2; origin.y: root.height / 2; xScale: root.pressScale; yScale: root.pressScale }
 
     Rectangle {
+        visible: root.shadow.a > 0
+        anchors { fill: parent; topMargin: 1; bottomMargin: -1 }
+        radius: root.r
+        color: root.shadow
+    }
+    Rectangle {
         id: bodyFill
         anchors.fill: parent
         radius: root.r
-        color: root.filled ? "#ffffff" : root.tint
+        color: root.filled ? "#ffffff" : root.shownTint
         Behavior on color { ColorAnimation { duration: 180 } }
     }
     Rectangle {

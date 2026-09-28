@@ -19,7 +19,7 @@ Item {
         lens: 3
         pressed: ma.pressed
         hovered: ma.containsMouse
-        Rectangle { z: -1; anchors { fill: parent; topMargin: 1; bottomMargin: -1 } radius: parent.radius; color: Theme.dark ? "#40000000" : "#14000000" }
+        shadow: Theme.dark ? "#40000000" : "#14000000"
     }
     Text {
         id: label
@@ -42,8 +42,8 @@ Item {
             menu.popup(pop, 0, pop.height + 4, pop.options.map((o, i) => ({
                 text: (i === pop.current ? "✓  " : "     ") + o,
                 action: () => { pop.current = i; pop.picked(i) }
-            })))
+            })), pop.current)
         }
     }
-    PopupMenu { id: menu; parent: pop.menuParent ?? pop }
+    PopupMenu { id: menu; parent: pop.menuParent ?? pop; menuWidth: Math.max(220, pop.width) }
 }

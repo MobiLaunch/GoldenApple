@@ -1,4 +1,5 @@
 #!/bin/sh
-# GNOME Settings exits at once unless the desktop calls itself GNOME, so every
-# launcher (Dock, Spotlight, ⌘,) goes through this. /usr/local/bin comes first in PATH.
-XDG_CURRENT_DESKTOP=GNOME exec /usr/bin/gnome-control-center "$@"
+# Golden Gate's own Settings stands in for GNOME's: anything that asks for
+# gnome-control-center (with a panel name or not) opens it, at the matching
+# pane. Panels it doesn't have still open GNOME Settings (see open.sh).
+exec bash /usr/share/golden-gate/apps/settings/open.sh "$@"

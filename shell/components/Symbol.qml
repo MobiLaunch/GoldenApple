@@ -4,6 +4,7 @@
 //   color: any other colour; tinted with MultiEffect on the GPU renderer
 import QtQuick
 import QtQuick.Effects
+import "../theme"
 
 Item {
     id: root
@@ -14,7 +15,9 @@ Item {
     implicitWidth: size
     implicitHeight: size
 
-    readonly property bool customColor: color.a > 0 && GraphicsInfo.api !== GraphicsInfo.Software
+    // The accent files are blue; another accent colour is tinted on the GPU.
+    readonly property color tint: color.a > 0 ? color : tone === "accent" && Theme.accentName !== "blue" ? Theme.accent : "transparent"
+    readonly property bool customColor: tint.a > 0 && GraphicsInfo.api !== GraphicsInfo.Software
 
     Image {
         id: img
@@ -29,6 +32,6 @@ Item {
         source: img
         visible: root.customColor
         colorization: 1.0
-        colorizationColor: root.color
+        colorizationColor: root.tint
     }
 }

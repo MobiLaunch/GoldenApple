@@ -43,7 +43,11 @@ QtObject {
     readonly property color accentYellow: "#ffd60a"
     readonly property color accentGreen: "#30d158"
     readonly property color accentGraphite: "#8e8e93"
-    readonly property color accent: accentBlue
+    property string accentName: "blue"
+    property string glassStyle: "clear"
+    property bool reduceTransparency: false
+    property bool reduceMotion: false
+    readonly property color accent: ({ blue: accentBlue, teal: accentBlue, purple: accentPurple, pink: accentPink, red: accentRed, orange: accentOrange, yellow: accentYellow, green: accentGreen, slate: accentGraphite })[accentName] ?? accentBlue
     readonly property color windowBg: dark ? "#1e1e1e" : "#ffffff"
     readonly property color contentBg: dark ? "#1a1a1a" : "#ffffff"
     readonly property color sidebarBg: dark ? "#9e2e2c34" : "#b8f6f6f8"

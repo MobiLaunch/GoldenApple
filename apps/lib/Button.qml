@@ -20,7 +20,7 @@ Item {
         lens: 4
         pressed: ma.pressed
         hovered: ma.containsMouse
-        Rectangle { z: -1; anchors { fill: parent; topMargin: 1; bottomMargin: -1 } radius: parent.radius; color: Theme.dark ? "#40000000" : "#1a000000" }
+        shadow: Theme.dark ? "#40000000" : "#1a000000"
     }
     Row {
         id: row

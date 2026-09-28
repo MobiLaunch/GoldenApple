@@ -127,7 +127,12 @@ function material(name, m) {
   for (const [k, v] of Object.entries(t.radius)) if (k !== "appIcon") q.push(`    readonly property real radius${k[0].toUpperCase() + k.slice(1)}: ${Math.min(v, 9999)}`);
   for (const [k, v] of Object.entries(t.size)) q.push(`    readonly property real size${k[0].toUpperCase() + k.slice(1)}: ${v}`);
   for (const [k, v] of Object.entries(t.color.accent)) q.push(`    readonly property color accent${k[0].toUpperCase() + k.slice(1)}: "${v}"`);
-  q.push(`    readonly property color accent: accentBlue`);
+  // The system accent (gsettings org.gnome.desktop.interface accent-color, set in
+  // Settings › Appearance); the shell and the apps keep accentName in step with it.
+  q.push(`    property string accentName: "blue"`);
+  // Settings › Appearance › Liquid Glass and Accessibility (desktop.json).
+  q.push(`    property string glassStyle: "clear"`, `    property bool reduceTransparency: false`, `    property bool reduceMotion: false`);
+  q.push(`    readonly property color accent: ({ blue: accentBlue, teal: accentBlue, purple: accentPurple, pink: accentPink, red: accentRed, orange: accentOrange, yellow: accentYellow, green: accentGreen, slate: accentGraphite })[accentName] ?? accentBlue`);
   for (const k of Object.keys(t.color.light)) {
     q.push(`    readonly property color ${k}: dark ? "${qmlColor(t.color.dark[k])}" : "${qmlColor(t.color.light[k])}"`);
   }

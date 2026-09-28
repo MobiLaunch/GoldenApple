@@ -25,7 +25,7 @@ PanelWindow {
 
     // The bar has no material, so each half picks white or dark text from the
     // brightness of the wallpaper behind it (sampled once per wallpaper).
-    property string wallpaper: Quickshell.env("GG_WALLPAPER") || "/usr/share/backgrounds/golden-gate/tide.png"
+    property string wallpaper: Prefs.wallpaper
     property bool darkLeft: false
     property bool darkRight: false
     Canvas {
@@ -131,9 +131,9 @@ PanelWindow {
         anchor.rect.x: logo.x + 8
         anchor.rect.y: bar.height + 5
         items: [
-            { label: "About This Computer", action: () => Hyprland.dispatch("exec gnome-control-center system") },
+            { label: "About This Computer", action: () => Hyprland.dispatch("exec gg-settings about") },
             "-",
-            { label: "System Settings…", shortcut: "⌘,", action: () => Hyprland.dispatch("exec gnome-control-center") },
+            { label: "System Settings…", shortcut: "⌘,", action: () => Hyprland.dispatch("exec gg-settings") },
             { label: "Software…", action: () => Hyprland.dispatch("exec gnome-software") },
             "-",
             { label: "Force Quit…", shortcut: "⌥⌘⎋", action: () => Hyprland.dispatch("exec hyprctl kill") },

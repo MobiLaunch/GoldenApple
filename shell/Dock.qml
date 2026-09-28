@@ -13,10 +13,11 @@ PanelWindow {
     property var pinned: [
         "org.gnome.Nautilus", "firefox", "org.gnome.Geary", "org.gnome.Fractal", "org.goldengate.Maps",
         "org.goldengate.Photos", "org.goldengate.Music", "org.gnome.Calendar", "org.goldengate.Notes",
-        "org.goldengate.Weather", "org.gnome.Software", "org.gnome.Settings", "com.mitchellh.ghostty"
+        "org.goldengate.Weather", "org.gnome.Software", "org.goldengate.Settings", "com.mitchellh.ghostty"
     ]
-    property real baseSize: Theme.sizeDockIcon
-    property real maxSize: Theme.sizeDockMagnified
+    // Size and magnification from Settings › Desktop & Dock.
+    property real baseSize: Prefs.dockSize
+    property real maxSize: Prefs.dockMagnification && !Prefs.reduceMotion ? Prefs.dockMagnifiedSize : Prefs.dockSize
     property real pointerX: -1
     property var launcher: null   // AppLaunch on this screen: the icon grows into the window
 
@@ -141,7 +142,7 @@ PanelWindow {
                         anchors { horizontalCenter: parent.horizontalCenter; top: parent.bottom; topMargin: 2 }
                         width: 4; height: 4; radius: 2
                         color: Theme.dark ? "#ccffffff" : "#8c000000"
-                        opacity: tile.wins.length ? 1 : 0
+                        opacity: tile.wins.length && Prefs.dockIndicators ? 1 : 0
                         Behavior on opacity { NumberAnimation { duration: 300 } }
                     }
                     Glass {
@@ -158,7 +159,7 @@ PanelWindow {
                         hoverEnabled: true
                         onClicked: {
                             if (tile.wins.length) tile.wins[0].activate()
-                            else if (dock.launcher?.enabled) {
+                            else if (dock.launcher?.enabled && Prefs.animateLaunch) {
                                 // The Dock window sits at the bottom of the launcher's full-screen one.
                                 const p = icon.mapToItem(null, 0, 0)
                                 dock.launcher.launch(tile.modelData, Qt.rect(p.x, dock.launcher.height - dock.height + p.y, icon.width, icon.height))

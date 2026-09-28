@@ -26,6 +26,18 @@ ShellRoot {
         command: ["gsettings", "get", "org.gnome.desktop.interface", "color-scheme"]
         stdout: SplitParser { onRead: (line) => followScheme(line) }
     }
+    // The accent colour (Settings › Appearance › Color), for everything the shell draws.
+    function followAccent(line) { const m = /'(\w+)'/.exec(line); if (m) Theme.accentName = m[1] }
+    Process {
+        running: true
+        command: ["gsettings", "monitor", "org.gnome.desktop.interface", "accent-color"]
+        stdout: SplitParser { onRead: (line) => followAccent(line) }
+    }
+    Process {
+        running: true
+        command: ["gsettings", "get", "org.gnome.desktop.interface", "accent-color"]
+        stdout: SplitParser { onRead: (line) => followAccent(line) }
+    }
 
     // Appearance "Auto" (chosen in Setup Assistant): light by day, dark from 7 pm.
     FileView {

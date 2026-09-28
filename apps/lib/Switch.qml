@@ -39,7 +39,7 @@ Item {
         Behavior on width { Spring { spring: Theme.snappy } }
         Behavior on height { Spring { spring: Theme.snappy } }
         // Shadow under the white knob
-        Rectangle { z: -1; anchors { fill: parent; topMargin: 1; bottomMargin: -1 } radius: parent.radius; color: "#26000000"; visible: knob.filled }
+        shadow: knob.filled ? "#26000000" : "transparent"
     }
     MouseArea {
         id: ma

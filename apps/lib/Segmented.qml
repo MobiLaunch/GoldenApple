@@ -28,7 +28,7 @@ Item {
         lens: 4
         Behavior on x { Spring { spring: Theme.snappy } }
         Behavior on width { Spring { spring: Theme.snappy } }
-        Rectangle { z: -1; anchors { fill: parent; topMargin: 1; bottomMargin: -1 } radius: parent.radius; color: "#1f000000" }
+        shadow: "#1f000000"
     }
     Row {
         id: row
