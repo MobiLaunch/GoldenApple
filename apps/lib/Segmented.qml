@@ -45,9 +45,11 @@ Item {
                     anchors.centerIn: parent
                     text: modelData
                     color: Theme.label
+                    opacity: segArea.pressed ? 0.55 : 1
+                    Behavior on opacity { NumberAnimation { duration: 100 } }
                     font { family: Theme.fontUi; pixelSize: 12; weight: index === seg.current ? Font.DemiBold : Font.Normal }
                 }
-                MouseArea { anchors.fill: parent; onClicked: { seg.current = index; seg.picked(index) } }
+                MouseArea { id: segArea; anchors.fill: parent; onClicked: { seg.current = index; seg.picked(index) } }
             }
         }
     }

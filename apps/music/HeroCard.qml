@@ -2,6 +2,7 @@
 // fills the card, with the art on the right and a line about it on the left,
 // like Music's editorial cards.
 import QtQuick
+import "../lib"
 import "../lib/theme"
 
 Item {
@@ -86,8 +87,13 @@ Item {
                 text: "▶"; color: hero.lightTone ? "#000000" : "#ffffff"
                 font.pixelSize: 14
             }
-            MouseArea { anchors.fill: parent; onClicked: hero.play() }
+            scale: playArea.pressed ? 0.88 : 1
+            Behavior on scale { Spring { spring: Theme.bouncy } }
+            MouseArea { id: playArea; anchors.fill: parent; onClicked: hero.play() }
         }
-        TapHandler { onTapped: hero.open() }
+        // The card gives a little under the pointer, like Music's.
+        scale: heroTap.pressed && !playArea.pressed ? 0.975 : 1
+        Behavior on scale { Spring { spring: Theme.snappy } }
+        TapHandler { id: heroTap; onTapped: hero.open() }
     }
 }

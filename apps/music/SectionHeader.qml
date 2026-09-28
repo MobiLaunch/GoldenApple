@@ -12,6 +12,8 @@ Item {
     Row {
         id: row
         spacing: 3
+        opacity: headTap.pressed ? 0.55 : 1
+        Behavior on opacity { NumberAnimation { duration: 100 } }
         Text {
             text: head.text
             color: Theme.label
@@ -24,5 +26,5 @@ Item {
             name: "chevron-right"; tone: "gray"; size: 13
         }
     }
-    TapHandler { enabled: head.more; onTapped: head.clicked() }
+    TapHandler { id: headTap; enabled: head.more; onTapped: head.clicked() }
 }

@@ -2,6 +2,7 @@
 // latest songs in columns, and recently added albums.
 import Quickshell
 import QtQuick
+import "../lib"
 import "../lib/theme"
 
 Flickable {
@@ -46,9 +47,11 @@ Flickable {
             }
             Rectangle {
                 width: openLabel.width + 28; height: 28; radius: 14
-                color: "#fa2d48"
+                color: openArea.pressed ? Qt.darker("#fa2d48", 1.15) : "#fa2d48"
+                scale: openArea.pressed ? 0.95 : 1
+                Behavior on scale { Spring { spring: Theme.snappy } }
                 Text { id: openLabel; anchors.centerIn: parent; text: "Open Music Folder"; color: "#ffffff"; font { family: Theme.fontUi; pixelSize: 13; weight: Font.Medium } }
-                MouseArea { anchors.fill: parent; onClicked: Quickshell.execDetached(["sh", "-c", "mkdir -p \"$1\" && xdg-open \"$1\"", "sh", page.lib.musicDir]) }
+                MouseArea { id: openArea; anchors.fill: parent; onClicked: Quickshell.execDetached(["sh", "-c", "mkdir -p \"$1\" && xdg-open \"$1\"", "sh", page.lib.musicDir]) }
             }
         }
 
