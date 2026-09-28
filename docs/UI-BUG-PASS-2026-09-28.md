@@ -17,6 +17,8 @@ Base: `claude/linux-macos-golden-gate-ui-pckc7s` at `3bbafd3ee4d63765d55991a16fc
 | Music / Photos | File paths are encoded per component, preserving `#`, `?`, `%`, Unicode and spaces. Music owns a copy of its queue, clamps starting indices, clears the source for an empty queue and bounds seeking. Artist grouping uses a prototype-free dictionary. Photos supports dragging the video scrubber and avoids starting hidden videos after an item change. |
 | Notes | Obsolete debounce timers stop on selection changes. Renames write through a separate atomic writer and only delete the original after successful completion. Failed saves keep the draft dirty and visible, report an error and prevent normal note switching/new-note/delete actions. Deletion uses the post-flush filename. Pending edits flush on orderly app exit. |
 | Notifications | Summary/body are rendered as plain text, matching the server's advertised capabilities. A sender's zero (never expire) timeout is respected. |
+| Window resizing | Frameless native app windows now expose diagonal resize targets at all four corners; the top corners were previously missing. |
+| CI resilience | UI screenshots are still uploaded when possible, but exhausted GitHub artifact storage no longer marks otherwise-passing browser/shader validation as failed. Screenshot retention is limited to three days. |
 | Browser reference launcher | Its application grid now has an initial keyboard selection, responds to Up/Down and launches the selected app with Enter. Selection is visible. Empty-result navigation is guarded. |
 
 ## Validation
