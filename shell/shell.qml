@@ -3,6 +3,7 @@
 //                                  and run `qs -c golden-gate`)
 import Quickshell
 import Quickshell.Io
+import Quickshell.Hyprland
 import QtQuick
 import "theme"
 
@@ -100,6 +101,17 @@ ShellRoot {
                 target: "controlcenter"
                 function toggle(): void { cc.toggle() }
             }
+        }
+    }
+
+    // The yellow light: Hyprland has no minimized state of its own, so a window
+    // that asks to be minimized goes to a hidden workspace; the Dock brings it back.
+    Connections {
+        target: Hyprland
+        function onRawEvent(event) {
+            if (event.name !== "minimized") return
+            const [addr, on] = event.data.split(",")
+            if (on === "1") Hyprland.dispatch("movetoworkspacesilent special:minimized,address:" + (addr.startsWith("0x") ? addr : "0x" + addr))
         }
     }
 }

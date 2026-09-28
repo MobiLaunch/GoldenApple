@@ -3,6 +3,7 @@
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
+import Quickshell.Hyprland
 import QtQuick
 import QtQuick.Layouts
 import "theme"
@@ -60,6 +61,16 @@ PanelWindow {
     }
     function windowsFor(entry) {
         return ToplevelManager.toplevels.values.filter((t) => t.appId === entry.id || t.appId.toLowerCase() === entry.id.split(".").pop().toLowerCase())
+    }
+    // A window of this app parked by the yellow light (shell.qml), to bring back.
+    function minimizedFor(entry) {
+        const bare = entry.id.split(".").pop().toLowerCase()
+        return Hyprland.toplevels.values.find((t) => t.workspace?.name === "special:minimized"
+            && (t.lastIpcObject?.class === entry.id || (t.lastIpcObject?.class ?? "").toLowerCase() === bare))
+    }
+    function restore(t) {
+        const ws = Hyprland.focusedWorkspace?.id ?? 1
+        Hyprland.dispatch(`movetoworkspace ${ws},address:${t.lastIpcObject.address}`)
     }
     // Cosine falloff measured against the resting layout, so the Dock never chases itself.
     function sizeAt(index) {
@@ -158,7 +169,9 @@ PanelWindow {
                         anchors.fill: parent
                         hoverEnabled: true
                         onClicked: {
-                            if (tile.wins.length) tile.wins[0].activate()
+                            const parked = dock.minimizedFor(tile.modelData)
+                            if (parked) dock.restore(parked)
+                            else if (tile.wins.length) tile.wins[0].activate()
                             else if (dock.launcher?.enabled && Prefs.animateLaunch) {
                                 // The Dock window sits at the bottom of the launcher's full-screen one.
                                 const p = icon.mapToItem(null, 0, 0)

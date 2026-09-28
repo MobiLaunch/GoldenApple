@@ -146,6 +146,18 @@ done
 place "$REPO/themes/ghostty/config" "$CONF/ghostty/config"
 for f in "$REPO"/themes/ghostty/themes/*; do place "$f" "$CONF/ghostty/themes/$(basename "$f")"; done
 
+# Browser: Firefox as Safari (one toolbar row, tabs in a glass sidebar, Mac menus)
+if [[ $MODE == system ]]; then
+  say "Firefox look → $ROOT/usr/lib/firefox"
+  bash "$REPO/themes/firefox/install.sh" "$ROOT/usr/lib/firefox"
+elif [[ -w /usr/lib/firefox ]]; then
+  say "Firefox look → /usr/lib/firefox"
+  bash "$REPO/themes/firefox/install.sh" /usr/lib/firefox
+else
+  say "Firefox look → your Firefox profiles"
+  bash "$REPO/themes/firefox/install.sh" --profiles
+fi
+
 # 4. Toolkit theming + fonts
 say "GTK 4 / libadwaita overrides, fontconfig"
 place "$REPO/design/dist/gtk.css" "$CONF/gtk-4.0/gtk.css"

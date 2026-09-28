@@ -76,7 +76,7 @@ headerbar button:active, headerbar button:checked { background: var(--gg-pill-ac
 headerbar button:disabled > image, headerbar button:disabled > label { opacity: 0.3; }
 
 /* (The .linked selectors repeat the segmented-control rule's :not()s below so they outrank it.) */
-headerbar .linked:not(.vertical):not(.search):not(.entry-combo), headerbar splitbutton, headerbar viewswitcher, headerbar toggle-group { padding: 3px; min-width: 0; }
+headerbar .linked:not(.vertical):not(.search):not(.entry-combo), headerbar splitbutton, headerbar viewswitcher, headerbar toggle-group { padding: 3px; min-width: 0; min-height: 30px; }   /* 36 px outside, like the buttons beside them */
 headerbar .linked:not(.vertical):not(.search):not(.entry-combo) > button, headerbar .linked:not(.vertical):not(.search):not(.entry-combo) > menubutton > button,
 headerbar splitbutton > button, headerbar splitbutton > menubutton > button,
 headerbar viewswitcher button, headerbar toggle-group > toggle {
@@ -108,6 +108,8 @@ windowcontrols { border-spacing: 8px; margin: 0; }
    (in a sidebar, its 8 px inset takes the place of this margin). */
 headerbar windowcontrols.start { margin-left: 8px; }
 .sidebar-pane headerbar windowcontrols.start { margin-left: 0; }
+/* Each light is a circle painted by a gradient sized to the button's width, so it
+   stays round however tall a header stretches the button (Clocks' is 46 px). */
 windowcontrols > button,
 windowcontrols > button.image-button,
 windowcontrols > button:hover,
@@ -115,10 +117,12 @@ windowcontrols > button:checked {
   min-width: 13px;
   min-height: 13px;
   padding: 0;
-  margin: 11px 0 12px;   /* the header row is 36 px tall; keep the lights round */
-  border-radius: 50%;
-  background: var(--gg-tl-inactive);
-  box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.14);
+  margin: 11px 0 12px;   /* in the usual 36 px header row */
+  border-radius: 0;
+  background: radial-gradient(circle closest-side, var(--gg-tl-inactive) 91%, rgba(0, 0, 0, 0.14) 93%, rgba(0, 0, 0, 0.14) 97%, transparent 100%);
+  box-shadow: none;
+  outline: none;
+  transition: filter 120ms ease;
 }
 windowcontrols > button > image,
 windowcontrols > button:hover > image,
@@ -132,13 +136,13 @@ windowcontrols > button:active > image {
   -gtk-icon-size: 9px;
   color: transparent;
 }
-windowcontrols > button.close { background: var(--gg-tl-close); }
-windowcontrols > button.minimize { background: var(--gg-tl-minimize); }
-windowcontrols > button.maximize { background: var(--gg-tl-zoom); }
+windowcontrols > button.close { background: radial-gradient(circle closest-side, var(--gg-tl-close) 91%, rgba(0, 0, 0, 0.14) 93%, rgba(0, 0, 0, 0.14) 97%, transparent 100%); }
+windowcontrols > button.minimize { background: radial-gradient(circle closest-side, var(--gg-tl-minimize) 91%, rgba(0, 0, 0, 0.14) 93%, rgba(0, 0, 0, 0.14) 97%, transparent 100%); }
+windowcontrols > button.maximize { background: radial-gradient(circle closest-side, var(--gg-tl-zoom) 91%, rgba(0, 0, 0, 0.14) 93%, rgba(0, 0, 0, 0.14) 97%, transparent 100%); }
 windowcontrols:hover > button > image { color: rgba(0, 0, 0, 0.55); }
 windowcontrols > button:active { filter: brightness(0.82); }
 window:backdrop windowcontrols:not(:hover) > button,
-windowcontrols > button:disabled { background: var(--gg-tl-inactive); box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.08); opacity: 1; }
+windowcontrols > button:disabled { background: radial-gradient(circle closest-side, var(--gg-tl-inactive) 93%, rgba(0, 0, 0, 0.08) 95%, rgba(0, 0, 0, 0.08) 97%, transparent 100%); opacity: 1; }
 headerbar:backdrop > windowhandle windowcontrols { filter: none; }
 
 /* ------------------------------------------------------------------ sidebar */

@@ -8,6 +8,7 @@
 #   gallery gallery-menu gallery-dialog gallery-finder   every control (tests/gallery.js)
 #   files text-editor calculator settings settings-mouse clocks calendar weather maps
 #   loupe music software fractal ghostty mail (Geary, GTK 3)
+#   browser (Firefox, with themes/firefox installed into /usr/lib/firefox by root)
 # Writes OUTDIR/<shot>-light.png and -dark.png: the window plus 40 px around it,
 # over the default wallpaper. SHOTS_B64=1 also prints each as a JPEG in base64
 # ("--- shot <name> ---" … "--- end ---"), so they can be read from a CI log.
@@ -52,14 +53,17 @@ declare -A CMD=(
   [fractal]="fractal"
   [ghostty]="ghostty"
   [mail]="geary"
+  [browser]='firefox --new-instance --profile $HOME/.firefox-shot file://$HOME/Documents/Welcome.html'
 )
-GTK3_SHOTS=(mail)
+GTK3_SHOTS=(mail browser)
+# Slow starters: seconds to let them settle before the shot.
+declare -A SETTLE_FOR=([browser]=10)
 # Settings a shot needs first.
 declare -A PREP=(
   [files]="gsettings set org.gnome.nautilus.preferences default-folder-viewer icon-view"
   [files-list]="gsettings set org.gnome.nautilus.preferences default-folder-viewer list-view"
 )
-ORDER=(gallery gallery-menu gallery-dialog gallery-finder files files-list text-editor calculator settings settings-mouse clocks calendar weather maps loupe music software fractal ghostty mail)
+ORDER=(gallery gallery-menu gallery-dialog gallery-finder files files-list text-editor calculator settings settings-mouse clocks calendar weather maps loupe music software fractal ghostty mail browser)
 shots=("$@"); [[ ${#shots[@]} -gt 0 ]] || shots=("${ORDER[@]}")
 
 # ---------------------------------------------------------------- a clean home with the theme
@@ -101,6 +105,12 @@ for d in DESKTOP:Desktop DOCUMENTS:Documents DOWNLOAD:Downloads MUSIC:Music PICT
 done > "$XDG_CONFIG_HOME/user-dirs.dirs"
 printf 'Golden Gate\n\nA Linux desktop with Liquid Glass.\n' > "$HOME/Documents/Notes.txt"
 for f in "Budget 2026.ods" "Trip itinerary.pdf" "Presentation.odp"; do : > "$HOME/Documents/$f"; done
+mkdir -p "$HOME/.firefox-shot"
+cat > "$HOME/Documents/Welcome.html" <<'HTML'
+<!doctype html><meta charset="utf-8"><title>Welcome to Golden Gate</title>
+<style>:root{color-scheme:light dark}body{font:15px "Inter Variable",sans-serif;max-width:640px;margin:80px auto;padding:0 24px}h1{font-size:34px;letter-spacing:-.5px}</style>
+<h1>Welcome to Golden Gate</h1><p>A Linux desktop with Liquid Glass. This page is local, so the shot needs no network.</p>
+HTML
 rsvg-convert -w 1600 "$REPO/prototype/assets/wallpapers/tide.svg" -o "$HOME/Pictures/Tide.png"
 
 # ---------------------------------------------------------------- Sway
@@ -136,7 +146,7 @@ shoot() { # shoot NAME SCHEME
   local pid=$!
   for _ in $(seq 60); do geo=$(window); [[ -n $geo ]] && break; sleep 0.5; done
   if [[ -z $geo ]]; then say "$name ($scheme): no window"; tail -5 "$OUT/$name-$scheme.log"; kill $pid 2>/dev/null || true; return; fi
-  sleep "${SETTLE:-3}"
+  sleep "${SETTLE_FOR[$name]:-${SETTLE:-3}}"
   geo=$(window)   # apps resize after their first frame
   local x=${geo%%,*} rest=${geo#*,}; local y=${rest%% *} size=${rest#* }; local w=${size%x*} h=${size#*x}
   local res=${GG_RES:-1600x1000}; local W=${res%x*} H=${res#*x}
