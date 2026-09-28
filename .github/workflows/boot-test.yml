@@ -58,7 +58,7 @@ jobs:
           # tests the new ISO; testing the old one here would only mislead.
           if [ "$GITHUB_EVENT_NAME" = push ]; then
             ISO_SHA=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID" -q .head_sha)
-            if ! git diff --quiet "$ISO_SHA" HEAD -- distro scripts/install.sh compositor shell themes \
+            if ! git diff --quiet "$ISO_SHA" HEAD -- distro scripts/install.sh compositor shell themes icons/GoldenGate design/dist \
                  ':(exclude)distro/archiso/boot-test.sh' ':(exclude)compositor/liquid-glass'; then
               echo "::notice::The image changed since the ISO from $ISO_SHA; the Build ISO run for this push boot-tests the new one."
               echo "skip=true" >> "$GITHUB_OUTPUT"

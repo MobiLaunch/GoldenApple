@@ -12,6 +12,8 @@ on:
       - '!compositor/liquid-glass/**'    # the shader isn't in the image yet (plugin pending)
       - shell/**
       - themes/**
+      - icons/GoldenGate/**              # the icon theme and GTK theme are installed into the image
+      - design/dist/**
       - .github/workflows/iso.yml
 
 concurrency:
