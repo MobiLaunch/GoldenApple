@@ -75,8 +75,11 @@ scripts/install.sh           # backs up anything it replaces (*.bak-<timestamp>)
 sudo scripts/install.sh --extras   # optional (needs keyd, sddm, plymouth): ⌘ layer, login theme, boot splash
 ```
 
-Then log into Hyprland. Local account creation also needs the root-owned helper:
-`sudo scripts/install.sh --extras`. It is included automatically in ISO builds.
+Then log into Hyprland. Local account creation also needs the system integration:
+`sudo scripts/install.sh --extras`. Besides the root-owned helper, this installs
+the shared Golden Gate runtime, a Golden Gate SDDM/Wayland session, and the
+`/etc/skel` desktop used by accounts created in Hello. It is included
+automatically in ISO builds.
 
 **Web browser:** `gg-web` opens Golden Gate's native Chromium-powered browser
 (Qt WebEngine, updated through Arch's `qt6-webengine` package). It has a
@@ -99,9 +102,10 @@ identify the underlying cause.
 a password-protected local administrator account, requests existing administrator
 authorization on installed systems, and passes the password through standard input.
 Existing desktop users can keep their current account. Setup saves your choices
-for the new account and waits for successful writes before closing. Sign in to that
-account through your login screen afterward; creation does not silently change the
-identity of the running desktop. On a live ISO, accounts and files remain temporary
+for the new account and waits for successful writes before closing. On installed
+systems the Welcome page can sign out after saving so you can continue in the new
+account through the Golden Gate login session; choosing Get Started keeps the
+current session instead. On a live ISO, accounts and files remain temporary
 unless persistence is configured. You can sign in on another console (Ctrl+Alt+F2)
 and run `gg-session`; this does not install the system onto disk.
 
