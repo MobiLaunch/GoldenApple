@@ -114,3 +114,12 @@ These changes remove known code-path causes of cross-monitor launches, excessive
 Dock relayout, incomplete newly-created users, and browser theme flashes. Actual
 frame-time/FPS numbers and compositor/GPU driver behavior still require booting
 the resulting image on the target hardware; no synthetic FPS claim is made here.
+
+
+## Live-hardware follow-up / release-candidate sweep
+
+Hardware testing confirmed the compositor/dock motion is smooth, while exposing missing OS surfaces. The follow-up adds a Launchpad-style Applications grid, live desktop widgets, full firmware and wireless-regdb packages, a live-only Golden Gate installer entry, Bluetooth discovery/pair/trust/connect, Wi-Fi rescanning/join flows, and blurred ambient elevation in both shell and app Glass primitives.
+
+The final static sweep fixed missing Quickshell DesktopEntries/Wayland imports, prevented desktop widgets from intercepting ordinary desktop input, surfaced Bluetooth pairing failures, forces Wi-Fi rescans, guards the installer UI itself to live media, and adds CI coverage for installer staging plus a read-only disk-discovery regression.
+
+Installer safety remains intentionally conservative: the Golden Gate front-end discovers and selects disks but does not itself partition, format, wipe or mount them. Until a version-validated Archinstall configuration generator is bound to that selected disk, destructive work remains inside Archinstall's own confirmation flow rather than pretending the GUI selection is authoritative.
