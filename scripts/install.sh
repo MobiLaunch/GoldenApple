@@ -36,6 +36,65 @@ install_extras() {
     printf '%%wheel ALL=(ALL:ALL) ALL\n' > "$R/etc/sudoers.d/20-golden-wheel"
     chmod 440 "$R/etc/sudoers.d/20-golden-wheel"
   fi
+
+  # Account creation happens before the new user has ever logged in. Install a
+  # root-owned shared runtime plus a Golden Gate /etc/skel so useradd produces a
+  # usable desktop instead of a bare Hyprland account on existing Arch systems.
+  # In --system mode the same files already exist; refreshing them is harmless.
+  say "shared Golden Gate runtime → $R/usr/share/golden-gate"
+  local SHARE="$R/usr/share/golden-gate"
+  local BIN="$R/usr/local/bin"
+  mkdir -p "$SHARE" "$R/usr/share/applications" "$R/usr/share/icons" "$R/usr/share/backgrounds/golden-gate" "$BIN"
+  rm -rf "$SHARE/apps"
+  cp -a "$REPO/apps" "$SHARE/apps"
+  rm -rf "$SHARE/apps/desktop"
+  for f in "$REPO"/apps/desktop/*.desktop; do
+    sed 's#@APPS@#/usr/share/golden-gate/apps#g' "$f" > "$R/usr/share/applications/$(basename "$f")"
+  done
+  printf '#!/bin/sh\nexec bash /usr/share/golden-gate/apps/setup/diagnostics.sh "$@"\n' > "$BIN/gg-diagnostics"
+  printf '#!/bin/sh\nexec bash /usr/share/golden-gate/apps/settings/open.sh "$@"\n' > "$BIN/gg-settings"
+  printf '#!/bin/sh\nexec sh /usr/share/golden-gate/apps/browser/launch.sh "$@"\n' > "$BIN/gg-web"
+  cp "$REPO/themes/firefox/recover.sh" "$SHARE/firefox-recover.sh"
+  printf '#!/bin/sh\nbash /usr/share/golden-gate/firefox-recover.sh --profiles\nexec firefox --safe-mode "$@"\n' > "$BIN/gg-firefox-recover"
+  chmod 755 "$BIN/gg-diagnostics" "$BIN/gg-settings" "$BIN/gg-web" "$BIN/gg-firefox-recover"
+
+  rm -rf "$R/usr/share/icons/GoldenGate"
+  cp -a "$REPO/icons/GoldenGate" "$R/usr/share/icons/GoldenGate"
+  for svg in "$REPO"/prototype/assets/wallpapers/*.svg; do
+    local name
+    name="$(basename "$svg" .svg)"
+    cp "$svg" "$R/usr/share/backgrounds/golden-gate/$name.svg"
+    if command -v rsvg-convert >/dev/null; then
+      rsvg-convert -w 3840 -h 2400 -o "$R/usr/share/backgrounds/golden-gate/$name.png" "$svg"
+    fi
+  done
+
+  local SKEL="$R/etc/skel"
+  if [[ ! -d "$SKEL/.config/quickshell/golden-gate" ]]; then
+    say "new-account Golden Gate desktop → $SKEL"
+    mkdir -p "$SKEL/.config/hypr/golden-gate" "$SKEL/.config/quickshell" \
+             "$SKEL/.config/ghostty/themes" "$SKEL/.config/gtk-4.0" "$SKEL/.config/gtk-3.0" \
+             "$SKEL/.config/fontconfig/conf.d"
+    sed -e 's#__GG_WALLPAPER__#/usr/share/backgrounds/golden-gate/tide.png#' \
+        -e 's#__GG_APPS__#/usr/share/golden-gate/apps#' \
+        "$REPO/compositor/hyprland/hyprland.conf" > "$SKEL/.config/hypr/hyprland.conf"
+    cp "$REPO/design/dist/hyprland-motion.conf" "$SKEL/.config/hypr/golden-gate/motion.conf"
+    cp "$REPO/compositor/hyprland/hypridle.conf" "$SKEL/.config/hypr/hypridle.conf"
+    cp "$REPO/compositor/hyprland/report-config-errors.sh" "$SKEL/.config/hypr/golden-gate/report-config-errors.sh"
+    cp "$REPO/compositor/hyprland/machine-conf.sh" "$SKEL/.config/hypr/golden-gate/machine-conf.sh"
+    chmod 755 "$SKEL/.config/hypr/golden-gate/report-config-errors.sh" "$SKEL/.config/hypr/golden-gate/machine-conf.sh"
+    printf '# Written by Setup Assistant (keyboard layout).\n' > "$SKEL/.config/hypr/golden-gate/input.conf"
+    printf '# Written by Settings.\n' > "$SKEL/.config/hypr/golden-gate/accessibility.conf"
+    printf '# Written by Settings.\n' > "$SKEL/.config/hypr/golden-gate/displays.conf"
+    printf '# Filled in by machine-conf.sh when the session starts.\n' > "$SKEL/.config/hypr/golden-gate/machine.conf"
+    cp -a "$REPO/shell" "$SKEL/.config/quickshell/golden-gate"
+    cp "$REPO/themes/ghostty/config" "$SKEL/.config/ghostty/config"
+    cp "$REPO"/themes/ghostty/themes/* "$SKEL/.config/ghostty/themes/"
+    cp "$REPO/design/dist/gtk.css" "$SKEL/.config/gtk-4.0/gtk.css"
+    cp "$REPO/design/dist/gtk3.css" "$SKEL/.config/gtk-3.0/gtk.css"
+    cp "$REPO/themes/fontconfig/60-golden-gate.conf" "$SKEL/.config/fontconfig/conf.d/60-golden-gate.conf"
+    printf '[Default Applications]\nx-scheme-handler/http=org.goldengate.Web.desktop\nx-scheme-handler/https=org.goldengate.Web.desktop\ntext/html=org.goldengate.Web.desktop\n' > "$SKEL/.config/mimeapps.list"
+  fi
   bash "$REPO/themes/firefox/recover.sh" --system "$R/usr/lib/firefox"
   say "GNOME defaults (fonts, icons, Finder-style list view) → $R/usr/share/glib-2.0/schemas"
   mkdir -p "$R/usr/share/glib-2.0/schemas"
