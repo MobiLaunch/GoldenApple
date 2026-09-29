@@ -92,7 +92,7 @@ ShellRoot {
             required property var modelData
 
             Wallpaper { screen: perScreen.modelData }
-            DesktopWidgets { screen: perScreen.modelData }
+            LazyLoader { active: Quickshell.env("GG_WIDGETS") === "1"; source: "DesktopWidgets.qml" }
             ControlCenter { id: cc; screen: perScreen.modelData; notifications: notificationCenter }
             MenuBar { screen: perScreen.modelData; controlCenter: cc; spotlight: spotlightPanel }
             AppLaunch {
