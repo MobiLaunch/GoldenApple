@@ -267,7 +267,7 @@ PanelWindow {
                         tint: Theme.dark ? "#b8282830" : "#c8f4f4f6"
                         Text { id: placeText; anchors.centerIn: parent; width: Math.min(implicitWidth, parent.width - 24); elide: Text.ElideRight; textFormat: Text.PlainText; text: place.modelData.name; color: Theme.label; font { family: Theme.fontUi; pixelSize: 13; weight: Font.Medium } }
                     }
-                    MouseArea { id: placeArea; anchors.fill: parent; hoverEnabled: true; onClicked: { if (place.modelData.action === "applications") dock.applications?.toggle(); else Quickshell.execDetached(place.modelData.exec) } }
+                    MouseArea { id: placeArea; anchors.fill: parent; hoverEnabled: true; onClicked: { if (place.modelData.action === "applications") { dock.applications.active = true; Qt.callLater(() => dock.applications.item?.toggle()) } else Quickshell.execDetached(place.modelData.exec) } }
                 }
             }
         }
