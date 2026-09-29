@@ -63,6 +63,8 @@ ShellRoot {
             property bool shareWithDevelopers: false
             property string look: "light"
             property bool finishing: false
+            property bool liveSession: false
+            property bool switchAfterFinish: false
             property string createdUsername: ""
             property string finishError: ""
             property var preferences: ({})
@@ -97,9 +99,10 @@ ShellRoot {
                 run(["gsettings", "set", "org.gnome.desktop.interface", "color-scheme", dark ? "prefer-dark" : "default"])
             }
             // Everything chosen, saved; then the desktop.
-            function finish() {
+            function finish(switchUser) {
                 if (finishing) return
                 finishing = true
+                switchAfterFinish = switchUser === true
                 finishError = ""
                 const l = Regions.layout(region.keyboard)
                 preferences = {layout: l.layout, variant: l.variant, look: look, location: location,
@@ -132,8 +135,37 @@ ShellRoot {
                     stage.run(["timedatectl", "set-timezone", stage.zone])
                     stage.run(["gsettings", "set", "org.gnome.system.location", "enabled", String(stage.location)])
                     if (stage.shareDiagnostics) stage.run(["bash", root.here + "/setup/crash-watch.sh"])
-                    outro.start()
+                    if (stage.switchAfterFinish && stage.createdUsername && !stage.liveSession) {
+                        const sid = Quickshell.env("XDG_SESSION_ID") || ""
+                        if (!sid) {
+                            stage.finishing = false
+                            stage.finishError = "Golden Gate could not identify this login session. Use the system menu to sign out, then choose " + stage.createdUsername + " at the login screen."
+                            return
+                        }
+                        switchSession.command = ["loginctl", "terminate-session", sid]
+                        switchSession.running = true
+                    } else {
+                        outro.start()
+                    }
                 }
+            }
+            Process {
+                id: switchSession
+                onExited: (code) => {
+                    // A successful terminate-session normally removes this process
+                    // before the callback. If it returns while we are still alive,
+                    // close Setup. A failure keeps the user in control.
+                    if (code === 0) Qt.quit()
+                    else {
+                        stage.finishing = false
+                        stage.finishError = "The account is ready, but Golden Gate could not sign out automatically. Use the system menu to sign out, then choose " + stage.createdUsername + "."
+                    }
+                }
+            }
+            Process {
+                running: true
+                command: ["sh", "-c", "test -d /run/archiso"]
+                onExited: (code) => stage.liveSession = code === 0
             }
 
             // Guess the region from the time zone and language.
@@ -450,14 +482,20 @@ ShellRoot {
                     continueText: stage.finishing ? "Saving…" : "Get Started"
                     canContinue: !stage.finishing
                     canGoBack: !stage.finishing
+                    secondaryText: stage.createdUsername && !stage.liveSession && !stage.finishing ? "Sign Out & Switch User" : ""
                     Text {
                         width: parent.width; wrapMode: Text.WordWrap; textFormat: Text.PlainText
-                        text: stage.finishError || (stage.createdUsername ? "Account created: " + stage.createdUsername + ". This desktop session remains signed in as " + Quickshell.env("USER") + "; sign in to the new account from the login screen when ready." : "")
+                        text: stage.finishError || (stage.createdUsername
+                            ? (stage.liveSession
+                                ? "Account created: " + stage.createdUsername + ". This is a live session, so the account is temporary; you can sign in to it from another console while the live system is running."
+                                : "Account created: " + stage.createdUsername + ". Choose Get Started to stay signed in as " + Quickshell.env("USER") + ", or sign out now and continue in your new Golden Gate account.")
+                            : "")
                         color: stage.finishError ? "#d8483e" : Theme.secondaryLabel
                         font.pixelSize: 13
                     }
                     onBack: stage.back()
-                    onNext: stage.finish()
+                    onSecondary: stage.finish(true)
+                    onNext: stage.finish(false)
                 }
             }
         }
