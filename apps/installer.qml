@@ -17,8 +17,8 @@ ShellRoot {
    Column {
     anchors { fill: parent; margins: 42 }; spacing: 18
     Symbol { anchors.horizontalCenter: parent.horizontalCenter; name: stage.step===0 ? "logo" : stage.step===1 ? "internaldrive" : "exclamationmark-triangle"; size: 64; tone: stage.step===2 ? "accent" : "auto" }
-    Text { width: parent.width; horizontalAlignment: Text.AlignHCenter; text: stage.step===0 ? "Install Golden Gate" : stage.step===1 ? "Select the Disk Where Golden Gate Will Be Installed" : "Erase “" + (stage.disk?.model ?? "Disk") + " and Install Golden Gate?"; color: Theme.label; wrapMode: Text.WordWrap; font { family: Theme.fontUi; pixelSize: 25; weight: Font.DemiBold } }
-    Text { width: parent.width; horizontalAlignment: Text.AlignHCenter; wrapMode: Text.WordWrap; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: 14 }; text: stage.step===0 ? "Golden Gate will guide you through installing this system on your computer." : stage.step===1 ? "Choose a destination. Removable live media is hidden to reduce the chance of selecting the installer USB." : "Everything currently on " + (stage.disk?.path ?? "this disk") + " will be permanently erased. This cannot be undone." }
+    Text { width: parent.width; horizontalAlignment: Text.AlignHCenter; text: stage.step===0 ? "Install Golden Gate" : stage.step===1 ? "Select the Disk Where Golden Gate Will Be Installed" : "Ready to Continue"; color: Theme.label; wrapMode: Text.WordWrap; font { family: Theme.fontUi; pixelSize: 25; weight: Font.DemiBold } }
+    Text { width: parent.width; horizontalAlignment: Text.AlignHCenter; wrapMode: Text.WordWrap; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: 14 }; text: stage.step===0 ? "Golden Gate will guide you through installing this system on your computer." : stage.step===1 ? "Choose a destination. Removable live media is hidden to reduce the chance of selecting the installer USB." : "You selected " + (stage.disk?.model ?? "a disk") + " (" + (stage.disk?.path ?? "") + "). The installation engine will ask you to confirm the disk layout again before it makes any destructive changes." }
     Item { width: 1; height: 8 }
     ListView {
      visible: stage.step===1; width: parent.width; height: 250; clip: true; model: stage.disks; spacing: 8
@@ -38,7 +38,7 @@ ShellRoot {
     Row {
      anchors.horizontalCenter: parent.horizontalCenter; spacing: 10
      Button { visible: stage.step>0; text:"Back"; onClicked: stage.step-- }
-     Button { text: stage.step===0 ? "Continue" : stage.step===1 ? "Continue" : "Erase and Continue"; prominent: stage.step<2; destructive: stage.step===2; enabled: stage.step!==1 || !!stage.disk
+     Button { text: stage.step===0 ? "Continue" : stage.step===1 ? "Continue" : "Open Installation Engine"; prominent: true; destructive: false; enabled: stage.step!==1 || !!stage.disk
       onClicked: { if(stage.step<2) stage.step++; else handoff.running=true }
      }
     }
