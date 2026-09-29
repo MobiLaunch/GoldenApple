@@ -19,6 +19,7 @@ sh "$conf/machine-conf.sh" && head -n 1 "$conf/machine.conf" | logger -t gg-sess
 # Start the shell ourselves so a QML/runtime regression cannot masquerade as a
 # compositor black screen. Quickshell is restarted independently if it exits.
 export GG_SHELL_CONFIG=golden-gate
+mkdir -p "$HOME/.local/state"
 (
   while :; do
     qs -c "$GG_SHELL_CONFIG" >>"$HOME/.local/state/golden-gate-shell.log" 2>&1
