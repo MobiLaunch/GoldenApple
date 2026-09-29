@@ -14,6 +14,7 @@ Pane {
     property var nearby: []
     property bool discovering: false
     property string busyMac: ""
+    property string error: ""
 
     function refresh() {
         sys.sh("bluetoothctl show | grep -q 'Powered: yes' && echo on", (o) => powered = o.trim() === "on")
@@ -39,9 +40,10 @@ Pane {
         })
     }
     function pair(d) {
+        error = ""
         busyMac = d.mac
         sys.sh("bluetoothctl pair " + d.mac + " && bluetoothctl trust " + d.mac + " && bluetoothctl connect " + d.mac,
-               (o, code) => { busyMac = ""; if (code === 0) { nearby = nearby.filter(x => x.mac !== d.mac); refresh() } })
+               (o, code) => { busyMac = ""; if (code === 0) { nearby = nearby.filter(x => x.mac !== d.mac); refresh() } else error = "Couldn’t pair with “" + (d.name || d.mac) + "”. Make sure it is still in pairing mode." })
     }
     Component.onCompleted: { refresh(); if (powered) scan() }
     Timer { interval: 6000; running: pane.visible; repeat: true; onTriggered: pane.refresh() }
@@ -81,6 +83,7 @@ Pane {
                 Button { text: pane.busyMac === modelData.mac ? "Connecting…" : "Connect"; enabled: !pane.busyMac; onClicked: pane.pair(modelData) }
             }
         }
+        SetRow { visible: !!pane.error; title: pane.error }
         SetRow {
             title: pane.discovering ? "Looking for accessories…" : (pane.nearby.length ? "Scan Again" : "No accessories found")
             Button { text: "Scan"; enabled: !pane.discovering; onClicked: pane.scan() }
