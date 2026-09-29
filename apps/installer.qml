@@ -9,7 +9,8 @@ ShellRoot {
  AppWindow {
   id: win; title: "Install Golden Gate"; implicitWidth: 760; implicitHeight: 560; minimumSize: Qt.size(680,500); resizable: false
   Item {
-   id: stage; anchors.fill: parent; property int step: 0; property var disks: []; property var disk: null; property string error: ""
+   id: stage; anchors.fill: parent; property int step: 0; property var disks: []; property var disk: null; property string error: ""; property bool liveSession: false
+   Process { running: true; command: ["sh","-c","test -d /run/archiso"]; onExited: (code) => { stage.liveSession = code === 0; if (code !== 0) stage.error = "Installation is only available when booted from Golden Gate live media." } }
    Process {
     id: scan; running: true; command: ["python3", Qt.resolvedUrl("installer/helper.py").toString().replace("file://",""), "disks"]
     stdout: StdioCollector { onStreamFinished: { try { stage.disks=JSON.parse(text) } catch(e){ stage.error="Storage devices could not be read." } } }
@@ -38,7 +39,7 @@ ShellRoot {
     Row {
      anchors.horizontalCenter: parent.horizontalCenter; spacing: 10
      Button { visible: stage.step>0; text:"Back"; onClicked: stage.step-- }
-     Button { text: stage.step===0 ? "Continue" : stage.step===1 ? "Continue" : "Open Installation Engine"; prominent: true; destructive: false; enabled: stage.step!==1 || !!stage.disk
+     Button { text: stage.step===0 ? "Continue" : stage.step===1 ? "Continue" : "Open Installation Engine"; prominent: true; destructive: false; enabled: stage.liveSession && (stage.step!==1 || !!stage.disk)
       onClicked: { if(stage.step<2) stage.step++; else handoff.running=true }
      }
     }
