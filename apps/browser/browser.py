@@ -409,12 +409,18 @@ class Browser(QMainWindow):
 
     def bookmark(self):
         view = self.current()
-        url = view.url().toString()
+        # During back/forward navigation Qt can update the history item/title a
+        # frame before QWebEngineView.url(). Bookmark the logical current
+        # history entry so a quick Ctrl+D never captures the page we just left.
+        item = view.history().currentItem()
+        history_url = item.url().toString() if item.isValid() else ''
+        url = history_url if self.store.valid(history_url) else view.url().toString()
         if not self.store.valid(url):
             self.message('Open a website to add a bookmark.')
             return
+        title = item.title() if item.isValid() and item.url().toString() == url else view.title()
         if not any(r['url'] == url for r in self.store.data['bookmarks']):
-            self.store.data['bookmarks'].append({'title': view.title() or url, 'url': url})
+            self.store.data['bookmarks'].append({'title': title or url, 'url': url})
             self.schedule_save()
         self.message('Bookmark saved' + (' for this private window.' if self.private else '.'))
 
