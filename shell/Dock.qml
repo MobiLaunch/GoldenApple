@@ -25,6 +25,7 @@ PanelWindow {
     property real pointerX: -1
     property real pointerTargetX: -1
     property var launcher: null   // AppLaunch on this screen: the icon grows into the window
+    property var applications: null
 
     anchors { bottom: true; left: true; right: true }
     // Include the label, its gap, bounce and spring overshoot inside the layer surface.
@@ -55,6 +56,7 @@ PanelWindow {
     }
     Timer { interval: 5000; running: true; repeat: true; onTriggered: trashCheck.running = true }
     readonly property var places: [
+        { name: "Applications", icon: "view-app-grid-symbolic", action: "applications" },
         { name: "Downloads", icon: "folder", exec: ["xdg-open", Quickshell.env("HOME") + "/Downloads"] },
         { name: "Trash", icon: trashFull ? "user-trash-full" : "user-trash", exec: ["xdg-open", "trash:///"] },
     ]
@@ -259,7 +261,7 @@ PanelWindow {
                         tint: Theme.dark ? "#b8282830" : "#c8f4f4f6"
                         Text { id: placeText; anchors.centerIn: parent; width: Math.min(implicitWidth, parent.width - 24); elide: Text.ElideRight; textFormat: Text.PlainText; text: place.modelData.name; color: Theme.label; font { family: Theme.fontUi; pixelSize: 13; weight: Font.Medium } }
                     }
-                    MouseArea { id: placeArea; anchors.fill: parent; hoverEnabled: true; onClicked: Quickshell.execDetached(place.modelData.exec) }
+                    MouseArea { id: placeArea; anchors.fill: parent; hoverEnabled: true; onClicked: { if (place.modelData.action === "applications") dock.applications?.toggle(); else Quickshell.execDetached(place.modelData.exec) } }
                 }
             }
         }
