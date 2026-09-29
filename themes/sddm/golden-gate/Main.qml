@@ -75,7 +75,11 @@ Item {
     // private integer role ids, and remains usable when many accounts exist.
     ListView {
         id: users
-        visible: userModel.count > 1
+        // Keep the current delegate instantiated even for a one-user system so
+        // userLogin/userDisplay always resolve; only the picker chrome is hidden.
+        opacity: userModel.count > 1 ? 1 : 0
+        enabled: userModel.count > 1
+        interactive: userModel.count > 1
         anchors { left: parent.left; bottom: parent.bottom; margins: 36 }
         width: Math.min(Math.max(40, userModel.count * 52 - 12), root.width - 72)
         height: 40
