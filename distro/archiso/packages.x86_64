@@ -30,6 +30,11 @@ adwaita-icon-theme
 gsettings-desktop-schemas
 librsvg
 
+# Hardware firmware. The live image must boot on unknown machines, so keep the
+# complete Arch firmware meta-package rather than relying on the build host.
+linux-firmware
+wireless-regdb
+
 # Services the shell talks to
 pipewire
 pipewire-pulse
