@@ -148,15 +148,23 @@ mv "$WORK/hypridle.conf" "$AIR/home/golden/.config/hypr/hypridle.conf"
 
 # ---------------------------------------------------------------- build
 say "mkarchiso"
-# Fail the build if the generated UEFI boot entries lose the ArchISO discovery
-# arguments. Without these the kernel boots but initramfs cannot mount the live
-# image, which looks like a firmware/black-screen failure on real hardware.
-if ! grep -RqsE 'archisobasedir=arch' "$PROFILE"/efiboot "$PROFILE"/grub 2>/dev/null; then
-  echo "generated profile has no archisobasedir=arch UEFI boot argument"
+# Validate the releng boot template before mkarchiso expands %INSTALL_DIR% and
+# %ARCHISO_UUID%. Current ArchISO generates the systemd-boot UEFI entry during
+# the build, so requiring the final expanded arguments here is incorrect.
+if ! grep -qs '^install_dir="arch"' "$PROFILE/profiledef.sh"; then
+  echo "generated profile has an unexpected ArchISO install_dir"
   exit 1
 fi
-if ! grep -RqsE 'archisosearchuuid=|archisolabel=' "$PROFILE"/efiboot "$PROFILE"/grub 2>/dev/null; then
-  echo "generated profile has no ArchISO media discovery argument"
+if ! grep -qs "uefi.systemd-boot" "$PROFILE/profiledef.sh"; then
+  echo "generated profile has no systemd-boot UEFI boot mode"
+  exit 1
+fi
+if ! grep -RqsF 'archisobasedir=%INSTALL_DIR%' "$PROFILE/syslinux" "$PROFILE/grub" 2>/dev/null; then
+  echo "generated profile has no ArchISO base-directory discovery template"
+  exit 1
+fi
+if ! grep -RqsF 'archisosearchuuid=%ARCHISO_UUID%' "$PROFILE/syslinux" "$PROFILE/grub" 2>/dev/null; then
+  echo "generated profile has no ArchISO media-discovery template"
   exit 1
 fi
 mkarchiso -v -w "$WORK/build" -o "$OUT" "$PROFILE"
