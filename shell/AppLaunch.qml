@@ -27,6 +27,10 @@ PanelWindow {
     WlrLayershell.namespace: "gg-launch"
     WlrLayershell.layer: WlrLayer.Overlay
     mask: Region {}   // never takes input
+    // The overlay spans the monitor for coordinate mapping, but only the animated
+    // card has visible pixels. Tell Hyprland not to composite the transparent
+    // remainder on every launch frame.
+    HyprlandWindow.visibleMask: Region { item: card }
 
     property var entry: null
     property rect from: Qt.rect(0, 0, 0, 0)
