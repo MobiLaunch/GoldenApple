@@ -6,7 +6,7 @@ from pathlib import Path
 import sys
 
 from PySide6.QtCore import QLockFile, QStandardPaths, Qt, QTimer, QUrl
-from PySide6.QtGui import QAction, QIcon, QKeySequence, QShortcut
+from PySide6.QtGui import QAction, QColor, QIcon, QKeySequence, QShortcut
 from PySide6.QtWidgets import (QApplication, QDialog, QFileDialog, QFrame, QHBoxLayout,
     QLabel, QLineEdit, QListWidget, QListWidgetItem, QMainWindow, QMessageBox,
     QProgressBar, QPushButton, QSplitter, QStackedWidget, QTabBar, QToolButton,
@@ -254,12 +254,19 @@ class Browser(QMainWindow):
             icon_name = btn.property('symbol')
             if icon_name:
                 btn.setIcon(QIcon(str(ASSETS / (icon_name + ('' if dark else '@dark') + '.svg'))))
+        # Match Chromium's backing surface to the window so dark mode does not
+        # flash white between navigations or while a renderer is starting.
+        page_color = QColor(bg)
+        for view in self.views:
+            view.page().setBackgroundColor(page_color)
 
     def current(self):
         return self.stack.currentWidget()
 
     def add_tab(self, url='about:blank', activate=True):
         view = WebView(self)
+        dark = QApplication.styleHints().colorScheme() == Qt.ColorScheme.Dark
+        view.page().setBackgroundColor(QColor('#242428' if dark else '#f5f5f7'))
         view.pending_url = url
         self.views.append(view)
         self.tabs.blockSignals(True)
