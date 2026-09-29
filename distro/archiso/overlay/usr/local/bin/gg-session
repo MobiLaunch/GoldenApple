@@ -16,20 +16,14 @@ fi
 conf="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/golden-gate"
 sh "$conf/machine-conf.sh" && head -n 1 "$conf/machine.conf" | logger -t gg-session
 
-# Start the shell ourselves so a QML/runtime regression cannot masquerade as a
-# compositor black screen. Quickshell is restarted independently if it exits.
-export GG_SHELL_CONFIG=golden-gate
+# Hyprland must own the Wayland display before Quickshell starts. Launching qs
+# before the compositor exists can create a restart loop and leave the live VT
+# looking like a black screen. Hyprland's exec-once no longer launches qs; this
+# supervisor waits for WAYLAND_DISPLAY to become usable inside the compositor
+# session via a small Hyprland startup helper.
 mkdir -p "$HOME/.local/state"
-(
-  while :; do
-    qs -c "$GG_SHELL_CONFIG" >>"$HOME/.local/state/golden-gate-shell.log" 2>&1
-    rc=$?
-    logger -t gg-shell "Quickshell exited with status $rc; restarting in 2s"
-    sleep 2
-  done
-) &
-GG_SHELL_PID=$!
-trap 'kill "$GG_SHELL_PID" 2>/dev/null || true' EXIT HUP INT TERM
+export GG_SHELL_CONFIG=golden-gate
+export GG_SHELL_LOG="$HOME/.local/state/golden-gate-shell.log"
 
 logger -t gg-session "starting Hyprland"
 started=$(date +%s)
