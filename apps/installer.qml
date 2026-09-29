@@ -34,7 +34,7 @@ ShellRoot {
      }
     }
     Text { visible: !!stage.error; width:parent.width; text:stage.error; color:"#ff453a"; horizontalAlignment:Text.AlignHCenter; wrapMode:Text.WordWrap }
-    Item { width:1; height:1; Layout.fillHeight:true }
+    Item { width:1; height:8 }
     Row {
      anchors.horizontalCenter: parent.horizontalCenter; spacing: 10
      Button { visible: stage.step>0; text:"Back"; onClicked: stage.step-- }
@@ -45,7 +45,7 @@ ShellRoot {
    }
    Process {
     id: handoff
-    command: ["sh","-c","exec sudo archinstall"]
+    command: ["sh","-c","exec ghostty -e sudo archinstall"]
     onStarted: { stage.error="Opening the installation engine…"; win.visible=false }
     onExited: (code) => { win.visible=true; if(code!==0) stage.error="Installation did not complete. No success state was recorded; review the installer log before retrying." }
    }
