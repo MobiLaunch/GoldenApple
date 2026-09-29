@@ -25,12 +25,16 @@ jobs:
           scripts/install.sh --extras "$root"
           test -x "$root/usr/local/bin/gg-session"
           test -x "$root/usr/local/bin/gg-web"
+          test -x "$root/usr/local/bin/gg-install"
           test -f "$root/usr/share/wayland-sessions/golden-gate.desktop"
           grep -q '^Exec=gg-session$' "$root/usr/share/wayland-sessions/golden-gate.desktop"
           test -d "$root/etc/skel/.config/quickshell/golden-gate"
           test -f "$root/etc/skel/.config/hypr/hyprland.conf"
           grep -q '/usr/share/golden-gate/apps' "$root/etc/skel/.config/hypr/hyprland.conf"
           test -f "$root/usr/share/applications/org.goldengate.Web.desktop"
+          test -f "$root/usr/share/applications/org.goldengate.Installer.desktop"
+          test -f "$root/usr/share/golden-gate/apps/installer.qml"
+          test -f "$root/usr/share/golden-gate/apps/installer/helper.py"
 
   ui:
     runs-on: ubuntu-latest
