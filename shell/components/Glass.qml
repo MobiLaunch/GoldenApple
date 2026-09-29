@@ -14,6 +14,7 @@
 // exactly one outline whatever the size.
 import QtQuick
 import QtQuick.Shapes
+import QtQuick.Effects
 import "../theme"
 
 Item {
@@ -42,6 +43,23 @@ Item {
     Behavior on pressScale { Spring { spring: Theme.snappy } }
     transform: Scale { origin.x: root.width / 2; origin.y: root.height / 2; xScale: root.pressScale; yScale: root.pressScale }
 
+    // Ambient elevation: broad and soft. Avoid the hard button-shaped drop
+    // shadow that made controls look outlined rather than suspended in glass.
+    Rectangle {
+        id: shadowShape
+        anchors.fill: parent; radius: root.r; color: "#ffffff"; visible: false
+    }
+    MultiEffect {
+        anchors.fill: shadowShape
+        source: shadowShape
+        autoPaddingEnabled: true
+        shadowEnabled: true
+        shadowColor: "#80000000"
+        shadowOpacity: root.pressed ? 0.10 : root.hovered ? 0.22 : 0.16
+        shadowBlur: 1.0
+        shadowVerticalOffset: root.pressed ? 2 : root.hovered ? 7 : 5
+        shadowHorizontalOffset: 0
+    }
     Rectangle {
         id: bodyFill
         anchors.fill: parent
