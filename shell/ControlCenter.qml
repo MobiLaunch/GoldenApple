@@ -136,7 +136,7 @@ PanelWindow {
 
         Wide {
             order: 0; icon: "wifi"; title: "Wi-Fi"; subtitle: cc.wifiOn ? (cc.ssid || "Not Connected") : "Off"; on: cc.wifiOn
-            onActivated: { cc.wifiOn = !cc.wifiOn; cc.run("nmcli radio wifi " + (cc.wifiOn ? "on" : "off")) }
+            onActivated: { cc.open = false; cc.openApp("org.goldengate.Settings", "gg-settings wifi") }
         }
         Module {
             order: 1
@@ -169,7 +169,7 @@ PanelWindow {
         }
         Circle {
             order: 2; icon: "bluetooth"; on: Bluetooth.defaultAdapter?.enabled ?? false
-            onActivated: if (Bluetooth.defaultAdapter) Bluetooth.defaultAdapter.enabled = !Bluetooth.defaultAdapter.enabled
+            onActivated: { cc.open = false; cc.run("gg-settings bluetooth") }
         }
         Circle {
             order: 3; icon: "broadcast"; on: false
