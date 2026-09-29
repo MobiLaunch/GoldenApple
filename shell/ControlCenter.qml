@@ -136,7 +136,7 @@ PanelWindow {
 
         Wide {
             order: 0; icon: "wifi"; title: "Wi-Fi"; subtitle: cc.wifiOn ? (cc.ssid || "Not Connected") : "Off"; on: cc.wifiOn
-            onActivated: { cc.open = false; cc.openApp("org.goldengate.Settings", "gg-settings wifi") }
+            onActivated: { cc.open = false; cc.run("gg-settings wifi") }
         }
         Module {
             order: 1
