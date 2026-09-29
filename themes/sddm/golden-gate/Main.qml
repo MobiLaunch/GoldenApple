@@ -12,11 +12,29 @@ Item {
     // as an implicit hint so non-1080p and multi-monitor greeters are not pinned
     // to a 1920×1080 scene.
     implicitWidth: 1920; implicitHeight: 1080
-    property int sessionIndex: sessionModel.lastIndex >= 0 ? sessionModel.lastIndex : 0
+    property int goldenSessionIndex: -1
+    readonly property int sessionIndex: goldenSessionIndex >= 0 ? goldenSessionIndex
+                                                                 : (sessionModel.lastIndex >= 0 ? sessionModel.lastIndex : 0)
     // SDDM exposes userModel as QAbstractListModel; role numbers are not part of
     // its theme API. Read documented name/realName roles from the delegate.
     readonly property string userLogin: users.currentItem?.loginName || userModel.lastUser || ""
     readonly property string userDisplay: users.currentItem?.displayName || userLogin
+
+    // Prefer the dedicated Golden Gate session when it is installed. SDDM's
+    // session model is also a QAbstractListModel, so discover it through delegate
+    // roles rather than assuming a private role number.
+    Repeater {
+        model: sessionModel
+        delegate: Item {
+            required property int index
+            required property string name
+            visible: false
+            Component.onCompleted: {
+                if (name === "Golden Gate")
+                    root.goldenSessionIndex = index
+            }
+        }
+    }
 
     LockSurface {
         id: surface
