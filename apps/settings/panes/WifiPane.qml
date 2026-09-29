@@ -26,7 +26,7 @@ Pane {
     }
     function refresh() {
         sys.run(["nmcli", "-t", "radio", "wifi"], (o) => radio = o.trim() === "enabled")
-        sys.run(["nmcli", "-t", "-f", "IN-USE,SSID,SIGNAL,SECURITY", "device", "wifi", "list"], (o) => {
+        sys.run(["nmcli", "-t", "-f", "IN-USE,SSID,SIGNAL,SECURITY", "device", "wifi", "list", "--rescan", "auto"], (o) => {
             const best = {}
             for (const line of o.split("\n")) {
                 const f = fields(line)
