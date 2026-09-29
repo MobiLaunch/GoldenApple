@@ -12,10 +12,10 @@ PanelWindow {
     property bool editMode: false
     anchors { top: true; bottom: true; left: true; right: true }
     exclusionMode: ExclusionMode.Ignore
-    WlrLayershell.layer: WlrLayer.Bottom
+    WlrLayershell.layer: WlrLayer.Background
     WlrLayershell.namespace: "gg-widgets"
     color: "transparent"
-    mask: editMode ? Region { item: widgets } : Region {}
+    mask: Region {}
     SystemClock { id: clock; precision: SystemClock.Seconds }
     readonly property var player: Mpris.players.values.length ? Mpris.players.values[0] : null
 
@@ -26,7 +26,7 @@ PanelWindow {
             tint: Theme.dark ? "#6b24262d" : "#72ffffff"
             MouseArea {
                 anchors.fill: parent
-                enabled: board.editMode
+                enabled: false
                 drag.target: parent
                 drag.minimumX: 12; drag.maximumX: widgets.width - parent.width - 12
                 drag.minimumY: 42; drag.maximumY: widgets.height - parent.height - 90
