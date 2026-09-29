@@ -148,6 +148,17 @@ mv "$WORK/hypridle.conf" "$AIR/home/golden/.config/hypr/hypridle.conf"
 
 # ---------------------------------------------------------------- build
 say "mkarchiso"
+# Fail the build if the generated UEFI boot entries lose the ArchISO discovery
+# arguments. Without these the kernel boots but initramfs cannot mount the live
+# image, which looks like a firmware/black-screen failure on real hardware.
+if ! grep -RqsE 'archisobasedir=arch' "$PROFILE"/efiboot "$PROFILE"/grub 2>/dev/null; then
+  echo "generated profile has no archisobasedir=arch UEFI boot argument"
+  exit 1
+fi
+if ! grep -RqsE 'archisosearchuuid=|archisolabel=' "$PROFILE"/efiboot "$PROFILE"/grub 2>/dev/null; then
+  echo "generated profile has no ArchISO media discovery argument"
+  exit 1
+fi
 mkarchiso -v -w "$WORK/build" -o "$OUT" "$PROFILE"
 say "done: $(ls -1 "$OUT"/*.iso | tail -1)"
 
