@@ -56,7 +56,17 @@ install_extras() {
   printf '#!/bin/sh\nexec sh /usr/share/golden-gate/apps/browser/launch.sh "$@"\n' > "$BIN/gg-web"
   cp "$REPO/themes/firefox/recover.sh" "$SHARE/firefox-recover.sh"
   printf '#!/bin/sh\nbash /usr/share/golden-gate/firefox-recover.sh --profiles\nexec firefox --safe-mode "$@"\n' > "$BIN/gg-firefox-recover"
-  chmod 755 "$BIN/gg-diagnostics" "$BIN/gg-settings" "$BIN/gg-web" "$BIN/gg-firefox-recover"
+  cp "$REPO/distro/archiso/overlay/usr/local/bin/gg-session" "$BIN/gg-session"
+  chmod 755 "$BIN/gg-diagnostics" "$BIN/gg-settings" "$BIN/gg-web" "$BIN/gg-firefox-recover" "$BIN/gg-session"
+  mkdir -p "$R/usr/share/wayland-sessions"
+  cat > "$R/usr/share/wayland-sessions/golden-gate.desktop" <<'EOF'
+[Desktop Entry]
+Name=Golden Gate
+Comment=Golden Gate desktop
+Exec=gg-session
+Type=Application
+DesktopNames=Hyprland
+EOF
 
   rm -rf "$R/usr/share/icons/GoldenGate"
   cp -a "$REPO/icons/GoldenGate" "$R/usr/share/icons/GoldenGate"
