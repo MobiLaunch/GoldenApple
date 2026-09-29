@@ -8,11 +8,15 @@ import "theme"
 
 Item {
     id: root
-    width: 1920; height: 1080
-    property int userIndex: userModel.lastIndex >= 0 ? userModel.lastIndex : 0
+    // SDDM resizes the root object to each greeter view. Keep design-time size
+    // as an implicit hint so non-1080p and multi-monitor greeters are not pinned
+    // to a 1920×1080 scene.
+    implicitWidth: 1920; implicitHeight: 1080
     property int sessionIndex: sessionModel.lastIndex >= 0 ? sessionModel.lastIndex : 0
-    readonly property string userLogin: userModel.data(userModel.index(userIndex, 0), Qt.UserRole + 1) ?? ""
-    readonly property string userDisplay: userModel.data(userModel.index(userIndex, 0), Qt.UserRole + 2) || userLogin
+    // SDDM exposes userModel as QAbstractListModel; role numbers are not part of
+    // its theme API. Read documented name/realName roles from the delegate.
+    readonly property string userLogin: users.currentItem?.loginName || userModel.lastUser || ""
+    readonly property string userDisplay: users.currentItem?.displayName || userLogin
 
     LockSurface {
         id: surface
@@ -49,20 +53,36 @@ Item {
     }
 
     // Other users: small avatars bottom-left when there is more than one.
-    Row {
+    // A ListView gives us SDDM's documented model roles without hard-coding the
+    // private integer role ids, and remains usable when many accounts exist.
+    ListView {
+        id: users
         visible: userModel.count > 1
         anchors { left: parent.left; bottom: parent.bottom; margins: 36 }
+        width: Math.min(Math.max(40, userModel.count * 52 - 12), root.width - 72)
+        height: 40
         spacing: 12
-        Repeater {
-            model: userModel
-            delegate: Rectangle {
-                required property int index
-                required property string name
-                width: 40; height: 40; radius: 20
-                color: index === root.userIndex ? "#66ffffff" : "#26ffffff"
-                border.width: 1; border.color: "#59ffffff"
-                Text { anchors.centerIn: parent; text: name.slice(0, 1).toUpperCase(); color: "white"; font { family: Theme.fontUi; pixelSize: 15; weight: Font.DemiBold } }
-                MouseArea { anchors.fill: parent; onClicked: { root.userIndex = index; surface.reset() } }
+        orientation: ListView.Horizontal
+        clip: true
+        boundsBehavior: Flickable.StopAtBounds
+        model: userModel
+        currentIndex: userModel.lastIndex >= 0 ? userModel.lastIndex : 0
+        delegate: Rectangle {
+            required property int index
+            required property string name
+            required property string realName
+            readonly property string loginName: name
+            readonly property string displayName: realName || name
+            width: 40; height: 40; radius: 20
+            color: index === users.currentIndex ? "#66ffffff" : "#26ffffff"
+            border.width: 1; border.color: "#59ffffff"
+            Text { anchors.centerIn: parent; text: parent.displayName.slice(0, 1).toUpperCase(); color: "white"; font { family: Theme.fontUi; pixelSize: 15; weight: Font.DemiBold } }
+            MouseArea {
+                anchors.fill: parent
+                onClicked: {
+                    users.currentIndex = index
+                    surface.reset()
+                }
             }
         }
     }
