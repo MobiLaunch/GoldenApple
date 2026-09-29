@@ -68,6 +68,7 @@ ShellRoot {
     }
 
     Spotlight { id: spotlightPanel; launchers: root.launchers }
+    Applications { id: applicationsPanel }
     // For tests: launch an app as if from the middle of the Dock, and stand in for
     // Hyprland's "window opened" where there is no Hyprland (qs ipc call launch …).
     IpcHandler {
@@ -99,7 +100,7 @@ ShellRoot {
                 Component.onCompleted: root.launchers = root.launchers.concat([launch])
                 Component.onDestruction: root.launchers = root.launchers.filter((l) => l !== launch)
             }
-            Dock { screen: perScreen.modelData; launcher: launch }
+            Dock { screen: perScreen.modelData; launcher: launch; applications: applicationsPanel }
 
             IpcHandler {
                 target: "controlcenter"
