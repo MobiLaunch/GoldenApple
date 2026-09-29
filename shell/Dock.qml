@@ -12,11 +12,12 @@ import "components"
 
 PanelWindow {
     id: dock
-    property var pinned: [
+    property bool liveSession: false
+    property var pinned: (liveSession ? ["org.goldengate.Installer"] : []).concat([
         "org.gnome.Nautilus", "org.goldengate.Web", "org.gnome.Geary", "org.gnome.Fractal", "org.goldengate.Maps",
         "org.goldengate.Photos", "org.goldengate.Music", "org.gnome.Calendar", "org.goldengate.Notes",
         "org.goldengate.Weather", "org.gnome.Software", "org.goldengate.Settings", "com.mitchellh.ghostty"
-    ]
+    ])
     // Size and magnification from Settings › Desktop & Dock.
     readonly property int tileCount: entries.length + places.length
     readonly property real restingWidth: tileCount * (baseSize + 3) + 25
@@ -38,6 +39,11 @@ PanelWindow {
     mask: Region { item: hitbox }
 
     SystemClock { id: clock; precision: SystemClock.Minutes }
+    Process {
+        running: true
+        command: ["sh", "-c", "test -d /run/archiso && printf yes || true"]
+        stdout: StdioCollector { onStreamFinished: dock.liveSession = text.trim() === "yes" }
+    }
     // Written by icons/build.mjs unless a custom Calendar icon replaces the default.
     Image {
         id: calBlank
