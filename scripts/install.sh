@@ -58,10 +58,11 @@ install_extras() {
   printf '#!/bin/sh\nexec bash /usr/share/golden-gate/apps/setup/diagnostics.sh "$@"\n' > "$BIN/gg-diagnostics"
   printf '#!/bin/sh\nexec bash /usr/share/golden-gate/apps/settings/open.sh "$@"\n' > "$BIN/gg-settings"
   printf '#!/bin/sh\nexec sh /usr/share/golden-gate/apps/browser/launch.sh "$@"\n' > "$BIN/gg-web"
+  printf '#!/bin/sh\nexec sh /usr/share/golden-gate/apps/installer/launch.sh "$@"\n' > "$BIN/gg-install"
   cp "$REPO/themes/firefox/recover.sh" "$SHARE/firefox-recover.sh"
   printf '#!/bin/sh\nbash /usr/share/golden-gate/firefox-recover.sh --profiles\nexec firefox --safe-mode "$@"\n' > "$BIN/gg-firefox-recover"
   cp "$REPO/distro/archiso/overlay/usr/local/bin/gg-session" "$BIN/gg-session"
-  chmod 755 "$BIN/gg-diagnostics" "$BIN/gg-settings" "$BIN/gg-web" "$BIN/gg-firefox-recover" "$BIN/gg-session"
+  chmod 755 "$BIN/gg-diagnostics" "$BIN/gg-settings" "$BIN/gg-web" "$BIN/gg-install" "$BIN/gg-firefox-recover" "$BIN/gg-session"
   mkdir -p "$R/usr/share/wayland-sessions"
   cat > "$R/usr/share/wayland-sessions/golden-gate.desktop" <<'EOF'
 [Desktop Entry]
@@ -231,7 +232,8 @@ for f in "$REPO"/themes/ghostty/themes/*; do place "$f" "$CONF/ghostty/themes/$(
 
 # Web owns its Chromium UI. Firefox is left as an independent fallback browser.
 printf '#!/bin/sh\nexec sh "%s/browser/launch.sh" "$@"\n' "$APPS_RUN" > "$BIN/gg-web"
-chmod +x "$BIN/gg-web"
+printf '#!/bin/sh\nexec sh "%s/installer/launch.sh" "$@"\n' "$APPS_RUN" > "$BIN/gg-install"
+chmod +x "$BIN/gg-web" "$BIN/gg-install"
 place "$REPO/themes/firefox/recover.sh" "$DATA/golden-gate/firefox-recover.sh"
 printf '#!/bin/sh\nbash "%s/golden-gate/firefox-recover.sh" --profiles\nexec firefox --safe-mode "$@"\n' "$DATA" > "$BIN/gg-firefox-recover"
 # System paths inside generated launchers must refer to the booted image, not its build root.
