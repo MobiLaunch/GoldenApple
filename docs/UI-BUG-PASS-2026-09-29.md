@@ -82,3 +82,35 @@ keeps its original user until an explicit sign-in.
 Full Arch/Hyprland/Quickshell validation, real PAM/account creation and greeter
 handoff, GPU/VM comparisons, external-site compatibility, and frame-time measurements
 remain hardware checks. No numerical FPS improvement is claimed from code inspection.
+
+
+## Runtime polish follow-up
+
+- Dock hover input is now sampled at the rendered-frame cadence instead of
+  triggering a full magnification/layout retarget for every high-frequency pointer
+  event. Reduced Motion and disabled magnification still bypass the work entirely.
+- Dock restore and app launch actions are monitor-local. A click on a secondary
+  display uses that display's active workspace, focuses that Hyprland monitor
+  before launching, and converts compositor window coordinates through the
+  matching Hyprland monitor during the launch-card handoff.
+- The SDDM theme no longer depends on undocumented integer model roles. User and
+  session names are read from documented delegate roles, the greeter scales to the
+  actual SDDM view, and a dedicated Golden Gate Wayland session is preferred when
+  installed.
+- `install.sh --extras` now installs the shared Golden Gate runtime, global app
+  launchers, icons/wallpapers, a `gg-session` Wayland session, and a Golden Gate
+  `/etc/skel`. Accounts created by Hello on an existing Arch installation
+  therefore inherit a complete desktop instead of a bare home directory.
+  `--extras ROOT` stages the same operation under a test root for CI.
+- After a new account's preferences are successfully written, Setup offers
+  **Sign Out & Switch User** on installed systems. Live images keep the current
+  session because tty1 auto-login would immediately return to the live account.
+- Web now matches the Chromium page backing surface to the active light/dark
+  window color, avoiding a white flash while pages or renderer processes start.
+- CI stages the extras/new-account install and verifies the shared browser,
+  session entry, Quickshell skeleton, and Hyprland paths.
+
+These changes remove known code-path causes of cross-monitor launches, excessive
+Dock relayout, incomplete newly-created users, and browser theme flashes. Actual
+frame-time/FPS numbers and compositor/GPU driver behavior still require booting
+the resulting image on the target hardware; no synthetic FPS claim is made here.
