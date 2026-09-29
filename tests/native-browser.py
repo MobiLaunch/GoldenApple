@@ -60,7 +60,22 @@ class NativeBrowser(unittest.TestCase):
         self.browser.deleteLater()
         QCoreApplication.sendPostedEvents(None, QEvent.DeferredDelete)
         APP.processEvents()
-        self.tmp.cleanup()
+        # WebEngine profile/cache writes can outlive the window by a few event
+        # turns. Retry only the temporary-directory cleanup; a persistent leak
+        # still fails the test instead of being ignored.
+        cleanup_error = None
+        for _ in range(20):
+            try:
+                self.tmp.cleanup()
+                cleanup_error = None
+                break
+            except OSError as error:
+                cleanup_error = error
+                QCoreApplication.sendPostedEvents(None, QEvent.DeferredDelete)
+                APP.processEvents()
+                QTest.qWait(50)
+        if cleanup_error is not None:
+            raise cleanup_error
         self.assertFalse(ERRORS, str(ERRORS))
     def test_start_page_and_tab_close(self):
         b=self.browser
