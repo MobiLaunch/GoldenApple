@@ -46,6 +46,7 @@ file_permissions+=(
   ["/usr/local/bin/gg-diagnostics"]="0:0:755"
   ["/usr/local/bin/gg-settings"]="0:0:755"
   ["/usr/local/bin/gg-web"]="0:0:755"
+  ["/usr/local/bin/gg-install"]="0:0:755"
   ["/usr/local/bin/gg-firefox-recover"]="0:0:755"
   ["/usr/lib/golden-gate/account-helper.py"]="0:0:755"
   ["/etc/sudoers.d/20-golden-wheel"]="0:0:440"
