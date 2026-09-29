@@ -23,6 +23,7 @@ PanelWindow {
     property real baseSize: Math.min(Prefs.dockSize, Math.max(16, (width - 48) / (tileCount + 6) - 3))
     property real maxSize: Prefs.dockMagnification && !Prefs.reduceMotion ? Math.max(baseSize, Math.min(Prefs.dockMagnifiedSize, baseSize * 1.8)) : baseSize
     property real pointerX: -1
+    property real pointerTargetX: -1
     property var launcher: null   // AppLaunch on this screen: the icon grows into the window
 
     anchors { bottom: true; left: true; right: true }
@@ -73,8 +74,12 @@ PanelWindow {
             && (t.lastIpcObject?.class === entry.id || (t.lastIpcObject?.class ?? "").toLowerCase() === bare))
     }
     function restore(t) {
-        const ws = Hyprland.focusedWorkspace?.id ?? 1
+        // A Dock click belongs to the Dock's monitor, not whichever monitor last
+        // had keyboard focus. This keeps restored windows on the screen clicked.
+        const monitor = Hyprland.monitorFor(dock.screen)
+        const ws = monitor?.activeWorkspace?.id ?? Hyprland.focusedWorkspace?.id ?? 1
         Hyprland.dispatch(`movetoworkspace ${ws},address:${t.lastIpcObject.address}`)
+        if (monitor?.name) Hyprland.dispatch(`focusmonitor ${monitor.name}`)
     }
     // Cosine falloff measured against the resting layout, so the Dock never chases itself.
     function sizeAt(index) {
@@ -92,8 +97,23 @@ PanelWindow {
         height: dock.height - y
         HoverHandler {
             id: hover
-            onPointChanged: dock.pointerX = hovered ? point.position.x + hitbox.x : -1
-            onHoveredChanged: if (!hovered) dock.pointerX = -1
+            // Pointer devices can report substantially faster than the display
+            // refresh rate. Record the latest location here and let FrameAnimation
+            // apply at most one magnification/layout update per rendered frame.
+            onPointChanged: dock.pointerTargetX = hovered ? point.position.x + hitbox.x : -1
+            onHoveredChanged: {
+                if (!hovered) {
+                    dock.pointerTargetX = -1
+                    dock.pointerX = -1
+                }
+            }
+        }
+        FrameAnimation {
+            running: hover.hovered && Prefs.dockMagnification && !Prefs.reduceMotion
+            onTriggered: {
+                if (dock.pointerX !== dock.pointerTargetX)
+                    dock.pointerX = dock.pointerTargetX
+            }
         }
     }
 
