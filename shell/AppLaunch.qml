@@ -59,6 +59,10 @@ PanelWindow {
         state_ = "opening"
         aim(to)
         giveUp.restart()
+        // Ensure a launch initiated from a secondary-screen Dock/Spotlight opens
+        // on that screen's active workspace instead of the previously focused one.
+        const monitor = Hyprland.monitorFor(launcher.screen)
+        if (monitor?.name) Hyprland.dispatch(`focusmonitor ${monitor.name}`)
         e.execute()
     }
     function aim(r) { gx.target = r.x; gy.target = r.y; gw.target = r.width; gh.target = r.height }
@@ -101,7 +105,7 @@ PanelWindow {
             const appClass = (parts[2] ?? "").toLowerCase()
             const id = (launcher.entry?.id ?? "").toLowerCase()
             if (appClass !== id && appClass !== id.split(".").pop()) return
-            launcher.pendingAddress = "0x" + parts[0]
+            launcher.pendingAddress = parts[0].startsWith("0x") ? parts[0] : "0x" + parts[0]
             giveUp.stop()
             Hyprland.refreshToplevels()
             findWindow.tries = 0
@@ -117,7 +121,10 @@ PanelWindow {
             const o = t?.lastIpcObject
             if (o?.at && o?.size) {
                 stop()
-                launcher.landOn(Qt.rect(o.at[0] - launcher.screen.x, o.at[1] - launcher.screen.y, o.size[0], o.size[1]))
+                const monitor = Hyprland.monitorFor(launcher.screen)
+                const originX = monitor?.x ?? launcher.screen.x
+                const originY = monitor?.y ?? launcher.screen.y
+                launcher.landOn(Qt.rect(o.at[0] - originX, o.at[1] - originY, o.size[0], o.size[1]))
             } else if (++tries > 12) {
                 stop(); launcher.landOn(null)
             }
