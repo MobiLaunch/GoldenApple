@@ -5,6 +5,7 @@
 // blurs the desktop behind it.
 import QtQuick
 import QtQuick.Shapes
+import QtQuick.Effects
 import "theme"
 
 Item {
@@ -32,11 +33,14 @@ Item {
     Behavior on pressScale { Spring { spring: Theme.snappy } }
     transform: Scale { origin.x: root.width / 2; origin.y: root.height / 2; xScale: root.pressScale; yScale: root.pressScale }
 
-    Rectangle {
-        visible: root.shadow.a > 0
-        anchors { fill: parent; topMargin: 1; bottomMargin: -1 }
-        radius: root.r
-        color: root.shadow
+    Rectangle { id: shadowShape; anchors.fill: parent; radius: root.r; color: "#ffffff"; visible: false }
+    MultiEffect {
+        anchors.fill: shadowShape; source: shadowShape; autoPaddingEnabled: true
+        shadowEnabled: true
+        shadowColor: root.shadow.a > 0 ? root.shadow : "#70000000"
+        shadowOpacity: root.pressed ? 0.08 : root.hovered ? 0.20 : 0.14
+        shadowBlur: 1.0
+        shadowVerticalOffset: root.pressed ? 1 : root.hovered ? 6 : 4
     }
     Rectangle {
         id: bodyFill
