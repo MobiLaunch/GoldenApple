@@ -13,18 +13,21 @@ import "components"
 PanelWindow {
     id: dock
     property var pinned: [
-        "org.gnome.Nautilus", "firefox", "org.gnome.Geary", "org.gnome.Fractal", "org.goldengate.Maps",
+        "org.gnome.Nautilus", "org.goldengate.Web", "org.gnome.Geary", "org.gnome.Fractal", "org.goldengate.Maps",
         "org.goldengate.Photos", "org.goldengate.Music", "org.gnome.Calendar", "org.goldengate.Notes",
         "org.goldengate.Weather", "org.gnome.Software", "org.goldengate.Settings", "com.mitchellh.ghostty"
     ]
     // Size and magnification from Settings › Desktop & Dock.
-    property real baseSize: Prefs.dockSize
-    property real maxSize: Prefs.dockMagnification && !Prefs.reduceMotion ? Prefs.dockMagnifiedSize : Prefs.dockSize
+    readonly property int tileCount: entries.length + places.length
+    readonly property real restingWidth: tileCount * (baseSize + 3) + 25
+    property real baseSize: Math.min(Prefs.dockSize, Math.max(16, (width - 48) / (tileCount + 6) - 3))
+    property real maxSize: Prefs.dockMagnification && !Prefs.reduceMotion ? Math.max(baseSize, Math.min(Prefs.dockMagnifiedSize, baseSize * 1.8)) : baseSize
     property real pointerX: -1
     property var launcher: null   // AppLaunch on this screen: the icon grows into the window
 
     anchors { bottom: true; left: true; right: true }
-    implicitHeight: maxSize + 30
+    // Include the label, its gap, bounce and spring overshoot inside the layer surface.
+    implicitHeight: maxSize + 90
     exclusiveZone: baseSize + 22
     color: "transparent"
     WlrLayershell.namespace: "gg-dock"
@@ -47,7 +50,7 @@ PanelWindow {
         id: trashCheck
         running: true
         command: ["sh", "-c", "ls -A \"${XDG_DATA_HOME:-$HOME/.local/share}/Trash/files\" 2>/dev/null | head -1"]
-        stdout: SplitParser { onRead: (line) => dock.trashFull = line.length > 0 }
+        stdout: StdioCollector { onStreamFinished: dock.trashFull = text.trim().length > 0 }
     }
     Timer { interval: 5000; running: true; repeat: true; onTriggered: trashCheck.running = true }
     readonly property var places: [
@@ -76,7 +79,7 @@ PanelWindow {
     // Cosine falloff measured against the resting layout, so the Dock never chases itself.
     function sizeAt(index) {
         if (pointerX < 0) return baseSize
-        const center = shelf.x + 7 + index * (baseSize + 3) + baseSize / 2
+        const center = (dock.width - restingWidth) / 2 + 7 + index * (baseSize + 3) + baseSize / 2
         const range = baseSize * 3.2
         const d = Math.abs(pointerX - center)
         return d >= range ? baseSize : baseSize + (maxSize - baseSize) * Math.pow(Math.cos(d / range * Math.PI / 2), 1.4)
@@ -85,7 +88,13 @@ PanelWindow {
     Item {
         id: hitbox
         x: shelf.x; width: shelf.width
-        y: hover.hovered ? 0 : shelf.y; height: dock.height - y
+        y: hover.hovered ? dock.height - maxSize - 14 : shelf.y
+        height: dock.height - y
+        HoverHandler {
+            id: hover
+            onPointChanged: dock.pointerX = hovered ? point.position.x + hitbox.x : -1
+            onHoveredChanged: if (!hovered) dock.pointerX = -1
+        }
     }
 
     Glass {
@@ -95,16 +104,11 @@ PanelWindow {
         height: dock.baseSize + 16
         radius: Theme.radiusDock + 2
 
-        HoverHandler {
-            id: hover
-            onPointChanged: dock.pointerX = hovered ? point.position.x + shelf.x : -1
-            onHoveredChanged: if (!hovered) dock.pointerX = -1
-        }
-
         Row {
             id: row
             anchors { left: parent.left; leftMargin: 7; bottom: parent.bottom; bottomMargin: 7 }
             spacing: 3
+            height: dock.maxSize
             Repeater {
                 model: dock.entries
                 delegate: Item {
@@ -114,7 +118,8 @@ PanelWindow {
                     readonly property var wins: dock.windowsFor(modelData)
                     width: dock.sizeAt(index)
                     height: width
-                    Behavior on width { enabled: dock.pointerX < 0; Spring { spring: Theme.dock } }
+                    y: row.height - height
+                    Behavior on width { enabled: !Prefs.reduceMotion; SmoothedAnimation { velocity: -1; duration: 110 } }
 
                     // Calendar apps show today's date, drawn over a date-less icon.
                     readonly property bool calendar: /calendar/i.test(modelData.icon ?? "") && calBlank.loaded
@@ -171,10 +176,11 @@ PanelWindow {
                         transformOrigin: Item.Bottom
                         Behavior on opacity { NumberAnimation { duration: tip.shown ? 140 : 90 } }
                         Behavior on scale { Spring { spring: Theme.popover } }
-                        anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.top; bottomMargin: 10 }
-                        width: tipText.implicitWidth + 24; height: 26; radius: 13
+                        anchors { bottom: parent.top; bottomMargin: 10 }
+                        x: Math.max(8 - (shelf.x + row.x + tile.x), Math.min((parent.width - width) / 2, dock.width - 8 - (shelf.x + row.x + tile.x) - width))
+                        width: Math.min(dock.width - 16, tipText.implicitWidth + 24); height: 26; radius: 13
                         tint: Theme.dark ? "#b8282830" : "#c8f4f4f6"
-                        Text { id: tipText; anchors.centerIn: parent; text: tile.modelData.name; color: Theme.label; font { family: Theme.fontUi; pixelSize: 13; weight: Font.Medium } }
+                        Text { id: tipText; anchors.centerIn: parent; width: Math.min(implicitWidth, parent.width - 24); elide: Text.ElideRight; textFormat: Text.PlainText; text: tile.modelData.name; color: Theme.label; font { family: Theme.fontUi; pixelSize: 13; weight: Font.Medium } }
                     }
                     MouseArea {
                         id: tipArea
@@ -188,7 +194,7 @@ PanelWindow {
                                 // The Dock window sits at the bottom of the launcher's full-screen one.
                                 const p = icon.mapToItem(null, 0, 0)
                                 dock.launcher.launch(tile.modelData, Qt.rect(p.x, dock.launcher.height - dock.height + p.y, icon.width, icon.height))
-                            } else { bounce.restart(); tile.modelData.execute() }
+                            } else { if (!Prefs.reduceMotion && Prefs.animateLaunch) bounce.restart(); tile.modelData.execute() }
                         }
                     }
                 }
@@ -206,7 +212,8 @@ PanelWindow {
                     required property int index
                     width: dock.sizeAt(dock.entries.length + index + 0.35)
                     height: width
-                    Behavior on width { enabled: dock.pointerX < 0; Spring { spring: Theme.dock } }
+                    y: row.height - height
+                    Behavior on width { enabled: !Prefs.reduceMotion; SmoothedAnimation { velocity: -1; duration: 110 } }
                     Image {
                         anchors.fill: parent
                         source: Quickshell.iconPath(place.modelData.icon, "folder")
@@ -226,10 +233,11 @@ PanelWindow {
                         transformOrigin: Item.Bottom
                         Behavior on opacity { NumberAnimation { duration: placeTip.shown ? 140 : 90 } }
                         Behavior on scale { Spring { spring: Theme.popover } }
-                        anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.top; bottomMargin: 10 }
-                        width: placeText.implicitWidth + 24; height: 26; radius: 13
+                        anchors { bottom: parent.top; bottomMargin: 10 }
+                        x: Math.max(8 - (shelf.x + row.x + place.x), Math.min((parent.width - width) / 2, dock.width - 8 - (shelf.x + row.x + place.x) - width))
+                        width: Math.min(dock.width - 16, placeText.implicitWidth + 24); height: 26; radius: 13
                         tint: Theme.dark ? "#b8282830" : "#c8f4f4f6"
-                        Text { id: placeText; anchors.centerIn: parent; text: place.modelData.name; color: Theme.label; font { family: Theme.fontUi; pixelSize: 13; weight: Font.Medium } }
+                        Text { id: placeText; anchors.centerIn: parent; width: Math.min(implicitWidth, parent.width - 24); elide: Text.ElideRight; textFormat: Text.PlainText; text: place.modelData.name; color: Theme.label; font { family: Theme.fontUi; pixelSize: 13; weight: Font.Medium } }
                     }
                     MouseArea { id: placeArea; anchors.fill: parent; hoverEnabled: true; onClicked: Quickshell.execDetached(place.modelData.exec) }
                 }
@@ -237,3 +245,4 @@ PanelWindow {
         }
     }
 }
+

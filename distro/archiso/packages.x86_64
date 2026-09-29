@@ -57,6 +57,12 @@ loupe
 geary
 fractal
 gnome-software
+# Chromium engine and Python bindings for Golden Gate Web
+qt6-webengine
+pyside6
+python
+# Optional independent fallback
 firefox
 ghostty
 sudo
+

@@ -40,7 +40,7 @@ and built entirely from original artwork.
 | **App theme**: every GNOME app restyled to macOS metrics (traffic lights, floating sidebar, glass toolbar pills, capsule buttons, Finder tables, Mac menus), light and dark; GTK 3 apps too | `design/gtk/`, `design/dist/gtk*.css` | Done for GTK 4 and GTK 3; per-app passes for Files, Calculator, Settings, Calendar, Terminal |
 | **Golden Gate apps**: the apps GNOME can't be restyled into, rebuilt in QML to the macOS 27 layouts: Calculator, Weather, Music, Notes, Photos, Maps | `apps/` | Done and in the image, replacing GNOME's |
 | **System Settings**: a near copy of macOS System Settings (glass sidebar with search suggestions, back and forward, grouped panes) that changes the real system: Wi-Fi, Bluetooth, Network, Battery, General (About, Software Update, Storage, Date & Time, Language & Region), Accessibility, Appearance (mode, accent, Liquid Glass clear or tinted), Desktop & Dock, Displays, Wallpaper, Focus, Sound, Privacy & Security, Users & Groups, Keyboard, Trackpad & Mouse | `apps/settings.qml`, `apps/settings/` | Done; `gg-settings [pane]` and `gnome-control-center [panel]` open it at a pane |
-| **Setup Assistant**: the first-login hello in Liquid Glass (the compositor's shader, run over its own backdrop), then country or region, Wi-Fi, Data & Privacy, Location Services, time zone, crash and diagnostics sharing, and Choose Your Look | `apps/setup.qml`, `apps/setup/` | Done; runs once (`~/.config/golden-gate/setup-done`), `gg.nosetup` on the kernel command line skips it |
+| **Setup Assistant**: the first-login hello in Liquid Glass (the compositor's shader, run over its own backdrop), then local account creation, country or region, Wi-Fi, Data & Privacy, Location Services, time zone, crash and diagnostics sharing, and Choose Your Look | `apps/setup.qml`, `apps/setup/` | Done; runs once (`~/.config/golden-gate/setup-done`), `gg.nosetup` on the kernel command line skips it |
 | **Theming**: fonts, ⌘ key layer, login screen, boot splash, terminal | `themes/` | Done: fontconfig, keyd, SDDM theme, Plymouth theme, Ghostty |
 | **Distro**: bootable live ISO | `distro/archiso/` | Build script done; first ISO build pending (see below) |
 
@@ -69,12 +69,41 @@ skips the boot and opens those apps; `?lock` starts at the lock screen.
 
 ```sh
 sudo pacman -S hyprland hypridle quickshell qt6-svg qt6-wayland inter-font \
-               ttf-jetbrains-mono networkmanager bluez brightnessctl playerctl grim slurp librsvg
+               ttf-jetbrains-mono networkmanager bluez brightnessctl playerctl grim slurp librsvg \
+               pyside6 qt6-webengine python
 scripts/install.sh           # backs up anything it replaces (*.bak-<timestamp>)
 sudo scripts/install.sh --extras   # optional (needs keyd, sddm, plymouth): ⌘ layer, login theme, boot splash
 ```
 
-Then log into Hyprland.
+Then log into Hyprland. Local account creation also needs the root-owned helper:
+`sudo scripts/install.sh --extras`. It is included automatically in ISO builds.
+
+**Web browser:** `gg-web` opens Golden Gate's native Chromium-powered browser
+(Qt WebEngine, updated through Arch's `qt6-webengine` package). It has a
+Safari-inspired toolbar, traffic lights, tab sidebar, start page, bookmarks,
+history, downloads, and private windows. Ctrl+L focuses the address, Ctrl+T/W
+opens/closes tabs, Ctrl+D bookmarks, Ctrl+J opens downloads, and Ctrl+Shift+N
+opens a private window. Restored background tabs load when selected. Normal
+profiles and private profiles are separate. This is an initial browser, without
+Safari/iCloud services, extension management, or a password manager.
+
+If Web has graphics trouble in your VM, run `GG_WEB_SOFTWARE=1 gg-web`.
+The launcher keeps Chromium sandboxing enabled and must run as your desktop user.
+Firefox remains available independently. The installer no longer injects the
+Firefox theme; `gg-firefox-recover` backs up Golden Gate profile styling and opens
+Firefox Troubleshoot Mode without deleting your profile. `--extras` also disables
+our old system-wide autoconfig. A Firefox crash still needs its crash report to
+identify the underlying cause.
+
+**Hello and accounts:** account creation is the first step after Hello. It creates
+a password-protected local administrator account, requests existing administrator
+authorization on installed systems, and passes the password through standard input.
+Existing desktop users can keep their current account. Setup saves your choices
+for the new account and waits for successful writes before closing. Sign in to that
+account through your login screen afterward; creation does not silently change the
+identity of the running desktop. On a live ISO, accounts and files remain temporary
+unless persistence is configured. You can sign in on another console (Ctrl+Alt+F2)
+and run `gg-session`; this does not install the system onto disk.
 
 **As a bootable ISO.** The *Build ISO* GitHub Action builds one whenever
 `distro/`, the installer or the workflow changes, and attaches it to the run
@@ -197,3 +226,4 @@ Details and sizing guidance are in [icons/custom/README.md](icons/custom/README.
 ## Roadmap
 
 See [docs/ROADMAP.md](docs/ROADMAP.md).
+

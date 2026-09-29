@@ -51,17 +51,17 @@ ShellRoot {
         printErrors: false
         watchChanges: true
         onFileChanged: reload()
-        onLoaded: autoLook.apply()
+        onLoaded: autoLook.apply(true)
     }
     Timer {
         id: autoLook
         interval: 60000; running: true; repeat: true
-        onTriggered: apply()
-        function apply() {
+        onTriggered: apply(false)
+        function apply(initial) {
             let mode = ""
             try { mode = JSON.parse(appearance.text()).mode } catch (e) { return }
-            if (mode !== "auto") return
-            const h = new Date().getHours(), dark = h < 7 || h >= 19
+            if (!["light", "dark", "auto"].includes(mode) || (mode !== "auto" && !initial)) return
+            const h = new Date().getHours(), dark = mode === "dark" || (mode === "auto" && (h < 7 || h >= 19))
             if (dark !== Theme.dark)
                 Quickshell.execDetached(["gsettings", "set", "org.gnome.desktop.interface", "color-scheme", dark ? "prefer-dark" : "default"])
         }

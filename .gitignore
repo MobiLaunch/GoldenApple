@@ -2,3 +2,7 @@ node_modules/
 out/
 *.iso
 distro/work/
+
+
+__pycache__/
+*.pyc

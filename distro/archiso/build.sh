@@ -45,6 +45,10 @@ file_permissions+=(
   ["/usr/local/bin/gnome-calculator"]="0:0:755"
   ["/usr/local/bin/gg-diagnostics"]="0:0:755"
   ["/usr/local/bin/gg-settings"]="0:0:755"
+  ["/usr/local/bin/gg-web"]="0:0:755"
+  ["/usr/local/bin/gg-firefox-recover"]="0:0:755"
+  ["/usr/lib/golden-gate/account-helper.py"]="0:0:755"
+  ["/etc/sudoers.d/20-golden-wheel"]="0:0:440"
   ["/etc/sudoers.d/10-golden-live"]="0:0:440"
   ["/home/golden"]="1000:1000:750"
 )
@@ -129,6 +133,8 @@ cat > "$AIR/home/golden/.bash_profile" <<'EOF'
 # shell if the compositor can't start, instead of looping through autologin.
 if [[ -z $WAYLAND_DISPLAY && $(tty) == /dev/tty1 ]]; then gg-session; fi
 EOF
+# New local accounts inherit the desktop start too (useradd copies /etc/skel).
+cp "$AIR/home/golden/.bash_profile" "$AIR/etc/skel/.bash_profile"
 # The live user has no password, so there is nothing for an idle lock to protect.
 # Drop the listener that locks and the lock-before-sleep line; keep the rest.
 awk '
@@ -143,3 +149,4 @@ mv "$WORK/hypridle.conf" "$AIR/home/golden/.config/hypr/hypridle.conf"
 say "mkarchiso"
 mkarchiso -v -w "$WORK/build" -o "$OUT" "$PROFILE"
 say "done: $(ls -1 "$OUT"/*.iso | tail -1)"
+

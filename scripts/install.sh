@@ -27,6 +27,16 @@ say() { printf '\033[1;33m›\033[0m %s\n' "$*"; }
 # System pieces: keyd ⌘ layer, SDDM theme, Plymouth splash. $1 = root prefix.
 install_extras() {
   local R=$1
+  say "local account setup helper → $R/usr/lib/golden-gate"
+  install -Dm755 "$REPO/apps/setup/account-helper.py" "$R/usr/lib/golden-gate/account-helper.py"
+  install -Dm644 "$REPO/apps/setup/save-preferences.py" "$R/usr/lib/golden-gate/save-preferences.py"
+  # Standard password-authenticated administration for accounts created in Hello.
+  install -d -m755 "$R/etc/sudoers.d"
+  if [[ ! -e "$R/etc/sudoers.d/20-golden-wheel" ]]; then
+    printf '%%wheel ALL=(ALL:ALL) ALL\n' > "$R/etc/sudoers.d/20-golden-wheel"
+    chmod 440 "$R/etc/sudoers.d/20-golden-wheel"
+  fi
+  bash "$REPO/themes/firefox/recover.sh" --system "$R/usr/lib/firefox"
   say "GNOME defaults (fonts, icons, Finder-style list view) → $R/usr/share/glib-2.0/schemas"
   mkdir -p "$R/usr/share/glib-2.0/schemas"
   cp "$REPO/themes/gsettings/90_golden-gate.gschema.override" "$R/usr/share/glib-2.0/schemas/"
@@ -146,16 +156,22 @@ done
 place "$REPO/themes/ghostty/config" "$CONF/ghostty/config"
 for f in "$REPO"/themes/ghostty/themes/*; do place "$f" "$CONF/ghostty/themes/$(basename "$f")"; done
 
-# Browser: Firefox as Safari (one toolbar row, tabs in a glass sidebar, Mac menus)
+# Web owns its Chromium UI. Firefox is left as an independent fallback browser.
+printf '#!/bin/sh\nexec sh "%s/browser/launch.sh" "$@"\n' "$APPS_RUN" > "$BIN/gg-web"
+chmod +x "$BIN/gg-web"
+place "$REPO/themes/firefox/recover.sh" "$DATA/golden-gate/firefox-recover.sh"
+printf '#!/bin/sh\nbash "%s/golden-gate/firefox-recover.sh" --profiles\nexec firefox --safe-mode "$@"\n' "$DATA" > "$BIN/gg-firefox-recover"
+# System paths inside generated launchers must refer to the booted image, not its build root.
 if [[ $MODE == system ]]; then
-  say "Firefox look → $ROOT/usr/lib/firefox"
-  bash "$REPO/themes/firefox/install.sh" "$ROOT/usr/lib/firefox"
-elif [[ -w /usr/lib/firefox ]]; then
-  say "Firefox look → /usr/lib/firefox"
-  bash "$REPO/themes/firefox/install.sh" /usr/lib/firefox
+  printf '#!/bin/sh\nbash /usr/share/golden-gate/firefox-recover.sh --profiles\nexec firefox --safe-mode "$@"\n' > "$BIN/gg-firefox-recover"
+  bash "$REPO/themes/firefox/recover.sh" --system "$ROOT/usr/lib/firefox"
 else
-  say "Firefox look → your Firefox profiles"
-  bash "$REPO/themes/firefox/install.sh" --profiles
+  bash "$REPO/themes/firefox/recover.sh" --profiles
+fi
+chmod +x "$BIN/gg-firefox-recover"
+# Respect an existing browser choice; seed MIME defaults only on a fresh install.
+if [[ ! -e "$CONF/mimeapps.list" ]]; then
+  printf '[Default Applications]\nx-scheme-handler/http=org.goldengate.Web.desktop\nx-scheme-handler/https=org.goldengate.Web.desktop\ntext/html=org.goldengate.Web.desktop\n' > "$CONF/mimeapps.list"
 fi
 
 # 4. Toolkit theming + fonts
@@ -191,3 +207,4 @@ else
 fi
 
 say "done. Log into a Hyprland session (or run: hyprctl reload && qs -c golden-gate)."
+

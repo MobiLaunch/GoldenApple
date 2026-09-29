@@ -199,6 +199,7 @@ img { -webkit-user-drag: none; }
   position: absolute; z-index: 9400; padding: 0 12px; height: 26px; border-radius: 13px; display: flex; align-items: center;
   font-size: 13px; font-weight: 500; white-space: nowrap; pointer-events: none; color: var(--label);
   transform: translateX(-50%);
+  max-width: calc(100vw - 16px); overflow: hidden; text-overflow: ellipsis;
 }
 
 /* ------------------------------------------------------------------ Spotlight */
@@ -348,3 +349,4 @@ img { -webkit-user-drag: none; }
 .nc-stack.stacked:not(.expanded) { padding-bottom: 16px; }
 .nc-stack.expanded { display: flex; flex-direction: column; gap: 8px; }
 .nc-stack > .banner:first-child { z-index: 10; }
+
