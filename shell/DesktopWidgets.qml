@@ -15,7 +15,7 @@ PanelWindow {
     WlrLayershell.layer: WlrLayer.Bottom
     WlrLayershell.namespace: "gg-widgets"
     color: "transparent"
-    mask: Region { item: widgets }
+    mask: editMode ? Region { item: widgets } : Region {}
     SystemClock { id: clock; precision: SystemClock.Seconds }
     readonly property var player: Mpris.players.values.length ? Mpris.players.values[0] : null
 
@@ -26,6 +26,7 @@ PanelWindow {
             tint: Theme.dark ? "#6b24262d" : "#72ffffff"
             MouseArea {
                 anchors.fill: parent
+                enabled: board.editMode
                 drag.target: parent
                 drag.minimumX: 12; drag.maximumX: widgets.width - parent.width - 12
                 drag.minimumY: 42; drag.maximumY: widgets.height - parent.height - 90
