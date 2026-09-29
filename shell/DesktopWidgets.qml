@@ -1,7 +1,6 @@
 // Desktop widgets: lightweight, live shell widgets that sit above the wallpaper.
 import Quickshell
 import Quickshell.Services.Mpris
-import Quickshell.Services.UPower
 import QtQuick
 import QtQuick.Layouts
 import "theme"
