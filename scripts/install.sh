@@ -4,8 +4,8 @@
 #   scripts/install.sh                 into your home directory (existing Arch + Hyprland)
 #   scripts/install.sh --system ROOT   into a root filesystem: /etc/skel + /usr/share,
 #                                      plus the system pieces below (used by the ISO build)
-#   sudo scripts/install.sh --extras   only the system pieces, into / on this machine:
-#                                      keyd ⌘ layer, SDDM login theme, Plymouth splash
+#   sudo scripts/install.sh --extras   system integration + shared runtime for new accounts
+#   scripts/install.sh --extras ROOT   same operation staged under ROOT (CI/testing)
 #
 # Existing files are backed up next to themselves as *.bak-YYYYmmdd-HHMMSS.
 set -euo pipefail
@@ -18,8 +18,12 @@ if [[ "${1:-}" == "--system" ]]; then
   ROOT="$(realpath -m "${2:?usage: install.sh --system ROOT}")"
 elif [[ "${1:-}" == "--extras" ]]; then
   MODE=extras
-  ROOT=""
-  [[ $EUID -eq 0 ]] || { echo "--extras writes to /etc and /usr: run with sudo"; exit 1; }
+  ROOT="${2:-}"
+  if [[ -n $ROOT ]]; then
+    ROOT="$(realpath -m "$ROOT")"
+  else
+    [[ $EUID -eq 0 ]] || { echo "--extras writes to /etc and /usr: run with sudo"; exit 1; }
+  fi
 fi
 
 say() { printf '\033[1;33m›\033[0m %s\n' "$*"; }
@@ -139,7 +143,7 @@ EOF
 }
 
 if [[ $MODE == extras ]]; then
-  install_extras ""
+  install_extras "$ROOT"
   say "done. Enable with: systemctl enable --now keyd; systemctl enable sddm; plymouth-set-default-theme -R golden-gate"
   exit 0
 fi
