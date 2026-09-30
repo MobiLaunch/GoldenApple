@@ -125,12 +125,6 @@ EOF
     printf '# Written by Settings.\n' > "$SKEL/.config/hypr/golden-gate/displays.conf"
     printf '# Filled in by machine-conf.sh when the session starts.\n' > "$SKEL/.config/hypr/golden-gate/machine.conf"
     cp -a "$REPO/shell" "$SKEL/.config/quickshell/golden-gate"
-    # Shell-specific pieces stay local, while the shared primitives resolve from
-    # the same canonical store used by every Golden Gate application.
-    for f in Glass.qml Spring.qml SpringValue.qml Symbol.qml; do
-      rm -f "$SKEL/.config/quickshell/golden-gate/components/$f"
-      ln -s "/usr/share/golden-gate/ui/$f" "$SKEL/.config/quickshell/golden-gate/components/$f"
-    done
     cp "$REPO/themes/ghostty/config" "$SKEL/.config/ghostty/config"
     cp "$REPO"/themes/ghostty/themes/* "$SKEL/.config/ghostty/themes/"
     cp "$REPO/design/dist/gtk.css" "$SKEL/.config/gtk-4.0/gtk.css"
@@ -248,11 +242,6 @@ rm -rf "$DATA/golden-gate/apps/desktop"
 rm -rf "$DATA/golden-gate/ui" "$DATA/golden-gate/apps/lib"
 cp -a "$REPO/apps/lib" "$DATA/golden-gate/ui"
 ln -s ../ui "$DATA/golden-gate/apps/lib"
-if [[ $MODE == system ]]; then UI_RUN=/usr/share/golden-gate/ui; else UI_RUN="$DATA/golden-gate/ui"; fi
-for f in Glass.qml Spring.qml SpringValue.qml Symbol.qml; do
-  rm -f "$CONF/quickshell/golden-gate/components/$f"
-  ln -s "$UI_RUN/$f" "$CONF/quickshell/golden-gate/components/$f"
-done
 # gg-diagnostics: a crash and diagnostics report you can read and send.
 if [[ $MODE == system ]]; then BIN="$ROOT/usr/local/bin"; else BIN="$HOME/.local/bin"; fi
 mkdir -p "$BIN"
