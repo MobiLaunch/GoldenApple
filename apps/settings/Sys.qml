@@ -42,22 +42,26 @@ Item {
     }
     property bool glassDirty: false
     Timer {
-        id: prefsSave
-        interval: 70
+        id: glassSync
+        interval: 90
         onTriggered: {
-            sys.writeJson("desktop.json", sys.prefs)
-            if (sys.glassDirty) {
-                sys.glassDirty = false
-                Quickshell.execDetached(["sh", "-c", "sleep 0.08; gg-hyprglass-sync"])
-            }
+            if (!sys.glassDirty) return
+            sys.glassDirty = false
+            Quickshell.execDetached(["gg-hyprglass-sync"])
         }
     }
     Timer { id: privacySave; interval: 70; onTriggered: sys.writeJson("privacy.json", sys.privacy) }
 
+    // desktop.json has one authoritative writer: gg-pref performs an atomic
+    // nested-key update, so Settings, shell IPC and Control Center cannot stomp
+    // one another by rewriting a stale copy of the whole file.
     function setPref(path, value) {
         prefs = setIn(prefs, path, value)
-        if (path[0] === "glass" || path[0] === "reduceTransparency") glassDirty = true
-        prefsSave.restart()
+        Quickshell.execDetached(["gg-pref", path.join("."), JSON.stringify(value)])
+        if (path[0] === "glass" || path[0] === "reduceTransparency") {
+            glassDirty = true
+            glassSync.restart()
+        }
     }
     function setPrivacy(key, value) {
         privacy = setIn(privacy, [key], value)
