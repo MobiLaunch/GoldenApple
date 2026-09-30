@@ -23,6 +23,10 @@ Singleton {
     readonly property string glass: data.glass ?? "clear"
     readonly property bool reduceMotion: data.reduceMotion ?? false
     readonly property bool reduceTransparency: data.reduceTransparency ?? false
+    readonly property bool focusDnd: data.focus?.dnd ?? false
+    readonly property bool nightShift: data.display?.nightShift ?? false
+    readonly property int displayWarmth: data.display?.warmth ?? 4500
+    readonly property real savedBrightness: data.display?.brightness ?? -1
 
     FileView {
         path: prefs.file
