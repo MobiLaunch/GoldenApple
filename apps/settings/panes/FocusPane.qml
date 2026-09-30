@@ -9,14 +9,14 @@ Pane {
     id: pane
     headerSymbol: "moon"; headerTint: "#5e5ce6"; headerTitle: "Focus"
     headerText: "Focus lets you silence notifications so you can concentrate. The moon in the menu bar shows when it's on."
-    property bool dnd: false
+    readonly property bool dnd: sys.prefs.focus?.dnd ?? false
     Group {
         SetRow {
             title: "Do Not Disturb"; symbol: "moon"; symbolTint: "#5e5ce6"
             subtitle: "Notifications are kept in Notification Center without a banner or sound."
             Switch {
                 checked: pane.dnd
-                onToggled: (on) => { pane.dnd = on; Quickshell.execDetached(["qs", "-c", "golden-gate", "ipc", "call", "notifications", "toggleDnd"]) }
+                onToggled: (on) => pane.sys.setPref(["focus", "dnd"], on)
             }
         }
     }
