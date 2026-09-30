@@ -56,20 +56,23 @@ Item {
     Glass {
         id: knob
         readonly property bool active: ma.pressed
-        width: active ? 34 : 24; height: active ? 22 : 16
+        width: active ? 34 : ma.containsMouse ? 27 : 24
+        height: active ? 22 : ma.containsMouse ? 18 : 16
         radius: height / 2
         anchors.verticalCenter: parent.verticalCenter
         x: sl.travel * sl.shownValue + sl.inset - width / 2
         filled: !active
         tint: Qt.rgba(1, 1, 1, 0.14)
         lens: 5
-        Behavior on width { Spring { spring: Theme.snappy } }
-        Behavior on height { Spring { spring: Theme.snappy } }
+        Behavior on x { enabled: !Theme.reduceMotion && !ma.pressed; NumberAnimation { duration: 95; easing.type: Easing.OutCubic } }
+        Behavior on width { enabled: !Theme.reduceMotion; Spring { spring: Theme.snappy } }
+        Behavior on height { enabled: !Theme.reduceMotion; Spring { spring: Theme.snappy } }
         shadow: knob.filled ? "#33000000" : "transparent"
     }
     MouseArea {
         id: ma
         anchors.fill: parent
+        hoverEnabled: true
         onPressed: (m) => { sl.forceActiveFocus(); sl.set((m.x - sl.inset) / sl.travel) }
         onPositionChanged: (m) => { if (pressed) sl.set((m.x - sl.inset) / sl.travel) }
     }
