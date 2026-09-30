@@ -30,7 +30,7 @@ PanelWindow {
     Item {
         anchors { fill: parent; margins: 44 }
         opacity: apps.open ? 1 : 0
-        scale: apps.open ? 1 : 0.96
+        scale: apps.open || Prefs.reduceMotion ? 1 : 0.985
         Behavior on opacity { NumberAnimation { duration: Prefs.reduceMotion ? 1 : 210 } }
         Behavior on scale { Spring { spring: Theme.popover } }
 
@@ -67,13 +67,17 @@ PanelWindow {
                 delegate: Item {
                     required property var modelData
                     width: grid.cellWidth; height: grid.cellHeight
-                    scale: area.pressed ? 0.91 : area.containsMouse ? 1.035 : 1
-                    Behavior on scale { Spring { spring: Theme.snappy } }
+                    scale: !Prefs.reduceMotion && area.pressed ? 0.965 : !Prefs.reduceMotion && area.containsMouse ? 1.025 : 1
+                    y: !Prefs.reduceMotion && area.containsMouse && !area.pressed ? -2 : 0
+                    Behavior on scale { enabled: !Prefs.reduceMotion; NumberAnimation { duration: 90; easing.type: Easing.OutCubic } }
+                    Behavior on y { enabled: !Prefs.reduceMotion; NumberAnimation { duration: 95; easing.type: Easing.OutCubic } }
                     Column {
                         anchors.centerIn: parent; spacing: 7
                         Image {
                             anchors.horizontalCenter: parent.horizontalCenter
                             width: 76; height: 76
+                            opacity: area.pressed ? 0.86 : 1
+                            Behavior on opacity { NumberAnimation { duration: Prefs.reduceMotion ? 1 : 70 } }
                             source: Quickshell.iconPath(modelData.icon, "application-x-executable")
                             sourceSize: Qt.size(144,144); smooth: true; mipmap: true
                         }
