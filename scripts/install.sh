@@ -32,6 +32,7 @@ say() { printf '\033[1;33m›\033[0m %s\n' "$*"; }
 install_extras() {
   local R=$1
   say "local account setup helper → $R/usr/lib/golden-gate"
+  install -Dm644 "$REPO/third_party/hyprglass/LICENSE" "$R/usr/share/licenses/golden-gate/hyprglass/LICENSE"
   install -Dm755 "$REPO/apps/setup/account-helper.py" "$R/usr/lib/golden-gate/account-helper.py"
   install -Dm644 "$REPO/apps/setup/save-preferences.py" "$R/usr/lib/golden-gate/save-preferences.py"
   install -Dm755 "$REPO/apps/setup/pref-helper.py" "$R/usr/lib/golden-gate/pref-helper.py"
