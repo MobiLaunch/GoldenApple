@@ -25,6 +25,10 @@ Item {
     implicitHeight: round ? 36 : 30
     implicitWidth: round ? 36 : Math.max(34, (label.visible ? label.implicitWidth + 20 : 0))
     opacity: enabled ? 1 : 0.35
+    scale: !Theme.reduceMotion && tap.pressed ? 0.965 : !Theme.reduceMotion && hover.hovered && button.enabled ? 1.018 : 1
+    y: !Theme.reduceMotion && hover.hovered && button.enabled && !tap.pressed ? -0.5 : 0
+    Behavior on scale { enabled: !Theme.reduceMotion; NumberAnimation { duration: 85; easing.type: Easing.OutCubic } }
+    Behavior on y { enabled: !Theme.reduceMotion; NumberAnimation { duration: 90; easing.type: Easing.OutCubic } }
 
     // Round buttons carry their own Liquid Glass; pill buttons share the pill's.
     Rectangle {
@@ -60,8 +64,7 @@ Item {
     }
     Symbol {
         anchors.centerIn: parent
-        scale: tap.pressed && !button.round ? 0.88 : 1
-        Behavior on scale { Spring { spring: Theme.snappy } }
+        scale: 1
         name: button.symbol
         tone: button.tone
         size: button.symbolSize
