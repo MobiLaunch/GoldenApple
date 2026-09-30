@@ -34,6 +34,9 @@ install_extras() {
   say "local account setup helper → $R/usr/lib/golden-gate"
   install -Dm755 "$REPO/apps/setup/account-helper.py" "$R/usr/lib/golden-gate/account-helper.py"
   install -Dm644 "$REPO/apps/setup/save-preferences.py" "$R/usr/lib/golden-gate/save-preferences.py"
+  install -Dm755 "$REPO/apps/setup/pref-helper.py" "$R/usr/lib/golden-gate/pref-helper.py"
+  install -Dm755 "$REPO/compositor/hyprland/hyprglass-sync.sh" "$R/usr/lib/golden-gate/hyprglass-sync.sh"
+  install -Dm755 "$REPO/compositor/hyprland/apply-preferences.sh" "$R/usr/lib/golden-gate/apply-preferences.sh"
   # Standard password-authenticated administration for accounts created in Hello.
   install -d -m755 "$R/etc/sudoers.d"
   if [[ ! -e "$R/etc/sudoers.d/20-golden-wheel" ]]; then
@@ -49,20 +52,39 @@ install_extras() {
   local SHARE="$R/usr/share/golden-gate"
   local BIN="$R/usr/local/bin"
   mkdir -p "$SHARE" "$R/usr/share/applications" "$R/usr/share/icons" "$R/usr/share/backgrounds/golden-gate" "$BIN"
-  rm -rf "$SHARE/apps"
+  # One canonical UI component store. Every Golden Gate app imports lib/, but
+  # lib is now a link to this shared copy rather than a per-app component fork.
+  rm -rf "$SHARE/ui" "$SHARE/apps"
+  cp -a "$REPO/apps/lib" "$SHARE/ui"
   cp -a "$REPO/apps" "$SHARE/apps"
+  rm -rf "$SHARE/apps/lib"
+  ln -s ../ui "$SHARE/apps/lib"
   rm -rf "$SHARE/apps/desktop"
   for f in "$REPO"/apps/desktop/*.desktop; do
     sed 's#@APPS@#/usr/share/golden-gate/apps#g' "$f" > "$R/usr/share/applications/$(basename "$f")"
   done
+  # Keep the upstream GNOME Software launcher out of Launchpad/Dock; Golden
+  # Gate's App Store wrapper owns that UX and prepares the Flatpak backend.
+  mkdir -p "$R/usr/local/share/applications"
+  cat > "$R/usr/local/share/applications/org.gnome.Software.desktop" <<'EOF'
+[Desktop Entry]
+Type=Application
+Name=Software
+Exec=gnome-software
+NoDisplay=true
+EOF
   printf '#!/bin/sh\nexec bash /usr/share/golden-gate/apps/setup/diagnostics.sh "$@"\n' > "$BIN/gg-diagnostics"
   printf '#!/bin/sh\nexec bash /usr/share/golden-gate/apps/settings/open.sh "$@"\n' > "$BIN/gg-settings"
   printf '#!/bin/sh\nexec sh /usr/share/golden-gate/apps/browser/launch.sh "$@"\n' > "$BIN/gg-web"
   printf '#!/bin/sh\nexec sh /usr/share/golden-gate/apps/installer/launch.sh "$@"\n' > "$BIN/gg-install"
+  printf '#!/bin/sh\nexec sh /usr/share/golden-gate/apps/software/open.sh "$@"\n' > "$BIN/gg-software"
+  printf '#!/bin/sh\nexec python3 /usr/lib/golden-gate/pref-helper.py "$@"\n' > "$BIN/gg-pref"
+  printf '#!/bin/sh\nexec /usr/lib/golden-gate/hyprglass-sync.sh "$@"\n' > "$BIN/gg-hyprglass-sync"
+  printf '#!/bin/sh\nexec /usr/lib/golden-gate/apply-preferences.sh "$@"\n' > "$BIN/gg-apply-preferences"
   cp "$REPO/themes/firefox/recover.sh" "$SHARE/firefox-recover.sh"
   printf '#!/bin/sh\nbash /usr/share/golden-gate/firefox-recover.sh --profiles\nexec firefox --safe-mode "$@"\n' > "$BIN/gg-firefox-recover"
   cp "$REPO/distro/archiso/overlay/usr/local/bin/gg-session" "$BIN/gg-session"
-  chmod 755 "$BIN/gg-diagnostics" "$BIN/gg-settings" "$BIN/gg-web" "$BIN/gg-install" "$BIN/gg-firefox-recover" "$BIN/gg-session"
+  chmod 755 "$BIN/gg-diagnostics" "$BIN/gg-settings" "$BIN/gg-web" "$BIN/gg-install" "$BIN/gg-software" "$BIN/gg-pref" "$BIN/gg-hyprglass-sync" "$BIN/gg-apply-preferences" "$BIN/gg-firefox-recover" "$BIN/gg-session"
   mkdir -p "$R/usr/share/wayland-sessions"
   cat > "$R/usr/share/wayland-sessions/golden-gate.desktop" <<'EOF'
 [Desktop Entry]
@@ -103,6 +125,12 @@ EOF
     printf '# Written by Settings.\n' > "$SKEL/.config/hypr/golden-gate/displays.conf"
     printf '# Filled in by machine-conf.sh when the session starts.\n' > "$SKEL/.config/hypr/golden-gate/machine.conf"
     cp -a "$REPO/shell" "$SKEL/.config/quickshell/golden-gate"
+    # Shell-specific pieces stay local, while the shared primitives resolve from
+    # the same canonical store used by every Golden Gate application.
+    for f in Glass.qml Spring.qml SpringValue.qml Symbol.qml; do
+      rm -f "$SKEL/.config/quickshell/golden-gate/components/$f"
+      ln -s "/usr/share/golden-gate/ui/$f" "$SKEL/.config/quickshell/golden-gate/components/$f"
+    done
     cp "$REPO/themes/ghostty/config" "$SKEL/.config/ghostty/config"
     cp "$REPO"/themes/ghostty/themes/* "$SKEL/.config/ghostty/themes/"
     cp "$REPO/design/dist/gtk.css" "$SKEL/.config/gtk-4.0/gtk.css"
@@ -215,13 +243,39 @@ rm -rf "$DATA/golden-gate/apps"
 mkdir -p "$DATA/golden-gate" "$DATA/applications"
 cp -a "$REPO/apps" "$DATA/golden-gate/apps"
 rm -rf "$DATA/golden-gate/apps/desktop"
+# Canonical component store for installed apps. App-local lib/ is an alias, so
+# Button/Switch/Slider/TextField/etc. can never drift between applications.
+rm -rf "$DATA/golden-gate/ui" "$DATA/golden-gate/apps/lib"
+cp -a "$REPO/apps/lib" "$DATA/golden-gate/ui"
+ln -s ../ui "$DATA/golden-gate/apps/lib"
+if [[ $MODE == system ]]; then UI_RUN=/usr/share/golden-gate/ui; else UI_RUN="$DATA/golden-gate/ui"; fi
+for f in Glass.qml Spring.qml SpringValue.qml Symbol.qml; do
+  rm -f "$CONF/quickshell/golden-gate/components/$f"
+  ln -s "$UI_RUN/$f" "$CONF/quickshell/golden-gate/components/$f"
+done
 # gg-diagnostics: a crash and diagnostics report you can read and send.
 if [[ $MODE == system ]]; then BIN="$ROOT/usr/local/bin"; else BIN="$HOME/.local/bin"; fi
 mkdir -p "$BIN"
 printf '#!/bin/sh\nexec bash "%s/setup/diagnostics.sh" "$@"\n' "$APPS_RUN" > "$BIN/gg-diagnostics"
 chmod +x "$BIN/gg-diagnostics"
 printf '#!/bin/sh\nexec bash "%s/settings/open.sh" "$@"\n' "$APPS_RUN" > "$BIN/gg-settings"
-chmod +x "$BIN/gg-settings"
+printf '#!/bin/sh\nexec sh "%s/software/open.sh" "$@"\n' "$APPS_RUN" > "$BIN/gg-software"
+RUNTIME="$DATA/golden-gate/runtime"
+mkdir -p "$RUNTIME"
+cp "$REPO/apps/setup/pref-helper.py" "$RUNTIME/pref-helper.py"
+cp "$REPO/compositor/hyprland/hyprglass-sync.sh" "$RUNTIME/hyprglass-sync.sh"
+cp "$REPO/compositor/hyprland/apply-preferences.sh" "$RUNTIME/apply-preferences.sh"
+chmod 755 "$RUNTIME/pref-helper.py" "$RUNTIME/hyprglass-sync.sh" "$RUNTIME/apply-preferences.sh"
+if [[ $MODE == system ]]; then
+  printf '#!/bin/sh\nexec python3 /usr/share/golden-gate/runtime/pref-helper.py "$@"\n' > "$BIN/gg-pref"
+  printf '#!/bin/sh\nexec /usr/share/golden-gate/runtime/hyprglass-sync.sh "$@"\n' > "$BIN/gg-hyprglass-sync"
+  printf '#!/bin/sh\nexec /usr/share/golden-gate/runtime/apply-preferences.sh "$@"\n' > "$BIN/gg-apply-preferences"
+else
+  printf '#!/bin/sh\nexec python3 "%s/pref-helper.py" "$@"\n' "$RUNTIME" > "$BIN/gg-pref"
+  printf '#!/bin/sh\nexec "%s/hyprglass-sync.sh" "$@"\n' "$RUNTIME" > "$BIN/gg-hyprglass-sync"
+  printf '#!/bin/sh\nexec "%s/apply-preferences.sh" "$@"\n' "$RUNTIME" > "$BIN/gg-apply-preferences"
+fi
+chmod +x "$BIN/gg-settings" "$BIN/gg-software" "$BIN/gg-pref" "$BIN/gg-hyprglass-sync" "$BIN/gg-apply-preferences"
 for f in "$REPO"/apps/desktop/*.desktop; do
   sed "s#@APPS@#$APPS_RUN#g" "$f" > "$DATA/applications/$(basename "$f")"
 done
