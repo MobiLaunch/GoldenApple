@@ -12,7 +12,7 @@ import "components"
 
 PanelWindow {
     id: root
-    property bool dnd: false
+    readonly property bool dnd: Prefs.focusDnd
     readonly property var list: server.trackedNotifications.values
 
     anchors { top: true; right: true }
@@ -37,7 +37,8 @@ PanelWindow {
 
     IpcHandler {
         target: "notifications"
-        function toggleDnd(): void { root.dnd = !root.dnd }
+        function toggleDnd(): void { Quickshell.execDetached(["gg-pref", "focus.dnd", root.dnd ? "false" : "true"]) }
+        function setDnd(on: bool): void { Quickshell.execDetached(["gg-pref", "focus.dnd", on ? "true" : "false"]) }
         function clear(): void { root.list.slice().forEach((n) => n.dismiss()) }
     }
 
