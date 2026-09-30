@@ -20,6 +20,9 @@ Item {
     signal clicked()
     implicitWidth: Math.max(72, row.implicitWidth + 28); implicitHeight: 26
     opacity: enabled ? 1 : 0.45
+    // macOS controls rarely jump; they settle by a pixel or two under the pointer.
+    y: ma.pressed ? 1 : ma.containsMouse && b.enabled && !Theme.reduceMotion ? -0.5 : 0
+    Behavior on y { enabled: !Theme.reduceMotion; NumberAnimation { duration: 90; easing.type: Easing.OutCubic } }
 
     Glass {
         anchors.fill: parent
@@ -34,6 +37,8 @@ Item {
         id: row
         anchors.centerIn: parent
         spacing: 6
+        scale: ma.pressed && !Theme.reduceMotion ? 0.975 : 1
+        Behavior on scale { enabled: !Theme.reduceMotion; NumberAnimation { duration: 85; easing.type: Easing.OutCubic } }
         Symbol { visible: !!b.symbol; anchors.verticalCenter: parent.verticalCenter; name: b.symbol; size: 14; tone: b.prominent ? "white" : "auto" }
         Text {
             anchors.verticalCenter: parent.verticalCenter
