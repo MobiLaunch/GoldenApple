@@ -22,7 +22,11 @@ PanelWindow {
     readonly property int tileCount: entries.length + places.length
     readonly property real restingWidth: tileCount * (baseSize + 3) + 25
     property real baseSize: Math.min(Prefs.dockSize, Math.max(16, (width - 48) / (tileCount + 6) - 3))
-    property real maxSize: Prefs.dockMagnification && !Prefs.reduceMotion ? Math.max(baseSize, Math.min(Prefs.dockMagnifiedSize, baseSize * 1.8)) : baseSize
+    // Make magnification visually obvious on real hardware. Settings still gate the effect,
+    // but an enabled Dock now reaches ~1.95x at the pointer instead of being capped at 1.8x.
+    property real maxSize: Prefs.dockMagnification && !Prefs.reduceMotion
+        ? Math.max(baseSize, Math.min(Math.max(Prefs.dockMagnifiedSize, baseSize * 1.95), baseSize * 2.15))
+        : baseSize
     property real pointerX: -1
     property real pointerTargetX: -1
     property var launcher: null   // AppLaunch on this screen: the icon grows into the window
@@ -93,9 +97,11 @@ PanelWindow {
     function sizeAt(index) {
         if (pointerX < 0) return baseSize
         const center = (dock.width - restingWidth) / 2 + 7 + index * (baseSize + 3) + baseSize / 2
-        const range = baseSize * 3.2
+        const range = baseSize * 2.55
         const d = Math.abs(pointerX - center)
-        return d >= range ? baseSize : baseSize + (maxSize - baseSize) * Math.pow(Math.cos(d / range * Math.PI / 2), 1.4)
+        // A broader, stronger macOS-style wave: the hovered icon is dominant,
+        // nearest neighbours clearly lift, and the second ring eases back to rest.
+        return d >= range ? baseSize : baseSize + (maxSize - baseSize) * Math.pow(Math.cos(d / range * Math.PI / 2), 1.08)
     }
 
     Item {
@@ -147,7 +153,7 @@ PanelWindow {
                     width: dock.sizeAt(index)
                     height: width
                     y: row.height - height
-                    Behavior on width { enabled: !Prefs.reduceMotion; SmoothedAnimation { velocity: -1; duration: 110 } }
+                    Behavior on width { enabled: !Prefs.reduceMotion; NumberAnimation { duration: 82; easing.type: Easing.OutCubic } }
 
                     // Calendar apps show today's date, drawn over a date-less icon.
                     readonly property bool calendar: /calendar/i.test(modelData.icon ?? "") && calBlank.loaded
@@ -241,7 +247,7 @@ PanelWindow {
                     width: dock.sizeAt(dock.entries.length + index + 0.35)
                     height: width
                     y: row.height - height
-                    Behavior on width { enabled: !Prefs.reduceMotion; SmoothedAnimation { velocity: -1; duration: 110 } }
+                    Behavior on width { enabled: !Prefs.reduceMotion; NumberAnimation { duration: 82; easing.type: Easing.OutCubic } }
                     Image {
                         anchors.fill: parent
                         source: Quickshell.iconPath(place.modelData.icon, "folder")
@@ -267,7 +273,19 @@ PanelWindow {
                         tint: Theme.dark ? "#b8282830" : "#c8f4f4f6"
                         Text { id: placeText; anchors.centerIn: parent; width: Math.min(implicitWidth, parent.width - 24); elide: Text.ElideRight; textFormat: Text.PlainText; text: place.modelData.name; color: Theme.label; font { family: Theme.fontUi; pixelSize: 13; weight: Font.Medium } }
                     }
-                    MouseArea { id: placeArea; anchors.fill: parent; hoverEnabled: true; onClicked: { if (place.modelData.action === "applications") { dock.applications.active = true; Qt.callLater(() => dock.applications.item?.toggle()) } else Quickshell.execDetached(place.modelData.exec) } }
+                    MouseArea {
+                        id: placeArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        onClicked: {
+                            if (place.modelData.action === "applications") {
+                                if (dock.applications && dock.applications.toggle)
+                                    dock.applications.toggle()
+                            } else {
+                                Quickshell.execDetached(place.modelData.exec)
+                            }
+                        }
+                    }
                 }
             }
         }
