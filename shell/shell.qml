@@ -102,7 +102,7 @@ ShellRoot {
             // Applications is isolated from boot but owned by the screen whose
             // Dock invokes it. A global layer window could open on an arbitrary
             // monitor and look like the button did nothing.
-            LazyLoader { id: applicationsLoader; active: false; loading: true; source: "Applications.qml" }
+            LazyLoader { id: applicationsLoader; active: false; source: "Applications.qml" }
             ControlCenter { id: cc; screen: perScreen.modelData; notifications: notificationCenter }
             MenuBar { screen: perScreen.modelData; controlCenter: cc; spotlight: spotlightPanel }
             AppLaunch {
