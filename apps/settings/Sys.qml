@@ -40,7 +40,12 @@ Item {
         o[path[path.length - 1]] = value
         return copy
     }
-    function setPref(path, value) { prefs = setIn(prefs, path, value); writeJson("desktop.json", prefs) }
+    function setPref(path, value) {
+        prefs = setIn(prefs, path, value)
+        writeJson("desktop.json", prefs)
+        if (path[0] === "glass" || path[0] === "reduceTransparency")
+            Quickshell.execDetached(["sh", "-c", "sleep 0.08; gg-hyprglass-sync"])
+    }
     function setPrivacy(key, value) { privacy = setIn(privacy, [key], value); writeJson("privacy.json", privacy) }
 
     // Keyboard and pointer: input.json is the record; hypr's input.conf is written
