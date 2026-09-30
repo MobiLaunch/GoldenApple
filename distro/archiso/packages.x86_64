@@ -66,6 +66,10 @@ fractal
 gnome-software
 flatpak
 archlinux-appstream-data
+xdg-desktop-portal-hyprland
+xdg-desktop-portal-gtk
+ca-certificates
+curl
 # Chromium engine and Python bindings for Golden Gate Web
 qt6-webengine
 pyside6
