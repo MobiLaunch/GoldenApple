@@ -9,6 +9,7 @@ import "components"
 PanelWindow {
     id: apps
     property bool open: false
+    Component.onCompleted: apps.open = true
     function toggle() { open = !open; if (open) search.forceActiveFocus() }
     visible: open || fade.running
     anchors { top: true; bottom: true; left: true; right: true }
