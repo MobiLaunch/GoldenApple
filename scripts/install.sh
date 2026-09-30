@@ -268,6 +268,15 @@ chmod +x "$BIN/gg-settings" "$BIN/gg-software" "$BIN/gg-pref" "$BIN/gg-hyprglass
 for f in "$REPO"/apps/desktop/*.desktop; do
   sed "s#@APPS@#$APPS_RUN#g" "$f" > "$DATA/applications/$(basename "$f")"
 done
+if [[ $MODE == user ]]; then
+  cat > "$DATA/applications/org.gnome.Software.desktop" <<'EOF'
+[Desktop Entry]
+Type=Application
+Name=Software
+Exec=gnome-software
+NoDisplay=true
+EOF
+fi
 
 # Terminal: its own title bar and Terminal.app's look
 place "$REPO/themes/ghostty/config" "$CONF/ghostty/config"
