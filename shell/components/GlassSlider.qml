@@ -25,7 +25,15 @@ Glass {
     }
     Accessible.onIncreaseAction: adjust(value + 0.05)
     Accessible.onDecreaseAction: adjust(value - 0.05)
-    Rectangle { anchors { fill: parent; margins: 2 } radius: 20; color: "transparent"; border { width: 2; color: Theme.accent } visible: root.activeFocus }
+    Rectangle {
+        anchors { fill: parent; margins: 2 }
+        radius: 20
+        color: "transparent"
+        border { width: 2; color: Theme.accent }
+        visible: opacity > 0
+        opacity: root.activeFocus ? 1 : 0
+        Behavior on opacity { NumberAnimation { duration: Prefs.reduceMotion ? 1 : 100 } }
+    }
 
     ColumnLayout {
         anchors { fill: parent; leftMargin: 16; rightMargin: 16; topMargin: 11; bottomMargin: 12 }
@@ -41,8 +49,8 @@ Glass {
             Item {
                 id: track
                 Layout.fillWidth: true
-                implicitHeight: drag.containsMouse || drag.pressed ? 10 : 7
-                Behavior on implicitHeight { Spring { spring: Theme.snappy } }
+                implicitHeight: drag.pressed ? 10 : drag.containsMouse ? 8.5 : 7
+                Behavior on implicitHeight { enabled: !Prefs.reduceMotion; NumberAnimation { duration: 85; easing.type: Easing.OutCubic } }
                 Rectangle { anchors.fill: parent; radius: height / 2; color: Qt.rgba(1, 1, 1, 0.3) }
                 Rectangle {
                     id: fill
@@ -56,7 +64,7 @@ Glass {
                 // clear glass lens over the track, as in iOS and macOS 26.
                 Glass {
                     id: knob
-                    property real size: drag.pressed ? 30 : drag.containsMouse ? 20 : 0
+                    property real size: drag.pressed ? 28 : drag.containsMouse ? 18 : 0
                     width: size * 1.35; height: size
                     radius: height / 2
                     x: Math.max(0, Math.min(track.width - width, fill.width - width / 2))
@@ -65,7 +73,7 @@ Glass {
                     filled: !drag.pressed
                     tint: Qt.rgba(1, 1, 1, 0.12)
                     lens: 6
-                    Behavior on size { Spring { spring: Theme.snappy } }
+                    Behavior on size { enabled: !Prefs.reduceMotion; Spring { spring: Theme.snappy } }
                 }
                 MouseArea {
                     id: drag
