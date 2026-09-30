@@ -45,6 +45,7 @@ bluez-utils
 brightnessctl
 playerctl
 upower
+power-profiles-daemon
 keyd
 grim
 slurp
@@ -61,7 +62,10 @@ gnome-calendar
 loupe
 geary
 fractal
+# App Store backend: GNOME Software + Flatpak/Flathub metadata.
 gnome-software
+flatpak
+archlinux-appstream-data
 # Chromium engine and Python bindings for Golden Gate Web
 qt6-webengine
 pyside6
