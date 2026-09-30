@@ -68,7 +68,6 @@ ShellRoot {
     }
 
     Spotlight { id: spotlightPanel; launchers: root.launchers }
-    LazyLoader { id: applicationsLoader; active: false; source: "Applications.qml" }
     // For tests: launch an app as if from the middle of the Dock, and stand in for
     // Hyprland's "window opened" where there is no Hyprland (qs ipc call launch …).
     IpcHandler {
@@ -93,6 +92,10 @@ ShellRoot {
 
             Wallpaper { screen: perScreen.modelData }
             LazyLoader { active: Quickshell.env("GG_WIDGETS") === "1"; source: "DesktopWidgets.qml" }
+            // Applications is isolated from boot but owned by the screen whose
+            // Dock invokes it. A global layer window could open on an arbitrary
+            // monitor and look like the button did nothing.
+            LazyLoader { id: applicationsLoader; active: false; loading: true; source: "Applications.qml" }
             ControlCenter { id: cc; screen: perScreen.modelData; notifications: notificationCenter }
             MenuBar { screen: perScreen.modelData; controlCenter: cc; spotlight: spotlightPanel }
             AppLaunch {
