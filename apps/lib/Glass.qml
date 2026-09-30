@@ -11,10 +11,12 @@ import "theme"
 Item {
     id: root
     property real radius: 26
-    property color tint: Theme.glassClear.tint
-    property color rim: Theme.glassClear.rim
-    property color rimLow: Theme.glassClear.rimLow
-    property color shine: Theme.glassClear.shine
+    // App windows do not reliably receive compositor backdrop blur, so default
+    // to the denser regular material instead of the ultra-clear shell material.
+    property color tint: Theme.glassRegular.tint
+    property color rim: Theme.glassRegular.rim
+    property color rimLow: Theme.glassRegular.rimLow
+    property color shine: Theme.glassRegular.shine
     property bool filled: false
     property bool pressed: false
     property bool hovered: false
@@ -23,9 +25,11 @@ Item {
     default property alias content: body.data
 
     readonly property real r: Math.min(radius, width / 2, height / 2)
-    readonly property color shownTint: Theme.reduceTransparency ? Qt.rgba(tint.r, tint.g, tint.b, Math.max(tint.a, 0.94))
-                                     : Theme.glassStyle === "tinted" ? Qt.rgba(tint.r, tint.g, tint.b, Math.max(tint.a, Math.min(0.86, tint.a + 0.32)))
-                                     : tint
+    readonly property color shownTint: Theme.reduceTransparency
+        ? Qt.rgba(tint.r, tint.g, tint.b, Math.max(tint.a, 0.96))
+        : Theme.glassStyle === "tinted"
+            ? Qt.rgba(tint.r, tint.g, tint.b, Math.max(tint.a, 0.88))
+            : Qt.rgba(tint.r, tint.g, tint.b, Math.max(tint.a, 0.74))
 
     // The press: a little smaller and brighter, springing back. A transform, so
     // users can still animate `scale` (Control Center's modules spring in).
@@ -38,7 +42,7 @@ Item {
         anchors.fill: shadowShape; source: shadowShape; autoPaddingEnabled: true
         shadowEnabled: true
         shadowColor: root.shadow.a > 0 ? root.shadow : "#70000000"
-        shadowOpacity: root.pressed ? 0.08 : root.hovered ? 0.20 : 0.14
+        shadowOpacity: root.pressed ? 0.14 : root.hovered ? 0.26 : 0.20
         shadowBlur: 1.0
         shadowVerticalOffset: root.pressed ? 1 : root.hovered ? 6 : 4
     }
@@ -46,14 +50,14 @@ Item {
         id: bodyFill
         anchors.fill: parent
         radius: root.r
-        color: root.filled ? "#ffffff" : root.shownTint
+        color: root.filled ? (Theme.dark ? "#e6ffffff" : "#f2ffffff") : root.shownTint
         Behavior on color { ColorAnimation { duration: 180 } }
     }
     Rectangle {
         anchors.fill: parent
         radius: root.r
         color: "#ffffff"
-        opacity: root.pressed ? 0.12 : root.hovered ? 0.05 : 0
+        opacity: root.pressed ? 0.16 : root.hovered ? 0.08 : 0
         Behavior on opacity { NumberAnimation { duration: 140 } }
     }
     // Sheen
@@ -61,7 +65,7 @@ Item {
         anchors.fill: parent
         radius: root.r
         visible: !root.filled
-        opacity: 0.5
+        opacity: 0.64
         gradient: Gradient {
             GradientStop { position: 0.0; color: root.shine }
             GradientStop { position: 0.42; color: "transparent" }
@@ -76,9 +80,9 @@ Item {
         fillRule: ShapePath.OddEvenFill
         fillGradient: LinearGradient {
             x1: 0; y1: 0; x2: root.width * 0.35; y2: root.height
-            GradientStop { position: 0; color: Qt.rgba(1, 1, 1, 0.045) }
-            GradientStop { position: 0.55; color: Qt.rgba(1, 1, 1, 0.012) }
-            GradientStop { position: 1; color: Qt.rgba(1, 1, 1, 0.025) }
+            GradientStop { position: 0; color: Qt.rgba(1, 1, 1, 0.075) }
+            GradientStop { position: 0.55; color: Qt.rgba(1, 1, 1, 0.020) }
+            GradientStop { position: 1; color: Qt.rgba(1, 1, 1, 0.045) }
         }
         PathRectangle { x: 0; y: 0; width: root.width; height: root.height; radius: root.r }
         PathRectangle {
