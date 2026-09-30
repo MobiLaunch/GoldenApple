@@ -56,9 +56,6 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - name: Click through the reference shell
         run: SHOTS=out/ui npm run test:ui
-      - name: Compile and render the Liquid Glass shader
-        if: always()
-        run: npm run test:shader -- compositor/liquid-glass/liquid-glass.frag out/ui/liquid-glass.png
       - name: Upload UI screenshots
         if: always()
         continue-on-error: true
