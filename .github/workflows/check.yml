@@ -12,25 +12,31 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: npm install --no-package-lock   # pathkit-wasm outlines the symbolic icons
+      - run: npm install --no-package-lock
       - name: Rebuild tokens and icons
         run: npm run build
       - name: Generated files are up to date
         run: git diff --exit-code
       - name: Lint shell scripts
         run: find scripts distro apps themes compositor -type f -name "*.sh" -print0 | xargs -0 -n1 bash -n
-      - name: Guard the login boot path
+      - name: Guard the login and glass paths
         run: |
           grep -q 'LazyLoader { id: applicationsLoader' shell/shell.qml
           grep -q 'applicationsOpenRetry' shell/Dock.qml
+          grep -q 'Component.onCompleted: apps.open = true' shell/Applications.qml
+          grep -q 'assets/symbols/apps.svg' shell/Dock.qml
           grep -q 'GG_WIDGETS' shell/shell.qml
           grep -q 'golden-gate-shell.log' distro/archiso/overlay/usr/local/bin/gg-session
           ! grep -q 'qs -c' distro/archiso/overlay/usr/local/bin/gg-session
           grep -q 'qs -c golden-gate' compositor/hyprland/hyprland.conf
           grep -q 'gg-apply-preferences' compositor/hyprland/hyprland.conf
-          ! grep -q 'layerrule = .*blur on' compositor/hyprland/hyprland.conf
+          grep -q 'hyprglass.so' distro/archiso/build.sh
+          grep -q 'HyprGlass owns blur/refraction' compositor/hyprland/hyprland.conf
+          ! grep -Rqs 'ShaderEffect' apps/setup
+          test ! -d apps/setup/shaders
           grep -q 'org.goldengate.Software' shell/Dock.qml
           bash -n distro/archiso/overlay/usr/local/bin/gg-session
+          bash -n apps/software/open.sh
       - name: Stage extras and new-account desktop
         run: |
           root="$(mktemp -d)"
@@ -49,13 +55,17 @@ jobs:
           grep -q '/usr/share/golden-gate/apps' "$root/etc/skel/.config/hypr/hyprland.conf"
           test -f "$root/usr/share/applications/org.goldengate.Web.desktop"
           test -f "$root/usr/share/applications/org.goldengate.Installer.desktop"
+          test -f "$root/usr/share/applications/org.goldengate.Software.desktop"
           test -f "$root/usr/share/golden-gate/apps/installer.qml"
           test -f "$root/usr/share/golden-gate/apps/installer/helper.py"
           test -d "$root/usr/share/golden-gate/ui"
           test -L "$root/usr/share/golden-gate/apps/lib"
           test "$(readlink "$root/usr/share/golden-gate/apps/lib")" = "../ui"
-          test -f "$root/usr/share/applications/org.goldengate.Software.desktop"
-          grep -q '^NoDisplay=true
+          test -x "$root/usr/lib/golden-gate/pref-helper.py"
+          test -x "$root/usr/lib/golden-gate/hyprglass-sync.sh"
+          test -x "$root/usr/lib/golden-gate/apply-preferences.sh"
+          test -f "$root/usr/share/licenses/golden-gate/hyprglass/LICENSE"
+
   ui:
     runs-on: ubuntu-latest
     steps:
@@ -96,79 +106,6 @@ jobs:
         run: python tests/settings-wiring.py
       - name: Guard the shared app component store
         run: python tests/shared-ui.py
-      - name: Exercise native control keyboard and pointer behavior
-        run: python tests/native-controls.py
-        env:
-          QT_QPA_PLATFORM: offscreen
-          QT_QUICK_BACKEND: software
-      - name: Test app data and async request handling
-        run: npm run test:logic
-
-  browser-and-setup:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      - run: sudo apt-get update && sudo apt-get install -y xvfb libegl1 libopengl0 libnss3 libxtst6 libxkbfile1 libasound2t64 libxcb-cursor0 libxkbcommon-x11-0 libxcb-icccm4 libxcb-keysyms1 libxcb-shape0 libxcb-xinerama0
-      - run: python -m pip install PySide6==6.11.2
-      - name: Test account failures, preferences, and browser state
-        run: python tests/setup-browser.py
-      - name: Exercise native Chromium navigation, tabs, private browsing, and shortcuts
-        run: xvfb-run -a python tests/native-browser.py
-        env:
-          QT_QPA_PLATFORM: xcb
-          QTWEBENGINE_CHROMIUM_FLAGS: --disable-gpu
-      - name: Upload browser previews
-        if: always()
-        continue-on-error: true
-        uses: actions/upload-artifact@v4
-        with:
-          name: native-browser-preview
-          path: out/browser
-          retention-days: 3
- "$root/usr/local/share/applications/org.gnome.Software.desktop"
-          test -x "$root/usr/lib/golden-gate/pref-helper.py"
-          test -x "$root/usr/lib/golden-gate/hyprglass-sync.sh"
-          test -x "$root/usr/lib/golden-gate/apply-preferences.sh"
-
-  ui:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - run: npm install --no-package-lock
-      - run: npx playwright install --with-deps chromium
-      - name: Click through the reference shell
-        run: SHOTS=out/ui npm run test:ui
-      - name: Upload UI screenshots
-        if: always()
-        continue-on-error: true
-        uses: actions/upload-artifact@v4
-        with:
-          name: ui-screenshots
-          path: out/ui
-          retention-days: 3
-
-  native-controls:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - run: sudo apt-get update && sudo apt-get install -y libegl1 libopengl0
-      - run: python -m pip install PySide6-Essentials==6.11.2
-      - name: Parse all native QML
-        run: python tests/check-qml.py
-      - name: Verify installer disk discovery stays read-only
-        run: python tests/installer-safety.py
       - name: Exercise native control keyboard and pointer behavior
         run: python tests/native-controls.py
         env:
