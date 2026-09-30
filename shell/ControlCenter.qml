@@ -36,7 +36,7 @@ PanelWindow {
     property bool wifiOn: true
     property string ssid: ""
     property real brightness: 0.6
-    property bool nightShift: false
+    readonly property bool nightShift: Prefs.nightShift
     readonly property var sink: Pipewire.defaultAudioSink
     readonly property var player: Mpris.players.values.length ? Mpris.players.values[0] : null
     PwObjectTracker { objects: [cc.sink] }
@@ -201,11 +201,15 @@ PanelWindow {
         }
         Wide {
             order: 4; icon: "moon"; title: "Focus"; on: cc.notifications?.dnd ?? false
-            onActivated: if (cc.notifications) cc.notifications.dnd = !cc.notifications.dnd
+            onActivated: Quickshell.execDetached(["gg-pref", "focus.dnd", (cc.notifications?.dnd ?? false) ? "false" : "true"])
         }
         Circle {
             order: 5; icon: "sun"; on: cc.nightShift
-            onActivated: { cc.nightShift = !cc.nightShift; cc.run(cc.nightShift ? "hyprsunset -t 4500" : "pkill hyprsunset") }
+            onActivated: {
+                const on = !cc.nightShift
+                Quickshell.execDetached(["gg-pref", "display.nightShift", on ? "true" : "false"])
+                cc.run(on ? "hyprsunset -t " + Prefs.displayWarmth : "pkill -x hyprsunset")
+            }
         }
         Circle {
             order: 6; icon: "mirror"
@@ -214,7 +218,11 @@ PanelWindow {
         GlassSlider {
             Layout.columnSpan: 4; Layout.fillWidth: true; Layout.preferredHeight: 64
             title: "Display"; lowIcon: "sun"; highIcon: "sun-max"; value: cc.brightness
-            onMoved: (v) => { cc.brightness = v; cc.run("brightnessctl -q set " + Math.round(v * 100) + "%") }
+            onMoved: (v) => {
+                cc.brightness = v
+                cc.run("brightnessctl -q set " + Math.round(Math.max(0.02, v) * 100) + "%")
+                Quickshell.execDetached(["gg-pref", "display.brightness", String(v)])
+            }
         }
         GlassSlider {
             Layout.columnSpan: 4; Layout.fillWidth: true; Layout.preferredHeight: 64
