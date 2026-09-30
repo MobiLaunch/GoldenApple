@@ -21,7 +21,8 @@ jobs:
         run: find scripts distro apps themes -type f -name "*.sh" -print0 | xargs -0 -n1 bash -n
       - name: Guard the login boot path
         run: |
-          grep -q 'Applications { id: applicationsPanel }' shell/shell.qml
+          grep -q 'LazyLoader { id: applicationsLoader' shell/shell.qml
+          grep -q 'applicationsOpenRetry' shell/Dock.qml
           grep -q 'GG_WIDGETS' shell/shell.qml
           grep -q 'golden-gate-shell.log' distro/archiso/overlay/usr/local/bin/gg-session
           ! grep -q 'qs -c' distro/archiso/overlay/usr/local/bin/gg-session
