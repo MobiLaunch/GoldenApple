@@ -14,7 +14,8 @@ Rectangle {
     radius: search ? height / 2 : 7
     color: Theme.dark ? "#1affffff" : "#ffffff"
     border { width: input.activeFocus ? 3 : 0.5; color: input.activeFocus ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.5) : Theme.separator }
-    Behavior on border.width { NumberAnimation { duration: 120 } }
+    Behavior on border.width { NumberAnimation { duration: Theme.reduceMotion ? 1 : 120; easing.type: Easing.OutCubic } }
+    Behavior on border.color { ColorAnimation { duration: Theme.reduceMotion ? 1 : 140 } }
     Symbol { visible: tf.search; x: 8; anchors.verticalCenter: parent.verticalCenter; name: "search"; tone: "gray"; size: 12 }
     TextInput {
         id: input
@@ -29,7 +30,16 @@ Rectangle {
         echoMode: tf.password ? TextInput.Password : TextInput.Normal
         font { family: Theme.fontUi; pixelSize: 13 }
         onAccepted: tf.accepted()
-        Text { width: input.width; elide: Text.ElideRight; visible: !input.text && !input.preeditText; text: tf.placeholder; color: Theme.tertiaryLabel; font: input.font }
+        Text {
+            width: input.width
+            elide: Text.ElideRight
+            visible: opacity > 0
+            opacity: !input.text && !input.preeditText ? (input.activeFocus ? 0.72 : 1) : 0
+            text: tf.placeholder
+            color: Theme.tertiaryLabel
+            font: input.font
+            Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 100 } }
+        }
     }
 }
 
