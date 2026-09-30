@@ -94,7 +94,7 @@ PanelWindow {
     }
     Timer { interval: 5000; running: true; repeat: true; onTriggered: trashCheck.running = true }
     readonly property var places: [
-        { name: "Applications", icon: "view-app-grid-symbolic", action: "applications" },
+        { name: "Applications", icon: "apps", action: "applications" },
         { name: "Downloads", icon: "folder", exec: ["xdg-open", Quickshell.env("HOME") + "/Downloads"] },
         { name: "Trash", icon: trashFull ? "user-trash-full" : "user-trash", exec: ["xdg-open", "trash:///"] },
     ]
@@ -281,7 +281,9 @@ PanelWindow {
                     Behavior on width { enabled: !Prefs.reduceMotion; NumberAnimation { duration: 82; easing.type: Easing.OutCubic } }
                     Image {
                         anchors.fill: parent
-                        source: Quickshell.iconPath(place.modelData.icon, "folder")
+                        source: place.modelData.action === "applications"
+                            ? Qt.resolvedUrl("assets/symbols/apps@accent.svg")
+                            : Quickshell.iconPath(place.modelData.icon, "folder")
                         sourceSize: Qt.size(dock.maxSize * 2, dock.maxSize * 2)
                         smooth: true; mipmap: true
                         scale: !Prefs.reduceMotion && placeArea.pressed ? 0.955 : 1
