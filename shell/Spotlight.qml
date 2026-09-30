@@ -60,10 +60,8 @@ PanelWindow {
         spacing: 10
         opacity: spot.open ? 1 : 0
         scale: spot.open ? 1 : 0.975
-        y: spot.open || Prefs.reduceMotion ? 0 : -4
         Behavior on opacity { NumberAnimation { duration: Prefs.reduceMotion ? 1 : 140; easing.type: Easing.OutCubic } }
         Behavior on scale { enabled: !Prefs.reduceMotion; Spring { spring: Theme.popover } }
-        Behavior on y { NumberAnimation { duration: Prefs.reduceMotion ? 1 : 150; easing.type: Easing.OutCubic } }
 
         Glass {
             Layout.fillWidth: true
