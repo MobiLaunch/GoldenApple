@@ -28,6 +28,13 @@ Item {
         color: sw.checked ? Theme.accent : (Theme.dark ? "#3dffffff" : "#29000000")
         Behavior on color { ColorAnimation { duration: 200 } }
         border { width: sw.activeFocus ? 3 : 0; color: Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.45) }
+        Rectangle {
+            anchors.fill: parent
+            radius: parent.radius
+            color: "#ffffff"
+            opacity: ma.containsMouse && sw.enabled && sw.enabled_ ? 0.045 : 0
+            Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 100 } }
+        }
     }
     Glass {
         id: knob
@@ -40,9 +47,11 @@ Item {
         filled: !active
         tint: Qt.rgba(1, 1, 1, 0.14)
         lens: 5
-        Behavior on x { Spring { spring: Theme.bouncy } }
-        Behavior on width { Spring { spring: Theme.snappy } }
-        Behavior on height { Spring { spring: Theme.snappy } }
+        Behavior on x { enabled: !Theme.reduceMotion; Spring { spring: Theme.snappy } }
+        scale: !Theme.reduceMotion && ma.containsMouse && !ma.pressed ? 1.025 : 1
+        Behavior on scale { enabled: !Theme.reduceMotion; NumberAnimation { duration: 90; easing.type: Easing.OutCubic } }
+        Behavior on width { enabled: !Theme.reduceMotion; Spring { spring: Theme.snappy } }
+        Behavior on height { enabled: !Theme.reduceMotion; Spring { spring: Theme.snappy } }
         // Shadow under the white knob
         shadow: knob.filled ? "#26000000" : "transparent"
     }
@@ -50,6 +59,7 @@ Item {
         id: ma
         enabled: sw.enabled && sw.enabled_
         anchors.fill: parent
+        hoverEnabled: true
         property real startX
         property bool dragged: false
         onPressed: (m) => { sw.forceActiveFocus(); startX = m.x; dragged = false }
