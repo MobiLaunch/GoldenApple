@@ -17,7 +17,10 @@ Pane {
         sys.sh("brightnessctl -m 2>/dev/null | cut -d, -f4", (o) => brightness = o.trim() ? parseInt(o) / 100 : -1)
         sys.sh("pgrep -x hyprsunset >/dev/null && echo on", (o) => nightShift = o.trim() === "on")
     }
-    Component.onCompleted: refresh()
+    Component.onCompleted: {
+        warmth = sys.prefs.display?.warmth ?? 4500
+        refresh()
+    }
     // Scales Hyprland renders well at: fractions of 120.
     readonly property var scales: [1, 1.25, 1.5, 1.6, 2]
     function setScale(m, s) {
@@ -49,7 +52,15 @@ Pane {
         SetRow {
             title: "Brightness"
             Symbol { name: "sun"; size: 13; opacity: 0.6 }
-            Slider { width: 220; value: pane.brightness; onMoved: (v) => { pane.brightness = v; pane.sys.run(["brightnessctl", "set", Math.round(Math.max(0.02, v) * 100) + "%"]) } }
+            Slider {
+                width: 220
+                value: pane.brightness
+                onMoved: (v) => {
+                    pane.brightness = v
+                    pane.sys.setPref(["display", "brightness"], v)
+                    pane.sys.run(["brightnessctl", "set", Math.round(Math.max(0.02, v) * 100) + "%"])
+                }
+            }
             Symbol { name: "sun-max"; size: 16 }
         }
     }
@@ -62,6 +73,7 @@ Pane {
                 checked: pane.nightShift
                 onToggled: (on) => {
                     pane.nightShift = on
+                    pane.sys.setPref(["display", "nightShift"], on)
                     if (on) Quickshell.execDetached(["hyprsunset", "-t", String(pane.warmth)])
                     else pane.sys.run(["pkill", "-x", "hyprsunset"])
                 }
@@ -75,6 +87,7 @@ Pane {
                 value: (6000 - pane.warmth) / 3000
                 onMoved: (v) => {
                     pane.warmth = Math.round(6000 - v * 3000)
+                    pane.sys.setPref(["display", "warmth"], pane.warmth)
                     if (pane.nightShift) { pane.sys.sh("pkill -x hyprsunset; sleep 0.2; setsid -f hyprsunset -t " + pane.warmth + " >/dev/null 2>&1") }
                 }
             }
