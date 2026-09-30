@@ -52,6 +52,11 @@ runtime=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}
   echo "== Errors this boot"
   journalctl --user -b -p warning --no-pager -q -n 80 2>/dev/null | cut -c1-240
   echo
+  echo "== Golden Gate shell"
+  pgrep -a qs 2>/dev/null || true
+  shelllog="$HOME/.local/state/golden-gate-shell.log"
+  [ -f "$shelllog" ] && tail -n 80 "$shelllog" | cut -c1-240
+  echo
   echo "== Desktop log (end)"
   log=$(ls -t "$runtime"/hypr/*/hyprland.log 2>/dev/null | head -n1)
   [ -n "$log" ] && tail -n 40 "$log" | cut -c1-240
