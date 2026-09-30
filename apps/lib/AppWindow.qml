@@ -195,7 +195,13 @@ FloatingWindow {
             anchors.fill: parent
             radius: Theme.radiusWindow
             color: "transparent"
-            border { width: 1; color: Theme.dark ? "#26ffffff" : "#26000000" }
+            border {
+                width: 1
+                color: win.active
+                    ? (Theme.dark ? "#30ffffff" : "#26000000")
+                    : (Theme.dark ? "#1affffff" : "#18000000")
+            }
+            Behavior on border.color { ColorAnimation { duration: Theme.reduceMotion ? 1 : 150 } }
         }
 
         Item {
