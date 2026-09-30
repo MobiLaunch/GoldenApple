@@ -92,6 +92,10 @@ jobs:
         run: python tests/check-qml.py
       - name: Verify installer disk discovery stays read-only
         run: python tests/installer-safety.py
+      - name: Verify Settings are wired to real persistent actions
+        run: python tests/settings-wiring.py
+      - name: Guard the shared app component store
+        run: python tests/shared-ui.py
       - name: Exercise native control keyboard and pointer behavior
         run: python tests/native-controls.py
         env:
