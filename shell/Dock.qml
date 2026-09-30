@@ -16,7 +16,7 @@ PanelWindow {
     property var pinned: (liveSession ? ["org.goldengate.Installer"] : []).concat([
         "org.gnome.Nautilus", "org.goldengate.Web", "org.gnome.Geary", "org.gnome.Fractal", "org.goldengate.Maps",
         "org.goldengate.Photos", "org.goldengate.Music", "org.gnome.Calendar", "org.goldengate.Notes",
-        "org.goldengate.Weather", "org.gnome.Software", "org.goldengate.Settings", "com.mitchellh.ghostty"
+        "org.goldengate.Weather", "org.goldengate.Software", "org.goldengate.Settings", "com.mitchellh.ghostty"
     ])
     // Size and magnification from Settings › Desktop & Dock.
     readonly property int tileCount: entries.length + places.length
@@ -40,6 +40,7 @@ PanelWindow {
         onTriggered: {
             dock.applicationsOpenAttempts++
             if (dock.applications && dock.applications.item) {
+                dock.applications.item.screen = dock.screen
                 dock.applications.item.open = true
                 dock.applicationsOpenAttempts = 0
                 stop()
