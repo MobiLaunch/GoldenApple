@@ -33,9 +33,11 @@ Item {
     readonly property real r: Math.min(radius, width / 2, height / 2)
     // Settings › Appearance › Liquid Glass (clear or tinted), and Accessibility ›
     // Reduce transparency (nearly opaque).
-    readonly property color shownTint: Prefs.reduceTransparency ? Qt.rgba(tint.r, tint.g, tint.b, Math.max(tint.a, 0.94))
-                                     : Prefs.glass === "tinted" ? Qt.rgba(tint.r, tint.g, tint.b, Math.max(tint.a, Math.min(0.86, tint.a + 0.32)))
-                                     : tint
+    readonly property color shownTint: Prefs.reduceTransparency
+        ? Qt.rgba(tint.r, tint.g, tint.b, Math.max(tint.a, 0.94))
+        : Prefs.glass === "tinted"
+            ? Qt.rgba(tint.r, tint.g, tint.b, Math.max(tint.a, 0.72))
+            : Qt.rgba(tint.r, tint.g, tint.b, Math.max(tint.a, Theme.dark ? 0.38 : 0.42))
 
     // The press: a little smaller and brighter, springing back. A transform, so
     // users can still animate `scale` (Control Center's modules spring in).
@@ -55,7 +57,7 @@ Item {
         autoPaddingEnabled: true
         shadowEnabled: true
         shadowColor: "#80000000"
-        shadowOpacity: root.pressed ? 0.10 : root.hovered ? 0.22 : 0.16
+        shadowOpacity: root.pressed ? 0.14 : root.hovered ? 0.27 : 0.20
         shadowBlur: 1.0
         shadowVerticalOffset: root.pressed ? 2 : root.hovered ? 7 : 5
         shadowHorizontalOffset: 0
@@ -64,14 +66,14 @@ Item {
         id: bodyFill
         anchors.fill: parent
         radius: root.r
-        color: root.filled ? "#ffffff" : root.shownTint
+        color: root.filled ? (Theme.dark ? "#e6ffffff" : "#f2ffffff") : root.shownTint
         Behavior on color { ColorAnimation { duration: 180 } }
     }
     Rectangle {
         anchors.fill: parent
         radius: root.r
         color: "#ffffff"
-        opacity: root.pressed ? 0.12 : root.hovered ? 0.05 : 0
+        opacity: root.pressed ? 0.16 : root.hovered ? 0.08 : 0
         Behavior on opacity { NumberAnimation { duration: 140 } }
     }
     // Sheen
@@ -79,7 +81,7 @@ Item {
         anchors.fill: parent
         radius: root.r
         visible: !root.filled
-        opacity: 0.5
+        opacity: 0.72
         gradient: Gradient {
             GradientStop { position: 0.0; color: root.shine }
             GradientStop { position: 0.42; color: "transparent" }
@@ -94,9 +96,9 @@ Item {
         fillRule: ShapePath.OddEvenFill
         fillGradient: LinearGradient {
             x1: 0; y1: 0; x2: root.width * 0.35; y2: root.height
-            GradientStop { position: 0; color: Qt.rgba(1, 1, 1, 0.045) }
-            GradientStop { position: 0.55; color: Qt.rgba(1, 1, 1, 0.012) }
-            GradientStop { position: 1; color: Qt.rgba(1, 1, 1, 0.025) }
+            GradientStop { position: 0; color: Qt.rgba(1, 1, 1, 0.10) }
+            GradientStop { position: 0.55; color: Qt.rgba(1, 1, 1, 0.025) }
+            GradientStop { position: 1; color: Qt.rgba(1, 1, 1, 0.055) }
         }
         PathRectangle { x: 0; y: 0; width: root.width; height: root.height; radius: root.r }
         PathRectangle {
