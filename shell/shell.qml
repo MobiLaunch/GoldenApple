@@ -15,11 +15,18 @@ ShellRoot {
     Binding { target: Theme; property: "reduceMotion"; value: Prefs.reduceMotion }
     Binding { target: Theme; property: "reduceTransparency"; value: Prefs.reduceTransparency }
     Binding { target: Theme; property: "glassStyle"; value: Prefs.glass }
+    Connections {
+        target: Prefs
+        function onDataChanged() {
+            Quickshell.execDetached(["gg-hyprglass-sync", Theme.dark ? "dark" : "light"])
+        }
+    }
     // Follow the system appearance set by Control Center, GNOME Settings or gsettings.
     // GTK 3 apps (Mail) have no colour scheme, only a dark theme, so mirror it there.
     function followScheme(line) {
         Theme.dark = line.includes("dark")
         Quickshell.execDetached(["gsettings", "set", "org.gnome.desktop.interface", "gtk-theme", Theme.dark ? "Adwaita-dark" : "Adwaita"])
+        Quickshell.execDetached(["gg-hyprglass-sync", Theme.dark ? "dark" : "light"])
     }
     Process {
         running: true
