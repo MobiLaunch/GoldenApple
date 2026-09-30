@@ -52,6 +52,15 @@ runtime=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}
   echo "== Errors this boot"
   journalctl --user -b -p warning --no-pager -q -n 80 2>/dev/null | cut -c1-240
   echo
+  echo "== HyprGlass"
+  hyprctl plugin list 2>/dev/null | sed -n '/hyprglass/,+8p' || true
+  hyprctl getoption plugin:hyprglass:layers:enabled 2>/dev/null || true
+  echo
+  echo "== App Store"
+  flatpak --user remotes --columns=name,url 2>/dev/null || true
+  storelog="$HOME/.local/state/golden-gate/app-store.log"
+  [ -f "$storelog" ] && tail -n 40 "$storelog" | cut -c1-240
+  echo
   echo "== Golden Gate shell"
   pgrep -a qs 2>/dev/null || true
   shelllog="$HOME/.local/state/golden-gate-shell.log"
