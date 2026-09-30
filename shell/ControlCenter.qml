@@ -73,15 +73,15 @@ PanelWindow {
         // Stagger: each module springs in slightly after the previous one; a timer
         // flips `shown` so the Behaviors below stay simple.
         property bool shown: false
-        Timer { interval: 1 + mod.order * 14; running: cc.open && !mod.shown; onTriggered: mod.shown = true }
+        Timer { interval: 1 + mod.order * 10; running: cc.open && !mod.shown; onTriggered: mod.shown = true }
         Connections { target: cc; function onOpenChanged() { if (!cc.open) mod.shown = false } }
         // Faint cool tint so white glyphs stay legible over bright windows.
         tint: "#3d1c3060"
         opacity: shown ? 1 : 0
-        scale: shown ? 1 : 0.72
+        scale: shown || Prefs.reduceMotion ? 1 : 0.94
         transformOrigin: Item.TopRight
-        Behavior on opacity { NumberAnimation { duration: mod.shown ? 260 : 160 } }
-        Behavior on scale { Spring { spring: Theme.popover } }
+        Behavior on opacity { NumberAnimation { duration: Prefs.reduceMotion ? 1 : (mod.shown ? 170 : 110); easing.type: Easing.OutCubic } }
+        Behavior on scale { enabled: !Prefs.reduceMotion; Spring { spring: Theme.popover } }
     }
     component Circle: Module {
         id: c
@@ -93,7 +93,14 @@ PanelWindow {
         filled: on
         pressed: cma.pressed
         hovered: cma.containsMouse
-        Symbol { anchors.centerIn: parent; name: c.icon; size: 25; tone: c.on ? "accent" : "white" }
+        Symbol {
+            anchors.centerIn: parent
+            name: c.icon
+            size: 25
+            tone: c.on ? "accent" : "white"
+            scale: !Prefs.reduceMotion && cma.pressed ? 0.90 : !Prefs.reduceMotion && cma.containsMouse ? 1.045 : 1
+            Behavior on scale { NumberAnimation { duration: Prefs.reduceMotion ? 1 : 85; easing.type: Easing.OutCubic } }
+        }
         MouseArea { id: cma; anchors.fill: parent; hoverEnabled: true; onClicked: c.activated() }
     }
     component Wide: Module {
@@ -115,7 +122,14 @@ PanelWindow {
                 filled: w.on
                 pressed: wma.pressed
                 hovered: wma.containsMouse
-                Symbol { anchors.centerIn: parent; name: w.icon; size: 22; tone: w.on ? "accent" : "white" }
+                Symbol {
+                    anchors.centerIn: parent
+                    name: w.icon
+                    size: 22
+                    tone: w.on ? "accent" : "white"
+                    scale: !Prefs.reduceMotion && wma.pressed ? 0.92 : !Prefs.reduceMotion && wma.containsMouse ? 1.04 : 1
+                    Behavior on scale { NumberAnimation { duration: Prefs.reduceMotion ? 1 : 85; easing.type: Easing.OutCubic } }
+                }
                 MouseArea { id: wma; anchors.fill: parent; hoverEnabled: true; onClicked: w.activated() }
             }
             ColumnLayout {
@@ -158,10 +172,20 @@ PanelWindow {
                     Repeater {
                         model: [["backward", () => cc.player?.previous()], [cc.player?.isPlaying ? "pause" : "play", () => cc.player?.togglePlaying()], ["forward", () => cc.player?.next()]]
                         delegate: Item {
+                            id: mediaButton
                             required property var modelData
-                            Layout.fillWidth: true; implicitHeight: 32
-                            Symbol { anchors.centerIn: parent; name: modelData[0]; size: 22 }
-                            MouseArea { anchors.fill: parent; onClicked: modelData[1]() }
+                            Layout.fillWidth: true
+                            implicitHeight: 32
+                            Symbol {
+                                anchors.centerIn: parent
+                                name: modelData[0]
+                                size: 22
+                                opacity: mediaArea.containsMouse ? 1 : 0.88
+                                scale: !Prefs.reduceMotion && mediaArea.pressed ? 0.88 : !Prefs.reduceMotion && mediaArea.containsMouse ? 1.06 : 1
+                                Behavior on opacity { NumberAnimation { duration: 90 } }
+                                Behavior on scale { NumberAnimation { duration: Prefs.reduceMotion ? 1 : 80; easing.type: Easing.OutCubic } }
+                            }
+                            MouseArea { id: mediaArea; anchors.fill: parent; hoverEnabled: true; onClicked: modelData[1]() }
                         }
                     }
                 }
