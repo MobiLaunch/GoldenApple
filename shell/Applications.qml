@@ -68,9 +68,7 @@ PanelWindow {
                     required property var modelData
                     width: grid.cellWidth; height: grid.cellHeight
                     scale: !Prefs.reduceMotion && area.pressed ? 0.965 : !Prefs.reduceMotion && area.containsMouse ? 1.025 : 1
-                    y: !Prefs.reduceMotion && area.containsMouse && !area.pressed ? -2 : 0
                     Behavior on scale { enabled: !Prefs.reduceMotion; NumberAnimation { duration: 90; easing.type: Easing.OutCubic } }
-                    Behavior on y { enabled: !Prefs.reduceMotion; NumberAnimation { duration: 95; easing.type: Easing.OutCubic } }
                     Column {
                         anchors.centerIn: parent; spacing: 7
                         Image {
