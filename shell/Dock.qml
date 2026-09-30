@@ -191,7 +191,10 @@ PanelWindow {
                         source: tile.calendar ? calBlank.source : Quickshell.iconPath(tile.modelData.icon, "application-x-executable")
                         sourceSize: Qt.size(dock.maxSize * 2, dock.maxSize * 2)
                         smooth: true; mipmap: true
-                        // Pressed, the icon darkens as on the Mac (dims without shaders).
+                        // Pressed, the icon darkens and settles a few percent, without
+                        // fighting the Dock's size-based magnification wave.
+                        scale: !Prefs.reduceMotion && tipArea.pressed ? 0.955 : 1
+                        Behavior on scale { enabled: !Prefs.reduceMotion; NumberAnimation { duration: 75; easing.type: Easing.OutCubic } }
                         readonly property bool gpu: GraphicsInfo.api !== GraphicsInfo.Software
                         layer.enabled: gpu && tipArea.pressed
                         layer.effect: MultiEffect { brightness: -0.28 }
@@ -235,7 +238,7 @@ PanelWindow {
                         opacity: shown ? 1 : 0
                         scale: shown ? 1 : 0.9
                         transformOrigin: Item.Bottom
-                        Behavior on opacity { NumberAnimation { duration: tip.shown ? 140 : 90 } }
+                        Behavior on opacity { NumberAnimation { duration: Prefs.reduceMotion ? 1 : (tip.shown ? 115 : 80) } }
                         Behavior on scale { Spring { spring: Theme.popover } }
                         anchors { bottom: parent.top; bottomMargin: 10 }
                         x: Math.max(8 - (shelf.x + row.x + tile.x), Math.min((parent.width - width) / 2, dock.width - 8 - (shelf.x + row.x + tile.x) - width))
@@ -280,6 +283,8 @@ PanelWindow {
                         source: Quickshell.iconPath(place.modelData.icon, "folder")
                         sourceSize: Qt.size(dock.maxSize * 2, dock.maxSize * 2)
                         smooth: true; mipmap: true
+                        scale: !Prefs.reduceMotion && placeArea.pressed ? 0.955 : 1
+                        Behavior on scale { enabled: !Prefs.reduceMotion; NumberAnimation { duration: 75; easing.type: Easing.OutCubic } }
                         readonly property bool gpu: GraphicsInfo.api !== GraphicsInfo.Software
                         layer.enabled: gpu && placeArea.pressed
                         layer.effect: MultiEffect { brightness: -0.28 }
@@ -292,7 +297,7 @@ PanelWindow {
                         opacity: shown ? 1 : 0
                         scale: shown ? 1 : 0.9
                         transformOrigin: Item.Bottom
-                        Behavior on opacity { NumberAnimation { duration: placeTip.shown ? 140 : 90 } }
+                        Behavior on opacity { NumberAnimation { duration: Prefs.reduceMotion ? 1 : (placeTip.shown ? 115 : 80) } }
                         Behavior on scale { Spring { spring: Theme.popover } }
                         anchors { bottom: parent.top; bottomMargin: 10 }
                         x: Math.max(8 - (shelf.x + row.x + place.x), Math.min((parent.width - width) / 2, dock.width - 8 - (shelf.x + row.x + place.x) - width))
