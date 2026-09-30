@@ -187,16 +187,6 @@ ShellRoot {
                 anchors.fill: parent
                 moving: GraphicsInfo.api !== GraphicsInfo.Software && !Theme.reduceMotion
             }
-            ShaderEffectSource {
-                id: backdropTex
-                sourceItem: backdrop
-                live: true
-                hideSource: false
-                visible: false
-                // Half resolution: cheaper, and a little softer, like the
-                // compositor's blurred backdrop the shader expects.
-                textureSize: Qt.size(Math.max(1, backdrop.width / 2), Math.max(1, backdrop.height / 2))
-            }
 
             // -------------------------------------------------------------- hello
             Item {
@@ -213,8 +203,6 @@ ShellRoot {
                     anchors.centerIn: parent
                     anchors.verticalCenterOffset: -40
                     progress: Theme.reduceMotion ? 1 : 0
-                    source: backdropTex
-                    backdropItem: backdrop
                 }
                 // Written, held, rubbed out and written again, until you go on.
                 SequentialAnimation {
@@ -240,7 +228,6 @@ ShellRoot {
                         anchors.fill: parent
                         radius: 32; bezel: 18; strength: 16
                         tint: "#40ffffff"
-                        source: backdropTex; backdropItem: backdrop
                     }
                     Symbol { anchors.centerIn: parent; anchors.horizontalCenterOffset: 2; name: "chevron-right"; tone: "white"; size: 26 }
                     TapHandler { onTapped: stage.next() }
@@ -270,7 +257,6 @@ ShellRoot {
                     anchors.fill: parent
                     radius: 34; bezel: 30; strength: 38
                     tint: Theme.dark ? "#c4202024" : "#d2f5f5f8"
-                    source: backdropTex; backdropItem: backdrop
                 }
                 Loader {
                     id: page
