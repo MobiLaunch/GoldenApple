@@ -16,12 +16,13 @@ PanelWindow {
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.namespace: "gg-applications"
     color: "transparent"
-    mask: Region { item: apps.open ? backdrop : null }
+    Item { id: closedMask; width: 0; height: 0; visible: false }
+    mask: Region { item: apps.open ? backdrop : closedMask }
 
     Rectangle {
         id: backdrop
         anchors.fill: parent
-        color: Theme.dark ? "#b0141620" : "#9ae8edf6"
+        color: Theme.dark ? "#9c121722" : "#78e8edf6"
         opacity: apps.open ? 1 : 0
         Behavior on opacity { NumberAnimation { id: fade; duration: Prefs.reduceMotion ? 1 : 180 } }
         MouseArea { anchors.fill: parent; onClicked: apps.open = false }
@@ -38,7 +39,7 @@ PanelWindow {
             Glass {
                 Layout.alignment: Qt.AlignHCenter
                 Layout.preferredWidth: Math.min(520, parent.width - 40)
-                Layout.preferredHeight: 48; radius: 24
+                Layout.preferredHeight: 52; radius: 26
                 TextInput {
                     id: search
                     anchors { fill: parent; leftMargin: 46; rightMargin: 18 }
@@ -72,7 +73,7 @@ PanelWindow {
                         anchors.centerIn: parent; spacing: 7
                         Image {
                             anchors.horizontalCenter: parent.horizontalCenter
-                            width: 72; height: 72
+                            width: 76; height: 76
                             source: Quickshell.iconPath(modelData.icon, "application-x-executable")
                             sourceSize: Qt.size(144,144); smooth: true; mipmap: true
                         }
