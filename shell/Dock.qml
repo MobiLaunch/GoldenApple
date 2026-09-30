@@ -31,6 +31,33 @@ PanelWindow {
     property real pointerTargetX: -1
     property var launcher: null   // AppLaunch on this screen: the icon grows into the window
     property var applications: null
+    property int applicationsOpenAttempts: 0
+
+    Timer {
+        id: applicationsOpenRetry
+        interval: 20
+        repeat: true
+        onTriggered: {
+            dock.applicationsOpenAttempts++
+            if (dock.applications && dock.applications.item) {
+                dock.applications.item.open = true
+                dock.applicationsOpenAttempts = 0
+                stop()
+            } else if (dock.applicationsOpenAttempts >= 30) {
+                dock.applicationsOpenAttempts = 0
+                stop()
+                Quickshell.execDetached(["notify-send", "Golden Gate", "Applications could not be opened. Check the shell log for the QML error."])
+            }
+        }
+    }
+
+    function openApplications() {
+        if (!applications)
+            return
+        applications.active = true
+        applicationsOpenAttempts = 0
+        applicationsOpenRetry.restart()
+    }
 
     anchors { bottom: true; left: true; right: true }
     // Include the label, its gap, bounce and spring overshoot inside the layer surface.
@@ -279,8 +306,7 @@ PanelWindow {
                         hoverEnabled: true
                         onClicked: {
                             if (place.modelData.action === "applications") {
-                                if (dock.applications && dock.applications.toggle)
-                                    dock.applications.toggle()
+                                dock.openApplications()
                             } else {
                                 Quickshell.execDetached(place.modelData.exec)
                             }
