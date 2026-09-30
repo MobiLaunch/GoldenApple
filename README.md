@@ -36,11 +36,11 @@ and built entirely from original artwork.
 | **Icons**: 15 app icons (light + dark), file icons, 115 symbols | `icons/` | Done. Freedesktop theme; [bring your own](icons/custom/README.md) |
 | **Reference shell**: the whole desktop and 14 apps, interactive, in the browser | `prototype/` | Done. The spec every other layer is checked against; 25-scenario click-through test in CI |
 | **Linux shell**: menu bar, Control Center, Dock, Spotlight, notifications, app switcher, lock screen | `shell/` | Quickshell (QML). Runs in a headless Wayland session (see [Testing](#testing)); not yet run on hardware |
-| **Compositor**: blur, squircle corners, springs, key bindings | `compositor/` | Hyprland config done; refraction shader written, plugin pending |
+| **Compositor**: blur, refraction, squircle corners, springs, key bindings | `compositor/` | Hyprland + HyprGlass; the ISO bundles a Hyprland-version-matched plugin and Golden Gate applies its presets per shell surface |
 | **App theme**: every GNOME app restyled to macOS metrics (traffic lights, floating sidebar, glass toolbar pills, capsule buttons, Finder tables, Mac menus), light and dark; GTK 3 apps too | `design/gtk/`, `design/dist/gtk*.css` | Done for GTK 4 and GTK 3; per-app passes for Files, Calculator, Settings, Calendar, Terminal |
 | **Golden Gate apps**: the apps GNOME can't be restyled into, rebuilt in QML to the macOS 27 layouts: Calculator, Weather, Music, Notes, Photos, Maps | `apps/` | Done and in the image, replacing GNOME's |
 | **System Settings**: a near copy of macOS System Settings (glass sidebar with search suggestions, back and forward, grouped panes) that changes the real system: Wi-Fi, Bluetooth, Network, Battery, General (About, Software Update, Storage, Date & Time, Language & Region), Accessibility, Appearance (mode, accent, Liquid Glass clear or tinted), Desktop & Dock, Displays, Wallpaper, Focus, Sound, Privacy & Security, Users & Groups, Keyboard, Trackpad & Mouse | `apps/settings.qml`, `apps/settings/` | Done; `gg-settings [pane]` and `gnome-control-center [panel]` open it at a pane |
-| **Setup Assistant**: the first-login hello in Liquid Glass (the compositor's shader, run over its own backdrop), then local account creation, country or region, Wi-Fi, Data & Privacy, Location Services, time zone, crash and diagnostics sharing, and Choose Your Look | `apps/setup.qml`, `apps/setup/` | Done; runs once (`~/.config/golden-gate/setup-done`), `gg.nosetup` on the kernel command line skips it |
+| **Setup Assistant**: the first-login hello and shared Golden Gate controls over the HyprGlass desktop material, then local account creation, country or region, Wi-Fi, Data & Privacy, Location Services, time zone, crash and diagnostics sharing, and Choose Your Look | `apps/setup.qml`, `apps/setup/` | Done; runs once (`~/.config/golden-gate/setup-done`), `gg.nosetup` on the kernel command line skips it |
 | **Theming**: fonts, ⌘ key layer, login screen, boot splash, terminal | `themes/` | Done: fontconfig, keyd, SDDM theme, Plymouth theme, Ghostty |
 | **Distro**: bootable live ISO | `distro/archiso/` | Build script done; first ISO build pending (see below) |
 
@@ -154,9 +154,10 @@ bugs in the image: `GTK_THEME` in the session disabled libadwaita's own styleshe
 GTK 4.20+ drew our stroked symbolic icons as solid blobs (they are now outlined at
 build time), and GNOME Settings refused to start outside GNOME.
 
-The apps in `apps/` are Quickshell configs, one entry file each, sharing the
-window frame in `apps/lib` (traffic lights, 52 px toolbar, glass toolbar buttons,
-a floating sidebar that Hyprland blurs). Run one on its own with
+The apps in `apps/` are Quickshell configs, one entry file each. Their controls come
+from the single canonical component store in `apps/lib` (installed as
+`/usr/share/golden-gate/ui` and linked into the app tree), so buttons, switches,
+sliders, text fields, traffic lights and glass chrome cannot drift per app. Run one on its own with
 `qs -p apps/calculator.qml`; the installer copies them to
 `/usr/share/golden-gate/apps` with a desktop entry each. Weather uses Open-Meteo
 (no API key) and CARTO/OpenStreetMap tiles with RainViewer radar; for offline
@@ -165,9 +166,10 @@ and `GG_WEATHER_FIXTURE=DIR QML_XHR_ALLOW_FILE_READ=1 qs -p apps/weather.qml`
 runs from it. Music plays your own files (~/Music, scanned by `apps/music/scan.sh`
 with ffmpeg into ~/.cache/golden-gate/music), .m3u playlists from ~/Music/Playlists
 and internet radio from radio-browser.info; it has no Apple Music streaming.
-Setup Assistant's shaders are built from `compositor/liquid-glass/liquid-glass.frag`
-with `node apps/setup/shaders/build.mjs` (needs `qsb` from qt6-shadertools); the
-`.qsb` files are committed. Crash reports: `gg-diagnostics` writes a report to
+Liquid Glass optics are provided by HyprGlass at the compositor boundary. Golden Gate
+does not maintain a second refraction shader for Setup or individual controls; apps use
+the shared QML material/chrome from `apps/lib`, installed once as
+`/usr/share/golden-gate/ui`. Crash reports: `gg-diagnostics` writes a report to
 ~/Documents/Diagnostics, and if you opted in, a notification offers one when an
 app crashes; nothing is sent until you submit it yourself.
 Settings writes what the shell and the apps watch: ~/.config/golden-gate/desktop.json
