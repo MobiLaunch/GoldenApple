@@ -21,8 +21,8 @@ PROFILE="$WORK/profile"
 say() { printf '\033[1;33m›\033[0m %s\n' "$*"; }
 
 [[ $EUID -eq 0 ]] || { echo "build.sh must run as root (mkarchiso needs it)"; exit 1; }
-for tool in mkarchiso rsvg-convert; do
-  command -v "$tool" >/dev/null || { echo "missing $tool: pacman -S archiso librsvg"; exit 1; }
+for tool in mkarchiso rsvg-convert curl sha256sum; do
+  command -v "$tool" >/dev/null || { echo "missing $tool: pacman -S archiso librsvg curl coreutils"; exit 1; }
 done
 
 say "profile: releng + golden-gate"
@@ -49,6 +49,7 @@ file_permissions+=(
   ["/usr/local/bin/gg-install"]="0:0:755"
   ["/usr/local/bin/gg-firefox-recover"]="0:0:755"
   ["/usr/lib/golden-gate/account-helper.py"]="0:0:755"
+  ["/usr/lib/golden-gate/hyprglass.so"]="0:0:755"
   ["/etc/sudoers.d/20-golden-wheel"]="0:0:440"
   ["/etc/sudoers.d/10-golden-live"]="0:0:440"
   ["/home/golden"]="1000:1000:750"
@@ -101,6 +102,23 @@ if ((${#missing[@]})); then
     exit 1
   fi
 fi
+
+# ---------------------------------------------------------------- HyprGlass
+# Pin the prebuilt plugin to the Hyprland ABI shipped by this image. The release
+# is explicitly built for Hyprland 0.56.2; fail rather than creating an ISO with
+# a silently incompatible compositor plugin after Arch updates Hyprland.
+HYPRGLASS_VERSION="v0.8.1"
+HYPRGLASS_SHA256="1db3ccb154e7a7f04954602c1a9a643fd680e724491fe6be7ccc88e166162233"
+HYPRLAND_VERSION="$(pacman -Si hyprland 2>/dev/null | awk -F': ' '/^Version/{print $2; exit}')"
+case "$HYPRLAND_VERSION" in
+  0.56.2-*) ;;
+  *) echo "HyprGlass $HYPRGLASS_VERSION is pinned for Hyprland 0.56.2, but repositories provide $HYPRLAND_VERSION"; exit 1 ;;
+esac
+say "HyprGlass $HYPRGLASS_VERSION for Hyprland $HYPRLAND_VERSION"
+mkdir -p "$AIR/usr/lib/golden-gate"
+curl -fL --retry 3 --retry-delay 2   "https://github.com/hyprnux/hyprglass/releases/download/$HYPRGLASS_VERSION/hyprglass.so"   -o "$AIR/usr/lib/golden-gate/hyprglass.so"
+printf '%s  %s\n' "$HYPRGLASS_SHA256" "$AIR/usr/lib/golden-gate/hyprglass.so" | sha256sum -c -
+chmod 755 "$AIR/usr/lib/golden-gate/hyprglass.so"
 
 # ---------------------------------------------------------------- live user + session
 cp -a "$HERE/overlay/." "$AIR/"
