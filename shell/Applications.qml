@@ -1,7 +1,6 @@
 // Applications: macOS-style all-apps surface backed by the desktop-entry database.
 import Quickshell
 import Quickshell.Wayland
-import Quickshell.Services.DesktopEntries
 import QtQuick
 import QtQuick.Layouts
 import "theme"
@@ -17,7 +16,7 @@ PanelWindow {
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.namespace: "gg-applications"
     color: "transparent"
-    mask: open ? Region { item: backdrop } : Region {}
+    mask: Region { item: apps.open ? backdrop : null }
 
     Rectangle {
         id: backdrop
