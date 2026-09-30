@@ -59,15 +59,15 @@ QtObject {
     readonly property color selection: dark ? "#1affffff" : "#12000000"
     readonly property color menuHighlight: dark ? "#1affffff" : "#0f000000"
     readonly property QtObject glassClear: QtObject {
-        readonly property real blur: 18
-        readonly property color tint: dark ? "#2e283c6e" : "#29ffffff"
-        readonly property color rim: "#8cffffff"
-        readonly property color rimLow: "#1fffffff"
-        readonly property color shine: "#59ffffff"
+        readonly property real blur: 24
+        readonly property color tint: dark ? "#61283c6e" : "#6bffffff"
+        readonly property color rim: "#b8ffffff"
+        readonly property color rimLow: "#33ffffff"
+        readonly property color shine: "#85ffffff"
     }
     readonly property QtObject glassRegular: QtObject {
-        readonly property real blur: 30
-        readonly property color tint: dark ? "#94242428" : "#9efafafc"
+        readonly property real blur: 32
+        readonly property color tint: dark ? "#ad242428" : "#b8fafafc"
         readonly property color rim: "#b3ffffff"
         readonly property color rimLow: "#1affffff"
         readonly property color shine: "#73ffffff"
