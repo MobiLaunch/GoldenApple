@@ -25,10 +25,20 @@ Item {
         y: 2; width: 16; height: 16; radius: 4
         color: box.checked ? Theme.accent : (Theme.dark ? "#26ffffff" : "#ffffff")
         border { width: box.checked ? 0 : 1; color: Theme.dark ? "#4dffffff" : "#40000000" }
-        scale: ma.pressed ? 0.88 : 1
-        Behavior on scale { Spring { spring: Theme.bouncy } }
-        Behavior on color { ColorAnimation { duration: 120 } }
-        Symbol { anchors.centerIn: parent; visible: box.checked; name: "checkmark"; tone: "white"; size: 12 }
+        scale: !Theme.reduceMotion && ma.pressed ? 0.94 : !Theme.reduceMotion && ma.containsMouse ? 1.025 : 1
+        Behavior on scale { enabled: !Theme.reduceMotion; NumberAnimation { duration: 85; easing.type: Easing.OutCubic } }
+        Behavior on color { ColorAnimation { duration: Theme.reduceMotion ? 1 : 110 } }
+        Symbol {
+            anchors.centerIn: parent
+            visible: opacity > 0
+            opacity: box.checked ? 1 : 0
+            scale: box.checked || Theme.reduceMotion ? 1 : 0.65
+            name: "checkmark"
+            tone: "white"
+            size: 12
+            Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 90 } }
+            Behavior on scale { enabled: !Theme.reduceMotion; NumberAnimation { duration: 100; easing.type: Easing.OutBack } }
+        }
     }
     Text {
         id: label
@@ -37,6 +47,6 @@ Item {
         color: Theme.label
         font { family: Theme.fontUi; pixelSize: 13 }
     }
-    MouseArea { id: ma; anchors.fill: parent; onClicked: { box.forceActiveFocus(); box.toggle() } }
+    MouseArea { id: ma; anchors.fill: parent; hoverEnabled: true; onClicked: { box.forceActiveFocus(); box.toggle() } }
 }
 
