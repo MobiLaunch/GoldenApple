@@ -6,6 +6,10 @@ Rectangle {
     radius: Math.min(width, height) / 2
     color: "transparent"
     border { width: 2; color: Theme.accent }
-    visible: parent.activeFocus && parent.enabled
+    visible: opacity > 0
+    opacity: parent.activeFocus && parent.enabled ? 1 : 0
+    scale: parent.activeFocus && parent.enabled && !Theme.reduceMotion ? 1 : 0.985
+    Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 110; easing.type: Easing.OutCubic } }
+    Behavior on scale { NumberAnimation { duration: Theme.reduceMotion ? 1 : 120; easing.type: Easing.OutCubic } }
     z: 10
 }
