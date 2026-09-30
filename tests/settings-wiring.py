@@ -42,8 +42,13 @@ for name, needles in required.items():
         if needle not in text:
             errors.append(f"{name}: missing system/persistence wiring {needle!r}")
 
+appearance = (panes / "AppearancePane.qml").read_text(encoding="utf-8")
+for needle in ["setMode(", "appearance.json", "accent-color", "overlay-scrolling", 'setPref(["glass"]']:
+    if needle not in appearance:
+        errors.append(f"AppearancePane.qml: missing real appearance wiring {needle!r}")
+
 sys_qml = (root / "apps/settings/Sys.qml").read_text(encoding="utf-8")
-for needle in ["prefsSave", "privacySave", "inputSave", "hyprctl", "gg-hyprglass-sync"]:
+for needle in ["gg-pref", "privacySave", "inputSave", "hyprctl", "gg-hyprglass-sync"]:
     if needle not in sys_qml:
         errors.append(f"Sys.qml: missing central settings plumbing {needle!r}")
 
