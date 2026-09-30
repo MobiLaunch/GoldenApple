@@ -51,8 +51,6 @@ PopupWindow {
                             Behavior on color { ColorAnimation { duration: Prefs.reduceMotion ? 1 : 85 } }
                             RowLayout {
                                 anchors { fill: parent; leftMargin: 10; rightMargin: 10 }
-                                x: hover.containsMouse && !Prefs.reduceMotion ? 2 : 0
-                                Behavior on x { NumberAnimation { duration: 90; easing.type: Easing.OutCubic } }
                                 Text {
                                     Layout.fillWidth: true
                                     text: modelData.label
