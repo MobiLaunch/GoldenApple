@@ -72,29 +72,12 @@ ShellRoot {
                 Column {
                     id: nav
                     width: parent.width
-                    // You
-                    Item {
-                        width: parent.width; height: 54
-                        Rectangle {
-                            x: 6; anchors.verticalCenter: parent.verticalCenter
-                            width: 36; height: 36; radius: 18
-                            gradient: Gradient {
-                                GradientStop { position: 0; color: "#a1a1a6" }
-                                GradientStop { position: 1; color: "#6e6e73" }
-                            }
-                            Text {
-                                anchors.centerIn: parent
-                                text: app.userName.split(" ").map((w) => w.charAt(0)).join("").slice(0, 2).toUpperCase()
-                                color: "#ffffff"
-                                font { family: Theme.fontUi; pixelSize: 14; weight: Font.DemiBold }
-                            }
-                        }
-                        Column {
-                            x: 50; anchors.verticalCenter: parent.verticalCenter
-                            Text { text: app.userName; color: Theme.label; font { family: Theme.fontUi; pixelSize: 13; weight: Font.DemiBold } }
-                            Text { text: "Local Account"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: 11 } }
-                        }
-                        TapHandler { onTapped: app.open("users") }
+                    AccountRow {
+                        width: parent.width
+                        name: app.userName
+                        subtitle: "Local Account"
+                        clickable: true
+                        onClicked: app.open("users")
                     }
                     Repeater {
                         model: app.groups
