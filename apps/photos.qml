@@ -88,7 +88,7 @@ ShellRoot {
                 ToolbarButton {
                     visible: !searchBox.visible && app.viewing < 0
                     round: true; symbol: "search"
-                    onClicked: { searchBox.visible = true; searchField.forceActiveFocus() }
+                    onClicked: { searchBox.visible = true; searchBox.input.forceActiveFocus() }
                 }
                 TextField {
                     id: searchBox
@@ -196,7 +196,7 @@ ShellRoot {
                 screenshots: items.filter((i) => isScreenshot(i)).length,
             })
             readonly property var shown: {
-                const q = searchField.text.trim().toLowerCase()
+                const q = searchBox.text.trim().toLowerCase()
                 const monthAgo = Date.now() / 1000 - 30 * 86400
                 let list = items.filter((it) =>
                     section === "library" ? true
@@ -281,7 +281,7 @@ ShellRoot {
                     else if (e.key === Qt.Key_Period && selected >= 0) toggleFavorite(shown[selected]?.path)
                     else if (ctrl && (e.key === Qt.Key_Equal || e.key === Qt.Key_Plus)) zoom = Math.min(sizes.length - 1, zoom + 1)
                     else if (ctrl && e.key === Qt.Key_Minus) zoom = Math.max(0, zoom - 1)
-                    else if (ctrl && e.key === Qt.Key_F) { searchBox.visible = true; searchField.forceActiveFocus() }
+                    else if (ctrl && e.key === Qt.Key_F) { searchBox.visible = true; searchBox.input.forceActiveFocus() }
                     else if (ctrl && e.key === Qt.Key_Backspace && selected >= 0) trash(shown[selected])
                     else return
                     if (selected >= 0) grid.positionViewAtIndex(selected, GridView.Contain)
