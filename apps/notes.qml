@@ -85,7 +85,7 @@ ShellRoot {
                     { text: "Delete Note", action: () => app.deleteNote(app.current) },
                     { text: "Copy as Markdown", action: () => Quickshell.clipboardText = editor.markdown() },
                     { separator: true },
-                    { text: "Show in Files", action: () => Quickshell.execDetached(["nautilus", "--select", app.current]) },
+                    { text: "Show in Files", action: () => Quickshell.execDetached(["gg-files", "--select", app.current]) },
                 ])
             },
             ToolbarButton {
