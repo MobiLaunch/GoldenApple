@@ -26,8 +26,23 @@ for tool in mkarchiso rsvg-convert curl sha256sum; do
 done
 
 say "profile: releng + golden-gate"
-rm -rf "$PROFILE"
 mkdir -p "$WORK"
+
+# A failed/interrupted mkarchiso run leaves stage markers in the work directory.
+# Never reuse them for a new Golden Gate build. Refuse to clean while anything
+# is still mounted below the old tree, because deleting through a bind mount can
+# damage files outside the repository.
+if [[ -d "$WORK/build" ]]; then
+  if findmnt -Rno TARGET "$WORK/build" 2>/dev/null | grep -q .; then
+    echo "Previous ArchISO work tree still has active mounts under: $WORK/build"
+    echo "Unmount those mounts first, then run the build again."
+    exit 1
+  fi
+  say "cleaning previous mkarchiso work tree"
+  rm -rf "$WORK/build"
+fi
+
+rm -rf "$PROFILE"
 cp -r /usr/share/archiso/configs/releng "$PROFILE"
 AIR="$PROFILE/airootfs"
 
@@ -173,6 +188,20 @@ awk '
 mv "$WORK/hypridle.conf" "$AIR/home/golden/.config/hypr/hypridle.conf"
 
 # ---------------------------------------------------------------- build
+say "validating staged desktop"
+if ! grep -qx 'gsettings-desktop-schemas' "$PROFILE/packages.x86_64"; then
+  echo "generated profile is missing gsettings-desktop-schemas"
+  exit 1
+fi
+if [[ ! -f "$AIR/usr/share/glib-2.0/schemas/90_golden-gate.gschema.override" ]]; then
+  echo "Golden Gate GSettings override was not staged into the image"
+  exit 1
+fi
+if grep -q 'org.gnome.nautilus' "$AIR/usr/share/glib-2.0/schemas/90_golden-gate.gschema.override"; then
+  echo "GSettings override still references Nautilus, which is not part of the image"
+  exit 1
+fi
+
 say "mkarchiso"
 # Validate the releng boot template before mkarchiso expands %INSTALL_DIR% and
 # %ARCHISO_UUID%. Current ArchISO generates the systemd-boot UEFI entry during
