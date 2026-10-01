@@ -200,7 +200,7 @@ Item {
                 color: Theme.secondaryLabel
                 font { family: Theme.fontUi; pixelSize: 11; weight: Font.Medium }
             }
-            TextEdit {
+            TextArea {
                 id: edit
                 width: parent.width
                 visible: !!ed.path
