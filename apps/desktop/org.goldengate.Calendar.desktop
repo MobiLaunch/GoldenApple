@@ -2,7 +2,7 @@
 Type=Application
 Name=Calendar
 Comment=Manage events and schedules
-Icon=org.gnome.Calendar
+Icon=org.goldengate.Calendar
 Exec=qs -n -p @APPS@/calendar.qml
 StartupWMClass=org.goldengate.Calendar
 Categories=Office;Calendar;
