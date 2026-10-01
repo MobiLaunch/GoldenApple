@@ -2,7 +2,7 @@
 Type=Application
 Name=Files
 Comment=Browse and manage files
-Icon=org.goldengate.Files
+Icon=system-file-manager
 Exec=sh @APPS@/files/open.sh %U
 StartupWMClass=org.goldengate.Files
 Categories=System;FileTools;FileManager;
