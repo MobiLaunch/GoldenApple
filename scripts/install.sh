@@ -64,16 +64,6 @@ install_extras() {
   for f in "$REPO"/apps/desktop/*.desktop; do
     sed 's#@APPS@#/usr/share/golden-gate/apps#g' "$f" > "$R/usr/share/applications/$(basename "$f")"
   done
-  # Ghostty is the terminal engine, but Golden Gate Terminal owns its user-facing
-  # desktop identity. Shadow the upstream launcher so Applications shows one Terminal.
-  mkdir -p "$R/usr/local/share/applications"
-  cat > "$R/usr/local/share/applications/com.mitchellh.ghostty.desktop" <<'EOF'
-[Desktop Entry]
-Type=Application
-Name=Ghostty
-Exec=ghostty
-NoDisplay=true
-EOF
   printf '#!/bin/sh\nexec bash /usr/share/golden-gate/apps/setup/diagnostics.sh "$@"\n' > "$BIN/gg-diagnostics"
   printf '#!/bin/sh\nexec bash /usr/share/golden-gate/apps/settings/open.sh "$@"\n' > "$BIN/gg-settings"
   printf '#!/bin/sh\nexec sh /usr/share/golden-gate/apps/browser/launch.sh "$@"\n' > "$BIN/gg-web"
