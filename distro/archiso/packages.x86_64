@@ -56,7 +56,6 @@ xdg-user-dirs
 
 # External apps retained only where they provide mature system/protocol backends.
 # Golden Gate owns Settings, App Store, Clock, TextEdit, Photos and other primary UI.
-fractal
 # App Store backend: native Golden Gate frontend + Flatpak/Flathub metadata.
 flatpak
 archlinux-appstream-data
