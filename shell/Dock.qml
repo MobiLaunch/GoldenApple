@@ -34,7 +34,7 @@ PanelWindow {
 
     function openApplications() {
         if (applications)
-            applications.show()
+            applications.present()
     }
 
     anchors { bottom: true; left: true; right: true }
@@ -141,11 +141,12 @@ PanelWindow {
     Item {
         id: hitbox
         readonly property real overhang: Math.max(0, dock.maxSize - dock.baseSize) * 0.72
-        x: hover.hovered ? Math.max(0, shelf.x - overhang) : shelf.x
-        width: hover.hovered
-            ? Math.min(dock.width - x, shelf.width + overhang * 2)
-            : shelf.width
-        y: hover.hovered ? dock.height - maxSize - 18 : shelf.y
+        // Keep the input geometry fixed while hovering. The old hover-dependent
+        // x/width change altered HoverHandler's local coordinate system on entry,
+        // producing the visible one-frame magnification jump.
+        x: Math.max(0, shelf.x - overhang)
+        width: Math.min(dock.width - x, shelf.width + overhang * 2)
+        y: dock.height - maxSize - 18
         height: dock.height - y
         HoverHandler {
             id: hover
