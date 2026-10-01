@@ -237,27 +237,6 @@ export const apps = {
     `<rect class="bg" fill="url(#calculator-bg)" width="100" height="100"/>
      ${[0, 1, 2, 3].map((r) => [0, 1, 2, 3].map((c) => `<circle cx="${23 + c * 18}" cy="${27 + r * 16}" r="6.8" fill="${c === 3 ? "#ff9f0a" : r === 0 ? "#a5a5aa" : "#5c5c60"}"/>`).join("")).join("")}`),
 
-  clock: app("clock", "#ff9f0a", lin("clock-bg", "#333338", "#101012") + lin("clock-face", "#ffffff", "#e8e8ed"),
-    `<rect class="bg" fill="url(#clock-bg)" width="100" height="100"/>
-     <circle class="tint" cx="50" cy="50" r="31" fill="url(#clock-face)" stroke="#ffffff" stroke-opacity=".48" stroke-width="1.4"/>
-     <g stroke="#8e8e93" stroke-width="1.6" stroke-linecap="round">
-       <path d="M50 23v5M50 72v5M23 50h5M72 50h5"/>
-       <path d="M31 31l3.5 3.5M65.5 65.5L69 69M69 31l-3.5 3.5M34.5 65.5L31 69"/>
-     </g>
-     <path d="M50 50V34" stroke="#1c1c1e" stroke-width="3.2" stroke-linecap="round"/>
-     <path d="M50 50l12 7" stroke="#1c1c1e" stroke-width="3.2" stroke-linecap="round"/>
-     <path d="M50 50l-8 16" stroke="#ff453a" stroke-width="1.8" stroke-linecap="round"/>
-     <circle cx="50" cy="50" r="3.2" fill="#ff453a"/>`),
-
-  textedit: app("textedit", "#0a84ff", lin("textedit-bg", "#69b9ff", "#1677e8") + lin("textedit-paper", "#ffffff", "#edf4ff"),
-    `<rect class="bg" fill="url(#textedit-bg)" width="100" height="100"/>
-     <g transform="rotate(-4 50 50)">
-       <rect class="tint" x="23" y="18" width="54" height="66" rx="7" fill="url(#textedit-paper)"/>
-       <path d="M33 36h34M33 46h34M33 56h28M33 66h20" stroke="#a9b9cc" stroke-width="2.5" stroke-linecap="round"/>
-       <path d="M61 69l12-25 6 3-12 25-8 5z" fill="#ffd166" stroke="#ffffff" stroke-width="1.2" stroke-linejoin="round"/>
-       <path d="M59 77l2-8 6 3z" fill="#5c6673"/>
-     </g>`),
-
   maps: app("maps", "#30d158", lin("maps-bg", "#eef3e6", "#dfe8d3"),
     `<rect class="bg" fill="url(#maps-bg)" width="100" height="100"/>
      <path d="M0 64c20-6 30 6 52-2s32-18 48-14v52H0z" fill="#8ed1ff"/>
