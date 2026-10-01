@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Terminal
+Comment=Use the command line
+Icon=utilities-terminal
+Exec=ghostty
+StartupWMClass=com.mitchellh.ghostty
+Categories=System;TerminalEmulator;
+Keywords=terminal;shell;command;console;
+Terminal=false
+StartupNotify=true
