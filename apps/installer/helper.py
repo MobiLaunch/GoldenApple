@@ -82,7 +82,8 @@ def preflight() -> int:
     required = [
         "lsblk", "findmnt", "wipefs", "sgdisk", "partprobe", "udevadm",
         "mkfs.fat", "mkfs.ext4", "mount", "umount", "rsync", "arch-chroot",
-        "genfstab", "bootctl", "mkinitcpio",
+        "genfstab", "bootctl", "mkinitcpio", "useradd", "userdel", "chpasswd",
+        "passwd", "systemctl", "blkid",
     ]
     missing = [name for name in required if shutil.which(name) is None]
     live = pathlib.Path("/run/archiso").is_dir()
@@ -164,7 +165,8 @@ def install() -> int:
         stage(0.20, "Copying Golden Gate", "Installing the live system onto the destination…")
         excludes = [
             "/dev/*", "/proc/*", "/sys/*", "/tmp/*", "/run/*", "/mnt/*", "/media/*",
-            "/lost+found", "/root/*", "/home/golden/*", "/var/log/*", "/var/cache/pacman/pkg/*",
+            "/boot/*", "/lost+found", "/root/*", "/home/golden/*", "/var/log/*",
+            "/var/cache/pacman/pkg/*",
         ]
         rsync = ["rsync", "-aHAX", "--numeric-ids", "--delete-excluded"]
         for item in excludes:
