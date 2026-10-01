@@ -8,6 +8,7 @@ lib = root / "apps/lib"
 standard = {
     "AppWindow.qml", "Button.qml", "Checkbox.qml", "FocusRing.qml", "Glass.qml",
     "PopUpButton.qml", "PopupMenu.qml", "ProgressBar.qml", "RoundedImage.qml", "Segmented.qml",
+    "SidebarRow.qml", "EmptyState.qml",
     "Slider.qml", "Spring.qml", "SpringValue.qml", "Switch.qml", "Symbol.qml",
     "TextField.qml", "ToolbarButton.qml", "ToolbarPill.qml", "TrafficLights.qml",
 }
