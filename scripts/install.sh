@@ -143,7 +143,7 @@ EOF
     cp "$REPO/design/dist/gtk.css" "$SKEL/.config/gtk-4.0/gtk.css"
     cp "$REPO/design/dist/gtk3.css" "$SKEL/.config/gtk-3.0/gtk.css"
     cp "$REPO/themes/fontconfig/60-golden-gate.conf" "$SKEL/.config/fontconfig/conf.d/60-golden-gate.conf"
-    printf '[Default Applications]\nx-scheme-handler/http=org.goldengate.Web.desktop\nx-scheme-handler/https=org.goldengate.Web.desktop\ntext/html=org.goldengate.Web.desktop\ninode/directory=org.goldengate.Files.desktop\ntext/plain=org.goldengate.TextEdit.desktop\ntext/markdown=org.goldengate.TextEdit.desktop\napplication/json=org.goldengate.TextEdit.desktop\n' > "$SKEL/.config/mimeapps.list"
+    printf '[Default Applications]\nx-scheme-handler/http=org.goldengate.Web.desktop\nx-scheme-handler/https=org.goldengate.Web.desktop\ntext/html=org.goldengate.Web.desktop\ninode/directory=org.goldengate.Files.desktop\ntext/plain=org.goldengate.TextEdit.desktop\ntext/markdown=org.goldengate.TextEdit.desktop\napplication/json=org.goldengate.TextEdit.desktop\nimage/jpeg=org.goldengate.Photos.desktop\nimage/png=org.goldengate.Photos.desktop\nimage/webp=org.goldengate.Photos.desktop\nimage/gif=org.goldengate.Photos.desktop\nimage/tiff=org.goldengate.Photos.desktop\nvideo/mp4=org.goldengate.Photos.desktop\nvideo/quicktime=org.goldengate.Photos.desktop\nvideo/webm=org.goldengate.Photos.desktop\naudio/mpeg=org.goldengate.Music.desktop\naudio/mp4=org.goldengate.Music.desktop\naudio/flac=org.goldengate.Music.desktop\naudio/ogg=org.goldengate.Music.desktop\naudio/opus=org.goldengate.Music.desktop\naudio/x-wav=org.goldengate.Music.desktop\n' > "$SKEL/.config/mimeapps.list"
   fi
   say "GNOME defaults (fonts, icons, Finder-style list view) → $R/usr/share/glib-2.0/schemas"
   mkdir -p "$R/usr/share/glib-2.0/schemas"
@@ -329,7 +329,7 @@ chmod +x "$BIN/gg-web" "$BIN/gg-install"
 # System paths inside generated launchers must refer to the booted image, not its build root.
 # Respect an existing browser choice; seed MIME defaults only on a fresh install.
 if [[ ! -e "$CONF/mimeapps.list" ]]; then
-  printf '[Default Applications]\nx-scheme-handler/http=org.goldengate.Web.desktop\nx-scheme-handler/https=org.goldengate.Web.desktop\ntext/html=org.goldengate.Web.desktop\ninode/directory=org.goldengate.Files.desktop\ntext/plain=org.goldengate.TextEdit.desktop\ntext/markdown=org.goldengate.TextEdit.desktop\napplication/json=org.goldengate.TextEdit.desktop\n' > "$CONF/mimeapps.list"
+  printf '[Default Applications]\nx-scheme-handler/http=org.goldengate.Web.desktop\nx-scheme-handler/https=org.goldengate.Web.desktop\ntext/html=org.goldengate.Web.desktop\ninode/directory=org.goldengate.Files.desktop\ntext/plain=org.goldengate.TextEdit.desktop\ntext/markdown=org.goldengate.TextEdit.desktop\napplication/json=org.goldengate.TextEdit.desktop\nimage/jpeg=org.goldengate.Photos.desktop\nimage/png=org.goldengate.Photos.desktop\nimage/webp=org.goldengate.Photos.desktop\nimage/gif=org.goldengate.Photos.desktop\nimage/tiff=org.goldengate.Photos.desktop\nvideo/mp4=org.goldengate.Photos.desktop\nvideo/quicktime=org.goldengate.Photos.desktop\nvideo/webm=org.goldengate.Photos.desktop\naudio/mpeg=org.goldengate.Music.desktop\naudio/mp4=org.goldengate.Music.desktop\naudio/flac=org.goldengate.Music.desktop\naudio/ogg=org.goldengate.Music.desktop\naudio/opus=org.goldengate.Music.desktop\naudio/x-wav=org.goldengate.Music.desktop\n' > "$CONF/mimeapps.list"
 fi
 
 # 4. Toolkit theming + fonts
