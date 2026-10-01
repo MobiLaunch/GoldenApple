@@ -21,7 +21,7 @@ PanelWindow {
 
     Item {
         id: widgets; anchors.fill: parent
-        component Widget: Glass {
+        component Widget: Glass { variant: "clear";
             property point home
             tint: Theme.dark ? "#6b24262d" : "#72ffffff"
             MouseArea {
