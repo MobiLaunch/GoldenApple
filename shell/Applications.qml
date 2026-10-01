@@ -9,13 +9,16 @@ import "components"
 PanelWindow {
     id: apps
     property bool open: false
-    function show() {
+    // Avoid QWindow.show()/hide() name collisions. Calling those inherited
+    // methods can make the layer surface visible without changing our `open`
+    // state, which leaves the launcher fully transparent and non-interactive.
+    function present() {
         open = true
         console.info("Applications opened; visible desktop entries:", applicationModel.values.length)
         Qt.callLater(() => search.input.forceActiveFocus())
     }
-    function hide() { open = false; search.text = "" }
-    function toggle() { open ? hide() : show() }
+    function dismiss() { open = false; search.text = "" }
+    function toggle() { open ? dismiss() : present() }
     visible: open || fade.running
     anchors { top: true; bottom: true; left: true; right: true }
     exclusionMode: ExclusionMode.Ignore
@@ -32,7 +35,7 @@ PanelWindow {
         color: Theme.dark ? "#9c121722" : "#78e8edf6"
         opacity: apps.open ? 1 : 0
         Behavior on opacity { NumberAnimation { id: fade; duration: Prefs.reduceMotion ? 1 : 180 } }
-        MouseArea { anchors.fill: parent; onClicked: apps.hide() }
+        MouseArea { anchors.fill: parent; onClicked: apps.dismiss() }
     }
     Item {
         anchors { fill: parent; margins: 44 }
@@ -59,7 +62,7 @@ PanelWindow {
                         ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.46)
                         : "transparent"
                     input.font.pixelSize: 17
-                    input.Keys.onEscapePressed: apps.hide()
+                    input.Keys.onEscapePressed: apps.dismiss()
                 }
             }
             ScriptModel {
@@ -152,7 +155,7 @@ PanelWindow {
                     }
                     MouseArea {
                         id: area; anchors.fill: parent; hoverEnabled: true
-                        onClicked: { modelData.execute(); apps.hide() }
+                        onClicked: { modelData.execute(); apps.dismiss() }
                     }
                 }
             }
