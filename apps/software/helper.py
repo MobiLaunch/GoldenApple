@@ -155,8 +155,8 @@ def fallback_catalog(installed: set[str], updates: set[str]) -> list[dict[str, o
     return apps[:1800]
 
 
-def catalog() -> int:
-    okay, warning = prepare(refresh=True)
+def catalog(*, refresh: bool = False) -> int:
+    okay, warning = prepare(refresh=refresh)
     installed = installed_ids()
     updates = update_ids()
     files = appstream_files()
@@ -299,7 +299,9 @@ def main() -> int:
         return 2
     cmd = sys.argv[1]
     if cmd == "catalog":
-        return catalog()
+        return catalog(refresh=False)
+    if cmd == "refresh":
+        return catalog(refresh=True)
     if cmd in {"install", "update", "remove", "launch"} and len(sys.argv) == 3:
         return transaction(cmd, sys.argv[2])
     return 2
