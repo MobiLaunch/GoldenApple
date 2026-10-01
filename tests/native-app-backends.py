@@ -110,6 +110,19 @@ esac
     assert "Development" in rows["org.test.Editor"]["categories"]
     assert "AudioVideo" in rows["org.test.Player"]["categories"]
 
+    # Software Update: the check path must handle pacman's "no updates"
+    # convention and return a structured result without launching a terminal.
+    checkupdates = fakebin / "checkupdates"
+    checkupdates.write_text("#!/bin/sh\nexit 2\n", encoding="utf-8")
+    checkupdates.chmod(0o755)
+    update_env = env.copy()
+    update_env["PATH"] = str(fakebin) + os.pathsep + update_env.get("PATH", "")
+    code, out = run("apps/settings/update-helper.py", "check", env=update_env)
+    update_lines = [json.loads(line) for line in out.splitlines() if line.strip()]
+    assert code == 0
+    assert update_lines[-1]["event"] == "result"
+    assert update_lines[-1]["count"] == 0
+
     # Mail/Messages with an empty profile must be safely unconfigured and must
     # not attempt network access or require a keyring unlock.
     code, out = run("apps/mail/helper.py", "status", env=env)
@@ -127,4 +140,4 @@ assert '"access_token": token' not in messages
 assert "secret_store(email_addr, password)" in mail
 assert "secret_store(user_id, token)" in messages
 
-print("Native app backends: filesystem, calendar, editor and account-state smoke tests passed")
+print("Native app backends: filesystem, calendar, editor, store, updater and account-state smoke tests passed")
