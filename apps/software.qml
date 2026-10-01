@@ -38,7 +38,7 @@ ShellRoot {
                     round: true
                     symbol: "arrow-clockwise"
                     enabled: !store.loading && !store.busy
-                    onClicked: store.reload()
+                    onClicked: store.reload(true)
                 }
             }
         ]
@@ -158,6 +158,7 @@ ShellRoot {
             property string activeAction: ""
             property real operationProgress: 0
             property string operationMessage: ""
+            property string operationError: ""
 
             readonly property int updateCount: catalog.filter((a) => a.update).length
             readonly property string pageTitle: query.trim()
@@ -224,11 +225,12 @@ ShellRoot {
                 })
             }
 
-            function reload() {
+            function reload(forceRefresh) {
                 if (busy || catalogLoad.running)
                     return
                 loading = true
                 loadError = ""
+                catalogLoad.command = ["python3", helper, forceRefresh ? "refresh" : "catalog"]
                 catalogLoad.running = true
             }
 
@@ -239,6 +241,7 @@ ShellRoot {
                 activeId = appId
                 activeAction = action
                 operationProgress = 0.04
+                operationError = ""
                 operationMessage = action === "install" ? "Preparing installation…"
                     : action === "update" ? "Preparing update…"
                     : action === "remove" ? "Preparing removal…"
@@ -265,12 +268,13 @@ ShellRoot {
                             patch(activeId, { installed: false, update: false })
                         operationMessage = "Done"
                     } else if (event.event === "error") {
-                        operationMessage = event.message ?? "The App Store operation failed."
+                        operationError = event.message ?? "The App Store operation failed."
+                        operationMessage = operationError
                     }
                 } catch (e) {}
             }
 
-            Component.onCompleted: reload()
+            Component.onCompleted: reload(false)
 
             Process {
                 id: catalogLoad
@@ -308,9 +312,11 @@ ShellRoot {
                     store.activeId = ""
                     store.activeAction = ""
                     if (code === 0 && action !== "launch")
-                        Qt.callLater(() => store.reload())
-                    else if (code !== 0 && store.operationMessage === "Done")
-                        store.operationMessage = "The operation did not complete."
+                        Qt.callLater(() => store.reload(false))
+                    else if (code !== 0 && !store.operationError)
+                        store.operationError = store.operationMessage && store.operationMessage !== "Done"
+                            ? store.operationMessage
+                            : "The App Store operation did not complete."
                 }
             }
 
@@ -419,7 +425,7 @@ ShellRoot {
                         anchors.horizontalCenter: parent.horizontalCenter
                         text: "Try Again"
                         prominent: true
-                        onClicked: store.reload()
+                        onClicked: store.reload(true)
                     }
 
                     GridView {
@@ -531,7 +537,7 @@ ShellRoot {
             }
 
             Glass {
-                visible: store.busy
+                visible: store.busy || !!store.operationError
                 anchors {
                     left: parent.left; right: parent.right; bottom: parent.bottom
                     leftMargin: 24; rightMargin: 24; bottomMargin: 18
@@ -548,21 +554,29 @@ ShellRoot {
                     Row {
                         width: parent.width
                         Text {
-                            width: parent.width - progressText.width
-                            text: store.operationMessage
+                            width: parent.width - progressText.width - closeError.width
+                            text: store.operationError || store.operationMessage
                             elide: Text.ElideRight
                             color: Theme.label
                             font { family: Theme.fontUi; pixelSize: 12; weight: Font.Medium }
                         }
                         Text {
                             id: progressText
+                            visible: store.busy
                             text: Math.round(store.operationProgress * 100) + "%"
                             color: Theme.secondaryLabel
                             font { family: Theme.fontUi; pixelSize: 11 }
                         }
+                        Button {
+                            id: closeError
+                            visible: !!store.operationError && !store.busy
+                            text: "Dismiss"
+                            onClicked: store.operationError = ""
+                        }
                     }
 
                     ProgressBar {
+                        visible: store.busy
                         width: parent.width
                         value: store.operationProgress
                         indeterminate: store.operationProgress < 0.1
