@@ -125,6 +125,19 @@ EOF
     printf '# Written by Settings.\n' > "$SKEL/.config/hypr/golden-gate/displays.conf"
     printf '# Filled in by machine-conf.sh when the session starts.\n' > "$SKEL/.config/hypr/golden-gate/machine.conf"
     cp -a "$REPO/shell" "$SKEL/.config/quickshell/golden-gate"
+    # The shell consumes the same canonical primitives as apps. Keep only
+    # shell-specific controls local; shared Glass/Symbol/springs/Theme resolve
+    # to /usr/share/golden-gate/ui for every account created from /etc/skel.
+    local SHELL_SKEL="$SKEL/.config/quickshell/golden-gate"
+    for shared in Glass.qml Spring.qml SpringValue.qml Symbol.qml; do
+      rm -f "$SHELL_SKEL/components/$shared"
+      ln -s "/usr/share/golden-gate/ui/$shared" "$SHELL_SKEL/components/$shared"
+    done
+    rm -rf "$SHELL_SKEL/components/theme" "$SHELL_SKEL/components/assets"
+    ln -s "/usr/share/golden-gate/ui/theme" "$SHELL_SKEL/components/theme"
+    ln -s "/usr/share/golden-gate/ui/assets" "$SHELL_SKEL/components/assets"
+    rm -f "$SHELL_SKEL/theme/Theme.qml"
+    ln -s "/usr/share/golden-gate/ui/theme/Theme.qml" "$SHELL_SKEL/theme/Theme.qml"
     cp "$REPO/themes/ghostty/config" "$SKEL/.config/ghostty/config"
     cp "$REPO"/themes/ghostty/themes/* "$SKEL/.config/ghostty/themes/"
     cp "$REPO/design/dist/gtk.css" "$SKEL/.config/gtk-4.0/gtk.css"
@@ -241,6 +254,25 @@ rm -rf "$DATA/golden-gate/apps/desktop"
 rm -rf "$DATA/golden-gate/ui" "$DATA/golden-gate/apps/lib"
 cp -a "$REPO/apps/lib" "$DATA/golden-gate/ui"
 ln -s ../ui "$DATA/golden-gate/apps/lib"
+
+# Collapse shell/app primitives onto the same runtime component store. In a
+# staged system image the final target is /usr/share; user installs point at
+# their actual XDG data directory.
+if [[ $MODE == system ]]; then
+  SHARED_UI=/usr/share/golden-gate/ui
+else
+  SHARED_UI="$DATA/golden-gate/ui"
+fi
+SHELL_RUNTIME="$CONF/quickshell/golden-gate"
+for shared in Glass.qml Spring.qml SpringValue.qml Symbol.qml; do
+  rm -f "$SHELL_RUNTIME/components/$shared"
+  ln -s "$SHARED_UI/$shared" "$SHELL_RUNTIME/components/$shared"
+done
+rm -rf "$SHELL_RUNTIME/components/theme" "$SHELL_RUNTIME/components/assets"
+ln -s "$SHARED_UI/theme" "$SHELL_RUNTIME/components/theme"
+ln -s "$SHARED_UI/assets" "$SHELL_RUNTIME/components/assets"
+rm -f "$SHELL_RUNTIME/theme/Theme.qml"
+ln -s "$SHARED_UI/theme/Theme.qml" "$SHELL_RUNTIME/theme/Theme.qml"
 # gg-diagnostics: a crash and diagnostics report you can read and send.
 if [[ $MODE == system ]]; then BIN="$ROOT/usr/local/bin"; else BIN="$HOME/.local/bin"; fi
 mkdir -p "$BIN"
