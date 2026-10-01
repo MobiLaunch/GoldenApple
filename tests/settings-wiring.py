@@ -9,7 +9,7 @@ panes = root / "apps" / "settings" / "panes"
 errors = []
 
 control_re = re.compile(r"\b(?:Switch|Slider|Button|PopUpButton|Segmented|TextField)\s*\{")
-handler_re = re.compile(r"\b(?:onToggled|onMoved|onClicked|onPicked|onAccepted)\s*:")
+handler_re = re.compile(r"\b(?:onToggled|onMoved|onClicked|onPicked|onAccepted|onTextChanged)\s*:")
 
 for path in sorted(panes.glob("*.qml")):
     text = path.read_text(encoding="utf-8")
