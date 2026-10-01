@@ -73,8 +73,8 @@ PanelWindow {
     Timer { interval: 5000; running: true; repeat: true; onTriggered: trashCheck.running = true }
     readonly property var places: [
         { name: "Applications", icon: "apps", action: "applications" },
-        { name: "Downloads", icon: "folder", exec: ["xdg-open", Quickshell.env("HOME") + "/Downloads"] },
-        { name: "Trash", icon: trashFull ? "user-trash-full" : "user-trash", exec: ["xdg-open", "trash:///"] },
+        { name: "Downloads", icon: "folder", exec: ["gg-files", Quickshell.env("HOME") + "/Downloads"] },
+        { name: "Trash", icon: trashFull ? "user-trash-full" : "user-trash", exec: ["gg-files", Quickshell.env("HOME") + "/.local/share/Trash/files"] },
     ]
 
     // Reading applications.values makes this re-evaluate once the entry scan finishes.
