@@ -1,4 +1,4 @@
-// Same as shell/components/SpringValue.qml (the shell and the apps are separate QML trees).
+// Canonical damped spring value shared by apps, shell adapters and SDDM.
 // A number that follows `target` on a damped spring, parameterised like SwiftUI's
 // .spring(response:dampingFraction:). Unlike a timed animation, changing the
 // target mid-flight keeps the current velocity, so a retargeted motion bends
