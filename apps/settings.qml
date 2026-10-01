@@ -104,30 +104,27 @@ ShellRoot {
                             Item { width: 1; height: 12 }
                             Repeater {
                                 model: modelData
-                                delegate: Item {
+                                delegate: SidebarRow {
                                     id: navRow
                                     required property var modelData
-                                    readonly property bool selected: app.paneOf(app.current) === modelData.id
-                                    width: nav.width; height: 30
-                                    onSelectedChanged: if (selected) navFlick.ensure(navRow)
-                                    Component.onCompleted: if (selected) Qt.callLater(() => navFlick.ensure(navRow))
-                                    Rectangle {
-                                        anchors.fill: parent; radius: 8
-                                        color: navRow.selected ? (win.active ? Theme.accent : (Theme.dark ? "#26ffffff" : "#14000000"))
-                                                               : (Theme.dark ? "#ffffff" : "#000000")
-                                        opacity: navRow.selected ? 1 : navTap.pressed ? 0.08 : navHover.hovered ? 0.04 : 0
-                                        Behavior on opacity { NumberAnimation { duration: 120 } }
+                                    readonly property bool currentPane: app.paneOf(app.current) === modelData.id
+                                    width: nav.width
+                                    height: 30
+                                    text: modelData.title
+                                    selected: currentPane
+                                    selectedFill: win.active ? Theme.accent : (Theme.dark ? "#26ffffff" : "#14000000")
+                                    selectedTextColor: win.active ? "#ffffff" : Theme.label
+                                    leadingSize: 22
+                                    leading: Component {
+                                        PaneIcon {
+                                            symbol: navRow.modelData.symbol
+                                            tint: navRow.modelData.tint
+                                            size: 22
+                                        }
                                     }
-                                    PaneIcon { x: 6; anchors.verticalCenter: parent.verticalCenter; symbol: navRow.modelData.symbol; tint: navRow.modelData.tint }
-                                    Text {
-                                        x: 36; anchors.verticalCenter: parent.verticalCenter
-                                        width: parent.width - 42; elide: Text.ElideRight
-                                        text: navRow.modelData.title
-                                        color: navRow.selected && win.active ? "#ffffff" : Theme.label
-                                        font { family: Theme.fontUi; pixelSize: 13 }
-                                    }
-                                    HoverHandler { id: navHover }
-                                    TapHandler { id: navTap; onTapped: app.open(navRow.modelData.id) }
+                                    onCurrentPaneChanged: if (currentPane) navFlick.ensure(navRow)
+                                    Component.onCompleted: if (currentPane) Qt.callLater(() => navFlick.ensure(navRow))
+                                    onClicked: app.open(modelData.id)
                                 }
                             }
                         }
