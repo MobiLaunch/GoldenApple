@@ -1,0 +1,261 @@
+#!/usr/bin/env python3
+"""Native Golden Gate App Store backend backed by Flatpak/Flathub."""
+from __future__ import annotations
+
+import gzip
+import json
+import os
+import pathlib
+import subprocess
+import sys
+import xml.etree.ElementTree as ET
+
+REMOTE = "flathub"
+REMOTE_URL = "https://dl.flathub.org/repo/flathub.flatpakrepo"
+
+
+def emit(event: str, **payload: object) -> None:
+    print(json.dumps({"event": event, **payload}, separators=(",", ":")), flush=True)
+
+
+def run(args: list[str], *, timeout: int | None = None, check: bool = False) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        args,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        timeout=timeout,
+        check=check,
+        env={**os.environ, "LC_ALL": "C"},
+    )
+
+
+def remote_exists() -> bool:
+    p = run(["flatpak", "--user", "remotes", "--columns=name"])
+    return any(line.strip() == REMOTE for line in p.stdout.splitlines())
+
+
+def prepare(refresh: bool = True) -> tuple[bool, str]:
+    if not shutil_which("flatpak"):
+        return False, "Flatpak is not installed."
+
+    if not remote_exists():
+        p = run(
+            ["flatpak", "--user", "remote-add", "--if-not-exists", "--from", REMOTE, REMOTE_URL],
+            timeout=35,
+        )
+        if p.returncode != 0:
+            return False, (p.stdout.strip().splitlines()[-1] if p.stdout.strip() else "Flathub could not be configured.")
+
+    if refresh:
+        p = run(["flatpak", "--user", "update", "--appstream", "-y"], timeout=60)
+        # Cached metadata is still useful when refresh fails.
+        if p.returncode != 0:
+            return True, "Using cached catalog; the network refresh did not complete."
+    return True, ""
+
+
+def shutil_which(name: str) -> str | None:
+    import shutil
+    return shutil.which(name)
+
+
+def appstream_files() -> list[pathlib.Path]:
+    home = pathlib.Path.home()
+    roots = [
+        home / ".local/share/flatpak/appstream" / REMOTE,
+        pathlib.Path("/var/lib/flatpak/appstream") / REMOTE,
+    ]
+    found: list[pathlib.Path] = []
+    for root in roots:
+        if not root.exists():
+            continue
+        found.extend(root.glob("*/active/appstream.xml.gz"))
+        found.extend(root.glob("*/active/appstream.xml"))
+    return sorted(found, key=lambda p: p.stat().st_mtime if p.exists() else 0, reverse=True)
+
+
+def text_of(node: ET.Element | None, child: str, default: str = "") -> str:
+    if node is None:
+        return default
+    found = node.find(child)
+    if found is None or not found.text:
+        return default
+    return found.text.strip()
+
+
+def icon_for(component: ET.Element, source: pathlib.Path) -> str:
+    active = source.parent
+    icons = component.findall("icon")
+    # Prefer the cached 128/64px AppStream icons.
+    for icon in icons:
+        name = (icon.text or "").strip()
+        if not name:
+            continue
+        if icon.attrib.get("type") == "cached":
+            for size in ("128x128", "64x64"):
+                candidate = active / "icons" / size / name
+                if candidate.exists():
+                    return str(candidate)
+        if icon.attrib.get("type") == "local":
+            candidate = pathlib.Path(name)
+            if candidate.exists():
+                return str(candidate)
+    return ""
+
+
+def installed_ids() -> set[str]:
+    p = run(["flatpak", "--user", "list", "--app", "--columns=application"])
+    return {x.strip() for x in p.stdout.splitlines() if x.strip()}
+
+
+def update_ids() -> set[str]:
+    p = run(["flatpak", "--user", "remote-ls", "--updates", "--app", "--columns=application", REMOTE])
+    return {x.strip() for x in p.stdout.splitlines() if x.strip()}
+
+
+def catalog() -> int:
+    emit("status", message="Loading the App Store…")
+    okay, warning = prepare(refresh=True)
+    files = appstream_files()
+    if not files:
+        emit("error", message=warning or "The Flathub catalog is not available yet. Check your internet connection.")
+        return 1
+
+    source = files[0]
+    try:
+        if source.suffix == ".gz":
+            with gzip.open(source, "rb") as fh:
+                root = ET.parse(fh).getroot()
+        else:
+            root = ET.parse(source).getroot()
+    except Exception as exc:
+        emit("error", message=f"The local App Store catalog could not be read: {exc}")
+        return 1
+
+    installed = installed_ids()
+    updates = update_ids()
+    apps: list[dict[str, object]] = []
+
+    for component in root.findall("component"):
+        ctype = component.attrib.get("type", "")
+        if ctype not in ("desktop-application", "desktop"):
+            continue
+
+        app_id = text_of(component, "id")
+        name = text_of(component, "name")
+        summary = text_of(component, "summary")
+        if not app_id or not name:
+            continue
+
+        categories = [n.text.strip() for n in component.findall("./categories/category") if n.text]
+        keywords = [n.text.strip() for n in component.findall("./keywords/keyword") if n.text]
+        project = text_of(component, "project_group")
+        launchable = component.find("launchable")
+        desktop_id = (launchable.text or "").strip() if launchable is not None and launchable.text else ""
+
+        # Flatpak AppStream IDs occasionally include a .desktop suffix.
+        flatpak_id = app_id[:-8] if app_id.endswith(".desktop") else app_id
+
+        apps.append(
+            {
+                "id": flatpak_id,
+                "name": name,
+                "summary": summary,
+                "categories": categories,
+                "keywords": keywords,
+                "project": project,
+                "icon": icon_for(component, source),
+                "desktop": desktop_id,
+                "installed": flatpak_id in installed,
+                "update": flatpak_id in updates,
+            }
+        )
+
+    apps.sort(key=lambda a: str(a["name"]).casefold())
+    # Avoid making the QML engine swallow several megabytes of niche runtime
+    # components while still providing a broad storefront.
+    apps = apps[:1800]
+    emit("catalog", apps=apps, warning=warning if okay else warning)
+    return 0
+
+
+def transaction(action: str, app_id: str) -> int:
+    if not app_id or any(ch.isspace() for ch in app_id):
+        emit("error", id=app_id, message="The application identifier is invalid.")
+        return 2
+
+    if action == "launch":
+        try:
+            subprocess.Popen(
+                ["flatpak", "run", app_id],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                start_new_session=True,
+            )
+            emit("done", id=app_id, action=action)
+            return 0
+        except Exception as exc:
+            emit("error", id=app_id, message=str(exc))
+            return 1
+
+    args = ["flatpak", "--user"]
+    if action == "install":
+        args += ["install", "-y", "--noninteractive", REMOTE, app_id]
+    elif action == "update":
+        args += ["update", "-y", "--noninteractive", app_id]
+    elif action == "remove":
+        args += ["uninstall", "-y", "--noninteractive", app_id]
+    else:
+        emit("error", id=app_id, message="Unsupported App Store operation.")
+        return 2
+
+    emit("progress", id=app_id, action=action, progress=0.08, message="Preparing…")
+    proc = subprocess.Popen(
+        args,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        bufsize=1,
+        env={**os.environ, "LC_ALL": "C"},
+    )
+    assert proc.stdout is not None
+
+    progress = 0.12
+    last = ""
+    for raw in proc.stdout:
+        line = raw.strip()
+        if not line:
+            continue
+        last = line
+        lower = line.lower()
+        if "required runtime" in lower or "looking for matches" in lower:
+            progress = max(progress, 0.16)
+        elif "installing" in lower or "updating" in lower:
+            progress = min(0.88, progress + 0.12)
+        elif "committing" in lower or "deploying" in lower:
+            progress = max(progress, 0.90)
+        emit("progress", id=app_id, action=action, progress=progress, message=line[:180])
+
+    code = proc.wait()
+    if code == 0:
+        emit("done", id=app_id, action=action, progress=1.0)
+        return 0
+
+    emit("error", id=app_id, action=action, message=last or f"Flatpak exited with status {code}.")
+    return code
+
+
+def main() -> int:
+    if len(sys.argv) < 2:
+        return 2
+    cmd = sys.argv[1]
+    if cmd == "catalog":
+        return catalog()
+    if cmd in {"install", "update", "remove", "launch"} and len(sys.argv) == 3:
+        return transaction(cmd, sys.argv[2])
+    return 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
