@@ -16,8 +16,12 @@ Pane {
     property string busyMac: ""
     property string error: ""
 
-    function refresh() {
-        sys.sh("bluetoothctl show | grep -q 'Powered: yes' && echo on", (o) => powered = o.trim() === "on")
+    function refresh(scanAfter) {
+        sys.sh("bluetoothctl show | grep -q 'Powered: yes' && echo on", (o) => {
+            powered = o.trim() === "on"
+            if (scanAfter && powered && !discovering)
+                scan()
+        })
         sys.sh("bluetoothctl devices Paired; echo ---; bluetoothctl devices Connected", (o) => {
             const [paired, connected] = o.split("---")
             const conn = (connected ?? "").split("\n").map((l) => l.split(" ")[1]).filter((m) => m)
@@ -45,8 +49,8 @@ Pane {
         sys.sh("bluetoothctl pair " + d.mac + " && bluetoothctl trust " + d.mac + " && bluetoothctl connect " + d.mac,
                (o, code) => { busyMac = ""; if (code === 0) { nearby = nearby.filter(x => x.mac !== d.mac); refresh() } else error = "Couldn’t pair with “" + (d.name || d.mac) + "”. Make sure it is still in pairing mode." })
     }
-    Component.onCompleted: { refresh(); if (powered) scan() }
-    Timer { interval: 6000; running: pane.visible; repeat: true; onTriggered: pane.refresh() }
+    Component.onCompleted: refresh(true)
+    Timer { interval: 6000; running: pane.visible; repeat: true; onTriggered: pane.refresh(false) }
 
     Group {
         SetRow {
