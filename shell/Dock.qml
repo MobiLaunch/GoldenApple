@@ -15,7 +15,7 @@ PanelWindow {
     id: dock
     property bool liveSession: false
     property var pinned: (liveSession ? ["org.goldengate.Installer"] : []).concat([
-        "org.goldengate.Files", "org.goldengate.Web", "org.gnome.Geary", "org.gnome.Fractal", "org.goldengate.Maps",
+        "org.goldengate.Files", "org.goldengate.Web", "org.goldengate.Mail", "org.gnome.Fractal", "org.goldengate.Maps",
         "org.goldengate.Photos", "org.goldengate.Music", "org.goldengate.Calendar", "org.goldengate.Notes",
         "org.goldengate.Weather", "org.goldengate.Software", "org.goldengate.Settings", "com.mitchellh.ghostty"
     ])
