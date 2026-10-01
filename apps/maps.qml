@@ -183,7 +183,7 @@ ShellRoot {
                     if (then) then()
                 })
             }
-            function startSearch() { mode = "search"; place = null; Qt.callLater(() => searchField.forceActiveFocus()) }
+            function startSearch() { mode = "search"; place = null; Qt.callLater(() => searchField.input.forceActiveFocus()) }
             function showPlace(p) {
                 place = p
                 mode = "place"
@@ -291,26 +291,28 @@ ShellRoot {
                 Item {
                     anchors.fill: parent
                     visible: app.mode !== "directions"
-                    Rectangle {
-                        id: searchBox
-                        x: 14; y: 14; width: parent.width - 28; height: 38; radius: 12
-                        color: Theme.dark ? "#1affffff" : "#ffffff"
-                        border { width: 0.5; color: Theme.separator }
-                        Symbol { x: 12; anchors.verticalCenter: parent.verticalCenter; name: "search"; tone: "gray"; size: 15 }
-                        TextInput {
-                            id: searchField
-                            x: 36; width: parent.width - 48; anchors.verticalCenter: parent.verticalCenter
-                            color: Theme.label
-                            font { family: Theme.fontUi; pixelSize: 15 }
-                            clip: true
-                            onTextChanged: { app.searchRevision++; app.searching = false; app.results = []; app.mode = "search"; searchTimer.restart() }
-                            onAccepted: app.search(text, () => {
-                                if (app.results.length === 1) app.showPlace(app.results[0])
-                                else if (app.results.length > 1) map.fit(app.results.map((r) => [r.lon, r.lat]), win.contentX + app.panelWidth + 16)
-                            })
-                            Keys.onEscapePressed: text = ""
-                            Text { visible: !searchField.text; text: "Search Maps"; color: Theme.tertiaryLabel; font: searchField.font }
+                    TextField {
+                        id: searchField
+                        x: 14
+                        y: 14
+                        width: parent.width - 28
+                        height: 38
+                        search: true
+                        placeholder: "Search Maps"
+                        onTextChanged: {
+                            app.searchRevision++
+                            app.searching = false
+                            app.results = []
+                            app.mode = "search"
+                            searchTimer.restart()
                         }
+                        onAccepted: app.search(text, () => {
+                            if (app.results.length === 1)
+                                app.showPlace(app.results[0])
+                            else if (app.results.length > 1)
+                                map.fit(app.results.map((r) => [r.lon, r.lat]), win.contentX + app.panelWidth + 16)
+                        })
+                        input.Keys.onEscapePressed: text = ""
                         Timer { id: searchTimer; interval: 350; onTriggered: app.search(searchField.text) }
                     }
                     // Results
@@ -430,24 +432,49 @@ ShellRoot {
                             property string which
                             property alias input: field
                             property color dotColor
-                            width: ends.width - 56; height: 48
+                            width: ends.width - 56
+                            height: 48
+
                             Rectangle {
-                                x: 14; anchors.verticalCenter: parent.verticalCenter
-                                width: 18; height: 18; radius: 9; color: endField.dotColor
+                                x: 14
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: 18
+                                height: 18
+                                radius: 9
+                                color: endField.dotColor
                                 Rectangle { anchors.centerIn: parent; width: 6; height: 6; radius: 3; color: "#ffffff" }
                             }
-                            TextInput {
+
+                            TextField {
                                 id: field
-                                x: 42; width: parent.width - 48; anchors.verticalCenter: parent.verticalCenter
-                                color: Theme.label
-                                font { family: Theme.fontUi; pixelSize: 15 }
-                                clip: true
+                                x: 42
+                                width: parent.width - 48
+                                anchors.verticalCenter: parent.verticalCenter
                                 readonly property var value: endField.which === "from" ? app.from : app.to
                                 text: value?.name ?? ""
-                                onActiveFocusChanged: if (activeFocus) { app.editing = endField.which; selectAll() }
-                                onTextEdited: { app.searchRevision++; app.searching = false; app.results = []; app.editing = endField.which; dirTimer.restart() }
-                                onAccepted: app.search(text, () => { if (app.results.length) app.choose(app.results[0]) })
-                                Text { visible: !field.text; text: endField.which === "from" ? "Start" : "Destination"; color: Theme.tertiaryLabel; font: field.font }
+                                placeholder: endField.which === "from" ? "Start" : "Destination"
+                                onTextChanged: {
+                                    if (!field.input.activeFocus)
+                                        return
+                                    app.searchRevision++
+                                    app.searching = false
+                                    app.results = []
+                                    app.editing = endField.which
+                                    dirTimer.restart()
+                                }
+                                onAccepted: app.search(text, () => {
+                                    if (app.results.length)
+                                        app.choose(app.results[0])
+                                })
+                                Connections {
+                                    target: field.input
+                                    function onActiveFocusChanged() {
+                                        if (field.input.activeFocus) {
+                                            app.editing = endField.which
+                                            field.input.selectAll()
+                                        }
+                                    }
+                                }
                             }
                         }
                         EndField { id: fromEnd; which: "from"; dotColor: "#0a84ff" }
