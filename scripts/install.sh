@@ -129,7 +129,7 @@ EOF
     # shell-specific controls local; shared Glass/Symbol/springs/Theme resolve
     # to /usr/share/golden-gate/ui for every account created from /etc/skel.
     local SHELL_SKEL="$SKEL/.config/quickshell/golden-gate"
-    for shared in Glass.qml Spring.qml SpringValue.qml Symbol.qml; do
+    for shared in Glass.qml Spring.qml SpringValue.qml Symbol.qml TextField.qml; do
       rm -f "$SHELL_SKEL/components/$shared"
       ln -s "/usr/share/golden-gate/ui/$shared" "$SHELL_SKEL/components/$shared"
     done
