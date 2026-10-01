@@ -6,31 +6,18 @@ from pathlib import Path
 import sys
 
 from PySide6.QtCore import QLockFile, QStandardPaths, Qt, QTimer, QUrl
-from PySide6.QtGui import QAction, QColor, QIcon, QKeySequence, QShortcut
+from PySide6.QtGui import QAction, QColor, QKeySequence, QShortcut
 from PySide6.QtWidgets import (QApplication, QDialog, QFileDialog, QFrame, QHBoxLayout,
-    QLabel, QLineEdit, QListWidget, QListWidgetItem, QMainWindow, QMessageBox,
-    QProgressBar, QPushButton, QSplitter, QStackedWidget, QTabBar, QToolButton,
-    QVBoxLayout, QWidget)
+    QLabel, QListWidget, QListWidgetItem, QMainWindow, QMessageBox,
+    QProgressBar, QSplitter, QStackedWidget, QTabBar, QVBoxLayout, QWidget)
 from PySide6.QtWebEngineCore import QWebEnginePage, QWebEngineProfile, QWebEngineSettings
 from PySide6.QtWebEngineWidgets import QWebEngineView
 from model import Store, address_url
-
-ASSETS = Path(__file__).resolve().parents[1] / 'lib/assets/symbols'
+from ui import GGButton, GGLineEdit, GGToolButton, palette, refresh_icons, stylesheet, traffic_light
 
 
 def button(symbol, label, action):
-    btn = QToolButton()
-    icon = ASSETS / (symbol + '.svg')
-    if icon.exists():
-        btn.setIcon(QIcon(str(icon)))
-    else:
-        btn.setText(label)
-    btn.setProperty("symbol", symbol)
-    btn.setToolTip(label)
-    btn.setAccessibleName(label)
-    btn.setFixedSize(32, 30)
-    btn.clicked.connect(action)
-    return btn
+    return GGToolButton(symbol, label, action)
 
 
 class Toolbar(QFrame):
@@ -107,8 +94,7 @@ class Browser(QMainWindow):
         dl_layout = QVBoxLayout(self.download_dialog)
         self.download_list = QListWidget()
         dl_layout.addWidget(self.download_list)
-        cancel = QPushButton('Cancel Selected Download')
-        cancel.clicked.connect(self.cancel_download)
+        cancel = GGButton('Cancel Selected Download', self.cancel_download)
         dl_layout.addWidget(cancel)
 
         frame = QWidget()
@@ -126,13 +112,7 @@ class Browser(QMainWindow):
         for color, label, action in [('#ff5f57', 'Close window', self.close),
                 ('#febc2e', 'Minimize', self.showMinimized),
                 ('#28c840', 'Zoom window', self.zoom_window)]:
-            light = QPushButton()
-            light.setToolTip(label)
-            light.setAccessibleName(label)
-            light.setFixedSize(13, 13)
-            light.setStyleSheet(f'QPushButton {{background:{color};border:1px solid rgba(0,0,0,0.12);border-radius:6px;}} QPushButton:focus {{border:2px solid #007aff;}}')
-            light.clicked.connect(action)
-            bar.addWidget(light)
+            bar.addWidget(traffic_light(color, label, action, self.toolbar))
         bar.addSpacing(14)
         bar.addWidget(button('sidebar', 'Show Sidebar', self.toggle_sidebar))
         self.back = button('chevron-left', 'Back (Alt+Left)', lambda: self.current().back())
@@ -140,10 +120,8 @@ class Browser(QMainWindow):
         bar.addWidget(self.back)
         bar.addWidget(self.forward)
         bar.addStretch(1)
-        self.address = QLineEdit()
+        self.address = GGLineEdit('Search or enter website name')
         self.address.setObjectName('address')
-        self.address.setPlaceholderText('Search or enter website name')
-        self.address.setAccessibleName('Search or enter website name')
         self.address.setMinimumWidth(180)
         self.address.setMaximumWidth(660)
         self.address.returnPressed.connect(self.navigate)
@@ -180,8 +158,7 @@ class Browser(QMainWindow):
                 ('Bookmarks', lambda: self.show_library('bookmarks')),
                 ('History', lambda: self.show_library('history')),
                 ('New Private Window', self.private_window)]:
-            item = QPushButton(label)
-            item.clicked.connect(action)
+            item = GGButton(label, action)
             side.addWidget(item)
         side.addWidget(QLabel('OPEN TABS'))
         self.tab_list = QListWidget()
@@ -227,36 +204,12 @@ class Browser(QMainWindow):
 
     def apply_theme(self, *_):
         dark = QApplication.styleHints().colorScheme() == Qt.ColorScheme.Dark
-        bg, panel, text, field, selected = ('#242428', '#2d2d32', '#f5f5f7', '#424248', '#484852') if dark else ('#f5f5f7', '#eaeaf0', '#25252b', '#ffffff', '#d8e5f7')
-        self.setStyleSheet(f'''
-            QWidget {{font-family:Inter; font-size:13px; color:{text};}}
-            #frame, QDialog {{background:{bg}; border-radius:12px;}}
-            #toolbar, #sidebar {{background:{panel};}}
-            #sideTitle {{font-size:22px;font-weight:600;padding:12px 4px;}}
-            QLineEdit {{background:{field};border:1px solid #80808040;border-radius:9px;padding:7px 14px;}}
-            QLineEdit:focus {{border:2px solid #589cec;padding:6px 13px;}}
-            QToolButton, QPushButton {{border:0;border-radius:6px;padding:6px;background:transparent;}}
-            QToolButton:hover, QPushButton:hover {{background:{selected};}}
-            QToolButton:focus, QPushButton:focus {{border:1px solid #589cec;}}
-            QToolButton:disabled {{color:#888;}}
-            QListWidget {{background:transparent;border:0;outline:0;}}
-            QListWidget::item {{padding:9px;border-radius:7px;}}
-            QListWidget::item:selected {{background:{selected};color:{text};}}
-            #sidebar QPushButton {{text-align:left;padding:9px;}}
-            QTabBar::tab {{background:{panel};padding:10px 14px;min-width:50px;max-width:240px;border-right:1px solid #80808030;}}
-            QTabBar::tab:selected {{background:{bg};}}
-            QProgressBar {{border:0;background:transparent;}}
-            QProgressBar::chunk {{background:#007aff;}}
-            QSplitter::handle {{background:{panel};width:1px;}}
-        ''')
-        for btn in self.findChildren(QToolButton):
-            # The shared icon set includes light-on-dark variants.
-            icon_name = btn.property('symbol')
-            if icon_name:
-                btn.setIcon(QIcon(str(ASSETS / (icon_name + ('' if dark else '@dark') + '.svg'))))
+        p = palette(dark)
+        self.setStyleSheet(stylesheet(dark))
+        refresh_icons(self, dark)
         # Match Chromium's backing surface to the window so dark mode does not
         # flash white between navigations or while a renderer is starting.
-        page_color = QColor(bg)
+        page_color = QColor(p["bg"])
         for view in self.views:
             view.page().setBackgroundColor(page_color)
 
@@ -274,8 +227,7 @@ class Browser(QMainWindow):
         self.stack.addWidget(view)
         index = self.tabs.addTab('Start Page')
         close = button('xmark', 'Close Tab', lambda: self.close_view(view))
-        dark = QApplication.styleHints().colorScheme() == Qt.ColorScheme.Dark
-        close.setIcon(QIcon(str(ASSETS / ('xmark' + ('' if dark else '@dark') + '.svg'))))
+        close.apply_icon(QApplication.styleHints().colorScheme() == Qt.ColorScheme.Dark)
         close.setFixedSize(24, 22)
         self.tabs.setTabButton(index, QTabBar.RightSide, close)
         self.tab_list.addItem('Start Page')
@@ -403,7 +355,7 @@ class Browser(QMainWindow):
             listing.addItem(item)
         listing.itemActivated.connect(lambda item: (self.go(item.data(Qt.UserRole)), dialog.accept()))
         layout.addWidget(listing)
-        clear = QPushButton('Remove Selected')
+        clear = GGButton('Remove Selected')
         def remove():
             index = listing.currentRow()
             if index >= 0:
