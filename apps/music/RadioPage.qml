@@ -52,21 +52,14 @@ Item {
                 color: Theme.label
                 font { family: Theme.fontUi; pixelSize: 26; weight: Font.Bold }
             }
-            Rectangle {
+            TextField {
+                id: q
                 anchors { right: parent.right; top: parent.top; topMargin: 24 }
-                width: 240; height: 30; radius: 15
-                color: Theme.fill
-                border { width: 0.5; color: Theme.separator }
-                Symbol { x: 10; anchors.verticalCenter: parent.verticalCenter; name: "search"; tone: "gray"; size: 13 }
-                TextInput {
-                    id: q
-                    x: 30; width: parent.width - 40; anchors.verticalCenter: parent.verticalCenter
-                    color: Theme.label
-                    font { family: Theme.fontUi; pixelSize: 13 }
-                    clip: true
-                    onAccepted: page.load(text)
-                    Text { visible: !q.text; text: "Search stations"; color: Theme.tertiaryLabel; font: q.font }
-                }
+                width: 240
+                height: 30
+                search: true
+                placeholder: "Search stations"
+                onAccepted: page.load(text)
             }
             Text {
                 y: 78
