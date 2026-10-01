@@ -167,7 +167,7 @@ ShellRoot {
                 clip: true
                 boundsBehavior: Flickable.StopAtBounds
 
-                TextEdit {
+                TextArea {
                     id: body
                     x: Math.max(52, (page.width - width) / 2)
                     y: 42
