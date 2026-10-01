@@ -1,11 +1,11 @@
 //@ pragma AppId org.goldengate.Setup
 // Setup Assistant: the first thing after the first login, as on a new Mac.
 //
-// A hello written in Liquid Glass over drifting colour, then: Country or
-// Region (keyboard and time zone), Wi-Fi, Data & Privacy, Location Services,
+// A hello over the HyprGlass desktop material, then: Country or Region
+// (keyboard and time zone), Wi-Fi, Data & Privacy, Location Services,
 // Time Zone, Analytics (crash and diagnostics sharing), Choose Your Look, and
-// Welcome. The panels are the compositor's Liquid Glass shader, which works
-// here because the assistant draws the backdrop it bends.
+// Welcome. Controls come from the same shared Golden Gate component store as
+// the rest of the desktop.
 //
 // It runs once: finishing writes ~/.config/golden-gate/setup-done, and
 // hyprland.conf only starts it while that file is missing (and not with
@@ -307,19 +307,12 @@ ShellRoot {
                     canGoBack: true
                     onBack: stage.back()
                     onNext: { stage.setKeyboard(stage.region.keyboard); stage.next() }
-                    Rectangle {
-                        id: search
-                        width: parent.width; height: 30; radius: 8
-                        color: Theme.dark ? "#1affffff" : "#b3ffffff"
-                        border { width: 0.5; color: Theme.separator }
-                        Symbol { x: 9; anchors.verticalCenter: parent.verticalCenter; name: "search"; tone: "gray"; size: 13 }
-                        TextInput {
-                            id: q
-                            x: 30; width: parent.width - 40; anchors.verticalCenter: parent.verticalCenter
-                            color: Theme.label; clip: true
-                            font { family: Theme.fontUi; pixelSize: 13 }
-                            Text { visible: !q.text; text: "Search"; color: Theme.tertiaryLabel; font: q.font }
-                        }
+                    TextField {
+                        id: q
+                        width: parent.width
+                        height: 30
+                        search: true
+                        placeholder: "Search"
                     }
                     ListView {
                         id: list
