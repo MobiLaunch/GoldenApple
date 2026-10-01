@@ -115,7 +115,6 @@ def update_ids() -> set[str]:
 
 
 def catalog() -> int:
-    emit("status", message="Loading the App Store…")
     okay, warning = prepare(refresh=True)
     files = appstream_files()
     if not files:
