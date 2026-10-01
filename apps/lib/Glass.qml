@@ -10,12 +10,15 @@ import "theme"
 Item {
     id: root
     property real radius: 26
-    // App-window content needs readable contrast independent of the backdrop,
-    // so default to the denser regular material used throughout native apps.
-    property color tint: Theme.glassRegular.tint
-    property color rim: Theme.glassRegular.rim
-    property color rimLow: Theme.glassRegular.rimLow
-    property color shine: Theme.glassRegular.shine
+    // One implementation, two material roles. Native app content defaults to
+    // the denser readable material; HyprGlass-backed shell surfaces opt into
+    // "clear" without maintaining a separate Glass component.
+    property string variant: "regular" // "regular" | "clear"
+    readonly property bool clearMaterial: variant === "clear"
+    property color tint: clearMaterial ? Theme.glassClear.tint : Theme.glassRegular.tint
+    property color rim: clearMaterial ? Theme.glassClear.rim : Theme.glassRegular.rim
+    property color rimLow: clearMaterial ? Theme.glassClear.rimLow : Theme.glassRegular.rimLow
+    property color shine: clearMaterial ? Theme.glassClear.shine : Theme.glassRegular.shine
     property bool filled: false
     property bool pressed: false
     property bool hovered: false
@@ -25,10 +28,11 @@ Item {
 
     readonly property real r: Math.min(radius, width / 2, height / 2)
     readonly property color shownTint: Theme.reduceTransparency
-        ? Qt.rgba(tint.r, tint.g, tint.b, Math.max(tint.a, 0.96))
+        ? Qt.rgba(tint.r, tint.g, tint.b, Math.max(tint.a, clearMaterial ? 0.94 : 0.96))
         : Theme.glassStyle === "tinted"
-            ? Qt.rgba(tint.r, tint.g, tint.b, Math.max(tint.a, 0.88))
-            : Qt.rgba(tint.r, tint.g, tint.b, Math.max(tint.a, 0.74))
+            ? Qt.rgba(tint.r, tint.g, tint.b, Math.max(tint.a, clearMaterial ? 0.72 : 0.88))
+            : Qt.rgba(tint.r, tint.g, tint.b,
+                Math.max(tint.a, clearMaterial ? (Theme.dark ? 0.38 : 0.42) : 0.74))
 
     // The press: a little smaller and brighter, springing back. A transform, so
     // users can still animate `scale` (Control Center's modules spring in).
@@ -41,9 +45,11 @@ Item {
         anchors.fill: shadowShape; source: shadowShape; autoPaddingEnabled: true
         shadowEnabled: true
         shadowColor: root.shadow.a > 0 ? root.shadow : "#70000000"
-        shadowOpacity: root.pressed ? 0.14 : root.hovered ? 0.26 : 0.20
+        shadowOpacity: root.pressed ? 0.14 : root.hovered ? (root.clearMaterial ? 0.27 : 0.26) : 0.20
         shadowBlur: 1.0
-        shadowVerticalOffset: root.pressed ? 1 : root.hovered ? 6 : 4
+        shadowVerticalOffset: root.pressed ? (root.clearMaterial ? 2 : 1)
+            : root.hovered ? (root.clearMaterial ? 7 : 6)
+            : (root.clearMaterial ? 5 : 4)
     }
     Rectangle {
         id: bodyFill
@@ -64,7 +70,7 @@ Item {
         anchors.fill: parent
         radius: root.r
         visible: !root.filled
-        opacity: 0.64
+        opacity: root.clearMaterial ? 0.72 : 0.64
         gradient: Gradient {
             GradientStop { position: 0.0; color: root.shine }
             GradientStop { position: 0.42; color: "transparent" }
@@ -79,9 +85,9 @@ Item {
         fillRule: ShapePath.OddEvenFill
         fillGradient: LinearGradient {
             x1: 0; y1: 0; x2: root.width * 0.35; y2: root.height
-            GradientStop { position: 0; color: Qt.rgba(1, 1, 1, 0.075) }
-            GradientStop { position: 0.55; color: Qt.rgba(1, 1, 1, 0.020) }
-            GradientStop { position: 1; color: Qt.rgba(1, 1, 1, 0.045) }
+            GradientStop { position: 0; color: Qt.rgba(1, 1, 1, root.clearMaterial ? 0.10 : 0.075) }
+            GradientStop { position: 0.55; color: Qt.rgba(1, 1, 1, root.clearMaterial ? 0.025 : 0.020) }
+            GradientStop { position: 1; color: Qt.rgba(1, 1, 1, root.clearMaterial ? 0.055 : 0.045) }
         }
         PathRectangle { x: 0; y: 0; width: root.width; height: root.height; radius: root.r }
         PathRectangle {
