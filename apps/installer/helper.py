@@ -77,6 +77,26 @@ def live_device() -> str:
     return ""
 
 
+
+def preflight() -> int:
+    required = [
+        "lsblk", "findmnt", "wipefs", "sgdisk", "partprobe", "udevadm",
+        "mkfs.fat", "mkfs.ext4", "mount", "umount", "rsync", "arch-chroot",
+        "genfstab", "bootctl", "mkinitcpio",
+    ]
+    missing = [name for name in required if shutil.which(name) is None]
+    live = pathlib.Path("/run/archiso").is_dir()
+    uefi = pathlib.Path("/sys/firmware/efi").is_dir()
+    print(json.dumps({
+        "ok": live and uefi and not missing,
+        "live": live,
+        "uefi": uefi,
+        "missing": missing,
+        "live_device": live_device() if live else "",
+    }, separators=(",", ":")))
+    return 0
+
+
 def validate_payload(data: dict[str, Any]) -> tuple[str, str, str]:
     if not pathlib.Path("/run/archiso").is_dir():
         raise RuntimeError("Golden Gate can only install itself from the live environment.")
@@ -281,6 +301,8 @@ def install() -> int:
 def main() -> int:
     if len(sys.argv) < 2:
         return 2
+    if sys.argv[1] == "preflight":
+        return preflight()
     if sys.argv[1] == "disks":
         return disks()
     if sys.argv[1] == "install":
