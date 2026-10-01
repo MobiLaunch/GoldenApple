@@ -76,19 +76,13 @@ class Setup(unittest.TestCase):
             with self.assertRaises(ValueError):
                 prefs.save({'layout':'us\nexec=bad'}, Path(tmp))
 
-    def test_firefox_recovery_preserves_custom_files_and_profiles(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            base = Path(tmp)
-            path = base/'defaults/pref/autoconfig.js'
-            path.parent.mkdir(parents=True)
-            path.write_text('Personal autoconfig')
-            cmd = ['bash', str(ROOT/'themes/firefox/recover.sh'), '--system', tmp]
-            subprocess.run(cmd, check=True, capture_output=True)
-            self.assertTrue(path.exists())
-            path.write_text('// Golden Gate: load golden-gate.cfg at startup')
-            subprocess.run(cmd, check=True, capture_output=True)
-            self.assertFalse(path.exists())
-            self.assertEqual(len(list(path.parent.glob('*.disabled-*'))),1)
+    def test_web_is_the_only_browser_surface(self):
+        packages = (ROOT/'distro/archiso/packages.x86_64').read_text()
+        self.assertNotIn('\nfirefox\n', '\n' + packages + '\n')
+        desktop = (ROOT/'apps/desktop/org.goldengate.Web.desktop').read_text()
+        self.assertIn('Name=Web', desktop)
+        self.assertIn('Exec=', desktop)
+
 
 class BrowserData(unittest.TestCase):
     def test_address_or_search(self):
