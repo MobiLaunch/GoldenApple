@@ -64,16 +64,6 @@ install_extras() {
   for f in "$REPO"/apps/desktop/*.desktop; do
     sed 's#@APPS@#/usr/share/golden-gate/apps#g' "$f" > "$R/usr/share/applications/$(basename "$f")"
   done
-  # Keep the upstream GNOME Software launcher out of Launchpad/Dock; Golden
-  # Gate's App Store wrapper owns that UX and prepares the Flatpak backend.
-  mkdir -p "$R/usr/local/share/applications"
-  cat > "$R/usr/local/share/applications/org.gnome.Software.desktop" <<'EOF'
-[Desktop Entry]
-Type=Application
-Name=Software
-Exec=gnome-software
-NoDisplay=true
-EOF
   printf '#!/bin/sh\nexec bash /usr/share/golden-gate/apps/setup/diagnostics.sh "$@"\n' > "$BIN/gg-diagnostics"
   printf '#!/bin/sh\nexec bash /usr/share/golden-gate/apps/settings/open.sh "$@"\n' > "$BIN/gg-settings"
   printf '#!/bin/sh\nexec sh /usr/share/golden-gate/apps/browser/launch.sh "$@"\n' > "$BIN/gg-web"
@@ -269,16 +259,6 @@ chmod +x "$BIN/gg-settings" "$BIN/gg-software" "$BIN/gg-pref" "$BIN/gg-hyprglass
 for f in "$REPO"/apps/desktop/*.desktop; do
   sed "s#@APPS@#$APPS_RUN#g" "$f" > "$DATA/applications/$(basename "$f")"
 done
-if [[ $MODE == user ]]; then
-  cat > "$DATA/applications/org.gnome.Software.desktop" <<'EOF'
-[Desktop Entry]
-Type=Application
-Name=Software
-Exec=gnome-software
-NoDisplay=true
-EOF
-fi
-
 # Terminal: its own title bar and Terminal.app's look
 place "$REPO/themes/ghostty/config" "$CONF/ghostty/config"
 for f in "$REPO"/themes/ghostty/themes/*; do place "$f" "$CONF/ghostty/themes/$(basename "$f")"; done
