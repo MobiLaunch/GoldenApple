@@ -10,9 +10,15 @@ Item {
     id: root
     property string name
     property string tone: "auto"
+    property color color: "transparent"
     property real size: 17
     readonly property string resolved: tone === "auto" ? (Theme.dark ? "white" : "dark") : tone
-    readonly property bool tinted: resolved === "accent" && Theme.accentName !== "blue" && GraphicsInfo.api !== GraphicsInfo.Software
+    readonly property color tint: color.a > 0
+        ? color
+        : resolved === "accent" && Theme.accentName !== "blue"
+            ? Theme.accent
+            : "transparent"
+    readonly property bool tinted: tint.a > 0 && GraphicsInfo.api !== GraphicsInfo.Software
     width: size; height: size
     implicitWidth: size; implicitHeight: size
 
@@ -29,6 +35,6 @@ Item {
         source: img
         visible: root.tinted
         colorization: 1.0
-        colorizationColor: Theme.accent
+        colorizationColor: root.tint
     }
 }
