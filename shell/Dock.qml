@@ -169,7 +169,7 @@ PanelWindow {
         }
     }
 
-    Glass {
+    Glass { variant: "clear";
         id: shelf
         anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: 6 }
         width: row.width + 14
@@ -261,7 +261,7 @@ PanelWindow {
                         opacity: tile.wins.length && Prefs.dockIndicators ? 1 : 0
                         Behavior on opacity { NumberAnimation { duration: 300 } }
                     }
-                    Glass {
+                    Glass { variant: "clear";
                         id: tip
                         readonly property bool shown: tipArea.containsMouse && !tipArea.pressed
                         visible: opacity > 0
@@ -342,7 +342,7 @@ PanelWindow {
                         layer.effect: MultiEffect { brightness: -0.28 }
                         opacity: !gpu && placeArea.pressed ? 0.7 : 1
                     }
-                    Glass {
+                    Glass { variant: "clear";
                         id: placeTip
                         readonly property bool shown: placeArea.containsMouse && !placeArea.pressed
                         visible: opacity > 0
