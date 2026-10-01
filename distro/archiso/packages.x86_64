@@ -62,8 +62,7 @@ gnome-calendar
 loupe
 geary
 fractal
-# App Store backend: GNOME Software + Flatpak/Flathub metadata.
-gnome-software
+# App Store backend: native Golden Gate frontend + Flatpak/Flathub metadata.
 flatpak
 archlinux-appstream-data
 xdg-desktop-portal-hyprland
