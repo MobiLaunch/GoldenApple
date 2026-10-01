@@ -90,10 +90,19 @@ build_aur() {
   chown gg-builder: "$src"
   mkdir -p "$REPO/distro/localrepo"
   for pkg in "$@"; do
-    sudo -u gg-builder git clone -q "https://aur.archlinux.org/$pkg.git" "$src/$pkg"
+    # The repository may itself live under /root. Always enter the builder-owned
+    # temp tree before dropping privileges so git/makepkg never inherit an
+    # inaccessible current working directory.
+    (
+      cd "$src"
+      sudo -u gg-builder env HOME=/home/gg-builder git clone -q "https://aur.archlinux.org/$pkg.git" "$pkg"
+    )
     # The AUR hands out an empty repository for names it doesn't know.
     [[ -f $src/$pkg/PKGBUILD ]] || { echo "$pkg is not in the AUR either"; exit 1; }
-    (cd "$src/$pkg" && sudo -u gg-builder makepkg --syncdeps --noconfirm --needed)
+    (
+      cd "$src/$pkg"
+      sudo -u gg-builder env HOME=/home/gg-builder makepkg --syncdeps --noconfirm --needed
+    )
     built=0
     for f in "$src/$pkg"/*.pkg.tar.zst; do
       [[ -e $f && $f != *-debug-* ]] || continue
