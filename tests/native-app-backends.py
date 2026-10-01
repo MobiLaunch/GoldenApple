@@ -110,6 +110,25 @@ esac
     assert "Development" in rows["org.test.Editor"]["categories"]
     assert "AudioVideo" in rows["org.test.Player"]["categories"]
 
+    # Once a catalog has loaded, a temporary Flathub failure must not throw the
+    # storefront back into a connection-error loop. The last good catalog is
+    # returned with a warning while the remote recovers.
+    flatpak.write_text(
+        """#!/bin/sh
+case "$*" in
+  *"remotes --columns=name"*) printf 'flathub\\n' ;;
+  *) printf 'temporary network failure\\n'; exit 1 ;;
+esac
+""",
+        encoding="utf-8",
+    )
+    flatpak.chmod(0o755)
+    code, out = run("apps/software/helper.py", "catalog", env=store_env)
+    cached_store = json.loads(out)
+    assert code == 0 and cached_store["event"] == "catalog"
+    assert {app["id"] for app in cached_store["apps"]} >= {"org.test.Editor", "org.test.Player"}
+    assert cached_store["warning"]
+
     # Software Update: the check path must handle pacman's "no updates"
     # convention and return a structured result without launching a terminal.
     checkupdates = fakebin / "checkupdates"
