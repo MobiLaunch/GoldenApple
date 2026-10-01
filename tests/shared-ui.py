@@ -66,6 +66,15 @@ for foreign_id in ["org.gnome.Nautilus", "org.gnome.Geary", "org.gnome.Fractal",
         errors.append(f"Dock reintroduced foreign application: {foreign_id}")
 
 
+# The source shell keeps thin adapters only; runtime install replaces them
+# with direct symlinks to the canonical store.
+shell_components = root / "shell/components"
+for name in ("Glass.qml", "TextField.qml", "Symbol.qml", "Spring.qml", "SpringValue.qml"):
+    path = shell_components / name
+    text = path.read_text(encoding="utf-8")
+    if 'import "../../apps/lib" as Shared' not in text or "Shared." not in text:
+        errors.append(f"shell primitive is no longer a shared-UI adapter: {path.relative_to(root)}")
+
 # Setup must consume the canonical controls too. Compatibility wrappers are
 # allowed only when they delegate to the shared implementation.
 setup = root / "apps" / "setup"
@@ -109,6 +118,19 @@ for needle in [
 ]:
     if needle not in install:
         errors.append(f"installer no longer guarantees canonical shared UI: {needle}")
+
+# SDDM must stage canonical primitives rather than copying the entire shell
+# component tree and silently forking the login-screen UI.
+for needle in [
+    'cp "$REPO/apps/lib/$shared" "$T/components/$shared"',
+    'cp "$REPO/apps/lib/theme/Theme.qml" "$T/theme/Theme.qml"',
+    'cp "$REPO/shell/components/LockSurface.qml" "$T/components/LockSurface.qml"',
+    'cp "$REPO/shell/components/SystemClockProxy.qml" "$T/components/SystemClockProxy.qml"',
+]:
+    if needle not in install:
+        errors.append(f"SDDM no longer consumes canonical shared UI: {needle}")
+if 'cp -a "$REPO/shell/components" "$REPO/shell/theme" "$T/"' in install:
+    errors.append("SDDM reverted to copying the whole shell component tree")
 
 for needle in [
     'ln -s "$SHARED_UI/$shared" "$SHELL_RUNTIME/components/$shared"',
