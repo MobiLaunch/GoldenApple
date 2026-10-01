@@ -87,6 +87,16 @@ for path in sorted(desktop_dir.glob("*.desktop")):
         if re.search(rf"^exec=.*\b{re.escape(command)}\b", data, flags=re.M):
             errors.append(f"{path.name} launches replaced primary UI {command}")
 
+
+# Single-file native launchers must receive local filesystem paths, not plural
+# URI lists their shell wrappers do not parse.
+for desktop_name in ("org.goldengate.Files.desktop", "org.goldengate.TextEdit.desktop",
+                     "org.goldengate.Photos.desktop", "org.goldengate.Music.desktop"):
+    data = (desktop_dir / desktop_name).read_text(encoding="utf-8")
+    exec_line = next((line for line in data.splitlines() if line.startswith("Exec=")), "")
+    if "%U" in exec_line or "%F" in exec_line:
+        errors.append(f"{desktop_name} uses a plural URI/file placeholder for a single-file launcher")
+
 terminal = (desktop_dir / "org.goldengate.Terminal.desktop").read_text(encoding="utf-8")
 if "StartupWMClass=com.mitchellh.ghostty" not in terminal:
     errors.append("Golden Gate Terminal lost its Ghostty window-class bridge")
@@ -97,6 +107,20 @@ for mime, app_id in {
     "text/plain": "org.goldengate.TextEdit.desktop",
     "text/markdown": "org.goldengate.TextEdit.desktop",
     "application/json": "org.goldengate.TextEdit.desktop",
+    "image/jpeg": "org.goldengate.Photos.desktop",
+    "image/png": "org.goldengate.Photos.desktop",
+    "image/webp": "org.goldengate.Photos.desktop",
+    "image/gif": "org.goldengate.Photos.desktop",
+    "image/tiff": "org.goldengate.Photos.desktop",
+    "video/mp4": "org.goldengate.Photos.desktop",
+    "video/quicktime": "org.goldengate.Photos.desktop",
+    "video/webm": "org.goldengate.Photos.desktop",
+    "audio/mpeg": "org.goldengate.Music.desktop",
+    "audio/mp4": "org.goldengate.Music.desktop",
+    "audio/flac": "org.goldengate.Music.desktop",
+    "audio/ogg": "org.goldengate.Music.desktop",
+    "audio/opus": "org.goldengate.Music.desktop",
+    "audio/x-wav": "org.goldengate.Music.desktop",
     "x-scheme-handler/http": "org.goldengate.Web.desktop",
     "x-scheme-handler/https": "org.goldengate.Web.desktop",
 }.items():
