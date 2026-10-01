@@ -143,6 +143,8 @@ jobs:
       - run: python -m pip install PySide6-Essentials==6.11.2
       - name: Compile native Python helpers
         run: python -m compileall -q apps tests
+      - name: Guard known QML parser regressions
+        run: python tests/qml-regressions.py
       - name: Parse all native QML
         run: python tests/check-qml.py
       - name: Verify installer disk discovery stays read-only
