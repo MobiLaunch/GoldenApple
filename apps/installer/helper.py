@@ -195,7 +195,8 @@ def install() -> int:
 
         (TARGET / "etc/hostname").write_text(hostname + "\n", encoding="utf-8")
         (TARGET / "etc/machine-id").write_text("", encoding="utf-8")
-        run(["arch-chroot", str(TARGET), "systemd-machine-id-setup"], check=False)
+        (TARGET / "var/lib/systemd/random-seed").unlink(missing_ok=True)
+        run(["arch-chroot", str(TARGET), "systemd-machine-id-setup"])
 
         stage(0.66, "Creating your account", username)
         run(["arch-chroot", str(TARGET), "useradd", "-m", "-G", "wheel", "-s", "/bin/bash", username])
@@ -256,8 +257,25 @@ def install() -> int:
                 raise RuntimeError("The installed Linux kernel could not be located.")
             shutil.copy2(candidates[-1], kernel)
 
-        run(["arch-chroot", str(TARGET), "bootctl", "install"])
+        bootctl = run(["arch-chroot", str(TARGET), "bootctl", "install"], check=False)
+        if bootctl.returncode != 0:
+            # Some otherwise-valid UEFI firmware exposes efivarfs read-only or
+            # refuses new NVRAM entries. systemd-boot still installs the
+            # architecture fallback loader when EFI-variable writes are skipped.
+            fallback = run(
+                ["arch-chroot", str(TARGET), "bootctl", "--no-variables", "install"],
+                check=False,
+            )
+            if fallback.returncode != 0:
+                detail = (fallback.stdout or bootctl.stdout or "").strip().splitlines()
+                raise RuntimeError(
+                    "The boot loader could not be installed."
+                    + (f" {detail[-1]}" if detail else "")
+                )
+
         partuuid = run(["blkid", "-s", "PARTUUID", "-o", "value", root]).stdout.strip()
+        if not partuuid:
+            raise RuntimeError("The installed root partition has no PARTUUID.")
         loader = TARGET / "boot/loader"
         (loader / "entries").mkdir(parents=True, exist_ok=True)
         (loader / "loader.conf").write_text("default golden-gate.conf\ntimeout 3\nconsole-mode max\n", encoding="utf-8")
@@ -277,7 +295,16 @@ def install() -> int:
             "keyd.service",
             "power-profiles-daemon.service",
         ]:
-            run(["arch-chroot", str(TARGET), "systemctl", "enable", service], check=False)
+            enabled = run(
+                ["arch-chroot", str(TARGET), "systemctl", "enable", service],
+                check=False,
+            )
+            if enabled.returncode != 0:
+                detail = enabled.stdout.strip().splitlines()
+                raise RuntimeError(
+                    f"Could not enable {service}."
+                    + (f" {detail[-1]}" if detail else "")
+                )
 
         stage(0.94, "Writing filesystem table", "Finalizing the installation…")
         fstab = run(["genfstab", "-U", str(TARGET)]).stdout
@@ -285,7 +312,22 @@ def install() -> int:
         run(["arch-chroot", str(TARGET), "plymouth-set-default-theme", "golden-gate"], check=False)
         run(["arch-chroot", str(TARGET), "mkinitcpio", "-P"])
 
-        stage(0.98, "Syncing data", "Making sure everything is safely written to disk…")
+        stage(0.97, "Verifying installation", "Checking boot files and account state…")
+        required_paths = [
+            TARGET / "boot/vmlinuz-linux",
+            TARGET / "boot/initramfs-linux.img",
+            TARGET / "boot/EFI/BOOT/BOOTX64.EFI",
+            TARGET / "boot/loader/loader.conf",
+            TARGET / "boot/loader/entries/golden-gate.conf",
+            TARGET / "etc/fstab",
+            TARGET / "home" / username,
+            TARGET / "usr/share/golden-gate/apps",
+        ]
+        missing = [str(path.relative_to(TARGET)) for path in required_paths if not path.exists()]
+        if missing:
+            raise RuntimeError("Installation verification failed; missing: " + ", ".join(missing))
+
+        stage(0.99, "Syncing data", "Making sure everything is safely written to disk…")
         os.sync()
 
         emit("done", progress=1.0, message="Golden Gate is installed.", device=device)
