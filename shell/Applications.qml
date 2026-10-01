@@ -1,7 +1,6 @@
 // Applications: macOS-style all-apps surface backed by the desktop-entry database.
 import Quickshell
 import Quickshell.Wayland
-import Quickshell.Services.DesktopEntries
 import QtQuick
 import QtQuick.Layouts
 import "theme"
