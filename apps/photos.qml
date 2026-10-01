@@ -116,28 +116,20 @@ ShellRoot {
                         color: Theme.secondaryLabel
                         font { family: Theme.fontUi; pixelSize: 11; weight: Font.DemiBold }
                     }
-                    component NavItem: Item {
+                    component NavItem: SidebarRow {
                         id: navItem
-                        property string symbol
-                        property string text
                         property string key
-                        width: parent.width; height: 28
-                        readonly property bool selected: app.section === key
-                        Rectangle {
-                            anchors.fill: parent; radius: 8
-                            color: Theme.dark ? "#ffffff" : "#000000"
-                            opacity: navItem.selected ? (Theme.dark ? 0.12 : 0.07) : nh.hovered ? 0.04 : 0
+                        width: parent.width
+                        height: 28
+                        symbolTone: "accent"
+                        selectedSymbolTone: "accent"
+                        selectedFill: Theme.dark ? "#1fffffff" : "#12000000"
+                        selected: app.section === key
+                        onClicked: {
+                            app.section = navItem.key
+                            app.viewing = -1
+                            app.selected = -1
                         }
-                        Symbol { x: 10; anchors.verticalCenter: parent.verticalCenter; name: navItem.symbol; tone: "accent"; size: 15 }
-                        Text {
-                            x: 34; anchors.verticalCenter: parent.verticalCenter
-                            width: parent.width - 40; elide: Text.ElideRight
-                            text: navItem.text
-                            color: Theme.label
-                            font { family: Theme.fontUi; pixelSize: 13 }
-                        }
-                        HoverHandler { id: nh }
-                        TapHandler { onTapped: { app.section = navItem.key; app.viewing = -1; app.selected = -1 } }
                     }
                     Heading { text: "Photos"; topPadding: 4 }
                     NavItem { symbol: "photo"; text: "Library"; key: "library" }
