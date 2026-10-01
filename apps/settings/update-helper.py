@@ -30,7 +30,14 @@ def check() -> int:
              message="Install pacman-contrib to refresh update metadata safely.")
         return 0
 
-    proc = subprocess.run([tool], text=True, capture_output=True)
+    try:
+        proc = subprocess.run([tool], text=True, capture_output=True, timeout=60)
+    except subprocess.TimeoutExpired:
+        emit("error", message="The update check timed out. Check your internet connection and try again.")
+        return 124
+    except OSError as exc:
+        emit("error", message=str(exc))
+        return 127
     # checkupdates returns 2 when there are no available updates.
     if proc.returncode not in (0, 2):
         message = (proc.stderr or proc.stdout or "Update check failed.").strip().splitlines()[-1]
