@@ -53,13 +53,10 @@ wl-clipboard
 libnotify
 xdg-user-dirs
 
-# Apps (themed via gtk.css + the Golden Gate icon theme)
+# External apps retained only where they provide mature system/protocol backends.
+# Golden Gate owns Settings, App Store, Clock, TextEdit, Photos and other primary UI.
 nautilus
-gnome-control-center
-gnome-clocks
-gnome-text-editor
 gnome-calendar
-loupe
 geary
 fractal
 # App Store backend: native Golden Gate frontend + Flatpak/Flathub metadata.
