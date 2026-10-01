@@ -49,7 +49,7 @@ PanelWindow {
 
         Repeater {
             model: root.list.slice(0, 4)
-            delegate: Glass {
+            delegate: Glass { variant: "clear";
                 id: banner
                 required property var modelData
                 readonly property var n: modelData
@@ -132,7 +132,7 @@ PanelWindow {
                     }
                 }
                 // Close button appears on hover, top-left like the system banners.
-                Glass {
+                Glass { variant: "clear";
                     x: -7; y: -7; width: 22; height: 22; radius: 11
                     tint: Theme.glassRegular.tint
                     opacity: hover.hovered ? 1 : 0
