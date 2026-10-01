@@ -10,6 +10,10 @@ Item {
     property string badge: ""
     property string symbolTone: "accent"
     property string selectedSymbolTone: symbolTone
+    property color symbolColor: "transparent"
+    property color selectedSymbolColor: symbolColor
+    property Component leading: null
+    property real leadingSize: 22
     property color selectedFill: Theme.selection
     property color selectedTextColor: Theme.label
     signal clicked()
@@ -33,20 +37,34 @@ Item {
         Behavior on color { ColorAnimation { duration: Theme.reduceMotion ? 1 : 90 } }
     }
 
+    Loader {
+        id: leadingLoader
+        visible: row.leading !== null
+        active: visible
+        sourceComponent: row.leading
+        x: 8
+        anchors.verticalCenter: parent.verticalCenter
+        width: row.leadingSize
+        height: row.leadingSize
+        scale: !Theme.reduceMotion && tap.pressed ? 0.94 : 1
+        Behavior on scale { NumberAnimation { duration: Theme.reduceMotion ? 1 : 70; easing.type: Easing.OutCubic } }
+    }
+
     Symbol {
         id: icon
-        visible: !!row.symbol
+        visible: row.leading === null && !!row.symbol
         x: 10
         anchors.verticalCenter: parent.verticalCenter
         name: row.symbol
         size: 16
         tone: row.selected ? row.selectedSymbolTone : row.symbolTone
+        color: row.selected ? row.selectedSymbolColor : row.symbolColor
         scale: !Theme.reduceMotion && tap.pressed ? 0.92 : 1
         Behavior on scale { NumberAnimation { duration: Theme.reduceMotion ? 1 : 70; easing.type: Easing.OutCubic } }
     }
 
     Text {
-        x: row.symbol ? 36 : 12
+        x: row.leading !== null ? 38 : row.symbol ? 36 : 12
         anchors.verticalCenter: parent.verticalCenter
         width: parent.width - x - (row.badge ? 42 : 10)
         text: row.text
