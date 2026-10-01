@@ -52,7 +52,6 @@ file_permissions+=(
   ["/usr/local/bin/gg-pref"]="0:0:755"
   ["/usr/local/bin/gg-hyprglass-sync"]="0:0:755"
   ["/usr/local/bin/gg-apply-preferences"]="0:0:755"
-  ["/usr/local/bin/gg-firefox-recover"]="0:0:755"
   ["/usr/lib/golden-gate/account-helper.py"]="0:0:755"
   ["/usr/lib/golden-gate/pref-helper.py"]="0:0:755"
   ["/usr/lib/golden-gate/hyprglass-sync.sh"]="0:0:755"
