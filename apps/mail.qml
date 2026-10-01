@@ -608,7 +608,7 @@ ShellRoot {
                     color: Theme.dark ? "#121214" : "#ffffff"
                     border { width: 0.5; color: Theme.separator }
 
-                    TextEdit {
+                    TextArea {
                         id: composeEditor
                         anchors { fill: parent; margins: 14 }
                         text: mail.composeBody
