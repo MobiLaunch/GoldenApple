@@ -140,8 +140,12 @@ PanelWindow {
 
     Item {
         id: hitbox
-        x: shelf.x; width: shelf.width
-        y: hover.hovered ? dock.height - maxSize - 14 : shelf.y
+        readonly property real overhang: Math.max(0, dock.maxSize - dock.baseSize) * 0.72
+        x: hover.hovered ? Math.max(0, shelf.x - overhang) : shelf.x
+        width: hover.hovered
+            ? Math.min(dock.width - x, shelf.width + overhang * 2)
+            : shelf.width
+        y: hover.hovered ? dock.height - maxSize - 18 : shelf.y
         height: dock.height - y
         HoverHandler {
             id: hover
