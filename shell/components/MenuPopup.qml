@@ -16,7 +16,7 @@ PopupWindow {
     implicitWidth: 240
     implicitHeight: column.implicitHeight + 12
 
-    Glass {
+    Glass { variant: "clear";
         id: panel
         anchors.fill: parent
         radius: Theme.radiusMenu
