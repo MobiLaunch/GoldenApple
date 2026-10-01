@@ -9,7 +9,7 @@ import "components"
 PanelWindow {
     id: apps
     property bool open: false
-    function show() { open = true; Qt.callLater(() => search.forceActiveFocus()) }
+    function show() { open = true; Qt.callLater(() => search.input.forceActiveFocus()) }
     function hide() { open = false; search.text = "" }
     function toggle() { open ? hide() : show() }
     visible: open || fade.running
