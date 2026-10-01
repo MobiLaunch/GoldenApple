@@ -108,6 +108,8 @@ ShellRoot {
             // GG_MUSIC_PAGE opens another page first (screenshots): home, radio,
             // albums, songs, artists, recent, search, or album (the newest one).
             property string page: Quickshell.env("GG_MUSIC_PAGE") || "home"
+            readonly property string requestedPath: Quickshell.env("GG_MUSIC_OPEN") || ""
+            property bool requestedOpened: false
             property var arg: null
             property var history: []
             property string userName: Quickshell.env("USER") ?? ""
@@ -125,6 +127,16 @@ ShellRoot {
                 page = h.page; arg = h.arg
             }
             function openAlbum(a) { go("album", a) }
+            function openRequestedTrack() {
+                if (requestedOpened || !requestedPath || !musicLib.loaded)
+                    return
+                const i = musicLib.tracks.findIndex((t) => t.path === requestedPath)
+                if (i < 0)
+                    return
+                requestedOpened = true
+                page = "songs"
+                audio.playList(musicLib.tracks, i)
+            }
             function songMenu(t, list, from, x, y) {
                 songMenuPopup.popup(from, x, y, [
                     { text: "Play", action: () => audio.playList(list, list.indexOf(t)) },
@@ -133,7 +145,7 @@ ShellRoot {
                     { text: "Go to Album", action: () => { const a = musicLib.albumOf(t); if (a) app.openAlbum(a) } },
                     { text: "Go to Artist", action: () => { app.go("artists"); const i = musicLib.artists.findIndex((r) => r.name === t.albumArtist); if (i >= 0) Qt.callLater(() => { if (pages.item) pages.item.selected = i }) } },
                     { separator: true },
-                    { text: "Show in Files", action: () => Quickshell.execDetached(["nautilus", "--select", t.path]) },
+                    { text: "Show in Files", action: () => Quickshell.execDetached(["gg-files", "--select", t.path]) },
                 ])
             }
 
@@ -165,6 +177,11 @@ ShellRoot {
 
             Library { id: musicLib }
             Player { id: audio }
+            Connections {
+                target: musicLib
+                function onLoadedChanged() { app.openRequestedTrack() }
+                function onTracksChanged() { app.openRequestedTrack() }
+            }
 
             Process {
                 running: true
