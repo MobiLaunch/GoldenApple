@@ -142,11 +142,11 @@ ShellRoot {
             ].map((p) => ({ group: p[0], id: p[1], title: p[2], symbol: p[3], tint: p[4], file: p[5], words: p[6] }))
             // Sub-pages of General: [id, title, file]
             readonly property var subpages: ({
-                about: { title: "About", file: "AboutPane", parent: "general" },
-                update: { title: "Software Update", file: "UpdatePane", parent: "general" },
-                storage: { title: "Storage", file: "StoragePane", parent: "general" },
-                datetime: { title: "Date & Time", file: "DateTimePane", parent: "general" },
-                language: { title: "Language & Region", file: "LanguagePane", parent: "general" },
+                about: { title: "About", file: "AboutPane", parent: "general", symbol: "info", tint: "#8e8e93", words: "system version hardware memory graphics kernel computer" },
+                update: { title: "Software Update", file: "UpdatePane", parent: "general", symbol: "arrow-clockwise", tint: "#8e8e93", words: "update upgrade packages arch software current" },
+                storage: { title: "Storage", file: "StoragePane", parent: "general", symbol: "drive", tint: "#8e8e93", words: "disk drive space capacity available used" },
+                datetime: { title: "Date & Time", file: "DateTimePane", parent: "general", symbol: "clock", tint: "#0a84ff", words: "date time timezone clock automatic ntp 24 hour" },
+                language: { title: "Language & Region", file: "LanguagePane", parent: "general", symbol: "globe", tint: "#0a84ff", words: "language locale region measurement format" },
             })
             readonly property var groups: [1, 2, 3, 4, 5].map((g) => panes.filter((p) => p.group === g))
             function paneOf(id) { return subpages[id]?.parent ?? id }
@@ -170,7 +170,10 @@ ShellRoot {
             readonly property var matches: {
                 const q = search.text.trim().toLowerCase()
                 if (!q) return []
-                return panes.filter((p) => p.title.toLowerCase().includes(q) || p.words.includes(q)).slice(0, 6)
+                const nested = Object.keys(subpages).map((id) => Object.assign({ id: id }, subpages[id]))
+                return nested.concat(panes)
+                    .filter((p) => p.title.toLowerCase().includes(q) || (p.words ?? "").includes(q))
+                    .slice(0, 6)
             }
 
             Keys.onPressed: (e) => {
