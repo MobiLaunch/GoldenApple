@@ -4,6 +4,7 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Hyprland
+import Quickshell.Services.DesktopEntries
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Effects
@@ -31,33 +32,10 @@ PanelWindow {
     property real pointerTargetX: -1
     property var launcher: null   // AppLaunch on this screen: the icon grows into the window
     property var applications: null
-    property int applicationsOpenAttempts: 0
-
-    Timer {
-        id: applicationsOpenRetry
-        interval: 20
-        repeat: true
-        onTriggered: {
-            dock.applicationsOpenAttempts++
-            if (dock.applications && dock.applications.item) {
-                dock.applications.item.screen = dock.screen
-                dock.applications.item.open = true
-                dock.applicationsOpenAttempts = 0
-                stop()
-            } else if (dock.applicationsOpenAttempts >= 30) {
-                dock.applicationsOpenAttempts = 0
-                stop()
-                Quickshell.execDetached(["notify-send", "Golden Gate", "Applications could not be opened. Check the shell log for the QML error."])
-            }
-        }
-    }
 
     function openApplications() {
-        if (!applications)
-            return
-        applications.active = true
-        applicationsOpenAttempts = 0
-        applicationsOpenRetry.restart()
+        if (applications)
+            applications.show()
     }
 
     anchors { bottom: true; left: true; right: true }
@@ -121,15 +99,33 @@ PanelWindow {
         Hyprland.dispatch(`movetoworkspace ${ws},address:${t.lastIpcObject.address}`)
         if (monitor?.name) Hyprland.dispatch(`focusmonitor ${monitor.name}`)
     }
-    // Cosine falloff measured against the resting layout, so the Dock never chases itself.
+    // Magnification targets are measured against resting slot centres. Neither
+    // the row nor the shelf changes width while magnifying.
+    function centerFor(index) {
+        const left = shelf.x + 7
+        if (index < entries.length)
+            return left + index * (baseSize + 3) + baseSize / 2
+        const placeIndex = index - entries.length
+        const appWidth = entries.length * (baseSize + 3)
+        return left + appWidth + 14 + placeIndex * (baseSize + 3) + baseSize / 2
+    }
     function sizeAt(index) {
-        if (pointerX < 0) return baseSize
-        const center = (dock.width - restingWidth) / 2 + 7 + index * (baseSize + 3) + baseSize / 2
-        const range = baseSize * 2.55
-        const d = Math.abs(pointerX - center)
-        // A broader, stronger macOS-style wave: the hovered icon is dominant,
-        // nearest neighbours clearly lift, and the second ring eases back to rest.
-        return d >= range ? baseSize : baseSize + (maxSize - baseSize) * Math.pow(Math.cos(d / range * Math.PI / 2), 1.08)
+        if (pointerX < 0 || !Prefs.dockMagnification || Prefs.reduceMotion)
+            return baseSize
+        const range = baseSize * 2.7
+        const d = Math.abs(pointerX - centerFor(index))
+        if (d >= range)
+            return baseSize
+        const influence = Math.pow(Math.cos(d / range * Math.PI / 2), 1.28)
+        return baseSize + (maxSize - baseSize) * influence
+    }
+    function offsetAt(index) {
+        if (pointerX < 0 || Prefs.reduceMotion)
+            return 0
+        const delta = centerFor(index) - pointerX
+        if (Math.abs(delta) < 0.5)
+            return 0
+        return (delta < 0 ? -1 : 1) * (sizeAt(index) - baseSize) * 0.25
     }
 
     Item {
@@ -178,17 +174,35 @@ PanelWindow {
                     required property var modelData
                     required property int index
                     readonly property var wins: dock.windowsFor(modelData)
-                    width: dock.sizeAt(index)
-                    height: width
-                    y: row.height - height
-                    Behavior on width { enabled: !Prefs.reduceMotion; NumberAnimation { duration: 82; easing.type: Easing.OutCubic } }
+                    width: dock.baseSize
+                    height: row.height
+
+                    SpringValue {
+                        id: iconSize
+                        target: dock.sizeAt(index)
+                        value: dock.baseSize
+                        response: 0.19
+                        dampingFraction: 0.88
+                        epsilon: 0.04
+                    }
+                    SpringValue {
+                        id: iconOffset
+                        target: dock.offsetAt(index)
+                        value: 0
+                        response: 0.20
+                        dampingFraction: 0.91
+                        epsilon: 0.04
+                    }
 
                     // Calendar apps show today's date, drawn over a date-less icon.
                     readonly property bool calendar: /calendar/i.test(modelData.icon ?? "") && calBlank.loaded
 
                     Image {
                         id: icon
-                        width: parent.width; height: parent.height
+                        width: iconSize.value; height: iconSize.value
+                        x: (tile.width - width) / 2 + iconOffset.value
+                        y: tile.height - height
+                        z: Math.round(width * 10)
                         source: tile.calendar ? calBlank.source : Quickshell.iconPath(tile.modelData.icon, "application-x-executable")
                         sourceSize: Qt.size(dock.maxSize * 2, dock.maxSize * 2)
                         smooth: true; mipmap: true
@@ -226,7 +240,7 @@ PanelWindow {
                         }
                     }
                     Rectangle {
-                        anchors { horizontalCenter: parent.horizontalCenter; top: parent.bottom; topMargin: 2 }
+                        anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: -6 }
                         width: 4; height: 4; radius: 2
                         color: Theme.dark ? "#ccffffff" : "#8c000000"
                         opacity: tile.wins.length && Prefs.dockIndicators ? 1 : 0
@@ -241,8 +255,8 @@ PanelWindow {
                         transformOrigin: Item.Bottom
                         Behavior on opacity { NumberAnimation { duration: Prefs.reduceMotion ? 1 : (tip.shown ? 115 : 80) } }
                         Behavior on scale { Spring { spring: Theme.popover } }
-                        anchors { bottom: parent.top; bottomMargin: 10 }
-                        x: Math.max(8 - (shelf.x + row.x + tile.x), Math.min((parent.width - width) / 2, dock.width - 8 - (shelf.x + row.x + tile.x) - width))
+                        anchors { bottom: icon.top; bottomMargin: 10 }
+                        x: Math.max(8 - (shelf.x + row.x + tile.x), Math.min((parent.width - width) / 2 + iconOffset.value, dock.width - 8 - (shelf.x + row.x + tile.x) - width))
                         width: Math.min(dock.width - 16, tipText.implicitWidth + 24); height: 26; radius: 13
                         tint: Theme.dark ? "#b8282830" : "#c8f4f4f6"
                         Text { id: tipText; anchors.centerIn: parent; width: Math.min(implicitWidth, parent.width - 24); elide: Text.ElideRight; textFormat: Text.PlainText; text: tile.modelData.name; color: Theme.label; font { family: Theme.fontUi; pixelSize: 13; weight: Font.Medium } }
@@ -275,12 +289,32 @@ PanelWindow {
                     id: place
                     required property var modelData
                     required property int index
-                    width: dock.sizeAt(dock.entries.length + index + 0.35)
-                    height: width
-                    y: row.height - height
-                    Behavior on width { enabled: !Prefs.reduceMotion; NumberAnimation { duration: 82; easing.type: Easing.OutCubic } }
+                    width: dock.baseSize
+                    height: row.height
+
+                    SpringValue {
+                        id: placeSize
+                        target: dock.sizeAt(dock.entries.length + index)
+                        value: dock.baseSize
+                        response: 0.19
+                        dampingFraction: 0.88
+                        epsilon: 0.04
+                    }
+                    SpringValue {
+                        id: placeOffset
+                        target: dock.offsetAt(dock.entries.length + index)
+                        value: 0
+                        response: 0.20
+                        dampingFraction: 0.91
+                        epsilon: 0.04
+                    }
                     Image {
-                        anchors.fill: parent
+                        id: placeIcon
+                        width: placeSize.value
+                        height: placeSize.value
+                        x: (place.width - width) / 2 + placeOffset.value
+                        y: place.height - height
+                        z: Math.round(width * 10)
                         source: place.modelData.action === "applications"
                             ? Qt.resolvedUrl("assets/symbols/apps@accent.svg")
                             : Quickshell.iconPath(place.modelData.icon, "folder")
@@ -302,8 +336,8 @@ PanelWindow {
                         transformOrigin: Item.Bottom
                         Behavior on opacity { NumberAnimation { duration: Prefs.reduceMotion ? 1 : (placeTip.shown ? 115 : 80) } }
                         Behavior on scale { Spring { spring: Theme.popover } }
-                        anchors { bottom: parent.top; bottomMargin: 10 }
-                        x: Math.max(8 - (shelf.x + row.x + place.x), Math.min((parent.width - width) / 2, dock.width - 8 - (shelf.x + row.x + place.x) - width))
+                        anchors { bottom: placeIcon.top; bottomMargin: 10 }
+                        x: Math.max(8 - (shelf.x + row.x + place.x), Math.min((parent.width - width) / 2 + placeOffset.value, dock.width - 8 - (shelf.x + row.x + place.x) - width))
                         width: Math.min(dock.width - 16, placeText.implicitWidth + 24); height: 26; radius: 13
                         tint: Theme.dark ? "#b8282830" : "#c8f4f4f6"
                         Text { id: placeText; anchors.centerIn: parent; width: Math.min(implicitWidth, parent.width - 24); elide: Text.ElideRight; textFormat: Text.PlainText; text: place.modelData.name; color: Theme.label; font { family: Theme.fontUi; pixelSize: 13; weight: Font.Medium } }
