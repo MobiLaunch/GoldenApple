@@ -20,8 +20,36 @@ for name in sorted(standard):
 for path in (root / "apps").rglob("*.qml"):
     if lib in path.parents:
         continue
+    text = path.read_text(encoding="utf-8")
     if path.name in standard:
         errors.append(f"forked standard control outside shared store: {path.relative_to(root)}")
+    if "TextInput {" in text:
+        errors.append(f"raw TextInput outside shared TextField: {path.relative_to(root)}")
+
+
+packages = {
+    line.strip()
+    for line in (root / "distro/archiso/packages.x86_64").read_text(encoding="utf-8").splitlines()
+    if line.strip() and not line.lstrip().startswith("#")
+}
+foreign_primary = {
+    "nautilus", "gnome-software", "gnome-control-center", "gnome-clocks",
+    "gnome-text-editor", "gnome-calendar", "loupe", "geary", "fractal",
+}
+for package in sorted(foreign_primary & packages):
+    errors.append(f"foreign primary UI package returned to default image: {package}")
+
+dock = (root / "shell/Dock.qml").read_text(encoding="utf-8")
+for app_id in [
+    "org.goldengate.Files", "org.goldengate.Web", "org.goldengate.Mail",
+    "org.goldengate.Messages", "org.goldengate.Calendar", "org.goldengate.Software",
+    "org.goldengate.Settings",
+]:
+    if app_id not in dock:
+        errors.append(f"Dock no longer pins native app: {app_id}")
+for foreign_id in ["org.gnome.Nautilus", "org.gnome.Geary", "org.gnome.Fractal", "org.gnome.Calendar"]:
+    if foreign_id in dock:
+        errors.append(f"Dock reintroduced foreign application: {foreign_id}")
 
 
 # Setup must consume the canonical controls too. Compatibility wrappers are
