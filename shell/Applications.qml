@@ -1,6 +1,7 @@
 // Applications: macOS-style all-apps surface backed by the desktop-entry database.
 import Quickshell
 import Quickshell.Wayland
+import Quickshell.Services.DesktopEntries
 import QtQuick
 import QtQuick.Layouts
 import "theme"
@@ -9,8 +10,9 @@ import "components"
 PanelWindow {
     id: apps
     property bool open: false
-    Component.onCompleted: apps.open = true
-    function toggle() { open = !open; if (open) search.forceActiveFocus() }
+    function show() { open = true; Qt.callLater(() => search.forceActiveFocus()) }
+    function hide() { open = false; search.text = "" }
+    function toggle() { open ? hide() : show() }
     visible: open || fade.running
     anchors { top: true; bottom: true; left: true; right: true }
     exclusionMode: ExclusionMode.Ignore
@@ -27,7 +29,7 @@ PanelWindow {
         color: Theme.dark ? "#9c121722" : "#78e8edf6"
         opacity: apps.open ? 1 : 0
         Behavior on opacity { NumberAnimation { id: fade; duration: Prefs.reduceMotion ? 1 : 180 } }
-        MouseArea { anchors.fill: parent; onClicked: apps.open = false }
+        MouseArea { anchors.fill: parent; onClicked: apps.hide() }
     }
     Item {
         anchors { fill: parent; margins: 44 }
@@ -49,7 +51,7 @@ PanelWindow {
                     color: Theme.label; selectionColor: Theme.accent
                     font { family: Theme.fontUi; pixelSize: 17 }
                     clip: true
-                    Keys.onEscapePressed: apps.open = false
+                    Keys.onEscapePressed: apps.hide()
                 }
                 Symbol { anchors { left: parent.left; leftMargin: 16; verticalCenter: parent.verticalCenter }; name: "magnifyingglass"; size: 19; tone: "secondary" }
                 Text { anchors { left: parent.left; leftMargin: 46; verticalCenter: parent.verticalCenter }; visible: !search.text && !search.activeFocus; text: "Search"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: 17 } }
@@ -89,7 +91,7 @@ PanelWindow {
                     }
                     MouseArea {
                         id: area; anchors.fill: parent; hoverEnabled: true
-                        onClicked: { modelData.execute(); apps.open = false }
+                        onClicked: { modelData.execute(); apps.hide() }
                     }
                 }
             }
