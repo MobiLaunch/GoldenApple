@@ -34,16 +34,27 @@ packages = {
 }
 foreign_primary = {
     "nautilus", "gnome-software", "gnome-control-center", "gnome-clocks",
-    "gnome-text-editor", "gnome-calendar", "loupe", "geary", "fractal",
+    "gnome-text-editor", "gnome-calendar", "loupe", "geary", "fractal", "firefox",
 }
 for package in sorted(foreign_primary & packages):
     errors.append(f"foreign primary UI package returned to default image: {package}")
+
+# Golden Gate desktop entries may use mature engines internally (for example
+# Terminal -> ghostty), but must not directly launch the foreign primary apps
+# that have native Golden Gate replacements.
+foreign_exec = ("nautilus", "gnome-software", "gnome-control-center", "gnome-calendar",
+                "geary", "fractal", "firefox", "gnome-text-editor", "gnome-clocks", "loupe")
+for desktop in sorted((root / "apps/desktop").glob("*.desktop")):
+    text = desktop.read_text(encoding="utf-8").lower()
+    for command in foreign_exec:
+        if f"exec={command}" in text or f"exec=sh -c '{command}" in text:
+            errors.append(f"Golden Gate desktop entry launches foreign primary UI: {desktop.name} -> {command}")
 
 dock = (root / "shell/Dock.qml").read_text(encoding="utf-8")
 for app_id in [
     "org.goldengate.Files", "org.goldengate.Web", "org.goldengate.Mail",
     "org.goldengate.Messages", "org.goldengate.Calendar", "org.goldengate.Software",
-    "org.goldengate.Settings",
+    "org.goldengate.Settings", "org.goldengate.Terminal",
 ]:
     if app_id not in dock:
         errors.append(f"Dock no longer pins native app: {app_id}")
