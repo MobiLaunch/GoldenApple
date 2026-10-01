@@ -39,7 +39,7 @@ PanelWindow {
 
         ColumnLayout {
             anchors.fill: parent; spacing: 28
-            Glass {
+            Glass { variant: "clear";
                 Layout.alignment: Qt.AlignHCenter
                 Layout.preferredWidth: Math.min(520, parent.width - 40)
                 Layout.preferredHeight: 52; radius: 26
