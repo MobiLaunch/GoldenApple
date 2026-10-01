@@ -165,6 +165,7 @@ ShellRoot {
             focus: true
 
             readonly property string home: Quickshell.env("HOME")
+            readonly property string requestedPath: Quickshell.env("GG_PHOTOS_OPEN") || ""
             readonly property var dirs: (Quickshell.env("GG_PHOTOS_DIRS") || [Quickshell.env("XDG_PICTURES_DIR") || home + "/Pictures", Quickshell.env("XDG_VIDEOS_DIR") || home + "/Videos"].join(":")).split(":").filter((d) => d)
             readonly property string cacheDir: (Quickshell.env("XDG_CACHE_HOME") || home + "/.cache") + "/golden-gate/photos"
             readonly property string configFile: (Quickshell.env("XDG_CONFIG_HOME") || home + "/.config") + "/golden-gate/photos.json"
@@ -256,7 +257,18 @@ ShellRoot {
                             const c = l.split("\t")
                             return { path: c[0], mtime: Number(c[1]), kind: c[2], seconds: Number(c[3]) || 0, thumb: c[4] || "", name: c[0].split("/").pop() }
                         })
-                        Qt.callLater(() => { if (app.oldestFirst) grid.positionViewAtEnd() })
+                        Qt.callLater(() => {
+                            if (app.requestedPath) {
+                                app.section = "library"
+                                const i = app.shown.findIndex((it) => it.path === app.requestedPath)
+                                if (i >= 0) {
+                                    app.selected = i
+                                    app.viewing = i
+                                }
+                            } else if (app.oldestFirst) {
+                                grid.positionViewAtEnd()
+                            }
+                        })
                     }
                 }
             }
