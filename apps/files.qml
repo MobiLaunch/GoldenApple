@@ -364,7 +364,7 @@ ShellRoot {
                 anchors.centerIn: parent
                 width: Math.min(460, parent.width - 40)
                 height: 260
-                symbol: "exclamationmark-triangle"
+                symbol: "info"
                 title: "Folder Unavailable"
                 text: files.error
             }
