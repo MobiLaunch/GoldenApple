@@ -2,7 +2,7 @@
 Type=Application
 Name=Calendar
 Comment=Manage events and schedules
-Icon=org.goldengate.Calendar
+Icon=office-calendar
 Exec=qs -n -p @APPS@/calendar.qml
 StartupWMClass=org.goldengate.Calendar
 Categories=Office;Calendar;
