@@ -79,4 +79,10 @@ firefox
 ghostty
 sudo
 archinstall
+arch-install-scripts
+gptfdisk
+parted
+dosfstools
+rsync
+pacman-contrib
 
