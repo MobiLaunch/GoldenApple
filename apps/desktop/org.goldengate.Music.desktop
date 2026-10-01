@@ -2,7 +2,7 @@
 Type=Application
 Name=Music
 Comment=Play your music and internet radio
-Icon=org.goldengate.Music
+Icon=multimedia-audio-player
 Exec=qs -n -p @APPS@/music.qml
 StartupWMClass=org.goldengate.Music
 Categories=AudioVideo;Audio;Player;
