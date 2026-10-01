@@ -111,11 +111,7 @@ ShellRoot {
                 Column {
                     id: nav
                     width: parent.width
-                    component Heading: Text {
-                        leftPadding: 10; topPadding: 12; bottomPadding: 4
-                        color: Theme.secondaryLabel
-                        font { family: Theme.fontUi; pixelSize: 11; weight: Font.DemiBold }
-                    }
+                    component Heading: SidebarSection { topSpacing: 12 }
                     component NavItem: SidebarRow {
                         id: navItem
                         property string key
