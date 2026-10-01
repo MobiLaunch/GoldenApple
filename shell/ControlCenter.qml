@@ -67,7 +67,7 @@ PanelWindow {
 
     // ---------------------------------------------------------------- building blocks
     // Stagger: each module springs in slightly after the previous one.
-    component Module: Glass {
+    component Module: Glass { variant: "clear";
         id: mod
         property int order: 0
         // Stagger: each module springs in slightly after the previous one; a timer
@@ -116,7 +116,7 @@ PanelWindow {
             anchors { fill: parent; leftMargin: 8; rightMargin: 12 }
             spacing: 10
             // The toggle is a glass button of its own inside the module.
-            Glass {
+            Glass { variant: "clear";
                 implicitWidth: 48; implicitHeight: 48; radius: 24
                 tint: Qt.rgba(1, 1, 1, 0.18)
                 filled: w.on
