@@ -42,24 +42,28 @@ ShellRoot {
                 Column {
                     id: nav
                     width: parent.width
-                    SidebarItem { symbol: "search"; text: "Search"; selected: app.page === "search"; onClicked: app.go("search") }
-                    SidebarItem { symbol: "house"; text: "Home"; selected: app.page === "home"; onClicked: app.go("home") }
-                    SidebarItem { symbol: "broadcast"; text: "Radio"; selected: app.page === "radio"; onClicked: app.go("radio") }
+                    SidebarRow { symbolTone: "auto"; selectedSymbolTone: "red"; selectedTextColor: "#fa2d48"; selectedFill: Theme.dark ? "#1ffa2d48" : "#14fa2d48"; symbol: "search"; text: "Search"; selected: app.page === "search"; onClicked: app.go("search") }
+                    SidebarRow { symbolTone: "auto"; selectedSymbolTone: "red"; selectedTextColor: "#fa2d48"; selectedFill: Theme.dark ? "#1ffa2d48" : "#14fa2d48"; symbol: "house"; text: "Home"; selected: app.page === "home"; onClicked: app.go("home") }
+                    SidebarRow { symbolTone: "auto"; selectedSymbolTone: "red"; selectedTextColor: "#fa2d48"; selectedFill: Theme.dark ? "#1ffa2d48" : "#14fa2d48"; symbol: "broadcast"; text: "Radio"; selected: app.page === "radio"; onClicked: app.go("radio") }
                     component Heading: Text {
                         leftPadding: 10; topPadding: 14; bottomPadding: 4
                         color: Theme.secondaryLabel
                         font { family: Theme.fontUi; pixelSize: 11; weight: Font.DemiBold }
                     }
                     Heading { text: "Library" }
-                    SidebarItem { symbol: "clock"; text: "Recently Added"; selected: app.page === "recent"; onClicked: app.go("recent") }
-                    SidebarItem { symbol: "mic"; text: "Artists"; selected: app.page === "artists"; onClicked: app.go("artists") }
-                    SidebarItem { symbol: "gallery"; text: "Albums"; selected: app.page === "albums"; onClicked: app.go("albums") }
-                    SidebarItem { symbol: "music"; text: "Songs"; selected: app.page === "songs"; onClicked: app.go("songs") }
+                    SidebarRow { symbolTone: "auto"; selectedSymbolTone: "red"; selectedTextColor: "#fa2d48"; selectedFill: Theme.dark ? "#1ffa2d48" : "#14fa2d48"; symbol: "clock"; text: "Recently Added"; selected: app.page === "recent"; onClicked: app.go("recent") }
+                    SidebarRow { symbolTone: "auto"; selectedSymbolTone: "red"; selectedTextColor: "#fa2d48"; selectedFill: Theme.dark ? "#1ffa2d48" : "#14fa2d48"; symbol: "mic"; text: "Artists"; selected: app.page === "artists"; onClicked: app.go("artists") }
+                    SidebarRow { symbolTone: "auto"; selectedSymbolTone: "red"; selectedTextColor: "#fa2d48"; selectedFill: Theme.dark ? "#1ffa2d48" : "#14fa2d48"; symbol: "gallery"; text: "Albums"; selected: app.page === "albums"; onClicked: app.go("albums") }
+                    SidebarRow { symbolTone: "auto"; selectedSymbolTone: "red"; selectedTextColor: "#fa2d48"; selectedFill: Theme.dark ? "#1ffa2d48" : "#14fa2d48"; symbol: "music"; text: "Songs"; selected: app.page === "songs"; onClicked: app.go("songs") }
                     Heading { text: "Playlists"; visible: musicLib.playlists.length > 0 }
                     Repeater {
                         model: musicLib.playlists
-                        delegate: SidebarItem {
+                        delegate: SidebarRow {
                             required property var modelData
+                            symbolTone: "auto"
+                            selectedSymbolTone: "red"
+                            selectedTextColor: "#fa2d48"
+                            selectedFill: Theme.dark ? "#1ffa2d48" : "#14fa2d48"
                             symbol: "list"; text: modelData.name
                             selected: app.page === "playlist" && app.arg?.path === modelData.path
                             onClicked: app.go("playlist", modelData)
