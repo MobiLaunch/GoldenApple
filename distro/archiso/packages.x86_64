@@ -58,9 +58,6 @@ xdg-user-dirs
 # Golden Gate owns Settings, App Store, Clock, TextEdit, Photos and other primary UI.
 # App Store backend: native Golden Gate frontend + Flatpak/Flathub metadata.
 flatpak
-archlinux-appstream-data
-xdg-desktop-portal-hyprland
-xdg-desktop-portal-gtk
 ca-certificates
 curl
 # Chromium engine and Python bindings for Golden Gate Web
@@ -71,7 +68,6 @@ python
 firefox
 ghostty
 sudo
-archinstall
 arch-install-scripts
 gptfdisk
 parted
