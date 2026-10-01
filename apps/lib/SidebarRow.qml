@@ -8,7 +8,7 @@ Item {
     property string symbol: ""
     property bool selected: false
     property string badge: ""
-    property color symbolColor: Theme.accent
+    property string symbolTone: "accent"
     signal clicked()
 
     implicitHeight: 31
@@ -37,7 +37,7 @@ Item {
         anchors.verticalCenter: parent.verticalCenter
         name: row.symbol
         size: 16
-        color: row.symbolColor
+        tone: row.symbolTone
         scale: !Theme.reduceMotion && tap.pressed ? 0.92 : 1
         Behavior on scale { NumberAnimation { duration: Theme.reduceMotion ? 1 : 70; easing.type: Easing.OutCubic } }
     }
