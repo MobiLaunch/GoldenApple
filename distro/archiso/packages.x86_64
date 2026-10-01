@@ -64,8 +64,6 @@ curl
 qt6-webengine
 pyside6
 python
-# Optional independent fallback
-firefox
 ghostty
 sudo
 arch-install-scripts
