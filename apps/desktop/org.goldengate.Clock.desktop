@@ -2,7 +2,7 @@
 Type=Application
 Name=Clock
 Comment=World clocks, alarms, stopwatch and timer
-Icon=org.goldengate.Clock
+Icon=org.gnome.clocks
 Exec=qs -n -p @APPS@/clock.qml
 StartupWMClass=org.goldengate.Clock
 Categories=Utility;Clock;
