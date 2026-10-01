@@ -31,7 +31,7 @@ required = {
     "PrivacyPane.qml": ["setPrivacy("],
     "SoundPane.qml": ["wpctl"],
     "TrackpadPane.qml": ["setInput("],
-    "UpdatePane.qml": ["pacman -Syu"],
+    "UpdatePane.qml": ["update-helper.py", "ProgressBar", "etaText"],
     "UsersPane.qml": ["passwd"],
     "WallpaperPane.qml": ['setPref(["wallpaper"]'],
     "WifiPane.qml": ["nmcli"],
