@@ -23,6 +23,7 @@ ShellRoot {
             property var disks: []
             property var disk: null
             property bool liveSession: false
+            property bool preflightReady: false
 
             property string username: ""
             property string password: ""
@@ -51,7 +52,7 @@ ShellRoot {
             }
 
             function canContinue() {
-                if (!liveSession || installing)
+                if (!liveSession || !preflightReady || installing)
                     return false
                 if (step === 1)
                     return !!disk
@@ -120,12 +121,27 @@ ShellRoot {
             }
 
             Process {
+                id: preflight
                 running: true
-                command: ["sh", "-c", "test -d /run/archiso"]
-                onExited: (code) => {
-                    stage.liveSession = code === 0
-                    if (code !== 0)
-                        stage.error = "Installation is only available when booted from Golden Gate live media."
+                command: ["python3", stage.helper, "preflight"]
+                stdout: StdioCollector {
+                    onStreamFinished: {
+                        try {
+                            const r = JSON.parse(text)
+                            stage.liveSession = !!r.live
+                            stage.preflightReady = !!r.ok
+                            if (!r.live)
+                                stage.error = "Installation is only available when booted from Golden Gate live media."
+                            else if (!r.uefi)
+                                stage.error = "Golden Gate currently requires the computer to be booted in UEFI mode before installation."
+                            else if ((r.missing ?? []).length)
+                                stage.error = "The live image is missing installer tools: " + r.missing.join(", ")
+                            else
+                                stage.error = ""
+                        } catch (e) {
+                            stage.error = "The installer preflight check could not be read."
+                        }
+                    }
                 }
             }
 
