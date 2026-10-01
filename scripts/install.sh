@@ -73,10 +73,8 @@ install_extras() {
   printf '#!/bin/sh\nexec python3 /usr/lib/golden-gate/pref-helper.py "$@"\n' > "$BIN/gg-pref"
   printf '#!/bin/sh\nexec /usr/lib/golden-gate/hyprglass-sync.sh "$@"\n' > "$BIN/gg-hyprglass-sync"
   printf '#!/bin/sh\nexec /usr/lib/golden-gate/apply-preferences.sh "$@"\n' > "$BIN/gg-apply-preferences"
-  cp "$REPO/themes/firefox/recover.sh" "$SHARE/firefox-recover.sh"
-  printf '#!/bin/sh\nbash /usr/share/golden-gate/firefox-recover.sh --profiles\nexec firefox --safe-mode "$@"\n' > "$BIN/gg-firefox-recover"
   cp "$REPO/distro/archiso/overlay/usr/local/bin/gg-session" "$BIN/gg-session"
-  chmod 755 "$BIN/gg-diagnostics" "$BIN/gg-settings" "$BIN/gg-web" "$BIN/gg-install" "$BIN/gg-software" "$BIN/gg-files" "$BIN/gg-pref" "$BIN/gg-hyprglass-sync" "$BIN/gg-apply-preferences" "$BIN/gg-firefox-recover" "$BIN/gg-session"
+  chmod 755 "$BIN/gg-diagnostics" "$BIN/gg-settings" "$BIN/gg-web" "$BIN/gg-install" "$BIN/gg-software" "$BIN/gg-files" "$BIN/gg-pref" "$BIN/gg-hyprglass-sync" "$BIN/gg-apply-preferences" "$BIN/gg-session"
   mkdir -p "$R/usr/share/wayland-sessions"
   cat > "$R/usr/share/wayland-sessions/golden-gate.desktop" <<'EOF'
 [Desktop Entry]
@@ -124,7 +122,6 @@ EOF
     cp "$REPO/themes/fontconfig/60-golden-gate.conf" "$SKEL/.config/fontconfig/conf.d/60-golden-gate.conf"
     printf '[Default Applications]\nx-scheme-handler/http=org.goldengate.Web.desktop\nx-scheme-handler/https=org.goldengate.Web.desktop\ntext/html=org.goldengate.Web.desktop\ninode/directory=org.goldengate.Files.desktop\ntext/plain=org.goldengate.TextEdit.desktop\ntext/markdown=org.goldengate.TextEdit.desktop\napplication/json=org.goldengate.TextEdit.desktop\n' > "$SKEL/.config/mimeapps.list"
   fi
-  bash "$REPO/themes/firefox/recover.sh" --system "$R/usr/lib/firefox"
   say "GNOME defaults (fonts, icons, Finder-style list view) → $R/usr/share/glib-2.0/schemas"
   mkdir -p "$R/usr/share/glib-2.0/schemas"
   cp "$REPO/themes/gsettings/90_golden-gate.gschema.override" "$R/usr/share/glib-2.0/schemas/"
@@ -265,20 +262,11 @@ done
 place "$REPO/themes/ghostty/config" "$CONF/ghostty/config"
 for f in "$REPO"/themes/ghostty/themes/*; do place "$f" "$CONF/ghostty/themes/$(basename "$f")"; done
 
-# Web owns its Chromium UI. Firefox is left as an independent fallback browser.
+# Web owns the browser UI and Chromium engine; do not expose a second browser chrome.
 printf '#!/bin/sh\nexec sh "%s/browser/launch.sh" "$@"\n' "$APPS_RUN" > "$BIN/gg-web"
 printf '#!/bin/sh\nexec sh "%s/installer/launch.sh" "$@"\n' "$APPS_RUN" > "$BIN/gg-install"
 chmod +x "$BIN/gg-web" "$BIN/gg-install"
-place "$REPO/themes/firefox/recover.sh" "$DATA/golden-gate/firefox-recover.sh"
-printf '#!/bin/sh\nbash "%s/golden-gate/firefox-recover.sh" --profiles\nexec firefox --safe-mode "$@"\n' "$DATA" > "$BIN/gg-firefox-recover"
 # System paths inside generated launchers must refer to the booted image, not its build root.
-if [[ $MODE == system ]]; then
-  printf '#!/bin/sh\nbash /usr/share/golden-gate/firefox-recover.sh --profiles\nexec firefox --safe-mode "$@"\n' > "$BIN/gg-firefox-recover"
-  bash "$REPO/themes/firefox/recover.sh" --system "$ROOT/usr/lib/firefox"
-else
-  bash "$REPO/themes/firefox/recover.sh" --profiles
-fi
-chmod +x "$BIN/gg-firefox-recover"
 # Respect an existing browser choice; seed MIME defaults only on a fresh install.
 if [[ ! -e "$CONF/mimeapps.list" ]]; then
   printf '[Default Applications]\nx-scheme-handler/http=org.goldengate.Web.desktop\nx-scheme-handler/https=org.goldengate.Web.desktop\ntext/html=org.goldengate.Web.desktop\ninode/directory=org.goldengate.Files.desktop\ntext/plain=org.goldengate.TextEdit.desktop\ntext/markdown=org.goldengate.TextEdit.desktop\napplication/json=org.goldengate.TextEdit.desktop\n' > "$CONF/mimeapps.list"
