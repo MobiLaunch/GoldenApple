@@ -70,7 +70,7 @@ const appNames = {
   photos: ["multimedia-photo-viewer", "org.gnome.Loupe", "shotwell", "gthumb"],
   settings: ["preferences-system", "org.gnome.Settings", "systemsettings"],
   terminal: ["utilities-terminal", "org.gnome.Console", "com.mitchellh.ghostty", "kitty", "foot", "Alacritty"],
-  notes: ["org.gnome.Notes", "gnome-notes"],
+  notes: ["accessories-text-editor", "org.gnome.TextEditor", "gnome-notes"],
   calendar: ["office-calendar", "org.gnome.Calendar"],
   calculator: ["accessories-calculator", "org.gnome.Calculator"],
   clock: ["goldengate-clock", "clock", "alarm-clock"],
