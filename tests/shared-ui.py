@@ -7,7 +7,7 @@ root = Path(__file__).resolve().parents[1]
 lib = root / "apps/lib"
 standard = {
     "AppWindow.qml", "Button.qml", "Checkbox.qml", "FocusRing.qml", "Glass.qml",
-    "PopUpButton.qml", "PopupMenu.qml", "RoundedImage.qml", "Segmented.qml",
+    "PopUpButton.qml", "PopupMenu.qml", "ProgressBar.qml", "RoundedImage.qml", "Segmented.qml",
     "Slider.qml", "Spring.qml", "SpringValue.qml", "Switch.qml", "Symbol.qml",
     "TextField.qml", "ToolbarButton.qml", "ToolbarPill.qml", "TrafficLights.qml",
 }
