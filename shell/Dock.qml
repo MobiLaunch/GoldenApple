@@ -201,7 +201,8 @@ PanelWindow {
                         id: icon
                         width: iconSize.value; height: iconSize.value
                         x: (tile.width - width) / 2 + iconOffset.value
-                        y: tile.height - height
+                        property real launchOffset: 0
+                        y: tile.height - height + launchOffset
                         z: Math.round(width * 10)
                         source: tile.calendar ? calBlank.source : Quickshell.iconPath(tile.modelData.icon, "application-x-executable")
                         sourceSize: Qt.size(dock.maxSize * 2, dock.maxSize * 2)
@@ -214,13 +215,13 @@ PanelWindow {
                         layer.enabled: gpu && tipArea.pressed
                         layer.effect: MultiEffect { brightness: -0.28 }
                         opacity: !gpu && tipArea.pressed ? 0.7 : 1
-                        SequentialAnimation on y {
+                        SequentialAnimation on launchOffset {
                             id: bounce
                             running: false
-                            NumberAnimation { to: -22; duration: 190; easing.type: Easing.OutQuad }
-                            NumberAnimation { to: 0; duration: 190; easing.type: Easing.InQuad }
-                            NumberAnimation { to: -8; duration: 130; easing.type: Easing.OutQuad }
-                            NumberAnimation { to: 0; duration: 130; easing.type: Easing.InQuad }
+                            NumberAnimation { to: -22; duration: 165; easing.type: Easing.OutQuad }
+                            NumberAnimation { to: 0; duration: 180; easing.type: Easing.InOutQuad }
+                            NumberAnimation { to: -7; duration: 110; easing.type: Easing.OutQuad }
+                            NumberAnimation { to: 0; duration: 120; easing.type: Easing.InOutQuad }
                         }
                         Text {
                             visible: tile.calendar
