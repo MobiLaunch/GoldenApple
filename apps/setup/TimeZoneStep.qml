@@ -24,19 +24,12 @@ StepFrame {
         stdout: StdioCollector { onStreamFinished: step.zones = text.split("\n").filter((z) => z.includes("/")) }
     }
 
-    Rectangle {
-        id: search
-        width: parent.width; height: 30; radius: 8
-        color: Theme.dark ? "#1affffff" : "#b3ffffff"
-        border { width: 0.5; color: Theme.separator }
-        Symbol { x: 9; anchors.verticalCenter: parent.verticalCenter; name: "search"; tone: "gray"; size: 13 }
-        TextInput {
-            id: q
-            x: 30; width: parent.width - 40; anchors.verticalCenter: parent.verticalCenter
-            color: Theme.label; clip: true
-            font { family: Theme.fontUi; pixelSize: 13 }
-            Text { visible: !q.text; text: "Search for a city"; color: Theme.tertiaryLabel; font: q.font }
-        }
+    TextField {
+        id: q
+        width: parent.width
+        height: 30
+        search: true
+        placeholder: "Search for a city"
     }
     ListView {
         id: list
