@@ -2,7 +2,7 @@
 Type=Application
 Name=Messages
 Comment=Chat over Matrix
-Icon=org.goldengate.Messages
+Icon=internet-chat
 Exec=qs -n -p @APPS@/messages.qml
 StartupWMClass=org.goldengate.Messages
 Categories=Network;Chat;InstantMessaging;
