@@ -1,6 +1,7 @@
 // Applications: macOS-style all-apps surface backed by the desktop-entry database.
 import Quickshell
 import Quickshell.Wayland
+import Quickshell.Services.DesktopEntries
 import QtQuick
 import QtQuick.Layouts
 import "theme"
@@ -42,18 +43,21 @@ PanelWindow {
             Glass { variant: "clear";
                 Layout.alignment: Qt.AlignHCenter
                 Layout.preferredWidth: Math.min(520, parent.width - 40)
-                Layout.preferredHeight: 52; radius: 26
-                TextInput {
+                Layout.preferredHeight: 52
+                radius: 26
+                TextField {
                     id: search
-                    anchors { fill: parent; leftMargin: 46; rightMargin: 18 }
-                    verticalAlignment: TextInput.AlignVCenter
-                    color: Theme.label; selectionColor: Theme.accent
-                    font { family: Theme.fontUi; pixelSize: 17 }
-                    clip: true
-                    Keys.onEscapePressed: apps.hide()
+                    anchors { fill: parent; margins: 7 }
+                    search: true
+                    placeholder: "Search"
+                    color: "transparent"
+                    border.width: input.activeFocus ? 1.5 : 0
+                    border.color: input.activeFocus
+                        ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.46)
+                        : "transparent"
+                    input.font.pixelSize: 17
+                    input.Keys.onEscapePressed: apps.hide()
                 }
-                Symbol { anchors { left: parent.left; leftMargin: 16; verticalCenter: parent.verticalCenter }; name: "magnifyingglass"; size: 19; tone: "secondary" }
-                Text { anchors { left: parent.left; leftMargin: 46; verticalCenter: parent.verticalCenter }; visible: !search.text && !search.activeFocus; text: "Search"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: 17 } }
             }
             ScriptModel {
                 id: applicationModel
