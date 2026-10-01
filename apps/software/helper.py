@@ -41,7 +41,7 @@ def prepare(refresh: bool = True) -> tuple[bool, str]:
 
     if not remote_exists():
         p = run(
-            ["flatpak", "--user", "remote-add", "--if-not-exists", "--from", REMOTE, REMOTE_URL],
+            ["flatpak", "remote-add", "--user", "--if-not-exists", REMOTE, REMOTE_URL],
             timeout=35,
         )
         if p.returncode != 0:
@@ -114,10 +114,57 @@ def update_ids() -> set[str]:
     return {x.strip() for x in p.stdout.splitlines() if x.strip()}
 
 
+def fallback_catalog(installed: set[str], updates: set[str]) -> list[dict[str, object]]:
+    p = run([
+        "flatpak", "remote-ls", "--user", "--cached", "--app",
+        "--columns=application,name,description", REMOTE,
+    ], timeout=45)
+    if p.returncode != 0:
+        # A fresh remote may not have a complete cache yet; allow one normal
+        # remote-ls pass before giving up.
+        p = run([
+            "flatpak", "remote-ls", "--user", "--app",
+            "--columns=application,name,description", REMOTE,
+        ], timeout=60)
+    if p.returncode != 0:
+        return []
+
+    apps: list[dict[str, object]] = []
+    for raw in p.stdout.splitlines():
+        if not raw.strip():
+            continue
+        parts = raw.split("\t")
+        app_id = parts[0].strip() if parts else ""
+        if not app_id or "." not in app_id:
+            continue
+        name = parts[1].strip() if len(parts) > 1 and parts[1].strip() else app_id.split(".")[-1]
+        summary = parts[2].strip() if len(parts) > 2 else ""
+        apps.append({
+            "id": app_id,
+            "name": name,
+            "summary": summary,
+            "categories": [],
+            "keywords": [],
+            "project": "",
+            "icon": "",
+            "desktop": "",
+            "installed": app_id in installed,
+            "update": app_id in updates,
+        })
+    apps.sort(key=lambda a: str(a["name"]).casefold())
+    return apps[:1800]
+
+
 def catalog() -> int:
     okay, warning = prepare(refresh=True)
+    installed = installed_ids()
+    updates = update_ids()
     files = appstream_files()
     if not files:
+        apps = fallback_catalog(installed, updates)
+        if apps:
+            emit("catalog", apps=apps, warning=warning or "Using Flatpak's cached catalog.")
+            return 0
         emit("error", message=warning or "The Flathub catalog is not available yet. Check your internet connection.")
         return 1
 
@@ -129,11 +176,13 @@ def catalog() -> int:
         else:
             root = ET.parse(source).getroot()
     except Exception as exc:
+        apps = fallback_catalog(installed, updates)
+        if apps:
+            emit("catalog", apps=apps, warning=f"Using Flatpak's fallback catalog because AppStream could not be read: {exc}")
+            return 0
         emit("error", message=f"The local App Store catalog could not be read: {exc}")
         return 1
 
-    installed = installed_ids()
-    updates = update_ids()
     apps: list[dict[str, object]] = []
 
     for component in root.findall("component"):
