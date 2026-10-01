@@ -21,10 +21,11 @@ jobs:
         run: find scripts distro apps themes compositor -type f -name "*.sh" -print0 | xargs -0 -n1 bash -n
       - name: Guard the login and glass paths
         run: |
-          grep -q 'LazyLoader { id: applicationsLoader' shell/shell.qml
-          grep -q 'applicationsOpenRetry' shell/Dock.qml
-          grep -q 'Component.onCompleted: apps.open = true' shell/Applications.qml
-          grep -q 'assets/symbols/apps.svg' shell/Dock.qml
+          grep -q 'Applications { id: applicationsPanel' shell/shell.qml
+          grep -q 'Quickshell.Services.DesktopEntries' shell/Applications.qml
+          ! grep -q 'applicationsOpenRetry' shell/Dock.qml
+          grep -q 'apps@accent.svg' shell/Dock.qml
+          grep -q 'SpringValue' shell/Dock.qml
           grep -q 'GG_WIDGETS' shell/shell.qml
           grep -q 'golden-gate-shell.log' distro/archiso/overlay/usr/local/bin/gg-session
           ! grep -q 'qs -c' distro/archiso/overlay/usr/local/bin/gg-session
@@ -37,6 +38,11 @@ jobs:
           grep -q 'org.goldengate.Software' shell/Dock.qml
           bash -n distro/archiso/overlay/usr/local/bin/gg-session
           bash -n apps/software/open.sh
+          ! grep -q 'ghostty' apps/settings/panes/UpdatePane.qml
+          grep -q 'update-helper.py' apps/settings/panes/UpdatePane.qml
+          grep -q 'ERASE:' apps/installer/helper.py
+          grep -q 'rsync' apps/installer/helper.py
+          ! grep -q 'archinstall' apps/installer.qml
       - name: Stage extras and new-account desktop
         run: |
           root="$(mktemp -d)"
@@ -58,6 +64,8 @@ jobs:
           test -f "$root/usr/share/applications/org.goldengate.Software.desktop"
           test -f "$root/usr/share/golden-gate/apps/installer.qml"
           test -f "$root/usr/share/golden-gate/apps/installer/helper.py"
+          test -f "$root/usr/share/golden-gate/apps/settings/update-helper.py"
+          test -f "$root/usr/share/golden-gate/ui/ProgressBar.qml"
           test -d "$root/usr/share/golden-gate/ui"
           test -L "$root/usr/share/golden-gate/apps/lib"
           test "$(readlink "$root/usr/share/golden-gate/apps/lib")" = "../ui"
