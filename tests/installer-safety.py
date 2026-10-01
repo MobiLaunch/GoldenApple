@@ -18,6 +18,10 @@ for needle in [
     "live_device()",
     'sys.argv[1] == "disks"',
     'sys.argv[1] == "install"',
+    "release_device(device)",
+    "wait_for_partitions(boot, root)",
+    '"--info=progress2"',
+    "boot_disk = live_device()",
 ]:
     if needle not in source:
         raise SystemExit(f"installer safety gate missing: {needle}")
@@ -48,6 +52,13 @@ JSON
     rows = json.loads(out)
     if [r["path"] for r in rows] != ["/dev/sda"]:
         raise SystemExit(f"disk discovery safety filter failed: {rows!r}")
+
+# Target preparation must actively release stale mounts/swap instead of
+# relying on the destination already being idle.
+if 'run(["swapoff", path], check=False)' not in source:
+    raise SystemExit("installer no longer deactivates target swap")
+if 'run(["umount", "-R", mountpoint], check=False)' not in source:
+    raise SystemExit("installer no longer unmounts target filesystems")
 
 # CI is not an ArchISO session. An install request must therefore fail before
 # device validation or any destructive utility can run.
