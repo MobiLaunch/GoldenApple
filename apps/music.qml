@@ -45,11 +45,7 @@ ShellRoot {
                     SidebarRow { symbolTone: "auto"; selectedSymbolTone: "red"; selectedTextColor: "#fa2d48"; selectedFill: Theme.dark ? "#1ffa2d48" : "#14fa2d48"; symbol: "search"; text: "Search"; selected: app.page === "search"; onClicked: app.go("search") }
                     SidebarRow { symbolTone: "auto"; selectedSymbolTone: "red"; selectedTextColor: "#fa2d48"; selectedFill: Theme.dark ? "#1ffa2d48" : "#14fa2d48"; symbol: "house"; text: "Home"; selected: app.page === "home"; onClicked: app.go("home") }
                     SidebarRow { symbolTone: "auto"; selectedSymbolTone: "red"; selectedTextColor: "#fa2d48"; selectedFill: Theme.dark ? "#1ffa2d48" : "#14fa2d48"; symbol: "broadcast"; text: "Radio"; selected: app.page === "radio"; onClicked: app.go("radio") }
-                    component Heading: Text {
-                        leftPadding: 10; topPadding: 14; bottomPadding: 4
-                        color: Theme.secondaryLabel
-                        font { family: Theme.fontUi; pixelSize: 11; weight: Font.DemiBold }
-                    }
+                    component Heading: SidebarSection {}
                     Heading { text: "Library" }
                     SidebarRow { symbolTone: "auto"; selectedSymbolTone: "red"; selectedTextColor: "#fa2d48"; selectedFill: Theme.dark ? "#1ffa2d48" : "#14fa2d48"; symbol: "clock"; text: "Recently Added"; selected: app.page === "recent"; onClicked: app.go("recent") }
                     SidebarRow { symbolTone: "auto"; selectedSymbolTone: "red"; selectedTextColor: "#fa2d48"; selectedFill: Theme.dark ? "#1ffa2d48" : "#14fa2d48"; symbol: "mic"; text: "Artists"; selected: app.page === "artists"; onClicked: app.go("artists") }
@@ -71,32 +67,10 @@ ShellRoot {
                     }
                 }
             },
-            // You
-            Item {
+            AccountRow {
                 anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
                 height: 36
-                Rectangle {
-                    id: avatar
-                    x: 6; anchors.verticalCenter: parent.verticalCenter
-                    width: 26; height: 26; radius: 13
-                    gradient: Gradient {
-                        GradientStop { position: 0; color: "#a1a1a6" }
-                        GradientStop { position: 1; color: "#6e6e73" }
-                    }
-                    Text {
-                        anchors.centerIn: parent
-                        text: app.userName.split(" ").map((w) => w.charAt(0)).join("").slice(0, 2).toUpperCase()
-                        color: "#ffffff"
-                        font { family: Theme.fontUi; pixelSize: 10; weight: Font.DemiBold }
-                    }
-                }
-                Text {
-                    x: 40; anchors.verticalCenter: parent.verticalCenter
-                    width: parent.width - 46; elide: Text.ElideRight
-                    text: app.userName
-                    color: Theme.label
-                    font { family: Theme.fontUi; pixelSize: 13; weight: Font.Medium }
-                }
+                name: app.userName
             }
         ]
 
