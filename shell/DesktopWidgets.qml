@@ -35,7 +35,8 @@ PanelWindow {
         Widget {
             x: 28; y: 64; width: 250; height: 128; radius: 28
             Column {
-                anchors { fill: parent; margins: 18 }; spacing: 1
+                anchors { fill: parent; margins: 18 }
+                spacing: 1
                 Text { text: Qt.formatDate(clock.date, "dddd"); color: Theme.accent; font { family: Theme.fontUi; pixelSize: 15; weight: Font.DemiBold } }
                 Text { text: Qt.formatDate(clock.date, "MMMM d"); color: Theme.label; font { family: Theme.fontUi; pixelSize: 27; weight: Font.DemiBold } }
                 Text { text: Qt.formatTime(clock.date, "h:mm"); color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: 21 } }
@@ -44,7 +45,8 @@ PanelWindow {
         Widget {
             x: 28; y: 208; width: 250; height: 128; radius: 28
             Column {
-                anchors { fill: parent; margins: 18 }; spacing: 7
+                anchors { fill: parent; margins: 18 }
+                spacing: 7
                 Text { text: "Now Playing"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: 13; weight: Font.DemiBold } }
                 Text { width: parent.width; text: board.player?.trackTitle || "Nothing Playing"; elide: Text.ElideRight; color: Theme.label; font { family: Theme.fontUi; pixelSize: 18; weight: Font.DemiBold } }
                 Text { width: parent.width; text: board.player?.trackArtist || ""; elide: Text.ElideRight; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: 14 } }
