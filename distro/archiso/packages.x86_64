@@ -9,6 +9,7 @@ xdg-desktop-portal-hyprland
 xdg-desktop-portal-gtk
 polkit-gnome
 gnome-keyring
+libsecret
 plymouth
 sddm
 qt6-declarative
@@ -55,7 +56,6 @@ xdg-user-dirs
 
 # External apps retained only where they provide mature system/protocol backends.
 # Golden Gate owns Settings, App Store, Clock, TextEdit, Photos and other primary UI.
-geary
 fractal
 # App Store backend: native Golden Gate frontend + Flatpak/Flathub metadata.
 flatpak
