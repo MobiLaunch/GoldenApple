@@ -66,10 +66,18 @@ pyside6
 python
 ghostty
 sudo
+
+# Native Files / MIME launch plumbing.
+glib2
+xdg-utils
+
+# Golden Gate installer and in-pane Software Update backend.
 arch-install-scripts
 gptfdisk
 parted
 dosfstools
+e2fsprogs
+mkinitcpio
 rsync
 pacman-contrib
 
