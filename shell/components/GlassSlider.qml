@@ -84,7 +84,7 @@ Glass { variant: "clear";
                     onPositionChanged: (m) => { if (pressed) set(m.x) }
                 }
             }
-            Symbol { name: root.highIcon; size: 16 }
+            Symbol { name: root.highIcon; size: 16; tone: "white" }
         }
     }
 }
