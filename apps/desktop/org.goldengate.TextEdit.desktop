@@ -2,7 +2,7 @@
 Type=Application
 Name=TextEdit
 Comment=Create and edit plain text documents
-Icon=org.gnome.TextEditor
+Icon=org.goldengate.TextEdit
 Exec=sh @APPS@/textedit/open.sh %F
 StartupWMClass=org.goldengate.TextEdit
 Categories=Utility;TextEditor;
