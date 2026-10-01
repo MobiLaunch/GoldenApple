@@ -22,6 +22,21 @@ for folder in ("apps", "shell", "themes", "design/dist"):
                     f"{path.relative_to(root)}:{lineno}: do not instantiate a QML object inside a JS ternary"
                 )
 
+# Applications.qml is a PanelWindow/QWindow. Do not shadow inherited
+# show()/hide() methods: doing so can leave the layer surface visible while the
+# launcher's own open state remains false (transparent and non-interactive).
+applications = (root / "shell" / "Applications.qml").read_text(encoding="utf-8")
+for forbidden in ("function show()", "function hide()"):
+    if forbidden in applications:
+        errors.append(f"shell/Applications.qml: shadows inherited QWindow method {forbidden}")
+
+# Dock hover geometry must remain stable. Moving/resizing the HoverHandler item
+# on entry changes its local pointer coordinates and produces a one-frame jump.
+dock = (root / "shell" / "Dock.qml").read_text(encoding="utf-8")
+for forbidden in ("x: hover.hovered ?", "width: hover.hovered", "y: hover.hovered ?"):
+    if forbidden in dock:
+        errors.append(f"shell/Dock.qml: hover-dependent hitbox geometry reintroduced: {forbidden}")
+
 if errors:
     print("\n".join(errors), file=sys.stderr)
     raise SystemExit(1)
