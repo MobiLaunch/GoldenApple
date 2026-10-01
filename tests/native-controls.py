@@ -37,6 +37,9 @@ Rectangle {
     GG.ToolbarButton { objectName: "toolbar"; x: 300; y: 130; text: "Edit" }
     GG.TextField { objectName: "field"; x: 30; y: 295; placeholder: "Search"; width: 240 }
     GG.SpringValue { objectName: "spring" }
+    GG.SidebarRow { objectName: "sidebarRow"; x: 300; y: 185; width: 180; text: "Inbox"; symbol: "envelope"; selected: true }
+    GG.ProgressBar { objectName: "progress"; x: 300; y: 240; width: 180; value: 0.42 }
+    GG.EmptyState { objectName: "emptyState"; x: 300; y: 270; width: 190; height: 80; title: "Nothing Here"; text: "Shared empty state" }
     GG.PopupMenu { id: menu; objectName: "menu" }
 }'''
 
@@ -114,6 +117,15 @@ class Controls(unittest.TestCase):
         QTest.keyClick(self.view, Qt.Key_Down)
         QTest.keyClick(self.view, Qt.Key_Return)
         self.assertEqual(pop.property('current'), 1)
+    def test_shared_sidebar_progress_and_empty_state(self):
+        row = self.control('sidebarRow')
+        self.assertIsNotNone(row)
+        spy = QSignalSpy(row.clicked)
+        self.key(row, Qt.Key_Space)
+        self.assertEqual(spy.count(), 1)
+        self.assertAlmostEqual(self.control('progress').property('value'), 0.42, places=2)
+        self.assertEqual(self.control('emptyState').property('title'), 'Nothing Here')
+
     def test_reduce_motion_stops_spring(self):
         spring = self.control('spring')
         spring.setProperty('target', 100)
