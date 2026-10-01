@@ -313,7 +313,16 @@ chmod +x "$BIN/gg-settings" "$BIN/gg-software" "$BIN/gg-files" "$BIN/gg-pref" "$
 for f in "$REPO"/apps/desktop/*.desktop; do
   sed "s#@APPS@#$APPS_RUN#g" "$f" > "$DATA/applications/$(basename "$f")"
 done
-cat > "$DATA/applications/com.mitchellh.ghostty.desktop" <<'EOF'
+# Hide Ghostty's upstream launcher without colliding with its package-owned
+# /usr/share/applications entry. /usr/local/share takes precedence system-wide;
+# user installs can safely shadow it in their own XDG data directory.
+if [[ $MODE == system ]]; then
+  GHOSTTY_DESKTOP_DIR="$ROOT/usr/local/share/applications"
+else
+  GHOSTTY_DESKTOP_DIR="$DATA/applications"
+fi
+mkdir -p "$GHOSTTY_DESKTOP_DIR"
+cat > "$GHOSTTY_DESKTOP_DIR/com.mitchellh.ghostty.desktop" <<'EOF'
 [Desktop Entry]
 Type=Application
 Name=Ghostty
