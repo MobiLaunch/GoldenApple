@@ -2,7 +2,7 @@
 Type=Application
 Name=Notes
 Comment=Write notes, lists and checklists
-Icon=gnome-notes
+Icon=accessories-text-editor
 Exec=qs -n -p @APPS@/notes.qml
 StartupWMClass=org.goldengate.Notes
 Categories=Office;Utility;
