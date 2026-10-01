@@ -74,7 +74,7 @@ ShellRoot {
                     round: true; symbol: "ellipsis"
                     onClicked: menu.popup(moreBtn, 0, height + 6, app.viewing >= 0 || app.selected >= 0 ? [
                         { text: "Open With Default App", action: () => Qt.openUrlExternally(Paths.fileUrl(app.focusItem.path)) },
-                        { text: "Show in Files", action: () => Quickshell.execDetached(["nautilus", "--select", app.focusItem.path]) },
+                        { text: "Show in Files", action: () => Quickshell.execDetached(["gg-files", "--select", app.focusItem.path]) },
                         { text: "Copy Path", action: () => Quickshell.clipboardText = app.focusItem.path },
                         { separator: true },
                         { text: "Delete " + (app.focusItem.kind === "video" ? "Video" : "Photo"), action: () => app.trash(app.focusItem) },
