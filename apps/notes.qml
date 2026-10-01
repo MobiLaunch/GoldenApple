@@ -95,30 +95,17 @@ ShellRoot {
                 round: true; symbol: "search"
                 onClicked: { searchBox.visible = true; searchField.forceActiveFocus() }
             },
-            Rectangle {
+            TextField {
                 id: searchBox
                 visible: false
                 x: parent.width - width - 12
                 anchors.verticalCenter: parent.verticalCenter
-                width: Math.min(220, app.editorWidth - 160); height: 32; radius: 16
-                color: Theme.dark ? "#eb3a3a3e" : "#ebffffff"
-                border { width: 0.5; color: Theme.dark ? "#2effffff" : "#1f000000" }
-                Symbol { x: 10; anchors.verticalCenter: parent.verticalCenter; name: "search"; tone: "gray"; size: 13 }
-                TextInput {
-                    id: searchField
-                    x: 30; width: parent.width - 58; anchors.verticalCenter: parent.verticalCenter
-                    color: Theme.label
-                    font { family: Theme.fontUi; pixelSize: 13 }
-                    clip: true
-                    onTextChanged: app.search(text)
-                    Keys.onEscapePressed: { text = ""; searchBox.visible = false }
-                    Text { visible: !searchField.text; text: "Search"; color: Theme.tertiaryLabel; font: searchField.font }
-                }
-                Symbol {
-                    anchors { right: parent.right; rightMargin: 9; verticalCenter: parent.verticalCenter }
-                    name: "xmark"; tone: "gray"; size: 11
-                    TapHandler { onTapped: { searchField.text = ""; searchBox.visible = false } }
-                }
+                width: Math.min(220, app.editorWidth - 160)
+                height: 32
+                search: true
+                placeholder: "Search"
+                onTextChanged: app.search(text)
+                input.Keys.onEscapePressed: { text = ""; visible = false }
             }
         ]
 
@@ -167,21 +154,15 @@ ShellRoot {
                     }
                 }
                 // Naming a new folder
-                Rectangle {
+                TextField {
+                    id: folderName
                     visible: app.namingFolder
-                    width: parent.width; height: 30; radius: 8
-                    color: Theme.dark ? "#1affffff" : "#12000000"
-                    border { width: 2; color: Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.6) }
-                    Symbol { x: 10; anchors.verticalCenter: parent.verticalCenter; name: "folder"; tone: "accent"; size: 16 }
-                    TextInput {
-                        id: folderName
-                        x: 36; width: parent.width - 46; anchors.verticalCenter: parent.verticalCenter
-                        color: Theme.label
-                        font { family: Theme.fontUi; pixelSize: 13 }
-                        onAccepted: app.createFolder(text)
-                        Keys.onEscapePressed: app.namingFolder = false
-                        onActiveFocusChanged: if (!activeFocus && app.namingFolder) app.createFolder(text)
-                    }
+                    width: parent.width
+                    height: 30
+                    placeholder: "New Folder"
+                    onAccepted: app.createFolder(text)
+                    input.Keys.onEscapePressed: app.namingFolder = false
+                    input.onActiveFocusChanged: if (!input.activeFocus && app.namingFolder) app.createFolder(text)
                 }
             }
         ]
