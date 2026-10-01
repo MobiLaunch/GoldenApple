@@ -168,8 +168,10 @@ def install() -> int:
         shutil.rmtree(TARGET / "etc/systemd/system/getty@tty1.service.d", ignore_errors=True)
         shutil.rmtree(TARGET / "home/golden", ignore_errors=True)
 
-        # The live account must not survive onto the installed system.
+        # The live account must not survive onto the installed system, and the
+        # inherited ArchISO root account must never remain passwordless.
         run(["arch-chroot", str(TARGET), "userdel", "-f", "golden"], check=False)
+        run(["arch-chroot", str(TARGET), "passwd", "-l", "root"], check=False)
 
         (TARGET / "etc/hostname").write_text(hostname + "\n", encoding="utf-8")
         (TARGET / "etc/machine-id").write_text("", encoding="utf-8")
@@ -189,6 +191,29 @@ def install() -> int:
         user_profile = TARGET / "home" / username / ".bash_profile"
         user_profile.write_text(bash_profile.read_text(encoding="utf-8"), encoding="utf-8")
 
+        # Carry the user's live-session appearance, Dock, accessibility and input
+        # choices into the installed account without carrying the live account.
+        live_home = pathlib.Path("/home/golden")
+        for relative in [
+            pathlib.Path(".config/golden-gate"),
+            pathlib.Path(".config/hypr/golden-gate/input.conf"),
+            pathlib.Path(".config/hypr/golden-gate/accessibility.conf"),
+            pathlib.Path(".config/hypr/golden-gate/displays.conf"),
+            pathlib.Path(".config/gtk-3.0"),
+            pathlib.Path(".config/gtk-4.0"),
+            pathlib.Path(".config/ghostty"),
+        ]:
+            src = live_home / relative
+            dst = TARGET / "home" / username / relative
+            if not src.exists():
+                continue
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            if src.is_dir():
+                shutil.rmtree(dst, ignore_errors=True)
+                shutil.copytree(src, dst, symlinks=True)
+            else:
+                shutil.copy2(src, dst)
+
         gg = TARGET / "home" / username / ".config/golden-gate"
         gg.mkdir(parents=True, exist_ok=True)
         (gg / "setup-done").write_text("installed\n", encoding="utf-8")
@@ -204,6 +229,13 @@ def install() -> int:
         run(["arch-chroot", str(TARGET), "mkinitcpio", "-P"])
 
         stage(0.82, "Installing boot files", "Configuring systemd-boot…")
+        kernel = TARGET / "boot/vmlinuz-linux"
+        if not kernel.exists():
+            candidates = sorted((TARGET / "usr/lib/modules").glob("*/vmlinuz"))
+            if not candidates:
+                raise RuntimeError("The installed Linux kernel could not be located.")
+            shutil.copy2(candidates[-1], kernel)
+
         run(["arch-chroot", str(TARGET), "bootctl", "install"])
         partuuid = run(["blkid", "-s", "PARTUUID", "-o", "value", root]).stdout.strip()
         loader = TARGET / "boot/loader"
