@@ -22,7 +22,8 @@ jobs:
       - name: Guard the login and glass paths
         run: |
           grep -q 'Applications { id: applicationsPanel' shell/shell.qml
-          grep -q 'Quickshell.Services.DesktopEntries' shell/Applications.qml
+          grep -q 'DesktopEntries.applications.values' shell/Applications.qml
+          ! grep -q 'Quickshell.Services.DesktopEntries' shell/Applications.qml
           ! grep -q 'applicationsOpenRetry' shell/Dock.qml
           grep -q 'apps@accent.svg' shell/Dock.qml
           grep -q 'SpringValue' shell/Dock.qml
@@ -57,7 +58,6 @@ jobs:
           test -x "$root/usr/local/bin/gg-web"
           test -x "$root/usr/local/bin/gg-install"
           test -x "$root/usr/local/bin/gg-software"
-          test -x "$root/usr/local/bin/gg-files"
           test -x "$root/usr/local/bin/gg-files"
           test -x "$root/usr/local/bin/gg-pref"
           test -x "$root/usr/local/bin/gg-hyprglass-sync"
@@ -137,6 +137,8 @@ jobs:
         run: python tests/settings-wiring.py
       - name: Guard the shared app component store
         run: python tests/shared-ui.py
+      - name: Verify the default desktop is internally coherent
+        run: python tests/default-desktop.py
       - name: Smoke-test native app backends
         run: python tests/native-app-backends.py
       - name: Exercise native control keyboard and pointer behavior
