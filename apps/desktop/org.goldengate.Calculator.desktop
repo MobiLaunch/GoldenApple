@@ -2,7 +2,7 @@
 Type=Application
 Name=Calculator
 Comment=Perform calculations
-Icon=org.goldengate.Calculator
+Icon=accessories-calculator
 Exec=qs -n -p @APPS@/calculator.qml
 StartupWMClass=org.goldengate.Calculator
 Categories=Utility;Calculator;
