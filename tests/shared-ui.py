@@ -10,7 +10,7 @@ standard = {
     "PopUpButton.qml", "PopupMenu.qml", "ProgressBar.qml", "RoundedImage.qml", "Segmented.qml",
     "SidebarRow.qml", "EmptyState.qml",
     "Slider.qml", "Spring.qml", "SpringValue.qml", "Switch.qml", "Symbol.qml",
-    "TextField.qml", "ToolbarButton.qml", "ToolbarPill.qml", "TrafficLights.qml",
+    "TextField.qml", "TextArea.qml", "ToolbarButton.qml", "ToolbarPill.qml", "TrafficLights.qml",
 }
 errors = []
 for name in sorted(standard):
@@ -25,6 +25,8 @@ for path in (root / "apps").rglob("*.qml"):
         errors.append(f"forked standard control outside shared store: {path.relative_to(root)}")
     if "TextInput {" in text:
         errors.append(f"raw TextInput outside shared TextField: {path.relative_to(root)}")
+    if "TextEdit {" in text:
+        errors.append(f"raw TextEdit outside shared TextArea: {path.relative_to(root)}")
 
 
 packages = {
@@ -104,6 +106,14 @@ for needle in [
 ]:
     if needle not in install:
         errors.append(f"installer no longer guarantees canonical shared UI: {needle}")
+
+for needle in [
+    'ln -s "$SHARED_UI/$shared" "$SHELL_RUNTIME/components/$shared"',
+    'ln -s "$SHARED_UI/theme/Theme.qml" "$SHELL_RUNTIME/theme/Theme.qml"',
+    'ln -s "/usr/share/golden-gate/ui/$shared" "$SHELL_SKEL/components/$shared"',
+]:
+    if needle not in install:
+        errors.append(f"installer no longer links shell primitives to canonical UI: {needle}")
 
 if errors:
     print("\n".join(errors), file=sys.stderr)
