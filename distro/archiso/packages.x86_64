@@ -70,6 +70,8 @@ sudo
 # Native Files / MIME launch plumbing.
 glib2
 xdg-utils
+desktop-file-utils
+shared-mime-info
 
 # Golden Gate installer and in-pane Software Update backend.
 arch-install-scripts
