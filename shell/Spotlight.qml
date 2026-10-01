@@ -63,7 +63,7 @@ PanelWindow {
         Behavior on opacity { NumberAnimation { duration: Prefs.reduceMotion ? 1 : 140; easing.type: Easing.OutCubic } }
         Behavior on scale { enabled: !Prefs.reduceMotion; Spring { spring: Theme.popover } }
 
-        Glass {
+        Glass { variant: "clear";
             Layout.fillWidth: true
             Layout.preferredHeight: 56
             radius: 28
@@ -95,7 +95,7 @@ PanelWindow {
             }
         }
 
-        Glass {
+        Glass { variant: "clear";
             visible: spot.results.length > 0
             Layout.fillWidth: true
             Layout.preferredHeight: Math.min(list.contentHeight + 16, Math.max(60, spot.height * 0.78 - 90))
