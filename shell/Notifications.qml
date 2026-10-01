@@ -102,7 +102,7 @@ PanelWindow {
                             anchors.fill: parent; radius: 9
                             visible: parent.resolved === ""
                             gradient: Gradient { GradientStop { position: 0; color: "#ff6b5f" } GradientStop { position: 1; color: "#ff2d55" } }
-                            Symbol { anchors.centerIn: parent; name: "bell"; size: 20 }
+                            Symbol { anchors.centerIn: parent; name: "bell"; size: 20; tone: "white" }
                         }
                     }
                     ColumnLayout {
