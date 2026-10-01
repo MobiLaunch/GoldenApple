@@ -32,8 +32,9 @@ required = {
     "SoundPane.qml": ["wpctl"],
     "TrackpadPane.qml": ["setInput("],
     "UpdatePane.qml": ["update-helper.py", "ProgressBar", "etaText"],
-    "UsersPane.qml": ["passwd"],
+    "UsersPane.qml": ["account-helper.py", "pkexec", "passwordProcess"],
     "WallpaperPane.qml": ['setPref(["wallpaper"]'],
+    "LanguagePane.qml": ["localectl", "set-locale", "PopUpButton"],
     "WifiPane.qml": ["nmcli"],
 }
 for name, needles in required.items():
@@ -41,6 +42,22 @@ for name, needles in required.items():
     for needle in needles:
         if needle not in text:
             errors.append(f"{name}: missing system/persistence wiring {needle!r}")
+
+
+users = (panes / "UsersPane.qml").read_text(encoding="utf-8")
+if "ghostty" in users or "passwd;" in users:
+    errors.append("UsersPane.qml: password changes escaped to a terminal instead of native Settings")
+
+account_helper = (root / "apps" / "settings" / "account-helper.py").read_text(encoding="utf-8")
+for needle in ["PKEXEC_UID", "chpasswd", "json.load(sys.stdin)"]:
+    if needle not in account_helper:
+        errors.append(f"account-helper.py: missing secure native password plumbing {needle!r}")
+if 'input=f"{username}:{password}\\n"' not in account_helper:
+    errors.append("account-helper.py: password is no longer passed to chpasswd over stdin")
+
+language = (panes / "LanguagePane.qml").read_text(encoding="utf-8")
+if "sudo localectl" in language:
+    errors.append("LanguagePane.qml: reintroduced terminal/manual locale instructions")
 
 appearance = (panes / "AppearancePane.qml").read_text(encoding="utf-8")
 for needle in ["setMode(", "appearance.json", "accent-color", "overlay-scrolling", 'setPref(["glass"]']:
