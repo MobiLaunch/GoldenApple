@@ -2,7 +2,7 @@
 Type=Application
 Name=Maps
 Comment=Find places and get directions
-Icon=org.goldengate.Maps
+Icon=maps
 Exec=qs -n -p @APPS@/maps.qml
 StartupWMClass=org.goldengate.Maps
 Categories=Utility;Maps;
