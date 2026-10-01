@@ -12,6 +12,7 @@ import xml.etree.ElementTree as ET
 
 REMOTE = "flathub"
 REMOTE_URL = "https://dl.flathub.org/repo/flathub.flatpakrepo"
+CACHE = pathlib.Path(os.environ.get("XDG_CACHE_HOME", pathlib.Path.home() / ".cache")) / "golden-gate" / "app-store-catalog.json"
 
 
 def emit(event: str, **payload: object) -> None:
@@ -81,6 +82,27 @@ def appstream_files() -> list[pathlib.Path]:
         found.extend(root.glob("*/active/appstream.xml.gz"))
         found.extend(root.glob("*/active/appstream.xml"))
     return sorted(found, key=lambda p: p.stat().st_mtime if p.exists() else 0, reverse=True)
+
+
+def load_cached_catalog() -> list[dict[str, object]]:
+    try:
+        data = json.loads(CACHE.read_text(encoding="utf-8"))
+        apps = data.get("apps", []) if isinstance(data, dict) else []
+        return apps if isinstance(apps, list) else []
+    except (OSError, json.JSONDecodeError):
+        return []
+
+
+def save_cached_catalog(apps: list[dict[str, object]]) -> None:
+    try:
+        CACHE.parent.mkdir(parents=True, exist_ok=True)
+        tmp = CACHE.with_suffix(".tmp")
+        tmp.write_text(json.dumps({"apps": apps}, separators=(",", ":")), encoding="utf-8")
+        tmp.replace(CACHE)
+    except OSError:
+        # Catalog caching is resilience only; never fail the storefront because
+        # the cache directory is read-only or temporarily unavailable.
+        pass
 
 
 def text_of(node: ET.Element | None, child: str, default: str = "") -> str:
@@ -181,7 +203,11 @@ def fallback_catalog(installed: set[str], updates: set[str]) -> list[dict[str, o
 
 
 def catalog(*, refresh: bool = False) -> int:
-    okay, warning = prepare(refresh=refresh)
+    # A normal launch previously skipped AppStream refresh even on a completely
+    # cold profile. That left a fresh install with a configured Flathub remote
+    # but no local catalog, which looked like a network failure despite working
+    # connectivity. Bootstrap metadata whenever no AppStream cache exists.
+    okay, warning = prepare(refresh=refresh or not appstream_files())
     if not okay and not shutil_which("flatpak"):
         emit("error", message=warning or "Flatpak is not installed.")
         return 1
@@ -192,9 +218,14 @@ def catalog(*, refresh: bool = False) -> int:
     if not files:
         apps = fallback_catalog(installed, updates)
         if apps:
+            save_cached_catalog(apps)
             emit("catalog", apps=apps, warning=warning or "Using Flatpak's cached catalog.")
             return 0
-        emit("error", message=warning or "The Flathub catalog is not available yet. Check your internet connection.")
+        cached = load_cached_catalog()
+        if cached:
+            emit("catalog", apps=cached, warning=warning or "Showing the last available App Store catalog while Flathub reconnects.")
+            return 0
+        emit("error", message=warning or "The Flathub catalog is not available yet. Try refreshing the App Store.")
         return 1
 
     source = files[0]
@@ -207,7 +238,12 @@ def catalog(*, refresh: bool = False) -> int:
     except Exception as exc:
         apps = fallback_catalog(installed, updates)
         if apps:
+            save_cached_catalog(apps)
             emit("catalog", apps=apps, warning=f"Using Flatpak's fallback catalog because AppStream could not be read: {exc}")
+            return 0
+        cached = load_cached_catalog()
+        if cached:
+            emit("catalog", apps=cached, warning="Showing the last available App Store catalog while local metadata is repaired.")
             return 0
         emit("error", message=f"The local App Store catalog could not be read: {exc}")
         return 1
@@ -253,6 +289,7 @@ def catalog(*, refresh: bool = False) -> int:
     # Avoid making the QML engine swallow several megabytes of niche runtime
     # components while still providing a broad storefront.
     apps = apps[:1800]
+    save_cached_catalog(apps)
     emit("catalog", apps=apps, warning=warning if okay else warning)
     return 0
 
