@@ -90,22 +90,14 @@ ShellRoot {
                     round: true; symbol: "search"
                     onClicked: { searchBox.visible = true; searchField.forceActiveFocus() }
                 }
-                Rectangle {
+                TextField {
                     id: searchBox
                     visible: false
-                    width: 200; height: 32; radius: 16
-                    color: Theme.dark ? "#eb3a3a3e" : "#ebffffff"
-                    border { width: 0.5; color: Theme.dark ? "#2effffff" : "#1f000000" }
-                    Symbol { x: 10; anchors.verticalCenter: parent.verticalCenter; name: "search"; tone: "gray"; size: 13 }
-                    TextInput {
-                        id: searchField
-                        x: 30; width: parent.width - 40; anchors.verticalCenter: parent.verticalCenter
-                        color: Theme.label
-                        font { family: Theme.fontUi; pixelSize: 13 }
-                        clip: true
-                        Keys.onEscapePressed: { text = ""; searchBox.visible = false; app.forceActiveFocus() }
-                        Text { visible: !searchField.text; text: "Search"; color: Theme.tertiaryLabel; font: searchField.font }
-                    }
+                    width: 200
+                    height: 32
+                    search: true
+                    placeholder: "Search"
+                    input.Keys.onEscapePressed: { text = ""; visible = false; app.forceActiveFocus() }
                 }
             }
         ]
