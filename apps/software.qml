@@ -527,7 +527,7 @@ ShellRoot {
                         visible: !store.loading && !store.loadError && store.shownApps.length === 0
                         width: parent.width
                         height: 260
-                        symbol: "magnifyingglass"
+                        symbol: "search"
                         title: store.query.trim() ? "No Results" : "Nothing Here Yet"
                         text: store.query.trim()
                             ? "No Flathub applications match “" + store.query.trim() + "”."
