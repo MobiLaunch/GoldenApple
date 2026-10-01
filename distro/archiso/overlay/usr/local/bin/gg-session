@@ -10,6 +10,11 @@ export XDG_SESSION_DESKTOP=golden-gate
 base_data_dirs="${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
 export XDG_DATA_DIRS="$HOME/.local/share/flatpak/exports/share:/var/lib/flatpak/exports/share:$base_data_dirs"
 
+# Make first-login folders deterministic for Files/Photos/Music/Notes and any
+# XDG-aware application. This is idempotent on later sessions.
+command -v xdg-user-dirs-update >/dev/null 2>&1 && xdg-user-dirs-update >/dev/null 2>&1 || true
+mkdir -p "$HOME/.local/state" "$HOME/.cache" "$HOME/.config"
+
 # VirtualBox (VMSVGA) and VMware use the vmwgfx driver. With 3D acceleration on,
 # its GL path leaves Hyprland and the shell black with only a hardware cursor
 # showing, so render in software (Mesa llvmpipe) there. GG_RENDERER=hardware opts out.
