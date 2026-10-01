@@ -37,17 +37,23 @@ def run(args: list[str], *, input_text: str | None = None, check: bool = True) -
 
 
 def disks() -> int:
-    p = run(["lsblk", "-J", "-b", "-d", "-o", "PATH,MODEL,SIZE,TYPE,TRAN,RM"])
+    p = run(["lsblk", "-J", "-b", "-d", "-o", "PATH,MODEL,SIZE,TYPE,TRAN,RM,RO"])
     out: list[dict[str, Any]] = []
+    boot_disk = live_device()
     for d in json.loads(p.stdout).get("blockdevices", []):
-        if d.get("type") != "disk" or d.get("rm") in (1, True):
+        path = str(d.get("path") or "")
+        if d.get("type") != "disk" or d.get("rm") in (1, True) or d.get("ro") in (1, True):
+            continue
+        # Some USB media report RM=0. Never offer the disk that actually backs
+        # the running ArchISO, regardless of how the kernel classifies it.
+        if boot_disk and path == boot_disk:
             continue
         size = int(d.get("size") or 0)
         if size < 32 * 1024**3:
             continue
         out.append(
             {
-                "path": d.get("path", ""),
+                "path": path,
                 "model": (d.get("model") or "Storage Device").strip(),
                 "size": size,
                 "transport": d.get("tran") or "",
@@ -81,7 +87,7 @@ def live_device() -> str:
 def preflight() -> int:
     required = [
         "lsblk", "findmnt", "wipefs", "sgdisk", "partprobe", "udevadm",
-        "mkfs.fat", "mkfs.ext4", "mount", "umount", "rsync", "arch-chroot",
+        "mkfs.fat", "mkfs.ext4", "mount", "umount", "swapoff", "rsync", "arch-chroot",
         "genfstab", "bootctl", "mkinitcpio", "useradd", "userdel", "chpasswd",
         "passwd", "systemctl", "blkid",
     ]
@@ -114,6 +120,18 @@ def validate_payload(data: dict[str, Any]) -> tuple[str, str, str]:
         raise RuntimeError("The selected disk is no longer available.")
     if live_device() == device:
         raise RuntimeError("The live installer drive cannot be selected as the destination.")
+
+    metadata = run(["lsblk", "-dn", "-b", "-o", "TYPE,RO,SIZE", device], check=False)
+    fields = metadata.stdout.split()
+    if metadata.returncode != 0 or len(fields) < 3 or fields[0] != "disk":
+        raise RuntimeError("The selected destination is no longer a physical disk.")
+    if fields[1] == "1":
+        raise RuntimeError("The selected destination is read-only.")
+    try:
+        if int(fields[2]) < 32 * 1024**3:
+            raise RuntimeError("Golden Gate requires a destination of at least 32 GB.")
+    except ValueError:
+        raise RuntimeError("The selected disk size could not be verified.")
     if data.get("confirm") != "ERASE:" + device:
         raise RuntimeError("The erase confirmation did not match the selected disk.")
     if not re.fullmatch(r"[a-z_][a-z0-9_-]{0,30}", username):
@@ -126,6 +144,50 @@ def validate_payload(data: dict[str, Any]) -> tuple[str, str, str]:
 
 def stage(progress: float, message: str, detail: str = "") -> None:
     emit("progress", progress=progress, message=message, detail=detail)
+
+
+def _walk_block_nodes(nodes: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    out: list[dict[str, Any]] = []
+    for node in nodes:
+        out.append(node)
+        out.extend(_walk_block_nodes(node.get("children") or []))
+    return out
+
+
+def release_device(device: str) -> None:
+    """Unmount target filesystems and disable target swap before repartitioning."""
+    probe = run(["lsblk", "-J", "-o", "PATH,MOUNTPOINTS", device], check=False)
+    if probe.returncode != 0:
+        return
+    try:
+        nodes = _walk_block_nodes(json.loads(probe.stdout).get("blockdevices", []))
+    except json.JSONDecodeError:
+        return
+
+    # Deactivate swap first; mounted filesystems are then released deepest-first.
+    for node in reversed(nodes):
+        path = str(node.get("path") or "")
+        if path:
+            run(["swapoff", path], check=False)
+
+    mounts: list[str] = []
+    for node in nodes:
+        for mountpoint in node.get("mountpoints") or []:
+            if mountpoint:
+                mounts.append(str(mountpoint))
+    for mountpoint in sorted(set(mounts), key=len, reverse=True):
+        run(["umount", "-R", mountpoint], check=False)
+
+
+def wait_for_partitions(*paths: str, timeout: float = 10.0) -> None:
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if all(pathlib.Path(path).exists() for path in paths):
+            return
+        run(["udevadm", "settle"], check=False)
+        time.sleep(0.2)
+    missing = [path for path in paths if not pathlib.Path(path).exists()]
+    raise RuntimeError("The new partition table did not appear: " + ", ".join(missing))
 
 
 def install() -> int:
@@ -143,6 +205,7 @@ def install() -> int:
         stage(0.03, "Preparing destination", "Unmounting old filesystems…")
         subprocess.run(["umount", "-R", str(TARGET)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         TARGET.mkdir(parents=True, exist_ok=True)
+        release_device(device)
 
         # Nothing destructive happens before all validation above succeeds.
         stage(0.07, "Erasing destination", device)
@@ -152,7 +215,7 @@ def install() -> int:
         run(["sgdisk", "-n", "2:0:0", "-t", "2:8304", "-c", "2:Golden Gate", device])
         run(["partprobe", device], check=False)
         run(["udevadm", "settle"])
-        time.sleep(0.5)
+        wait_for_partitions(boot, root)
 
         stage(0.12, "Creating filesystems", "Formatting the EFI and system volumes…")
         run(["mkfs.fat", "-F", "32", "-n", "GOLDENGATE", boot])
@@ -168,17 +231,47 @@ def install() -> int:
             "/boot/*", "/lost+found", "/root/*", "/home/golden/*", "/var/log/*",
             "/var/cache/pacman/pkg/*",
         ]
-        rsync = ["rsync", "-aHAX", "--numeric-ids", "--delete-excluded"]
+        rsync = [
+            "rsync", "-aHAX", "--numeric-ids", "--delete-excluded",
+            "--info=progress2", "--outbuf=L",
+        ]
         for item in excludes:
             rsync.extend(["--exclude", item])
         rsync.extend(["/", str(TARGET) + "/"])
-        copy = subprocess.Popen(rsync, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        copy = subprocess.Popen(
+            rsync,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1,
+            env={**os.environ, "LC_ALL": "C"},
+        )
         assert copy.stdout is not None
+        last_percent = -1
+        percent_re = re.compile(r"\b(\d{1,3})%")
+        last_copy_error = ""
         for line in copy.stdout:
-            if line.strip().lower().startswith("rsync error"):
-                emit("log", message=line.strip())
+            clean = line.strip()
+            if not clean:
+                continue
+            if "rsync error" in clean.lower():
+                last_copy_error = clean
+                emit("log", message=clean)
+            match = percent_re.search(clean)
+            if match:
+                percent = max(0, min(100, int(match.group(1))))
+                if percent >= last_percent + 2 or percent == 100:
+                    last_percent = percent
+                    stage(
+                        0.20 + 0.37 * (percent / 100.0),
+                        "Copying Golden Gate",
+                        f"{percent}% of system files copied",
+                    )
         if copy.wait() != 0:
-            raise RuntimeError("The live system could not be copied to the destination.")
+            raise RuntimeError(
+                "The live system could not be copied to the destination."
+                + (f" {last_copy_error}" if last_copy_error else "")
+            )
 
         stage(0.58, "Converting live system", "Removing live-session state…")
         for path in [
