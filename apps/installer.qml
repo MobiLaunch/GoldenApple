@@ -208,9 +208,9 @@ ShellRoot {
                 Symbol {
                     anchors.horizontalCenter: parent.horizontalCenter
                     name: stage.step === 0 ? "logo"
-                        : stage.step === 1 ? "internaldrive"
+                        : stage.step === 1 ? "drive"
                         : stage.step === 2 ? "person"
-                        : stage.step === 3 ? "exclamationmark-triangle"
+                        : stage.step === 3 ? "info"
                         : stage.step === 4 ? "arrow-clockwise"
                         : "checkmark"
                     size: 58
