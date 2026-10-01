@@ -9,6 +9,9 @@ Item {
     property bool selected: false
     property string badge: ""
     property string symbolTone: "accent"
+    property string selectedSymbolTone: symbolTone
+    property color selectedFill: Theme.selection
+    property color selectedTextColor: Theme.label
     signal clicked()
 
     implicitHeight: 31
@@ -23,7 +26,7 @@ Item {
         anchors { fill: parent; leftMargin: 2; rightMargin: 2 }
         radius: 7
         color: row.selected
-            ? Theme.selection
+            ? row.selectedFill
             : hover.hovered
                 ? (Theme.dark ? "#12ffffff" : "#0a000000")
                 : "transparent"
@@ -37,7 +40,7 @@ Item {
         anchors.verticalCenter: parent.verticalCenter
         name: row.symbol
         size: 16
-        tone: row.symbolTone
+        tone: row.selected ? row.selectedSymbolTone : row.symbolTone
         scale: !Theme.reduceMotion && tap.pressed ? 0.92 : 1
         Behavior on scale { NumberAnimation { duration: Theme.reduceMotion ? 1 : 70; easing.type: Easing.OutCubic } }
     }
@@ -48,7 +51,7 @@ Item {
         width: parent.width - x - (row.badge ? 42 : 10)
         text: row.text
         elide: Text.ElideRight
-        color: Theme.label
+        color: row.selected ? row.selectedTextColor : Theme.label
         font { family: Theme.fontUi; pixelSize: 13; weight: row.selected ? Font.DemiBold : Font.Normal }
     }
 
