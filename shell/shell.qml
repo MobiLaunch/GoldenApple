@@ -99,10 +99,9 @@ ShellRoot {
 
             Wallpaper { screen: perScreen.modelData }
             LazyLoader { active: Quickshell.env("GG_WIDGETS") === "1"; source: "DesktopWidgets.qml" }
-            // Applications is isolated from boot but owned by the screen whose
-            // Dock invokes it. A global layer window could open on an arbitrary
-            // monitor and look like the button did nothing.
-            LazyLoader { id: applicationsLoader; active: false; source: "Applications.qml" }
+            // Persistent per-screen Applications surface. Keeping the object alive
+            // removes the lazy-loader race that made the Dock button appear dead.
+            Applications { id: applicationsPanel; screen: perScreen.modelData }
             ControlCenter { id: cc; screen: perScreen.modelData; notifications: notificationCenter }
             MenuBar { screen: perScreen.modelData; controlCenter: cc; spotlight: spotlightPanel }
             AppLaunch {
@@ -111,7 +110,7 @@ ShellRoot {
                 Component.onCompleted: root.launchers = root.launchers.concat([launch])
                 Component.onDestruction: root.launchers = root.launchers.filter((l) => l !== launch)
             }
-            Dock { screen: perScreen.modelData; launcher: launch; applications: applicationsLoader }
+            Dock { screen: perScreen.modelData; launcher: launch; applications: applicationsPanel }
 
             IpcHandler {
                 target: "controlcenter"
