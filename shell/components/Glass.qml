@@ -20,6 +20,7 @@ import "../theme"
 Item {
     id: root
     property real radius: 26
+    property string variant: "clear"
     property color tint: Theme.glassClear.tint
     property color rim: Theme.glassClear.rim
     property color rimLow: Theme.glassClear.rimLow
