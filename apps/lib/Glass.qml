@@ -1,8 +1,7 @@
-// Liquid Glass for the Golden Gate apps, the same material as the shell's
-// (shell/components/Glass.qml): tint, sheen, a lens band inside the edge and one
-// hairline rim lit from the top left. `pressed` squashes and brightens it,
-// `hovered` lifts it. Where it sits over a transparent window area, Hyprland
-// blurs the desktop behind it.
+// Liquid Glass material for Golden Gate apps: tint, sheen, a lens band inside
+// the edge and one hairline rim lit from the top left. `pressed` squashes and
+// brightens it, `hovered` lifts it. HyprGlass owns compositor optics wherever
+// a window exposes backdrop; this component owns only application chrome.
 import QtQuick
 import QtQuick.Shapes
 import QtQuick.Effects
@@ -11,8 +10,8 @@ import "theme"
 Item {
     id: root
     property real radius: 26
-    // App windows do not reliably receive compositor backdrop blur, so default
-    // to the denser regular material instead of the ultra-clear shell material.
+    // App-window content needs readable contrast independent of the backdrop,
+    // so default to the denser regular material used throughout native apps.
     property color tint: Theme.glassRegular.tint
     property color rim: Theme.glassRegular.rim
     property color rimLow: Theme.glassRegular.rimLow
