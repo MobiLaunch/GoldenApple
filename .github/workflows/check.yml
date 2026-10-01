@@ -153,6 +153,8 @@ jobs:
         run: python tests/shared-ui.py
       - name: Verify the default desktop is internally coherent
         run: python tests/default-desktop.py
+      - name: Verify QML symbol references exist
+        run: python tests/symbol-integrity.py
       - name: Smoke-test native app backends
         run: python tests/native-app-backends.py
       - name: Exercise native control keyboard and pointer behavior
