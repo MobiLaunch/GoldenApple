@@ -156,9 +156,20 @@ EOF
 
   say "SDDM theme → $R/usr/share/sddm/themes/golden-gate"
   local T="$R/usr/share/sddm/themes/golden-gate"
-  rm -rf "$T"; mkdir -p "$T/assets"
+  rm -rf "$T"
+  mkdir -p "$T/components" "$T/theme" "$T/assets"
   cp "$REPO"/themes/sddm/golden-gate/* "$T/"
-  cp -a "$REPO/shell/components" "$REPO/shell/theme" "$T/"
+
+  # The greeter uses the same canonical primitives as the running desktop. Only
+  # the lock/login surface and its Qt-only clock helper are shell-specific.
+  for shared in Glass.qml TextField.qml Symbol.qml Spring.qml SpringValue.qml; do
+    cp "$REPO/apps/lib/$shared" "$T/components/$shared"
+  done
+  cp "$REPO/shell/components/LockSurface.qml" "$T/components/LockSurface.qml"
+  cp "$REPO/shell/components/SystemClockProxy.qml" "$T/components/SystemClockProxy.qml"
+  cp "$REPO/apps/lib/theme/Theme.qml" "$T/theme/Theme.qml"
+  ln -s ../theme "$T/components/theme"
+  ln -s ../assets "$T/components/assets"
   cp -a "$REPO/shell/assets/symbols" "$T/assets/"
   mkdir -p "$R/etc/sddm.conf.d"
   printf '[Theme]\nCurrent=golden-gate\n\n[General]\nGreeterEnvironment=QT_WAYLAND_SHELL_INTEGRATION=layer-shell\n' > "$R/etc/sddm.conf.d/golden-gate.conf"
