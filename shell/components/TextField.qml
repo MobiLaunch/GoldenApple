@@ -9,6 +9,8 @@ Rectangle {
     property string placeholder
     property bool search: false
     property bool password: false
+    property color foreground: Theme.label
+    property color placeholderColor: Theme.tertiaryLabel
     signal accepted()
     implicitWidth: 200; implicitHeight: 26
     radius: search ? height / 2 : 7
@@ -21,7 +23,7 @@ Rectangle {
         id: input
         x: tf.search ? 26 : 8; width: parent.width - x - 8
         anchors.verticalCenter: parent.verticalCenter
-        color: Theme.label
+        color: tf.foreground
         selectionColor: Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.35)
         selectByMouse: true
         activeFocusOnTab: true
@@ -36,7 +38,7 @@ Rectangle {
             visible: opacity > 0
             opacity: !input.text && !input.preeditText ? (input.activeFocus ? 0.72 : 1) : 0
             text: tf.placeholder
-            color: Theme.tertiaryLabel
+            color: tf.placeholderColor
             font: input.font
             Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 100 } }
         }
