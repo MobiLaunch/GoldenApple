@@ -242,7 +242,17 @@ def install() -> int:
         (gg / "setup-done").write_text("installed\n", encoding="utf-8")
         run(["arch-chroot", str(TARGET), "chown", "-R", f"{username}:{username}", f"/home/{username}"])
 
-        stage(0.74, "Preparing startup", "Generating the installed-system initramfs…")
+        stage(0.74, "Preparing startup", "Installing the kernel and generating initramfs…")
+        kernel = TARGET / "boot/vmlinuz-linux"
+        if not kernel.exists():
+            candidates = sorted((TARGET / "usr/lib/modules").glob("*/vmlinuz"))
+            if not candidates:
+                raise RuntimeError("The installed Linux kernel could not be located.")
+            shutil.copy2(candidates[-1], kernel)
+
+        # The live ISO's /boot is intentionally not cloned onto FAT. Put the
+        # kernel on the target ESP first so the normal linux.preset can resolve
+        # /boot/vmlinuz-linux when mkinitcpio runs.
         mkinit = TARGET / "etc/mkinitcpio.conf"
         mkinit.write_text(
             'MODULES=()\nBINARIES=()\nFILES=()\n'
@@ -252,13 +262,6 @@ def install() -> int:
         run(["arch-chroot", str(TARGET), "mkinitcpio", "-P"])
 
         stage(0.82, "Installing boot files", "Configuring systemd-boot…")
-        kernel = TARGET / "boot/vmlinuz-linux"
-        if not kernel.exists():
-            candidates = sorted((TARGET / "usr/lib/modules").glob("*/vmlinuz"))
-            if not candidates:
-                raise RuntimeError("The installed Linux kernel could not be located.")
-            shutil.copy2(candidates[-1], kernel)
-
         bootctl = run(["arch-chroot", str(TARGET), "bootctl", "install"], check=False)
         if bootctl.returncode != 0:
             # Some otherwise-valid UEFI firmware exposes efivarfs read-only or
