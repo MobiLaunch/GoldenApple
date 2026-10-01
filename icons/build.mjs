@@ -73,6 +73,8 @@ const appNames = {
   notes: ["org.goldengate.Notes", "accessories-text-editor", "org.gnome.TextEditor", "gnome-notes"],
   calendar: ["org.goldengate.Calendar", "office-calendar", "org.gnome.Calendar"],
   calculator: ["org.goldengate.Calculator", "accessories-calculator", "org.gnome.Calculator"],
+  clock: ["org.goldengate.Clock", "org.gnome.clocks", "clock", "alarm-clock"],
+  textedit: ["org.goldengate.TextEdit", "accessories-text-editor", "org.gnome.TextEditor", "text-editor"],
   maps: ["org.goldengate.Maps", "maps", "org.gnome.Maps"],
   store: ["org.goldengate.Software", "system-software-install", "org.gnome.Software", "org.kde.discover"],
   launcher: ["view-app-grid", "start-here"],
