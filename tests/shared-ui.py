@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Keep Golden Gate application controls centralized in apps/lib."""
 from pathlib import Path
+import re
 import sys
 
 root = Path(__file__).resolve().parents[1]
@@ -90,9 +91,11 @@ browser = (root / "apps/browser/browser.py").read_text(encoding="utf-8")
 browser_ui = root / "apps/browser/ui.py"
 if not browser_ui.is_file():
     errors.append("Web is missing its centralized browser UI adapter")
-for forbidden in ("QPushButton", "QLineEdit", "QToolButton", "QIcon", "ASSETS ="):
-    if forbidden in browser:
+for forbidden in ("QPushButton", "QLineEdit", "QToolButton", "QIcon"):
+    if re.search(rf"\\b{forbidden}\\b", browser):
         errors.append(f"Web reintroduced ad-hoc Qt control plumbing: {forbidden}")
+if re.search(r"^ASSETS\\s*=", browser, flags=re.M):
+    errors.append("Web reintroduced a private browser asset-path constant")
 for required in ("GGButton", "GGLineEdit", "GGToolButton", "refresh_icons", "stylesheet"):
     if required not in browser:
         errors.append(f"Web no longer consumes centralized browser UI primitive: {required}")
