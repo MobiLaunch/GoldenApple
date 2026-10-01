@@ -82,6 +82,19 @@ for needle in ['import "../lib"', "Glass {"]:
 if (setup / "shaders").exists():
     errors.append("legacy Setup shader directory exists; HyprGlass is the compositor glass implementation")
 
+# Web is deliberately isolated from Quickshell because it hosts Chromium, but
+# it still has one browser-local adapter layer rather than one-off Qt widgets.
+browser = (root / "apps/browser/browser.py").read_text(encoding="utf-8")
+browser_ui = root / "apps/browser/ui.py"
+if not browser_ui.is_file():
+    errors.append("Web is missing its centralized browser UI adapter")
+for forbidden in ("QPushButton", "QLineEdit", "QToolButton", "QIcon", "ASSETS ="):
+    if forbidden in browser:
+        errors.append(f"Web reintroduced ad-hoc Qt control plumbing: {forbidden}")
+for required in ("GGButton", "GGLineEdit", "GGToolButton", "refresh_icons", "stylesheet"):
+    if required not in browser:
+        errors.append(f"Web no longer consumes centralized browser UI primitive: {required}")
+
 install = (root / "scripts/install.sh").read_text(encoding="utf-8")
 for needle in [
     'cp -a "$REPO/apps/lib" "$SHARE/ui"',
