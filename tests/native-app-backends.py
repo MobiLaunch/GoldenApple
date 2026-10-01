@@ -78,6 +78,38 @@ with tempfile.TemporaryDirectory() as raw:
     renamed = json.loads(out)
     assert code == 0 and renamed["ok"] and (folder / "beta.txt").is_file()
 
+    # App Store: a configured Flatpak remote must produce a usable cached
+    # catalog without internet access, and installed state must be reflected.
+    fakebin = tmp / "bin"
+    fakebin.mkdir()
+    flatpak = fakebin / "flatpak"
+    flatpak.write_text(
+        """#!/bin/sh
+args="$*"
+case "$args" in
+  *"remotes --columns=name"*) printf 'flathub\\n' ;;
+  *"list --app --columns=application"*) printf 'org.test.Editor\\n' ;;
+  *"remote-ls --updates"*) exit 0 ;;
+  *"remote-ls"*"--columns=application,name,description"*)
+    printf 'org.test.Editor\\tTest Editor\\tCode editor for development\\n'
+    printf 'org.test.Player\\tTest Player\\tMusic and video player\\n'
+    ;;
+  *) exit 0 ;;
+esac
+""",
+        encoding="utf-8",
+    )
+    flatpak.chmod(0o755)
+    store_env = env.copy()
+    store_env["PATH"] = str(fakebin) + os.pathsep + store_env.get("PATH", "")
+    code, out = run("apps/software/helper.py", "catalog", env=store_env)
+    store = json.loads(out)
+    assert code == 0 and store["event"] == "catalog"
+    rows = {app["id"]: app for app in store["apps"]}
+    assert rows["org.test.Editor"]["installed"] is True
+    assert "Development" in rows["org.test.Editor"]["categories"]
+    assert "AudioVideo" in rows["org.test.Player"]["categories"]
+
     # Mail/Messages with an empty profile must be safely unconfigured and must
     # not attempt network access or require a keyring unlock.
     code, out = run("apps/mail/helper.py", "status", env=env)
