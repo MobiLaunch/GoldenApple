@@ -55,18 +55,26 @@ PanelWindow {
                 Symbol { anchors { left: parent.left; leftMargin: 16; verticalCenter: parent.verticalCenter }; name: "magnifyingglass"; size: 19; tone: "secondary" }
                 Text { anchors { left: parent.left; leftMargin: 46; verticalCenter: parent.verticalCenter }; visible: !search.text && !search.activeFocus; text: "Search"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: 17 } }
             }
+            ScriptModel {
+                id: applicationModel
+                values: {
+                    const q = search.text.trim().toLowerCase()
+                    return [...DesktopEntries.applications.values]
+                        .filter((e) => e && e.name && (!q
+                            || e.name.toLowerCase().includes(q)
+                            || (e.genericName ?? "").toLowerCase().includes(q)
+                            || (e.keywords ?? []).join(" ").toLowerCase().includes(q)))
+                        .sort((a, b) => a.name.localeCompare(b.name))
+                }
+            }
+
             GridView {
                 id: grid
                 Layout.fillWidth: true; Layout.fillHeight: true
                 cellWidth: Math.max(116, width / Math.max(1, Math.floor(width / 136)))
                 cellHeight: 124
                 clip: true
-                model: {
-                    const q = search.text.trim().toLowerCase()
-                    return DesktopEntries.applications.values
-                        .filter(e => e && e.name && !e.noDisplay && (!q || e.name.toLowerCase().includes(q)))
-                        .sort((a,b) => a.name.localeCompare(b.name))
-                }
+                model: applicationModel
                 delegate: Item {
                     required property var modelData
                     width: grid.cellWidth; height: grid.cellHeight
