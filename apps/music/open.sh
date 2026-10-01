@@ -1,0 +1,12 @@
+#!/bin/sh
+set -eu
+here=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+file=${1:-}
+
+if [ -n "$file" ]; then
+  file=$(realpath -m -- "$file")
+  dir=$(dirname -- "$file")
+  GG_MUSIC_OPEN="$file" GG_MUSIC_DIR="$dir" exec qs -n -p "$here/music.qml"
+fi
+
+exec qs -n -p "$here/music.qml"
