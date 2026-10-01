@@ -16,7 +16,7 @@ PanelWindow {
     property var pinned: (liveSession ? ["org.goldengate.Installer"] : []).concat([
         "org.goldengate.Files", "org.goldengate.Web", "org.goldengate.Mail", "org.goldengate.Messages", "org.goldengate.Maps",
         "org.goldengate.Photos", "org.goldengate.Music", "org.goldengate.Calendar", "org.goldengate.Notes",
-        "org.goldengate.Weather", "org.goldengate.Software", "org.goldengate.Settings", "com.mitchellh.ghostty"
+        "org.goldengate.Weather", "org.goldengate.Software", "org.goldengate.Settings", "org.goldengate.Terminal"
     ])
     // Size and magnification from Settings › Desktop & Dock.
     readonly property int tileCount: entries.length + places.length
@@ -82,13 +82,24 @@ PanelWindow {
         return pinned.map((id) => DesktopEntries.byId(id)).filter((e) => e)
     }
     function windowsFor(entry) {
-        return ToplevelManager.toplevels.values.filter((t) => t.appId === entry.id || t.appId.toLowerCase() === entry.id.split(".").pop().toLowerCase())
+        const appId = (entry.id ?? "").toLowerCase()
+        const bare = appId.split(".").pop()
+        const startup = (entry.startupClass ?? "").toLowerCase()
+        return ToplevelManager.toplevels.values.filter((t) => {
+            const id = (t.appId ?? "").toLowerCase()
+            return id === appId || id === bare || (!!startup && id === startup)
+        })
     }
     // A window of this app parked by the yellow light (shell.qml), to bring back.
     function minimizedFor(entry) {
-        const bare = entry.id.split(".").pop().toLowerCase()
-        return Hyprland.toplevels.values.find((t) => t.workspace?.name === "special:minimized"
-            && (t.lastIpcObject?.class === entry.id || (t.lastIpcObject?.class ?? "").toLowerCase() === bare))
+        const appId = (entry.id ?? "").toLowerCase()
+        const bare = appId.split(".").pop()
+        const startup = (entry.startupClass ?? "").toLowerCase()
+        return Hyprland.toplevels.values.find((t) => {
+            if (t.workspace?.name !== "special:minimized") return false
+            const cls = (t.lastIpcObject?.class ?? "").toLowerCase()
+            return cls === appId || cls === bare || (!!startup && cls === startup)
+        })
     }
     function restore(t) {
         // A Dock click belongs to the Dock's monitor, not whichever monitor last
