@@ -145,10 +145,22 @@ EOF
     cp "$REPO/themes/fontconfig/60-golden-gate.conf" "$SKEL/.config/fontconfig/conf.d/60-golden-gate.conf"
     printf '[Default Applications]\nx-scheme-handler/http=org.goldengate.Web.desktop\nx-scheme-handler/https=org.goldengate.Web.desktop\ntext/html=org.goldengate.Web.desktop\ninode/directory=org.goldengate.Files.desktop\ntext/plain=org.goldengate.TextEdit.desktop\ntext/markdown=org.goldengate.TextEdit.desktop\napplication/json=org.goldengate.TextEdit.desktop\nimage/jpeg=org.goldengate.Photos.desktop\nimage/png=org.goldengate.Photos.desktop\nimage/webp=org.goldengate.Photos.desktop\nimage/gif=org.goldengate.Photos.desktop\nimage/tiff=org.goldengate.Photos.desktop\nvideo/mp4=org.goldengate.Photos.desktop\nvideo/quicktime=org.goldengate.Photos.desktop\nvideo/webm=org.goldengate.Photos.desktop\naudio/mpeg=org.goldengate.Music.desktop\naudio/mp4=org.goldengate.Music.desktop\naudio/flac=org.goldengate.Music.desktop\naudio/ogg=org.goldengate.Music.desktop\naudio/opus=org.goldengate.Music.desktop\naudio/x-wav=org.goldengate.Music.desktop\n' > "$SKEL/.config/mimeapps.list"
   fi
-  say "GNOME defaults (fonts, icons, Finder-style list view) → $R/usr/share/glib-2.0/schemas"
-  mkdir -p "$R/usr/share/glib-2.0/schemas"
-  cp "$REPO/themes/gsettings/90_golden-gate.gschema.override" "$R/usr/share/glib-2.0/schemas/"
-  if command -v glib-compile-schemas >/dev/null; then glib-compile-schemas "$R/usr/share/glib-2.0/schemas"; fi
+  say "GNOME defaults (fonts and icons) → $R/usr/share/glib-2.0/schemas"
+  local schema_dir="$R/usr/share/glib-2.0/schemas"
+  mkdir -p "$schema_dir"
+  cp "$REPO/themes/gsettings/90_golden-gate.gschema.override" "$schema_dir/"
+  # During an ArchISO build airootfs is copied before packages are installed.
+  # At this point the staged root contains our override but not the package-owned
+  # *.gschema.xml files yet. Calling glib-compile-schemas here produces the
+  # misleading "No schema files found" message. Pacman's GLib schema hook compiles
+  # the directory after gsettings-desktop-schemas is installed. For an existing
+  # system (--extras without a staging root), compile immediately instead.
+  if command -v glib-compile-schemas >/dev/null 2>&1 \
+      && compgen -G "$schema_dir/*.gschema.xml" >/dev/null; then
+    glib-compile-schemas "$schema_dir"
+  else
+    say "GSettings override staged; schema cache will be built when packages are installed"
+  fi
 
   say "keyd ⌘ layer → $R/etc/keyd"
   mkdir -p "$R/etc/keyd"
