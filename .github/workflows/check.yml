@@ -77,12 +77,6 @@ jobs:
           test -f "$root/usr/share/applications/org.goldengate.Clock.desktop"
           test -f "$root/usr/share/applications/org.goldengate.TextEdit.desktop"
           test -f "$root/usr/share/applications/org.goldengate.Terminal.desktop"
-          test -f "$root/usr/share/applications/org.goldengate.Files.desktop"
-          test -f "$root/usr/share/applications/org.goldengate.Mail.desktop"
-          test -f "$root/usr/share/applications/org.goldengate.Messages.desktop"
-          test -f "$root/usr/share/applications/org.goldengate.Calendar.desktop"
-          test -f "$root/usr/share/applications/org.goldengate.Clock.desktop"
-          test -f "$root/usr/share/applications/org.goldengate.TextEdit.desktop"
           test -f "$root/usr/share/golden-gate/apps/installer.qml"
           test -f "$root/usr/share/golden-gate/apps/installer/helper.py"
           test -f "$root/usr/share/golden-gate/apps/settings/update-helper.py"
@@ -101,6 +95,19 @@ jobs:
           test -x "$root/usr/lib/golden-gate/hyprglass-sync.sh"
           test -x "$root/usr/lib/golden-gate/apply-preferences.sh"
           test -f "$root/usr/share/licenses/golden-gate/hyprglass/LICENSE"
+
+          # mkarchiso uses --system, not --extras. Stage that exact path too so
+          # canonical shell links cannot accidentally differ in the live image.
+          system_root="$(mktemp -d)"
+          scripts/install.sh --system "$system_root"
+          test -L "$system_root/etc/skel/.config/quickshell/golden-gate/components/Glass.qml"
+          test "$(readlink "$system_root/etc/skel/.config/quickshell/golden-gate/components/Glass.qml")" = "/usr/share/golden-gate/ui/Glass.qml"
+          test -L "$system_root/etc/skel/.config/quickshell/golden-gate/components/Symbol.qml"
+          test "$(readlink "$system_root/etc/skel/.config/quickshell/golden-gate/components/Symbol.qml")" = "/usr/share/golden-gate/ui/Symbol.qml"
+          test -L "$system_root/etc/skel/.config/quickshell/golden-gate/components/TextField.qml"
+          test "$(readlink "$system_root/etc/skel/.config/quickshell/golden-gate/components/TextField.qml")" = "/usr/share/golden-gate/ui/TextField.qml"
+          test -L "$system_root/etc/skel/.config/quickshell/golden-gate/theme/Theme.qml"
+          test "$(readlink "$system_root/etc/skel/.config/quickshell/golden-gate/theme/Theme.qml")" = "/usr/share/golden-gate/ui/theme/Theme.qml"
 
   ui:
     runs-on: ubuntu-latest
