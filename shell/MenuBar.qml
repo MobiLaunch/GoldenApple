@@ -65,7 +65,7 @@ PanelWindow {
         signal clicked()
         implicitWidth: row.implicitWidth + 18
         implicitHeight: 24
-        Glass {
+        Glass { variant: "clear";
             anchors.fill: parent
             radius: 12
             lens: 3
