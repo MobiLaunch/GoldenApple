@@ -1,11 +1,11 @@
-// Liquid Glass surface. The blur comes from the compositor (Hyprland
-// `layerrule = blur` + `ignore_alpha` on the gg-* namespaces); this item paints
-// the rest of the material over it, as prototype/css/shell.css does:
+// Liquid Glass surface. HyprGlass owns compositor backdrop blur/refraction for
+// the whitelisted gg-* layer namespaces; this item paints only the shared
+// material tint, sheen, lens edge, rim and interaction chrome:
 //
 //   body      the tint (white when `filled`, an active control)
 //   sheen     light across the top, fading by the middle
 //   lens      a lighter band just inside the edge: the glass's thickness,
-//             where the compositor's shader bends the backdrop most
+//             complementing HyprGlass' compositor-level refraction
 //   rim       a hairline ring lit from the top left, dimmer along the sides,
 //             with a softer catch on the far edge
 //
