@@ -2,7 +2,7 @@
 Type=Application
 Name=TextEdit
 Comment=Create and edit plain text documents
-Icon=org.goldengate.TextEdit
+Icon=accessories-text-editor
 Exec=sh @APPS@/textedit/open.sh %F
 StartupWMClass=org.goldengate.TextEdit
 Categories=Utility;TextEditor;
