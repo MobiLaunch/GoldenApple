@@ -110,6 +110,94 @@ jobs:
           test "$(readlink "$system_root/etc/skel/.config/quickshell/golden-gate/components/TextField.qml")" = "/usr/share/golden-gate/ui/TextField.qml"
           test -L "$system_root/etc/skel/.config/quickshell/golden-gate/theme/Theme.qml"
           test "$(readlink "$system_root/etc/skel/.config/quickshell/golden-gate/theme/Theme.qml")" = "/usr/share/golden-gate/ui/theme/Theme.qml"
+          test ! -e "$system_root/usr/share/applications/com.mitchellh.ghostty.desktop"
+          test -f "$system_root/usr/local/share/applications/com.mitchellh.ghostty.desktop"
+          grep -q '^NoDisplay=true
+  ui:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --no-package-lock
+      - run: npx playwright install --with-deps chromium
+      - name: Click through the reference shell
+        run: SHOTS=out/ui npm run test:ui
+      - name: Upload UI screenshots
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-screenshots
+          path: out/ui
+          retention-days: 3
+
+  native-controls:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: sudo apt-get update && sudo apt-get install -y libegl1 libopengl0
+      - run: python -m pip install PySide6-Essentials==6.11.2
+      - name: Compile native Python helpers
+        run: python -m compileall -q apps tests
+      - name: Guard known QML parser regressions
+        run: python tests/qml-regressions.py
+      - name: Parse all native QML
+        run: python tests/check-qml.py
+      - name: Verify installer disk discovery stays read-only
+        run: python tests/installer-safety.py
+      - name: Verify Settings are wired to real persistent actions
+        run: python tests/settings-wiring.py
+      - name: Guard the shared app component store
+        run: python tests/shared-ui.py
+      - name: Verify the default desktop is internally coherent
+        run: python tests/default-desktop.py
+      - name: Verify the default desktop is internally coherent
+        run: python tests/default-desktop.py
+      - name: Verify QML symbol references exist
+        run: python tests/symbol-integrity.py
+      - name: Smoke-test native app backends
+        run: python tests/native-app-backends.py
+      - name: Exercise native control keyboard and pointer behavior
+        run: python tests/native-controls.py
+        env:
+          QT_QPA_PLATFORM: offscreen
+          QT_QUICK_BACKEND: software
+      - name: Test app data and async request handling
+        run: npm run test:logic
+
+  browser-and-setup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: sudo apt-get update && sudo apt-get install -y xvfb libegl1 libopengl0 libnss3 libxtst6 libxkbfile1 libasound2t64 libxcb-cursor0 libxkbcommon-x11-0 libxcb-icccm4 libxcb-keysyms1 libxcb-shape0 libxcb-xinerama0
+      - run: python -m pip install PySide6==6.11.2
+      - name: Test account failures, preferences, and browser state
+        run: python tests/setup-browser.py
+      - name: Exercise native Chromium navigation, tabs, private browsing, and shortcuts
+        run: xvfb-run -a python tests/native-browser.py
+        env:
+          QT_QPA_PLATFORM: xcb
+          QTWEBENGINE_CHROMIUM_FLAGS: --disable-gpu
+      - name: Upload browser previews
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-browser-preview
+          path: out/browser
+          retention-days: 3
+ "$system_root/usr/local/share/applications/com.mitchellh.ghostty.desktop"
 
   ui:
     runs-on: ubuntu-latest
