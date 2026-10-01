@@ -3,6 +3,7 @@
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
+import Quickshell.Services.DesktopEntries
 import QtQuick
 import QtQuick.Layouts
 import "theme"
@@ -11,7 +12,7 @@ import "components"
 PanelWindow {
     id: spot
     property bool open: false
-    function toggle() { open = !open; if (open) { input.text = ""; input.forceActiveFocus() } }
+    function toggle() { open = !open; if (open) { input.text = ""; Qt.callLater(() => input.input.forceActiveFocus()) } }
 
     visible: open || closeTimer.running
     onOpenChanged: if (!open) closeTimer.restart()
@@ -68,30 +69,22 @@ PanelWindow {
             Layout.preferredHeight: 56
             radius: 28
             tint: Theme.glassRegular.tint
-            RowLayout {
-                anchors { fill: parent; leftMargin: 20; rightMargin: 20 }
-                spacing: 12
-                Symbol { name: "search"; size: 21; tone: "gray" }
-                TextInput {
-                    id: input
-                    Layout.fillWidth: true
-                    clip: true
-                    selectByMouse: true
-                    Accessible.name: "Spotlight Search"
-                    color: Theme.label
-                    font { family: Theme.fontUi; pixelSize: 21 }
-                    Keys.onEscapePressed: spot.open = false
-                    Keys.onDownPressed: spot.selected = Math.max(0, Math.min(spot.results.length - 1, spot.selected + 1))
-                    Keys.onUpPressed: spot.selected = Math.max(0, spot.selected - 1)
-                    Keys.onReturnPressed: spot.launch(spot.selected)
-                    onTextChanged: spot.selected = 0
-                    Text {
-                        visible: !input.text && !input.preeditText
-                        text: "Spotlight Search"
-                        color: Theme.secondaryLabel
-                        font: input.font
-                    }
-                }
+            TextField {
+                id: input
+                anchors { fill: parent; margins: 8 }
+                search: true
+                placeholder: "Spotlight Search"
+                color: "transparent"
+                border.width: input.input.activeFocus ? 1.5 : 0
+                border.color: input.input.activeFocus
+                    ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.46)
+                    : "transparent"
+                input.font.pixelSize: 21
+                input.Keys.onEscapePressed: spot.open = false
+                input.Keys.onDownPressed: spot.selected = Math.max(0, Math.min(spot.results.length - 1, spot.selected + 1))
+                input.Keys.onUpPressed: spot.selected = Math.max(0, spot.selected - 1)
+                input.Keys.onReturnPressed: spot.launch(spot.selected)
+                onTextChanged: spot.selected = 0
             }
         }
 
