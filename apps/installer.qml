@@ -116,7 +116,16 @@ ShellRoot {
                 status = "Starting installation…"
                 detail = ""
                 step = 4
-                install.command = ["sudo", "-n", "python3", helper, "install"]
+                // Live media normally grants the installer passwordless sudo.
+                // If that policy is missing or changed, fall back to the desktop
+                // Polkit agent instead of failing silently after the confirmation step.
+                install.command = [
+                    "sh", "-c",
+                    "if command -v sudo >/dev/null 2>&1 && sudo -n true >/dev/null 2>&1; then exec sudo -n python3 \"$1\" install; "
+                    + "elif command -v pkexec >/dev/null 2>&1; then exec pkexec python3 \"$1\" install; "
+                    + "else printf '%s\\n' 'No administrator authorization method is available.' >&2; exit 127; fi",
+                    "sh", helper
+                ]
                 install.running = true
             }
 
@@ -295,7 +304,13 @@ ShellRoot {
                             }
                         }
 
-                        TapHandler { onTapped: stage.disk = modelData }
+                        TapHandler {
+                            onTapped: {
+                                stage.disk = modelData
+                                stage.eraseConfirmed = false
+                                stage.error = ""
+                            }
+                        }
                     }
                 }
 
