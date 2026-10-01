@@ -264,7 +264,7 @@ else
   SHARED_UI="$DATA/golden-gate/ui"
 fi
 SHELL_RUNTIME="$CONF/quickshell/golden-gate"
-for shared in Glass.qml Spring.qml SpringValue.qml Symbol.qml; do
+for shared in Glass.qml Spring.qml SpringValue.qml Symbol.qml TextField.qml; do
   rm -f "$SHELL_RUNTIME/components/$shared"
   ln -s "$SHARED_UI/$shared" "$SHELL_RUNTIME/components/$shared"
 done
