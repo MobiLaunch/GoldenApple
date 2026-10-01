@@ -50,6 +50,8 @@ jobs:
           grep -q 'org.goldengate.Messages' shell/Dock.qml
           grep -q 'org.goldengate.Calendar' shell/Dock.qml
           grep -q 'org.goldengate.Files' shell/Dock.qml
+          grep -q 'compgen -G "$schema_dir/\*.gschema.xml"' scripts/install.sh
+          ! grep -q 'org.gnome.nautilus' themes/gsettings/90_golden-gate.gschema.override
       - name: Stage extras and new-account desktop
         run: |
           root="$(mktemp -d)"
