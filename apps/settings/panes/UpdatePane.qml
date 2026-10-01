@@ -21,7 +21,14 @@ Pane {
     property string message: "Checking for updates…"
     property int updateCount: 0
     property int remaining: -1
+    property int currentPackage: 0
+    property int totalPackages: 0
+    property double updateStartedAt: 0
+    property int elapsedSeconds: 0
     property real progress: 0
+    readonly property int etaSeconds: currentPackage > 0 && remaining > 0
+        ? Math.max(1, Math.round((elapsedSeconds / currentPackage) * remaining))
+        : -1
     property var packages: []
     property string error: ""
 
@@ -48,6 +55,8 @@ Pane {
                 message = event.message ?? "Installing updates…"
                 progress = event.progress ?? progress
                 remaining = event.remaining ?? -1
+                currentPackage = event.current ?? currentPackage
+                totalPackages = event.total ?? totalPackages
             } else if (event.event === "done") {
                 state = "current"
                 progress = 1
@@ -84,6 +93,10 @@ Pane {
         state = "updating"
         progress = 0.02
         remaining = updateCount
+        currentPackage = 0
+        totalPackages = updateCount
+        updateStartedAt = Date.now()
+        elapsedSeconds = 0
         message = "Waiting for administrator authorization…"
         updateProcess.command = [
             "sh", "-c",
@@ -104,6 +117,30 @@ Pane {
         interval: 350
         repeat: false
         onTriggered: pane.checkNow()
+    }
+
+    Timer {
+        interval: 1000
+        repeat: true
+        running: pane.state === "updating"
+        onTriggered: pane.elapsedSeconds = pane.updateStartedAt > 0
+            ? Math.max(0, Math.floor((Date.now() - pane.updateStartedAt) / 1000))
+            : 0
+    }
+
+    function etaText() {
+        if (etaSeconds < 0)
+            return remaining >= 0
+                ? remaining + " package" + (remaining === 1 ? "" : "s") + " remaining"
+                : "Calculating time remaining…"
+        const min = Math.floor(etaSeconds / 60)
+        const sec = etaSeconds % 60
+        const time = min > 0
+            ? "About " + min + " min " + String(sec).padStart(2, "0") + " sec remaining"
+            : "About " + sec + " sec remaining"
+        return remaining > 0
+            ? time + "  •  " + remaining + " package" + (remaining === 1 ? "" : "s")
+            : "Finishing…"
     }
 
     Process {
@@ -163,8 +200,8 @@ Pane {
 
         SetRow {
             title: pane.message
-            subtitle: pane.state === "updating" && pane.remaining >= 0
-                ? (pane.remaining === 0 ? "Finishing…" : pane.remaining + " package" + (pane.remaining === 1 ? "" : "s") + " remaining")
+            subtitle: pane.state === "updating"
+                ? pane.etaText()
                 : pane.state === "checking"
                     ? "This happens in the background."
                     : ""
