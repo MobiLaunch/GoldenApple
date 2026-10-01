@@ -19,15 +19,23 @@ def emit(event: str, **payload: object) -> None:
 
 
 def run(args: list[str], *, timeout: int | None = None, check: bool = False) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        args,
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        timeout=timeout,
-        check=check,
-        env={**os.environ, "LC_ALL": "C"},
-    )
+    try:
+        return subprocess.run(
+            args,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            timeout=timeout,
+            check=check,
+            env={**os.environ, "LC_ALL": "C"},
+        )
+    except subprocess.TimeoutExpired as exc:
+        output = exc.stdout or ""
+        if isinstance(output, bytes):
+            output = output.decode("utf-8", errors="replace")
+        return subprocess.CompletedProcess(args, 124, stdout=(output + "\nSoftware source timed out.").strip())
+    except OSError as exc:
+        return subprocess.CompletedProcess(args, 127, stdout=str(exc))
 
 
 def remote_exists() -> bool:
@@ -114,6 +122,23 @@ def update_ids() -> set[str]:
     return {x.strip() for x in p.stdout.splitlines() if x.strip()}
 
 
+def infer_categories(name: str, summary: str, app_id: str) -> list[str]:
+    hay = f"{name} {summary} {app_id}".casefold()
+    categories: list[str] = []
+    rules = [
+        ("Development", ("developer", "development", "code", "programming", "ide", "editor")),
+        ("Graphics", ("graphics", "photo", "image", "drawing", "paint", "design")),
+        ("AudioVideo", ("music", "audio", "video", "media", "podcast", "player")),
+        ("Game", ("game", "gaming", "emulator")),
+        ("Office", ("office", "document", "spreadsheet", "presentation", "productivity")),
+        ("Utility", ("utility", "tool", "calculator", "archive", "file", "system")),
+    ]
+    for category, words in rules:
+        if any(word in hay for word in words):
+            categories.append(category)
+    return categories
+
+
 def fallback_catalog(installed: set[str], updates: set[str]) -> list[dict[str, object]]:
     p = run([
         "flatpak", "remote-ls", "--user", "--cached", "--app",
@@ -143,7 +168,7 @@ def fallback_catalog(installed: set[str], updates: set[str]) -> list[dict[str, o
             "id": app_id,
             "name": name,
             "summary": summary,
-            "categories": [],
+            "categories": infer_categories(name, summary, app_id),
             "keywords": [],
             "project": "",
             "icon": "",
@@ -157,6 +182,10 @@ def fallback_catalog(installed: set[str], updates: set[str]) -> list[dict[str, o
 
 def catalog(*, refresh: bool = False) -> int:
     okay, warning = prepare(refresh=refresh)
+    if not okay and not shutil_which("flatpak"):
+        emit("error", message=warning or "Flatpak is not installed.")
+        return 1
+
     installed = installed_ids()
     updates = update_ids()
     files = appstream_files()
@@ -229,6 +258,9 @@ def catalog(*, refresh: bool = False) -> int:
 
 
 def transaction(action: str, app_id: str) -> int:
+    if not shutil_which("flatpak"):
+        emit("error", id=app_id, message="Flatpak is not installed.")
+        return 127
     if not app_id or any(ch.isspace() for ch in app_id):
         emit("error", id=app_id, message="The application identifier is invalid.")
         return 2
