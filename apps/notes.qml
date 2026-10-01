@@ -93,7 +93,7 @@ ShellRoot {
                 anchors.verticalCenter: parent.verticalCenter
                 visible: !searchBox.visible
                 round: true; symbol: "search"
-                onClicked: { searchBox.visible = true; searchField.forceActiveFocus() }
+                onClicked: { searchBox.visible = true; searchBox.input.forceActiveFocus() }
             },
             TextField {
                 id: searchBox
@@ -162,7 +162,13 @@ ShellRoot {
                     placeholder: "New Folder"
                     onAccepted: app.createFolder(text)
                     input.Keys.onEscapePressed: app.namingFolder = false
-                    input.onActiveFocusChanged: if (!input.activeFocus && app.namingFolder) app.createFolder(text)
+                    Connections {
+                        target: folderName.input
+                        function onActiveFocusChanged() {
+                            if (!folderName.input.activeFocus && app.namingFolder)
+                                app.createFolder(folderName.text)
+                        }
+                    }
                 }
             }
         ]
@@ -222,7 +228,7 @@ ShellRoot {
                 current = next ? next.path : ""
                 refreshLater.restart()
             }
-            function newFolder() { sidebarOpen = true; namingFolder = true; folderName.text = "New Folder"; folderName.selectAll(); folderName.forceActiveFocus() }
+            function newFolder() { sidebarOpen = true; namingFolder = true; folderName.text = "New Folder"; folderName.input.selectAll(); folderName.input.forceActiveFocus() }
             function createFolder(name) {
                 namingFolder = false
                 name = name.replace(/[\/\\]/g, "").trim()
@@ -278,7 +284,7 @@ ShellRoot {
                 const ctrl = e.modifiers & Qt.ControlModifier
                 if (ctrl && e.key === Qt.Key_N && !(e.modifiers & Qt.ShiftModifier)) { app.newNote(); e.accepted = true }
                 else if (ctrl && (e.modifiers & Qt.ShiftModifier) && e.key === Qt.Key_N) { app.newFolder(); e.accepted = true }
-                else if (ctrl && e.key === Qt.Key_F) { searchBox.visible = true; searchField.forceActiveFocus(); e.accepted = true }
+                else if (ctrl && e.key === Qt.Key_F) { searchBox.visible = true; searchBox.input.forceActiveFocus(); e.accepted = true }
                 else if (ctrl && e.key === Qt.Key_Backspace) { app.deleteNote(app.current); e.accepted = true }
             }
 
