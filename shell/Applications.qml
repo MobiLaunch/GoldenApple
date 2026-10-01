@@ -9,7 +9,11 @@ import "components"
 PanelWindow {
     id: apps
     property bool open: false
-    function show() { open = true; Qt.callLater(() => search.input.forceActiveFocus()) }
+    function show() {
+        open = true
+        console.info("Applications opened; visible desktop entries:", applicationModel.values.length)
+        Qt.callLater(() => search.input.forceActiveFocus())
+    }
     function hide() { open = false; search.text = "" }
     function toggle() { open ? hide() : show() }
     visible: open || fade.running
@@ -63,16 +67,63 @@ PanelWindow {
                 values: {
                     const q = search.text.trim().toLowerCase()
                     return [...DesktopEntries.applications.values]
-                        .filter((e) => e && e.name && (!q
-                            || e.name.toLowerCase().includes(q)
-                            || (e.genericName ?? "").toLowerCase().includes(q)
-                            || (e.keywords ?? []).join(" ").toLowerCase().includes(q)))
-                        .sort((a, b) => a.name.localeCompare(b.name))
+                        .filter((e) => {
+                            if (!e || !e.name || e.noDisplay)
+                                return false
+                            if (!q)
+                                return true
+                            const haystack = [
+                                String(e.name ?? ""),
+                                String(e.genericName ?? ""),
+                                String(e.comment ?? ""),
+                                String(e.keywords ?? "")
+                            ].join(" ").toLowerCase()
+                            return haystack.includes(q)
+                        })
+                        .sort((a, b) => String(a.name).localeCompare(String(b.name)))
+                }
+            }
+
+            Item {
+                visible: applicationModel.values.length === 0
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+
+                Column {
+                    anchors.centerIn: parent
+                    width: Math.min(420, parent.width - 40)
+                    spacing: 10
+
+                    Symbol {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        name: search.text.trim() ? "search" : "apps"
+                        size: 46
+                        tone: "gray"
+                        opacity: 0.78
+                    }
+                    Text {
+                        width: parent.width
+                        horizontalAlignment: Text.AlignHCenter
+                        text: search.text.trim() ? "No Applications Found" : "No Applications Available"
+                        color: Theme.label
+                        font { family: Theme.fontUi; pixelSize: 19; weight: Font.DemiBold }
+                    }
+                    Text {
+                        width: parent.width
+                        horizontalAlignment: Text.AlignHCenter
+                        wrapMode: Text.WordWrap
+                        text: search.text.trim()
+                            ? "Try another search."
+                            : "Golden Gate could not discover any desktop entries. Run gg-diagnostics and check the Golden Gate shell section."
+                        color: Theme.secondaryLabel
+                        font { family: Theme.fontUi; pixelSize: 13 }
+                    }
                 }
             }
 
             GridView {
                 id: grid
+                visible: applicationModel.values.length > 0
                 Layout.fillWidth: true; Layout.fillHeight: true
                 cellWidth: Math.max(116, width / Math.max(1, Math.floor(width / 136)))
                 cellHeight: 124
