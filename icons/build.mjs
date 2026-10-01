@@ -62,21 +62,21 @@ function darkVariant(svg) {
 
 // freedesktop names each artwork is published under (first entry is canonical).
 const appNames = {
-  files: ["system-file-manager", "org.gnome.Nautilus", "org.kde.dolphin", "thunar"],
-  browser: ["web-browser", "firefox", "org.mozilla.firefox", "chromium", "google-chrome"],
-  mail: ["internet-mail", "thunderbird", "org.mozilla.Thunderbird", "org.gnome.Evolution", "org.gnome.Geary"],
-  messages: ["internet-chat", "org.gnome.Fractal", "signal-desktop"],
-  music: ["multimedia-audio-player", "org.gnome.Music", "rhythmbox", "elisa"],
-  photos: ["multimedia-photo-viewer", "org.gnome.Loupe", "shotwell", "gthumb"],
-  settings: ["preferences-system", "org.gnome.Settings", "systemsettings"],
-  terminal: ["utilities-terminal", "org.gnome.Console", "com.mitchellh.ghostty", "kitty", "foot", "Alacritty"],
-  notes: ["accessories-text-editor", "org.gnome.TextEditor", "gnome-notes"],
-  calendar: ["office-calendar", "org.gnome.Calendar"],
-  calculator: ["accessories-calculator", "org.gnome.Calculator"],
-  maps: ["maps", "org.gnome.Maps"],
-  store: ["system-software-install", "org.gnome.Software", "org.kde.discover"],
+  files: ["org.goldengate.Files", "system-file-manager", "org.gnome.Nautilus", "org.kde.dolphin", "thunar"],
+  browser: ["org.goldengate.Web", "web-browser", "firefox", "org.mozilla.firefox", "chromium", "google-chrome"],
+  mail: ["org.goldengate.Mail", "internet-mail", "thunderbird", "org.mozilla.Thunderbird", "org.gnome.Evolution", "org.gnome.Geary"],
+  messages: ["org.goldengate.Messages", "internet-chat", "org.gnome.Fractal", "signal-desktop"],
+  music: ["org.goldengate.Music", "multimedia-audio-player", "org.gnome.Music", "rhythmbox", "elisa"],
+  photos: ["org.goldengate.Photos", "multimedia-photo-viewer", "org.gnome.Loupe", "shotwell", "gthumb"],
+  settings: ["org.goldengate.Settings", "preferences-system", "org.gnome.Settings", "systemsettings"],
+  terminal: ["org.goldengate.Terminal", "utilities-terminal", "org.gnome.Console", "com.mitchellh.ghostty", "kitty", "foot", "Alacritty"],
+  notes: ["org.goldengate.Notes", "accessories-text-editor", "org.gnome.TextEditor", "gnome-notes"],
+  calendar: ["org.goldengate.Calendar", "office-calendar", "org.gnome.Calendar"],
+  calculator: ["org.goldengate.Calculator", "accessories-calculator", "org.gnome.Calculator"],
+  maps: ["org.goldengate.Maps", "maps", "org.gnome.Maps"],
+  store: ["org.goldengate.Software", "system-software-install", "org.gnome.Software", "org.kde.discover"],
   launcher: ["view-app-grid", "start-here"],
-  weather: ["weather", "org.gnome.Weather"],
+  weather: ["org.goldengate.Weather", "weather", "org.gnome.Weather"],
 };
 const placeNames = { trash: ["user-trash"], "trash-full": ["user-trash-full"], folder: ["folder"], document: ["text-x-generic"], audio: ["audio-x-generic"], image: ["image-x-generic"], disk: ["drive-harddisk"] };
 const symbolNames = {
