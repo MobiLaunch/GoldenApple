@@ -505,7 +505,7 @@ ShellRoot {
                     visible: stage.step === 5
                     text: "Restart"
                     prominent: true
-                    onClicked: Quickshell.execDetached(["sudo", "-n", "systemctl", "reboot"])
+                    onClicked: Quickshell.execDetached(["systemctl", "reboot"])
                 }
             }
         }
