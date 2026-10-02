@@ -109,6 +109,16 @@ PanelWindow {
         width: row.width + 18
         height: dock.baseSize + 18
         radius: Theme.radiusDock + 2
+        // Real GPUs make the generic light clear-glass tint read far whiter than
+        // llvmpipe/VMs. Give the Dock its own smoked graphite material so icon
+        // colors stay vivid and the shelf remains visible without becoming a
+        // bright white bar over light wallpapers.
+        tint: Theme.dark ? "#7021262e" : "#5f343941"
+        rim: Theme.dark ? "#68ffffff" : "#52ffffff"
+        rimLow: Theme.dark ? "#20ffffff" : "#16000000"
+        shine: Theme.dark ? "#36ffffff" : "#24ffffff"
+        lens: 4
+        shadow: "#72000000"
 
         Row {
             id: row
