@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from pathlib import Path
 import subprocess
 import sys
@@ -15,28 +16,84 @@ from PySide6.QtGui import QGuiApplication
 from model import Store, address_url
 
 
+def profile_key(name):
+    key = re.sub(r"[^a-z0-9._-]+", "-", (name or "Personal").strip().lower()).strip("-")
+    return key[:48] or "personal"
+
+
 class BrowserBackend(QObject):
     darkChanged = Signal()
     libraryChanged = Signal()
+    profilesChanged = Signal()
     toastRequested = Signal(str)
     externalUrls = Signal(str)
 
-    def __init__(self, *, private=False, launch_values=None, data_dir=None, cache_dir=None, download_dir=None, parent=None):
+    def __init__(self, *, private=False, launch_values=None, profile_name="Personal",
+                 data_dir=None, cache_dir=None, download_dir=None, parent=None):
         super().__init__(parent)
         self.private = bool(private)
         self.launch_values = list(launch_values or [])
-        data = Path(data_dir or QStandardPaths.writableLocation(QStandardPaths.AppDataLocation))
-        cache = Path(cache_dir or QStandardPaths.writableLocation(QStandardPaths.CacheLocation))
+        clean_profile = (profile_name or "Personal").strip()
+        self.profile_name = clean_profile[:60] or "Personal"
+
+        base_data = Path(data_dir or QStandardPaths.writableLocation(QStandardPaths.AppDataLocation))
+        base_cache = Path(cache_dir or QStandardPaths.writableLocation(QStandardPaths.CacheLocation))
         downloads = Path(download_dir or QStandardPaths.writableLocation(QStandardPaths.DownloadLocation))
+        base_data.mkdir(parents=True, exist_ok=True, mode=0o700)
+        base_cache.mkdir(parents=True, exist_ok=True, mode=0o700)
+        downloads.mkdir(parents=True, exist_ok=True)
+
+        self._base_data_dir = base_data
+        self._base_cache_dir = base_cache
+        self._profiles_file = base_data / "profiles.json"
+
+        # Preserve the original GoldenGateWeb paths for the default Personal
+        # profile; named profiles are isolated underneath profiles/<slug>/.
+        if self.profile_name == "Personal":
+            data = base_data
+            cache = base_cache
+        else:
+            key = profile_key(self.profile_name)
+            data = base_data / "profiles" / key
+            cache = base_cache / "profiles" / key
         data.mkdir(parents=True, exist_ok=True, mode=0o700)
         cache.mkdir(parents=True, exist_ok=True, mode=0o700)
-        downloads.mkdir(parents=True, exist_ok=True)
+
         self._data_dir = data
         self._cache_dir = cache
         self._downloads_dir = downloads
+        self._ensure_profile_registered(self.profile_name)
         self.store = Store(data / ("private-state.json" if self.private else "state.json"), self.private)
         self._dark = self._is_dark()
         QGuiApplication.styleHints().colorSchemeChanged.connect(self._scheme_changed)
+
+    def _read_profiles(self):
+        names = ["Personal"]
+        try:
+            raw = json.loads(self._profiles_file.read_text(encoding="utf-8"))
+            if isinstance(raw, list):
+                for value in raw:
+                    if isinstance(value, str) and value.strip() and value.strip() not in names:
+                        names.append(value.strip()[:60])
+        except (OSError, ValueError, TypeError):
+            pass
+        return names[:20]
+
+    def _write_profiles(self, names):
+        temp = self._profiles_file.with_suffix(".tmp")
+        fd = os.open(temp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        with os.fdopen(fd, "w", encoding="utf-8") as stream:
+            json.dump(names[:20], stream, ensure_ascii=False)
+        temp.replace(self._profiles_file)
+
+    def _ensure_profile_registered(self, name):
+        names = self._read_profiles()
+        if name not in names:
+            names.append(name)
+            try:
+                self._write_profiles(names)
+            except OSError:
+                pass
 
     def _is_dark(self):
         return QGuiApplication.styleHints().colorScheme().name.lower() == "dark"
@@ -54,6 +111,14 @@ class BrowserBackend(QObject):
     @Property(bool, constant=True)
     def privateMode(self):
         return self.private
+
+    @Property(str, constant=True)
+    def profileName(self):
+        return self.profile_name
+
+    @Property(str, notify=profilesChanged)
+    def profilesJson(self):
+        return json.dumps(self._read_profiles())
 
     @Property(str, constant=True)
     def dataDir(self):
@@ -316,10 +381,42 @@ class BrowserBackend(QObject):
     def notify(self, text):
         self.toastRequested.emit(text)
 
+    @Slot(str, result=bool)
+    def createProfile(self, name):
+        clean = (name or "").strip()
+        if not clean or len(clean) > 60 or any(ord(c) < 32 for c in clean):
+            self.toastRequested.emit("Enter a profile name up to 60 characters.")
+            return False
+        names = self._read_profiles()
+        if clean in names:
+            self.toastRequested.emit("That profile already exists.")
+            return False
+        names.append(clean)
+        try:
+            self._write_profiles(names)
+        except OSError:
+            self.toastRequested.emit("The profile could not be saved.")
+            return False
+        self.profilesChanged.emit()
+        self.toastRequested.emit("Profile created")
+        return True
+
+    @Slot(str)
+    def openProfile(self, name):
+        clean = (name or "").strip()
+        if clean not in self._read_profiles():
+            return
+        subprocess.Popen(
+            [sys.executable, str(Path(__file__).with_name("browser.py")), "--profile", clean],
+            close_fds=True,
+            start_new_session=True,
+        )
+
     @Slot()
     def openPrivateWindow(self):
         subprocess.Popen(
-            [sys.executable, str(Path(__file__).with_name("browser.py")), "--private"],
+            [sys.executable, str(Path(__file__).with_name("browser.py")),
+             "--profile", self.profile_name, "--private"],
             close_fds=True,
             start_new_session=True,
         )
