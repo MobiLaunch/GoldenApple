@@ -161,6 +161,19 @@ class BrowserBackend(QObject):
             return ""
 
     @Slot(str, result=str)
+    def securityOrigin(self, value):
+        try:
+            parsed = urlsplit(value)
+            if parsed.scheme not in ("http", "https") or not parsed.hostname:
+                return ""
+            host = parsed.hostname
+            if parsed.port:
+                host += f":{parsed.port}"
+            return f"{parsed.scheme}://{host}"
+        except (ValueError, AttributeError):
+            return ""
+
+    @Slot(str, result=str)
     def displayAddress(self, value):
         if not value or value == "about:blank":
             return ""
