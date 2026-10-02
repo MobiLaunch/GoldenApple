@@ -39,6 +39,8 @@ cmdline="$(grep -rhoE 'archisobasedir=[^ ]+ archisosearchuuid=[^ ]+' "$work/sysl
 [[ -s $work/vmlinuz && -s $work/initramfs.img ]] || { echo "no kernel/initramfs under /arch/boot/x86_64 in $ISO"; exit 1; }
 [[ -n $cmdline ]] || { echo "could not find the archiso kernel parameters in $ISO"; exit 1; }
 cmdline+=" console=tty0 console=ttyS0,115200 systemd.journald.forward_to_console=1 gg.nosetup"   # the desktop, not Setup Assistant
+# The std run also shows the boot screen (Plymouth) and captures it as boot-screen.png.
+[[ $VARIANT == std ]] && cmdline+=" splash vt.global_cursor_default=0"
 say "kernel parameters: $cmdline"
 
 # ---------------------------------------------------------------- QEMU
@@ -68,6 +70,10 @@ monitor() { printf '%s\n' "$1" | socat - "UNIX-CONNECT:$OUT/mon.sock" >/dev/null
 result=timeout
 for ((t = 0; t < TIMEOUT; t += 5)); do
   sleep 5
+  if [[ $VARIANT == std && $t == 5 ]]; then
+    monitor "screendump $OUT/boot-screen.ppm" && sleep 1
+    [[ -f $OUT/boot-screen.ppm ]] && convert "$OUT/boot-screen.ppm" "$OUT/boot-screen.png" && rm -f "$OUT/boot-screen.ppm"
+  fi
   if grep -q 'session started' "$OUT/serial.log" 2>/dev/null; then result=started; break; fi
   if grep -q 'gg-session.*Hyprland exited' "$OUT/serial.log" 2>/dev/null; then result=exited; break; fi
   kill -0 "$qemu" 2>/dev/null || { result=qemu-exited; break; }

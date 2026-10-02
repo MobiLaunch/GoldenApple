@@ -99,4 +99,5 @@ jobs:
           path: |
             boot-${{ matrix.display }}/serial.log
             boot-${{ matrix.display }}/screen.png
+            boot-${{ matrix.display }}/boot-screen.png
           retention-days: 7

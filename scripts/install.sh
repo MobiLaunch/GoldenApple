@@ -50,10 +50,18 @@ install_extras() {
   mkdir -p "$P"
   cp "$REPO"/themes/plymouth/golden-gate/* "$P/"
   if command -v rsvg-convert >/dev/null; then
-    rsvg-convert -w 96 -h 96 -o "$P/logo.png" "$REPO/shell/assets/symbols/logo.svg"
-    printf '<svg xmlns="http://www.w3.org/2000/svg" width="180" height="5"><rect width="180" height="5" rx="2.5" fill="#fff" fill-opacity=".22"/></svg>' | rsvg-convert -o "$P/track.png"
-    printf '<svg xmlns="http://www.w3.org/2000/svg" width="180" height="5"><rect width="180" height="5" rx="2.5" fill="#fff"/></svg>' | rsvg-convert -o "$P/fill.png"
-    printf '<svg xmlns="http://www.w3.org/2000/svg" width="220" height="34"><rect x=".5" y=".5" width="219" height="33" rx="16.5" fill="#fff" fill-opacity=".14" stroke="#fff" stroke-opacity=".45"/></svg>' | rsvg-convert -o "$P/field.png"
+    # The web preview's boot screen: a 92 px mark, a 180 x 5 bar; @2x for HiDPI.
+    local k sfx
+    for k in 1 2; do
+      sfx=""; [[ $k == 2 ]] && sfx="@2x"
+      rsvg-convert -w $((92 * k)) -h $((92 * k)) -o "$P/logo$sfx.png" "$REPO/shell/assets/symbols/logo.svg"
+      printf '<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d"><rect width="%d" height="%d" rx="%d" fill="#fff" fill-opacity=".22"/></svg>' \
+        $((180 * k)) $((5 * k)) $((180 * k)) $((5 * k)) $((3 * k)) | rsvg-convert -o "$P/track$sfx.png"
+      printf '<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d"><rect width="%d" height="%d" rx="%d" fill="#fff"/></svg>' \
+        $((180 * k)) $((5 * k)) $((180 * k)) $((5 * k)) $((3 * k)) | rsvg-convert -o "$P/fill$sfx.png"
+      printf '<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d"><rect x=".5" y=".5" width="%d" height="%d" rx="%d" fill="#fff" fill-opacity=".14" stroke="#fff" stroke-opacity=".45"/></svg>' \
+        $((220 * k)) $((34 * k)) $((220 * k - 1)) $((34 * k - 1)) $((17 * k)) | rsvg-convert -o "$P/field$sfx.png"
+    done
   else
     say "rsvg-convert not found (install librsvg); Plymouth images skipped"
   fi

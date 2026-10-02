@@ -139,6 +139,26 @@ awk '
 ' "$AIR/home/golden/.config/hypr/hypridle.conf" > "$WORK/hypridle.conf"
 mv "$WORK/hypridle.conf" "$AIR/home/golden/.config/hypr/hypridle.conf"
 
+# ---------------------------------------------------------------- boot screen
+# Plymouth draws the web preview's boot screen (themes/plymouth): it goes into the
+# initramfs, the normal boot entries ask for it quietly (the accessibility ones
+# keep their text), and it stays on screen until Hyprland draws: plymouth quits
+# with --retain-splash and the autologin prints nothing over it.
+say "boot screen: plymouth"
+sed -i -E '/^HOOKS=/ s/\<kms\>/kms plymouth/' "$AIR/etc/mkinitcpio.conf.d/archiso.conf"
+grep -q 'plymouth' "$AIR/etc/mkinitcpio.conf.d/archiso.conf" || { echo "could not add the plymouth hook"; exit 1; }
+mkdir -p "$AIR/etc/plymouth"
+printf '[Daemon]\nTheme=golden-gate\nShowDelay=0\nDeviceTimeout=8\n' > "$AIR/etc/plymouth/plymouthd.conf"
+QUIET="quiet splash loglevel=3 rd.udev.log_level=3 systemd.show_status=auto vt.global_cursor_default=0"
+for f in "$PROFILE"/efiboot/loader/entries/*.conf "$PROFILE"/grub/*.cfg "$PROFILE"/syslinux/*.cfg; do
+  [[ -f $f ]] || continue
+  sed -i -E "/accessibility=on/! s/(archisosearchuuid=%ARCHISO_UUID%)/\1 $QUIET/" "$f"
+done
+grep -rq 'splash' "$PROFILE"/efiboot/loader/entries/ || { echo "could not add splash to the boot entries"; exit 1; }
+mkdir -p "$AIR/etc/systemd/system/plymouth-quit.service.d"
+printf '[Service]\nExecStart=\nExecStart=-/usr/bin/plymouth quit --retain-splash\n' > "$AIR/etc/systemd/system/plymouth-quit.service.d/retain-splash.conf"
+: > "$AIR/home/golden/.hushlogin"
+
 # ---------------------------------------------------------------- build
 say "mkarchiso"
 mkarchiso -v -w "$WORK/build" -o "$OUT" "$PROFILE"

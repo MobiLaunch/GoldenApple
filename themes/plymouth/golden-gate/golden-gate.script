@@ -1,50 +1,74 @@
-# Golden Gate boot splash: bridge mark centred, progress hairline below it,
-# and a glass password capsule for encrypted disks. Images are rendered from
-# icons/source.mjs by scripts/install.sh (logo.png, track.png, fill.png, field.png).
+# Golden Gate boot screen, drawn as the web preview draws it (prototype/css/shell.css
+# #boot, prototype/js/lock.js boot()): the bridge mark (92 px) over a 180 x 5 px
+# progress bar 56 px below it, the pair centred on black; the bar's track is white
+# at 22% and the fill runs white with an eased motion. Twice the size on HiDPI
+# screens. A Liquid Glass capsule asks for the disk password when there is one.
+#
+# Images are rendered by scripts/install.sh from shell/assets/symbols/logo.svg:
+# logo.png, track.png, fill.png, field.png and their @2x versions.
 Window.SetBackgroundTopColor(0, 0, 0);
 Window.SetBackgroundBottomColor(0, 0, 0);
+
+# HiDPI: the logical size of the prototype at twice the pixels on large screens.
+if (Window.GetHeight() >= 1800) suffix = "@2x"; else suffix = "";
+fun img(name) { return Image(name + suffix + ".png"); }
 
 cx = Window.GetX() + Window.GetWidth() / 2;
 cy = Window.GetY() + Window.GetHeight() / 2;
 
-logo.image = Image("logo.png");
-logo.sprite = Sprite(logo.image);
-logo.sprite.SetPosition(cx - logo.image.GetWidth() / 2, cy - logo.image.GetHeight() / 2 - 40, 10);
+logo.image = img("logo");
+track.image = img("track");
+fill.original = img("fill");
+# 56 logical px between the mark and the bar.
+gap = 56 * logo.image.GetHeight() / 92;
+group = logo.image.GetHeight() + gap + track.image.GetHeight();
+top = cy - group / 2;
 
-track.image = Image("track.png");
-track.sprite = Sprite(track.image);
+logo.sprite = Sprite(logo.image);
+logo.sprite.SetPosition(cx - logo.image.GetWidth() / 2, top, 10);
+
 track.x = cx - track.image.GetWidth() / 2;
-track.y = cy + logo.image.GetHeight() / 2 + 30;
+track.y = top + logo.image.GetHeight() + gap;
+track.sprite = Sprite(track.image);
 track.sprite.SetPosition(track.x, track.y, 10);
 
-fill.original = Image("fill.png");
 fill.sprite = Sprite();
 fill.sprite.SetPosition(track.x, track.y, 11);
 
+# Plymouth reports progress in steps; the bar follows it smoothly, easing in
+# the way the prototype's cubic-bezier(.4,0,.2,1) bar does.
+target = 0;
+shown = 0;
 fun progress_callback(duration, progress) {
-    w = Math.Int(track.image.GetWidth() * progress);
-    if (w < 2) w = 2;
+    if (progress > target) target = progress;
+}
+fun refresh_callback() {
+    shown = shown + (target - shown) * 0.08;
+    w = Math.Int(track.image.GetWidth() * shown);
+    if (w < track.image.GetHeight()) w = track.image.GetHeight();
     fill.sprite.SetImage(fill.original.Scale(w, fill.original.GetHeight()));
 }
 Plymouth.SetBootProgressFunction(progress_callback);
+Plymouth.SetRefreshFunction(refresh_callback);
 
-# Password prompt (LUKS)
-field.image = Image("field.png");
+# Disk password: a glass capsule where the bar was, with a dot per character.
+field.image = img("field");
 field.sprite = Sprite(field.image);
 field.sprite.SetOpacity(0);
 bullets.sprite = Sprite();
 
 fun display_password(prompt, bullet_count) {
-    field.sprite.SetPosition(cx - field.image.GetWidth() / 2, track.y + 40, 20);
+    field.sprite.SetPosition(cx - field.image.GetWidth() / 2, track.y - field.image.GetHeight() / 2, 20);
     field.sprite.SetOpacity(1);
     track.sprite.SetOpacity(0);
     fill.sprite.SetOpacity(0);
     text = "";
     for (i = 0; i < bullet_count; i++) text += "●";
     if (bullet_count == 0) text = prompt;
-    bullets.image = Image.Text(text, 1, 1, 1, 0.9, "Inter 11");
+    if (suffix == "@2x") font = "Inter 22"; else font = "Inter 11";
+    bullets.image = Image.Text(text, 1, 1, 1, 0.9, font);
     bullets.sprite.SetImage(bullets.image);
-    bullets.sprite.SetPosition(cx - bullets.image.GetWidth() / 2, track.y + 40 + field.image.GetHeight() / 2 - bullets.image.GetHeight() / 2, 21);
+    bullets.sprite.SetPosition(cx - bullets.image.GetWidth() / 2, track.y - bullets.image.GetHeight() / 2, 21);
     bullets.sprite.SetOpacity(1);
 }
 fun display_normal() {
@@ -55,3 +79,10 @@ fun display_normal() {
 }
 Plymouth.SetDisplayPasswordFunction(display_password);
 Plymouth.SetDisplayNormalFunction(display_normal);
+
+# Finished: the bar completes before the desktop takes over.
+fun quit_callback() {
+    shown = 1;
+    fill.sprite.SetImage(fill.original.Scale(track.image.GetWidth(), fill.original.GetHeight()));
+}
+Plymouth.SetQuitFunction(quit_callback);
