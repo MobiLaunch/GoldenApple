@@ -14,7 +14,6 @@ from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtWebEngineQuick import QtWebEngineQuick
 
 from backend import BrowserBackend, profile_key
-from model import address_url
 
 
 def parse_arguments(values):
@@ -33,16 +32,6 @@ def parse_arguments(values):
             launch.append(value)
         i += 1
     return private, profile, launch
-
-
-def normalized_launch_values(values):
-    result = []
-    for value in values:
-        try:
-            result.append(address_url(value))
-        except ValueError:
-            pass
-    return result
 
 
 def instance_name(profile):
@@ -77,13 +66,20 @@ def main():
     app.setQuitOnLastWindowClosed(True)
 
     private, profile_name, launch_args = parse_arguments(sys.argv[1:])
-    launch_values = normalized_launch_values(launch_args)
 
+    # Load the selected profile before resolving command-line search text so its
+    # search-engine preference applies to desktop/CLI launches as well.
     backend = BrowserBackend(
         private=private,
-        launch_values=launch_values,
+        launch_values=[],
         profile_name=profile_name,
     )
+    launch_values = []
+    for value in launch_args[:30]:
+        resolved = backend.resolveAddress(value)
+        if resolved:
+            launch_values.append(resolved)
+    backend.launch_values = launch_values
 
     lock = None
     if not private:
@@ -141,10 +137,9 @@ def main():
                         for value in values[:30]:
                             if not isinstance(value, str):
                                 continue
-                            try:
-                                valid.append(address_url(value))
-                            except ValueError:
-                                pass
+                            resolved = backend.resolveAddress(value)
+                            if resolved:
+                                valid.append(resolved)
                         backend.externalUrls.emit(json.dumps(valid or ["about:blank"]))
 
                 def gone():
