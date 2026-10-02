@@ -41,6 +41,11 @@ for forbidden in ("dockMagnification", "dockMagnifiedSize", "pointerTargetX", "s
     if forbidden in dock:
         errors.append(f"shell/Dock.qml: removed magnification path reintroduced: {forbidden}")
 
+prefs = (root / "shell" / "components" / "Prefs.qml").read_text(encoding="utf-8")
+for forbidden in ("dockMagnification", "dockMagnifiedSize", "magnifiedSize"):
+    if forbidden in prefs:
+        errors.append(f"shell/components/Prefs.qml: removed Dock magnification preference reintroduced: {forbidden}")
+
 if errors:
     print("\n".join(errors), file=sys.stderr)
     raise SystemExit(1)
