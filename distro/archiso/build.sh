@@ -176,6 +176,30 @@ ln -sf /etc/systemd/system/gg-live-home.service "$WANTS/gg-live-home.service"
 # ---------------------------------------------------------------- desktop
 say "installing the Golden Gate desktop into the image"
 bash "$REPO/scripts/install.sh" --system "$AIR"
+
+# Optional locally supplied Apple typography/symbol assets. These directories are
+# ignored by git so proprietary files are never committed or redistributed by
+# Golden Gate. A local ISO build may overlay files the builder is licensed to use.
+LOCAL_FONTS="$REPO/local-assets/fonts"
+if [[ -d "$LOCAL_FONTS" ]] && find "$LOCAL_FONTS" -maxdepth 1 -type f \( -iname '*.otf' -o -iname '*.ttf' -o -iname '*.ttc' \) -print -quit | grep -q .; then
+  say "installing locally supplied SF Pro/SF Mono fonts"
+  mkdir -p "$AIR/usr/local/share/fonts/golden-gate"
+  while IFS= read -r -d '' font; do
+    install -m644 "$font" "$AIR/usr/local/share/fonts/golden-gate/$(basename "$font")"
+  done < <(find "$LOCAL_FONTS" -maxdepth 1 -type f \( -iname '*.otf' -o -iname '*.ttf' -o -iname '*.ttc' \) -print0)
+fi
+
+LOCAL_SYMBOLS="$REPO/local-assets/symbols"
+if [[ -d "$LOCAL_SYMBOLS" ]] && find "$LOCAL_SYMBOLS" -maxdepth 1 -type f -iname '*.svg' -print -quit | grep -q .; then
+  say "overlaying locally supplied system symbols"
+  mkdir -p "$AIR/usr/share/golden-gate/ui/assets/symbols" "$AIR/usr/share/sddm/themes/golden-gate/assets/symbols"
+  while IFS= read -r -d '' symbol; do
+    name="$(basename "$symbol")"
+    install -m644 "$symbol" "$AIR/usr/share/golden-gate/ui/assets/symbols/$name"
+    install -m644 "$symbol" "$AIR/usr/share/sddm/themes/golden-gate/assets/symbols/$name"
+  done < <(find "$LOCAL_SYMBOLS" -maxdepth 1 -type f -iname '*.svg' -print0)
+fi
+
 mkdir -p "$AIR/home/golden"
 cp -a "$AIR/etc/skel/." "$AIR/home/golden/"
 cat > "$AIR/home/golden/.bash_profile" <<'EOF'
