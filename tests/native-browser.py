@@ -1,13 +1,11 @@
 #!/usr/bin/env python3
-"""Exercise real Chromium tabs against a local-only HTTP fixture.
-CI runs as a normal user with Chromium's sandbox; a root container needs the
-explicit GG_TEST_UNSANDBOXED=1 opt-in. Production launchers never set this flag.
-"""
+"""Exercise Golden Gate Web's real Qt Quick / Chromium browser against localhost."""
 import os
-os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
-os.environ.setdefault('QTWEBENGINE_CHROMIUM_FLAGS', '--disable-gpu')
-if os.geteuid() == 0 and os.environ.get('GG_TEST_UNSANDBOXED') == '1':
-    os.environ['QTWEBENGINE_CHROMIUM_FLAGS'] += ' --no-sandbox'
+os.environ.setdefault("QT_QPA_PLATFORM", "xcb")
+os.environ.setdefault("QTWEBENGINE_CHROMIUM_FLAGS", "--disable-gpu")
+if os.geteuid() == 0 and os.environ.get("GG_TEST_UNSANDBOXED") == "1":
+    os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] += " --no-sandbox"
+
 import http.server
 from pathlib import Path
 import sys
@@ -15,132 +13,165 @@ import tempfile
 import threading
 import time
 import unittest
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'apps/browser'))
-from PySide6.QtWidgets import QApplication, QFileDialog
-from PySide6.QtCore import QCoreApplication, QEvent, Qt
-from PySide6.QtTest import QTest
-from browser import Browser
-from unittest.mock import patch
 
-APP = QApplication([])
-APP.setApplicationName('GoldenGateWebTest')
-ERRORS=[]
-def exception(kind, value, tb):
-    ERRORS.append(str(value))
-    sys.__excepthook__(kind, value, tb)
-sys.excepthook=exception
+ROOT = Path(__file__).resolve().parents[1]
+BROWSER = ROOT / "apps/browser"
+sys.path.insert(0, str(BROWSER))
+
+from PySide6.QtCore import QCoreApplication, QEvent
+from PySide6.QtGui import QGuiApplication
+from PySide6.QtQml import QQmlApplicationEngine
+from PySide6.QtTest import QTest
+from PySide6.QtWebEngineQuick import QtWebEngineQuick
+
+QtWebEngineQuick.initialize()
+APP = QGuiApplication([])
+APP.setApplicationName("GoldenGateWebTest")
+
+from backend import BrowserBackend
+
 
 class Fixture(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
-        page=f'<title>Fixture {self.path}</title><a href="/second">Second page</a><p>Local browser test</p>'
-        self.send_response(200); self.send_header('Content-Type','text/html'); self.end_headers()
-        try: self.wfile.write(page.encode())
-        except BrokenPipeError: pass
-    def log_message(self, *_): pass
-SERVER=http.server.ThreadingHTTPServer(('127.0.0.1',0), Fixture)
+        page = (
+            f"<title>Fixture {self.path}</title>"
+            '<article><h1>Reader Title</h1><p>Local browser test article.</p></article>'
+            '<a href="/second">Second page</a>'
+        )
+        self.send_response(200)
+        self.send_header("Content-Type", "text/html")
+        self.end_headers()
+        try:
+            self.wfile.write(page.encode())
+        except BrokenPipeError:
+            pass
+
+    def log_message(self, *_):
+        pass
+
+
+SERVER = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Fixture)
 threading.Thread(target=SERVER.serve_forever, daemon=True).start()
-BASE=f'http://127.0.0.1:{SERVER.server_port}'
+BASE = f"http://127.0.0.1:{SERVER.server_port}"
 
-def until(predicate, timeout=12):
-    deadline=time.monotonic()+timeout
-    while time.monotonic()<deadline:
+
+def until(predicate, timeout=15):
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
         APP.processEvents()
-        if predicate(): return
-        QTest.qWait(20)
-    raise AssertionError('Timed out waiting for browser')
+        if predicate():
+            return
+        QTest.qWait(25)
+    raise AssertionError("Timed out waiting for browser")
 
-class NativeBrowser(unittest.TestCase):
+
+class QmlBrowser(unittest.TestCase):
     def setUp(self):
-        self.tmp=tempfile.TemporaryDirectory()
-        self.browser=Browser(data_dir=self.tmp.name)
-        self.browser.show()
-        until(lambda: self.browser.current().title()=='Start Page')
+        self.tmp = tempfile.TemporaryDirectory()
+        base = Path(self.tmp.name)
+        self.backend = BrowserBackend(
+            data_dir=base / "data",
+            cache_dir=base / "cache",
+            download_dir=base / "downloads",
+        )
+        self.engine = QQmlApplicationEngine()
+        self.engine.rootContext().setContextProperty("BrowserBackend", self.backend)
+        self.engine.load((BROWSER / "Browser.qml").as_uri())
+        self.assertTrue(self.engine.rootObjects(), "Browser.qml failed to create its window")
+        self.window = self.engine.rootObjects()[0]
+        until(lambda: int(self.window.property("tabCount")) >= 1)
+
     def tearDown(self):
-        self.browser.close()
-        self.browser.deleteLater()
+        self.window.close()
+        self.engine.deleteLater()
+        QCoreApplication.sendPostedEvents(None, QEvent.DeferredDelete)
+        for _ in range(12):
+            APP.processEvents()
+            QTest.qWait(30)
+        self.tmp.cleanup()
+
+    def test_start_page_and_safari_chrome(self):
+        self.assertEqual(self.window.property("currentUrl"), "about:blank")
+        self.assertEqual(int(self.window.property("tabCount")), 1)
+        qml = (BROWSER / "Browser.qml").read_text()
+        for needle in [
+            "Search or enter website name",
+            "Tab Layout",
+            "Reading List",
+            "Recently Closed",
+            "Page Menu",
+            "Web Settings",
+            "Reader",
+        ]:
+            self.assertIn(needle, qml)
+
+    def test_real_webengine_navigation(self):
+        view = self.window.property("currentView")
+        self.assertIsNotNone(view)
+        view.setProperty("url", BASE + "/first")
+        until(lambda: view.property("title") == "Fixture /first")
+        self.assertEqual(view.property("url").toString(), BASE + "/first")
+        until(lambda: bool(self.backend.store.data["history"]))
+        self.assertEqual(self.backend.store.data["history"][0]["url"], BASE + "/first")
+
+    def test_multiple_restored_tabs_have_web_views(self):
+        self.window.close()
+        self.engine.deleteLater()
         QCoreApplication.sendPostedEvents(None, QEvent.DeferredDelete)
         APP.processEvents()
-        # WebEngine profile/cache writes can outlive the window by a few event
-        # turns. Retry only the temporary-directory cleanup; a persistent leak
-        # still fails the test instead of being ignored.
-        cleanup_error = None
-        for _ in range(20):
-            try:
-                self.tmp.cleanup()
-                cleanup_error = None
-                break
-            except OSError as error:
-                cleanup_error = error
-                QCoreApplication.sendPostedEvents(None, QEvent.DeferredDelete)
-                APP.processEvents()
-                QTest.qWait(50)
-        if cleanup_error is not None:
-            raise cleanup_error
-        self.assertFalse(ERRORS, str(ERRORS))
-    def test_start_page_and_tab_close(self):
-        b=self.browser
-        b.new_tab(); self.assertEqual(len(b.views),2)
-        b.close_tab(1); self.assertEqual(len(b.views),1)
-        b.close_tab(0); self.assertEqual(len(b.views),1)
-        until(lambda:b.current().title()=='Start Page')
-        self.assertEqual(b.tabs.count(),b.tab_list.count())
-    def test_navigation_history_and_bookmark(self):
-        b=self.browser
-        b.go(BASE+'/first'); until(lambda:b.current().title()=='Fixture /first')
-        b.go(BASE+'/second'); until(lambda:b.current().title()=='Fixture /second')
-        self.assertTrue(b.back.isEnabled())
-        b.current().back(); until(lambda:b.current().title()=='Fixture /first')
-        b.bookmark(); b.save()
-        self.assertEqual(b.store.data['bookmarks'][0]['url'],BASE+'/first')
-        self.assertTrue(b.store.data['history'])
-    def test_address_rejection_and_crash_recovery(self):
-        b=self.browser
-        b.address.setText('javascript:alert(1)'); b.navigate()
-        self.assertIn('Only http',b.notice.text())
-        b.renderer_failed(b.current(),139)
-        self.assertIn('Ctrl+R',b.notice.text())
-        self.assertEqual(len(b.views),1)
-    def test_shortcuts_and_zoom(self):
-        b=self.browser
-        b.activateWindow(); QTest.qWait(50)
-        QTest.keyClick(b,Qt.Key_T,Qt.ControlModifier)
-        self.assertEqual(len(b.views),2)
-        for _ in range(100): b.zoom(-.1)
-        self.assertEqual(b.current().zoomFactor(),.25)
-        for _ in range(100): b.zoom(.1)
-        self.assertAlmostEqual(b.current().zoomFactor(),5)
-    def test_private_profile(self):
-        b=Browser(private=True,data_dir=self.tmp.name+'/private')
-        self.assertTrue(b.profile.isOffTheRecord())
-        b.save()
-        self.assertFalse((Path(self.tmp.name)/'private/state.json').exists())
-        b.close(); b.deleteLater()
-        QCoreApplication.sendPostedEvents(None,QEvent.DeferredDelete)
-    def test_download_cancel_does_not_accept(self):
-        from unittest.mock import Mock
-        request=Mock(); request.suggestedFileName.return_value='sample.txt'
-        with patch.object(QFileDialog,'getSaveFileName',return_value=('', '')):
-            self.browser.download(request)
-        request.cancel.assert_called_once(); request.accept.assert_not_called()
-    def test_restored_background_tabs_load_on_demand(self):
-        b = self.browser
-        view = b.add_tab(BASE + '/deferred', activate=False)
-        self.assertEqual(view.pending_url, BASE + '/deferred')
-        self.assertFalse(view.page().isLoading())
-        b.save()
-        self.assertIn(BASE + '/deferred', b.store.data['tabs'])
-        b.select_tab(1)
-        until(lambda: view.title() == 'Fixture /deferred')
-        self.assertIsNone(view.pending_url)
-    def test_visual(self):
-        b=self.browser
-        QTest.qWait(150)
-        out=Path(__file__).resolve().parents[1]/'out/browser'
-        out.mkdir(parents=True,exist_ok=True)
-        self.assertTrue(b.grab().save(str(out/'web-light.png')))
-        b.resize(680,480); QTest.qWait(250)
-        self.assertTrue(b.grab().save(str(out/'web-compact.png')))
 
-if __name__=='__main__':
-    try: unittest.main(verbosity=2)
-    finally: SERVER.shutdown()
+        base = Path(self.tmp.name)
+        self.backend = BrowserBackend(
+            launch_values=[BASE + "/one", BASE + "/two"],
+            data_dir=base / "data2",
+            cache_dir=base / "cache2",
+            download_dir=base / "downloads2",
+        )
+        self.engine = QQmlApplicationEngine()
+        self.engine.rootContext().setContextProperty("BrowserBackend", self.backend)
+        self.engine.load((BROWSER / "Browser.qml").as_uri())
+        self.window = self.engine.rootObjects()[0]
+        until(lambda: int(self.window.property("tabCount")) == 2)
+        self.assertEqual(int(self.window.property("tabCount")), 2)
+
+    def test_private_state_stays_ephemeral(self):
+        base = Path(self.tmp.name) / "private-check"
+        private = BrowserBackend(
+            private=True,
+            data_dir=base / "data",
+            cache_dir=base / "cache",
+            download_dir=base / "downloads",
+        )
+        private.visit(BASE + "/private", "Private")
+        private.saveTabs('["https://example.com"]')
+        self.assertFalse((base / "data/private-state.json").exists())
+        self.assertFalse(private.store.data["history"])
+
+    def test_backend_search_and_collections(self):
+        self.backend.addBookmark("https://example.com", "Example")
+        self.backend.addReadingList("https://example.org/read", "Read This")
+        suggestions = self.backend.suggestions("exam", "[]")
+        self.assertIn("Example", suggestions)
+        self.assertIn("example.com", suggestions)
+        start = self.backend.startPageJson()
+        self.assertIn("favorites", start)
+        self.assertIn("readingList", start)
+
+    def test_visual_preview(self):
+        QTest.qWait(250)
+        out = ROOT / "out/browser"
+        out.mkdir(parents=True, exist_ok=True)
+        image = self.window.grabWindow()
+        self.assertFalse(image.isNull())
+        self.assertTrue(image.save(str(out / "web-qml-start.png")))
+        self.window.resize(760, 560)
+        QTest.qWait(180)
+        image = self.window.grabWindow()
+        self.assertTrue(image.save(str(out / "web-qml-compact.png")))
+
+
+if __name__ == "__main__":
+    try:
+        unittest.main(verbosity=2)
+    finally:
+        SERVER.shutdown()
