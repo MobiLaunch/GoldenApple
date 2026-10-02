@@ -47,8 +47,6 @@ PanelWindow {
         items: [
             { label: "New Folder", action: () => Quickshell.execDetached(["sh", "-c", "d=$HOME/Desktop; mkdir -p \"$d\"; n=\"New Folder\"; p=\"$d/$n\"; i=2; while [ -e \"$p\" ]; do p=\"$d/$n $i\"; i=$((i+1)); done; mkdir \"$p\""]) },
             "-",
-            { label: "Open Applications", action: () => Quickshell.execDetached(["qs", "ipc", "call", "applications", "open"]) },
-            "-",
             { label: "Change Wallpaper…", action: () => Quickshell.execDetached(["gg-settings", "wallpaper"]) },
             { label: "Display Settings…", action: () => Quickshell.execDetached(["gg-settings", "display"]) }
         ]
