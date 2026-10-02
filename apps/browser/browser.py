@@ -7,7 +7,7 @@ import os
 from pathlib import Path
 import sys
 
-from PySide6.QtCore import QCoreApplication, QLockFile, QStandardPaths, QUrl
+from PySide6.QtCore import QCoreApplication, QLockFile, QStandardPaths, QTimer, QUrl
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtNetwork import QLocalServer, QLocalSocket
 from PySide6.QtQml import QQmlApplicationEngine
@@ -44,6 +44,7 @@ def main():
     if os.geteuid() == 0:
         sys.exit("Run Web as your desktop user, not root. Chromium sandboxing remains enabled.")
 
+    QCoreApplication.setOrganizationName("Golden Gate")
     QCoreApplication.setApplicationName("GoldenGateWeb")
     QCoreApplication.setApplicationVersion("0.2")
     QtWebEngineQuick.initialize()
@@ -78,6 +79,16 @@ def main():
     if not engine.rootObjects():
         sys.stderr.write("Golden Gate Web could not load its QML interface.\n")
         return 2
+
+    # CI/test-only timed exit. Production never sets this environment variable.
+    # Keeping the hook in the launcher lets tests exercise the exact QML +
+    # Chromium startup path instead of a separate fake window.
+    try:
+        test_exit_ms = int(os.environ.get("GG_WEB_TEST_EXIT_MS", "0"))
+    except ValueError:
+        test_exit_ms = 0
+    if test_exit_ms > 0:
+        QTimer.singleShot(test_exit_ms, app.quit)
 
     server = None
     sockets = set()
