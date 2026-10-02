@@ -47,6 +47,10 @@ jobs:
           grep -q 'TAB GROUPS' apps/browser/Browser.qml
           grep -q 'text: "Profiles"' apps/browser/Browser.qml
           grep -q 'options: \["DuckDuckGo", "Brave", "Bing", "Google"\]' apps/browser/Browser.qml
+          grep -q 'id: websitePermissionsSheet' apps/browser/Browser.qml
+          grep -q 'listAllPermissions' apps/browser/Browser.qml
+          grep -q 'id: tabOverview' apps/browser/Browser.qml
+          grep -q 'Save Tabs as Group' apps/browser/Browser.qml
           grep -q 'WebEngineProfile' apps/browser/Browser.qml
           grep -q 'QtWebEngineQuick.initialize' apps/browser/browser.py
           grep -q 'parse_arguments' apps/browser/browser.py
