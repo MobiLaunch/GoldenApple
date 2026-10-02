@@ -29,6 +29,10 @@ Window {
     property bool settingsOpen: false
     property bool privacySheetOpen: false
     property var sitePrivacyReport: ({ enabled: true, blocked: 0, domains: [] })
+    property bool findOpen: false
+    property string findQuery: ""
+    property int findMatches: 0
+    property int findActive: 0
     property bool readerOpen: false
     property bool tabOverviewOpen: false
     property string readerTitle: ""
@@ -174,6 +178,32 @@ Window {
         if (!currentView) return
         if (currentView.loading) currentView.stop()
         else currentView.reload()
+    }
+
+    function performFind(backward) {
+        if (!currentView) return
+        const query = findQuery.trim()
+        if (!query) {
+            currentView.findText("")
+            findMatches = 0
+            findActive = 0
+            return
+        }
+        currentView.findText(query, backward ? WebEngineView.FindBackward : 0)
+    }
+
+    function openFind() {
+        if (!currentView || currentUrl === "about:blank") return
+        findOpen = true
+        Qt.callLater(function() { findField.input.forceActiveFocus(); findField.input.selectAll() })
+    }
+
+    function closeFind() {
+        if (currentView) currentView.findText("")
+        findOpen = false
+        findQuery = ""
+        findMatches = 0
+        findActive = 0
     }
 
     function reopenLastClosed() {
@@ -1086,6 +1116,12 @@ Window {
                         onLoadProgressChanged: tabsModel.setProperty(webTab.index, "progress", loadProgress)
                         onRecentlyAudibleChanged: tabsModel.setProperty(webTab.index, "audible", recentlyAudible)
                         onAudioMutedChanged: tabsModel.setProperty(webTab.index, "muted", audioMuted)
+                    onFindTextFinished: function(result) {
+                        if (webTab.index === root.currentIndex) {
+                            root.findMatches = result.numberOfMatches
+                            root.findActive = result.activeMatch
+                        }
+                    }
                         onNewWindowRequested: function(request) { root.requestNewWindow(request) }
                         onPermissionRequested: function(permission) {
                             root.pendingPermission = permission
