@@ -25,7 +25,7 @@ required = {
     "BluetoothPane.qml": ["bluetoothctl"],
     "DateTimePane.qml": ["timedatectl"],
     "DisplaysPane.qml": ['setPref(["display", "brightness"]', 'setPref(["display", "nightShift"]', 'setPref(["display", "warmth"]'],
-    "DockPane.qml": ['set("size"', 'set("magnification"', 'set("magnifiedSize"', 'set("animateLaunch"', 'set("indicators"'],
+    "DockPane.qml": ['set("size"', 'set("animateLaunch"', 'set("indicators"'],
     "FocusPane.qml": ['setPref(["focus", "dnd"]'],
     "KeyboardPane.qml": ["setInput("],
     "PrivacyPane.qml": ["setPrivacy("],
