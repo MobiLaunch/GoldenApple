@@ -19,7 +19,6 @@ class BrowserBackend(QObject):
     darkChanged = Signal()
     libraryChanged = Signal()
     toastRequested = Signal(str)
-    externalUrlRequested = Signal(str)
     externalUrls = Signal(str)
 
     def __init__(self, *, private=False, launch_values=None, data_dir=None, cache_dir=None, download_dir=None, parent=None):
@@ -243,6 +242,49 @@ class BrowserBackend(QObject):
             return
         self.store.data["settings"][key] = value
         self._save()
+
+    @Slot(str, str, result=bool)
+    def saveTabGroup(self, name, tabs_json):
+        if self.private:
+            return False
+        clean_name = (name or "").strip()
+        if not clean_name:
+            self.toastRequested.emit("Give this Tab Group a name.")
+            return False
+        if len(clean_name) > 60:
+            clean_name = clean_name[:60]
+        try:
+            values = json.loads(tabs_json or "[]")
+        except (TypeError, ValueError):
+            return False
+        tabs = []
+        for value in values[:30]:
+            if isinstance(value, dict):
+                url = value.get("url")
+                title = value.get("title") or self.displayAddress(url or "")
+            else:
+                url = value
+                title = self.displayAddress(url or "")
+            if url == "about:blank" or self.store.valid(url):
+                tabs.append({"title": title or "Start Page", "url": url})
+        if not tabs:
+            self.toastRequested.emit("There are no tabs to save.")
+            return False
+        groups = [g for g in self.store.data["tabGroups"] if g.get("name") != clean_name]
+        groups.insert(0, {"name": clean_name, "tabs": tabs})
+        self.store.data["tabGroups"] = groups[:20]
+        self._save()
+        self.libraryChanged.emit()
+        self.toastRequested.emit("Tab Group saved")
+        return True
+
+    @Slot(int)
+    def removeTabGroup(self, index):
+        groups = self.store.data["tabGroups"]
+        if 0 <= index < len(groups):
+            groups.pop(index)
+            self._save()
+            self.libraryChanged.emit()
 
     @Slot(str, int)
     def removeCollectionItem(self, key, index):
