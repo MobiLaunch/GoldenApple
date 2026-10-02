@@ -52,6 +52,11 @@ jobs:
           grep -q 'id: tabOverview' apps/browser/Browser.qml
           grep -q 'Save Tabs as Group' apps/browser/Browser.qml
           grep -q 'WebEngineProfile' apps/browser/Browser.qml
+          grep -q 'BrowserBackend.attachProfile(profile)' apps/browser/Browser.qml
+          grep -q 'text: "Privacy Report"' apps/browser/Browser.qml
+          grep -q 'privacyProtection' apps/browser/model.py
+          grep -q 'QWebEngineUrlRequestInterceptor' apps/browser/backend.py
+          grep -q 'setUrlRequestInterceptor' apps/browser/backend.py
           grep -q 'QtWebEngineQuick.initialize' apps/browser/browser.py
           grep -q 'parse_arguments' apps/browser/browser.py
           grep -q 'profile_key' apps/browser/browser.py
