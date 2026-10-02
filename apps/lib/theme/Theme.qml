@@ -5,8 +5,8 @@ import QtQuick
 QtObject {
     property bool dark: false
 
-    readonly property string fontUi: "Inter Variable"
-    readonly property string fontDisplay: "Inter Display"
+    readonly property string fontUi: "SF Pro Text"
+    readonly property string fontDisplay: "SF Pro Display"
     readonly property real textCaption2: 10
     readonly property real textCaption: 11
     readonly property real textFootnote: 12
