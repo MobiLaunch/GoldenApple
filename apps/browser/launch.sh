@@ -6,7 +6,7 @@
 if [ -d /run/archiso ]; then
     export GG_WEB_LIVE_SAFE=1
     export LIBGL_ALWAYS_SOFTWARE=1
-    export QTWEBENGINE_CHROMIUM_FLAGS="${QTWEBENGINE_CHROMIUM_FLAGS:-} --disable-gpu --disable-features=Vulkan,VaapiVideoDecoder,VaapiVideoEncoder"
+    export QTWEBENGINE_CHROMIUM_FLAGS="${QTWEBENGINE_CHROMIUM_FLAGS:-} --disable-gpu --disable-gpu-compositing --disable-features=Vulkan,VaapiVideoDecoder,VaapiVideoEncoder"
     logger -t gg-web "live ISO: Chromium hardware acceleration disabled for renderer stability"
 elif [ "${GG_WEB_SOFTWARE:-0}" = 1 ] || [ "${LIBGL_ALWAYS_SOFTWARE:-0}" = 1 ] || [ "${QT_QUICK_BACKEND:-}" = software ]; then
     export QTWEBENGINE_CHROMIUM_FLAGS="${QTWEBENGINE_CHROMIUM_FLAGS:-} --disable-gpu"
