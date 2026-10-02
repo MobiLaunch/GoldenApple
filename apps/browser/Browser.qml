@@ -1501,6 +1501,42 @@ Window {
         }
     }
 
+    Glass {
+        id: findBar
+        visible: root.findOpen
+        z: 52
+        anchors { top: webArea.top; right: webArea.right; topMargin: 12; rightMargin: 16 }
+        width: 360
+        height: 44
+        radius: 14
+        tint: Theme.dark ? "#f034343a" : "#f2f8f8fa"
+        shadow: "#65000000"
+        Row {
+            anchors { fill: parent; margins: 6 }
+            spacing: 5
+            TextField {
+                id: findField
+                width: 210; height: 32
+                search: true
+                placeholder: "Find on Page"
+                text: root.findQuery
+                onTextChanged: { root.findQuery = text; root.performFind(false) }
+                onAccepted: root.performFind(false)
+            }
+            Text {
+                width: 50
+                anchors.verticalCenter: parent.verticalCenter
+                horizontalAlignment: Text.AlignHCenter
+                text: root.findQuery ? (root.findMatches ? root.findActive + " of " + root.findMatches : "0 of 0") : ""
+                color: Theme.secondaryLabel
+                font { family: Theme.fontUi; pixelSize: 10 }
+            }
+            BrowserButton { width: 26; height: 26; symbol: "chevron-left"; tooltip: "Previous Match"; enabled: root.findMatches > 0; onClicked: root.performFind(true) }
+            BrowserButton { width: 26; height: 26; symbol: "chevron-right"; tooltip: "Next Match"; enabled: root.findMatches > 0; onClicked: root.performFind(false) }
+            BrowserButton { width: 26; height: 26; symbol: "xmark"; tooltip: "Close Find"; onClicked: root.closeFind() }
+        }
+    }
+
     Rectangle {
         id: pageMenu
         z: 48
@@ -1568,6 +1604,13 @@ Window {
             MenuRow { symbol: "bookmark"; label: "Add to Favorites"; enabled: root.currentUrl !== "about:blank"; onActivated: { BrowserBackend.addBookmark(root.currentUrl, root.currentTitle); root.pageMenuOpen = false } }
             MenuRow { symbol: "clock"; label: "Add to Reading List"; enabled: root.currentUrl !== "about:blank"; onActivated: { BrowserBackend.addReadingList(root.currentUrl, root.currentTitle); root.pageMenuOpen = false } }
             MenuRow { symbol: "globe"; label: "Copy Link"; enabled: root.currentUrl !== "about:blank"; onActivated: { BrowserBackend.copyText(root.currentUrl); root.pageMenuOpen = false; BrowserBackend.notify("Link copied") } }
+            MenuRow {
+                symbol: "search"
+                label: "Find on Page…"
+                trailing: "⌘F"
+                enabled: root.currentUrl !== "about:blank"
+                onActivated: { root.pageMenuOpen = false; root.openFind() }
+            }
 
             Rectangle { width: parent.width; height: 1; color: Theme.separator }
 
@@ -2560,6 +2603,7 @@ Window {
     }
 
     Shortcut { sequence: "Ctrl+L"; onActivated: root.focusAddress() }
+    Shortcut { sequence: "Ctrl+F"; onActivated: root.openFind() }
     Shortcut { sequence: "Ctrl+T"; onActivated: root.newTab("about:blank", true) }
     Shortcut { sequence: "Ctrl+W"; onActivated: root.closeTab(root.currentIndex) }
     Shortcut { sequence: "Ctrl+R"; onActivated: root.reloadOrStop() }
@@ -2590,7 +2634,8 @@ Window {
     Shortcut {
         sequence: "Escape"
         onActivated: {
-            if (root.readerOpen) root.readerOpen = false
+            if (root.findOpen) root.closeFind()
+            else if (root.readerOpen) root.readerOpen = false
             else if (root.tabOverviewOpen) root.tabOverviewOpen = false
             else if (root.websitePermissionsOpen) root.websitePermissionsOpen = false
             else if (root.profileSheetOpen) root.profileSheetOpen = false
