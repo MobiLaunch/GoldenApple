@@ -164,7 +164,7 @@ Window {
         })
     }
 
-    Theme.dark: backend.dark
+    Binding { target: Theme; property: "dark"; value: backend.dark }
 
     WebEngineProfile {
         id: webProfile
@@ -276,7 +276,7 @@ Window {
                 anchors.fill: parent
                 acceptedButtons: Qt.LeftButton
                 onPressed: mouse => {
-                    if (mouse.y < toolbar.height && root.windowState !== Qt.WindowFullScreen)
+                    if (mouse.y < toolbar.height && root.visibility !== Window.FullScreen)
                         root.startSystemMove()
                 }
                 onDoubleClicked: root.visibility === Window.Maximized ? root.showNormal() : root.showMaximized()
@@ -688,7 +688,14 @@ Window {
                                                 root.refreshStartPage()
                                             }
                                         }
-                                        MouseArea { id: libArea; anchors.fill: parent; hoverEnabled: true; z: -1; onDoubleClicked: { root.openUrl(modelData.url); library.visible = false } }
+                                        HoverHandler { id: libArea }
+                                        TapHandler {
+                                            acceptedButtons: Qt.LeftButton
+                                            onDoubleTapped: {
+                                                root.openUrl(modelData.url)
+                                                library.visible = false
+                                            }
+                                        }
                                     }
                                 }
                             }
