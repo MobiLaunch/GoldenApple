@@ -124,6 +124,18 @@ Window {
         Qt.callLater(syncAddress)
     }
 
+    function reorderTab(from, to) {
+        if (from < 0 || to < 0 || from >= tabsModel.count || to >= tabsModel.count || from === to)
+            return
+        const active = currentIndex
+        tabsModel.move(from, to, 1)
+        if (active === from) currentIndex = to
+        else if (from < active && to >= active) currentIndex = active - 1
+        else if (from > active && to <= active) currentIndex = active + 1
+        saveTabsSoon()
+        Qt.callLater(syncAddress)
+    }
+
     function activateUrl(url) {
         for (let i = 0; i < tabsModel.count; i++) {
             if (tabsModel.get(i).url === url) {
@@ -723,8 +735,11 @@ Window {
                         required property bool audible
                         required property bool muted
                         readonly property bool active: index === root.currentIndex
+                        property real dragOffset: 0
                         width: Math.max(132, Math.min(220, (tabScroller.width - 10) / Math.max(1, Math.min(6, tabsModel.count))))
                         height: 37
+                        z: tabDrag.active ? 10 : 0
+                        transform: Translate { x: tab.dragOffset }
 
                         Rectangle {
                             anchors { fill: parent; topMargin: 3; bottomMargin: 3 }
@@ -831,6 +846,22 @@ Window {
                         TapHandler {
                             acceptedButtons: Qt.MiddleButton
                             onTapped: root.closeTab(tab.index)
+                        }
+                        DragHandler {
+                            id: tabDrag
+                            target: null
+                            xAxis.enabled: true
+                            yAxis.enabled: false
+                            onTranslationChanged: tab.dragOffset = translation.x
+                            onActiveChanged: {
+                                if (active) return
+                                const from = tab.index
+                                const step = tab.width + tabRow.spacing
+                                const delta = Math.round(tab.dragOffset / Math.max(1, step))
+                                const to = Math.max(0, Math.min(tabsModel.count - 1, from + delta))
+                                tab.dragOffset = 0
+                                root.reorderTab(from, to)
+                            }
                         }
                     }
                 }
