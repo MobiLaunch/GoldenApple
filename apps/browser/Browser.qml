@@ -35,6 +35,9 @@ Window {
     property var startPageData: JSON.parse(BrowserBackend.startPageJson())
     property var browserSettings: JSON.parse(BrowserBackend.settingsJson)
     property var suggestionData: []
+    property var tabGroups: []
+    property bool tabGroupEditorOpen: false
+    property string tabGroupName: ""
     readonly property bool compactTabs: browserSettings.tabLayout === "compact"
 
     Binding { target: Theme; property: "dark"; value: BrowserBackend.dark }
@@ -206,6 +209,54 @@ Window {
         BrowserBackend.setSetting(key, JSON.stringify(value))
     }
 
+    function refreshTabGroups() {
+        try { tabGroups = JSON.parse(BrowserBackend.collectionJson("tabGroups")) }
+        catch (_) { tabGroups = [] }
+    }
+
+    function saveCurrentTabGroup() {
+        const name = tabGroupName.trim()
+        if (!name) {
+            BrowserBackend.notify("Give this Tab Group a name.")
+            return
+        }
+        if (BrowserBackend.saveTabGroup(name, JSON.stringify(tabSnapshot()))) {
+            tabGroupEditorOpen = false
+            tabGroupName = ""
+            refreshTabGroups()
+        }
+    }
+
+    function openTabGroup(index) {
+        if (index < 0 || index >= tabGroups.length) return
+        const group = tabGroups[index]
+        if (!group || !Array.isArray(group.tabs) || !group.tabs.length) return
+
+        tabsModel.clear()
+        for (let i = 0; i < group.tabs.length; i++) {
+            const record = group.tabs[i]
+            tabsModel.append({
+                url: record.url || "about:blank",
+                title: record.title || BrowserBackend.displayAddress(record.url || "") || "Start Page",
+                icon: "",
+                loading: false,
+                progress: 0,
+                audible: false,
+                muted: false
+            })
+        }
+        currentIndex = 0
+        libraryOverlay.mode = ""
+        saveTabsSoon()
+        Qt.callLater(syncAddress)
+    }
+
+    function toggleMute(index) {
+        const item = tabViews.itemAt(index)
+        if (item && item.view)
+            item.view.audioMuted = !item.view.audioMuted
+    }
+
     Timer {
         id: saveTimer
         interval: 350
@@ -237,6 +288,7 @@ Window {
         if (!initial.length) initial = ["about:blank"]
         for (let i = 0; i < initial.length; i++) newTab(initial[i], false)
         currentIndex = 0
+        refreshTabGroups()
         Qt.callLater(syncAddress)
     }
 
@@ -247,6 +299,7 @@ Window {
         }
         function onLibraryChanged() {
             root.refreshStartPage()
+            root.refreshTabGroups()
             if (libraryOverlay.visible) libraryOverlay.reload()
         }
         function onToastRequested(message) {
@@ -567,6 +620,7 @@ Window {
                         required property string icon
                         required property bool loading
                         required property bool audible
+                        required property bool muted
                         readonly property bool active: index === root.currentIndex
                         width: Math.max(132, Math.min(220, (tabScroller.width - 10) / Math.max(1, Math.min(6, tabsModel.count))))
                         height: 37
@@ -629,12 +683,13 @@ Window {
                                 font { family: Theme.fontUi; pixelSize: 12; weight: tab.active ? Font.Medium : Font.Normal }
                             }
 
-                            Symbol {
+                            BrowserButton {
                                 visible: tab.audible && !closeButton.visible
                                 anchors.verticalCenter: parent.verticalCenter
-                                name: "speaker"
-                                size: 12
-                                tone: "gray"
+                                width: 23; height: 23
+                                symbol: tab.muted ? "speaker" : "speaker-wave"
+                                tooltip: tab.muted ? "Unmute Tab" : "Mute Tab"
+                                onClicked: root.toggleMute(tab.index)
                             }
 
                             BrowserButton {
@@ -769,10 +824,49 @@ Window {
                         onActivated: libraryOverlay.showCollection("readingList", "Reading List")
                     }
                     SideRow {
+                        symbol: "arrow-clockwise"
+                        label: "Recently Closed"
+                        detail: String(root.startPageData.recentlyClosed?.length ?? 0)
+                        onActivated: libraryOverlay.showCollection("closedTabs", "Recently Closed")
+                    }
+                    SideRow {
                         visible: !BrowserBackend.privateMode
                         symbol: "shield"
                         label: "New Private Window"
                         onActivated: BrowserBackend.openPrivateWindow()
+                    }
+
+                    Text {
+                        visible: !BrowserBackend.privateMode
+                        text: "TAB GROUPS"
+                        color: Theme.tertiaryLabel
+                        leftPadding: 8
+                        topPadding: 18
+                        bottomPadding: 4
+                        font { family: Theme.fontUi; pixelSize: 10; weight: Font.DemiBold; letterSpacing: 0.8 }
+                    }
+
+                    Repeater {
+                        model: root.tabGroups
+                        delegate: SideRow {
+                            required property int index
+                            required property var modelData
+                            visible: !BrowserBackend.privateMode
+                            symbol: "folder"
+                            label: modelData.name
+                            detail: String(modelData.tabs?.length ?? 0)
+                            onActivated: root.openTabGroup(index)
+                        }
+                    }
+
+                    SideRow {
+                        visible: !BrowserBackend.privateMode
+                        symbol: "plus"
+                        label: "Save Tabs as Group…"
+                        onActivated: {
+                            root.tabGroupName = ""
+                            root.tabGroupEditorOpen = true
+                        }
                     }
 
                     Text {
@@ -1398,6 +1492,65 @@ Window {
     }
 
     Rectangle {
+        id: tabGroupSheet
+        z: 65
+        visible: root.tabGroupEditorOpen
+        anchors.centerIn: parent
+        width: 430
+        height: 206
+        radius: 20
+        color: Theme.dark ? "#fc303034" : "#fff7f7f9"
+        border { width: 0.5; color: Theme.separator }
+
+        Rectangle {
+            z: -1
+            anchors { fill: parent; margins: -14 }
+            radius: 28
+            color: "#40000000"
+            opacity: 0.22
+        }
+
+        Column {
+            anchors { fill: parent; margins: 22 }
+            spacing: 14
+
+            Text {
+                text: "New Tab Group"
+                color: Theme.label
+                font { family: Theme.fontDisplay; pixelSize: 20; weight: Font.DemiBold }
+            }
+            Text {
+                width: parent.width
+                wrapMode: Text.WordWrap
+                text: "Save the tabs in this window as a named group you can return to from the sidebar."
+                color: Theme.secondaryLabel
+                font { family: Theme.fontUi; pixelSize: 12 }
+            }
+            TextField {
+                id: tabGroupField
+                width: parent.width
+                placeholder: "Tab Group Name"
+                text: root.tabGroupName
+                onTextChanged: root.tabGroupName = text
+                onAccepted: root.saveCurrentTabGroup()
+            }
+            Row {
+                anchors.right: parent.right
+                spacing: 8
+                Button {
+                    text: "Cancel"
+                    onClicked: root.tabGroupEditorOpen = false
+                }
+                Button {
+                    text: "Save"
+                    prominent: true
+                    onClicked: root.saveCurrentTabGroup()
+                }
+            }
+        }
+    }
+
+    Rectangle {
         id: permissionSheet
         z: 70
         visible: root.pendingPermission !== null
@@ -1508,6 +1661,7 @@ Window {
         onActivated: {
             if (root.readerOpen) root.readerOpen = false
             else if (root.settingsOpen) root.settingsOpen = false
+            else if (root.tabGroupEditorOpen) root.tabGroupEditorOpen = false
             else if (root.pageMenuOpen) root.pageMenuOpen = false
             else if (root.downloadsOpen) root.downloadsOpen = false
             else if (root.pendingPermission) { root.pendingPermission.deny(); root.pendingPermission = null }
