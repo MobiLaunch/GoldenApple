@@ -48,7 +48,7 @@ for forbidden in ("dockMagnification", "dockMagnifiedSize", "magnifiedSize"):
 
 browser = (root / "apps" / "browser" / "Browser.qml").read_text(encoding="utf-8")
 for function in ("openTabGroup", "saveCurrentTabGroup", "createProfile", "reorderTab"):
-    count = len(re.findall(r"\\bfunction\\s+" + re.escape(function) + r"\\s*\\(", browser))
+    count = len(re.findall(r"\bfunction\s+" + re.escape(function) + r"\s*\(", browser))
     if count != 1:
         errors.append(f"apps/browser/Browser.qml: expected one {function}() implementation, found {count}")
 for needle in (
