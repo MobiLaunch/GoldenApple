@@ -41,6 +41,9 @@ Window {
     property var profiles: []
     property bool profileSheetOpen: false
     property string newProfileName: ""
+    property bool websitePermissionsOpen: false
+    property string permissionOriginFilter: ""
+    property var websitePermissions: []
     readonly property bool compactTabs: browserSettings.tabLayout === "compact"
 
     Binding { target: Theme; property: "dark"; value: BrowserBackend.dark }
@@ -276,6 +279,42 @@ Window {
             newProfileName = ""
             refreshProfiles()
         }
+    }
+
+    function permissionLabel(type) {
+        switch (Number(type)) {
+        case 1: return "Microphone"
+        case 2: return "Camera"
+        case 3: return "Camera & Microphone"
+        case 4: return "Screen Capture"
+        case 5: return "Screen & Audio Capture"
+        case 6: return "Pointer Lock"
+        case 7: return "Notifications"
+        case 8: return "Location"
+        case 9: return "Clipboard"
+        case 10: return "Local Fonts"
+        default: return "Website Permission"
+        }
+    }
+
+    function permissionStateLabel(state) {
+        switch (Number(state)) {
+        case 2: return "Allowed"
+        case 3: return "Blocked"
+        default: return "Ask"
+        }
+    }
+
+    function refreshWebsitePermissions() {
+        try { websitePermissions = profile.listAllPermissions() }
+        catch (_) { websitePermissions = [] }
+    }
+
+    function showWebsitePermissions(originOnly) {
+        permissionOriginFilter = originOnly ? BrowserBackend.securityOrigin(currentUrl) : ""
+        refreshWebsitePermissions()
+        pageMenuOpen = false
+        websitePermissionsOpen = true
     }
 
     Timer {
@@ -1309,6 +1348,11 @@ Window {
             Rectangle { width: parent.width; height: 1; color: Theme.separator }
 
             MenuRow {
+                symbol: "shield"; label: "Website Settings…"
+                enabled: root.currentUrl !== "about:blank"
+                onActivated: root.showWebsitePermissions(true)
+            }
+            MenuRow {
                 symbol: "gear"; label: "Web Settings…"
                 onActivated: { root.pageMenuOpen = false; root.settingsOpen = true }
             }
@@ -1535,6 +1579,30 @@ Window {
 
             Rectangle { width: parent.width; height: 1; color: Theme.separator }
 
+            Row {
+                width: parent.width
+                Text {
+                    width: 190
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: "Website Permissions"
+                    color: Theme.label
+                    font { family: Theme.fontUi; pixelSize: 13; weight: Font.Medium }
+                }
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 170
+                    text: BrowserBackend.privateMode ? "This window only" : "Stored per website"
+                    color: Theme.secondaryLabel
+                    font { family: Theme.fontUi; pixelSize: 12 }
+                }
+                Button {
+                    text: "Manage…"
+                    onClicked: root.showWebsitePermissions(false)
+                }
+            }
+
+            Rectangle { width: parent.width; height: 1; color: Theme.separator }
+
             Text {
                 width: parent.width
                 wrapMode: Text.WordWrap
@@ -1543,6 +1611,136 @@ Window {
                     : "Website permissions are stored per origin by Qt WebEngine. Use the prompt shown by Web when a site requests access."
                 color: Theme.secondaryLabel
                 font { family: Theme.fontUi; pixelSize: 12 }
+            }
+        }
+    }
+
+    Rectangle {
+        id: websitePermissionsSheet
+        z: 67
+        visible: root.websitePermissionsOpen
+        anchors.centerIn: parent
+        width: Math.min(570, root.width - 60)
+        height: Math.min(520, root.height - 80)
+        radius: 22
+        color: Theme.dark ? "#fc303034" : "#fff8f8fa"
+        border { width: 0.5; color: Theme.separator }
+
+        Rectangle {
+            z: -1
+            anchors { fill: parent; margins: -14 }
+            radius: 30
+            color: "#40000000"
+            opacity: 0.24
+        }
+
+        Column {
+            anchors { fill: parent; margins: 22 }
+            spacing: 14
+
+            Row {
+                width: parent.width
+                Column {
+                    width: parent.width - closeWebsitePermissions.width
+                    Text {
+                        text: root.permissionOriginFilter ? "Website Settings" : "Website Permissions"
+                        color: Theme.label
+                        font { family: Theme.fontDisplay; pixelSize: 21; weight: Font.DemiBold }
+                    }
+                    Text {
+                        visible: !!root.permissionOriginFilter
+                        text: BrowserBackend.displayAddress(root.permissionOriginFilter)
+                        color: Theme.secondaryLabel
+                        font { family: Theme.fontUi; pixelSize: 11 }
+                    }
+                }
+                BrowserButton {
+                    id: closeWebsitePermissions
+                    symbol: "xmark"; tooltip: "Close"
+                    onClicked: root.websitePermissionsOpen = false
+                }
+            }
+
+            Text {
+                width: parent.width
+                wrapMode: Text.WordWrap
+                text: BrowserBackend.privateMode
+                    ? "Permission decisions in Private Browsing last only for this private profile."
+                    : "Web remembers supported permission decisions per website. Forgetting one makes the site ask again."
+                color: Theme.secondaryLabel
+                font { family: Theme.fontUi; pixelSize: 12 }
+            }
+
+            Flickable {
+                width: parent.width
+                height: parent.height - 112
+                contentHeight: permissionList.height
+                clip: true
+                boundsBehavior: Flickable.StopAtBounds
+
+                Column {
+                    id: permissionList
+                    width: parent.width
+                    spacing: 4
+
+                    readonly property var filtered: root.websitePermissions.filter(function(permission) {
+                        if (!root.permissionOriginFilter) return true
+                        return permission.origin.toString() === root.permissionOriginFilter
+                    })
+
+                    Text {
+                        visible: permissionList.filtered.length === 0
+                        width: parent.width
+                        topPadding: 18
+                        text: root.permissionOriginFilter
+                            ? "This website has no stored permission decisions."
+                            : "No stored website permission decisions."
+                        color: Theme.secondaryLabel
+                        horizontalAlignment: Text.AlignHCenter
+                        font { family: Theme.fontUi; pixelSize: 12 }
+                    }
+
+                    Repeater {
+                        model: permissionList.filtered
+                        delegate: Rectangle {
+                            required property var modelData
+                            width: permissionList.width
+                            height: 58
+                            radius: 11
+                            color: Theme.dark ? "#0dffffff" : "#08000000"
+                            border { width: 0.5; color: Theme.separator }
+
+                            Column {
+                                anchors { left: parent.left; right: forgetPermission.left; leftMargin: 12; rightMargin: 10; verticalCenter: parent.verticalCenter }
+                                spacing: 2
+                                Text {
+                                    width: parent.width
+                                    text: BrowserBackend.displayAddress(modelData.origin.toString())
+                                    color: Theme.label
+                                    elide: Text.ElideRight
+                                    font { family: Theme.fontUi; pixelSize: 13; weight: Font.Medium }
+                                }
+                                Text {
+                                    width: parent.width
+                                    text: root.permissionLabel(modelData.permissionType) + " · " + root.permissionStateLabel(modelData.state)
+                                    color: Theme.secondaryLabel
+                                    elide: Text.ElideRight
+                                    font { family: Theme.fontUi; pixelSize: 11 }
+                                }
+                            }
+
+                            Button {
+                                id: forgetPermission
+                                anchors { right: parent.right; rightMargin: 10; verticalCenter: parent.verticalCenter }
+                                text: "Forget"
+                                onClicked: {
+                                    modelData.reset()
+                                    Qt.callLater(root.refreshWebsitePermissions)
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -1844,6 +2042,7 @@ Window {
         sequence: "Escape"
         onActivated: {
             if (root.readerOpen) root.readerOpen = false
+            else if (root.websitePermissionsOpen) root.websitePermissionsOpen = false
             else if (root.profileSheetOpen) root.profileSheetOpen = false
             else if (root.settingsOpen) root.settingsOpen = false
             else if (root.tabGroupEditorOpen) root.tabGroupEditorOpen = false
