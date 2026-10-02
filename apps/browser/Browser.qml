@@ -93,18 +93,6 @@ Window {
         return index
     }
 
-    function moveTab(from, to) {
-        if (from < 0 || to < 0 || from >= tabsModel.count || to >= tabsModel.count || from === to)
-            return
-        const selected = currentIndex
-        tabsModel.move(from, to, 1)
-        if (selected === from) currentIndex = to
-        else if (from < selected && to >= selected) currentIndex = selected - 1
-        else if (from > selected && to <= selected) currentIndex = selected + 1
-        saveTabsSoon()
-        Qt.callLater(syncAddress)
-    }
-
     function closeTab(index) {
         if (index < 0 || index >= tabsModel.count) return
         let record = tabsModel.get(index)
@@ -819,23 +807,6 @@ Window {
                             }
                         }
                         HoverHandler { id: tabHover }
-                        DragHandler {
-                            id: tabDrag
-                            target: null
-                            acceptedButtons: Qt.LeftButton
-                            onActiveChanged: {
-                                if (!active) {
-                                    const p = tab.mapToItem(tabRow, centroid.position.x, centroid.position.y)
-                                    const slot = tab.width + tabRow.spacing
-                                    const targetIndex = Math.max(0, Math.min(tabsModel.count - 1, Math.floor(p.x / slot)))
-                                    root.moveTab(tab.index, targetIndex)
-                                }
-                            }
-                        }
-                        transform: Translate { x: tabDrag.active ? tabDrag.translation.x : 0 }
-                        z: tabDrag.active ? 4 : 0
-                        scale: tabDrag.active && !Theme.reduceMotion ? 1.035 : 1
-                        Behavior on scale { NumberAnimation { duration: Theme.reduceMotion ? 1 : 90; easing.type: Easing.OutCubic } }
                         TapHandler {
                             acceptedButtons: Qt.LeftButton
                             onTapped: {
