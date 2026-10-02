@@ -133,7 +133,13 @@ PanelWindow {
                 font { family: Theme.fontUi; pixelSize: 10 }
             }
         }
-        Symbol { id: chevron; anchors { right: parent.right; verticalCenter: parent.verticalCenter }; name: "chevron-right"; size: 11; tone: "gray" }
+        Symbol {
+            id: chevron
+            anchors { right: parent.right; verticalCenter: parent.verticalCenter }
+            name: "chevron-right"
+            size: 11
+            tone: "gray"
+        }
         MouseArea {
             anchors { left: connectivityToggle.right; right: parent.right; top: parent.top; bottom: parent.bottom }
             hoverEnabled: true
