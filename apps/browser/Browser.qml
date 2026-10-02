@@ -40,6 +40,7 @@ Window {
     property var suggestionData: []
     property var tabGroups: []
     property bool tabGroupEditorOpen: false
+    property bool tabGroupsSheetOpen: false
     property string tabGroupName: ""
     property var profiles: []
     property bool profileSheetOpen: false
@@ -90,6 +91,18 @@ Window {
         }
         saveTabsSoon()
         return index
+    }
+
+    function moveTab(from, to) {
+        if (from < 0 || to < 0 || from >= tabsModel.count || to >= tabsModel.count || from === to)
+            return
+        const selected = currentIndex
+        tabsModel.move(from, to, 1)
+        if (selected === from) currentIndex = to
+        else if (from < selected && to >= selected) currentIndex = selected - 1
+        else if (from > selected && to <= selected) currentIndex = selected + 1
+        saveTabsSoon()
+        Qt.callLater(syncAddress)
     }
 
     function closeTab(index) {
@@ -791,6 +804,23 @@ Window {
                             }
                         }
                         HoverHandler { id: tabHover }
+                        DragHandler {
+                            id: tabDrag
+                            target: null
+                            acceptedButtons: Qt.LeftButton
+                            onActiveChanged: {
+                                if (!active) {
+                                    const p = tab.mapToItem(tabRow, centroid.position.x, centroid.position.y)
+                                    const slot = tab.width + tabRow.spacing
+                                    const targetIndex = Math.max(0, Math.min(tabsModel.count - 1, Math.floor(p.x / slot)))
+                                    root.moveTab(tab.index, targetIndex)
+                                }
+                            }
+                        }
+                        transform: Translate { x: tabDrag.active ? tabDrag.translation.x : 0 }
+                        z: tabDrag.active ? 4 : 0
+                        scale: tabDrag.active && !Theme.reduceMotion ? 1.035 : 1
+                        Behavior on scale { NumberAnimation { duration: Theme.reduceMotion ? 1 : 90; easing.type: Easing.OutCubic } }
                         TapHandler {
                             acceptedButtons: Qt.LeftButton
                             onTapped: {
@@ -1723,6 +1753,29 @@ Window {
                 Text {
                     width: 190
                     anchors.verticalCenter: parent.verticalCenter
+                    text: "Tab Groups"
+                    color: Theme.label
+                    font { family: Theme.fontUi; pixelSize: 13; weight: Font.Medium }
+                }
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 170
+                    text: root.tabGroups.length + (root.tabGroups.length === 1 ? " group" : " groups")
+                    color: Theme.secondaryLabel
+                    font { family: Theme.fontUi; pixelSize: 12 }
+                }
+                Button {
+                    text: "Manage…"
+                    enabled: !BrowserBackend.privateMode
+                    onClicked: root.tabGroupsSheetOpen = true
+                }
+            }
+
+            Row {
+                width: parent.width
+                Text {
+                    width: 190
+                    anchors.verticalCenter: parent.verticalCenter
                     text: "Restore previous session"
                     color: Theme.label
                     font { family: Theme.fontUi; pixelSize: 13; weight: Font.Medium }
@@ -2196,6 +2249,142 @@ Window {
     }
 
     Rectangle {
+        id: tabGroupsManager
+        z: 65
+        visible: root.tabGroupsSheetOpen
+        anchors.centerIn: parent
+        width: 500
+        height: Math.min(480, root.height - 90)
+        radius: 22
+        color: Theme.dark ? "#fc303034" : "#fff8f8fa"
+        border { width: 0.5; color: Theme.separator }
+
+        Rectangle {
+            z: -1
+            anchors { fill: parent; margins: -14 }
+            radius: 30
+            color: "#40000000"
+            opacity: 0.24
+        }
+
+        Column {
+            anchors { fill: parent; margins: 22 }
+            spacing: 14
+
+            Row {
+                width: parent.width
+                Column {
+                    width: parent.width - closeGroups.width
+                    Text {
+                        text: "Tab Groups"
+                        color: Theme.label
+                        font { family: Theme.fontDisplay; pixelSize: 21; weight: Font.DemiBold }
+                    }
+                    Text {
+                        text: "Saved groups keep a reusable set of pages together."
+                        color: Theme.secondaryLabel
+                        font { family: Theme.fontUi; pixelSize: 11 }
+                    }
+                }
+                BrowserButton {
+                    id: closeGroups
+                    symbol: "xmark"; tooltip: "Close"
+                    onClicked: root.tabGroupsSheetOpen = false
+                }
+            }
+
+            Flickable {
+                width: parent.width
+                height: parent.height - 120
+                contentHeight: groupsManagerList.height
+                clip: true
+                boundsBehavior: Flickable.StopAtBounds
+
+                Column {
+                    id: groupsManagerList
+                    width: parent.width
+                    spacing: 5
+
+                    Text {
+                        visible: root.tabGroups.length === 0
+                        width: parent.width
+                        topPadding: 18
+                        text: "No saved Tab Groups yet."
+                        color: Theme.secondaryLabel
+                        horizontalAlignment: Text.AlignHCenter
+                        font { family: Theme.fontUi; pixelSize: 12 }
+                    }
+
+                    Repeater {
+                        model: root.tabGroups
+                        delegate: Rectangle {
+                            required property int index
+                            required property var modelData
+                            width: groupsManagerList.width
+                            height: 56
+                            radius: 11
+                            color: Theme.dark ? "#0dffffff" : "#08000000"
+                            border { width: 0.5; color: Theme.separator }
+
+                            Row {
+                                anchors { fill: parent; leftMargin: 12; rightMargin: 8 }
+                                spacing: 8
+                                Symbol { anchors.verticalCenter: parent.verticalCenter; name: "folder"; tone: "accent"; size: 17 }
+                                Column {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    width: parent.width - openGroup.width - deleteGroup.width - 72
+                                    Text {
+                                        width: parent.width
+                                        text: modelData.name
+                                        color: Theme.label
+                                        elide: Text.ElideRight
+                                        font { family: Theme.fontUi; pixelSize: 13; weight: Font.Medium }
+                                    }
+                                    Text {
+                                        text: String(modelData.tabs?.length ?? 0) + " tabs"
+                                        color: Theme.secondaryLabel
+                                        font { family: Theme.fontUi; pixelSize: 10 }
+                                    }
+                                }
+                                Button {
+                                    id: openGroup
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: "Open"
+                                    onClicked: {
+                                        root.openTabGroup(index)
+                                        root.tabGroupsSheetOpen = false
+                                    }
+                                }
+                                Button {
+                                    id: deleteGroup
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: "Delete"
+                                    destructive: true
+                                    onClicked: {
+                                        BrowserBackend.removeTabGroup(index)
+                                        root.refreshTabGroups()
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            Button {
+                anchors.right: parent.right
+                text: "Save Current Tabs…"
+                prominent: true
+                onClicked: {
+                    root.tabGroupsSheetOpen = false
+                    root.tabGroupName = ""
+                    root.tabGroupEditorOpen = true
+                }
+            }
+        }
+    }
+
+    Rectangle {
         id: tabGroupSheet
         z: 65
         visible: root.tabGroupEditorOpen
@@ -2368,6 +2557,7 @@ Window {
             else if (root.websitePermissionsOpen) root.websitePermissionsOpen = false
             else if (root.profileSheetOpen) root.profileSheetOpen = false
             else if (root.settingsOpen) root.settingsOpen = false
+            else if (root.tabGroupsSheetOpen) root.tabGroupsSheetOpen = false
             else if (root.tabGroupEditorOpen) root.tabGroupEditorOpen = false
             else if (root.pageMenuOpen) root.pageMenuOpen = false
             else if (root.downloadsOpen) root.downloadsOpen = false
