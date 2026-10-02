@@ -8,7 +8,7 @@ import Quickshell.Hyprland
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Effects
-import "theme"
+import "ui/theme"
 import "components"
 
 PanelWindow {

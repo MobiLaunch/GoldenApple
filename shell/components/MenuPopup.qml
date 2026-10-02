@@ -3,7 +3,7 @@
 import Quickshell
 import QtQuick
 import QtQuick.Layouts
-import "../theme"
+import "../ui/theme"
 
 PopupWindow {
     id: menu

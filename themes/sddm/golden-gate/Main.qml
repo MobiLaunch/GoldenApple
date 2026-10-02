@@ -1,10 +1,10 @@
 // SDDM (Qt 6) greeter: the same LockSurface the shell's lock screen uses, plus
-// user picking and power buttons. scripts/install.sh copies shell/components and
-// shell/theme next to this file.
+// user picking and power buttons. scripts/install.sh stages it like the shell:
+// components/ (the lock surface and wrappers) and ui/ (the shared UI and theme).
 import QtQuick
 import QtQuick.Layouts
 import "components"
-import "theme"
+import "ui/theme"
 
 Item {
     id: root

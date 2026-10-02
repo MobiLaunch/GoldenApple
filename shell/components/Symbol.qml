@@ -1,5 +1,5 @@
 // Shell adapter for the canonical Golden Gate Symbol.
-import "../../apps/lib" as Shared
+import "../ui" as Shared
 
 Shared.Symbol {
     tone: "white"

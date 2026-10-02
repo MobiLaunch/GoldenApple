@@ -1,7 +1,7 @@
 // Control Center slider module: title, end glyphs and a thick draggable track.
 import QtQuick
 import QtQuick.Layouts
-import "../theme"
+import "../ui/theme"
 
 Glass { variant: "clear";
     id: root

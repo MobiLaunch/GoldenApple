@@ -66,13 +66,13 @@ for foreign_id in ["org.gnome.Nautilus", "org.gnome.Geary", "org.gnome.Fractal",
         errors.append(f"Dock reintroduced foreign application: {foreign_id}")
 
 
-# The source shell keeps thin adapters only; runtime install replaces them
-# with direct symlinks to the canonical store.
+# The shell keeps thin adapters only, over the canonical store it reaches
+# through ui/ (installed: a link to /usr/share/golden-gate/ui).
 shell_components = root / "shell/components"
 for name in ("Glass.qml", "TextField.qml", "Symbol.qml", "Spring.qml", "SpringValue.qml"):
     path = shell_components / name
     text = path.read_text(encoding="utf-8")
-    if 'import "../../apps/lib" as Shared' not in text or "Shared." not in text:
+    if 'import "../ui" as Shared' not in text or "Shared." not in text:
         errors.append(f"shell primitive is no longer a shared-UI adapter: {path.relative_to(root)}")
 
 # Setup must consume the canonical controls too. Compatibility wrappers are
@@ -94,20 +94,16 @@ for needle in ['import "../lib"', "Glass {"]:
 if (setup / "shaders").exists():
     errors.append("legacy Setup shader directory exists; HyprGlass is the compositor glass implementation")
 
-# Web is deliberately isolated from Quickshell because it hosts Chromium, but
-# it still has one browser-local adapter layer rather than one-off Qt widgets.
+# Web hosts Chromium outside Quickshell, but its QML uses the same shared
+# controls and theme as every other app, not a private widget layer.
+web = (root / "apps/browser/Browser.qml").read_text(encoding="utf-8")
+for needle in ('import "../lib"', 'import "../lib/theme"'):
+    if needle not in web:
+        errors.append(f"Web no longer uses the shared UI: {needle}")
 browser = (root / "apps/browser/browser.py").read_text(encoding="utf-8")
-browser_ui = root / "apps/browser/ui.py"
-if not browser_ui.is_file():
-    errors.append("Web is missing its centralized browser UI adapter")
-for forbidden in ("QPushButton", "QLineEdit", "QToolButton", "QIcon"):
+for forbidden in ("QPushButton", "QLineEdit", "QToolButton"):
     if re.search(rf"\\b{forbidden}\\b", browser):
-        errors.append(f"Web reintroduced ad-hoc Qt control plumbing: {forbidden}")
-if re.search(r"^ASSETS\\s*=", browser, flags=re.M):
-    errors.append("Web reintroduced a private browser asset-path constant")
-for required in ("GGButton", "GGLineEdit", "GGToolButton", "refresh_icons", "stylesheet"):
-    if required not in browser:
-        errors.append(f"Web no longer consumes centralized browser UI primitive: {required}")
+        errors.append(f"Web reintroduced ad-hoc Qt widget controls: {forbidden}")
 
 install = (root / "scripts/install.sh").read_text(encoding="utf-8")
 for needle in [
@@ -122,8 +118,8 @@ for needle in [
 # SDDM must stage canonical primitives rather than copying the entire shell
 # component tree and silently forking the login-screen UI.
 for needle in [
-    'cp "$REPO/apps/lib/$shared" "$T/components/$shared"',
-    'cp "$REPO/apps/lib/theme/Theme.qml" "$T/theme/Theme.qml"',
+    'cp -a "$REPO/apps/lib" "$T/ui"',
+    'cp "$REPO/shell/components/$shared" "$T/components/$shared"',
     'cp "$REPO/shell/components/LockSurface.qml" "$T/components/LockSurface.qml"',
     'cp "$REPO/shell/components/SystemClockProxy.qml" "$T/components/SystemClockProxy.qml"',
 ]:
@@ -133,12 +129,28 @@ if 'cp -a "$REPO/shell/components" "$REPO/shell/theme" "$T/"' in install:
     errors.append("SDDM reverted to copying the whole shell component tree")
 
 for needle in [
-    'ln -s "$SHARED_UI/$shared" "$SHELL_RUNTIME/components/$shared"',
-    'ln -s "$SHARED_UI/theme/Theme.qml" "$SHELL_RUNTIME/theme/Theme.qml"',
-    'ln -s "/usr/share/golden-gate/ui/$shared" "$SHELL_SKEL/components/$shared"',
+    'ln -s "$SHARED_UI" "$SHELL_RUNTIME/ui"',
+    'ln -s "/usr/share/golden-gate/ui" "$SHELL_SKEL/ui"',
 ]:
     if needle not in install:
-        errors.append(f"installer no longer links shell primitives to canonical UI: {needle}")
+        errors.append(f"installer no longer links the shell to the canonical UI: {needle}")
+
+# One Theme module per process: the shell and the greeter reach the theme only
+# through ui/ (the shared store), never through a second theme directory, so
+# the singleton the shell sets is the one every shared control reads.
+if (root / "shell/theme").exists():
+    errors.append("shell/theme is back: a second Theme module splits the singleton")
+for qml in sorted([*(root / "shell").glob("*.qml"), *(root / "shell/components").glob("*.qml"),
+                   root / "themes/sddm/golden-gate/Main.qml"]):
+    for line in qml.read_text(encoding="utf-8").splitlines():
+        m = re.match(r'import "([^"]*)"', line.strip())
+        if not m:
+            continue
+        path = m.group(1)
+        if path.endswith("theme") and path not in ("ui/theme", "../ui/theme"):
+            errors.append(f"{qml.relative_to(root)} imports a theme outside ui/: {path}")
+        if "apps/lib" in path:
+            errors.append(f"{qml.relative_to(root)} imports apps/lib directly instead of ui/: {path}")
 
 if errors:
     print("\n".join(errors), file=sys.stderr)

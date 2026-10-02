@@ -5,7 +5,7 @@ import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Services.Pam
 import QtQuick
-import "theme"
+import "ui/theme"
 import "components"
 
 Scope {

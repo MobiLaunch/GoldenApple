@@ -115,19 +115,13 @@ EOF
     printf '# Written by Settings.\n' > "$SKEL/.config/hypr/golden-gate/displays.conf"
     printf '# Filled in by machine-conf.sh when the session starts.\n' > "$SKEL/.config/hypr/golden-gate/machine.conf"
     cp -a "$REPO/shell" "$SKEL/.config/quickshell/golden-gate"
-    # The shell consumes the same canonical primitives as apps. Keep only
-    # shell-specific controls local; shared Glass/Symbol/springs/Theme resolve
-    # to /usr/share/golden-gate/ui for every account created from /etc/skel.
+    # The shell reaches the canonical shared UI (Theme, Glass, Symbol, controls)
+    # only through its ui/ link, so the shell and every shared control resolve
+    # one Theme module and one Theme singleton: dark mode, accent, glass style
+    # and Reduce Transparency set by the shell reach every control.
     local SHELL_SKEL="$SKEL/.config/quickshell/golden-gate"
-    for shared in Glass.qml Spring.qml SpringValue.qml Symbol.qml TextField.qml; do
-      rm -f "$SHELL_SKEL/components/$shared"
-      ln -s "/usr/share/golden-gate/ui/$shared" "$SHELL_SKEL/components/$shared"
-    done
-    rm -rf "$SHELL_SKEL/components/theme" "$SHELL_SKEL/components/assets"
-    ln -s "/usr/share/golden-gate/ui/theme" "$SHELL_SKEL/components/theme"
-    ln -s "/usr/share/golden-gate/ui/assets" "$SHELL_SKEL/components/assets"
-    rm -f "$SHELL_SKEL/theme/Theme.qml"
-    ln -s "/usr/share/golden-gate/ui/theme/Theme.qml" "$SHELL_SKEL/theme/Theme.qml"
+    rm -rf "$SHELL_SKEL/ui"
+    ln -s "/usr/share/golden-gate/ui" "$SHELL_SKEL/ui"
     cp "$REPO/themes/ghostty/config" "$SKEL/.config/ghostty/config"
     cp "$REPO"/themes/ghostty/themes/* "$SKEL/.config/ghostty/themes/"
     cp "$REPO/design/dist/gtk.css" "$SKEL/.config/gtk-4.0/gtk.css"
@@ -159,20 +153,18 @@ EOF
   say "SDDM theme → $R/usr/share/sddm/themes/golden-gate"
   local T="$R/usr/share/sddm/themes/golden-gate"
   rm -rf "$T"
-  mkdir -p "$T/components" "$T/theme" "$T/assets"
+  mkdir -p "$T/components"
   cp "$REPO"/themes/sddm/golden-gate/* "$T/"
 
-  # The greeter uses the same canonical primitives as the running desktop. Only
-  # the lock/login surface and its Qt-only clock helper are shell-specific.
+  # The greeter is laid out like the shell: ui/ is the canonical shared UI (a
+  # copy, since the greeter may run before /usr/share/golden-gate exists), and
+  # components/ holds the shell's lock/login surface and its thin wrappers.
+  cp -a "$REPO/apps/lib" "$T/ui"
   for shared in Glass.qml TextField.qml Symbol.qml Spring.qml SpringValue.qml; do
-    cp "$REPO/apps/lib/$shared" "$T/components/$shared"
+    cp "$REPO/shell/components/$shared" "$T/components/$shared"
   done
   cp "$REPO/shell/components/LockSurface.qml" "$T/components/LockSurface.qml"
   cp "$REPO/shell/components/SystemClockProxy.qml" "$T/components/SystemClockProxy.qml"
-  cp "$REPO/apps/lib/theme/Theme.qml" "$T/theme/Theme.qml"
-  ln -s ../theme "$T/components/theme"
-  ln -s ../assets "$T/components/assets"
-  cp -a "$REPO/shell/assets/symbols" "$T/assets/"
   mkdir -p "$R/etc/sddm.conf.d"
   printf '[Theme]\nCurrent=golden-gate\n\n[General]\nGreeterEnvironment=QT_WAYLAND_SHELL_INTEGRATION=layer-shell\n' > "$R/etc/sddm.conf.d/golden-gate.conf"
 
@@ -285,15 +277,9 @@ else
   SHARED_UI="$DATA/golden-gate/ui"
 fi
 SHELL_RUNTIME="$CONF/quickshell/golden-gate"
-for shared in Glass.qml Spring.qml SpringValue.qml Symbol.qml TextField.qml; do
-  rm -f "$SHELL_RUNTIME/components/$shared"
-  ln -s "$SHARED_UI/$shared" "$SHELL_RUNTIME/components/$shared"
-done
-rm -rf "$SHELL_RUNTIME/components/theme" "$SHELL_RUNTIME/components/assets"
-ln -s "$SHARED_UI/theme" "$SHELL_RUNTIME/components/theme"
-ln -s "$SHARED_UI/assets" "$SHELL_RUNTIME/components/assets"
-rm -f "$SHELL_RUNTIME/theme/Theme.qml"
-ln -s "$SHARED_UI/theme/Theme.qml" "$SHELL_RUNTIME/theme/Theme.qml"
+# One link, ui/ → the shared store: one Theme module and singleton for the shell.
+rm -rf "$SHELL_RUNTIME/ui"
+ln -s "$SHARED_UI" "$SHELL_RUNTIME/ui"
 # gg-diagnostics: a crash and diagnostics report you can read and send.
 if [[ $MODE == system ]]; then BIN="$ROOT/usr/local/bin"; else BIN="$HOME/.local/bin"; fi
 mkdir -p "$BIN"

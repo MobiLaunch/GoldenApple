@@ -6,7 +6,7 @@
 │                          radii, spring physics)                       │
 │        │  design/build.mjs                                            │
 │        ├──► prototype/assets/tokens.css    (CSS vars + linear() springs)
-│        ├──► shell/theme/Theme.qml          (QML singleton + Bézier springs)
+│        ├──► apps/lib/theme/Theme.qml       (QML singleton + Bézier springs; the shell reaches it via shell/ui)
 │        ├──► design/dist/gtk.css            (libadwaita / GTK 4 overrides)
 │        └──► design/dist/hyprland-motion.conf (beziers, blur, rounding)
 │                                                                       │

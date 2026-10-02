@@ -9,7 +9,7 @@ import Quickshell.Services.Mpris
 import Quickshell.Services.Pipewire
 import QtQuick
 import QtQuick.Layouts
-import "theme"
+import "ui/theme"
 import "components"
 
 PanelWindow {
@@ -276,6 +276,7 @@ PanelWindow {
 
             GroupCard {
                 Layout.fillWidth: true
+                Layout.minimumWidth: 160
                 Layout.preferredHeight: 164
                 Column {
                     anchors { fill: parent; margins: 11 }
@@ -313,8 +314,12 @@ PanelWindow {
                 }
             }
 
+            // A fixed column: nested layouts fill by default, and on some Qt
+            // versions that took all the width from the connectivity card.
             ColumnLayout {
+                Layout.fillWidth: false
                 Layout.preferredWidth: 106
+                Layout.maximumWidth: 106
                 spacing: 8
                 ActionTile {
                     Layout.fillWidth: true

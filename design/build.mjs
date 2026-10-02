@@ -156,8 +156,9 @@ function material(name, m) {
   q.push("}", "");
   writeFileSync(join(out, "Theme.qml"), q.join("\n"));
   writeFileSync(join(out, "qmldir"), "singleton Theme 1.0 Theme.qml\n");
-  // The Quickshell shell and the Golden Gate apps import the theme as a local module.
-  for (const dir of [join(here, "..", "shell", "theme"), join(here, "..", "apps", "lib", "theme")]) {
+  // One theme module for everything: apps/lib/theme. The shell reaches it through
+  // shell/ui (a link to apps/lib), so shell and shared controls share one singleton.
+  for (const dir of [join(here, "..", "apps", "lib", "theme")]) {
     mkdirSync(dir, { recursive: true });
     writeFileSync(join(dir, "Theme.qml"), q.join("\n"));
     writeFileSync(join(dir, "qmldir"), "singleton Theme 1.0 Theme.qml\n");

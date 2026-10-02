@@ -9,7 +9,7 @@ import Quickshell.Wayland
 import Quickshell.Hyprland
 import QtQuick
 import QtQuick.Layouts
-import "theme"
+import "ui/theme"
 import "components"
 
 PanelWindow {

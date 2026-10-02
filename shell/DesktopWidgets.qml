@@ -4,7 +4,7 @@ import Quickshell.Services.Mpris
 import Quickshell.Wayland
 import QtQuick
 import QtQuick.Layouts
-import "theme"
+import "ui/theme"
 import "components"
 
 PanelWindow {

@@ -7,7 +7,7 @@ import Quickshell.Wayland
 import Quickshell.Services.Notifications
 import QtQuick
 import QtQuick.Layouts
-import "theme"
+import "ui/theme"
 import "components"
 
 PanelWindow {

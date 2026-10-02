@@ -169,7 +169,7 @@ Window {
         for (let i = 0; i < tabsModel.count; i++) {
             if (tabsModel.get(i).url === url) {
                 currentIndex = i
-                addressInput.focus = false
+                addressField.input.focus = false
                 syncAddress()
                 return
             }
@@ -187,28 +187,28 @@ Window {
         suggestionData = []
         if (tabsModel.count === 0) newTab(target, true)
         else tabsModel.setProperty(currentIndex, "url", target)
-        addressInput.focus = false
+        addressField.input.focus = false
         saveTabsSoon()
     }
 
     function syncAddress() {
-        if (!addressInput.activeFocus)
-            addressInput.text = BrowserBackend.displayAddress(currentUrl)
+        if (!addressField.input.activeFocus)
+            addressField.input.text = BrowserBackend.displayAddress(currentUrl)
     }
 
     function focusAddress() {
-        addressInput.forceActiveFocus()
-        addressInput.text = currentUrl === "about:blank" ? "" : currentUrl
-        addressInput.selectAll()
+        addressField.input.forceActiveFocus()
+        addressField.input.text = currentUrl === "about:blank" ? "" : currentUrl
+        addressField.input.selectAll()
         updateSuggestions()
     }
 
     function updateSuggestions() {
-        if (!addressInput.activeFocus) {
+        if (!addressField.input.activeFocus) {
             suggestionData = []
             return
         }
-        suggestionData = JSON.parse(BrowserBackend.suggestions(addressInput.text, JSON.stringify(tabSnapshot())))
+        suggestionData = JSON.parse(BrowserBackend.suggestions(addressField.input.text, JSON.stringify(tabSnapshot())))
     }
 
     function reloadOrStop() {
@@ -561,14 +561,14 @@ Window {
                     id: smartField
                     anchors.centerIn: parent
                     height: 34
-                    width: Math.min(parent.width, addressInput.activeFocus ? 720 : 640)
-                    radius: 10
+                    width: Math.min(parent.width, addressField.input.activeFocus ? 720 : 640)
+                    radius: height / 2      // Safari's Smart Search field is a capsule
                     color: BrowserBackend.privateMode
                         ? (Theme.dark ? "#88443a52" : "#cfe9e2ef")
                         : (Theme.dark ? "#b63b3b40" : "#eaffffff")
                     border {
-                        width: addressInput.activeFocus ? 2 : 0.5
-                        color: addressInput.activeFocus ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.55) : Theme.separator
+                        width: addressField.input.activeFocus ? 2 : 0.5
+                        color: addressField.input.activeFocus ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.55) : Theme.separator
                     }
                     Behavior on width { NumberAnimation { duration: Theme.reduceMotion ? 1 : 180; easing.type: Easing.OutCubic } }
 
@@ -586,49 +586,40 @@ Window {
                         }
                     }
 
-                    TextInput {
-                        id: addressInput
+                    TextField {
+                        id: addressField
                         anchors {
                             left: pageButton.right; leftMargin: 4
                             right: reloadInside.left; rightMargin: 5
                             verticalCenter: parent.verticalCenter
                         }
                         height: 26
-                        verticalAlignment: TextInput.AlignVCenter
-                        color: Theme.label
-                        selectionColor: Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.32)
-                        selectedTextColor: Theme.label
-                        selectByMouse: true
-                        clip: true
-                        activeFocusOnTab: true
-                        font { family: Theme.fontUi; pixelSize: 13; weight: activeFocus ? Font.Normal : Font.Medium }
-                        onActiveFocusChanged: {
-                            if (activeFocus) {
-                                text = root.currentUrl === "about:blank" ? "" : root.currentUrl
-                                selectAll()
-                                root.updateSuggestions()
-                            } else {
-                                root.suggestionData = []
-                                root.syncAddress()
-                            }
-                        }
-                        onTextChanged: if (activeFocus) suggestionTimer.restart()
-                        onAccepted: root.navigateTo(text)
-                        Keys.onEscapePressed: {
-                            focus = false
+                        bare: true
+                        placeholder: "Search or enter website name"
+                        placeholderOnlyWhenFocused: true
+                        fontWeight: input.activeFocus ? Font.Normal : Font.Medium
+                        input.selectedTextColor: Theme.label
+                        input.Keys.onEscapePressed: {
+                            addressField.input.focus = false
                             root.suggestionData = []
                             root.syncAddress()
                         }
-
-                        Text {
-                            visible: !addressInput.text && addressInput.activeFocus
-                            anchors.verticalCenter: parent.verticalCenter
-                            text: "Search or enter website name"
-                            color: Theme.tertiaryLabel
-                            font { family: Theme.fontUi; pixelSize: 13 }
+                        onAccepted: root.navigateTo(text)
+                        Connections {
+                            target: addressField.input
+                            function onActiveFocusChanged() {
+                                if (addressField.input.activeFocus) {
+                                    addressField.text = root.currentUrl === "about:blank" ? "" : root.currentUrl
+                                    addressField.input.selectAll()
+                                    root.updateSuggestions()
+                                } else {
+                                    root.suggestionData = []
+                                    root.syncAddress()
+                                }
+                            }
+                            function onTextChanged() { if (addressField.input.activeFocus) suggestionTimer.restart() }
                         }
                     }
-
                     Timer {
                         id: suggestionTimer
                         interval: 55
@@ -1485,7 +1476,7 @@ Window {
     Rectangle {
         id: searchPopover
         z: 50
-        visible: addressInput.activeFocus && root.suggestionData.length > 0
+        visible: addressField.input.activeFocus && root.suggestionData.length > 0
         x: {
             let p = smartField.mapToItem(root, 0, smartField.height + 5)
             return Math.max(10, Math.min(root.width - width - 10, p.x))
@@ -1548,7 +1539,7 @@ Window {
                         anchors.fill: parent
                         hoverEnabled: true
                         onClicked: {
-                            addressInput.focus = false
+                            addressField.input.focus = false
                             root.activateUrl(modelData.url)
                         }
                     }
@@ -2780,7 +2771,7 @@ Window {
             else if (root.pageMenuOpen) root.pageMenuOpen = false
             else if (root.downloadsOpen) root.downloadsOpen = false
             else if (root.pendingPermission) { root.pendingPermission.deny(); root.pendingPermission = null }
-            else if (addressInput.activeFocus) { addressInput.focus = false; root.syncAddress() }
+            else if (addressField.input.activeFocus) { addressField.input.focus = false; root.syncAddress() }
             else if (root.currentView && root.currentView.loading) root.currentView.stop()
         }
     }

@@ -1,4 +1,6 @@
 // A text field with the Mac's rounded look and a focus ring in the accent.
+// `bare: true` drops the field's own background and ring, for a container that
+// draws its own (Web's Smart Search capsule), keeping one text-input control.
 import QtQuick
 import "theme"
 
@@ -11,17 +13,20 @@ Rectangle {
     property bool password: false
     property color foreground: Theme.label
     property color placeholderColor: Theme.tertiaryLabel
+    property bool bare: false
+    property bool placeholderOnlyWhenFocused: false
+    property int fontWeight: Font.Normal
     signal accepted()
     implicitWidth: 200; implicitHeight: 26
     radius: search ? height / 2 : 7
-    color: Theme.dark ? "#1affffff" : "#ffffff"
-    border { width: input.activeFocus ? 3 : 0.5; color: input.activeFocus ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.5) : Theme.separator }
+    color: bare ? "transparent" : Theme.dark ? "#1affffff" : "#ffffff"
+    border { width: bare ? 0 : input.activeFocus ? 3 : 0.5; color: input.activeFocus ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.5) : Theme.separator }
     Behavior on border.width { NumberAnimation { duration: Theme.reduceMotion ? 1 : 120; easing.type: Easing.OutCubic } }
     Behavior on border.color { ColorAnimation { duration: Theme.reduceMotion ? 1 : 140 } }
     Symbol { visible: tf.search; x: 8; anchors.verticalCenter: parent.verticalCenter; name: "search"; tone: "gray"; size: 12 }
     TextInput {
         id: input
-        x: tf.search ? 26 : 8; width: parent.width - x - 8
+        x: tf.search ? 26 : tf.bare ? 0 : 8; width: parent.width - x - (tf.bare ? 0 : 8)
         anchors.verticalCenter: parent.verticalCenter
         color: tf.foreground
         selectionColor: Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.35)
@@ -30,13 +35,13 @@ Rectangle {
         Accessible.name: tf.placeholder
         clip: true
         echoMode: tf.password ? TextInput.Password : TextInput.Normal
-        font { family: Theme.fontUi; pixelSize: 13 }
+        font { family: Theme.fontUi; pixelSize: 13; weight: tf.fontWeight }
         onAccepted: tf.accepted()
         Text {
             width: input.width
             elide: Text.ElideRight
             visible: opacity > 0
-            opacity: !input.text && !input.preeditText ? (input.activeFocus ? 0.72 : 1) : 0
+            opacity: !input.text && !input.preeditText && (input.activeFocus || !tf.placeholderOnlyWhenFocused) ? (input.activeFocus ? 0.72 : 1) : 0
             text: tf.placeholder
             color: tf.placeholderColor
             font: input.font

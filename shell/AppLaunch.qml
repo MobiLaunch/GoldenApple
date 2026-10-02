@@ -14,7 +14,7 @@ import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Wayland
 import QtQuick
-import "theme"
+import "ui/theme"
 import "components"
 
 PanelWindow {

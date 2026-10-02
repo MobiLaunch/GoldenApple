@@ -4,7 +4,7 @@
 //   signal submitted(string password)   → check it; call fail() on a wrong one
 import QtQuick
 import QtQuick.Layouts
-import "../theme"
+import "../ui/theme"
 
 Item {
     id: root
