@@ -107,6 +107,34 @@ class BrowserData(unittest.TestCase):
             with self.assertRaises(ValueError):
                 web.address_url(value)
 
+    def test_search_engines_are_selectable(self):
+        self.assertIn('duckduckgo.com', web.address_url('repair tips', 'duckduckgo'))
+        self.assertIn('search.brave.com', web.address_url('repair tips', 'brave'))
+        self.assertIn('bing.com', web.address_url('repair tips', 'bing'))
+        self.assertIn('google.com', web.address_url('repair tips', 'google'))
+
+    def test_invalid_saved_browser_state_is_sanitized(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / 'state.json'
+            path.write_text(json.dumps({
+                'settings': {'tabLayout': 'broken', 'searchEngine': 'evil',
+                             'showFavoritesOnFocus': 'yes', 'restoreSession': None},
+                'tabGroups': [
+                    {'name': 'Work', 'tabs': [
+                        {'title': 'Good', 'url': 'https://example.com'},
+                        {'title': 'Bad', 'url': 'javascript:alert(1)'}]},
+                    {'name': '', 'tabs': [{'title': 'X', 'url': 'https://x.example'}]},
+                ],
+            }))
+            store = web.Store(path)
+            self.assertEqual(store.data['settings']['tabLayout'], 'separate')
+            self.assertEqual(store.data['settings']['searchEngine'], 'duckduckgo')
+            self.assertTrue(store.data['settings']['showFavoritesOnFocus'])
+            self.assertTrue(store.data['settings']['restoreSession'])
+            self.assertEqual(store.data['tabGroups'], [
+                {'name': 'Work', 'tabs': [{'title': 'Good', 'url': 'https://example.com'}]}
+            ])
+
     def test_private_state_never_written(self):
         with tempfile.TemporaryDirectory() as tmp:
             path=Path(tmp)/'state.json'
