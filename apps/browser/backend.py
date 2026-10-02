@@ -125,8 +125,9 @@ class BrowserBackend(QObject):
             out.append({"kind": kind, "title": title or url, "url": url, "subtitle": subtitle})
 
         if not q:
-            for record in self.store.data["bookmarks"][:8]:
-                add("favorite", record["title"], record["url"], "Favorite")
+            if self.store.data["settings"].get("showFavoritesOnFocus", True):
+                for record in self.store.data["bookmarks"][:8]:
+                    add("favorite", record["title"], record["url"], "Favorite")
             return json.dumps(out)
 
         for tab in tabs:
