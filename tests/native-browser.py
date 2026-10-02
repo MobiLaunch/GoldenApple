@@ -104,6 +104,25 @@ class NativeQmlBrowser(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(state_files(root), [])
 
+    def test_named_profile_uses_isolated_state(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            personal = self.run_browser(root, BASE + "/personal")
+            self.assertEqual(personal.returncode, 0, personal.stderr)
+            work = self.run_browser(root, "--profile", "Work", BASE + "/work")
+            self.assertEqual(work.returncode, 0, work.stderr)
+
+            files = sorted(state_files(root))
+            self.assertEqual(len(files), 2, [str(p) for p in files])
+            states = [json.loads(path.read_text()) for path in files]
+            tab_sets = [set(state["tabs"]) for state in states]
+            self.assertTrue(any(BASE + "/personal" in tabs for tabs in tab_sets))
+            self.assertTrue(any(BASE + "/work" in tabs for tabs in tab_sets))
+            self.assertFalse(any(
+                BASE + "/personal" in tabs and BASE + "/work" in tabs
+                for tabs in tab_sets
+            ))
+
     def test_second_launch_hands_url_to_existing_window(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
