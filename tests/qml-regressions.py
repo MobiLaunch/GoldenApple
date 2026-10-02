@@ -46,6 +46,22 @@ for forbidden in ("dockMagnification", "dockMagnifiedSize", "magnifiedSize"):
     if forbidden in prefs:
         errors.append(f"shell/components/Prefs.qml: removed Dock magnification preference reintroduced: {forbidden}")
 
+browser = (root / "apps" / "browser" / "Browser.qml").read_text(encoding="utf-8")
+for function in ("openTabGroup", "saveCurrentTabGroup", "createProfile", "reorderTab"):
+    count = len(re.findall(r"\\bfunction\\s+" + re.escape(function) + r"\\s*\\(", browser))
+    if count != 1:
+        errors.append(f"apps/browser/Browser.qml: expected one {function}() implementation, found {count}")
+for needle in (
+    "BrowserBackend.attachProfile(profile)",
+    "QWebEngineUrlRequestInterceptor",
+    "DragHandler",
+):
+    target = browser if needle != "QWebEngineUrlRequestInterceptor" else (root / "apps" / "browser" / "backend.py").read_text(encoding="utf-8")
+    if needle not in target:
+        errors.append(f"browser architecture guard missing {needle!r}")
+if re.search(r"id:\s*tabArea[\\s\\S]{0,160}z:\s*-1", browser):
+    errors.append("apps/browser/Browser.qml: tab click surface was moved behind its contents")
+
 if errors:
     print("\n".join(errors), file=sys.stderr)
     raise SystemExit(1)
