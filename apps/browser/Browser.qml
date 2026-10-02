@@ -32,7 +32,7 @@ Window {
     property string readerText: ""
     property var downloads: []
     property var pendingPermission: null
-    property var startPageData: JSON.parse(BrowserBackend.startPageJson)
+    property var startPageData: JSON.parse(BrowserBackend.startPageJson())
     property var browserSettings: JSON.parse(BrowserBackend.settingsJson)
     property var suggestionData: []
     readonly property bool compactTabs: browserSettings.tabLayout === "compact"
@@ -40,7 +40,7 @@ Window {
     Binding { target: Theme; property: "dark"; value: BrowserBackend.dark }
 
     function refreshStartPage() {
-        startPageData = JSON.parse(BrowserBackend.startPageJson)
+        startPageData = JSON.parse(BrowserBackend.startPageJson())
     }
 
     function tabSnapshot() {
@@ -576,7 +576,7 @@ Window {
                             radius: 9
                             color: tab.active
                                 ? (Theme.dark ? "#993b3b40" : "#deffffff")
-                                : tabArea.containsMouse ? (Theme.dark ? "#10ffffff" : "#0d000000") : "transparent"
+                                : tabHover.hovered ? (Theme.dark ? "#10ffffff" : "#0d000000") : "transparent"
                             border { width: tab.active ? 0.5 : 0; color: Theme.separator }
                         }
 
@@ -639,7 +639,7 @@ Window {
 
                             BrowserButton {
                                 id: closeButton
-                                visible: tab.active || tabArea.containsMouse
+                                visible: tab.active || tabHover.hovered
                                 anchors.verticalCenter: parent.verticalCenter
                                 width: 23; height: 23
                                 symbol: "xmark"
@@ -647,20 +647,17 @@ Window {
                                 onClicked: root.closeTab(tab.index)
                             }
                         }
-
-                        MouseArea {
-                            id: tabArea
-                            anchors.fill: parent
-                            z: -1
-                            hoverEnabled: true
-                            acceptedButtons: Qt.LeftButton | Qt.MiddleButton
-                            onClicked: function(mouse) {
-                                if (mouse.button === Qt.MiddleButton) root.closeTab(tab.index)
-                                else {
-                                    root.currentIndex = tab.index
-                                    root.syncAddress()
-                                }
+                        HoverHandler { id: tabHover }
+                        TapHandler {
+                            acceptedButtons: Qt.LeftButton
+                            onTapped: {
+                                root.currentIndex = tab.index
+                                root.syncAddress()
                             }
+                        }
+                        TapHandler {
+                            acceptedButtons: Qt.MiddleButton
+                            onTapped: root.closeTab(tab.index)
                         }
                     }
                 }
