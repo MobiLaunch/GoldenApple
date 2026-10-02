@@ -1486,14 +1486,16 @@ Window {
                 width: parent.width
                 Text {
                     width: 190
+                    anchors.verticalCenter: parent.verticalCenter
                     text: "Search Engine"
                     color: Theme.label
                     font { family: Theme.fontUi; pixelSize: 13; weight: Font.Medium }
                 }
-                Text {
-                    text: "DuckDuckGo"
-                    color: Theme.secondaryLabel
-                    font { family: Theme.fontUi; pixelSize: 13 }
+                Segmented {
+                    readonly property var keys: ["duckduckgo", "brave", "bing", "google"]
+                    options: ["DuckDuckGo", "Brave", "Bing", "Google"]
+                    current: Math.max(0, keys.indexOf(root.browserSettings.searchEngine ?? "duckduckgo"))
+                    onPicked: function(index) { root.setBrowserSetting("searchEngine", keys[index]) }
                 }
             }
 
