@@ -256,19 +256,14 @@ Flickable {
                         }
                     }
                 }
-                MouseArea {
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: root.privacyRequested()
-                }
                 scale: privacyArea.pressed ? 0.985 : privacyArea.containsMouse ? 1.008 : 1
                 Behavior on scale { NumberAnimation { duration: Theme.reduceMotion ? 1 : 100; easing.type: Easing.OutCubic } }
                 MouseArea {
                     id: privacyArea
                     anchors.fill: parent
                     hoverEnabled: true
-                    acceptedButtons: Qt.NoButton
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: root.privacyRequested()
                 }
             }
         }
