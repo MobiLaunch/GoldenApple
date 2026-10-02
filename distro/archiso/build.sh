@@ -192,11 +192,14 @@ fi
 LOCAL_SYMBOLS="$REPO/local-assets/symbols"
 if [[ -d "$LOCAL_SYMBOLS" ]] && find "$LOCAL_SYMBOLS" -maxdepth 1 -type f -iname '*.svg' -print -quit | grep -q .; then
   say "overlaying locally supplied system symbols"
-  mkdir -p "$AIR/usr/share/golden-gate/ui/assets/symbols" "$AIR/usr/share/sddm/themes/golden-gate/assets/symbols"
+  mkdir -p "$AIR/usr/share/golden-gate/ui/assets/symbols" \
+           "$AIR/usr/share/sddm/themes/golden-gate/assets/symbols" \
+           "$AIR/etc/skel/.config/quickshell/golden-gate/assets/symbols"
   while IFS= read -r -d '' symbol; do
     name="$(basename "$symbol")"
     install -m644 "$symbol" "$AIR/usr/share/golden-gate/ui/assets/symbols/$name"
     install -m644 "$symbol" "$AIR/usr/share/sddm/themes/golden-gate/assets/symbols/$name"
+    install -m644 "$symbol" "$AIR/etc/skel/.config/quickshell/golden-gate/assets/symbols/$name"
   done < <(find "$LOCAL_SYMBOLS" -maxdepth 1 -type f -iname '*.svg' -print0)
 fi
 
