@@ -1085,6 +1085,7 @@ Window {
 
                     WebEngineView {
                         id: web
+                        property int rendererRestarts: 0
                         anchors.fill: parent
                         profile: profile
                         visible: webTab.visible && webTab.url !== "about:blank" && !root.readerOpen
@@ -1108,8 +1109,10 @@ Window {
                         onLoadingChanged: function(info) {
                             tabsModel.setProperty(webTab.index, "loading", loading)
                             tabsModel.setProperty(webTab.index, "progress", loadProgress)
-                            if (info.status === WebEngineView.LoadSucceededStatus && url.toString() !== "about:blank")
+                            if (info.status === WebEngineView.LoadSucceededStatus && url.toString() !== "about:blank") {
+                                rendererRestarts = 0
                                 BrowserBackend.visit(url.toString(), title || BrowserBackend.displayAddress(url.toString()))
+                            }
                             if (info.status === WebEngineView.LoadFailedStatus && webTab.index === root.currentIndex)
                                 BrowserBackend.notify(info.errorString || "This page could not be loaded.")
                         }
@@ -1130,9 +1133,21 @@ Window {
                             request.accept()
                             root.visibility = request.toggleOn ? Window.FullScreen : Window.Windowed
                         }
+                        Timer {
+                            id: rendererRetry
+                            interval: 350
+                            repeat: false
+                            onTriggered: web.reload()
+                        }
                         onRenderProcessTerminated: function(status, exitCode) {
-                            if (webTab.index === root.currentIndex)
-                                BrowserBackend.notify("This tab stopped unexpectedly. Reload to continue.")
+                            rendererRestarts += 1
+                            if (rendererRestarts === 1) {
+                                if (webTab.index === root.currentIndex)
+                                    BrowserBackend.notify("Web restarted this tab after a renderer failure.")
+                                rendererRetry.restart()
+                            } else if (webTab.index === root.currentIndex) {
+                                BrowserBackend.notify("This tab's renderer stopped again. Web is using the safest live-boot graphics path.")
+                            }
                         }
                     }
 
