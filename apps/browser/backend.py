@@ -272,7 +272,7 @@ class BrowserBackend(QObject):
     @Slot()
     def openPrivateWindow(self):
         subprocess.Popen(
-            [sys.executable, str(Path(__file__).with_name("qml_browser.py")), "--private"],
+            [sys.executable, str(Path(__file__).with_name("browser.py")), "--private"],
             close_fds=True,
             start_new_session=True,
         )
