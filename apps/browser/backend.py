@@ -19,6 +19,7 @@ class BrowserBackend(QObject):
     darkChanged = Signal()
     libraryChanged = Signal()
     toastRequested = Signal(str)
+    externalUrls = Signal(str)
 
     def __init__(self, *, private=False, launch_values=None, parent=None):
         super().__init__(parent)
@@ -262,6 +263,10 @@ class BrowserBackend(QObject):
     @Slot(str)
     def copyText(self, text):
         QGuiApplication.clipboard().setText(text)
+
+    @Slot(str)
+    def notify(self, text):
+        self.toastRequested.emit(text)
 
     @Slot()
     def openPrivateWindow(self):
