@@ -164,7 +164,7 @@ Window {
                 try {
                     let article = JSON.parse(value)
                     if (!article.text) {
-                        BrowserBackend.toastRequested("Reader couldn't find readable text on this page.")
+                        BrowserBackend.notify("Reader couldn't find readable text on this page.")
                         return
                     }
                     readerTitle = article.title
@@ -172,7 +172,7 @@ Window {
                     readerOpen = true
                     pageMenuOpen = false
                 } catch (_) {
-                    BrowserBackend.toastRequested("Reader couldn't open this page.")
+                    BrowserBackend.notify("Reader couldn't open this page.")
                 }
             }
         )
@@ -180,7 +180,7 @@ Window {
 
     function requestNewWindow(request) {
         if (!request.userInitiated) {
-            BrowserBackend.toastRequested("A pop-up was blocked.")
+            BrowserBackend.notify("A pop-up was blocked.")
             return
         }
         let background = request.destination === WebEngineNewWindowRequest.InNewBackgroundTab
@@ -862,7 +862,7 @@ Window {
                             if (info.status === WebEngineView.LoadSucceededStatus && url.toString() !== "about:blank")
                                 BrowserBackend.visit(url.toString(), title || BrowserBackend.displayAddress(url.toString()))
                             if (info.status === WebEngineView.LoadFailedStatus && webTab.index === root.currentIndex)
-                                BrowserBackend.toastRequested(info.errorString || "This page could not be loaded.")
+                                BrowserBackend.notify(info.errorString || "This page could not be loaded.")
                         }
                         onLoadProgressChanged: tabsModel.setProperty(webTab.index, "progress", loadProgress)
                         onRecentlyAudibleChanged: tabsModel.setProperty(webTab.index, "audible", recentlyAudible)
@@ -877,7 +877,7 @@ Window {
                         }
                         onRenderProcessTerminated: function(status, exitCode) {
                             if (webTab.index === root.currentIndex)
-                                BrowserBackend.toastRequested("This tab stopped unexpectedly. Reload to continue.")
+                                BrowserBackend.notify("This tab stopped unexpectedly. Reload to continue.")
                         }
                     }
 
@@ -1150,7 +1150,7 @@ Window {
             MenuRow { symbol: "notes"; label: "Reader"; enabled: root.currentUrl !== "about:blank"; onActivated: root.enterReader() }
             MenuRow { symbol: "bookmark"; label: "Add to Favorites"; enabled: root.currentUrl !== "about:blank"; onActivated: { BrowserBackend.addBookmark(root.currentUrl, root.currentTitle); root.pageMenuOpen = false } }
             MenuRow { symbol: "clock"; label: "Add to Reading List"; enabled: root.currentUrl !== "about:blank"; onActivated: { BrowserBackend.addReadingList(root.currentUrl, root.currentTitle); root.pageMenuOpen = false } }
-            MenuRow { symbol: "globe"; label: "Copy Link"; enabled: root.currentUrl !== "about:blank"; onActivated: { BrowserBackend.copyText(root.currentUrl); root.pageMenuOpen = false; BrowserBackend.toastRequested("Link copied") } }
+            MenuRow { symbol: "globe"; label: "Copy Link"; enabled: root.currentUrl !== "about:blank"; onActivated: { BrowserBackend.copyText(root.currentUrl); root.pageMenuOpen = false; BrowserBackend.notify("Link copied") } }
 
             Rectangle { width: parent.width; height: 1; color: Theme.separator }
 
