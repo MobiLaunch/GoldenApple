@@ -36,8 +36,13 @@ jobs:
           grep -q 'qs -c golden-gate' compositor/hyprland/hyprland.conf
           grep -q 'gg-apply-preferences' compositor/hyprland/hyprland.conf
           grep -q 'systemd-detect-virt --vm' compositor/hyprland/hyprglass-sync.sh
-          grep -q 'glass_opacity 0.60' compositor/hyprland/hyprglass-sync.sh
+          grep -q 'glass_opacity 0.48' compositor/hyprland/hyprglass-sync.sh
           grep -q 'id: panel' shell/ControlCenter.qml
+          grep -q 'Big Sur-inspired Control Center' shell/ControlCenter.qml
+          grep -q 'tint: Theme.dark ? "#7021262e" : "#5f343941"' shell/Dock.qml
+          grep -q 'GG_WEB_LIVE_SAFE=1' apps/browser/launch.sh
+          grep -q -- '--disable-gpu' apps/browser/launch.sh
+          grep -q 'rendererRestarts' apps/browser/Browser.qml
           grep -q 'visible: pane.joining === networkBlock.modelData.ssid' apps/settings/panes/WifiPane.qml
           grep -q 'fontUi: "SF Pro Text"' apps/lib/theme/Theme.qml
           grep -q 'import QtWebEngine' apps/browser/Browser.qml
