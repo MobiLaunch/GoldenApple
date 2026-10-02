@@ -2,8 +2,7 @@ pragma Singleton
 // Desktop preferences set in Settings, from ~/.config/golden-gate/desktop.json
 // (watched, so changes apply at once):
 //   { "wallpaper": "/path.png",
-//     "dock": { "size": 54, "magnification": true, "magnifiedSize": 86,
-//               "indicators": true, "animateLaunch": true },
+//     "dock": { "size": 54, "indicators": true, "animateLaunch": true },
 //     "glass": "clear" | "tinted", "reduceMotion": false, "reduceTransparency": false }
 import Quickshell
 import Quickshell.Io
@@ -16,8 +15,6 @@ Singleton {
 
     readonly property string wallpaper: data.wallpaper || Quickshell.env("GG_WALLPAPER") || "/usr/share/backgrounds/golden-gate/tide.png"
     readonly property real dockSize: data.dock?.size ?? 54
-    readonly property bool dockMagnification: data.dock?.magnification ?? true
-    readonly property real dockMagnifiedSize: Math.max(dockSize, data.dock?.magnifiedSize ?? 86)
     readonly property bool dockIndicators: data.dock?.indicators ?? true
     readonly property bool animateLaunch: (data.dock?.animateLaunch ?? true) && !reduceMotion
     readonly property string glass: data.glass ?? "clear"
