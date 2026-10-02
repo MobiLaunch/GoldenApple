@@ -4,6 +4,17 @@ export XDG_CURRENT_DESKTOP=Hyprland
 export XDG_SESSION_TYPE=wayland
 export XDG_SESSION_DESKTOP=golden-gate
 
+# Flatpak exports desktop files and icons outside /usr/share. Keep these paths
+# explicit so App Store installs appear in Applications immediately in both the
+# live session and installed SDDM sessions.
+base_data_dirs="${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
+export XDG_DATA_DIRS="$HOME/.local/share/flatpak/exports/share:/var/lib/flatpak/exports/share:$base_data_dirs"
+
+# Make first-login folders deterministic for Files/Photos/Music/Notes and any
+# XDG-aware application. This is idempotent on later sessions.
+command -v xdg-user-dirs-update >/dev/null 2>&1 && xdg-user-dirs-update >/dev/null 2>&1 || true
+mkdir -p "$HOME/.local/state" "$HOME/.cache" "$HOME/.config"
+
 # VirtualBox (VMSVGA) and VMware use the vmwgfx driver. With 3D acceleration on,
 # its GL path leaves Hyprland and the shell black with only a hardware cursor
 # showing, so render in software (Mesa llvmpipe) there. GG_RENDERER=hardware opts out.
@@ -15,6 +26,15 @@ fi
 # Screen scale and effects for this machine (virtual screen, no GPU).
 conf="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/golden-gate"
 sh "$conf/machine-conf.sh" && head -n 1 "$conf/machine.conf" | logger -t gg-session
+
+# Hyprland must own the Wayland display before Quickshell starts. Launching qs
+# before the compositor exists can create a restart loop and leave the live VT
+# looking like a black screen. Hyprland's exec-once no longer launches qs; this
+# supervisor waits for WAYLAND_DISPLAY to become usable inside the compositor
+# session via a small Hyprland startup helper.
+mkdir -p "$HOME/.local/state"
+export GG_SHELL_CONFIG=golden-gate
+export GG_SHELL_LOG="$HOME/.local/state/golden-gate-shell.log"
 
 logger -t gg-session "starting Hyprland"
 started=$(date +%s)

@@ -137,32 +137,25 @@ StepFrame {
                     visible: row.asking
                     x: 32; y: 40
                     spacing: 8
-                    Rectangle {
-                        width: row.width - 32 - 90; height: 28; radius: 6
-                        color: Theme.dark ? "#1affffff" : "#ffffff"
-                        border { width: 1; color: step.error ? "#ff3b30" : Theme.accent }
-                        TextInput {
-                            id: pw
-                            x: 8; width: parent.width - 16; anchors.verticalCenter: parent.verticalCenter
-                            echoMode: TextInput.Password
-                            color: Theme.label; clip: true
-                            font { family: Theme.fontUi; pixelSize: 13 }
-                            onAccepted: step.join(row.modelData, text)
-                            Keys.onEscapePressed: step.joining = ""
-                            Text { visible: !pw.text; text: step.error || "Password"; color: step.error ? "#ff3b30" : Theme.tertiaryLabel; font: pw.font }
-                        }
-                        Component.onCompleted: if (row.asking) pw.forceActiveFocus()
+
+                    TextField {
+                        id: pw
+                        width: row.width - 32 - 90
+                        height: 28
+                        password: true
+                        placeholder: step.error || "Password"
+                        onAccepted: step.join(row.modelData, text)
+                        input.Keys.onEscapePressed: step.joining = ""
+                        Component.onCompleted: if (row.asking) Qt.callLater(() => pw.input.forceActiveFocus())
                     }
-                    Rectangle {
-                        width: 70; height: 28; radius: 14
-                        color: Theme.accent
-                        Text {
-                            anchors.centerIn: parent
-                            text: step.connecting ? "Joining…" : "Join"
-                            color: "#ffffff"
-                            font { family: Theme.fontUi; pixelSize: 12; weight: Font.DemiBold }
-                        }
-                        TapHandler { onTapped: step.join(row.modelData, pw.text) }
+
+                    Button {
+                        width: 70
+                        height: 28
+                        text: step.connecting ? "Joining…" : "Join"
+                        prominent: true
+                        enabled: !step.connecting && pw.text.length > 0
+                        onClicked: step.join(row.modelData, pw.text)
                     }
                 }
                 HoverHandler { id: wh }
@@ -171,7 +164,7 @@ StepFrame {
                     onTapped: {
                         if (row.modelData.active) return
                         step.error = ""
-                        if (row.modelData.secure) { step.joining = row.modelData.ssid; Qt.callLater(() => pw.forceActiveFocus()) }
+                        if (row.modelData.secure) { step.joining = row.modelData.ssid; Qt.callLater(() => pw.input.forceActiveFocus()) }
                         else step.join(row.modelData)
                     }
                 }

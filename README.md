@@ -33,16 +33,16 @@ and built entirely from original artwork.
 | Layer | Path | Status |
 |---|---|---|
 | **Design tokens**: materials, colour, type, radii, spring physics | `design/` | Done. One JSON compiles to CSS, QML, GTK and Hyprland config |
-| **Icons**: 15 app icons (light + dark), file icons, 115 symbols | `icons/` | Done. Freedesktop theme; [bring your own](icons/custom/README.md) |
-| **Reference shell**: the whole desktop and 14 apps, interactive, in the browser | `prototype/` | Done. The spec every other layer is checked against; 25-scenario click-through test in CI |
-| **Linux shell**: menu bar, Control Center, Dock, Spotlight, notifications, app switcher, lock screen | `shell/` | Quickshell (QML). Runs in a headless Wayland session (see [Testing](#testing)); not yet run on hardware |
-| **Compositor**: blur, squircle corners, springs, key bindings | `compositor/` | Hyprland config done; refraction shader written, plugin pending |
-| **App theme**: every GNOME app restyled to macOS metrics (traffic lights, floating sidebar, glass toolbar pills, capsule buttons, Finder tables, Mac menus), light and dark; GTK 3 apps too | `design/gtk/`, `design/dist/gtk*.css` | Done for GTK 4 and GTK 3; per-app passes for Files, Calculator, Settings, Calendar, Terminal |
-| **Golden Gate apps**: the apps GNOME can't be restyled into, rebuilt in QML to the macOS 27 layouts: Calculator, Weather, Music, Notes, Photos, Maps | `apps/` | Done and in the image, replacing GNOME's |
+| **Icons**: first-party app icons, file/place icons and shared symbols | `icons/` | Done. One generated freedesktop theme plus optional imported artwork; [bring your own](icons/custom/README.md) |
+| **Reference shell**: the desktop interaction/design reference, interactive in the browser | `prototype/` | Kept as a design reference; the live QML desktop is authoritative for native functionality |
+| **Linux shell**: menu bar, Control Center, Dock, Applications, Spotlight, notifications, app switcher, lock screen | `shell/` | Quickshell (QML), tested on the live ISO and real Intel/i915 hardware as well as VM/headless sessions |
+| **Compositor**: blur, refraction, squircle corners, springs, key bindings | `compositor/` | Hyprland + HyprGlass; the ISO bundles a Hyprland-version-matched plugin and Golden Gate applies its presets per shell surface |
+| **Shared UI**: AppWindow, Glass, buttons, fields, switches, sliders, progress, sidebars, motion and symbols | `apps/lib/` | One canonical QML component store, consumed by apps, shell adapters, Setup and SDDM; Web has a centralized Qt adapter around its isolated Chromium process |
+| **Golden Gate apps**: Files, Web, Mail, Messages, Maps, Photos, Music, Calendar, Notes, Weather, App Store, Settings, Clock, TextEdit, Calculator and Installer | `apps/` | First-party frontends use the shared component store; mature backends such as Qt WebEngine, Flatpak, IMAP/SMTP, Matrix and Ghostty remain isolated behind Golden Gate UI |
 | **System Settings**: a near copy of macOS System Settings (glass sidebar with search suggestions, back and forward, grouped panes) that changes the real system: Wi-Fi, Bluetooth, Network, Battery, General (About, Software Update, Storage, Date & Time, Language & Region), Accessibility, Appearance (mode, accent, Liquid Glass clear or tinted), Desktop & Dock, Displays, Wallpaper, Focus, Sound, Privacy & Security, Users & Groups, Keyboard, Trackpad & Mouse | `apps/settings.qml`, `apps/settings/` | Done; `gg-settings [pane]` and `gnome-control-center [panel]` open it at a pane |
-| **Setup Assistant**: the first-login hello in Liquid Glass (the compositor's shader, run over its own backdrop), then country or region, Wi-Fi, Data & Privacy, Location Services, time zone, crash and diagnostics sharing, and Choose Your Look | `apps/setup.qml`, `apps/setup/` | Done; runs once (`~/.config/golden-gate/setup-done`), `gg.nosetup` on the kernel command line skips it |
+| **Setup Assistant**: the first-login hello and shared Golden Gate controls over the HyprGlass desktop material, then local account creation, country or region, Wi-Fi, Data & Privacy, Location Services, time zone, crash and diagnostics sharing, and Choose Your Look | `apps/setup.qml`, `apps/setup/` | Done; runs once (`~/.config/golden-gate/setup-done`), `gg.nosetup` on the kernel command line skips it |
 | **Theming**: fonts, ⌘ key layer, login screen, boot splash, terminal | `themes/` | Done: fontconfig, keyd, SDDM theme, Plymouth theme, Ghostty |
-| **Distro**: bootable live ISO | `distro/archiso/` | Build script done; first ISO build pending (see below) |
+| **Distro**: bootable live ISO + graphical installer | `distro/archiso/`, `apps/installer*` | Boots on real hardware; native installer performs UEFI preflight, disk erase/partitioning, filesystem copy, account provisioning, initramfs, systemd-boot and verification |
 
 ## Try it
 
@@ -69,12 +69,42 @@ skips the boot and opens those apps; `?lock` starts at the lock screen.
 
 ```sh
 sudo pacman -S hyprland hypridle quickshell qt6-svg qt6-wayland inter-font \
-               ttf-jetbrains-mono networkmanager bluez brightnessctl playerctl grim slurp librsvg
+               ttf-jetbrains-mono networkmanager bluez brightnessctl playerctl grim slurp librsvg \
+               pyside6 qt6-webengine python
 scripts/install.sh           # backs up anything it replaces (*.bak-<timestamp>)
 sudo scripts/install.sh --extras   # optional (needs keyd, sddm, plymouth): ⌘ layer, login theme, boot splash
 ```
 
-Then log into Hyprland.
+Then log into Hyprland. Local account creation also needs the system integration:
+`sudo scripts/install.sh --extras`. Besides the root-owned helper, this installs
+the shared Golden Gate runtime, a Golden Gate SDDM/Wayland session, and the
+`/etc/skel` desktop used by accounts created in Hello. It is included
+automatically in ISO builds.
+
+**Web browser:** `gg-web` opens Golden Gate's native Chromium-powered browser
+(Qt WebEngine, updated through Arch's `qt6-webengine` package). It has a
+Safari-inspired toolbar, traffic lights, tab sidebar, start page, bookmarks,
+history, downloads, and private windows. Ctrl+L focuses the address, Ctrl+T/W
+opens/closes tabs, Ctrl+D bookmarks, Ctrl+J opens downloads, and Ctrl+Shift+N
+opens a private window. Restored background tabs load when selected. Normal
+profiles and private profiles are separate. This is an initial browser, without
+Safari/iCloud services, extension management, or a password manager.
+
+If Web has graphics trouble in your VM, run `GG_WEB_SOFTWARE=1 gg-web`.
+The launcher keeps Chromium sandboxing enabled and must run as your desktop user.
+Golden Gate does not ship a second browser frontend: Web owns the browser experience
+while Qt WebEngine/Chromium remains isolated from the Quickshell desktop process.
+
+**Hello and accounts:** account creation is the first step after Hello. It creates
+a password-protected local administrator account, requests existing administrator
+authorization on installed systems, and passes the password through standard input.
+Existing desktop users can keep their current account. Setup saves your choices
+for the new account and waits for successful writes before closing. On installed
+systems the Welcome page can sign out after saving so you can continue in the new
+account through the Golden Gate login session; choosing Get Started keeps the
+current session instead. On a live ISO, accounts and files remain temporary
+unless persistence is configured. You can sign in on another console (Ctrl+Alt+F2)
+and run `gg-session`; this does not install the system onto disk.
 
 **As a bootable ISO.** The *Build ISO* GitHub Action builds one whenever
 `distro/`, the installer or the workflow changes, and attaches it to the run
@@ -105,25 +135,18 @@ start, the session drops to a shell that says why.
 npm run test:ui       # Playwright clicks through every app and system surface
 npm run screenshots   # regenerates docs/screenshots from the prototype
 shell/tests/screenshot.sh out/   # runs the real Quickshell shell in headless Sway
-design/gtk/tests/app-shots.sh out/   # the GNOME apps with the Golden Gate theme
 ```
 
-The UI test fails on any page error and checks the flows end to end: boot and
-unlock, all 14 apps, Control Center details, Spotlight maths, menus and submenus,
-Files (new folder, rename, Quick Look, trash), minimise and restore, Mission
-Control, edge tiling, and every appearance combination.
+The test suite covers the browser reference, QML parsing, native control behavior,
+installer safety gates, Settings wiring, shared-component architecture, default-app
+identity/MIME handling, browser isolation, and native application backends. The
+live desktop is also validated directly on the ISO because compositor, layer-shell
+and hardware behavior cannot be proven by the browser prototype alone.
 
-`design/gtk/tests/app-shots.sh out/` runs the ISO's GTK apps with the theme in a
-headless Sway session and screenshots each, light and dark, plus a gallery of every
-control (`gallery.js`). The *GTK theme* workflow runs it on Arch, the same GTK and
-libadwaita as the image, and fails on any CSS the toolkit rejects. It found three
-bugs in the image: `GTK_THEME` in the session disabled libadwaita's own stylesheet,
-GTK 4.20+ drew our stroked symbolic icons as solid blobs (they are now outlined at
-build time), and GNOME Settings refused to start outside GNOME.
-
-The apps in `apps/` are Quickshell configs, one entry file each, sharing the
-window frame in `apps/lib` (traffic lights, 52 px toolbar, glass toolbar buttons,
-a floating sidebar that Hyprland blurs). Run one on its own with
+The apps in `apps/` are Quickshell configs, one entry file each. Their controls come
+from the single canonical component store in `apps/lib` (installed as
+`/usr/share/golden-gate/ui` and linked into the app tree), so buttons, switches,
+sliders, text fields, traffic lights and glass chrome cannot drift per app. Run one on its own with
 `qs -p apps/calculator.qml`; the installer copies them to
 `/usr/share/golden-gate/apps` with a desktop entry each. Weather uses Open-Meteo
 (no API key) and CARTO/OpenStreetMap tiles with RainViewer radar; for offline
@@ -132,17 +155,18 @@ and `GG_WEATHER_FIXTURE=DIR QML_XHR_ALLOW_FILE_READ=1 qs -p apps/weather.qml`
 runs from it. Music plays your own files (~/Music, scanned by `apps/music/scan.sh`
 with ffmpeg into ~/.cache/golden-gate/music), .m3u playlists from ~/Music/Playlists
 and internet radio from radio-browser.info; it has no Apple Music streaming.
-Setup Assistant's shaders are built from `compositor/liquid-glass/liquid-glass.frag`
-with `node apps/setup/shaders/build.mjs` (needs `qsb` from qt6-shadertools); the
-`.qsb` files are committed. Crash reports: `gg-diagnostics` writes a report to
+Liquid Glass optics are provided by HyprGlass at the compositor boundary. Golden Gate
+does not maintain a second refraction shader for Setup or individual controls; apps use
+the shared QML material/chrome from `apps/lib`, installed once as
+`/usr/share/golden-gate/ui`. Crash reports: `gg-diagnostics` writes a report to
 ~/Documents/Diagnostics, and if you opted in, a notification offers one when an
 app crashes; nothing is sent until you submit it yourself.
-Settings writes what the shell and the apps watch: ~/.config/golden-gate/desktop.json
-(wallpaper, Dock size and magnification, glass style, reduce motion and
-transparency, applied at once), and Hyprland fragments in ~/.config/hypr/golden-gate
-(input.conf, accessibility.conf, displays.conf) that it also applies live with
-`hyprctl keyword`. Panels it doesn't have (printers, online accounts) still open
-GNOME Settings.
+Settings writes what the shell and apps watch through the atomic `gg-pref`
+backend: ~/.config/golden-gate/desktop.json (wallpaper, Dock size and magnification,
+glass style, reduce motion and transparency), plus Hyprland fragments in
+~/.config/hypr/golden-gate (input.conf, accessibility.conf, displays.conf) applied
+live with `hyprctl keyword`. Unknown legacy `gnome-control-center` panel names
+remain inside Golden Gate Settings instead of opening a second settings UI.
 Notes keeps each note as a Markdown file in ~/Documents/Notes/<folder>/, named
 after its first line. Photos shows ~/Pictures and ~/Videos, with the folders in
 ~/Pictures as albums. Maps uses OpenStreetMap throughout (CARTO tiles, Photon
@@ -197,3 +221,4 @@ Details and sizing guidance are in [icons/custom/README.md](icons/custom/README.
 ## Roadmap
 
 See [docs/ROADMAP.md](docs/ROADMAP.md).
+

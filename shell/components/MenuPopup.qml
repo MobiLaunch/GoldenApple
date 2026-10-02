@@ -16,7 +16,7 @@ PopupWindow {
     implicitWidth: 240
     implicitHeight: column.implicitHeight + 12
 
-    Glass {
+    Glass { variant: "clear";
         id: panel
         anchors.fill: parent
         radius: Theme.radiusMenu
@@ -48,6 +48,7 @@ PopupWindow {
                             implicitHeight: 26
                             radius: Theme.radiusMenuItem
                             color: hover.containsMouse ? Theme.accent : "transparent"
+                            Behavior on color { ColorAnimation { duration: Prefs.reduceMotion ? 1 : 85 } }
                             RowLayout {
                                 anchors { fill: parent; leftMargin: 10; rightMargin: 10 }
                                 Text {

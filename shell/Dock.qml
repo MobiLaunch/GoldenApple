@@ -1,5 +1,6 @@
-// Dock: glass shelf with cosine magnification, running indicators, launch
-// bounce and tooltips. Pinned apps are desktop-entry ids.
+// Dock: iPad-style glass shelf with fixed-size icons, running indicators,
+ // launch bounce and tooltips. Pointer-driven magnification is intentionally
+ // absent: the shelf never changes geometry while the pointer moves.
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
@@ -12,27 +13,96 @@ import "components"
 
 PanelWindow {
     id: dock
-    property var pinned: [
-        "org.gnome.Nautilus", "firefox", "org.gnome.Geary", "org.gnome.Fractal", "org.goldengate.Maps",
-        "org.goldengate.Photos", "org.goldengate.Music", "org.gnome.Calendar", "org.goldengate.Notes",
-        "org.goldengate.Weather", "org.gnome.Software", "org.goldengate.Settings", "com.mitchellh.ghostty"
-    ]
-    // Size and magnification from Settings › Desktop & Dock.
-    property real baseSize: Prefs.dockSize
-    property real maxSize: Prefs.dockMagnification && !Prefs.reduceMotion ? Prefs.dockMagnifiedSize : Prefs.dockSize
-    property real pointerX: -1
+    property bool liveSession: false
+    property var pinned: (liveSession ? ["org.goldengate.Installer"] : []).concat([
+        "org.goldengate.Files", "org.goldengate.Web", "org.goldengate.Mail", "org.goldengate.Messages", "org.goldengate.Maps",
+        "org.goldengate.Photos", "org.goldengate.Music", "org.goldengate.Calendar", "org.goldengate.Notes",
+        "org.goldengate.Weather", "org.goldengate.Software", "org.goldengate.Settings", "org.goldengate.Terminal"
+    ])
+    // Size from Settings › Desktop & Dock. Keep every icon on one stable grid.
+    readonly property int tileCount: entries.length + places.length
+    readonly property real restingWidth: tileCount * (baseSize + 6) + 28
+    property real baseSize: Math.min(Prefs.dockSize, Math.max(16, (width - 48) / (tileCount + 3) - 6))
     property var launcher: null   // AppLaunch on this screen: the icon grows into the window
+    property var applications: null
+    property real contextX: 0
+    property real contextY: 0
+    property var contextItems: []
+
+    function openEntry(entry) {
+        const parked = minimizedFor(entry)
+        const wins = windowsFor(entry)
+        if (parked) restore(parked)
+        else if (wins.length) wins[0].activate()
+        else entry.execute()
+    }
+
+    function quitEntry(entry) {
+        const wins = windowsFor(entry)
+        for (let i = 0; i < wins.length; i++) {
+            const address = wins[i].lastIpcObject?.address
+            if (address) Hyprland.dispatch("closewindow address:" + address)
+        }
+    }
+
+    function showEntryMenu(entry, item, localX, localY) {
+        const point = item.mapToItem(shelf, localX, localY)
+        const wins = windowsFor(entry)
+        let menu = [
+            { label: wins.length ? "Show" : "Open", action: () => dock.openEntry(entry) }
+        ]
+        if (wins.length) {
+            menu.push("-")
+            for (let i = 0; i < wins.length; i++) {
+                const win = wins[i]
+                menu.push({ label: win.title || entry.name || "Window", action: () => win.activate() })
+            }
+            menu.push("-")
+            menu.push({ label: "Quit", shortcut: "⌘Q", action: () => dock.quitEntry(entry) })
+        }
+        contextItems = menu
+        contextX = shelf.x + point.x
+        contextY = shelf.y + point.y
+        dockMenu.open = true
+    }
+
+    function showPlaceMenu(place, item, localX, localY) {
+        const point = item.mapToItem(shelf, localX, localY)
+        if (place.action === "applications") {
+            contextItems = [{ label: "Open Applications", action: () => dock.openApplications() }]
+        } else if (place.name === "Downloads") {
+            contextItems = [{ label: "Open Downloads", action: () => Quickshell.execDetached(place.exec) }]
+        } else {
+            contextItems = [
+                { label: "Open Trash", action: () => Quickshell.execDetached(place.exec) }
+            ]
+        }
+        contextX = shelf.x + point.x
+        contextY = shelf.y + point.y
+        dockMenu.open = true
+    }
+
+    function openApplications() {
+        if (applications)
+            applications.present()
+    }
 
     anchors { bottom: true; left: true; right: true }
-    implicitHeight: maxSize + 30
+    // Include the label, its gap, bounce and spring overshoot inside the layer surface.
+    implicitHeight: baseSize + 70
     exclusiveZone: baseSize + 22
     color: "transparent"
     WlrLayershell.namespace: "gg-dock"
     WlrLayershell.layer: WlrLayer.Top
-    // Only the shelf (and the magnified icons above it while hovering) take input.
-    mask: Region { item: hitbox }
+    // Touch-style shelf: only the shelf itself takes input.
+    mask: Region { item: shelf }
 
     SystemClock { id: clock; precision: SystemClock.Minutes }
+    Process {
+        running: true
+        command: ["sh", "-c", "test -d /run/archiso && printf yes || true"]
+        stdout: StdioCollector { onStreamFinished: dock.liveSession = text.trim() === "yes" }
+    }
     // Written by icons/build.mjs unless a custom Calendar icon replaces the default.
     Image {
         id: calBlank
@@ -47,12 +117,13 @@ PanelWindow {
         id: trashCheck
         running: true
         command: ["sh", "-c", "ls -A \"${XDG_DATA_HOME:-$HOME/.local/share}/Trash/files\" 2>/dev/null | head -1"]
-        stdout: SplitParser { onRead: (line) => dock.trashFull = line.length > 0 }
+        stdout: StdioCollector { onStreamFinished: dock.trashFull = text.trim().length > 0 }
     }
     Timer { interval: 5000; running: true; repeat: true; onTriggered: trashCheck.running = true }
     readonly property var places: [
-        { name: "Downloads", icon: "folder", exec: ["xdg-open", Quickshell.env("HOME") + "/Downloads"] },
-        { name: "Trash", icon: trashFull ? "user-trash-full" : "user-trash", exec: ["xdg-open", "trash:///"] },
+        { name: "Applications", icon: "apps", action: "applications" },
+        { name: "Downloads", icon: "folder", exec: ["gg-files", Quickshell.env("HOME") + "/Downloads"] },
+        { name: "Trash", icon: trashFull ? "user-trash-full" : "user-trash", exec: ["gg-files", Quickshell.env("HOME") + "/.local/share/Trash/files"] },
     ]
 
     // Reading applications.values makes this re-evaluate once the entry scan finishes.
@@ -61,50 +132,55 @@ PanelWindow {
         return pinned.map((id) => DesktopEntries.byId(id)).filter((e) => e)
     }
     function windowsFor(entry) {
-        return ToplevelManager.toplevels.values.filter((t) => t.appId === entry.id || t.appId.toLowerCase() === entry.id.split(".").pop().toLowerCase())
+        const appId = (entry.id ?? "").toLowerCase()
+        const bare = appId.split(".").pop()
+        const startup = (entry.startupClass ?? "").toLowerCase()
+        return ToplevelManager.toplevels.values.filter((t) => {
+            const id = (t.appId ?? "").toLowerCase()
+            return id === appId || id === bare || (!!startup && id === startup)
+        })
     }
     // A window of this app parked by the yellow light (shell.qml), to bring back.
     function minimizedFor(entry) {
-        const bare = entry.id.split(".").pop().toLowerCase()
-        return Hyprland.toplevels.values.find((t) => t.workspace?.name === "special:minimized"
-            && (t.lastIpcObject?.class === entry.id || (t.lastIpcObject?.class ?? "").toLowerCase() === bare))
+        const appId = (entry.id ?? "").toLowerCase()
+        const bare = appId.split(".").pop()
+        const startup = (entry.startupClass ?? "").toLowerCase()
+        return Hyprland.toplevels.values.find((t) => {
+            if (t.workspace?.name !== "special:minimized") return false
+            const cls = (t.lastIpcObject?.class ?? "").toLowerCase()
+            return cls === appId || cls === bare || (!!startup && cls === startup)
+        })
     }
     function restore(t) {
-        const ws = Hyprland.focusedWorkspace?.id ?? 1
+        // A Dock click belongs to the Dock's monitor, not whichever monitor last
+        // had keyboard focus. This keeps restored windows on the screen clicked.
+        const monitor = Hyprland.monitorFor(dock.screen)
+        const ws = monitor?.activeWorkspace?.id ?? Hyprland.focusedWorkspace?.id ?? 1
         Hyprland.dispatch(`movetoworkspace ${ws},address:${t.lastIpcObject.address}`)
+        if (monitor?.name) Hyprland.dispatch(`focusmonitor ${monitor.name}`)
     }
-    // Cosine falloff measured against the resting layout, so the Dock never chases itself.
-    function sizeAt(index) {
-        if (pointerX < 0) return baseSize
-        const center = shelf.x + 7 + index * (baseSize + 3) + baseSize / 2
-        const range = baseSize * 3.2
-        const d = Math.abs(pointerX - center)
-        return d >= range ? baseSize : baseSize + (maxSize - baseSize) * Math.pow(Math.cos(d / range * Math.PI / 2), 1.4)
-    }
-
-    Item {
-        id: hitbox
-        x: shelf.x; width: shelf.width
-        y: hover.hovered ? 0 : shelf.y; height: dock.height - y
-    }
-
-    Glass {
+    Glass { variant: "clear";
         id: shelf
         anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: 6 }
-        width: row.width + 14
-        height: dock.baseSize + 16
+        width: row.width + 18
+        height: dock.baseSize + 18
         radius: Theme.radiusDock + 2
-
-        HoverHandler {
-            id: hover
-            onPointChanged: dock.pointerX = hovered ? point.position.x + shelf.x : -1
-            onHoveredChanged: if (!hovered) dock.pointerX = -1
-        }
+        // Real GPUs make the generic light clear-glass tint read far whiter than
+        // llvmpipe/VMs. Give the Dock its own smoked graphite material so icon
+        // colors stay vivid and the shelf remains visible without becoming a
+        // bright white bar over light wallpapers.
+        tint: Theme.dark ? "#7021262e" : "#5f343941"
+        rim: Theme.dark ? "#68ffffff" : "#52ffffff"
+        rimLow: Theme.dark ? "#20ffffff" : "#16000000"
+        shine: Theme.dark ? "#36ffffff" : "#24ffffff"
+        lens: 4
+        shadow: "#72000000"
 
         Row {
             id: row
-            anchors { left: parent.left; leftMargin: 7; bottom: parent.bottom; bottomMargin: 7 }
-            spacing: 3
+            anchors { left: parent.left; leftMargin: 9; bottom: parent.bottom; bottomMargin: 9 }
+            spacing: 6
+            height: dock.baseSize
             Repeater {
                 model: dock.entries
                 delegate: Item {
@@ -112,31 +188,37 @@ PanelWindow {
                     required property var modelData
                     required property int index
                     readonly property var wins: dock.windowsFor(modelData)
-                    width: dock.sizeAt(index)
-                    height: width
-                    Behavior on width { enabled: dock.pointerX < 0; Spring { spring: Theme.dock } }
+                    width: dock.baseSize
+                    height: row.height
 
                     // Calendar apps show today's date, drawn over a date-less icon.
                     readonly property bool calendar: /calendar/i.test(modelData.icon ?? "") && calBlank.loaded
 
                     Image {
                         id: icon
-                        width: parent.width; height: parent.height
+                        width: dock.baseSize; height: dock.baseSize
+                        x: 0
+                        property real launchOffset: 0
+                        y: tile.height - height + launchOffset
+                        z: Math.round(width * 10)
                         source: tile.calendar ? calBlank.source : Quickshell.iconPath(tile.modelData.icon, "application-x-executable")
-                        sourceSize: Qt.size(dock.maxSize * 2, dock.maxSize * 2)
+                        sourceSize: Qt.size(dock.baseSize * 2, dock.baseSize * 2)
                         smooth: true; mipmap: true
-                        // Pressed, the icon darkens as on the Mac (dims without shaders).
+                        // Pressed, the icon darkens and settles a few percent, without
+                        // fighting the Dock's size-based magnification wave.
+                        scale: !Prefs.reduceMotion && tipArea.pressed ? 0.955 : 1
+                        Behavior on scale { enabled: !Prefs.reduceMotion; NumberAnimation { duration: 75; easing.type: Easing.OutCubic } }
                         readonly property bool gpu: GraphicsInfo.api !== GraphicsInfo.Software
                         layer.enabled: gpu && tipArea.pressed
                         layer.effect: MultiEffect { brightness: -0.28 }
                         opacity: !gpu && tipArea.pressed ? 0.7 : 1
-                        SequentialAnimation on y {
+                        SequentialAnimation on launchOffset {
                             id: bounce
                             running: false
-                            NumberAnimation { to: -22; duration: 190; easing.type: Easing.OutQuad }
-                            NumberAnimation { to: 0; duration: 190; easing.type: Easing.InQuad }
-                            NumberAnimation { to: -8; duration: 130; easing.type: Easing.OutQuad }
-                            NumberAnimation { to: 0; duration: 130; easing.type: Easing.InQuad }
+                            NumberAnimation { to: -22; duration: 165; easing.type: Easing.OutQuad }
+                            NumberAnimation { to: 0; duration: 180; easing.type: Easing.InOutQuad }
+                            NumberAnimation { to: -7; duration: 110; easing.type: Easing.OutQuad }
+                            NumberAnimation { to: 0; duration: 120; easing.type: Easing.InOutQuad }
                         }
                         Text {
                             visible: tile.calendar
@@ -156,39 +238,47 @@ PanelWindow {
                         }
                     }
                     Rectangle {
-                        anchors { horizontalCenter: parent.horizontalCenter; top: parent.bottom; topMargin: 2 }
+                        anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: -6 }
                         width: 4; height: 4; radius: 2
                         color: Theme.dark ? "#ccffffff" : "#8c000000"
                         opacity: tile.wins.length && Prefs.dockIndicators ? 1 : 0
                         Behavior on opacity { NumberAnimation { duration: 300 } }
                     }
-                    Glass {
+                    Glass { variant: "clear";
                         id: tip
                         readonly property bool shown: tipArea.containsMouse && !tipArea.pressed
                         visible: opacity > 0
                         opacity: shown ? 1 : 0
                         scale: shown ? 1 : 0.9
                         transformOrigin: Item.Bottom
-                        Behavior on opacity { NumberAnimation { duration: tip.shown ? 140 : 90 } }
+                        Behavior on opacity { NumberAnimation { duration: Prefs.reduceMotion ? 1 : (tip.shown ? 115 : 80) } }
                         Behavior on scale { Spring { spring: Theme.popover } }
-                        anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.top; bottomMargin: 10 }
-                        width: tipText.implicitWidth + 24; height: 26; radius: 13
+                        anchors { bottom: icon.top; bottomMargin: 10 }
+                        x: Math.max(8 - (shelf.x + row.x + tile.x), Math.min((parent.width - width) / 2, dock.width - 8 - (shelf.x + row.x + tile.x) - width))
+                        width: Math.min(dock.width - 16, tipText.implicitWidth + 24); height: 26; radius: 13
                         tint: Theme.dark ? "#b8282830" : "#c8f4f4f6"
-                        Text { id: tipText; anchors.centerIn: parent; text: tile.modelData.name; color: Theme.label; font { family: Theme.fontUi; pixelSize: 13; weight: Font.Medium } }
+                        Text { id: tipText; anchors.centerIn: parent; width: Math.min(implicitWidth, parent.width - 24); elide: Text.ElideRight; textFormat: Text.PlainText; text: tile.modelData.name; color: Theme.label; font { family: Theme.fontUi; pixelSize: 13; weight: Font.Medium } }
                     }
                     MouseArea {
                         id: tipArea
                         anchors.fill: parent
                         hoverEnabled: true
-                        onClicked: {
+                        acceptedButtons: Qt.LeftButton | Qt.RightButton
+                        onClicked: mouse => {
+                            if (mouse.button === Qt.RightButton) {
+                                dock.showEntryMenu(tile.modelData, tile, mouse.x, mouse.y)
+                                return
+                            }
                             const parked = dock.minimizedFor(tile.modelData)
                             if (parked) dock.restore(parked)
                             else if (tile.wins.length) tile.wins[0].activate()
                             else if (dock.launcher?.enabled && Prefs.animateLaunch) {
-                                // The Dock window sits at the bottom of the launcher's full-screen one.
                                 const p = icon.mapToItem(null, 0, 0)
                                 dock.launcher.launch(tile.modelData, Qt.rect(p.x, dock.launcher.height - dock.height + p.y, icon.width, icon.height))
-                            } else { bounce.restart(); tile.modelData.execute() }
+                            } else {
+                                if (!Prefs.reduceMotion && Prefs.animateLaunch) bounce.restart()
+                                tile.modelData.execute()
+                            }
                         }
                     }
                 }
@@ -204,36 +294,75 @@ PanelWindow {
                     id: place
                     required property var modelData
                     required property int index
-                    width: dock.sizeAt(dock.entries.length + index + 0.35)
-                    height: width
-                    Behavior on width { enabled: dock.pointerX < 0; Spring { spring: Theme.dock } }
+                    width: dock.baseSize
+                    height: row.height
+
                     Image {
-                        anchors.fill: parent
-                        source: Quickshell.iconPath(place.modelData.icon, "folder")
-                        sourceSize: Qt.size(dock.maxSize * 2, dock.maxSize * 2)
+                        id: placeIcon
+                        width: dock.baseSize
+                        height: dock.baseSize
+                        x: 0
+                        y: place.height - height
+                        z: Math.round(width * 10)
+                        source: place.modelData.action === "applications"
+                            ? Qt.resolvedUrl("assets/symbols/apps@accent.svg")
+                            : Quickshell.iconPath(place.modelData.icon, "folder")
+                        sourceSize: Qt.size(dock.baseSize * 2, dock.baseSize * 2)
                         smooth: true; mipmap: true
+                        scale: !Prefs.reduceMotion && placeArea.pressed ? 0.955 : 1
+                        Behavior on scale { enabled: !Prefs.reduceMotion; NumberAnimation { duration: 75; easing.type: Easing.OutCubic } }
                         readonly property bool gpu: GraphicsInfo.api !== GraphicsInfo.Software
                         layer.enabled: gpu && placeArea.pressed
                         layer.effect: MultiEffect { brightness: -0.28 }
                         opacity: !gpu && placeArea.pressed ? 0.7 : 1
                     }
-                    Glass {
+                    Glass { variant: "clear";
                         id: placeTip
                         readonly property bool shown: placeArea.containsMouse && !placeArea.pressed
                         visible: opacity > 0
                         opacity: shown ? 1 : 0
                         scale: shown ? 1 : 0.9
                         transformOrigin: Item.Bottom
-                        Behavior on opacity { NumberAnimation { duration: placeTip.shown ? 140 : 90 } }
+                        Behavior on opacity { NumberAnimation { duration: Prefs.reduceMotion ? 1 : (placeTip.shown ? 115 : 80) } }
                         Behavior on scale { Spring { spring: Theme.popover } }
-                        anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.top; bottomMargin: 10 }
-                        width: placeText.implicitWidth + 24; height: 26; radius: 13
+                        anchors { bottom: placeIcon.top; bottomMargin: 10 }
+                        x: Math.max(8 - (shelf.x + row.x + place.x), Math.min((parent.width - width) / 2, dock.width - 8 - (shelf.x + row.x + place.x) - width))
+                        width: Math.min(dock.width - 16, placeText.implicitWidth + 24); height: 26; radius: 13
                         tint: Theme.dark ? "#b8282830" : "#c8f4f4f6"
-                        Text { id: placeText; anchors.centerIn: parent; text: place.modelData.name; color: Theme.label; font { family: Theme.fontUi; pixelSize: 13; weight: Font.Medium } }
+                        Text { id: placeText; anchors.centerIn: parent; width: Math.min(implicitWidth, parent.width - 24); elide: Text.ElideRight; textFormat: Text.PlainText; text: place.modelData.name; color: Theme.label; font { family: Theme.fontUi; pixelSize: 13; weight: Font.Medium } }
                     }
-                    MouseArea { id: placeArea; anchors.fill: parent; hoverEnabled: true; onClicked: Quickshell.execDetached(place.modelData.exec) }
+                    MouseArea {
+                        id: placeArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        acceptedButtons: Qt.LeftButton | Qt.RightButton
+                        onClicked: mouse => {
+                            if (mouse.button === Qt.RightButton) {
+                                dock.showPlaceMenu(place.modelData, place, mouse.x, mouse.y)
+                                return
+                            }
+                            if (place.modelData.action === "applications")
+                                dock.openApplications()
+                            else
+                                Quickshell.execDetached(place.modelData.exec)
+                        }
+                    }
                 }
             }
         }
     }
+    MenuPopup {
+        id: dockMenu
+        anchor.window: dock
+        anchor.rect.x: Math.max(8, Math.min(dock.contextX, dock.width - implicitWidth - 8))
+        anchor.rect.y: Math.max(8, dock.contextY - implicitHeight - 10)
+        items: dock.contextItems
+    }
+    HyprlandFocusGrab {
+        windows: [dockMenu]
+        active: dockMenu.open
+        onCleared: dockMenu.open = false
+    }
+
 }
+

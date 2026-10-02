@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Clock
+Comment=World clocks, alarms, stopwatch and timer
+Icon=org.gnome.clocks
+Exec=qs -n -p @APPS@/clock.qml
+StartupWMClass=org.goldengate.Clock
+Categories=Utility;Clock;
+Keywords=clock;alarm;timer;stopwatch;time;
+StartupNotify=false

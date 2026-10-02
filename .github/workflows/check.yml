@@ -12,13 +12,154 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: npm install --no-package-lock   # pathkit-wasm outlines the symbolic icons
+      - run: npm install --no-package-lock
       - name: Rebuild tokens and icons
         run: npm run build
       - name: Generated files are up to date
         run: git diff --exit-code
       - name: Lint shell scripts
-        run: bash -n scripts/install.sh distro/archiso/build.sh distro/archiso/boot-test.sh design/gtk/tests/app-shots.sh
+        run: find scripts distro apps themes compositor -type f -name "*.sh" -print0 | xargs -0 -n1 bash -n
+      - name: Guard the login and glass paths
+        run: |
+          grep -q 'Applications { id: applicationsPanel' shell/shell.qml
+          grep -q 'DesktopEntries.applications.values' shell/Applications.qml
+          ! grep -q 'Quickshell.Services.DesktopEntries' shell/Applications.qml
+          ! grep -q 'applicationsOpenRetry' shell/Dock.qml
+          grep -q 'apps@accent.svg' shell/Dock.qml
+          ! grep -q 'dockMagnification' shell/Dock.qml
+          ! grep -q 'dockMagnifiedSize' shell/Dock.qml
+          ! grep -q 'pointerTargetX' shell/Dock.qml
+          grep -q 'iPad-style glass shelf' shell/Dock.qml
+          grep -q 'GG_WIDGETS' shell/shell.qml
+          grep -q 'golden-gate-shell.log' distro/archiso/overlay/usr/local/bin/gg-session
+          ! grep -q 'qs -c' distro/archiso/overlay/usr/local/bin/gg-session
+          grep -q 'qs -c golden-gate' compositor/hyprland/hyprland.conf
+          grep -q 'gg-apply-preferences' compositor/hyprland/hyprland.conf
+          grep -q 'systemd-detect-virt --vm' compositor/hyprland/hyprglass-sync.sh
+          grep -q 'glass_opacity 0.48' compositor/hyprland/hyprglass-sync.sh
+          grep -q 'id: panel' shell/ControlCenter.qml
+          grep -q 'Qt.RightButton' shell/Wallpaper.qml
+          grep -q 'Qt.RightButton' shell/Dock.qml
+          grep -q 'Qt.RightButton' shell/Applications.qml
+          grep -q 'onContextMenuRequested' apps/browser/Browser.qml
+          grep -q 'menu.popup' apps/files.qml
+          grep -q 'Big Sur-inspired Control Center' shell/ControlCenter.qml
+          grep -q 'tint: Theme.dark ? "#7021262e" : "#5f343941"' shell/Dock.qml
+          grep -q 'GG_WEB_LIVE_SAFE=1' apps/browser/launch.sh
+          grep -q -- '--disable-gpu' apps/browser/launch.sh
+          grep -q 'rendererRestarts' apps/browser/Browser.qml
+          grep -q 'visible: pane.joining === networkBlock.modelData.ssid' apps/settings/panes/WifiPane.qml
+          grep -q 'fontUi: "SF Pro Text"' apps/lib/theme/Theme.qml
+          grep -q 'import QtWebEngine' apps/browser/Browser.qml
+          grep -q 'Search or enter website name' apps/browser/Browser.qml
+          grep -q 'WebEngineProfile' apps/browser/Browser.qml
+          grep -q 'Reading List' apps/browser/Browser.qml
+          grep -q 'TAB GROUPS' apps/browser/Browser.qml
+          grep -q 'text: "Profiles"' apps/browser/Browser.qml
+          grep -q 'options: \["DuckDuckGo", "Brave", "Bing", "Google"\]' apps/browser/Browser.qml
+          grep -q 'id: websitePermissionsSheet' apps/browser/Browser.qml
+          grep -q 'listAllPermissions' apps/browser/Browser.qml
+          grep -q 'id: tabOverview' apps/browser/Browser.qml
+          grep -q 'DragHandler' apps/browser/Browser.qml
+          grep -q 'label: "Find on Page…"' apps/browser/Browser.qml
+          grep -q 'currentView.findText' apps/browser/Browser.qml
+          grep -q 'id: tabGroupsManager' apps/browser/Browser.qml
+          grep -q 'Save Tabs as Group' apps/browser/Browser.qml
+          grep -q 'WebEngineProfile' apps/browser/Browser.qml
+          grep -q 'BrowserBackend.attachProfile(profile)' apps/browser/Browser.qml
+          grep -q 'text: "Privacy Report"' apps/browser/Browser.qml
+          grep -q 'privacyProtection' apps/browser/model.py
+          grep -q 'QWebEngineUrlRequestInterceptor' apps/browser/backend.py
+          grep -q 'setUrlRequestInterceptor' apps/browser/backend.py
+          grep -q 'QtWebEngineQuick.initialize' apps/browser/browser.py
+          grep -q 'parse_arguments' apps/browser/browser.py
+          grep -q 'profile_key' apps/browser/browser.py
+          grep -q 'browser.py' apps/browser/launch.sh
+          ! grep -q 'QtWidgets' apps/browser/browser.py
+          test ! -e apps/browser/ui.py
+          test ! -e apps/browser/qml_browser.py
+          test ! -e apps/browser/WebWindow.qml
+          grep -q 'hyprglass.so' distro/archiso/build.sh
+          grep -q 'HyprGlass owns blur/refraction' compositor/hyprland/hyprland.conf
+          ! grep -Rqs 'ShaderEffect' apps/setup
+          test ! -d apps/setup/shaders
+          grep -q 'org.goldengate.Software' shell/Dock.qml
+          bash -n distro/archiso/overlay/usr/local/bin/gg-session
+          bash -n apps/software/open.sh
+          ! grep -q 'ghostty' apps/settings/panes/UpdatePane.qml
+          grep -q 'update-helper.py' apps/settings/panes/UpdatePane.qml
+          grep -q 'ERASE:' apps/installer/helper.py
+          grep -q 'rsync' apps/installer/helper.py
+          ! grep -q 'archinstall' apps/installer.qml
+          ! grep -qxE 'nautilus|gnome-software|gnome-control-center|gnome-clocks|gnome-text-editor|gnome-calendar|loupe|geary|fractal' distro/archiso/packages.x86_64
+          ! grep -Rqs 'TextInput {' apps --exclude-dir=lib --exclude-dir=browser
+          grep -q 'org.goldengate.Mail' shell/Dock.qml
+          grep -q 'org.goldengate.Messages' shell/Dock.qml
+          grep -q 'org.goldengate.Calendar' shell/Dock.qml
+          grep -q 'org.goldengate.Files' shell/Dock.qml
+          grep -q 'compgen -G "$schema_dir/\*.gschema.xml"' scripts/install.sh
+          ! grep -q 'org.gnome.nautilus' themes/gsettings/90_golden-gate.gschema.override
+      - name: Stage extras and new-account desktop
+        run: |
+          root="$(mktemp -d)"
+          scripts/install.sh --extras "$root"
+          test -x "$root/usr/local/bin/gg-session"
+          test -x "$root/usr/local/bin/gg-web"
+          test -x "$root/usr/local/bin/gg-install"
+          test -x "$root/usr/local/bin/gg-software"
+          test -x "$root/usr/local/bin/gg-files"
+          test -x "$root/usr/local/bin/gg-pref"
+          test -x "$root/usr/local/bin/gg-hyprglass-sync"
+          test -x "$root/usr/local/bin/gg-apply-preferences"
+          test -f "$root/usr/share/wayland-sessions/golden-gate.desktop"
+          grep -q '^Exec=gg-session$' "$root/usr/share/wayland-sessions/golden-gate.desktop"
+          test -d "$root/etc/skel/.config/quickshell/golden-gate"
+          test -f "$root/etc/skel/.config/hypr/hyprland.conf"
+          grep -q '/usr/share/golden-gate/apps' "$root/etc/skel/.config/hypr/hyprland.conf"
+          test -f "$root/usr/share/applications/org.goldengate.Web.desktop"
+          test -f "$root/usr/share/applications/org.goldengate.Installer.desktop"
+          test -f "$root/usr/share/applications/org.goldengate.Software.desktop"
+          test -f "$root/usr/share/applications/org.goldengate.Files.desktop"
+          test -f "$root/usr/share/applications/org.goldengate.Calendar.desktop"
+          test -f "$root/usr/share/applications/org.goldengate.Mail.desktop"
+          test -f "$root/usr/share/applications/org.goldengate.Messages.desktop"
+          test -f "$root/usr/share/applications/org.goldengate.Clock.desktop"
+          test -f "$root/usr/share/applications/org.goldengate.TextEdit.desktop"
+          test -f "$root/usr/share/applications/org.goldengate.Terminal.desktop"
+          test -f "$root/usr/share/golden-gate/apps/installer.qml"
+          test -f "$root/usr/share/golden-gate/apps/installer/helper.py"
+          test -f "$root/usr/share/golden-gate/apps/settings/update-helper.py"
+          test -f "$root/usr/share/golden-gate/ui/ProgressBar.qml"
+          test -f "$root/usr/share/golden-gate/ui/TextArea.qml"
+          test -L "$root/etc/skel/.config/quickshell/golden-gate/components/Glass.qml"
+          test "$(readlink "$root/etc/skel/.config/quickshell/golden-gate/components/Glass.qml")" = "/usr/share/golden-gate/ui/Glass.qml"
+          test -L "$root/etc/skel/.config/quickshell/golden-gate/components/Symbol.qml"
+          test "$(readlink "$root/etc/skel/.config/quickshell/golden-gate/components/Symbol.qml")" = "/usr/share/golden-gate/ui/Symbol.qml"
+          test -L "$root/etc/skel/.config/quickshell/golden-gate/theme/Theme.qml"
+          test "$(readlink "$root/etc/skel/.config/quickshell/golden-gate/theme/Theme.qml")" = "/usr/share/golden-gate/ui/theme/Theme.qml"
+          test -d "$root/usr/share/golden-gate/ui"
+          test -L "$root/usr/share/golden-gate/apps/lib"
+          test "$(readlink "$root/usr/share/golden-gate/apps/lib")" = "../ui"
+          test -x "$root/usr/lib/golden-gate/pref-helper.py"
+          test -x "$root/usr/lib/golden-gate/hyprglass-sync.sh"
+          test -x "$root/usr/lib/golden-gate/apply-preferences.sh"
+          test -f "$root/usr/share/licenses/golden-gate/hyprglass/LICENSE"
+
+          # mkarchiso uses --system, not --extras. Stage that exact path too so
+          # canonical shell links cannot accidentally differ in the live image.
+          system_root="$(mktemp -d)"
+          scripts/install.sh --system "$system_root"
+          test -L "$system_root/etc/skel/.config/quickshell/golden-gate/components/Glass.qml"
+          test "$(readlink "$system_root/etc/skel/.config/quickshell/golden-gate/components/Glass.qml")" = "/usr/share/golden-gate/ui/Glass.qml"
+          test -L "$system_root/etc/skel/.config/quickshell/golden-gate/components/Symbol.qml"
+          test "$(readlink "$system_root/etc/skel/.config/quickshell/golden-gate/components/Symbol.qml")" = "/usr/share/golden-gate/ui/Symbol.qml"
+          test -L "$system_root/etc/skel/.config/quickshell/golden-gate/components/TextField.qml"
+          test "$(readlink "$system_root/etc/skel/.config/quickshell/golden-gate/components/TextField.qml")" = "/usr/share/golden-gate/ui/TextField.qml"
+          test -L "$system_root/etc/skel/.config/quickshell/golden-gate/theme/Theme.qml"
+          test "$(readlink "$system_root/etc/skel/.config/quickshell/golden-gate/theme/Theme.qml")" = "/usr/share/golden-gate/ui/theme/Theme.qml"
+          test ! -e "$system_root/usr/share/applications/com.mitchellh.ghostty.desktop"
+          test -f "$system_root/usr/local/share/applications/com.mitchellh.ghostty.desktop"
+          grep -q '^NoDisplay=true$' "$system_root/usr/local/share/applications/com.mitchellh.ghostty.desktop"
 
   ui:
     runs-on: ubuntu-latest
@@ -31,11 +172,68 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - name: Click through the reference shell
         run: SHOTS=out/ui npm run test:ui
-      - name: Compile and render the Liquid Glass shader
+      - name: Upload UI screenshots
         if: always()
-        run: npm run test:shader -- compositor/liquid-glass/liquid-glass.frag out/ui/liquid-glass.png
-      - if: always()
+        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: ui-screenshots
           path: out/ui
+          retention-days: 3
+
+  native-controls:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: sudo apt-get update && sudo apt-get install -y libegl1 libopengl0
+      - run: python -m pip install PySide6-Essentials==6.11.2
+      - name: Compile native Python helpers
+        run: python -m compileall -q apps tests
+      - name: Guard known QML parser regressions
+        run: python tests/qml-regressions.py
+      - name: Parse all native QML
+        run: python tests/check-qml.py
+      - name: Verify installer disk discovery stays read-only
+        run: python tests/installer-safety.py
+      - name: Verify Settings are wired to real persistent actions
+        run: python tests/settings-wiring.py
+      - name: Guard the shared app component store
+        run: python tests/shared-ui.py
+      - name: Verify the default desktop is internally coherent
+        run: python tests/default-desktop.py
+      - name: Verify the default desktop is internally coherent
+        run: python tests/default-desktop.py
+      - name: Verify QML symbol references exist
+        run: python tests/symbol-integrity.py
+      - name: Smoke-test native app backends
+        run: python tests/native-app-backends.py
+      - name: Exercise native control keyboard and pointer behavior
+        run: python tests/native-controls.py
+        env:
+          QT_QPA_PLATFORM: offscreen
+          QT_QUICK_BACKEND: software
+      - name: Test app data and async request handling
+        run: npm run test:logic
+
+  browser-and-setup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: sudo apt-get update && sudo apt-get install -y xvfb libegl1 libopengl0 libnss3 libxtst6 libxkbfile1 libasound2t64 libxcb-cursor0 libxkbcommon-x11-0 libxcb-icccm4 libxcb-keysyms1 libxcb-shape0 libxcb-xinerama0
+      - run: python -m pip install PySide6==6.11.2
+      - name: Test account failures, preferences, and browser state
+        run: python tests/setup-browser.py
+      - name: Exercise native Chromium navigation, tabs, private browsing, and shortcuts
+        run: xvfb-run -a python tests/native-browser.py
+        env:
+          QT_QPA_PLATFORM: xcb
+          QTWEBENGINE_CHROMIUM_FLAGS: --disable-gpu

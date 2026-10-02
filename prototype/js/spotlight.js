@@ -38,9 +38,10 @@ export function initSpotlight() {
       results.classList.add("grid-mode");
       const apps = Object.entries(APPS).filter(([k]) => k !== "launcher");
       items = apps.map(([k, a]) => ({ label: a.name, run: () => launch(k) }));
-      sel = -1;
+      sel = 0;
       results.replaceChildren(...apps.map(([k, a], i) => h("button.app-tile", { on: { click: () => run(i) } }, appIcon(k), h("span", a.name))));
       [...results.children].forEach((c, i) => animate(c, [{ opacity: 0, transform: "scale(.6)" }, { opacity: 1, transform: "none" }], "bouncy", { delay: i * 16 }));
+      highlight(sel);
       return;
     }
     const add = (group, list) => list.length && items.push({ group }, ...list);
@@ -63,15 +64,15 @@ export function initSpotlight() {
       h("div.res", { className: `res ${i === sel ? "hl" : ""}`, on: { mouseenter: () => highlight(i), click: () => run(i) } }, it.icon, it.label, h("span.sub", it.sub))));
   }
   function highlight(i) {
-    if (results.classList.contains("grid-mode")) return; sel = i; [...results.children].forEach((c, j) => c.classList.toggle("hl", j === i)); results.children[i]?.scrollIntoView({ block: "nearest" }); }
+    if (!Number.isInteger(i) || !items[i] || items[i].group) return; sel = i; [...results.children].forEach((c, j) => c.classList.toggle("hl", j === i)); results.children[i]?.scrollIntoView({ block: "nearest" }); }
   function run(i) { const it = items[i]; if (!it || it.group) return; close(); it.run(); }
 
   input.addEventListener("input", update);
   input.addEventListener("keydown", (e) => {
     const idx = items.map((x, i) => (x.group ? -1 : i)).filter((i) => i >= 0);
     const p = idx.indexOf(sel);
-    if (e.key === "ArrowDown") { highlight(idx[(p + 1) % idx.length]); e.preventDefault(); }
-    else if (e.key === "ArrowUp") { highlight(idx[(p - 1 + idx.length) % idx.length]); e.preventDefault(); }
+    if (e.key === "ArrowDown" && idx.length) { highlight(idx[(p + 1) % idx.length]); e.preventDefault(); }
+    else if (e.key === "ArrowUp" && idx.length) { highlight(idx[(p < 0 ? idx.length - 1 : p - 1 + idx.length) % idx.length]); e.preventDefault(); }
     else if (e.key === "Enter") run(sel);
     else if (e.key === "Escape") close();
     else if (e.key === "Tab") { const keys = Object.keys(cats); cat = keys[(keys.indexOf(cat) + 1) % keys.length]; update(); e.preventDefault(); }
@@ -99,3 +100,4 @@ export function initSpotlight() {
   bus.on("overlays:close", () => isOpen && close());
   return { open, close, toggle: () => (isOpen ? close() : open()) };
 }
+

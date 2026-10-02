@@ -16,6 +16,9 @@ Item {
     property string path
     property real mtime: 0
     property bool dirty: false
+    property string saveError: ""
+    property bool writeOk: false
+    signal saveFailed()
     property var taken: []              // paths of other notes (renames never overwrite one)
     signal saved(string path, string newPath, string title, string preview)
     signal menuRequested(var items, Item item, real x, real y)
@@ -27,13 +30,19 @@ Item {
     property bool renaming: false       // the file just moved to follow the title
     property int bodyNext: -1           // block that becomes body text once typed in
 
+    Connections {
+        target: Qt.application
+        function onAboutToQuit() { ed.flush() }
+    }
+
     function markdown() { return edit.getFormattedText(0, edit.length) }
-    function flush() { if (dirty && loadedPath) save() }
+    function flush() { return !dirty || !loadedPath || save() }
     function startNew(p) { fresh = true }
 
     onPathChanged: {
         if (path === loadedPath) return               // our own rename
-        if (dirty && loadedPath) save()
+        saveTimer.stop()
+        if (dirty && loadedPath && !save()) return
         renaming = false
         loadedPath = path
         dirty = false
@@ -68,6 +77,8 @@ Item {
     }
 
     function save() {
+        saveTimer.stop()
+        if (!dirty || !loadedPath || loading) return !dirty
         const md = markdown()
         const lines = md.split("\n").filter((l) => l.trim())
         const clean = (s) => s.replace(/^[#>*+ -]+/, "").replace(/^\[[ xX]\]\s*/, "").replace(/\*\*|__|~~|`|\\/g, "").replace(/\]\([^)]*\)/g, "").replace(/\[/g, "").trim()
@@ -80,12 +91,45 @@ Item {
             const want = from.replace(/[^/]+$/, "") + Md.fileName(title)
             if (want !== from && !taken.includes(want)) to = want
         }
+        // Write separately: changing the reader's path before a failed write
+        // used to discard the draft and delete the original during a rename.
+        writeOk = false
+        writer.path = to
+        writer.setText(md)
+        if (!writeOk) {
+            saveError = "Could not save this note. Check disk space and folder permissions. Your draft is still open."
+            saveFailed()
+            return false
+        }
+        saveError = ""
         lastSaved = md
         if (to !== from) { renaming = true; loadedPath = to; file.path = to }
-        file.setText(md)
-        if (to !== from) Quickshell.execDetached(["rm", "-f", from])
+        if (to !== from) Quickshell.execDetached(["rm", "-f", "--", from])
         dirty = false
         saved(from, to, title, preview)
+        return true
+    }
+    FileView {
+        id: writer
+        preload: false
+        blockWrites: true
+        atomicWrites: true
+        onSaved: ed.writeOk = true
+        onSaveFailed: ed.writeOk = false
+    }
+    Rectangle {
+        anchors { left: parent.left; right: parent.right; bottom: parent.bottom; margins: 8 }
+        height: errorLabel.implicitHeight + 20
+        visible: !!ed.saveError
+        color: Theme.dark ? "#502a23" : "#fff0e8"
+        radius: 8; z: 20
+        Text {
+            id: errorLabel
+            anchors { fill: parent; margins: 10 }
+            text: ed.saveError; wrapMode: Text.Wrap
+            color: Theme.label
+            font { family: Theme.fontUi; pixelSize: 12 }
+        }
     }
     Timer { id: saveTimer; interval: 700; onTriggered: ed.save() }
 
@@ -156,7 +200,7 @@ Item {
                 color: Theme.secondaryLabel
                 font { family: Theme.fontUi; pixelSize: 11; weight: Font.Medium }
             }
-            TextEdit {
+            TextArea {
                 id: edit
                 width: parent.width
                 visible: !!ed.path
@@ -242,3 +286,4 @@ Item {
         }
     }
 }
+

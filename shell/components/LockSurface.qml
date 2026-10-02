@@ -73,31 +73,30 @@ Item {
             Text { anchors.centerIn: parent; text: root.initials; color: "white"; font { family: Theme.fontUi; pixelSize: 24; weight: Font.DemiBold } }
         }
         Text { Layout.alignment: Qt.AlignHCenter; text: root.userName; color: "white"; font { family: Theme.fontUi; pixelSize: 15; weight: Font.DemiBold } }
-        Glass {
+        Glass { variant: "clear";
             id: capsule
             Layout.alignment: Qt.AlignHCenter
             Layout.preferredWidth: 220; Layout.preferredHeight: 34
             radius: 17
             tint: "#38ffffff"
             transform: Translate { id: shakeX }
-            TextInput {
+            TextField {
                 id: field
-                anchors { left: parent.left; right: go.left; leftMargin: 14; rightMargin: 6; verticalCenter: parent.verticalCenter }
-                echoMode: TextInput.Password
-                passwordCharacter: "●"
-                color: "white"
-                font { family: Theme.fontUi; pixelSize: 13; letterSpacing: 2 }
+                anchors { left: parent.left; right: go.left; leftMargin: 7; rightMargin: 6; verticalCenter: parent.verticalCenter }
+                height: 28
+                password: true
+                placeholder: root.busy ? "Unlocking…" : "Enter Password"
+                foreground: "white"
+                placeholderColor: "#c0ffffff"
+                color: "transparent"
+                border.width: 0
                 enabled: !root.busy
-                focus: true
-                Keys.onReturnPressed: { root.busy = true; root.submitted(text) }
-                Keys.onEnterPressed: { root.busy = true; root.submitted(text) }
-                Text {
-                    visible: !field.text
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: root.busy ? "Unlocking…" : "Enter Password"
-                    color: "#c0ffffff"
-                    font { family: Theme.fontUi; pixelSize: 13 }
-                }
+                input.passwordCharacter: "●"
+                input.font.pixelSize: 13
+                input.font.letterSpacing: 2
+                input.focus: true
+                input.Keys.onReturnPressed: { root.busy = true; root.submitted(field.text) }
+                input.Keys.onEnterPressed: { root.busy = true; root.submitted(field.text) }
             }
             Rectangle {
                 id: go

@@ -9,6 +9,7 @@ xdg-desktop-portal-hyprland
 xdg-desktop-portal-gtk
 polkit-gnome
 gnome-keyring
+libsecret
 plymouth
 sddm
 qt6-declarative
@@ -30,6 +31,11 @@ adwaita-icon-theme
 gsettings-desktop-schemas
 librsvg
 
+# Hardware firmware. The live image must boot on unknown machines, so keep the
+# complete Arch firmware meta-package rather than relying on the build host.
+linux-firmware
+wireless-regdb
+
 # Services the shell talks to
 pipewire
 pipewire-pulse
@@ -40,6 +46,7 @@ bluez-utils
 brightnessctl
 playerctl
 upower
+power-profiles-daemon
 keyd
 grim
 slurp
@@ -47,16 +54,32 @@ wl-clipboard
 libnotify
 xdg-user-dirs
 
-# Apps (themed via gtk.css + the Golden Gate icon theme)
-nautilus
-gnome-control-center
-gnome-clocks
-gnome-text-editor
-gnome-calendar
-loupe
-geary
-fractal
-gnome-software
-firefox
+# External apps retained only where they provide mature system/protocol backends.
+# Golden Gate owns Settings, App Store, Clock, TextEdit, Photos and other primary UI.
+# App Store backend: native Golden Gate frontend + Flatpak/Flathub metadata.
+flatpak
+ca-certificates
+curl
+# Chromium engine and Python bindings for Golden Gate Web
+qt6-webengine
+pyside6
+python
 ghostty
 sudo
+
+# Native Files / MIME launch plumbing.
+glib2
+xdg-utils
+desktop-file-utils
+shared-mime-info
+
+# Golden Gate installer and in-pane Software Update backend.
+arch-install-scripts
+gptfdisk
+parted
+dosfstools
+e2fsprogs
+mkinitcpio
+rsync
+pacman-contrib
+

@@ -12,7 +12,23 @@ Item {
     implicitWidth: 200; implicitHeight: 22
     activeFocusOnTab: true
 
+    readonly property real shownValue: Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 0
+    readonly property real inset: Math.min(12, width / 2)
+    readonly property real travel: Math.max(0, width - 2 * inset)
+    opacity: enabled ? 1 : 0.45
+    Accessible.role: Accessible.Slider
+    Accessible.onIncreaseAction: set(value + (steps > 0 ? 1 / steps : 0.05))
+    Accessible.onDecreaseAction: set(value - (steps > 0 ? 1 / steps : 0.05))
+    FocusRing {}
+    Keys.onPressed: (event) => {
+        if (event.key === Qt.Key_Home) { set(0); event.accepted = true }
+        else if (event.key === Qt.Key_End) { set(1); event.accepted = true }
+    }
+    Keys.onUpPressed: set(value + (steps > 0 ? 1 / steps : 0.05))
+    Keys.onDownPressed: set(value - (steps > 0 ? 1 / steps : 0.05))
+
     function set(v) {
+        if (!enabled || !Number.isFinite(v)) return
         v = Math.max(0, Math.min(1, v))
         if (steps > 0) v = Math.round(v * steps) / steps
         if (v !== value) { value = v; moved(v) }
@@ -22,11 +38,11 @@ Item {
 
     Rectangle {
         id: track
-        x: knob.width / 2; width: parent.width - knob.width
+        x: sl.inset; width: sl.travel
         anchors.verticalCenter: parent.verticalCenter
         height: 4; radius: 2
         color: Theme.dark ? "#3dffffff" : "#1f000000"
-        Rectangle { width: track.width * sl.value; height: parent.height; radius: 2; color: Theme.accent }
+        Rectangle { width: track.width * sl.shownValue; height: parent.height; radius: 2; color: Theme.accent }
         Repeater {
             model: sl.steps > 0 ? sl.steps + 1 : 0
             delegate: Rectangle {
@@ -40,21 +56,25 @@ Item {
     Glass {
         id: knob
         readonly property bool active: ma.pressed
-        width: active ? 34 : 24; height: active ? 22 : 16
+        width: active ? 34 : ma.containsMouse ? 27 : 24
+        height: active ? 22 : ma.containsMouse ? 18 : 16
         radius: height / 2
         anchors.verticalCenter: parent.verticalCenter
-        x: (sl.width - 24) * sl.value + 12 - width / 2
+        x: sl.travel * sl.shownValue + sl.inset - width / 2
         filled: !active
         tint: Qt.rgba(1, 1, 1, 0.14)
         lens: 5
-        Behavior on width { Spring { spring: Theme.snappy } }
-        Behavior on height { Spring { spring: Theme.snappy } }
+        Behavior on x { enabled: !Theme.reduceMotion && !ma.pressed; NumberAnimation { duration: 95; easing.type: Easing.OutCubic } }
+        Behavior on width { enabled: !Theme.reduceMotion; Spring { spring: Theme.snappy } }
+        Behavior on height { enabled: !Theme.reduceMotion; Spring { spring: Theme.snappy } }
         shadow: knob.filled ? "#33000000" : "transparent"
     }
     MouseArea {
         id: ma
         anchors.fill: parent
-        onPressed: (m) => { sl.forceActiveFocus(); sl.set((m.x - 12) / (width - 24)) }
-        onPositionChanged: (m) => { if (pressed) sl.set((m.x - 12) / (width - 24)) }
+        hoverEnabled: true
+        onPressed: (m) => { sl.forceActiveFocus(); sl.set((m.x - sl.inset) / sl.travel) }
+        onPositionChanged: (m) => { if (pressed) sl.set((m.x - sl.inset) / sl.travel) }
     }
 }
+

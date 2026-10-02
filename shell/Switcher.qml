@@ -61,7 +61,7 @@ PanelWindow {
         function commit(): void { sw.commit() }
     }
 
-    Glass {
+    Glass { variant: "clear";
         id: panel
         anchors.centerIn: parent
         width: row.implicitWidth + 28

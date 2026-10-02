@@ -42,7 +42,7 @@ Item {
         const o = Api.worldPx(lat, lon, zoom)
         return Api.fromWorldPx(o.x + x - width / 2, o.y + y - height / 2, zoom)
     }
-    function wrapLon(l) { return ((l + 540) % 360) - 180 }
+    function wrapLon(l) { return ((l + 180) % 360 + 360) % 360 - 180 }
     function setCenter(la, lo) { lat = Math.max(-85, Math.min(85, la)); lon = wrapLon(lo) }
     function zoomAround(x, y, z) {
         z = Math.max(2, Math.min(19, z))
@@ -54,7 +54,10 @@ Item {
     }
     function flyTo(la, lo, z) {
         fly.stop()
-        latAnim.to = la; lonAnim.to = lo; zoomAnim.to = z ?? zoom
+        la = Math.max(-85, Math.min(85, la)); lo = wrapLon(lo)
+        z = Math.max(2, Math.min(19, z ?? zoom))
+        if (Theme.reduceMotion) { setCenter(la, lo); zoom = z; return }
+        latAnim.to = la; lonAnim.to = lo; zoomAnim.to = z
         // Keep the short way round the date line.
         if (Math.abs(lo - lon) > 180) lon += lo > lon ? 360 : -360
         fly.start()
@@ -127,13 +130,13 @@ Item {
     PinchHandler {
         target: null
         property real startZoom
-        onActiveChanged: if (active) startZoom = map.zoom
+        onActiveChanged: if (active) { fly.stop(); startZoom = map.zoom }
         onActiveScaleChanged: if (active) map.zoomAround(centroid.position.x, centroid.position.y, startZoom + Math.log2(activeScale))
     }
     TapHandler {
         onTapped: (p) => { const c = map.toCoord(p.position.x, p.position.y); map.tapped(c.lat, c.lon) }
         onDoubleTapped: (p) => {
-            const x = p.position.x, y = p.position.y, z = map.zoom + 1
+            const x = p.position.x, y = p.position.y, z = Math.min(19, map.zoom + 1)
             const target = map.toCoord(x, y)
             // Animate: zoom in keeping the point under the pointer.
             const w = Api.worldPx(target.lat, target.lon, z)
@@ -150,3 +153,4 @@ Item {
         font { family: Theme.fontUi; pixelSize: 9 }
     }
 }
+

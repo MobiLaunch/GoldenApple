@@ -9,6 +9,7 @@
 import Quickshell
 import Quickshell.Io
 import QtQuick
+import "lib/paths.js" as Paths
 import "lib"
 import "lib/theme"
 import "photos"
@@ -72,8 +73,8 @@ ShellRoot {
                     id: moreBtn
                     round: true; symbol: "ellipsis"
                     onClicked: menu.popup(moreBtn, 0, height + 6, app.viewing >= 0 || app.selected >= 0 ? [
-                        { text: "Open With Default App", action: () => Qt.openUrlExternally("file://" + app.focusItem.path) },
-                        { text: "Show in Files", action: () => Quickshell.execDetached(["nautilus", "--select", app.focusItem.path]) },
+                        { text: "Open With Default App", action: () => Qt.openUrlExternally(Paths.fileUrl(app.focusItem.path)) },
+                        { text: "Show in Files", action: () => Quickshell.execDetached(["gg-files", "--select", app.focusItem.path]) },
                         { text: "Copy Path", action: () => Quickshell.clipboardText = app.focusItem.path },
                         { separator: true },
                         { text: "Delete " + (app.focusItem.kind === "video" ? "Video" : "Photo"), action: () => app.trash(app.focusItem) },
@@ -87,24 +88,16 @@ ShellRoot {
                 ToolbarButton {
                     visible: !searchBox.visible && app.viewing < 0
                     round: true; symbol: "search"
-                    onClicked: { searchBox.visible = true; searchField.forceActiveFocus() }
+                    onClicked: { searchBox.visible = true; searchBox.input.forceActiveFocus() }
                 }
-                Rectangle {
+                TextField {
                     id: searchBox
                     visible: false
-                    width: 200; height: 32; radius: 16
-                    color: Theme.dark ? "#eb3a3a3e" : "#ebffffff"
-                    border { width: 0.5; color: Theme.dark ? "#2effffff" : "#1f000000" }
-                    Symbol { x: 10; anchors.verticalCenter: parent.verticalCenter; name: "search"; tone: "gray"; size: 13 }
-                    TextInput {
-                        id: searchField
-                        x: 30; width: parent.width - 40; anchors.verticalCenter: parent.verticalCenter
-                        color: Theme.label
-                        font { family: Theme.fontUi; pixelSize: 13 }
-                        clip: true
-                        Keys.onEscapePressed: { text = ""; searchBox.visible = false; app.forceActiveFocus() }
-                        Text { visible: !searchField.text; text: "Search"; color: Theme.tertiaryLabel; font: searchField.font }
-                    }
+                    width: 200
+                    height: 32
+                    search: true
+                    placeholder: "Search"
+                    input.Keys.onEscapePressed: { text = ""; visible = false; app.forceActiveFocus() }
                 }
             }
         ]
@@ -118,33 +111,21 @@ ShellRoot {
                 Column {
                     id: nav
                     width: parent.width
-                    component Heading: Text {
-                        leftPadding: 10; topPadding: 12; bottomPadding: 4
-                        color: Theme.secondaryLabel
-                        font { family: Theme.fontUi; pixelSize: 11; weight: Font.DemiBold }
-                    }
-                    component NavItem: Item {
+                    component Heading: SidebarSection { topSpacing: 12 }
+                    component NavItem: SidebarRow {
                         id: navItem
-                        property string symbol
-                        property string text
                         property string key
-                        width: parent.width; height: 28
-                        readonly property bool selected: app.section === key
-                        Rectangle {
-                            anchors.fill: parent; radius: 8
-                            color: Theme.dark ? "#ffffff" : "#000000"
-                            opacity: navItem.selected ? (Theme.dark ? 0.12 : 0.07) : nh.hovered ? 0.04 : 0
+                        width: parent.width
+                        height: 28
+                        symbolTone: "accent"
+                        selectedSymbolTone: "accent"
+                        selectedFill: Theme.dark ? "#1fffffff" : "#12000000"
+                        selected: app.section === key
+                        onClicked: {
+                            app.section = navItem.key
+                            app.viewing = -1
+                            app.selected = -1
                         }
-                        Symbol { x: 10; anchors.verticalCenter: parent.verticalCenter; name: navItem.symbol; tone: "accent"; size: 15 }
-                        Text {
-                            x: 34; anchors.verticalCenter: parent.verticalCenter
-                            width: parent.width - 40; elide: Text.ElideRight
-                            text: navItem.text
-                            color: Theme.label
-                            font { family: Theme.fontUi; pixelSize: 13 }
-                        }
-                        HoverHandler { id: nh }
-                        TapHandler { onTapped: { app.section = navItem.key; app.viewing = -1; app.selected = -1 } }
                     }
                     Heading { text: "Photos"; topPadding: 4 }
                     NavItem { symbol: "photo"; text: "Library"; key: "library" }
@@ -172,6 +153,7 @@ ShellRoot {
             focus: true
 
             readonly property string home: Quickshell.env("HOME")
+            readonly property string requestedPath: Quickshell.env("GG_PHOTOS_OPEN") || ""
             readonly property var dirs: (Quickshell.env("GG_PHOTOS_DIRS") || [Quickshell.env("XDG_PICTURES_DIR") || home + "/Pictures", Quickshell.env("XDG_VIDEOS_DIR") || home + "/Videos"].join(":")).split(":").filter((d) => d)
             readonly property string cacheDir: (Quickshell.env("XDG_CACHE_HOME") || home + "/.cache") + "/golden-gate/photos"
             readonly property string configFile: (Quickshell.env("XDG_CONFIG_HOME") || home + "/.config") + "/golden-gate/photos.json"
@@ -203,7 +185,7 @@ ShellRoot {
                 screenshots: items.filter((i) => isScreenshot(i)).length,
             })
             readonly property var shown: {
-                const q = searchField.text.trim().toLowerCase()
+                const q = searchBox.text.trim().toLowerCase()
                 const monthAgo = Date.now() / 1000 - 30 * 86400
                 let list = items.filter((it) =>
                     section === "library" ? true
@@ -263,7 +245,18 @@ ShellRoot {
                             const c = l.split("\t")
                             return { path: c[0], mtime: Number(c[1]), kind: c[2], seconds: Number(c[3]) || 0, thumb: c[4] || "", name: c[0].split("/").pop() }
                         })
-                        Qt.callLater(() => { if (app.oldestFirst) grid.positionViewAtEnd() })
+                        Qt.callLater(() => {
+                            if (app.requestedPath) {
+                                app.section = "library"
+                                const i = app.shown.findIndex((it) => it.path === app.requestedPath)
+                                if (i >= 0) {
+                                    app.selected = i
+                                    app.viewing = i
+                                }
+                            } else if (app.oldestFirst) {
+                                grid.positionViewAtEnd()
+                            }
+                        })
                     }
                 }
             }
@@ -288,7 +281,7 @@ ShellRoot {
                     else if (e.key === Qt.Key_Period && selected >= 0) toggleFavorite(shown[selected]?.path)
                     else if (ctrl && (e.key === Qt.Key_Equal || e.key === Qt.Key_Plus)) zoom = Math.min(sizes.length - 1, zoom + 1)
                     else if (ctrl && e.key === Qt.Key_Minus) zoom = Math.max(0, zoom - 1)
-                    else if (ctrl && e.key === Qt.Key_F) { searchBox.visible = true; searchField.forceActiveFocus() }
+                    else if (ctrl && e.key === Qt.Key_F) { searchBox.visible = true; searchBox.input.forceActiveFocus() }
                     else if (ctrl && e.key === Qt.Key_Backspace && selected >= 0) trash(shown[selected])
                     else return
                     if (selected >= 0) grid.positionViewAtIndex(selected, GridView.Contain)
@@ -321,7 +314,7 @@ ShellRoot {
                         color: Theme.dark ? "#2c2c2e" : "#ececf0"
                         Image {
                             anchors.fill: parent
-                            source: tile.modelData.kind === "video" ? (tile.modelData.thumb ? "file://" + tile.modelData.thumb : "") : "file://" + tile.modelData.path
+                            source: tile.modelData.kind === "video" ? (tile.modelData.thumb ? Paths.fileUrl(tile.modelData.thumb) : "") : Paths.fileUrl(tile.modelData.path)
                             sourceSize: Qt.size(Math.ceil(width * 1.5), Math.ceil(height * 1.5))
                             fillMode: Image.PreserveAspectCrop
                             asynchronous: true
@@ -390,3 +383,4 @@ ShellRoot {
         PopupMenu { id: menu; parent: win.overlay }
     }
 }
+

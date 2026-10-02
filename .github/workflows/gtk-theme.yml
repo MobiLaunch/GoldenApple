@@ -39,7 +39,6 @@ jobs:
               dbus dconf nodejs util-linux libcap mesa inter-font ttf-jetbrains-mono adwaita-icon-theme \
               nautilus gnome-text-editor gnome-calculator gnome-control-center gnome-clocks gnome-calendar \
               gnome-weather gnome-maps loupe gnome-music gnome-software fractal ghostty gnome-keyring firefox >/dev/null
-            themes/firefox/install.sh /usr/lib/firefox   # the Safari look, as the image installs it
             pacman -Q gtk4 libadwaita nautilus sway
             fc-cache -f >/dev/null
             # Arch gives sway cap_sys_nice, which a container user may not exec with.
@@ -56,3 +55,4 @@ jobs:
           name: gtk-shots
           path: out/gtk-shots
           retention-days: 14
+

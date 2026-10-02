@@ -30,22 +30,15 @@ Flickable {
             color: Theme.label
             font { family: Theme.fontUi; pixelSize: 26; weight: Font.Bold }
         }
-        Rectangle {
-            width: parent.width; height: 36; radius: 10
-            color: Theme.fill
-            border { width: 0.5; color: Theme.separator }
-            Symbol { x: 12; anchors.verticalCenter: parent.verticalCenter; name: "search"; tone: "gray"; size: 15 }
-            TextInput {
-                id: field
-                x: 36; width: parent.width - 48; anchors.verticalCenter: parent.verticalCenter
-                color: Theme.label
-                font { family: Theme.fontUi; pixelSize: 15 }
-                clip: true
-                text: page.query
-                onTextChanged: page.query = text
-                Keys.onEscapePressed: text = ""
-                Text { visible: !field.text; text: "Artists, Songs, Albums"; color: Theme.tertiaryLabel; font: field.font }
-            }
+        TextField {
+            id: field
+            width: parent.width
+            height: 36
+            search: true
+            placeholder: "Artists, Songs, Albums"
+            text: page.query
+            onTextChanged: page.query = text
+            input.Keys.onEscapePressed: text = ""
         }
         Text {
             visible: !!page.q && !page.songs.length && !page.albums.length

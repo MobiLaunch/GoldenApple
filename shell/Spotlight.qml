@@ -11,9 +11,11 @@ import "components"
 PanelWindow {
     id: spot
     property bool open: false
-    function toggle() { open = !open; if (open) { input.text = ""; input.forceActiveFocus() } }
+    function toggle() { open = !open; if (open) { input.text = ""; Qt.callLater(() => input.input.forceActiveFocus()) } }
 
-    visible: open
+    visible: open || closeTimer.running
+    onOpenChanged: if (!open) closeTimer.restart()
+    Timer { id: closeTimer; interval: Prefs.reduceMotion ? 1 : 150 }
     anchors { top: true; bottom: true; left: true; right: true }
     exclusionMode: ExclusionMode.Ignore
     color: "transparent"
@@ -56,48 +58,49 @@ PanelWindow {
         anchors { horizontalCenter: parent.horizontalCenter; top: parent.top; topMargin: parent.height * 0.22 }
         width: Math.min(680, parent.width - 32)
         spacing: 10
-        scale: spot.open ? 1 : 0.86
-        Behavior on scale { Spring { spring: Theme.bouncy } }
+        opacity: spot.open ? 1 : 0
+        scale: spot.open ? 1 : 0.975
+        Behavior on opacity { NumberAnimation { duration: Prefs.reduceMotion ? 1 : 140; easing.type: Easing.OutCubic } }
+        Behavior on scale { enabled: !Prefs.reduceMotion; Spring { spring: Theme.popover } }
 
-        Glass {
+        Glass { variant: "clear";
             Layout.fillWidth: true
             Layout.preferredHeight: 56
             radius: 28
             tint: Theme.glassRegular.tint
-            RowLayout {
-                anchors { fill: parent; leftMargin: 20; rightMargin: 20 }
-                spacing: 12
-                Symbol { name: "search"; size: 21; tone: "gray" }
-                TextInput {
-                    id: input
-                    Layout.fillWidth: true
-                    color: Theme.label
-                    font { family: Theme.fontUi; pixelSize: 21 }
-                    Keys.onEscapePressed: spot.open = false
-                    Keys.onDownPressed: spot.selected = Math.min(spot.results.length - 1, spot.selected + 1)
-                    Keys.onUpPressed: spot.selected = Math.max(0, spot.selected - 1)
-                    Keys.onReturnPressed: spot.launch(spot.selected)
-                    onTextChanged: spot.selected = 0
-                    Text {
-                        visible: !input.text
-                        text: "Spotlight Search"
-                        color: Theme.secondaryLabel
-                        font: input.font
-                    }
-                }
+            TextField {
+                id: input
+                anchors { fill: parent; margins: 8 }
+                search: true
+                placeholder: "Spotlight Search"
+                color: "transparent"
+                border.width: input.input.activeFocus ? 1.5 : 0
+                border.color: input.input.activeFocus
+                    ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.46)
+                    : "transparent"
+                input.font.pixelSize: 21
+                input.Keys.onEscapePressed: spot.open = false
+                input.Keys.onDownPressed: spot.selected = Math.max(0, Math.min(spot.results.length - 1, spot.selected + 1))
+                input.Keys.onUpPressed: spot.selected = Math.max(0, spot.selected - 1)
+                input.Keys.onReturnPressed: spot.launch(spot.selected)
+                onTextChanged: spot.selected = 0
             }
         }
 
-        Glass {
+        Glass { variant: "clear";
             visible: spot.results.length > 0
             Layout.fillWidth: true
-            Layout.preferredHeight: list.contentHeight + 16
+            Layout.preferredHeight: Math.min(list.contentHeight + 16, Math.max(60, spot.height * 0.78 - 90))
             radius: 24
             tint: Theme.glassRegular.tint
             ListView {
                 id: list
                 anchors { fill: parent; margins: 8 }
-                interactive: false
+                clip: true
+                interactive: contentHeight > height
+                boundsBehavior: Flickable.StopAtBounds
+                currentIndex: spot.selected
+                onCurrentIndexChanged: positionViewAtIndex(currentIndex, ListView.Contain)
                 model: spot.results
                 delegate: Rectangle {
                     required property var modelData
@@ -105,11 +108,20 @@ PanelWindow {
                     readonly property Item appIcon: rowIcon
                     width: list.width; height: 44; radius: 12
                     color: index === spot.selected ? Theme.accent : "transparent"
+                    Behavior on color { ColorAnimation { duration: Prefs.reduceMotion ? 1 : 80 } }
                     RowLayout {
                         anchors { fill: parent; leftMargin: 12; rightMargin: 12 }
                         spacing: 12
-                        Image { id: rowIcon; source: Quickshell.iconPath(modelData.icon, "application-x-executable"); sourceSize: Qt.size(60, 60); Layout.preferredWidth: 30; Layout.preferredHeight: 30 }
-                        Text { Layout.fillWidth: true; text: modelData.name; color: index === spot.selected ? "#ffffff" : Theme.label; font { family: Theme.fontUi; pixelSize: 14 } }
+                        Image {
+                            id: rowIcon
+                            source: Quickshell.iconPath(modelData.icon, "application-x-executable")
+                            sourceSize: Qt.size(60, 60)
+                            Layout.preferredWidth: 30
+                            Layout.preferredHeight: 30
+                            scale: index === spot.selected && !Prefs.reduceMotion ? 1.055 : 1
+                            Behavior on scale { NumberAnimation { duration: Prefs.reduceMotion ? 1 : 85; easing.type: Easing.OutCubic } }
+                        }
+                        Text { Layout.fillWidth: true; text: modelData.name; elide: Text.ElideRight; color: index === spot.selected ? "#ffffff" : Theme.label; font { family: Theme.fontUi; pixelSize: 14 } }
                         Text { text: "Application"; color: index === spot.selected ? "#ccffffff" : Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: 12 } }
                     }
                     MouseArea { anchors.fill: parent; hoverEnabled: true; onEntered: spot.selected = index; onClicked: spot.launch(index) }
@@ -118,3 +130,4 @@ PanelWindow {
         }
     }
 }
+

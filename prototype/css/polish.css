@@ -96,3 +96,7 @@ input, textarea, [contenteditable] { cursor: text; }
 /* Text fields live inside styled capsules (search pills, Spotlight, the lock
    field), so the caret and the capsule show focus, never a ring on the input. */
 input:focus-visible, textarea:focus-visible, [contenteditable]:focus-visible { box-shadow: none; }
+
+
+/* Keyboard selection in Spotlight's application grid. */
+#spotlight .app-tile.hl { outline: 2px solid var(--accent); outline-offset: -2px; background: var(--selection); }

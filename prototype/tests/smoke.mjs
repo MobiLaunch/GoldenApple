@@ -56,6 +56,33 @@ await scenario("spotlight search and calculator", "?quiet&open=", async (p) => {
   await p.keyboard.press("Escape"); await wait(p);
   await p.click('.dock-item[data-app="launcher"]'); await wait(p, 800);
 });
+await scenario("launcher keyboard selection", "?quiet&open=", async (p) => {
+  await p.click('.dock-item[data-app="launcher"]'); await wait(p);
+  const selected = p.locator('#spotlight .app-tile.hl');
+  if (await selected.count() !== 1) throw new Error("no initial keyboard selection");
+  const first = await selected.textContent();
+  await p.keyboard.press("ArrowDown");
+  if (await selected.textContent() === first) throw new Error("selection did not move");
+  await p.keyboard.press("Enter"); await wait(p);
+  if (await p.locator('.win').count() !== 1) throw new Error("selected app did not open");
+});
+await scenario("dock labels stay above magnified icons", "?quiet&open=", async (p) => {
+  for (const width of [1440, 800]) {
+    await p.setViewportSize({ width, height: 800 });
+    await p.evaluate(() => { window.gg.state.dockSize = 80; window.gg.state.magnify = true; });
+    await p.hover('.dock-item[data-app="settings"]');
+    await wait(p, 300);
+    const bounds = await p.evaluate(() => {
+      const tip = document.querySelector('.dock-tip');
+      const tile = document.querySelector('.dock-item[data-app="settings"]');
+      const t = tip.getBoundingClientRect(), r = tile.getBoundingClientRect();
+      return { hidden: tip.hidden, left: t.left, right: t.right, top: t.top, bottom: t.bottom, iconTop: r.top, width: innerWidth };
+    });
+    if (bounds.hidden || bounds.left < 0 || bounds.right > bounds.width || bounds.top < 0 || bounds.bottom > bounds.iconTop)
+      throw new Error(`dock label clips or overlaps: ${JSON.stringify(bounds)}`);
+    await p.mouse.move(10, 100);
+  }
+});
 await scenario("menus and context menus", "?quiet&open=files", async (p) => {
   await p.click("#menubar .mb-item >> nth=2"); await wait(p);
   await p.hover("#menubar .mb-item >> nth=3"); await wait(p);
@@ -111,3 +138,4 @@ await browser.close();
 server.close();
 if (failures.length) { console.error(`\n${failures.length} scenario(s) failed`); process.exit(1); }
 console.log("\nall scenarios passed");
+

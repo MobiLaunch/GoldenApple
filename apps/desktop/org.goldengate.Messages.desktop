@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Messages
+Comment=Chat over Matrix
+Icon=internet-chat
+Exec=qs -n -p @APPS@/messages.qml
+StartupWMClass=org.goldengate.Messages
+Categories=Network;Chat;InstantMessaging;
+Keywords=messages;chat;matrix;rooms;
+StartupNotify=false

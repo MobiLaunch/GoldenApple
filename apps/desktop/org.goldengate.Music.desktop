@@ -2,9 +2,10 @@
 Type=Application
 Name=Music
 Comment=Play your music and internet radio
-Icon=org.gnome.Music
-Exec=qs -n -p @APPS@/music.qml
+Icon=multimedia-audio-player
+Exec=sh @APPS@/music/open.sh %f
 StartupWMClass=org.goldengate.Music
 Categories=AudioVideo;Audio;Player;
 Keywords=songs;albums;playlist;radio;
+MimeType=audio/mpeg;audio/mp4;audio/flac;audio/x-flac;audio/ogg;audio/opus;audio/x-wav;audio/wav;audio/aac;audio/x-aiff;
 StartupNotify=false

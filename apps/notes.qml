@@ -85,7 +85,7 @@ ShellRoot {
                     { text: "Delete Note", action: () => app.deleteNote(app.current) },
                     { text: "Copy as Markdown", action: () => Quickshell.clipboardText = editor.markdown() },
                     { separator: true },
-                    { text: "Show in Files", action: () => Quickshell.execDetached(["nautilus", "--select", app.current]) },
+                    { text: "Show in Files", action: () => Quickshell.execDetached(["gg-files", "--select", app.current]) },
                 ])
             },
             ToolbarButton {
@@ -93,32 +93,19 @@ ShellRoot {
                 anchors.verticalCenter: parent.verticalCenter
                 visible: !searchBox.visible
                 round: true; symbol: "search"
-                onClicked: { searchBox.visible = true; searchField.forceActiveFocus() }
+                onClicked: { searchBox.visible = true; searchBox.input.forceActiveFocus() }
             },
-            Rectangle {
+            TextField {
                 id: searchBox
                 visible: false
                 x: parent.width - width - 12
                 anchors.verticalCenter: parent.verticalCenter
-                width: Math.min(220, app.editorWidth - 160); height: 32; radius: 16
-                color: Theme.dark ? "#eb3a3a3e" : "#ebffffff"
-                border { width: 0.5; color: Theme.dark ? "#2effffff" : "#1f000000" }
-                Symbol { x: 10; anchors.verticalCenter: parent.verticalCenter; name: "search"; tone: "gray"; size: 13 }
-                TextInput {
-                    id: searchField
-                    x: 30; width: parent.width - 58; anchors.verticalCenter: parent.verticalCenter
-                    color: Theme.label
-                    font { family: Theme.fontUi; pixelSize: 13 }
-                    clip: true
-                    onTextChanged: app.search(text)
-                    Keys.onEscapePressed: { text = ""; searchBox.visible = false }
-                    Text { visible: !searchField.text; text: "Search"; color: Theme.tertiaryLabel; font: searchField.font }
-                }
-                Symbol {
-                    anchors { right: parent.right; rightMargin: 9; verticalCenter: parent.verticalCenter }
-                    name: "xmark"; tone: "gray"; size: 11
-                    TapHandler { onTapped: { searchField.text = ""; searchBox.visible = false } }
-                }
+                width: Math.min(220, app.editorWidth - 160)
+                height: 32
+                search: true
+                placeholder: "Search"
+                onTextChanged: app.search(text)
+                input.Keys.onEscapePressed: { text = ""; visible = false }
             }
         ]
 
@@ -167,20 +154,20 @@ ShellRoot {
                     }
                 }
                 // Naming a new folder
-                Rectangle {
+                TextField {
+                    id: folderName
                     visible: app.namingFolder
-                    width: parent.width; height: 30; radius: 8
-                    color: Theme.dark ? "#1affffff" : "#12000000"
-                    border { width: 2; color: Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.6) }
-                    Symbol { x: 10; anchors.verticalCenter: parent.verticalCenter; name: "folder"; tone: "accent"; size: 16 }
-                    TextInput {
-                        id: folderName
-                        x: 36; width: parent.width - 46; anchors.verticalCenter: parent.verticalCenter
-                        color: Theme.label
-                        font { family: Theme.fontUi; pixelSize: 13 }
-                        onAccepted: app.createFolder(text)
-                        Keys.onEscapePressed: app.namingFolder = false
-                        onActiveFocusChanged: if (!activeFocus && app.namingFolder) app.createFolder(text)
+                    width: parent.width
+                    height: 30
+                    placeholder: "New Folder"
+                    onAccepted: app.createFolder(text)
+                    input.Keys.onEscapePressed: app.namingFolder = false
+                    Connections {
+                        target: folderName.input
+                        function onActiveFocusChanged() {
+                            if (!folderName.input.activeFocus && app.namingFolder)
+                                app.createFolder(folderName.text)
+                        }
                     }
                 }
             }
@@ -217,6 +204,7 @@ ShellRoot {
 
             function refresh() { lister.running = true }
             function newNote() {
+                if (!editor.flush()) return
                 const dir = folder && !folder.endsWith("/" + trashName) ? folder : root + "/Notes"
                 let name = "New Note.md", i = 2
                 while (notes.some((n) => n.path === dir + "/" + name)) name = "New Note " + (i++) + ".md"
@@ -228,17 +216,19 @@ ShellRoot {
             }
             function deleteNote(path) {
                 if (!path) return
+                const wasCurrent = path === app.current
+                if (!editor.flush()) return
+                if (wasCurrent) path = editor.loadedPath
                 const inTrash = path.includes("/" + trashName + "/")
                 const i = visibleNotes.findIndex((n) => n.path === path)
                 const next = visibleNotes[i + 1] ?? visibleNotes[i - 1] ?? null
-                editor.flush()
                 if (inTrash) Quickshell.execDetached(["rm", "-f", path])
                 else Quickshell.execDetached(["sh", "-c", "mkdir -p \"$1\" && mv -f \"$2\" \"$1\"/", "sh", root + "/" + trashName, path])
                 notes = notes.filter((n) => n.path !== path)
                 current = next ? next.path : ""
                 refreshLater.restart()
             }
-            function newFolder() { sidebarOpen = true; namingFolder = true; folderName.text = "New Folder"; folderName.selectAll(); folderName.forceActiveFocus() }
+            function newFolder() { sidebarOpen = true; namingFolder = true; folderName.text = "New Folder"; folderName.input.selectAll(); folderName.input.forceActiveFocus() }
             function createFolder(name) {
                 namingFolder = false
                 name = name.replace(/[\/\\]/g, "").trim()
@@ -294,7 +284,7 @@ ShellRoot {
                 const ctrl = e.modifiers & Qt.ControlModifier
                 if (ctrl && e.key === Qt.Key_N && !(e.modifiers & Qt.ShiftModifier)) { app.newNote(); e.accepted = true }
                 else if (ctrl && (e.modifiers & Qt.ShiftModifier) && e.key === Qt.Key_N) { app.newFolder(); e.accepted = true }
-                else if (ctrl && e.key === Qt.Key_F) { searchBox.visible = true; searchField.forceActiveFocus(); e.accepted = true }
+                else if (ctrl && e.key === Qt.Key_F) { searchBox.visible = true; searchBox.input.forceActiveFocus(); e.accepted = true }
                 else if (ctrl && e.key === Qt.Key_Backspace) { app.deleteNote(app.current); e.accepted = true }
             }
 
@@ -306,7 +296,7 @@ ShellRoot {
                 notes: app.visibleNotes
                 current: app.current
                 showFolder: app.folder === "" || !!app.matches
-                onPicked: (path) => { editor.flush(); app.current = path }
+                onPicked: (path) => { if (editor.flush()) app.current = path }
                 onMenu: (path, item, mx, my) => listMenu.popup(item, mx, my, [
                     { text: "Delete", action: () => app.deleteNote(path) },
                     { text: "Show in Files", action: () => Quickshell.execDetached(["nautilus", "--select", path]) },
@@ -323,6 +313,7 @@ ShellRoot {
                 mtime: app.notes.find((n) => n.path === app.current)?.mtime ?? 0
                 taken: app.notes.map((n) => n.path)
                 onSaved: (path, newPath, title, preview) => app.saved(path, newPath, title, preview)
+                onSaveFailed: app.current = editor.loadedPath
                 onMenuRequested: (items, item, mx, my) => listMenu.popup(item, mx, my, items)
             }
             Text {
@@ -337,3 +328,4 @@ ShellRoot {
         PopupMenu { id: listMenu; parent: win.overlay }
     }
 }
+

@@ -15,6 +15,12 @@ export function initDock() {
   document.getElementById("desktop").append(tip);
   let base = [];          // un-magnified centres, captured on mouseenter
   let mouseX = null;
+  let tipAnchor = null;
+  let frame = 0;
+  let trackTipUntil = 0;
+  function schedule() {
+    if (!frame) frame = requestAnimationFrame(() => { frame = 0; magnify(); });
+  }
 
   function tile(id, key = id, label = APPS[id]?.name ?? id) {
     const el = h("div.dock-item", { "data-app": id }, appIcon(key), h("span.run"));
@@ -25,13 +31,14 @@ export function initDock() {
       else launch(id);
     });
     el.addEventListener("mouseenter", () => showTip(el, label));
-    el.addEventListener("mouseleave", () => (tip.hidden = true));
+    el.addEventListener("mouseleave", () => (tip.hidden = true, tipAnchor = null));
     el.addEventListener("mousedown", (e) => e.stopPropagation());
     el.addEventListener("contextmenu", (e) => { e.preventDefault(); e.stopPropagation(); tip.hidden = true; menu(el, id); });
     return el;
   }
 
   function render() {
+    tip.hidden = true; tipAnchor = null;
     const extra = [...new Set([...document.querySelectorAll(".win")].map((w) => w._win?.app))].filter((a) => a && !PINNED.includes(a));
     const minimized = windows.filter((w) => w.minimized);
     const before = new Set([...dock.querySelectorAll(".dock-item[data-win]")].map((e) => e.dataset.win));
@@ -57,7 +64,7 @@ export function initDock() {
     const el = h("div.dock-item.mini", { "data-win": w.id, "data-app": `win-${w.id}` }, h("div.mini-shot", clone), h("span.mini-badge", appIcon(w.app)));
     el.addEventListener("click", () => w.restore());
     el.addEventListener("mouseenter", () => showTip(el, w.title || APPS[w.app]?.name));
-    el.addEventListener("mouseleave", () => (tip.hidden = true));
+    el.addEventListener("mouseleave", () => (tip.hidden = true, tipAnchor = null));
     el.addEventListener("mousedown", (e) => e.stopPropagation());
     return el;
   }
@@ -97,12 +104,17 @@ export function initDock() {
   }
 
   function showTip(el, label) {
+    tipAnchor = el;
     tip.textContent = label; tip.hidden = false;
-    requestAnimationFrame(() => {
-      const r = el.getBoundingClientRect();
-      tip.style.left = `${r.left + r.width / 2}px`;
-      tip.style.top = `${r.top - 38}px`;
-    });
+    trackTipUntil = performance.now() + 160;
+    schedule();
+  }
+  function positionTip() {
+    if (tip.hidden || !tipAnchor?.isConnected) return;
+    const r = tipAnchor.getBoundingClientRect();
+    const half = tip.offsetWidth / 2;
+    tip.style.left = `${Math.max(half + 8, Math.min(innerWidth - half - 8, r.left + r.width / 2))}px`;
+    tip.style.top = `${Math.max(8, r.top - tip.offsetHeight - 10)}px`;
   }
 
   function menu(el, id) {
@@ -122,34 +134,48 @@ export function initDock() {
 
   // Magnification: size follows a cosine falloff of the pointer distance,
   // measured against the resting layout so the Dock never chases itself.
-  const size = () => state.dockSize;
-  const RANGE = () => size() * 3.2;
-  function magnify() {
-    const items = [...dock.querySelectorAll(".dock-item")];
-    items.forEach((el, i) => {
-      let s = size();
-      if (mouseX != null && state.magnify) {
-        const d = Math.abs(mouseX - base[i]);
-        s = size() + (Math.max(size() * 1.6, 86) - size()) * (d < RANGE() ? Math.cos((d / RANGE()) * (Math.PI / 2)) ** 1.4 : 0);
-      }
-      el.style.width = el.style.height = `${s}px`;
+  const size = () => Math.min(state.dockSize, Math.max(16, (innerWidth - 50) / (dock.querySelectorAll(".dock-item").length + 6) - 3));
+  const reduced = () => state.reduceMotion || matchMedia("(prefers-reduced-motion: reduce)").matches;
+  function restCenters() {
+    const children = [...dock.children];
+    const widths = children.map(el => el.classList.contains("dock-item") ? size() : 11);
+    const total = widths.reduce((a, b) => a + b, 0) + 3 * (children.length - 1) + 14;
+    let left = (innerWidth - total) / 2 + 7;
+    base = [];
+    children.forEach((el, i) => {
+      if (el.classList.contains("dock-item")) base.push(left + widths[i] / 2);
+      left += widths[i] + 3;
     });
   }
+  function magnify() {
+    const items = [...dock.querySelectorAll(".dock-item")];
+    restCenters();
+    const widths = items.map((_, i) => {
+      const d = Math.abs(mouseX - base[i]);
+      return mouseX != null && state.magnify && !reduced()
+        ? size() + (Math.min(96, size() * 1.6) - size()) * (d < size() * 3.2 ? Math.cos(d / (size() * 3.2) * Math.PI / 2) ** 1.4 : 0)
+        : size();
+    });
+    items.forEach((el, i) => {
+      const value = `${widths[i]}px`;
+      if (el.style.width !== value) el.style.width = el.style.height = value;
+    });
+    positionTip();
+    if (!tip.hidden && performance.now() < trackTipUntil) schedule();
+  }
   dock.addEventListener("mouseenter", () => {
-    base = [...dock.querySelectorAll(".dock-item")].map((el) => { const r = el.getBoundingClientRect(); return r.left + r.width / 2; });
-    dock.querySelectorAll(".dock-item").forEach((el) => (el.style.transition = "width 90ms linear, height 90ms linear"));
+    dock.querySelectorAll(".dock-item").forEach(el => el.style.transition = reduced() ? "none" : "width 110ms ease-out, height 110ms ease-out");
   });
-  dock.addEventListener("mousemove", (e) => { mouseX = e.clientX; requestAnimationFrame(magnify); if (!tip.hidden) { const el = e.target.closest(".dock-item"); el && showTip(el, tip.textContent); } });
-  dock.addEventListener("mouseleave", () => {
-    mouseX = null;
-    dock.querySelectorAll(".dock-item").forEach((el) => (el.style.transition = "width var(--spring-dock-duration) var(--spring-snappy), height var(--spring-dock-duration) var(--spring-snappy)"));
-    magnify();
-  });
-
-  const applySize = () => document.documentElement.style.setProperty("--dock-size", `${size()}px`);
-  bus.on("state:dockSize", () => { applySize(); magnify(); });
+  dock.addEventListener("mousemove", e => { mouseX = e.clientX; trackTipUntil = performance.now() + 160; schedule(); });
+  dock.addEventListener("mouseleave", () => { mouseX = null; tip.hidden = true; tipAnchor = null; schedule(); });
+  const applySize = () => { document.documentElement.style.setProperty("--dock-size", `${size()}px`); schedule(); };
+  bus.on("state:dockSize", applySize);
+  bus.on("state:magnify", schedule);
+  bus.on("state:reduceMotion", schedule);
+  addEventListener("resize", applySize);
   applySize();
-  bus.on("windows", () => { const ids = [...dock.querySelectorAll(".dock-item")].map((e) => e.dataset.app).join(); render(); if (ids !== [...dock.querySelectorAll(".dock-item")].map((e) => e.dataset.app).join()) magnify(); });
+  bus.on("windows", () => { const ids = [...dock.querySelectorAll(".dock-item")].map((e) => e.dataset.app).join(); render(); if (ids !== [...dock.querySelectorAll(".dock-item")].map((e) => e.dataset.app).join()) applySize(); });
   bus.on("state:theme", render);
   render();
 }
+

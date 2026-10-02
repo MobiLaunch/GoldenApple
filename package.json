@@ -9,7 +9,7 @@
     "icons:list": "node icons/build.mjs --list",
     "test:ui": "node prototype/tests/smoke.mjs",
     "screenshots": "node prototype/tests/screenshots.mjs",
-    "test:shader": "node compositor/liquid-glass/test/render.mjs"
+    "test:logic": "node --test tests/logic.mjs"
   },
   "devDependencies": {
     "pathkit-wasm": "^1.0.0",

@@ -48,30 +48,15 @@ ShellRoot {
 
         sidebar: [
             // Search
-            Rectangle {
-                id: searchBox
-                width: parent.width; height: 32; radius: 16
-                color: "#1fffffff"
-                border { width: 0.5; color: "#26ffffff" }
-                Symbol { x: 10; anchors.verticalCenter: parent.verticalCenter; name: "search"; tone: "white"; size: 13; opacity: 0.7 }
-                TextInput {
-                    id: search
-                    x: 30; width: parent.width - 40
-                    anchors.verticalCenter: parent.verticalCenter
-                    color: "#ffffff"
-                    selectionColor: Theme.accent
-                    font { family: Theme.fontUi; pixelSize: 13 }
-                    clip: true
-                    onTextChanged: searchTimer.restart()
-                    Keys.onEscapePressed: text = ""
-                    Keys.onReturnPressed: if (app.results.length) app.addPlace(app.results[0])
-                    Text {
-                        visible: !search.text
-                        text: "Search for a city"
-                        color: "#8cffffff"
-                        font: search.font
-                    }
-                }
+            TextField {
+                id: search
+                width: parent.width
+                height: 32
+                search: true
+                placeholder: "Search for a city"
+                onTextChanged: { app.searchRevision++; app.searching = false; app.results = []; searchTimer.restart() }
+                onAccepted: if (app.results.length) app.addPlace(app.results[0])
+                input.Keys.onEscapePressed: text = ""
                 Timer { id: searchTimer; interval: 300; onTriggered: app.geocode(search.text) }
             },
             // Places, or search results while searching
@@ -154,6 +139,7 @@ ShellRoot {
             property var airs: ({})
             property var results: []
             property bool searching: false
+            property int searchRevision: 0
             property string radarBase: ""
             property bool online: true
 
@@ -204,9 +190,11 @@ ShellRoot {
                 })
             }
             function geocode(q) {
-                if (!q.trim()) { results = []; return }
+                const revision = ++searchRevision
+                if (!q.trim()) { searching = false; results = []; return }
                 searching = true
                 get(url("geocode", q), (j) => {
+                    if (revision !== searchRevision) return
                     searching = false
                     results = (j?.results ?? []).map((r) => ({ name: r.name, admin1: r.admin1 ?? "", country: r.country ?? "", lat: r.latitude, lon: r.longitude }))
                 })
@@ -524,3 +512,4 @@ ShellRoot {
         onPressed: placeMenu.visible = false
     }
 }
+

@@ -6,16 +6,27 @@ import Quickshell.Io
 import Quickshell.Hyprland
 import QtQuick
 import "theme"
+import "components"
 
 ShellRoot {
     id: root
     // One AppLaunch per screen; Spotlight picks the one on its own screen.
     property var launchers: []
+    Binding { target: Theme; property: "reduceMotion"; value: Prefs.reduceMotion }
+    Binding { target: Theme; property: "reduceTransparency"; value: Prefs.reduceTransparency }
+    Binding { target: Theme; property: "glassStyle"; value: Prefs.glass }
+    Connections {
+        target: Prefs
+        function onDataChanged() {
+            Quickshell.execDetached(["gg-hyprglass-sync", Theme.dark ? "dark" : "light"])
+        }
+    }
     // Follow the system appearance set by Control Center, GNOME Settings or gsettings.
     // GTK 3 apps (Mail) have no colour scheme, only a dark theme, so mirror it there.
     function followScheme(line) {
         Theme.dark = line.includes("dark")
         Quickshell.execDetached(["gsettings", "set", "org.gnome.desktop.interface", "gtk-theme", Theme.dark ? "Adwaita-dark" : "Adwaita"])
+        Quickshell.execDetached(["gg-hyprglass-sync", Theme.dark ? "dark" : "light"])
     }
     Process {
         running: true
@@ -47,17 +58,17 @@ ShellRoot {
         printErrors: false
         watchChanges: true
         onFileChanged: reload()
-        onLoaded: autoLook.apply()
+        onLoaded: autoLook.apply(true)
     }
     Timer {
         id: autoLook
         interval: 60000; running: true; repeat: true
-        onTriggered: apply()
-        function apply() {
+        onTriggered: apply(false)
+        function apply(initial) {
             let mode = ""
             try { mode = JSON.parse(appearance.text()).mode } catch (e) { return }
-            if (mode !== "auto") return
-            const h = new Date().getHours(), dark = h < 7 || h >= 19
+            if (!["light", "dark", "auto"].includes(mode) || (mode !== "auto" && !initial)) return
+            const h = new Date().getHours(), dark = mode === "dark" || (mode === "auto" && (h < 7 || h >= 19))
             if (dark !== Theme.dark)
                 Quickshell.execDetached(["gsettings", "set", "org.gnome.desktop.interface", "color-scheme", dark ? "prefer-dark" : "default"])
         }
@@ -87,6 +98,10 @@ ShellRoot {
             required property var modelData
 
             Wallpaper { screen: perScreen.modelData }
+            LazyLoader { active: Quickshell.env("GG_WIDGETS") === "1"; source: "DesktopWidgets.qml" }
+            // Persistent per-screen Applications surface. Keeping the object alive
+            // removes the lazy-loader race that made the Dock button appear dead.
+            Applications { id: applicationsPanel; screen: perScreen.modelData }
             ControlCenter { id: cc; screen: perScreen.modelData; notifications: notificationCenter }
             MenuBar { screen: perScreen.modelData; controlCenter: cc; spotlight: spotlightPanel }
             AppLaunch {
@@ -95,7 +110,7 @@ ShellRoot {
                 Component.onCompleted: root.launchers = root.launchers.concat([launch])
                 Component.onDestruction: root.launchers = root.launchers.filter((l) => l !== launch)
             }
-            Dock { screen: perScreen.modelData; launcher: launch }
+            Dock { screen: perScreen.modelData; launcher: launch; applications: applicationsPanel }
 
             IpcHandler {
                 target: "controlcenter"
@@ -115,3 +130,4 @@ ShellRoot {
         }
     }
 }
+

@@ -108,6 +108,16 @@ if [[ -f $OUT/screen.png ]]; then
   convert "$OUT/screen.png" -resize 960x -quality 70 "$OUT/screen-small.jpg"
   echo "--- screen-small.jpg base64 begin ---"; base64 -w0 "$OUT/screen-small.jpg"; echo; echo "--- end ---"
 fi
+# The supervisor is intentionally able to recover the shell, but needing that
+# recovery during a clean boot is itself a regression. A configuration can log
+# "Configuration Loaded" once and then crash a moment later, leaving an empty
+# desktop while this test would otherwise report success.
+if grep -aq 'gg-shell.*Quickshell exited' "$OUT/serial.log" 2>/dev/null; then
+  say "Quickshell restarted during the boot-test settle window:"
+  grep -a 'gg-shell.*Quickshell exited' "$OUT/serial.log" | tail -n 20
+  result=shell-restarted
+fi
+
 # A session that starts with config errors (shown as a red banner) still fails.
 if grep -aq 'hyprland-config\[' "$OUT/serial.log" 2>/dev/null; then
   say "Hyprland reported config errors:"; grep -a 'hyprland-config\[' "$OUT/serial.log"

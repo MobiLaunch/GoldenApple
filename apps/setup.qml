@@ -1,11 +1,11 @@
 //@ pragma AppId org.goldengate.Setup
 // Setup Assistant: the first thing after the first login, as on a new Mac.
 //
-// A hello written in Liquid Glass over drifting colour, then: Country or
-// Region (keyboard and time zone), Wi-Fi, Data & Privacy, Location Services,
+// A hello over the HyprGlass desktop material, then: Country or Region
+// (keyboard and time zone), Wi-Fi, Data & Privacy, Location Services,
 // Time Zone, Analytics (crash and diagnostics sharing), Choose Your Look, and
-// Welcome. The panels are the compositor's Liquid Glass shader, which works
-// here because the assistant draws the backdrop it bends.
+// Welcome. Controls come from the same shared Golden Gate component store as
+// the rest of the desktop.
 //
 // It runs once: finishing writes ~/.config/golden-gate/setup-done, and
 // hyprland.conf only starts it while that file is missing (and not with
@@ -23,7 +23,20 @@ import "setup/regions.js" as Regions
 ShellRoot {
     id: root
     readonly property string configDir: (Quickshell.env("XDG_CONFIG_HOME") || Quickshell.env("HOME") + "/.config")
-    readonly property string here: Qt.resolvedUrl(".").toString().replace("file://", "")
+    readonly property string here: decodeURIComponent(Qt.resolvedUrl(".").toString().replace("file://", ""))
+
+    FileView {
+        path: root.configDir + "/golden-gate/desktop.json"
+        printErrors: false
+        watchChanges: true
+        onFileChanged: reload()
+        onLoaded: {
+            let prefs = {}
+            try { prefs = JSON.parse(text()) } catch (e) {}
+            Theme.reduceMotion = prefs.reduceMotion ?? false
+            Theme.reduceTransparency = prefs.reduceTransparency ?? false
+        }
+    }
 
     PanelWindow {
         id: win
@@ -41,8 +54,8 @@ ShellRoot {
             focus: true
 
             // -------------------------------------------------------------- state
-            property int step: Number(Quickshell.env("GG_SETUP_STEP") || 0)   // 0 = hello
-            readonly property var steps: ["hello", "region", "wifi", "privacy", "location", "timezone", "analytics", "look", "welcome"]
+            property int step: Math.max(0, Math.min(9, parseInt(Quickshell.env("GG_SETUP_STEP") || "0", 10) || 0))   // 0 = hello
+            readonly property var steps: ["hello", "account", "region", "wifi", "privacy", "location", "timezone", "analytics", "look", "welcome"]
             property var region: Regions.LIST[0]
             property string zone: region.zone
             property bool location: true
@@ -50,9 +63,15 @@ ShellRoot {
             property bool shareWithDevelopers: false
             property string look: "light"
             property bool finishing: false
+            property bool liveSession: false
+            property bool switchAfterFinish: false
+            property string createdUsername: ""
+            property string finishError: ""
+            property var preferences: ({})
 
             function go(n) {
-                if (n < 0 || n >= steps.length || n === step) return
+                if (pageSwap.running || finishing || n < 0 || n >= steps.length || n === step) return
+                if (Theme.reduceMotion) { step = n; return }
                 pageSwap.forward = n > step
                 pageSwap.target = n
                 pageSwap.restart()
@@ -62,7 +81,7 @@ ShellRoot {
             // Return is the default button: Continue.
             function defaultButton() {
                 if (step === 0) next()
-                else if (page.item && page.item.canContinue !== false) page.item.next()
+                else if (page.item && page.item.canContinue !== false) (steps[step] === "account" ? page.item.submit() : page.item.next())
             }
             Keys.onReturnPressed: defaultButton()
             Keys.onEnterPressed: defaultButton()
@@ -80,25 +99,73 @@ ShellRoot {
                 run(["gsettings", "set", "org.gnome.desktop.interface", "color-scheme", dark ? "prefer-dark" : "default"])
             }
             // Everything chosen, saved; then the desktop.
-            function finish() {
+            function finish(switchUser) {
                 if (finishing) return
                 finishing = true
-                const gg = root.configDir + "/golden-gate"
+                switchAfterFinish = switchUser === true
+                finishError = ""
                 const l = Regions.layout(region.keyboard)
-                const script = [
-                    'mkdir -p "$GG" "$HYPR"',
-                    'printf "input {\\n    kb_layout = %s\\n    kb_variant = %s\\n}\\n" "$KB" "$KBV" > "$HYPR/input.conf"',
-                    'sudo -n timedatectl set-timezone "$ZONE" 2>/dev/null || timedatectl set-timezone "$ZONE" || true',
-                    'gsettings set org.gnome.system.location enabled "$LOC" || true',
-                    'printf \'{\\n "location": %s,\\n "shareDiagnostics": %s,\\n "shareWithDevelopers": %s\\n}\\n\' "$LOC" "$DIAG" "$DEV" > "$GG/privacy.json"',
-                    'printf \'{ "mode": "%s" }\\n\' "$LOOK" > "$GG/appearance.json"',
-                    'date -Iseconds > "$GG/setup-done"',
-                    '[ "$DIAG" = true ] && setsid -f sh "$HERE/setup/crash-watch.sh" >/dev/null 2>&1 || true',
-                ].join("\n")
-                run(["env", "GG=" + gg, "HYPR=" + root.configDir + "/hypr/golden-gate", "KB=" + l.layout, "KBV=" + l.variant,
-                     "ZONE=" + zone, "LOC=" + location, "DIAG=" + shareDiagnostics, "DEV=" + shareWithDevelopers,
-                     "LOOK=" + look, "HERE=" + root.here, "sh", "-c", script])
-                outro.start()
+                preferences = {layout: l.layout, variant: l.variant, look: look, location: location,
+                    shareDiagnostics: shareDiagnostics, shareWithDevelopers: shareWithDevelopers}
+                if (createdUsername) accountFinish.running = true
+                else saveSettings.running = true
+            }
+            Process {
+                id: accountFinish
+                command: ["sh", root.here + "/setup/account-call.sh"]
+                stdinEnabled: true
+                onStarted: {
+                    write(JSON.stringify({operation: "finish", username: stage.createdUsername, preferences: stage.preferences}))
+                    stdinEnabled = false
+                }
+                onExited: (code) => {
+                    stdinEnabled = true
+                    if (code === 0) saveSettings.running = true
+                    else { stage.finishing = false; stage.finishError = "Your account exists, but its settings could not be saved. Authorize the request and try again." }
+                }
+            }
+            Process {
+                id: saveSettings
+                command: ["python3", root.here + "/setup/save-preferences.py"]
+                stdinEnabled: true
+                onStarted: { write(JSON.stringify(stage.preferences)); stdinEnabled = false }
+                onExited: (code) => {
+                    stdinEnabled = true
+                    if (code !== 0) { stage.finishing = false; stage.finishError = "Settings could not be saved. Check free disk space and try again."; return }
+                    stage.run(["timedatectl", "set-timezone", stage.zone])
+                    stage.run(["gsettings", "set", "org.gnome.system.location", "enabled", String(stage.location)])
+                    if (stage.shareDiagnostics) stage.run(["bash", root.here + "/setup/crash-watch.sh"])
+                    if (stage.switchAfterFinish && stage.createdUsername && !stage.liveSession) {
+                        const sid = Quickshell.env("XDG_SESSION_ID") || ""
+                        if (!sid) {
+                            stage.finishing = false
+                            stage.finishError = "Golden Gate could not identify this login session. Use the system menu to sign out, then choose " + stage.createdUsername + " at the login screen."
+                            return
+                        }
+                        switchSession.command = ["loginctl", "terminate-session", sid]
+                        switchSession.running = true
+                    } else {
+                        outro.start()
+                    }
+                }
+            }
+            Process {
+                id: switchSession
+                onExited: (code) => {
+                    // A successful terminate-session normally removes this process
+                    // before the callback. If it returns while we are still alive,
+                    // close Setup. A failure keeps the user in control.
+                    if (code === 0) Qt.quit()
+                    else {
+                        stage.finishing = false
+                        stage.finishError = "The account is ready, but Golden Gate could not sign out automatically. Use the system menu to sign out, then choose " + stage.createdUsername + "."
+                    }
+                }
+            }
+            Process {
+                running: true
+                command: ["sh", "-c", "test -d /run/archiso"]
+                onExited: (code) => stage.liveSession = code === 0
             }
 
             // Guess the region from the time zone and language.
@@ -118,17 +185,7 @@ ShellRoot {
             Backdrop {
                 id: backdrop
                 anchors.fill: parent
-                moving: GraphicsInfo.api !== GraphicsInfo.Software
-            }
-            ShaderEffectSource {
-                id: backdropTex
-                sourceItem: backdrop
-                live: true
-                hideSource: false
-                visible: false
-                // Half resolution: cheaper, and a little softer, like the
-                // compositor's blurred backdrop the shader expects.
-                textureSize: Qt.size(Math.max(1, backdrop.width / 2), Math.max(1, backdrop.height / 2))
+                moving: GraphicsInfo.api !== GraphicsInfo.Software && !Theme.reduceMotion
             }
 
             // -------------------------------------------------------------- hello
@@ -145,12 +202,11 @@ ShellRoot {
                     scale: Math.min(1.25, stage.width / 1100)
                     anchors.centerIn: parent
                     anchors.verticalCenterOffset: -40
-                    source: backdropTex
-                    backdropItem: backdrop
+                    progress: Theme.reduceMotion ? 1 : 0
                 }
                 // Written, held, rubbed out and written again, until you go on.
                 SequentialAnimation {
-                    running: stage.step === 0
+                    running: stage.step === 0 && !Theme.reduceMotion
                     loops: Animation.Infinite
                     PauseAnimation { duration: 600 }
                     NumberAnimation { target: hello; property: "progress"; from: 0; to: 1; duration: 3400; easing.type: Easing.InOutSine }
@@ -172,7 +228,6 @@ ShellRoot {
                         anchors.fill: parent
                         radius: 32; bezel: 18; strength: 16
                         tint: "#40ffffff"
-                        source: backdropTex; backdropItem: backdrop
                     }
                     Symbol { anchors.centerIn: parent; anchors.horizontalCenterOffset: 2; name: "chevron-right"; tone: "white"; size: 26 }
                     TapHandler { onTapped: stage.next() }
@@ -191,9 +246,9 @@ ShellRoot {
             Item {
                 id: sheetHolder
                 anchors.centerIn: parent
-                width: Math.min(700, stage.width - 80); height: Math.min(620, stage.height - 80)
+                width: Math.min(700, stage.width - 32); height: Math.min(660, stage.height - 32)
                 visible: opacity > 0
-                opacity: stage.step > 0 && !stage.finishing ? 1 : 0
+                opacity: stage.step > 0 ? 1 : 0
                 scale: stage.step > 0 ? 1 : 0.94
                 Behavior on opacity { NumberAnimation { duration: 450; easing.type: Easing.OutCubic } }
                 Behavior on scale { NumberAnimation { duration: 550; easing.type: Easing.OutCubic } }
@@ -202,14 +257,13 @@ ShellRoot {
                     anchors.fill: parent
                     radius: 34; bezel: 30; strength: 38
                     tint: Theme.dark ? "#c4202024" : "#d2f5f5f8"
-                    source: backdropTex; backdropItem: backdrop
                 }
                 Loader {
                     id: page
-                    anchors.fill: parent
+                    width: parent.width; height: parent.height
                     // Keys (Return = Continue) go to the assistant, not the old page.
                     onLoaded: stage.forceActiveFocus()
-                    sourceComponent: [null, regionStep, wifiStep, privacyStep, locationStep, zoneStep, analyticsStep, lookStep, welcomeStep][stage.step]
+                    sourceComponent: [null, accountStep, regionStep, wifiStep, privacyStep, locationStep, zoneStep, analyticsStep, lookStep, welcomeStep][stage.step]
                 }
             }
             // Page change: the old page slides out, the new one in.
@@ -230,12 +284,21 @@ ShellRoot {
             // The desktop, revealed.
             SequentialAnimation {
                 id: outro
-                PauseAnimation { duration: 500 }
-                NumberAnimation { target: stage; property: "opacity"; to: 0; duration: 700; easing.type: Easing.InOutQuad }
+                PauseAnimation { duration: Theme.reduceMotion ? 0 : 500 }
+                NumberAnimation { target: stage; property: "opacity"; to: 0; duration: Theme.reduceMotion ? 0 : 700; easing.type: Easing.InOutQuad }
                 ScriptAction { script: Qt.quit() }
             }
 
             // ---------------------------------------------------------- step pages
+            Component {
+                id: accountStep
+                AccountStep {
+                    createdUsername: stage.createdUsername
+                    onAccountCreated: (username) => stage.createdUsername = username
+                    onBack: stage.back()
+                    onAdvance: stage.next()
+                }
+            }
             Component {
                 id: regionStep
                 StepFrame {
@@ -244,19 +307,12 @@ ShellRoot {
                     canGoBack: true
                     onBack: stage.back()
                     onNext: { stage.setKeyboard(stage.region.keyboard); stage.next() }
-                    Rectangle {
-                        id: search
-                        width: parent.width; height: 30; radius: 8
-                        color: Theme.dark ? "#1affffff" : "#b3ffffff"
-                        border { width: 0.5; color: Theme.separator }
-                        Symbol { x: 9; anchors.verticalCenter: parent.verticalCenter; name: "search"; tone: "gray"; size: 13 }
-                        TextInput {
-                            id: q
-                            x: 30; width: parent.width - 40; anchors.verticalCenter: parent.verticalCenter
-                            color: Theme.label; clip: true
-                            font { family: Theme.fontUi; pixelSize: 13 }
-                            Text { visible: !q.text; text: "Search"; color: Theme.tertiaryLabel; font: q.font }
-                        }
+                    TextField {
+                        id: q
+                        width: parent.width
+                        height: 30
+                        search: true
+                        placeholder: "Search"
                     }
                     ListView {
                         id: list
@@ -308,7 +364,7 @@ ShellRoot {
                         Repeater {
                             model: [
                                 "Golden Gate is designed to protect your information and let you choose what you share.",
-                                "Nothing leaves this computer unless you decide it should. There is no account to create, no advertising identifier and no background telemetry.",
+                                "Nothing leaves this computer unless you decide it should. There is no online account to create, no advertising identifier and no background telemetry.",
                                 "Your files, notes, photos and music stay in your home folder, in ordinary formats any app can open.",
                                 "On the next screens you can choose whether apps may use your location, and whether to share crash reports with the people who make Golden Gate.",
                             ]
@@ -402,11 +458,26 @@ ShellRoot {
                     symbolColor: "#ff9f0a"
                     title: "Welcome to Golden Gate"
                     text: "Everything's set up. Your apps are in the Dock, Spotlight is ⌘ Space, and Control Center is at the top right of the menu bar."
-                    continueText: "Get Started"
+                    continueText: stage.finishing ? "Saving…" : "Get Started"
+                    canContinue: !stage.finishing
+                    canGoBack: !stage.finishing
+                    secondaryText: stage.createdUsername && !stage.liveSession && !stage.finishing ? "Sign Out & Switch User" : ""
+                    Text {
+                        width: parent.width; wrapMode: Text.WordWrap; textFormat: Text.PlainText
+                        text: stage.finishError || (stage.createdUsername
+                            ? (stage.liveSession
+                                ? "Account created: " + stage.createdUsername + ". This is a live session, so the account is temporary; you can sign in to it from another console while the live system is running."
+                                : "Account created: " + stage.createdUsername + ". Choose Get Started to stay signed in as " + Quickshell.env("USER") + ", or sign out now and continue in your new Golden Gate account.")
+                            : "")
+                        color: stage.finishError ? "#d8483e" : Theme.secondaryLabel
+                        font.pixelSize: 13
+                    }
                     onBack: stage.back()
-                    onNext: stage.finish()
+                    onSecondary: stage.finish(true)
+                    onNext: stage.finish(false)
                 }
             }
         }
     }
 }
+

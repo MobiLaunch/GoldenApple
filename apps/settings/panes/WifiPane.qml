@@ -26,7 +26,7 @@ Pane {
     }
     function refresh() {
         sys.run(["nmcli", "-t", "radio", "wifi"], (o) => radio = o.trim() === "enabled")
-        sys.run(["nmcli", "-t", "-f", "IN-USE,SSID,SIGNAL,SECURITY", "device", "wifi", "list"], (o) => {
+        sys.run(["nmcli", "-t", "-f", "IN-USE,SSID,SIGNAL,SECURITY", "device", "wifi", "list", "--rescan", "auto"], (o) => {
             const best = {}
             for (const line of o.split("\n")) {
                 const f = fields(line)
@@ -64,29 +64,50 @@ Pane {
         title: "Other Networks"
         Repeater {
             model: pane.networks.filter((n) => !n.active)
-            delegate: SetRow {
-                id: netRow
+            delegate: Column {
+                id: networkBlock
                 required property var modelData
-                title: modelData.ssid
-                chevron: false
-                Symbol { name: "lock"; size: 13; visible: netRow.modelData.secure; opacity: 0.6 }
-                Symbol { name: "wifi"; size: 15; opacity: 0.35 + 0.65 * Math.min(1, netRow.modelData.signal / 80) }
-                Button {
-                    text: pane.joining === netRow.modelData.ssid ? "Cancel" : "Connect"
-                    onClicked: {
-                        if (pane.joining === netRow.modelData.ssid) { pane.joining = ""; return }
-                        if (netRow.modelData.secure) pane.joining = netRow.modelData.ssid
-                        else pane.join(netRow.modelData.ssid)
+                width: parent ? parent.width : 500
+
+                SetRow {
+                    id: netRow
+                    width: networkBlock.width
+                    title: networkBlock.modelData.ssid
+                    chevron: false
+                    Symbol { name: "lock"; size: 13; visible: networkBlock.modelData.secure; opacity: 0.6 }
+                    Symbol { name: "wifi"; size: 15; opacity: 0.35 + 0.65 * Math.min(1, networkBlock.modelData.signal / 80) }
+                    Button {
+                        text: pane.joining === networkBlock.modelData.ssid ? "Cancel" : "Connect"
+                        onClicked: {
+                            pane.error = ""
+                            if (pane.joining === networkBlock.modelData.ssid) { pane.joining = ""; return }
+                            if (networkBlock.modelData.secure) pane.joining = networkBlock.modelData.ssid
+                            else pane.join(networkBlock.modelData.ssid)
+                        }
+                    }
+                }
+
+                // Keep credentials visually attached to the network being joined.
+                // The old global row appeared below the entire scan result list.
+                SetRow {
+                    width: networkBlock.width
+                    visible: pane.joining === networkBlock.modelData.ssid
+                    title: "Password"
+                    subtitle: pane.error
+                    TextField {
+                        id: pw
+                        width: 180
+                        password: true
+                        placeholder: "Password"
+                        onAccepted: pane.join(networkBlock.modelData.ssid, text)
+                    }
+                    Button {
+                        text: "Join"
+                        prominent: true
+                        onClicked: pane.join(networkBlock.modelData.ssid, pw.text)
                     }
                 }
             }
-        }
-        SetRow {
-            visible: !!pane.joining
-            title: "Password for “" + pane.joining + "”"
-            subtitle: pane.error
-            TextField { id: pw; width: 180; password: true; placeholder: "Password"; onAccepted: pane.join(pane.joining, text) }
-            Button { text: "Join"; prominent: true; onClicked: pane.join(pane.joining, pw.text) }
         }
         SetRow {
             visible: pane.networks.filter((n) => !n.active).length === 0

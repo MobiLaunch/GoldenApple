@@ -40,16 +40,47 @@ Item {
         o[path[path.length - 1]] = value
         return copy
     }
-    function setPref(path, value) { prefs = setIn(prefs, path, value); writeJson("desktop.json", prefs) }
-    function setPrivacy(key, value) { privacy = setIn(privacy, [key], value); writeJson("privacy.json", privacy) }
+    property bool glassDirty: false
+    Timer {
+        id: glassSync
+        interval: 90
+        onTriggered: {
+            if (!sys.glassDirty) return
+            sys.glassDirty = false
+            Quickshell.execDetached(["gg-hyprglass-sync"])
+        }
+    }
+    Timer { id: privacySave; interval: 70; onTriggered: sys.writeJson("privacy.json", sys.privacy) }
+
+    // desktop.json has one authoritative writer: gg-pref performs an atomic
+    // nested-key update, so Settings, shell IPC and Control Center cannot stomp
+    // one another by rewriting a stale copy of the whole file.
+    function setPref(path, value) {
+        prefs = setIn(prefs, path, value)
+        Quickshell.execDetached(["gg-pref", path.join("."), JSON.stringify(value)])
+        if (path[0] === "glass" || path[0] === "reduceTransparency") {
+            glassDirty = true
+            glassSync.restart()
+        }
+    }
+    function setPrivacy(key, value) {
+        privacy = setIn(privacy, [key], value)
+        privacySave.restart()
+    }
 
     // Keyboard and pointer: input.json is the record; hypr's input.conf is written
     // from it (sourced by hyprland.conf), and each change applies at once.
     function setInput(key, value) {
         input = setIn(input, [key], value)
-        writeJson("input.json", input)
+        inputSave.restart()
+        const kw = { layout: "input:kb_layout", variant: "input:kb_variant", repeatRate: "input:repeat_rate", repeatDelay: "input:repeat_delay",
+                     sensitivity: "input:sensitivity", naturalScroll: "input:touchpad:natural_scroll", tapToClick: "input:touchpad:tap-to-click" }[key]
+        if (kw) Quickshell.execDetached(["hyprctl", "keyword", kw, String(typeof value === "number" && key !== "sensitivity" ? Math.round(value) : value)])
+    }
+
+    function inputConfig() {
         const i = input
-        const conf = "input {\n"
+        return "input {\n"
             + "    kb_layout = " + (i.layout ?? "us") + "\n"
             + "    kb_variant = " + (i.variant ?? "") + "\n"
             + "    repeat_rate = " + Math.round(i.repeatRate ?? 25) + "\n"
@@ -59,10 +90,15 @@ Item {
             + "        natural_scroll = " + (i.naturalScroll ?? true) + "\n"
             + "        tap-to-click = " + (i.tapToClick ?? true) + "\n"
             + "    }\n}\n"
-        Quickshell.execDetached(["sh", "-c", 'mkdir -p "$1" && printf "%s" "$2" > "$1/input.conf"', "sh", config + "/hypr/golden-gate", conf])
-        const kw = { layout: "input:kb_layout", variant: "input:kb_variant", repeatRate: "input:repeat_rate", repeatDelay: "input:repeat_delay",
-                     sensitivity: "input:sensitivity", naturalScroll: "input:touchpad:natural_scroll", tapToClick: "input:touchpad:tap-to-click" }[key]
-        if (kw) Quickshell.execDetached(["hyprctl", "keyword", kw, String(typeof value === "number" && key !== "sensitivity" ? Math.round(value) : value)])
+    }
+    Timer {
+        id: inputSave
+        interval: 80
+        onTriggered: {
+            sys.writeJson("input.json", sys.input)
+            Quickshell.execDetached(["sh", "-c", 'mkdir -p "$1" && printf "%s" "$2" > "$1/input.conf"', "sh",
+                                     sys.config + "/hypr/golden-gate", sys.inputConfig()])
+        }
     }
 
     component JsonFile: FileView {

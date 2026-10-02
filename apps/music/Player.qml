@@ -1,6 +1,7 @@
 // Playback: a queue of tracks (or one radio station), shuffle and repeat, on
 // QtMultimedia (FFmpeg backend: every common format, and internet radio).
 import QtQuick
+import "../lib/paths.js" as Paths
 import QtMultimedia
 
 Item {
@@ -18,10 +19,11 @@ Item {
     property var order: []           // play order when shuffling
 
     function playList(list, start) {
-        queue = list
+        queue = list.slice()
         order = list.map((_, i) => i)
-        if (shuffle) shuffleOrder(start ?? 0)
-        index = start ?? 0
+        const first = list.length ? Math.max(0, Math.min(list.length - 1, Math.floor(start ?? 0) || 0)) : -1
+        if (shuffle && first >= 0) shuffleOrder(first)
+        index = first
         load()
     }
     function shuffleOrder(first) {
@@ -30,8 +32,8 @@ Item {
         order = [first].concat(rest)
     }
     function load() {
-        if (!current) { media.stop(); return }
-        media.source = current.radio ? current.url : "file://" + current.path
+        if (!current) { media.stop(); media.source = ""; return }
+        media.source = current.radio ? current.url : Paths.fileUrl(current.path)
         media.play()
     }
     function toggle() {
@@ -52,7 +54,7 @@ Item {
         if (media.position > 3000) { media.position = 0; return }
         step(-1)
     }
-    function seek(seconds) { media.position = seconds * 1000 }
+    function seek(seconds) { if (Number.isFinite(seconds) && media.seekable) media.position = Math.max(0, Math.min(duration, seconds)) * 1000 }
     function playNext(t) {
         if (!current) { playList([t], 0); return }
         const q = queue.slice(); q.splice(index + 1, 0, t)
@@ -74,3 +76,4 @@ Item {
         }
     }
 }
+

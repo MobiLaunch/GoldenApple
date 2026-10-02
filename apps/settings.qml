@@ -72,29 +72,12 @@ ShellRoot {
                 Column {
                     id: nav
                     width: parent.width
-                    // You
-                    Item {
-                        width: parent.width; height: 54
-                        Rectangle {
-                            x: 6; anchors.verticalCenter: parent.verticalCenter
-                            width: 36; height: 36; radius: 18
-                            gradient: Gradient {
-                                GradientStop { position: 0; color: "#a1a1a6" }
-                                GradientStop { position: 1; color: "#6e6e73" }
-                            }
-                            Text {
-                                anchors.centerIn: parent
-                                text: app.userName.split(" ").map((w) => w.charAt(0)).join("").slice(0, 2).toUpperCase()
-                                color: "#ffffff"
-                                font { family: Theme.fontUi; pixelSize: 14; weight: Font.DemiBold }
-                            }
-                        }
-                        Column {
-                            x: 50; anchors.verticalCenter: parent.verticalCenter
-                            Text { text: app.userName; color: Theme.label; font { family: Theme.fontUi; pixelSize: 13; weight: Font.DemiBold } }
-                            Text { text: "Local Account"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: 11 } }
-                        }
-                        TapHandler { onTapped: app.open("users") }
+                    AccountRow {
+                        width: parent.width
+                        name: app.userName
+                        subtitle: "Local Account"
+                        clickable: true
+                        onClicked: app.open("users")
                     }
                     Repeater {
                         model: app.groups
@@ -104,30 +87,27 @@ ShellRoot {
                             Item { width: 1; height: 12 }
                             Repeater {
                                 model: modelData
-                                delegate: Item {
+                                delegate: SidebarRow {
                                     id: navRow
                                     required property var modelData
-                                    readonly property bool selected: app.paneOf(app.current) === modelData.id
-                                    width: nav.width; height: 30
-                                    onSelectedChanged: if (selected) navFlick.ensure(navRow)
-                                    Component.onCompleted: if (selected) Qt.callLater(() => navFlick.ensure(navRow))
-                                    Rectangle {
-                                        anchors.fill: parent; radius: 8
-                                        color: navRow.selected ? (win.active ? Theme.accent : (Theme.dark ? "#26ffffff" : "#14000000"))
-                                                               : (Theme.dark ? "#ffffff" : "#000000")
-                                        opacity: navRow.selected ? 1 : navTap.pressed ? 0.08 : navHover.hovered ? 0.04 : 0
-                                        Behavior on opacity { NumberAnimation { duration: 120 } }
+                                    readonly property bool currentPane: app.paneOf(app.current) === modelData.id
+                                    width: nav.width
+                                    height: 30
+                                    text: modelData.title
+                                    selected: currentPane
+                                    selectedFill: win.active ? Theme.accent : (Theme.dark ? "#26ffffff" : "#14000000")
+                                    selectedTextColor: win.active ? "#ffffff" : Theme.label
+                                    leadingSize: 22
+                                    leading: Component {
+                                        PaneIcon {
+                                            symbol: navRow.modelData.symbol
+                                            tint: navRow.modelData.tint
+                                            size: 22
+                                        }
                                     }
-                                    PaneIcon { x: 6; anchors.verticalCenter: parent.verticalCenter; symbol: navRow.modelData.symbol; tint: navRow.modelData.tint }
-                                    Text {
-                                        x: 36; anchors.verticalCenter: parent.verticalCenter
-                                        width: parent.width - 42; elide: Text.ElideRight
-                                        text: navRow.modelData.title
-                                        color: navRow.selected && win.active ? "#ffffff" : Theme.label
-                                        font { family: Theme.fontUi; pixelSize: 13 }
-                                    }
-                                    HoverHandler { id: navHover }
-                                    TapHandler { id: navTap; onTapped: app.open(navRow.modelData.id) }
+                                    onCurrentPaneChanged: if (currentPane) navFlick.ensure(navRow)
+                                    Component.onCompleted: if (currentPane) Qt.callLater(() => navFlick.ensure(navRow))
+                                    onClicked: app.open(modelData.id)
                                 }
                             }
                         }
@@ -162,11 +142,11 @@ ShellRoot {
             ].map((p) => ({ group: p[0], id: p[1], title: p[2], symbol: p[3], tint: p[4], file: p[5], words: p[6] }))
             // Sub-pages of General: [id, title, file]
             readonly property var subpages: ({
-                about: { title: "About", file: "AboutPane", parent: "general" },
-                update: { title: "Software Update", file: "UpdatePane", parent: "general" },
-                storage: { title: "Storage", file: "StoragePane", parent: "general" },
-                datetime: { title: "Date & Time", file: "DateTimePane", parent: "general" },
-                language: { title: "Language & Region", file: "LanguagePane", parent: "general" },
+                about: { title: "About", file: "AboutPane", parent: "general", symbol: "info", tint: "#8e8e93", words: "system version hardware memory graphics kernel computer" },
+                update: { title: "Software Update", file: "UpdatePane", parent: "general", symbol: "arrow-clockwise", tint: "#8e8e93", words: "update upgrade packages arch software current" },
+                storage: { title: "Storage", file: "StoragePane", parent: "general", symbol: "drive", tint: "#8e8e93", words: "disk drive space capacity available used" },
+                datetime: { title: "Date & Time", file: "DateTimePane", parent: "general", symbol: "clock", tint: "#0a84ff", words: "date time timezone clock automatic ntp 24 hour" },
+                language: { title: "Language & Region", file: "LanguagePane", parent: "general", symbol: "globe", tint: "#0a84ff", words: "language locale region measurement format" },
             })
             readonly property var groups: [1, 2, 3, 4, 5].map((g) => panes.filter((p) => p.group === g))
             function paneOf(id) { return subpages[id]?.parent ?? id }
@@ -190,7 +170,10 @@ ShellRoot {
             readonly property var matches: {
                 const q = search.text.trim().toLowerCase()
                 if (!q) return []
-                return panes.filter((p) => p.title.toLowerCase().includes(q) || p.words.includes(q)).slice(0, 6)
+                const nested = Object.keys(subpages).map((id) => Object.assign({ id: id }, subpages[id]))
+                return nested.concat(panes)
+                    .filter((p) => p.title.toLowerCase().includes(q) || (p.words ?? "").includes(q))
+                    .slice(0, 6)
             }
 
             Keys.onPressed: (e) => {

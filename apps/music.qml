@@ -42,24 +42,24 @@ ShellRoot {
                 Column {
                     id: nav
                     width: parent.width
-                    SidebarItem { symbol: "search"; text: "Search"; selected: app.page === "search"; onClicked: app.go("search") }
-                    SidebarItem { symbol: "house"; text: "Home"; selected: app.page === "home"; onClicked: app.go("home") }
-                    SidebarItem { symbol: "broadcast"; text: "Radio"; selected: app.page === "radio"; onClicked: app.go("radio") }
-                    component Heading: Text {
-                        leftPadding: 10; topPadding: 14; bottomPadding: 4
-                        color: Theme.secondaryLabel
-                        font { family: Theme.fontUi; pixelSize: 11; weight: Font.DemiBold }
-                    }
+                    SidebarRow { symbolTone: "auto"; selectedSymbolTone: "red"; selectedTextColor: "#fa2d48"; selectedFill: Theme.dark ? "#1ffa2d48" : "#14fa2d48"; symbol: "search"; text: "Search"; selected: app.page === "search"; onClicked: app.go("search") }
+                    SidebarRow { symbolTone: "auto"; selectedSymbolTone: "red"; selectedTextColor: "#fa2d48"; selectedFill: Theme.dark ? "#1ffa2d48" : "#14fa2d48"; symbol: "house"; text: "Home"; selected: app.page === "home"; onClicked: app.go("home") }
+                    SidebarRow { symbolTone: "auto"; selectedSymbolTone: "red"; selectedTextColor: "#fa2d48"; selectedFill: Theme.dark ? "#1ffa2d48" : "#14fa2d48"; symbol: "broadcast"; text: "Radio"; selected: app.page === "radio"; onClicked: app.go("radio") }
+                    component Heading: SidebarSection {}
                     Heading { text: "Library" }
-                    SidebarItem { symbol: "clock"; text: "Recently Added"; selected: app.page === "recent"; onClicked: app.go("recent") }
-                    SidebarItem { symbol: "mic"; text: "Artists"; selected: app.page === "artists"; onClicked: app.go("artists") }
-                    SidebarItem { symbol: "gallery"; text: "Albums"; selected: app.page === "albums"; onClicked: app.go("albums") }
-                    SidebarItem { symbol: "music"; text: "Songs"; selected: app.page === "songs"; onClicked: app.go("songs") }
+                    SidebarRow { symbolTone: "auto"; selectedSymbolTone: "red"; selectedTextColor: "#fa2d48"; selectedFill: Theme.dark ? "#1ffa2d48" : "#14fa2d48"; symbol: "clock"; text: "Recently Added"; selected: app.page === "recent"; onClicked: app.go("recent") }
+                    SidebarRow { symbolTone: "auto"; selectedSymbolTone: "red"; selectedTextColor: "#fa2d48"; selectedFill: Theme.dark ? "#1ffa2d48" : "#14fa2d48"; symbol: "mic"; text: "Artists"; selected: app.page === "artists"; onClicked: app.go("artists") }
+                    SidebarRow { symbolTone: "auto"; selectedSymbolTone: "red"; selectedTextColor: "#fa2d48"; selectedFill: Theme.dark ? "#1ffa2d48" : "#14fa2d48"; symbol: "gallery"; text: "Albums"; selected: app.page === "albums"; onClicked: app.go("albums") }
+                    SidebarRow { symbolTone: "auto"; selectedSymbolTone: "red"; selectedTextColor: "#fa2d48"; selectedFill: Theme.dark ? "#1ffa2d48" : "#14fa2d48"; symbol: "music"; text: "Songs"; selected: app.page === "songs"; onClicked: app.go("songs") }
                     Heading { text: "Playlists"; visible: musicLib.playlists.length > 0 }
                     Repeater {
                         model: musicLib.playlists
-                        delegate: SidebarItem {
+                        delegate: SidebarRow {
                             required property var modelData
+                            symbolTone: "auto"
+                            selectedSymbolTone: "red"
+                            selectedTextColor: "#fa2d48"
+                            selectedFill: Theme.dark ? "#1ffa2d48" : "#14fa2d48"
                             symbol: "list"; text: modelData.name
                             selected: app.page === "playlist" && app.arg?.path === modelData.path
                             onClicked: app.go("playlist", modelData)
@@ -67,32 +67,10 @@ ShellRoot {
                     }
                 }
             },
-            // You
-            Item {
+            AccountRow {
                 anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
                 height: 36
-                Rectangle {
-                    id: avatar
-                    x: 6; anchors.verticalCenter: parent.verticalCenter
-                    width: 26; height: 26; radius: 13
-                    gradient: Gradient {
-                        GradientStop { position: 0; color: "#a1a1a6" }
-                        GradientStop { position: 1; color: "#6e6e73" }
-                    }
-                    Text {
-                        anchors.centerIn: parent
-                        text: app.userName.split(" ").map((w) => w.charAt(0)).join("").slice(0, 2).toUpperCase()
-                        color: "#ffffff"
-                        font { family: Theme.fontUi; pixelSize: 10; weight: Font.DemiBold }
-                    }
-                }
-                Text {
-                    x: 40; anchors.verticalCenter: parent.verticalCenter
-                    width: parent.width - 46; elide: Text.ElideRight
-                    text: app.userName
-                    color: Theme.label
-                    font { family: Theme.fontUi; pixelSize: 13; weight: Font.Medium }
-                }
+                name: app.userName
             }
         ]
 
@@ -104,6 +82,8 @@ ShellRoot {
             // GG_MUSIC_PAGE opens another page first (screenshots): home, radio,
             // albums, songs, artists, recent, search, or album (the newest one).
             property string page: Quickshell.env("GG_MUSIC_PAGE") || "home"
+            readonly property string requestedPath: Quickshell.env("GG_MUSIC_OPEN") || ""
+            property bool requestedOpened: false
             property var arg: null
             property var history: []
             property string userName: Quickshell.env("USER") ?? ""
@@ -121,6 +101,16 @@ ShellRoot {
                 page = h.page; arg = h.arg
             }
             function openAlbum(a) { go("album", a) }
+            function openRequestedTrack() {
+                if (requestedOpened || !requestedPath || !musicLib.loaded)
+                    return
+                const i = musicLib.tracks.findIndex((t) => t.path === requestedPath)
+                if (i < 0)
+                    return
+                requestedOpened = true
+                page = "songs"
+                audio.playList(musicLib.tracks, i)
+            }
             function songMenu(t, list, from, x, y) {
                 songMenuPopup.popup(from, x, y, [
                     { text: "Play", action: () => audio.playList(list, list.indexOf(t)) },
@@ -129,7 +119,7 @@ ShellRoot {
                     { text: "Go to Album", action: () => { const a = musicLib.albumOf(t); if (a) app.openAlbum(a) } },
                     { text: "Go to Artist", action: () => { app.go("artists"); const i = musicLib.artists.findIndex((r) => r.name === t.albumArtist); if (i >= 0) Qt.callLater(() => { if (pages.item) pages.item.selected = i }) } },
                     { separator: true },
-                    { text: "Show in Files", action: () => Quickshell.execDetached(["nautilus", "--select", t.path]) },
+                    { text: "Show in Files", action: () => Quickshell.execDetached(["gg-files", "--select", t.path]) },
                 ])
             }
 
@@ -161,6 +151,11 @@ ShellRoot {
 
             Library { id: musicLib }
             Player { id: audio }
+            Connections {
+                target: musicLib
+                function onLoadedChanged() { app.openRequestedTrack() }
+                function onTracksChanged() { app.openRequestedTrack() }
+            }
 
             Process {
                 running: true

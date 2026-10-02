@@ -21,9 +21,9 @@ case "${1:-}" in
   multitasking|ubuntu) pane=dock ;;
   -*) pane= ;;
   *)
-    # A panel Settings doesn't have (printers, online accounts, …): GNOME's.
-    [ -x /usr/bin/gnome-control-center ] && XDG_CURRENT_DESKTOP=GNOME exec /usr/bin/gnome-control-center "$@"
-    pane= ;;
+    # Keep the user inside Golden Gate. Unknown legacy panel names land on
+    # General until a native pane is implemented instead of switching desktops.
+    pane=general ;;
 esac
 if [ -n "$pane" ] && qs -p "$here/settings.qml" ipc call settings open "$pane" 2>/dev/null; then
   exec hyprctl dispatch focuswindow class:org.goldengate.Settings >/dev/null 2>&1

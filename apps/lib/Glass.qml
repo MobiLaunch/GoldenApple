@@ -1,19 +1,24 @@
-// Liquid Glass for the Golden Gate apps, the same material as the shell's
-// (shell/components/Glass.qml): tint, sheen, a lens band inside the edge and one
-// hairline rim lit from the top left. `pressed` squashes and brightens it,
-// `hovered` lifts it. Where it sits over a transparent window area, Hyprland
-// blurs the desktop behind it.
+// Liquid Glass material for Golden Gate apps: tint, sheen, a lens band inside
+// the edge and one hairline rim lit from the top left. `pressed` squashes and
+// brightens it, `hovered` lifts it. HyprGlass owns compositor optics wherever
+// a window exposes backdrop; this component owns only application chrome.
 import QtQuick
 import QtQuick.Shapes
+import QtQuick.Effects
 import "theme"
 
 Item {
     id: root
     property real radius: 26
-    property color tint: Theme.glassClear.tint
-    property color rim: Theme.glassClear.rim
-    property color rimLow: Theme.glassClear.rimLow
-    property color shine: Theme.glassClear.shine
+    // One implementation, two material roles. Native app content defaults to
+    // the denser readable material; HyprGlass-backed shell surfaces opt into
+    // "clear" without maintaining a separate Glass component.
+    property string variant: "regular" // "regular" | "clear"
+    readonly property bool clearMaterial: variant === "clear"
+    property color tint: clearMaterial ? Theme.glassClear.tint : Theme.glassRegular.tint
+    property color rim: clearMaterial ? Theme.glassClear.rim : Theme.glassRegular.rim
+    property color rimLow: clearMaterial ? Theme.glassClear.rimLow : Theme.glassRegular.rimLow
+    property color shine: clearMaterial ? Theme.glassClear.shine : Theme.glassRegular.shine
     property bool filled: false
     property bool pressed: false
     property bool hovered: false
@@ -22,9 +27,12 @@ Item {
     default property alias content: body.data
 
     readonly property real r: Math.min(radius, width / 2, height / 2)
-    readonly property color shownTint: Theme.reduceTransparency ? Qt.rgba(tint.r, tint.g, tint.b, Math.max(tint.a, 0.94))
-                                     : Theme.glassStyle === "tinted" ? Qt.rgba(tint.r, tint.g, tint.b, Math.max(tint.a, Math.min(0.86, tint.a + 0.32)))
-                                     : tint
+    readonly property color shownTint: Theme.reduceTransparency
+        ? Qt.rgba(tint.r, tint.g, tint.b, Math.max(tint.a, clearMaterial ? 0.94 : 0.96))
+        : Theme.glassStyle === "tinted"
+            ? Qt.rgba(tint.r, tint.g, tint.b, Math.max(tint.a, clearMaterial ? 0.72 : 0.88))
+            : Qt.rgba(tint.r, tint.g, tint.b,
+                Math.max(tint.a, clearMaterial ? (Theme.dark ? 0.38 : 0.42) : 0.74))
 
     // The press: a little smaller and brighter, springing back. A transform, so
     // users can still animate `scale` (Control Center's modules spring in).
@@ -32,24 +40,29 @@ Item {
     Behavior on pressScale { Spring { spring: Theme.snappy } }
     transform: Scale { origin.x: root.width / 2; origin.y: root.height / 2; xScale: root.pressScale; yScale: root.pressScale }
 
-    Rectangle {
-        visible: root.shadow.a > 0
-        anchors { fill: parent; topMargin: 1; bottomMargin: -1 }
-        radius: root.r
-        color: root.shadow
+    Rectangle { id: shadowShape; anchors.fill: parent; radius: root.r; color: "#ffffff"; visible: false }
+    MultiEffect {
+        anchors.fill: shadowShape; source: shadowShape; autoPaddingEnabled: true
+        shadowEnabled: true
+        shadowColor: root.shadow.a > 0 ? root.shadow : "#70000000"
+        shadowOpacity: root.pressed ? 0.14 : root.hovered ? (root.clearMaterial ? 0.27 : 0.26) : 0.20
+        shadowBlur: 1.0
+        shadowVerticalOffset: root.pressed ? (root.clearMaterial ? 2 : 1)
+            : root.hovered ? (root.clearMaterial ? 7 : 6)
+            : (root.clearMaterial ? 5 : 4)
     }
     Rectangle {
         id: bodyFill
         anchors.fill: parent
         radius: root.r
-        color: root.filled ? "#ffffff" : root.shownTint
+        color: root.filled ? (Theme.dark ? "#e6ffffff" : "#f2ffffff") : root.shownTint
         Behavior on color { ColorAnimation { duration: 180 } }
     }
     Rectangle {
         anchors.fill: parent
         radius: root.r
         color: "#ffffff"
-        opacity: root.pressed ? 0.12 : root.hovered ? 0.05 : 0
+        opacity: root.pressed ? 0.16 : root.hovered ? 0.08 : 0
         Behavior on opacity { NumberAnimation { duration: 140 } }
     }
     // Sheen
@@ -57,7 +70,7 @@ Item {
         anchors.fill: parent
         radius: root.r
         visible: !root.filled
-        opacity: 0.5
+        opacity: root.clearMaterial ? 0.72 : 0.64
         gradient: Gradient {
             GradientStop { position: 0.0; color: root.shine }
             GradientStop { position: 0.42; color: "transparent" }
@@ -72,9 +85,9 @@ Item {
         fillRule: ShapePath.OddEvenFill
         fillGradient: LinearGradient {
             x1: 0; y1: 0; x2: root.width * 0.35; y2: root.height
-            GradientStop { position: 0; color: Qt.rgba(1, 1, 1, 0.045) }
-            GradientStop { position: 0.55; color: Qt.rgba(1, 1, 1, 0.012) }
-            GradientStop { position: 1; color: Qt.rgba(1, 1, 1, 0.025) }
+            GradientStop { position: 0; color: Qt.rgba(1, 1, 1, root.clearMaterial ? 0.10 : 0.075) }
+            GradientStop { position: 0.55; color: Qt.rgba(1, 1, 1, root.clearMaterial ? 0.025 : 0.020) }
+            GradientStop { position: 1; color: Qt.rgba(1, 1, 1, root.clearMaterial ? 0.055 : 0.045) }
         }
         PathRectangle { x: 0; y: 0; width: root.width; height: root.height; radius: root.r }
         PathRectangle {

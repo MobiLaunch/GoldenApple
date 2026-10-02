@@ -2,7 +2,7 @@
 Type=Application
 Name=System Settings
 Comment=Wi-Fi, displays, appearance, the Dock and everything else about this computer
-Icon=org.gnome.Settings
+Icon=preferences-system
 Exec=bash @APPS@/settings/open.sh
 StartupWMClass=org.goldengate.Settings
 Categories=Settings;System;

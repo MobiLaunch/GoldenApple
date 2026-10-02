@@ -4,18 +4,13 @@
 
 [org.gnome.desktop.interface]
 icon-theme='GoldenGate'
-font-name='Inter Variable 10'
-document-font-name='Inter Variable 10'
-monospace-font-name='JetBrains Mono 10'
+font-name='SF Pro Text 10'
+document-font-name='SF Pro Text 10'
+monospace-font-name='SF Mono 10'
 accent-color='blue'
 
 [org.gnome.desktop.wm.preferences]
 button-layout='close,minimize,maximize:'
 
-# Finder's list view: compact rows, small icons, folders that expand in place.
-[org.gnome.nautilus.list-view]
-default-zoom-level='small'
-use-tree-view=true
-
-[org.gnome.nautilus.preferences]
-show-create-link=true
+# Golden Gate Files owns file-browsing preferences. Do not reference Nautilus
+# schemas here: Nautilus is intentionally not part of the Golden Gate image.

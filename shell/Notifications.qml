@@ -12,7 +12,7 @@ import "components"
 
 PanelWindow {
     id: root
-    property bool dnd: false
+    readonly property bool dnd: Prefs.focusDnd
     readonly property var list: server.trackedNotifications.values
 
     anchors { top: true; right: true }
@@ -37,7 +37,8 @@ PanelWindow {
 
     IpcHandler {
         target: "notifications"
-        function toggleDnd(): void { root.dnd = !root.dnd }
+        function toggleDnd(): void { Quickshell.execDetached(["gg-pref", "focus.dnd", root.dnd ? "false" : "true"]) }
+        function setDnd(on: bool): void { Quickshell.execDetached(["gg-pref", "focus.dnd", on ? "true" : "false"]) }
         function clear(): void { root.list.slice().forEach((n) => n.dismiss()) }
     }
 
@@ -48,7 +49,7 @@ PanelWindow {
 
         Repeater {
             model: root.list.slice(0, 4)
-            delegate: Glass {
+            delegate: Glass { variant: "clear";
                 id: banner
                 required property var modelData
                 readonly property var n: modelData
@@ -66,7 +67,7 @@ PanelWindow {
 
                 Timer {
                     interval: banner.n.expireTimeout > 0 ? banner.n.expireTimeout * 1000 : 5500
-                    running: !hover.hovered && !banner.n.resident
+                    running: !hover.hovered && !banner.n.resident && banner.n.expireTimeout !== 0
                     onTriggered: banner.n.expire()
                 }
                 HoverHandler { id: hover }
@@ -101,17 +102,17 @@ PanelWindow {
                             anchors.fill: parent; radius: 9
                             visible: parent.resolved === ""
                             gradient: Gradient { GradientStop { position: 0; color: "#ff6b5f" } GradientStop { position: 1; color: "#ff2d55" } }
-                            Symbol { anchors.centerIn: parent; name: "bell"; size: 20 }
+                            Symbol { anchors.centerIn: parent; name: "bell"; size: 20; tone: "white" }
                         }
                     }
                     ColumnLayout {
                         Layout.fillWidth: true
                         spacing: 2
                         RowLayout {
-                            Text { Layout.fillWidth: true; text: banner.n.summary; elide: Text.ElideRight; color: Theme.label; font { family: Theme.fontUi; pixelSize: 13; weight: Font.DemiBold } }
+                            Text { Layout.fillWidth: true; text: banner.n.summary; textFormat: Text.PlainText; elide: Text.ElideRight; color: Theme.label; font { family: Theme.fontUi; pixelSize: 13; weight: Font.DemiBold } }
                             Text { text: "now"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: 12 } }
                         }
-                        Text { Layout.fillWidth: true; text: banner.n.body; wrapMode: Text.Wrap; maximumLineCount: 4; elide: Text.ElideRight; color: Theme.label; font { family: Theme.fontUi; pixelSize: 13 } }
+                        Text { Layout.fillWidth: true; text: banner.n.body; textFormat: Text.PlainText; wrapMode: Text.Wrap; maximumLineCount: 4; elide: Text.ElideRight; color: Theme.label; font { family: Theme.fontUi; pixelSize: 13 } }
                         RowLayout {
                             visible: banner.n.actions.length > 0
                             Layout.topMargin: 6
@@ -131,7 +132,7 @@ PanelWindow {
                     }
                 }
                 // Close button appears on hover, top-left like the system banners.
-                Glass {
+                Glass { variant: "clear";
                     x: -7; y: -7; width: 22; height: 22; radius: 11
                     tint: Theme.glassRegular.tint
                     opacity: hover.hovered ? 1 : 0
@@ -143,3 +144,4 @@ PanelWindow {
         }
     }
 }
+

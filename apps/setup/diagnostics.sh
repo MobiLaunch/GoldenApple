@@ -52,6 +52,30 @@ runtime=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}
   echo "== Errors this boot"
   journalctl --user -b -p warning --no-pager -q -n 80 2>/dev/null | cut -c1-240
   echo
+  echo "== Desktop services"
+  printf 'xdg-desktop-portal: '
+  systemctl --user is-active xdg-desktop-portal.service 2>/dev/null || true
+  printf 'xdg-desktop-portal-hyprland: '
+  systemctl --user is-active xdg-desktop-portal-hyprland.service 2>/dev/null || true
+  printf 'secret service: '
+  busctl --user --no-pager --list 2>/dev/null | grep -q 'org.freedesktop.secrets' && echo active || echo unavailable
+  printf 'XDG_DATA_DIRS: %s\n' "${XDG_DATA_DIRS:-}"
+
+  echo
+  echo "== HyprGlass"
+  hyprctl plugin list 2>/dev/null | sed -n '/hyprglass/,+8p' || true
+  hyprctl getoption plugin:hyprglass:layers:enabled 2>/dev/null || true
+  echo
+  echo "== App Store"
+  flatpak --user remotes --columns=name,url 2>/dev/null || true
+  storelog="$HOME/.local/state/golden-gate/app-store.log"
+  [ -f "$storelog" ] && tail -n 40 "$storelog" | cut -c1-240
+  echo
+  echo "== Golden Gate shell"
+  pgrep -a qs 2>/dev/null || true
+  shelllog="$HOME/.local/state/golden-gate-shell.log"
+  [ -f "$shelllog" ] && tail -n 80 "$shelllog" | cut -c1-240
+  echo
   echo "== Desktop log (end)"
   log=$(ls -t "$runtime"/hypr/*/hyprland.log 2>/dev/null | head -n1)
   [ -n "$log" ] && tail -n 40 "$log" | cut -c1-240

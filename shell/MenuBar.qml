@@ -65,22 +65,22 @@ PanelWindow {
         signal clicked()
         implicitWidth: row.implicitWidth + 18
         implicitHeight: 24
-        Glass {
+        Glass { variant: "clear";
             anchors.fill: parent
             radius: 12
             lens: 3
             tint: Qt.rgba(1, 1, 1, item.highlighted ? 0.24 : 0.18)
-            opacity: item.highlighted || barTap.pressed ? 1 : 0
-            Behavior on opacity { NumberAnimation { duration: item.highlighted || barTap.pressed ? 90 : 220 } }
+            opacity: item.highlighted || barTap.pressed ? 1 : barTap.containsMouse ? 0.42 : 0
+            Behavior on opacity { NumberAnimation { duration: Prefs.reduceMotion ? 1 : (item.highlighted || barTap.pressed ? 80 : 130) } }
         }
         RowLayout {
             id: row
             anchors.centerIn: parent
             spacing: 6
-            scale: barTap.pressed ? 0.94 : 1
-            Behavior on scale { Spring { spring: Theme.snappy } }
+            scale: !Prefs.reduceMotion && barTap.pressed ? 0.965 : !Prefs.reduceMotion && barTap.containsMouse ? 1.012 : 1
+            Behavior on scale { enabled: !Prefs.reduceMotion; NumberAnimation { duration: 80; easing.type: Easing.OutCubic } }
         }
-        MouseArea { id: barTap; anchors.fill: parent; onClicked: item.clicked() }
+        MouseArea { id: barTap; anchors.fill: parent; hoverEnabled: true; onClicked: item.clicked() }
     }
     component BarText: Text {
         property bool dark: false

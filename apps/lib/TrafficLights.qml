@@ -29,6 +29,9 @@ Row {
             readonly property bool enabled_: modelData.kind !== "zoom" || lights.canZoom
             width: 13; height: 13; radius: 6.5
             color: (lights.active || lights.showGlyphs) && enabled_ ? modelData.color : (Theme.dark ? "#4a4a4d" : "#d4d4d4")
+            scale: !Theme.reduceMotion && tap.pressed ? 0.88 : !Theme.reduceMotion && lights.showGlyphs ? 1.025 : 1
+            Behavior on color { ColorAnimation { duration: Theme.reduceMotion ? 1 : 120 } }
+            Behavior on scale { NumberAnimation { duration: Theme.reduceMotion ? 1 : 85; easing.type: Easing.OutCubic } }
             border { width: 0.5; color: Qt.rgba(0, 0, 0, 0.16) }
             // The gloss: a soft light catch across the top half.
             Rectangle {
@@ -42,7 +45,11 @@ Row {
             }
             Shape {
                 anchors.fill: parent
-                visible: lights.showGlyphs && light.enabled_
+                visible: opacity > 0
+                opacity: lights.showGlyphs && light.enabled_ ? 1 : 0
+                scale: lights.showGlyphs && !Theme.reduceMotion ? 1 : 0.82
+                Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 90 } }
+                Behavior on scale { NumberAnimation { duration: Theme.reduceMotion ? 1 : 100; easing.type: Easing.OutCubic } }
                 preferredRendererType: Shape.CurveRenderer
                 ShapePath {
                     strokeColor: Qt.rgba(0, 0, 0, 0.55); strokeWidth: 1.2; fillColor: "transparent"; capStyle: ShapePath.RoundCap
@@ -57,6 +64,7 @@ Row {
                 }
             }
             TapHandler {
+                id: tap
                 enabled: light.enabled_
                 onTapped: {
                     if (light.modelData.kind === "close") Qt.quit()

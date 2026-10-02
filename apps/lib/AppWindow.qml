@@ -127,7 +127,7 @@ FloatingWindow {
             x: win.inset; y: win.inset
             width: win.sidebarWidth; height: parent.height - 2 * win.inset
             radius: Theme.radiusSidebar
-            color: Theme.sidebarBg
+            color: Theme.reduceTransparency ? Qt.rgba(Theme.sidebarBg.r, Theme.sidebarBg.g, Theme.sidebarBg.b, 1) : Theme.sidebarBg
             border { width: 1; color: Theme.dark ? "#1affffff" : "#80ffffff" }
             Item {
                 id: sidebarArea
@@ -195,7 +195,13 @@ FloatingWindow {
             anchors.fill: parent
             radius: Theme.radiusWindow
             color: "transparent"
-            border { width: 1; color: Theme.dark ? "#26ffffff" : "#26000000" }
+            border {
+                width: 1
+                color: win.active
+                    ? (Theme.dark ? "#30ffffff" : "#26000000")
+                    : (Theme.dark ? "#1affffff" : "#18000000")
+            }
+            Behavior on border.color { ColorAnimation { duration: Theme.reduceMotion ? 1 : 150 } }
         }
 
         Item {
@@ -209,6 +215,7 @@ FloatingWindow {
             model: win.resizable ? [
                 { e: Qt.LeftEdge, c: Qt.SizeHorCursor }, { e: Qt.RightEdge, c: Qt.SizeHorCursor },
                 { e: Qt.TopEdge, c: Qt.SizeVerCursor }, { e: Qt.BottomEdge, c: Qt.SizeVerCursor },
+                { e: Qt.TopEdge | Qt.LeftEdge, c: Qt.SizeFDiagCursor }, { e: Qt.TopEdge | Qt.RightEdge, c: Qt.SizeBDiagCursor },
                 { e: Qt.BottomEdge | Qt.RightEdge, c: Qt.SizeFDiagCursor }, { e: Qt.BottomEdge | Qt.LeftEdge, c: Qt.SizeBDiagCursor },
             ] : []
             delegate: MouseArea {
@@ -217,13 +224,15 @@ FloatingWindow {
                 readonly property bool r: modelData.e & Qt.RightEdge
                 readonly property bool t: modelData.e & Qt.TopEdge
                 readonly property bool b: modelData.e & Qt.BottomEdge
-                x: r ? frame.width - (b ? 14 : 5) : 0
-                y: b ? frame.height - (l || r ? 14 : 5) : 0
-                width: (l || r) ? (b ? 14 : 5) : frame.width
-                height: (t || b) && !(l || r) ? 5 : (b ? 14 : frame.height)
+                readonly property bool corner: (l || r) && (t || b)
+                x: r ? frame.width - (corner ? 14 : 5) : 0
+                y: b ? frame.height - (corner ? 14 : 5) : 0
+                width: (l || r) ? (corner ? 14 : 5) : frame.width
+                height: (t || b) ? (corner ? 14 : 5) : frame.height
                 cursorShape: modelData.c
                 onPressed: win.startSystemResize(modelData.e)
             }
         }
     }
 }
+

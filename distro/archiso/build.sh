@@ -21,13 +21,28 @@ PROFILE="$WORK/profile"
 say() { printf '\033[1;33m›\033[0m %s\n' "$*"; }
 
 [[ $EUID -eq 0 ]] || { echo "build.sh must run as root (mkarchiso needs it)"; exit 1; }
-for tool in mkarchiso rsvg-convert; do
-  command -v "$tool" >/dev/null || { echo "missing $tool: pacman -S archiso librsvg"; exit 1; }
+for tool in mkarchiso rsvg-convert curl sha256sum; do
+  command -v "$tool" >/dev/null || { echo "missing $tool: pacman -S archiso librsvg curl coreutils"; exit 1; }
 done
 
 say "profile: releng + golden-gate"
-rm -rf "$PROFILE"
 mkdir -p "$WORK"
+
+# A failed/interrupted mkarchiso run leaves stage markers in the work directory.
+# Never reuse them for a new Golden Gate build. Refuse to clean while anything
+# is still mounted below the old tree, because deleting through a bind mount can
+# damage files outside the repository.
+if [[ -d "$WORK/build" ]]; then
+  if findmnt -Rno TARGET "$WORK/build" 2>/dev/null | grep -q .; then
+    echo "Previous ArchISO work tree still has active mounts under: $WORK/build"
+    echo "Unmount those mounts first, then run the build again."
+    exit 1
+  fi
+  say "cleaning previous mkarchiso work tree"
+  rm -rf "$WORK/build"
+fi
+
+rm -rf "$PROFILE"
 cp -r /usr/share/archiso/configs/releng "$PROFILE"
 AIR="$PROFILE/airootfs"
 
@@ -45,6 +60,19 @@ file_permissions+=(
   ["/usr/local/bin/gnome-calculator"]="0:0:755"
   ["/usr/local/bin/gg-diagnostics"]="0:0:755"
   ["/usr/local/bin/gg-settings"]="0:0:755"
+  ["/usr/local/bin/gg-web"]="0:0:755"
+  ["/usr/local/bin/gg-install"]="0:0:755"
+  ["/usr/local/bin/gg-software"]="0:0:755"
+  ["/usr/local/bin/gg-files"]="0:0:755"
+  ["/usr/local/bin/gg-pref"]="0:0:755"
+  ["/usr/local/bin/gg-hyprglass-sync"]="0:0:755"
+  ["/usr/local/bin/gg-apply-preferences"]="0:0:755"
+  ["/usr/lib/golden-gate/account-helper.py"]="0:0:755"
+  ["/usr/lib/golden-gate/pref-helper.py"]="0:0:755"
+  ["/usr/lib/golden-gate/hyprglass-sync.sh"]="0:0:755"
+  ["/usr/lib/golden-gate/apply-preferences.sh"]="0:0:755"
+  ["/usr/lib/golden-gate/hyprglass.so"]="0:0:755"
+  ["/etc/sudoers.d/20-golden-wheel"]="0:0:440"
   ["/etc/sudoers.d/10-golden-live"]="0:0:440"
   ["/home/golden"]="1000:1000:750"
 )
@@ -62,10 +90,19 @@ build_aur() {
   chown gg-builder: "$src"
   mkdir -p "$REPO/distro/localrepo"
   for pkg in "$@"; do
-    sudo -u gg-builder git clone -q "https://aur.archlinux.org/$pkg.git" "$src/$pkg"
+    # The repository may itself live under /root. Always enter the builder-owned
+    # temp tree before dropping privileges so git/makepkg never inherit an
+    # inaccessible current working directory.
+    (
+      cd "$src"
+      sudo -u gg-builder env HOME=/home/gg-builder git clone -q "https://aur.archlinux.org/$pkg.git" "$pkg"
+    )
     # The AUR hands out an empty repository for names it doesn't know.
     [[ -f $src/$pkg/PKGBUILD ]] || { echo "$pkg is not in the AUR either"; exit 1; }
-    (cd "$src/$pkg" && sudo -u gg-builder makepkg --syncdeps --noconfirm --needed)
+    (
+      cd "$src/$pkg"
+      sudo -u gg-builder env HOME=/home/gg-builder makepkg --syncdeps --noconfirm --needed
+    )
     built=0
     for f in "$src/$pkg"/*.pkg.tar.zst; do
       [[ -e $f && $f != *-debug-* ]] || continue
@@ -97,6 +134,23 @@ if ((${#missing[@]})); then
   fi
 fi
 
+# ---------------------------------------------------------------- HyprGlass
+# Pin the prebuilt plugin to the Hyprland ABI shipped by this image. The release
+# is explicitly built for Hyprland 0.56.2; fail rather than creating an ISO with
+# a silently incompatible compositor plugin after Arch updates Hyprland.
+HYPRGLASS_VERSION="v0.8.1"
+HYPRGLASS_SHA256="1db3ccb154e7a7f04954602c1a9a643fd680e724491fe6be7ccc88e166162233"
+HYPRLAND_VERSION="$(pacman -Si hyprland 2>/dev/null | awk -F': ' '/^Version/{print $2; exit}')"
+case "$HYPRLAND_VERSION" in
+  0.56.2-*) ;;
+  *) echo "HyprGlass $HYPRGLASS_VERSION is pinned for Hyprland 0.56.2, but repositories provide $HYPRLAND_VERSION"; exit 1 ;;
+esac
+say "HyprGlass $HYPRGLASS_VERSION for Hyprland $HYPRLAND_VERSION"
+mkdir -p "$AIR/usr/lib/golden-gate"
+curl -fL --retry 3 --retry-delay 2   "https://github.com/hyprnux/hyprglass/releases/download/$HYPRGLASS_VERSION/hyprglass.so"   -o "$AIR/usr/lib/golden-gate/hyprglass.so"
+printf '%s  %s\n' "$HYPRGLASS_SHA256" "$AIR/usr/lib/golden-gate/hyprglass.so" | sha256sum -c -
+chmod 755 "$AIR/usr/lib/golden-gate/hyprglass.so"
+
 # ---------------------------------------------------------------- live user + session
 cp -a "$HERE/overlay/." "$AIR/"
 grep -q '^golden:' "$AIR/etc/passwd"  || echo 'golden:x:1000:1000:Golden Gate:/home/golden:/bin/bash' >> "$AIR/etc/passwd"
@@ -112,6 +166,7 @@ rm -f "$WANTS/systemd-networkd.service" "$AIR/etc/systemd/system/network-online.
 ln -sf /usr/lib/systemd/system/NetworkManager.service "$WANTS/NetworkManager.service"
 ln -sf /usr/lib/systemd/system/bluetooth.service "$WANTS/bluetooth.service"
 ln -sf /usr/lib/systemd/system/keyd.service "$WANTS/keyd.service"
+ln -sf /usr/lib/systemd/system/power-profiles-daemon.service "$WANTS/power-profiles-daemon.service"
 # A Secret Service for apps that keep passwords (Fractal, Geary, Web).
 mkdir -p "$AIR/etc/systemd/user/sockets.target.wants"
 ln -sf /usr/lib/systemd/user/gnome-keyring-daemon.socket "$AIR/etc/systemd/user/sockets.target.wants/gnome-keyring-daemon.socket"
@@ -121,6 +176,33 @@ ln -sf /etc/systemd/system/gg-live-home.service "$WANTS/gg-live-home.service"
 # ---------------------------------------------------------------- desktop
 say "installing the Golden Gate desktop into the image"
 bash "$REPO/scripts/install.sh" --system "$AIR"
+
+# Optional locally supplied Apple typography/symbol assets. These directories are
+# ignored by git so proprietary files are never committed or redistributed by
+# Golden Gate. A local ISO build may overlay files the builder is licensed to use.
+LOCAL_FONTS="$REPO/local-assets/fonts"
+if [[ -d "$LOCAL_FONTS" ]] && find "$LOCAL_FONTS" -maxdepth 1 -type f \( -iname '*.otf' -o -iname '*.ttf' -o -iname '*.ttc' \) -print -quit | grep -q .; then
+  say "installing locally supplied SF Pro/SF Mono fonts"
+  mkdir -p "$AIR/usr/local/share/fonts/golden-gate"
+  while IFS= read -r -d '' font; do
+    install -m644 "$font" "$AIR/usr/local/share/fonts/golden-gate/$(basename "$font")"
+  done < <(find "$LOCAL_FONTS" -maxdepth 1 -type f \( -iname '*.otf' -o -iname '*.ttf' -o -iname '*.ttc' \) -print0)
+fi
+
+LOCAL_SYMBOLS="$REPO/local-assets/symbols"
+if [[ -d "$LOCAL_SYMBOLS" ]] && find "$LOCAL_SYMBOLS" -maxdepth 1 -type f -iname '*.svg' -print -quit | grep -q .; then
+  say "overlaying locally supplied system symbols"
+  mkdir -p "$AIR/usr/share/golden-gate/ui/assets/symbols" \
+           "$AIR/usr/share/sddm/themes/golden-gate/assets/symbols" \
+           "$AIR/etc/skel/.config/quickshell/golden-gate/assets/symbols"
+  while IFS= read -r -d '' symbol; do
+    name="$(basename "$symbol")"
+    install -m644 "$symbol" "$AIR/usr/share/golden-gate/ui/assets/symbols/$name"
+    install -m644 "$symbol" "$AIR/usr/share/sddm/themes/golden-gate/assets/symbols/$name"
+    install -m644 "$symbol" "$AIR/etc/skel/.config/quickshell/golden-gate/assets/symbols/$name"
+  done < <(find "$LOCAL_SYMBOLS" -maxdepth 1 -type f -iname '*.svg' -print0)
+fi
+
 mkdir -p "$AIR/home/golden"
 cp -a "$AIR/etc/skel/." "$AIR/home/golden/"
 cat > "$AIR/home/golden/.bash_profile" <<'EOF'
@@ -129,6 +211,8 @@ cat > "$AIR/home/golden/.bash_profile" <<'EOF'
 # shell if the compositor can't start, instead of looping through autologin.
 if [[ -z $WAYLAND_DISPLAY && $(tty) == /dev/tty1 ]]; then gg-session; fi
 EOF
+# New local accounts inherit the desktop start too (useradd copies /etc/skel).
+cp "$AIR/home/golden/.bash_profile" "$AIR/etc/skel/.bash_profile"
 # The live user has no password, so there is nothing for an idle lock to protect.
 # Drop the listener that locks and the lock-before-sleep line; keep the rest.
 awk '
@@ -160,6 +244,40 @@ printf '[Service]\nExecStart=\nExecStart=-/usr/bin/plymouth quit --retain-splash
 : > "$AIR/home/golden/.hushlogin"
 
 # ---------------------------------------------------------------- build
+say "validating staged desktop"
+if ! grep -qx 'gsettings-desktop-schemas' "$PROFILE/packages.x86_64"; then
+  echo "generated profile is missing gsettings-desktop-schemas"
+  exit 1
+fi
+if [[ ! -f "$AIR/usr/share/glib-2.0/schemas/90_golden-gate.gschema.override" ]]; then
+  echo "Golden Gate GSettings override was not staged into the image"
+  exit 1
+fi
+if grep -q 'org.gnome.nautilus' "$AIR/usr/share/glib-2.0/schemas/90_golden-gate.gschema.override"; then
+  echo "GSettings override still references Nautilus, which is not part of the image"
+  exit 1
+fi
+
 say "mkarchiso"
+# Validate the releng boot template before mkarchiso expands %INSTALL_DIR% and
+# %ARCHISO_UUID%. Current ArchISO generates the systemd-boot UEFI entry during
+# the build, so requiring the final expanded arguments here is incorrect.
+if ! grep -qs '^install_dir="arch"' "$PROFILE/profiledef.sh"; then
+  echo "generated profile has an unexpected ArchISO install_dir"
+  exit 1
+fi
+if ! grep -qs "uefi.systemd-boot" "$PROFILE/profiledef.sh"; then
+  echo "generated profile has no systemd-boot UEFI boot mode"
+  exit 1
+fi
+if ! grep -RqsF 'archisobasedir=%INSTALL_DIR%' "$PROFILE/syslinux" "$PROFILE/grub" 2>/dev/null; then
+  echo "generated profile has no ArchISO base-directory discovery template"
+  exit 1
+fi
+if ! grep -RqsF 'archisosearchuuid=%ARCHISO_UUID%' "$PROFILE/syslinux" "$PROFILE/grub" 2>/dev/null; then
+  echo "generated profile has no ArchISO media-discovery template"
+  exit 1
+fi
 mkarchiso -v -w "$WORK/build" -o "$OUT" "$PROFILE"
 say "done: $(ls -1 "$OUT"/*.iso | tail -1)"
+

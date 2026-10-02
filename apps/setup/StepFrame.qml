@@ -23,12 +23,12 @@ Item {
     Column {
         id: head
         anchors.horizontalCenter: parent.horizontalCenter
-        y: 40
-        width: parent.width - 120
+        y: frame.height < 560 ? 18 : 32
+        width: parent.width - 64
         spacing: 12
         Rectangle {
             anchors.horizontalCenter: parent.horizontalCenter
-            width: 64; height: 64; radius: 32
+            width: frame.height < 560 ? 44 : 64; height: width; radius: width / 2
             gradient: Gradient {
                 GradientStop { position: 0; color: Qt.lighter(frame.symbolColor, 1.25) }
                 GradientStop { position: 1; color: frame.symbolColor }
@@ -40,7 +40,7 @@ Item {
             horizontalAlignment: Text.AlignHCenter
             text: frame.title
             color: Theme.label
-            font { family: Theme.fontUi; pixelSize: 26; weight: Font.Bold }
+            font { family: Theme.fontUi; pixelSize: frame.height < 560 ? 22 : 26; weight: Font.Bold }
         }
         Text {
             width: parent.width
@@ -55,43 +55,32 @@ Item {
     }
     Item {
         id: area
-        anchors { top: head.bottom; topMargin: 22; left: parent.left; right: parent.right; bottom: buttons.top; bottomMargin: 16; leftMargin: 60; rightMargin: 60 }
+        anchors { top: head.bottom; topMargin: 22; left: parent.left; right: parent.right; bottom: buttons.top; bottomMargin: 16; leftMargin: 32; rightMargin: 32 }
     }
 
     Item {
         id: buttons
         anchors { left: parent.left; right: parent.right; bottom: parent.bottom; margins: 26 }
         height: 32
-        Text {
+        Button {
             visible: frame.canGoBack
             anchors.verticalCenter: parent.verticalCenter
             text: "Back"
-            color: Theme.accent
-            font { family: Theme.fontUi; pixelSize: 13; weight: Font.Medium }
-            TapHandler { onTapped: frame.back() }
+            onClicked: frame.back()
         }
         Row {
             anchors { right: parent.right; verticalCenter: parent.verticalCenter }
-            spacing: 18
-            Text {
+            spacing: 12
+            Button {
                 visible: !!frame.secondaryText
-                anchors.verticalCenter: parent.verticalCenter
                 text: frame.secondaryText
-                color: Theme.accent
-                font { family: Theme.fontUi; pixelSize: 13; weight: Font.Medium }
-                TapHandler { onTapped: frame.secondary() }
+                onClicked: frame.secondary()
             }
-            Rectangle {
-                width: Math.max(104, label.width + 36); height: 30; radius: 15
-                color: frame.canContinue ? Theme.accent : (Theme.dark ? "#33ffffff" : "#26000000")
-                Text {
-                    id: label
-                    anchors.centerIn: parent
-                    text: frame.continueText
-                    color: frame.canContinue ? "#ffffff" : Theme.tertiaryLabel
-                    font { family: Theme.fontUi; pixelSize: 13; weight: Font.DemiBold }
-                }
-                TapHandler { enabled: frame.canContinue; onTapped: frame.next() }
+            Button {
+                text: frame.continueText
+                prominent: true
+                enabled: frame.canContinue
+                onClicked: frame.next()
             }
         }
     }

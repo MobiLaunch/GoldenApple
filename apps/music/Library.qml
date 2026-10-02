@@ -5,6 +5,7 @@
 import Quickshell
 import Quickshell.Io
 import QtQuick
+import "../lib/paths.js" as Paths
 
 Item {
     id: lib
@@ -26,10 +27,10 @@ Item {
             const c = line.split("\t")
             if (c.length < 10) continue
             out.push({ path: c[0], mtime: Number(c[1]), title: c[2], artist: c[3], album: c[4], albumArtist: c[5],
-                       track: Number(c[6]) || 0, year: c[7], seconds: Number(c[8]) || 0, art: c[9] ? "file://" + c[9] : "" })
+                       track: Number(c[6]) || 0, year: c[7], seconds: Number(c[8]) || 0, art: c[9] ? Paths.fileUrl(c[9]) : "" })
         }
         tracks = out
-        const byAlbum = {}
+        const byAlbum = Object.create(null)
         for (const t of out) {
             const k = t.albumArtist + "\u0001" + t.album
             const a = byAlbum[k] ?? (byAlbum[k] = { key: k, title: t.album, artist: t.albumArtist, year: t.year, art: t.art, tracks: [], added: 0 })
@@ -40,7 +41,7 @@ Item {
         const as = Object.values(byAlbum)
         for (const a of as) a.tracks.sort((x, y) => x.track - y.track || x.title.localeCompare(y.title))
         albums = as.sort((x, y) => x.title.localeCompare(y.title))
-        const byArtist = {}
+        const byArtist = Object.create(null)
         for (const a of as) {
             const r = byArtist[a.artist] ?? (byArtist[a.artist] = { name: a.artist, albums: [], art: a.art })
             r.albums.push(a)
@@ -95,3 +96,4 @@ Item {
     }
     function playlistTracks(p) { return p.paths.map((x) => tracks.find((t) => t.path === x)).filter((t) => t) }
 }
+
