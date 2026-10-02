@@ -19,6 +19,7 @@ class BrowserBackend(QObject):
     darkChanged = Signal()
     libraryChanged = Signal()
     toastRequested = Signal(str)
+    externalUrlRequested = Signal(str)
     externalUrls = Signal(str)
 
     def __init__(self, *, private=False, launch_values=None, data_dir=None, cache_dir=None, download_dir=None, parent=None):
