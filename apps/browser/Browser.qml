@@ -62,7 +62,7 @@ Window {
 
     function openWebContext(request, view) {
         request.accepted = true
-        const point = view.mapToItem(root, request.position.x, request.position.y)
+        const point = view.mapToItem(root.contentItem, request.position.x, request.position.y)
         const link = request.linkUrl ? request.linkUrl.toString() : ""
         const selected = request.selectedText || ""
         let items = []
