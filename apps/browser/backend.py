@@ -12,6 +12,7 @@ from urllib.parse import urlsplit
 
 from PySide6.QtCore import QObject, Property, QStandardPaths, Signal, Slot
 from PySide6.QtGui import QGuiApplication
+from PySide6.QtWebEngineCore import QWebEngineUrlRequestInterceptor
 
 from model import Store, address_url
 
@@ -21,10 +22,70 @@ def profile_key(name):
     return key[:48] or "personal"
 
 
+class PrivacyInterceptor(QWebEngineUrlRequestInterceptor):
+    """Conservative third-party tracker blocking for Golden Gate Web.
+
+    This is intentionally a small built-in domain set, not a claim of parity
+    with Safari's Intelligent Tracking Prevention or a full ad blocker.
+    """
+    blocked = Signal(str, str)
+
+    TRACKERS = (
+        "doubleclick.net",
+        "googlesyndication.com",
+        "google-analytics.com",
+        "analytics.google.com",
+        "googletagmanager.com",
+        "connect.facebook.net",
+        "facebook.net",
+        "ads-twitter.com",
+        "analytics.twitter.com",
+        "scorecardresearch.com",
+        "segment.io",
+        "segment.com",
+        "api.segment.io",
+        "mixpanel.com",
+        "api.mixpanel.com",
+        "amplitude.com",
+        "api.amplitude.com",
+        "hotjar.com",
+        "static.hotjar.com",
+    )
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.enabled = True
+
+    @staticmethod
+    def _matches(host, domain):
+        return host == domain or host.endswith("." + domain)
+
+    def interceptRequest(self, info):
+        if not self.enabled:
+            return
+        try:
+            request_host = info.requestUrl().host().lower().rstrip(".")
+            first_host = info.firstPartyUrl().host().lower().rstrip(".")
+        except Exception:
+            return
+        if not request_host or not first_host:
+            return
+        # Never block the site the user intentionally opened or one of its own
+        # subdomains. Protection applies only to known third-party trackers.
+        if request_host == first_host or request_host.endswith("." + first_host):
+            return
+        tracker = next((domain for domain in self.TRACKERS if self._matches(request_host, domain)), None)
+        if not tracker:
+            return
+        info.block(True)
+        self.blocked.emit(first_host, tracker)
+
+
 class BrowserBackend(QObject):
     darkChanged = Signal()
     libraryChanged = Signal()
     profilesChanged = Signal()
+    privacyChanged = Signal()
     toastRequested = Signal(str)
     externalUrls = Signal(str)
 
@@ -76,6 +137,13 @@ class BrowserBackend(QObject):
             self.store.data["closedTabs"] = []
         else:
             self.store = Store(data / "state.json", False)
+
+        self._privacy_total = 0
+        self._privacy_sites = {}
+        self._privacy_interceptor = PrivacyInterceptor(self)
+        self._privacy_interceptor.enabled = bool(self.store.data["settings"].get("privacyProtection", True))
+        self._privacy_interceptor.blocked.connect(self._tracker_blocked)
+
         self._dark = self._is_dark()
         QGuiApplication.styleHints().colorSchemeChanged.connect(self._scheme_changed)
 
@@ -163,6 +231,52 @@ class BrowserBackend(QObject):
     @Property(str, constant=True)
     def settingsJson(self):
         return json.dumps(self.store.data["settings"])
+
+    def _tracker_blocked(self, site, domain):
+        self._privacy_total += 1
+        site_record = self._privacy_sites.setdefault(site, {})
+        site_record[domain] = site_record.get(domain, 0) + 1
+        self.privacyChanged.emit()
+
+    def _privacy_payload(self, site=None):
+        domains = {}
+        if site:
+            domains = dict(self._privacy_sites.get(site, {}))
+            total = sum(domains.values())
+        else:
+            total = self._privacy_total
+            for record in self._privacy_sites.values():
+                for domain, count in record.items():
+                    domains[domain] = domains.get(domain, 0) + count
+        ranked = [
+            {"domain": domain, "count": count}
+            for domain, count in sorted(domains.items(), key=lambda item: (-item[1], item[0]))
+        ]
+        return {
+            "enabled": bool(self._privacy_interceptor.enabled),
+            "blocked": total,
+            "domains": ranked[:30],
+        }
+
+    @Slot(QObject)
+    def attachProfile(self, profile):
+        setter = getattr(profile, "setUrlRequestInterceptor", None)
+        if setter is None:
+            self.toastRequested.emit("Privacy protection could not attach to this browser profile.")
+            return
+        setter(self._privacy_interceptor)
+
+    @Slot(result=str)
+    def privacyReportJson(self):
+        return json.dumps(self._privacy_payload())
+
+    @Slot(str, result=str)
+    def privacyReportForUrl(self, value):
+        try:
+            site = (urlsplit(value).hostname or "").lower()
+        except (ValueError, AttributeError):
+            site = ""
+        return json.dumps(self._privacy_payload(site))
 
     @Slot(str, result=str)
     def resolveAddress(self, text):
@@ -262,6 +376,7 @@ class BrowserBackend(QObject):
             "readingList": self.store.data["readingList"][:6],
             "recentlyClosed": self.store.data["closedTabs"][:6],
             "private": self.private,
+            "privacy": self._privacy_payload(),
         })
 
     @Slot(str, result=str)
@@ -335,6 +450,9 @@ class BrowserBackend(QObject):
         except (TypeError, ValueError):
             return
         self.store.data["settings"][key] = value
+        if key == "privacyProtection":
+            self._privacy_interceptor.enabled = bool(value)
+            self.privacyChanged.emit()
         self._save()
 
 
