@@ -74,7 +74,7 @@ else
   kw plugin:hyprglass:refraction_strength 0.24
   kw plugin:hyprglass:chromatic_aberration 0.055
   kw plugin:hyprglass:fresnel_strength 0.28
-  kw plugin:hyprglass:specular_strength 0.30
+  kw plugin:hyprglass:specular_strength 0.22
   kw plugin:hyprglass:edge_thickness 0.032
   kw plugin:hyprglass:lens_distortion 0.18
   kw plugin:hyprglass:dark:brightness 0.80
@@ -82,11 +82,11 @@ else
   kw plugin:hyprglass:dark:saturation 0.92
   kw plugin:hyprglass:dark:vibrancy 0.08
   kw plugin:hyprglass:dark:adaptive_dim 0.24
-  kw plugin:hyprglass:light:brightness 0.94
+  kw plugin:hyprglass:light:brightness 0.88
   kw plugin:hyprglass:light:contrast 1.01
   kw plugin:hyprglass:light:saturation 0.94
   kw plugin:hyprglass:light:vibrancy 0.06
-  kw plugin:hyprglass:light:adaptive_boost 0.08
+  kw plugin:hyprglass:light:adaptive_boost 0.03
 fi
 
 if [ "$REDUCE" = 1 ]; then
@@ -106,8 +106,8 @@ else
     kw plugin:hyprglass:glass_opacity 0.80
     [ "$THEME" = dark ] && kw plugin:hyprglass:tint_color 0x283c6e38 || kw plugin:hyprglass:tint_color 0xffffff42
   else
-    kw plugin:hyprglass:glass_opacity 0.60
-    [ "$THEME" = dark ] && kw plugin:hyprglass:tint_color 0x283c6e24 || kw plugin:hyprglass:tint_color 0xffffff18
+    kw plugin:hyprglass:glass_opacity 0.48
+    [ "$THEME" = dark ] && kw plugin:hyprglass:tint_color 0x283c6e24 || kw plugin:hyprglass:tint_color 0x7f879018
   fi
 fi
 
