@@ -97,6 +97,7 @@ PanelWindow {
         property string title
         property string subtitle
         property bool on: false
+        property var toggleAction: null
         signal activated()
         implicitHeight: 48
 
@@ -105,7 +106,10 @@ PanelWindow {
             anchors { left: parent.left; verticalCenter: parent.verticalCenter }
             icon: row.icon
             on: row.on
-            onActivated: row.activated()
+            onActivated: {
+                if (row.toggleAction) row.toggleAction()
+                else row.activated()
+            }
         }
         Column {
             anchors {
@@ -275,6 +279,10 @@ PanelWindow {
                         icon: "wifi"; title: "Wi-Fi"
                         subtitle: cc.wifiOn ? (cc.ssid || "Not Connected") : "Off"
                         on: cc.wifiOn
+                        toggleAction: () => {
+                            cc.wifiOn = !cc.wifiOn
+                            Quickshell.execDetached(["nmcli", "radio", "wifi", cc.wifiOn ? "on" : "off"])
+                        }
                         onActivated: { cc.open = false; cc.run("gg-settings wifi") }
                     }
                     Rectangle { width: parent.width - 48; x: 48; height: 0.5; color: Theme.separator }
@@ -283,6 +291,10 @@ PanelWindow {
                         icon: "bluetooth"; title: "Bluetooth"
                         subtitle: Bluetooth.defaultAdapter?.enabled ? "On" : "Off"
                         on: Bluetooth.defaultAdapter?.enabled ?? false
+                        toggleAction: () => {
+                            const enabled = !(Bluetooth.defaultAdapter?.enabled ?? false)
+                            Quickshell.execDetached(["bluetoothctl", "power", enabled ? "on" : "off"])
+                        }
                         onActivated: { cc.open = false; cc.run("gg-settings bluetooth") }
                     }
                     Rectangle { width: parent.width - 48; x: 48; height: 0.5; color: Theme.separator }
