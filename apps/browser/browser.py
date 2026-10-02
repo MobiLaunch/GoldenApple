@@ -13,15 +13,31 @@ from PySide6.QtNetwork import QLocalServer, QLocalSocket
 from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtWebEngineQuick import QtWebEngineQuick
 
-from backend import BrowserBackend
+from backend import BrowserBackend, profile_key
 from model import address_url
+
+
+def parse_arguments(values):
+    private = False
+    profile = "Personal"
+    launch = []
+    i = 0
+    while i < len(values):
+        value = values[i]
+        if value == "--private":
+            private = True
+        elif value == "--profile" and i + 1 < len(values):
+            i += 1
+            profile = values[i].strip()[:60] or "Personal"
+        else:
+            launch.append(value)
+        i += 1
+    return private, profile, launch
 
 
 def normalized_launch_values(values):
     result = []
     for value in values:
-        if value == "--private":
-            continue
         try:
             result.append(address_url(value))
         except ValueError:
@@ -29,9 +45,15 @@ def normalized_launch_values(values):
     return result
 
 
-def handoff_to_existing(values):
+def instance_name(profile):
+    key = profile_key(profile)
+    base = "goldengate-web-" + str(os.getuid())
+    return base if key == "personal" else base + "-" + key
+
+
+def handoff_to_existing(values, profile):
     socket = QLocalSocket()
-    socket.connectToServer("goldengate-web-" + str(os.getuid()))
+    socket.connectToServer(instance_name(profile))
     if not socket.waitForConnected(1500):
         return False
     socket.write((json.dumps(values or ["about:blank"]) + "\n").encode())
@@ -54,23 +76,26 @@ def main():
     app.setDesktopFileName("org.goldengate.Web")
     app.setQuitOnLastWindowClosed(True)
 
-    private = "--private" in sys.argv
-    launch_values = normalized_launch_values(sys.argv[1:])
+    private, profile_name, launch_args = parse_arguments(sys.argv[1:])
+    launch_values = normalized_launch_values(launch_args)
 
-    data_dir = Path(QStandardPaths.writableLocation(QStandardPaths.AppDataLocation))
-    data_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
+    backend = BrowserBackend(
+        private=private,
+        launch_values=launch_values,
+        profile_name=profile_name,
+    )
 
     lock = None
     if not private:
-        lock = QLockFile(str(data_dir / "browser.lock"))
+        profile_data = Path(backend.dataDir)
+        profile_data.mkdir(parents=True, exist_ok=True, mode=0o700)
+        lock = QLockFile(str(profile_data / "browser.lock"))
         lock.setStaleLockTime(0)
         if not lock.tryLock(0):
-            if handoff_to_existing(launch_values):
+            if handoff_to_existing(launch_values, profile_name):
                 return 0
-            sys.stderr.write("Golden Gate Web is already running but could not receive this request.\n")
+            sys.stderr.write("This Golden Gate Web profile is already running but could not receive this request.\n")
             return 1
-
-    backend = BrowserBackend(private=private, launch_values=launch_values)
     engine = QQmlApplicationEngine()
     engine.rootContext().setContextProperty("BrowserBackend", backend)
 
@@ -94,7 +119,7 @@ def main():
     sockets = set()
     if not private:
         server = QLocalServer(app)
-        name = "goldengate-web-" + str(os.getuid())
+        name = instance_name(profile_name)
         QLocalServer.removeServer(name)
         server.setSocketOptions(QLocalServer.UserAccessOption)
         if server.listen(name):
