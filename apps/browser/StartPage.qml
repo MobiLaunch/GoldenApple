@@ -234,11 +234,21 @@ Flickable {
                         anchors.verticalCenter: parent.verticalCenter
                         width: parent.width - 70
                         spacing: 4
-                        Text { text: "Privacy"; color: Theme.label; font { family: Theme.fontUi; pixelSize: 15; weight: Font.DemiBold } }
+                        Text {
+                            text: "Privacy Report"
+                            color: Theme.label
+                            font { family: Theme.fontUi; pixelSize: 15; weight: Font.DemiBold }
+                        }
                         Text {
                             width: parent.width
                             wrapMode: Text.WordWrap
-                            text: "Site permissions stay under your control. A detailed privacy report is coming in the next browser pass."
+                            text: !root.data.privacy?.enabled
+                                ? "Privacy Protection is turned off."
+                                : (root.data.privacy?.blocked ?? 0) === 0
+                                    ? "No known third-party tracking requests blocked in this session yet."
+                                    : (root.data.privacy.blocked + " known tracking request"
+                                       + (root.data.privacy.blocked === 1 ? "" : "s")
+                                       + " blocked from loading.")
                             color: Theme.secondaryLabel
                             font { family: Theme.fontUi; pixelSize: 12 }
                         }
