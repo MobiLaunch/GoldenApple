@@ -46,7 +46,7 @@ PanelWindow {
     }
 
     function showEntryMenu(entry, item, localX, localY) {
-        const point = item.mapToItem(dock, localX, localY)
+        const point = item.mapToItem(shelf, localX, localY)
         const wins = windowsFor(entry)
         let menu = [
             { label: wins.length ? "Show" : "Open", action: () => dock.openEntry(entry) }
@@ -61,13 +61,13 @@ PanelWindow {
             menu.push({ label: "Quit", shortcut: "⌘Q", action: () => dock.quitEntry(entry) })
         }
         contextItems = menu
-        contextX = point.x
-        contextY = point.y
+        contextX = shelf.x + point.x
+        contextY = shelf.y + point.y
         dockMenu.open = true
     }
 
     function showPlaceMenu(place, item, localX, localY) {
-        const point = item.mapToItem(dock, localX, localY)
+        const point = item.mapToItem(shelf, localX, localY)
         if (place.action === "applications") {
             contextItems = [{ label: "Open Applications", action: () => dock.openApplications() }]
         } else if (place.name === "Downloads") {
@@ -77,8 +77,8 @@ PanelWindow {
                 { label: "Open Trash", action: () => Quickshell.execDetached(place.exec) }
             ]
         }
-        contextX = point.x
-        contextY = point.y
+        contextX = shelf.x + point.x
+        contextY = shelf.y + point.y
         dockMenu.open = true
     }
 
@@ -357,6 +357,11 @@ PanelWindow {
         anchor.rect.x: Math.max(8, Math.min(dock.contextX, dock.width - implicitWidth - 8))
         anchor.rect.y: Math.max(8, dock.contextY - implicitHeight - 10)
         items: dock.contextItems
+    }
+    HyprlandFocusGrab {
+        windows: [dockMenu]
+        active: dockMenu.open
+        onCleared: dockMenu.open = false
     }
 
 }
