@@ -16,6 +16,7 @@ import "music"
 ShellRoot {
     AppWindow {
         id: win
+        onBackRequested: app.back()
         title: "Music"
         implicitWidth: Math.min(1180, (Quickshell.screens[0]?.width ?? 1280) - 80)
         implicitHeight: Math.min(760, (Quickshell.screens[0]?.height ?? 900) - 150)
@@ -125,10 +126,12 @@ ShellRoot {
 
             Keys.onPressed: (e) => {
                 if (e.key === Qt.Key_Space && !(e.modifiers & Qt.ControlModifier)) { audio.toggle(); e.accepted = true }
-                else if ((e.modifiers & Qt.ControlModifier) && e.key === Qt.Key_Right) { audio.next(); e.accepted = true }
-                else if ((e.modifiers & Qt.ControlModifier) && e.key === Qt.Key_Left) { audio.previous(); e.accepted = true }
-                else if ((e.modifiers & Qt.ControlModifier) && e.key === Qt.Key_Up) { audio.volume = Math.min(1, audio.volume + 0.1); e.accepted = true }
-                else if ((e.modifiers & Qt.ControlModifier) && e.key === Qt.Key_Down) { audio.volume = Math.max(0, audio.volume - 0.1); e.accepted = true }
+                // ⌘→ ⌘← ⌘↑ ⌘↓ as keyd delivers them: End, Home, Ctrl+Home, Ctrl+End
+                // (⌃← ⌃→ belong to Hyprland's Spaces).
+                else if (e.key === Qt.Key_End && !(e.modifiers & Qt.ControlModifier)) { audio.next(); e.accepted = true }
+                else if (e.key === Qt.Key_Home && !(e.modifiers & Qt.ControlModifier)) { audio.previous(); e.accepted = true }
+                else if ((e.modifiers & Qt.ControlModifier) && e.key === Qt.Key_Home) { audio.volume = Math.min(1, audio.volume + 0.1); e.accepted = true }
+                else if ((e.modifiers & Qt.ControlModifier) && e.key === Qt.Key_End) { audio.volume = Math.max(0, audio.volume - 0.1); e.accepted = true }
                 else if ((e.modifiers & Qt.ControlModifier) && e.key === Qt.Key_F) { go("search"); Qt.callLater(() => pages.item?.focusField?.()); e.accepted = true }
                 else if ((e.modifiers & Qt.ControlModifier) && e.key === Qt.Key_BracketLeft) { back(); e.accepted = true }
                 else if ((e.modifiers & Qt.ControlModifier) && e.key === Qt.Key_R) { musicLib.rescan(); e.accepted = true }

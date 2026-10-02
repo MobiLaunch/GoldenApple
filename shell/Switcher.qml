@@ -48,7 +48,15 @@ PanelWindow {
     function commit() {
         if (!open) return;
         open = false;
-        apps[index]?.toplevel.activate();
+        const t = apps[index]?.toplevel;
+        if (!t) return;
+        // A hidden (⌘H) or minimised window comes back to this Space first, as
+        // on the Mac; activating it in place would only peek its special workspace.
+        const parked = Hyprland.toplevels.values.find((h) => h.wayland === t
+            && (h.workspace?.name === "special:hidden" || h.workspace?.name === "special:minimized"));
+        const address = parked ? (parked.address ? "0x" + parked.address.replace(/^0x/, "") : parked.lastIpcObject?.address) : "";
+        if (address) Hyprland.dispatch("movetoworkspace " + (Hyprland.focusedWorkspace?.id ?? 1) + ",address:" + address);
+        t.activate();
     }
 
     GlobalShortcut { appid: "golden-gate"; name: "switcher-next"; description: "App switcher: next"; onPressed: sw.step(1) }

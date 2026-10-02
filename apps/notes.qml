@@ -299,7 +299,7 @@ ShellRoot {
                 onPicked: (path) => { if (editor.flush()) app.current = path }
                 onMenu: (path, item, mx, my) => listMenu.popup(item, mx, my, [
                     { text: "Delete", action: () => app.deleteNote(path) },
-                    { text: "Show in Files", action: () => Quickshell.execDetached(["nautilus", "--select", path]) },
+                    { text: "Show in Files", action: () => Quickshell.execDetached(["gg-files", "--select", path]) },
                 ])
             }
             Rectangle { x: app.listWidth; width: 1; height: parent.height; color: Theme.separator }

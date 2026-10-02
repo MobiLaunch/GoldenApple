@@ -12,6 +12,16 @@ ShellRoot {
     id: root
     // One AppLaunch per screen; Spotlight picks the one on its own screen.
     property var launchers: []
+    // One Control Center per screen; ⌥⌘C toggles the one on the focused screen.
+    property var controlCenters: []
+    IpcHandler {
+        target: "controlcenter"
+        function toggle(): void {
+            const name = Hyprland.focusedMonitor?.name
+            const cc = root.controlCenters.find((c) => c.screen?.name === name) ?? root.controlCenters[0]
+            cc?.toggle()
+        }
+    }
     Binding { target: Theme; property: "reduceMotion"; value: Prefs.reduceMotion }
     Binding { target: Theme; property: "reduceTransparency"; value: Prefs.reduceTransparency }
     Binding { target: Theme; property: "glassStyle"; value: Prefs.glass }
@@ -86,6 +96,7 @@ ShellRoot {
         function opened(x: int, y: int, w: int, h: int): void { root.launchers[0]?.landOn(Qt.rect(x, y, w, h)) }
     }
     Notifications { id: notificationCenter }
+    SessionDialog { id: sessionDialog }
     Switcher {}
     // Loaded separately so a Quickshell built without PAM still runs the shell.
     LazyLoader { active: true; source: "LockScreen.qml" }
@@ -102,8 +113,14 @@ ShellRoot {
             // Persistent per-screen Applications surface. Keeping the object alive
             // removes the lazy-loader race that made the Dock button appear dead.
             Applications { id: applicationsPanel; screen: perScreen.modelData }
-            ControlCenter { id: cc; screen: perScreen.modelData; notifications: notificationCenter }
-            MenuBar { screen: perScreen.modelData; controlCenter: cc; spotlight: spotlightPanel }
+            ControlCenter {
+                id: cc
+                screen: perScreen.modelData
+                notifications: notificationCenter
+                Component.onCompleted: root.controlCenters = root.controlCenters.concat([cc])
+                Component.onDestruction: root.controlCenters = root.controlCenters.filter((c) => c !== cc)
+            }
+            MenuBar { screen: perScreen.modelData; controlCenter: cc; spotlight: spotlightPanel; session: sessionDialog }
             AppLaunch {
                 id: launch
                 screen: perScreen.modelData
@@ -111,11 +128,6 @@ ShellRoot {
                 Component.onDestruction: root.launchers = root.launchers.filter((l) => l !== launch)
             }
             Dock { screen: perScreen.modelData; launcher: launch; applications: applicationsPanel }
-
-            IpcHandler {
-                target: "controlcenter"
-                function toggle(): void { cc.toggle() }
-            }
         }
     }
 

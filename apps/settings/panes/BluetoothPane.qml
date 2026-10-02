@@ -36,7 +36,7 @@ Pane {
         sys.run(["bluetoothctl", "--timeout", "7", "scan", "on"], () => {
             sys.sh("bluetoothctl devices | grep '^Device '", (o) => {
                 const known = devices.map(d => d.mac)
-                nearby = o.split("\\n").filter(l => l.startsWith("Device ")).map(l => {
+                nearby = o.split("\n").filter(l => l.startsWith("Device ")).map(l => {
                     const p = l.split(" "); return { mac: p[1], name: p.slice(2).join(" ") }
                 }).filter(d => !known.includes(d.mac))
                 discovering = false

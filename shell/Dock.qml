@@ -39,10 +39,9 @@ PanelWindow {
 
     function quitEntry(entry) {
         const wins = windowsFor(entry)
-        for (let i = 0; i < wins.length; i++) {
-            const address = wins[i].lastIpcObject?.address
-            if (address) Hyprland.dispatch("closewindow address:" + address)
-        }
+        // These are Wayland toplevels (windowsFor), which close themselves;
+        // they carry no Hyprland IPC object.
+        for (let i = 0; i < wins.length; i++) wins[i].close()
     }
 
     function showEntryMenu(entry, item, localX, localY) {
@@ -140,14 +139,15 @@ PanelWindow {
             return id === appId || id === bare || (!!startup && id === startup)
         })
     }
-    // A window of this app parked by the yellow light (shell.qml), to bring back.
+    // A window of this app parked by the yellow light (shell.qml) or ⌘H, to bring back.
     function minimizedFor(entry) {
         const appId = (entry.id ?? "").toLowerCase()
         const bare = appId.split(".").pop()
         const startup = (entry.startupClass ?? "").toLowerCase()
         return Hyprland.toplevels.values.find((t) => {
-            if (t.workspace?.name !== "special:minimized") return false
-            const cls = (t.lastIpcObject?.class ?? "").toLowerCase()
+            // Minimised (yellow light, ⌘M) or hidden (⌘H): both come back on a click.
+            if (t.workspace?.name !== "special:minimized" && t.workspace?.name !== "special:hidden") return false
+            const cls = (t.wayland?.appId ?? t.lastIpcObject?.class ?? "").toLowerCase()
             return cls === appId || cls === bare || (!!startup && cls === startup)
         })
     }
@@ -156,7 +156,8 @@ PanelWindow {
         // had keyboard focus. This keeps restored windows on the screen clicked.
         const monitor = Hyprland.monitorFor(dock.screen)
         const ws = monitor?.activeWorkspace?.id ?? Hyprland.focusedWorkspace?.id ?? 1
-        Hyprland.dispatch(`movetoworkspace ${ws},address:${t.lastIpcObject.address}`)
+        const address = t.address ? "0x" + t.address.replace(/^0x/, "") : t.lastIpcObject?.address
+        if (address) Hyprland.dispatch(`movetoworkspace ${ws},address:${address}`)
         if (monitor?.name) Hyprland.dispatch(`focusmonitor ${monitor.name}`)
     }
     Glass {

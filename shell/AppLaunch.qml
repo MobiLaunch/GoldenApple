@@ -103,7 +103,8 @@ PanelWindow {
             const parts = event.parse(4)
             const appClass = (parts[2] ?? "").toLowerCase()
             const id = (launcher.entry?.id ?? "").toLowerCase()
-            if (appClass !== id && appClass !== id.split(".").pop()) return
+            const startup = (launcher.entry?.startupClass ?? "").toLowerCase()
+            if (appClass !== id && appClass !== id.split(".").pop() && (!startup || appClass !== startup)) return
             launcher.pendingAddress = parts[0].startsWith("0x") ? parts[0] : "0x" + parts[0]
             giveUp.stop()
             Hyprland.refreshToplevels()

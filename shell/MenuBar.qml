@@ -15,6 +15,7 @@ PanelWindow {
     id: bar
     property var controlCenter
     property var spotlight
+    property var session                // SessionDialog: Restart, Shut Down and Log Out ask first
 
     anchors { top: true; left: true; right: true }
     implicitHeight: Theme.sizeMenubar
@@ -112,17 +113,26 @@ PanelWindow {
         spacing: 1
         BarItem {
             visible: UPower.displayDevice.isLaptopBattery
+            // Drawn in the bar's ink (dark over a light wallpaper), red when low
+            // and not charging.
             RowLayout {
+                id: battery
+                readonly property color ink: bar.darkRight ? "#000000" : "#ffffff"
+                readonly property real level: UPower.displayDevice.percentage
+                readonly property bool charging: UPower.displayDevice.state === UPowerDeviceState.Charging
+                    || UPower.displayDevice.state === UPowerDeviceState.FullyCharged
                 spacing: 1
                 Rectangle {
                     implicitWidth: 25; implicitHeight: 12; radius: 4
-                    color: "transparent"; border.width: 1.2; border.color: Qt.rgba(1, 1, 1, 0.55)
+                    color: "transparent"; border.width: 1.2
+                    border.color: Qt.rgba(battery.ink.r, battery.ink.g, battery.ink.b, 0.45)
                     Rectangle {
-                        x: 2.5; y: 2.5; height: parent.height - 5; radius: 1.8; color: "#ffffff"
-                        width: (parent.width - 5) * UPower.displayDevice.percentage
+                        x: 2.5; y: 2.5; height: parent.height - 5; radius: 1.8
+                        color: battery.level <= 0.1 && !battery.charging ? Theme.accentRed : battery.ink
+                        width: Math.max(1.5, (parent.width - 5) * battery.level)
                     }
                 }
-                Rectangle { implicitWidth: 1.8; implicitHeight: 4.5; color: Qt.rgba(1, 1, 1, 0.55) }
+                Rectangle { implicitWidth: 1.8; implicitHeight: 4.5; color: Qt.rgba(battery.ink.r, battery.ink.g, battery.ink.b, 0.45) }
             }
         }
         BarItem { Symbol { name: "wifi"; size: 16; tone: bar.darkRight ? "dark" : "white" } onClicked: bar.controlCenter.toggle() }
@@ -148,16 +158,16 @@ PanelWindow {
             { label: "About This Computer", action: () => Hyprland.dispatch("exec gg-settings about") },
             "-",
             { label: "System Settings…", shortcut: "⌘,", action: () => Hyprland.dispatch("exec gg-settings") },
-            { label: "Software…", action: () => Hyprland.dispatch("exec gnome-software") },
+            { label: "Software…", action: () => Hyprland.dispatch("exec gg-software") },
             "-",
             { label: "Force Quit…", shortcut: "⌥⌘⎋", action: () => Hyprland.dispatch("exec hyprctl kill") },
             "-",
             { label: "Sleep", action: () => Hyprland.dispatch("exec systemctl suspend") },
-            { label: "Restart…", action: () => Hyprland.dispatch("exec systemctl reboot") },
-            { label: "Shut Down…", action: () => Hyprland.dispatch("exec systemctl poweroff") },
+            { label: "Restart…", action: () => bar.session?.ask("restart") },
+            { label: "Shut Down…", action: () => bar.session?.ask("shutdown") },
             "-",
             { label: "Lock Screen", shortcut: "⌃⌘Q", action: () => Hyprland.dispatch("exec loginctl lock-session") },
-            { label: "Log Out…", shortcut: "⇧⌘Q", action: () => Hyprland.dispatch("exit") }
+            { label: "Log Out…", shortcut: "⇧⌘Q", action: () => bar.session?.ask("logout") }
         ]
     }
     HyprlandFocusGrab {

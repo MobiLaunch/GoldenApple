@@ -26,6 +26,10 @@ FloatingWindow {
     property bool forceDark: false        // Calculator is dark in both appearances
     property bool resizable: true
     property bool fullSizeContent: false  // content runs under the toolbar (Weather's sky)
+    property var closeAction: null        // close button and ⌘W: a function (one of several windows); quits without
+    // ⌘[ and ⌘] (keyd sends Alt+Left/Right): Back and Forward, for apps with history.
+    signal backRequested()
+    signal forwardRequested()
     readonly property real toolbarHeight: Theme.sizeToolbar
     readonly property real inset: 8
     readonly property bool active: win._backingWindow ? win._backingWindow.active : true
@@ -90,6 +94,14 @@ FloatingWindow {
             Theme.reduceMotion = d.reduceMotion ?? false
         }
     }
+
+    // The Mac's window keys. keyd turns ⌘Q and ⌘W into Ctrl+Q and Ctrl+W, and
+    // ⌘[ ⌘] into Alt+Left and Alt+Right.
+    function closeWindow() { if (closeAction) closeAction(); else Qt.quit() }
+    Shortcut { sequence: "Ctrl+Q"; onActivated: Qt.quit() }
+    Shortcut { sequence: "Ctrl+W"; onActivated: win.closeWindow() }
+    Shortcut { sequence: "Alt+Left"; onActivated: win.backRequested() }
+    Shortcut { sequence: "Alt+Right"; onActivated: win.forwardRequested() }
 
     Item {
         id: frame
@@ -188,6 +200,7 @@ FloatingWindow {
             x: 20; y: Math.round((win.toolbarHeight - 13) / 2)
             active: win.active
             canZoom: win.resizable
+            closeAction: win.closeAction
         }
 
         // Window outline, drawn over everything.

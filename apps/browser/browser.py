@@ -2,6 +2,7 @@
 """Golden Gate Web: Safari-inspired Qt Quick chrome over Chromium."""
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -34,15 +35,18 @@ def parse_arguments(values):
     return private, profile, launch
 
 
-def instance_name(profile):
+def instance_name(profile, data_dir):
+    # One instance per profile data directory, the same scope as the lock: a
+    # Web on another data directory (another XDG_DATA_HOME) is a different
+    # instance, and its exit must not remove this one's socket.
     key = profile_key(profile)
-    base = "goldengate-web-" + str(os.getuid())
-    return base if key == "personal" else base + "-" + key
+    place = hashlib.sha1(str(Path(data_dir).resolve()).encode()).hexdigest()[:10]
+    return "goldengate-web-" + str(os.getuid()) + "-" + key + "-" + place
 
 
-def handoff_to_existing(values, profile):
+def handoff_to_existing(values, profile, data_dir):
     socket = QLocalSocket()
-    socket.connectToServer(instance_name(profile))
+    socket.connectToServer(instance_name(profile, data_dir))
     if not socket.waitForConnected(1500):
         return False
     socket.write((json.dumps(values or ["about:blank"]) + "\n").encode())
@@ -88,7 +92,7 @@ def main():
         lock = QLockFile(str(profile_data / "browser.lock"))
         lock.setStaleLockTime(0)
         if not lock.tryLock(0):
-            if handoff_to_existing(launch_values, profile_name):
+            if handoff_to_existing(launch_values, profile_name, backend.dataDir):
                 return 0
             sys.stderr.write("This Golden Gate Web profile is already running but could not receive this request.\n")
             return 1
@@ -100,7 +104,7 @@ def main():
     sockets = set()
     if not private:
         server = QLocalServer(app)
-        name = instance_name(profile_name)
+        name = instance_name(profile_name, backend.dataDir)
         QLocalServer.removeServer(name)
         server.setSocketOptions(QLocalServer.UserAccessOption)
         if server.listen(name):

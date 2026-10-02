@@ -11,15 +11,18 @@ ShellRoot {
     AppWindow {
         id: win
         title: files.title
+        onBackRequested: files.goBack()
+        onForwardRequested: files.goForward()
         implicitWidth: Math.min(1050, (Quickshell.screens[0]?.width ?? 1280) - 80)
         implicitHeight: Math.min(700, (Quickshell.screens[0]?.height ?? 900) - 130)
         minimumSize: Qt.size(720, 440)
-        sidebarWidth: 210
+        property bool sidebarShown: true
+        sidebarWidth: sidebarShown ? 210 : 0
         fullSizeContent: true
         background: Theme.contentBg
 
         toolbarSidebar: [
-            ToolbarButton { round: true; symbol: "sidebar"; checked: true }
+            ToolbarButton { round: true; symbol: "sidebar"; checked: win.sidebarShown; onClicked: win.sidebarShown = !win.sidebarShown }
         ]
 
         toolbarItems: [

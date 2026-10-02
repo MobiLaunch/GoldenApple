@@ -305,7 +305,7 @@ PanelWindow {
                         width: parent.width
                         icon: "broadcast"; title: "Nearby Sharing"; subtitle: "LocalSend"
                         on: false
-                        onActivated: { cc.open = false; cc.run("localsend_app") }
+                        onActivated: { cc.open = false; cc.run("command -v localsend_app >/dev/null && exec localsend_app || exec localsend") }
                     }
                 }
             }
@@ -326,7 +326,7 @@ PanelWindow {
                 ActionTile {
                     Layout.fillWidth: true
                     icon: "mirror"; title: "Screen"; subtitle: "Mirroring"; on: false
-                    onActivated: { cc.open = false; cc.run("wdisplays") }
+                    onActivated: { cc.open = false; cc.run("gg-settings displays") }
                 }
             }
         }

@@ -12,6 +12,7 @@ Row {
     id: lights
     property bool active: true
     property bool canZoom: true
+    property var closeAction: null      // a function; without one, close quits the app
     readonly property bool showGlyphs: hover.hovered
     spacing: 8
 
@@ -67,7 +68,7 @@ Row {
                 id: tap
                 enabled: light.enabled_
                 onTapped: {
-                    if (light.modelData.kind === "close") Qt.quit()
+                    if (light.modelData.kind === "close") { if (lights.closeAction) lights.closeAction(); else Qt.quit() }
                     else if (light.modelData.kind === "minimize") Hyprland.dispatch("movetoworkspacesilent special:minimized")
                     else Hyprland.dispatch("fullscreen 1")
                 }
