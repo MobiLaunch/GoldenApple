@@ -1,6 +1,7 @@
 // Applications: macOS-style all-apps surface backed by the desktop-entry database.
 import Quickshell
 import Quickshell.Wayland
+import Quickshell.Hyprland
 import QtQuick
 import QtQuick.Layouts
 import "theme"
@@ -14,7 +15,7 @@ PanelWindow {
     property var contextItems: []
 
     function showAppMenu(entry, item, localX, localY) {
-        const point = item.mapToItem(apps, localX, localY)
+        const point = item.mapToItem(backdrop, localX, localY)
         contextItems = [
             { label: "Open", action: () => { entry.execute(); apps.dismiss() } },
             { label: "Open New Window", action: () => entry.execute() }
@@ -191,6 +192,11 @@ PanelWindow {
         anchor.rect.x: Math.max(8, Math.min(apps.contextX, apps.width - implicitWidth - 8))
         anchor.rect.y: Math.max(8, Math.min(apps.contextY, apps.height - implicitHeight - 8))
         items: apps.contextItems
+    }
+    HyprlandFocusGrab {
+        windows: [appMenu]
+        active: appMenu.open
+        onCleared: appMenu.open = false
     }
 
 }
