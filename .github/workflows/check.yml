@@ -26,12 +26,20 @@ jobs:
           ! grep -q 'Quickshell.Services.DesktopEntries' shell/Applications.qml
           ! grep -q 'applicationsOpenRetry' shell/Dock.qml
           grep -q 'apps@accent.svg' shell/Dock.qml
-          grep -q 'SpringValue' shell/Dock.qml
+          ! grep -q 'dockMagnification' shell/Dock.qml
+          ! grep -q 'dockMagnifiedSize' shell/Dock.qml
+          ! grep -q 'pointerTargetX' shell/Dock.qml
+          grep -q 'iPad-style glass shelf' shell/Dock.qml
           grep -q 'GG_WIDGETS' shell/shell.qml
           grep -q 'golden-gate-shell.log' distro/archiso/overlay/usr/local/bin/gg-session
           ! grep -q 'qs -c' distro/archiso/overlay/usr/local/bin/gg-session
           grep -q 'qs -c golden-gate' compositor/hyprland/hyprland.conf
           grep -q 'gg-apply-preferences' compositor/hyprland/hyprland.conf
+          grep -q 'systemd-detect-virt --vm' compositor/hyprland/hyprglass-sync.sh
+          grep -q 'glass_opacity 0.60' compositor/hyprland/hyprglass-sync.sh
+          grep -q 'id: panel' shell/ControlCenter.qml
+          grep -q 'visible: pane.joining === networkBlock.modelData.ssid' apps/settings/panes/WifiPane.qml
+          grep -q 'fontUi: "SF Pro Text"' apps/lib/theme/Theme.qml
           grep -q 'hyprglass.so' distro/archiso/build.sh
           grep -q 'HyprGlass owns blur/refraction' compositor/hyprland/hyprland.conf
           ! grep -Rqs 'ShaderEffect' apps/setup
