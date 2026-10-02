@@ -40,6 +40,13 @@ jobs:
           grep -q 'id: panel' shell/ControlCenter.qml
           grep -q 'visible: pane.joining === networkBlock.modelData.ssid' apps/settings/panes/WifiPane.qml
           grep -q 'fontUi: "SF Pro Text"' apps/lib/theme/Theme.qml
+          grep -q 'import QtWebEngine' apps/browser/Browser.qml
+          grep -q 'Search or enter website name' apps/browser/Browser.qml
+          grep -q 'WebEngineProfile' apps/browser/Browser.qml
+          grep -q 'Reading List' apps/browser/Browser.qml
+          grep -q 'QtWebEngineQuick.initialize' apps/browser/browser.py
+          ! grep -q 'QtWidgets' apps/browser/browser.py
+          test ! -e apps/browser/ui.py
           grep -q 'hyprglass.so' distro/archiso/build.sh
           grep -q 'HyprGlass owns blur/refraction' compositor/hyprland/hyprland.conf
           ! grep -Rqs 'ShaderEffect' apps/setup
@@ -53,7 +60,7 @@ jobs:
           grep -q 'rsync' apps/installer/helper.py
           ! grep -q 'archinstall' apps/installer.qml
           ! grep -qxE 'nautilus|gnome-software|gnome-control-center|gnome-clocks|gnome-text-editor|gnome-calendar|loupe|geary|fractal' distro/archiso/packages.x86_64
-          ! grep -Rqs 'TextInput {' apps --exclude-dir=lib
+          ! grep -Rqs 'TextInput {' apps --exclude-dir=lib --exclude-dir=browser
           grep -q 'org.goldengate.Mail' shell/Dock.qml
           grep -q 'org.goldengate.Messages' shell/Dock.qml
           grep -q 'org.goldengate.Calendar' shell/Dock.qml
