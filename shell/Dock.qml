@@ -344,9 +344,10 @@ PanelWindow {
     }
     MenuPopup {
         id: dockMenu
+        growFrom: Item.BottomLeft
         anchor.window: dock
-        anchor.rect.x: Math.max(8, Math.min(dock.contextX, dock.width - implicitWidth - 8))
-        anchor.rect.y: Math.max(8, dock.contextY - implicitHeight - 10)
+        anchor.rect.x: Math.max(8, Math.min(dock.contextX, dock.width - menuWidth - 8))
+        anchor.rect.y: Math.max(8, dock.contextY - menuHeight - 10)
         items: dock.contextItems
     }
     HyprlandFocusGrab {

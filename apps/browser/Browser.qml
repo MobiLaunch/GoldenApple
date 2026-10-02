@@ -88,10 +88,44 @@ Window {
         items.push({ label: "Reload", shortcut: "⌘R", action: () => view.reload() })
 
         webContextItems = items
-        webContextX = Math.max(8, Math.min(point.x, root.width - 258))
-        webContextY = Math.max(8, Math.min(point.y, root.height - 280))
+        webContextX = point.x
+        webContextY = point.y
         webContextOpen = true
+        webContextMenu.popup(root.contentItem, point.x, point.y, items)
     }
+
+    // Page zoom in tenths, 50–300%; 0 resets it.
+    function zoomBy(step) {
+        if (root.currentView) root.currentView.zoomFactor = step === 0 ? 1 : Math.max(0.5, Math.min(3, root.currentView.zoomFactor + step))
+    }
+
+    // Safari's page menu, as items for the shared menu.
+    function pageMenuItems() {
+        const page = root.currentUrl !== "about:blank"
+        const blocked = page ? String(JSON.parse(BrowserBackend.privacyReportForUrl(root.currentUrl)).blocked || "") : ""
+        return [
+            { text: "Show Reader", enabled: page, action: () => root.enterReader() },
+            { text: "Privacy Report", shortcut: blocked ? blocked + " blocked" : "", action: () => root.openPrivacyReport() },
+            { separator: true },
+            { text: "Add to Favorites", enabled: page, action: () => BrowserBackend.addBookmark(root.currentUrl, root.currentTitle) },
+            { text: "Add to Reading List", enabled: page, action: () => BrowserBackend.addReadingList(root.currentUrl, root.currentTitle) },
+            { text: "Copy Link", enabled: page, action: () => { BrowserBackend.copyText(root.currentUrl); BrowserBackend.notify("Link copied") } },
+            { text: "Find on Page…", shortcut: "⌘F", enabled: page, action: () => root.openFind() },
+            { separator: true },
+            { header: "Zoom " + (root.currentView ? Math.round(root.currentView.zoomFactor * 100) : 100) + "%" },
+            { text: "Zoom In", shortcut: "⌘+", enabled: page, action: () => root.zoomBy(0.1) },
+            { text: "Actual Size", shortcut: "⌘0", enabled: page, action: () => root.zoomBy(0) },
+            { text: "Zoom Out", shortcut: "⌘−", enabled: page, action: () => root.zoomBy(-0.1) },
+            { separator: true },
+            { text: "Website Settings…", enabled: page, action: () => root.showWebsitePermissions(true) },
+            { text: "Web Settings…", action: () => root.settingsOpen = true }
+        ]
+    }
+    onPageMenuOpenChanged: {
+        if (pageMenuOpen && !pageMenu.visible) pageMenu.popup(smartField, 0, smartField.height + 5, pageMenuItems())
+        else if (!pageMenuOpen && pageMenu.visible) pageMenu.close()
+    }
+    onWebContextOpenChanged: if (!webContextOpen && webContextMenu.visible) webContextMenu.close()
 
     function refreshStartPage() {
         startPageData = JSON.parse(BrowserBackend.startPageJson())
@@ -1548,81 +1582,9 @@ Window {
         }
     }
 
-    MouseArea {
-        anchors.fill: parent
-        z: 88
-        visible: root.webContextOpen
-        acceptedButtons: Qt.AllButtons
-        onClicked: root.webContextOpen = false
-    }
-
-    Rectangle {
+    PopupMenu {
         id: webContextMenu
-        z: 89
-        visible: root.webContextOpen
-        x: root.webContextX
-        y: root.webContextY
-        width: 250
-        height: contextColumn.implicitHeight + 12
-        radius: 15
-        color: Theme.dark ? "#f3323237" : "#fcf7f7f9"
-        border { width: 0.5; color: Theme.separator }
-
-        Column {
-            id: contextColumn
-            anchors { fill: parent; margins: 6 }
-            spacing: 0
-
-            Repeater {
-                model: root.webContextItems
-                delegate: Rectangle {
-                    id: contextRow
-                    required property var modelData
-                    readonly property bool separator: modelData.separator === true
-                    readonly property bool enabledItem: modelData.enabled === undefined ? true : modelData.enabled
-                    width: contextColumn.width
-                    height: separator ? 9 : 30
-                    radius: 8
-                    opacity: enabledItem ? 1 : 0.38
-                    color: !separator && contextArea.containsMouse && enabledItem ? Theme.accent : "transparent"
-
-                    Rectangle {
-                        visible: contextRow.separator
-                        anchors.centerIn: parent
-                        width: parent.width - 16
-                        height: 1
-                        color: Theme.separator
-                    }
-                    RowLayout {
-                        visible: !contextRow.separator
-                        anchors { fill: parent; leftMargin: 9; rightMargin: 9 }
-                        spacing: 8
-                        Text {
-                            Layout.fillWidth: true
-                            text: contextRow.modelData.label || ""
-                            color: contextArea.containsMouse && contextRow.enabledItem ? "#ffffff" : Theme.label
-                            elide: Text.ElideRight
-                            font { family: Theme.fontUi; pixelSize: 12 }
-                        }
-                        Text {
-                            text: contextRow.modelData.shortcut || ""
-                            color: contextArea.containsMouse && contextRow.enabledItem ? "#d9ffffff" : Theme.secondaryLabel
-                            font { family: Theme.fontUi; pixelSize: 11 }
-                        }
-                    }
-                    MouseArea {
-                        id: contextArea
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        enabled: !contextRow.separator && contextRow.enabledItem
-                        onClicked: {
-                            root.webContextOpen = false
-                            contextRow.modelData.action?.()
-                        }
-                    }
-                }
-            }
-        }
+        onVisibleChanged: if (!visible) root.webContextOpen = false
     }
 
     Glass {
@@ -1661,125 +1623,10 @@ Window {
         }
     }
 
-    Rectangle {
+    PopupMenu {
         id: pageMenu
-        z: 48
-        visible: root.pageMenuOpen
-        x: {
-            let p = smartField.mapToItem(root, 0, smartField.height + 5)
-            return Math.max(10, p.x)
-        }
-        y: {
-            let p = smartField.mapToItem(root, 0, smartField.height + 5)
-            return p.y
-        }
-        width: 252
-        height: pageMenuColumn.height + 12
-        radius: 16
-        color: Theme.dark ? "#f3323237" : "#fcf7f7f9"
-        border { width: 0.5; color: Theme.separator }
-
-        Column {
-            id: pageMenuColumn
-            anchors { left: parent.left; right: parent.right; top: parent.top; margins: 6 }
-            spacing: 2
-
-            component MenuRow: Rectangle {
-                id: mr
-                property string symbol
-                property string label
-                property string trailing
-                property bool destructive: false
-                property bool enabled: true
-                signal activated()
-                width: pageMenuColumn.width
-                height: 34
-                radius: 9
-                opacity: enabled ? 1 : 0.35
-                color: menuArea.containsMouse && enabled ? (Theme.dark ? "#16ffffff" : "#0d000000") : "transparent"
-                Row {
-                    anchors { fill: parent; leftMargin: 9; rightMargin: 9 }
-                    spacing: 9
-                    Symbol { anchors.verticalCenter: parent.verticalCenter; name: mr.symbol; tone: mr.destructive ? "red" : "auto"; size: 14 }
-                    Text {
-                        anchors.verticalCenter: parent.verticalCenter
-                        width: parent.width - 58
-                        text: mr.label
-                        color: mr.destructive ? "#ff453a" : Theme.label
-                        font { family: Theme.fontUi; pixelSize: 12 }
-                    }
-                    Text {
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: mr.trailing
-                        color: Theme.secondaryLabel
-                        font { family: Theme.fontUi; pixelSize: 11 }
-                    }
-                }
-                MouseArea { id: menuArea; anchors.fill: parent; hoverEnabled: true; enabled: mr.enabled; onClicked: mr.activated() }
-            }
-
-            MenuRow { symbol: "doc"; label: "Reader"; enabled: root.currentUrl !== "about:blank"; onActivated: root.enterReader() }
-            MenuRow {
-                symbol: "shield"
-                label: "Privacy Report"
-                trailing: root.currentUrl === "about:blank" ? "" : String(JSON.parse(BrowserBackend.privacyReportForUrl(root.currentUrl)).blocked || "")
-                onActivated: root.openPrivacyReport()
-            }
-            MenuRow { symbol: "bookmark"; label: "Add to Favorites"; enabled: root.currentUrl !== "about:blank"; onActivated: { BrowserBackend.addBookmark(root.currentUrl, root.currentTitle); root.pageMenuOpen = false } }
-            MenuRow { symbol: "clock"; label: "Add to Reading List"; enabled: root.currentUrl !== "about:blank"; onActivated: { BrowserBackend.addReadingList(root.currentUrl, root.currentTitle); root.pageMenuOpen = false } }
-            MenuRow { symbol: "globe"; label: "Copy Link"; enabled: root.currentUrl !== "about:blank"; onActivated: { BrowserBackend.copyText(root.currentUrl); root.pageMenuOpen = false; BrowserBackend.notify("Link copied") } }
-            MenuRow {
-                symbol: "search"
-                label: "Find on Page…"
-                trailing: "⌘F"
-                enabled: root.currentUrl !== "about:blank"
-                onActivated: { root.pageMenuOpen = false; root.openFind() }
-            }
-
-            Rectangle { width: parent.width; height: 1; color: Theme.separator }
-
-            Row {
-                width: parent.width
-                height: 36
-                spacing: 4
-                Text {
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: 96
-                    leftPadding: 9
-                    text: "Page Zoom"
-                    color: Theme.label
-                    font { family: Theme.fontUi; pixelSize: 12 }
-                }
-                BrowserButton {
-                    width: 30; height: 30; symbol: "minus"; tooltip: "Zoom Out"
-                    onClicked: if (root.currentView) root.currentView.zoomFactor = Math.max(0.5, root.currentView.zoomFactor - 0.1)
-                }
-                Text {
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: 44
-                    horizontalAlignment: Text.AlignHCenter
-                    text: root.currentView ? Math.round(root.currentView.zoomFactor * 100) + "%" : "100%"
-                    color: Theme.secondaryLabel
-                    font { family: Theme.fontUi; pixelSize: 11 }
-                }
-                BrowserButton {
-                    width: 30; height: 30; symbol: "plus"; tooltip: "Zoom In"
-                    onClicked: if (root.currentView) root.currentView.zoomFactor = Math.min(3, root.currentView.zoomFactor + 0.1)
-                }
-            }
-
-            Rectangle { width: parent.width; height: 1; color: Theme.separator }
-
-            MenuRow {
-                symbol: "shield"; label: "Website Settings…"
-                enabled: root.currentUrl !== "about:blank"
-                onActivated: root.showWebsitePermissions(true)
-            }
-            MenuRow {
-                symbol: "gear"; label: "Web Settings…"
-                onActivated: { root.pageMenuOpen = false; root.settingsOpen = true }
-            }
-        }
+        menuWidth: 240
+        onVisibleChanged: if (!visible) root.pageMenuOpen = false
     }
 
     Rectangle {
@@ -2728,6 +2575,9 @@ Window {
 
     Shortcut { sequence: "Ctrl+L"; onActivated: root.focusAddress() }
     Shortcut { sequence: "Ctrl+F"; onActivated: root.openFind() }
+    Shortcut { sequences: ["Ctrl+=", "Ctrl++"]; onActivated: root.zoomBy(0.1) }
+    Shortcut { sequence: "Ctrl+-"; onActivated: root.zoomBy(-0.1) }
+    Shortcut { sequence: "Ctrl+0"; onActivated: root.zoomBy(0) }
     Shortcut { sequence: "Ctrl+T"; onActivated: root.newTab("about:blank", true) }
     Shortcut { sequence: "Ctrl+W"; onActivated: root.closeTab(root.currentIndex) }
     Shortcut { sequence: "Ctrl+R"; onActivated: root.reloadOrStop() }

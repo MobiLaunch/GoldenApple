@@ -67,6 +67,7 @@ ShellRoot {
                 visible: !search.text
                 model: app.places
                 delegate: LocationCard {
+                    id: placeCard
                     required property var modelData
                     required property int index
                     width: ListView.view.width
@@ -75,12 +76,9 @@ ShellRoot {
                     imperial: app.imperial; h12: app.h12
                     selected: index === app.selected
                     onActivated: app.selected = index
-                    onMenuRequested: (mx, my) => {
-                        const p = mapToItem(win.overlay, mx, my)
-                        placeMenu.index = index
-                        placeMenu.x = p.x; placeMenu.y = p.y
-                        placeMenu.visible = true
-                    }
+                    onMenuRequested: (mx, my) => placeMenu.popup(placeCard, mx, my, [
+                        { text: "Delete", enabled: app.places.length > 1, destructive: true, action: () => app.removePlace(index) }
+                    ])
                 }
             },
             ListView {
@@ -482,34 +480,6 @@ ShellRoot {
     }
 
     // Right-click menu on a place.
-    Rectangle {
-        id: placeMenu
-        parent: win.overlay
-        property int index: -1
-        visible: false
-        width: 150; height: 34; radius: 10
-        color: "#f22c2f33"
-        border { width: 0.5; color: "#33ffffff" }
-        Rectangle {
-            anchors { fill: parent; margins: 5 }
-            radius: 6
-            color: Theme.accent
-            visible: delHover.hovered && app.places.length > 1
-        }
-        Label {
-            x: 14; anchors.verticalCenter: parent.verticalCenter
-            text: "Delete"; px: 13; alpha: app.places.length > 1 ? 1 : 0.4
-        }
-        HoverHandler { id: delHover }
-        TapHandler { onTapped: { app.removePlace(placeMenu.index); placeMenu.visible = false } }
-    }
-    MouseArea {
-        parent: win.overlay
-        z: -1
-        anchors.fill: parent
-        visible: placeMenu.visible
-        acceptedButtons: Qt.LeftButton | Qt.RightButton
-        onPressed: placeMenu.visible = false
-    }
+    PopupMenu { id: placeMenu; parent: win.overlay }
 }
 

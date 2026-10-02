@@ -157,16 +157,16 @@ Item {
     }
     function formatMenu(item) {
         const style = Md.styleOf(markdown(), block())
-        const mark = (s) => style === s ? "  ✓" : ""
+        const mark = (s) => style === s
         menuRequested([
-            { text: "Title" + mark("title"), action: () => setStyle("title") },
-            { text: "Heading" + mark("heading"), action: () => setStyle("heading") },
-            { text: "Subheading" + mark("subheading"), action: () => setStyle("subheading") },
-            { text: "Body" + mark("body"), action: () => setStyle("body") },
+            { text: "Title", checked: mark("title"), action: () => setStyle("title") },
+            { text: "Heading", checked: mark("heading"), action: () => setStyle("heading") },
+            { text: "Subheading", checked: mark("subheading"), action: () => setStyle("subheading") },
+            { text: "Body", checked: mark("body"), action: () => setStyle("body") },
             { separator: true },
-            { text: "Bulleted List" + mark("bullet"), action: () => setStyle("bullet") },
-            { text: "Numbered List" + mark("number"), action: () => setStyle("number") },
-            { text: "Checklist" + (style === "check" || style === "done" ? "  ✓" : ""), action: () => setStyle("check") },
+            { text: "Bulleted List", checked: mark("bullet"), action: () => setStyle("bullet") },
+            { text: "Numbered List", checked: mark("number"), action: () => setStyle("number") },
+            { text: "Checklist", checked: style === "check" || style === "done", action: () => setStyle("check") },
             { separator: true },
             { text: "Bold", action: () => toggleFont("bold") },
             { text: "Italic", action: () => toggleFont("italic") },

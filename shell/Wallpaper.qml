@@ -43,8 +43,8 @@ PanelWindow {
     MenuPopup {
         id: desktopMenu
         anchor.window: wall
-        anchor.rect.x: Math.min(wall.contextX, Math.max(0, wall.width - implicitWidth - 8))
-        anchor.rect.y: Math.min(wall.contextY, Math.max(0, wall.height - implicitHeight - 8))
+        anchor.rect.x: Math.min(wall.contextX, Math.max(0, wall.width - menuWidth - 8))
+        anchor.rect.y: Math.min(wall.contextY, Math.max(0, wall.height - menuHeight - 8))
         items: [
             { label: "New Folder", action: () => Quickshell.execDetached(["sh", "-c", "d=$HOME/Desktop; mkdir -p \"$d\"; n=\"New Folder\"; p=\"$d/$n\"; i=2; while [ -e \"$p\" ]; do p=\"$d/$n $i\"; i=$((i+1)); done; mkdir \"$p\""]) },
             "-",

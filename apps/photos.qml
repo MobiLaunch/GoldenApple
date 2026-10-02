@@ -79,8 +79,8 @@ ShellRoot {
                         { separator: true },
                         { text: "Delete " + (app.focusItem.kind === "video" ? "Video" : "Photo"), action: () => app.trash(app.focusItem) },
                     ] : [
-                        { text: "Show Oldest First" + (app.oldestFirst ? "  ✓" : ""), action: () => app.oldestFirst = true },
-                        { text: "Show Newest First" + (!app.oldestFirst ? "  ✓" : ""), action: () => app.oldestFirst = false },
+                        { text: "Show Oldest First", checked: app.oldestFirst, action: () => app.oldestFirst = true },
+                        { text: "Show Newest First", checked: !app.oldestFirst, action: () => app.oldestFirst = false },
                         { separator: true },
                         { text: "Refresh Library", action: () => app.rescan() },
                     ])

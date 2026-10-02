@@ -140,6 +140,7 @@ PanelWindow {
 
     MenuPopup {
         id: systemMenu
+        instant: true
         anchor.window: bar
         anchor.rect.x: logo.x + 8
         anchor.rect.y: bar.height + 5

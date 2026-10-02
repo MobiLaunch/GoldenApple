@@ -104,10 +104,14 @@ class Controls(unittest.TestCase):
     def test_menu_skips_disabled_and_restores_focus(self):
         self.root.showMenu(); APP.processEvents()
         menu = self.control('menu')
+        # Opened by the pointer, nothing is highlighted until an arrow key.
+        self.assertEqual(menu.property('selected'), -1)
+        QTest.keyClick(self.view, Qt.Key_Down)
         self.assertEqual(menu.property('selected'), 0)
         QTest.keyClick(self.view, Qt.Key_Down)
         self.assertEqual(menu.property('selected'), 3)
         QTest.keyClick(self.view, Qt.Key_Return)
+        QTest.qWait(500)  # the chosen row flashes, then the menu fades
         self.assertEqual(self.root.property('actions'), 10)
         self.assertFalse(menu.property('visible'))
         self.assertTrue(self.control('button').hasActiveFocus())
@@ -116,6 +120,7 @@ class Controls(unittest.TestCase):
         self.key(pop, Qt.Key_Space)
         QTest.keyClick(self.view, Qt.Key_Down)
         QTest.keyClick(self.view, Qt.Key_Return)
+        QTest.qWait(500)
         self.assertEqual(pop.property('current'), 1)
     def test_shared_sidebar_progress_and_empty_state(self):
         row = self.control('sidebarRow')

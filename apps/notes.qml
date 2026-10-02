@@ -54,8 +54,8 @@ ShellRoot {
                 anchors.verticalCenter: parent.verticalCenter
                 round: true; symbol: "ellipsis"
                 onClicked: listMenu.popup(listMore, 0, height + 6, [
-                    { text: "Sort by Date Edited" + (app.sortBy === "date" ? "  ✓" : ""), action: () => app.sortBy = "date" },
-                    { text: "Sort by Title" + (app.sortBy === "title" ? "  ✓" : ""), action: () => app.sortBy = "title" },
+                    { text: "Sort by Date Edited", checked: app.sortBy === "date", action: () => app.sortBy = "date" },
+                    { text: "Sort by Title", checked: app.sortBy === "title", action: () => app.sortBy = "title" },
                     { separator: true },
                     { text: "Show Folder in Files", action: () => Quickshell.execDetached(["xdg-open", app.folder || app.root]) },
                 ])

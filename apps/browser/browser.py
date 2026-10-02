@@ -92,25 +92,10 @@ def main():
                 return 0
             sys.stderr.write("This Golden Gate Web profile is already running but could not receive this request.\n")
             return 1
-    engine = QQmlApplicationEngine()
-    engine.rootContext().setContextProperty("BrowserBackend", backend)
-
-    qml = Path(__file__).with_name("Browser.qml")
-    engine.load(QUrl.fromLocalFile(str(qml)))
-    if not engine.rootObjects():
-        sys.stderr.write("Golden Gate Web could not load its QML interface.\n")
-        return 2
-
-    # CI/test-only timed exit. Production never sets this environment variable.
-    # Keeping the hook in the launcher lets tests exercise the exact QML +
-    # Chromium startup path instead of a separate fake window.
-    try:
-        test_exit_ms = int(os.environ.get("GG_WEB_TEST_EXIT_MS", "0"))
-    except ValueError:
-        test_exit_ms = 0
-    if test_exit_ms > 0:
-        QTimer.singleShot(test_exit_ms, app.quit)
-
+    # Listen as soon as this process owns the profile, before the slow QML and
+    # Chromium start-up: a second launch in that window would otherwise find
+    # the lock taken and nobody to hand its URLs to. Requests queue until the
+    # event loop runs, by which time the window exists to receive them.
     server = None
     sockets = set()
     if not private:
@@ -151,6 +136,26 @@ def main():
                 read()
 
             server.newConnection.connect(connected)
+
+    engine = QQmlApplicationEngine()
+    engine.rootContext().setContextProperty("BrowserBackend", backend)
+
+    qml = Path(__file__).with_name("Browser.qml")
+    engine.load(QUrl.fromLocalFile(str(qml)))
+    if not engine.rootObjects():
+        sys.stderr.write("Golden Gate Web could not load its QML interface.\n")
+        return 2
+
+    # CI/test-only timed exit. Production never sets this environment variable.
+    # Keeping the hook in the launcher lets tests exercise the exact QML +
+    # Chromium startup path instead of a separate fake window.
+    try:
+        test_exit_ms = int(os.environ.get("GG_WEB_TEST_EXIT_MS", "0"))
+    except ValueError:
+        test_exit_ms = 0
+    if test_exit_ms > 0:
+        QTimer.singleShot(test_exit_ms, app.quit)
+
 
     code = app.exec()
     if lock is not None:

@@ -7,7 +7,7 @@ import sys
 root = Path(__file__).resolve().parents[1]
 lib = root / "apps/lib"
 standard = {
-    "AppWindow.qml", "Button.qml", "Checkbox.qml", "FocusRing.qml", "Glass.qml",
+    "AppWindow.qml", "Button.qml", "Checkbox.qml", "FocusRing.qml", "Glass.qml", "MenuList.qml",
     "PopUpButton.qml", "PopupMenu.qml", "ProgressBar.qml", "RoundedImage.qml", "Segmented.qml",
     "SidebarRow.qml", "SidebarSection.qml", "AccountRow.qml", "EmptyState.qml",
     "Slider.qml", "Spring.qml", "SpringValue.qml", "Switch.qml", "Symbol.qml",
@@ -151,6 +151,22 @@ for qml in sorted([*(root / "shell").glob("*.qml"), *(root / "shell/components")
             errors.append(f"{qml.relative_to(root)} imports a theme outside ui/: {path}")
         if "apps/lib" in path:
             errors.append(f"{qml.relative_to(root)} imports apps/lib directly instead of ui/: {path}")
+
+# One menu: every menu is MenuList, in a window (PopupMenu) or in a shell
+# surface (MenuPopup). Menu metrics and hand-made tick marks live only there.
+menu_popup = (root / "shell/components/MenuPopup.qml").read_text(encoding="utf-8")
+if "Shared.MenuList" not in menu_popup:
+    errors.append("shell/components/MenuPopup.qml no longer uses the shared MenuList")
+if "MenuList {" not in (lib / "PopupMenu.qml").read_text(encoding="utf-8"):
+    errors.append("apps/lib/PopupMenu.qml no longer uses the shared MenuList")
+for qml in sorted([*(root / "apps").rglob("*.qml"), *(root / "shell").rglob("*.qml")]):
+    if lib in qml.parents or qml.name == "MenuPopup.qml":
+        continue
+    text = qml.read_text(encoding="utf-8")
+    if "radiusMenu" in text:
+        errors.append(f"{qml.relative_to(root)} draws its own menu (radiusMenu outside MenuList)")
+    if '"  ✓"' in text or '"✓  "' in text:
+        errors.append(f"{qml.relative_to(root)} ticks menu items by hand; use checked:")
 
 if errors:
     print("\n".join(errors), file=sys.stderr)

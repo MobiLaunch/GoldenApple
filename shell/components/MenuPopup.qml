@@ -1,78 +1,66 @@
-// Glass drop-down menu anchored under a menu-bar item.
-//   items: [{ label, shortcut, action: function }, "-", ...]
+// A shell menu in its own surface: the menu bar's menus and the desktop, Dock
+// and Applications context menus. The menu is the shared MenuList, the same
+// one apps use (see there for the item format; "-" is a separator).
+// Menu-bar menus (`instant`) appear at once, context menus grow out of the
+// pointer; either fades once the chosen row has flashed.
 import Quickshell
 import QtQuick
-import QtQuick.Layouts
+import "../ui" as Shared
 import "../ui/theme"
 
 PopupWindow {
     id: menu
     property var items: []
     property bool open: false
+    property bool instant: false
+    readonly property alias list: list
+    property alias growFrom: list.transformOrigin      // the corner nearest the pointer
     signal dismissed()
 
-    visible: open || fade.running
+    visible: open || vanish.running
     color: "transparent"
-    implicitWidth: 240
-    implicitHeight: column.implicitHeight + 12
+    // The menu's own size, for callers placing it; the surface adds room
+    // right and below for the shadow, and takes input only on the menu.
+    readonly property real menuWidth: list.width
+    readonly property real menuHeight: list.implicitHeight
+    implicitWidth: menuWidth + 24
+    implicitHeight: menuHeight + 28
+    mask: Region { item: list }
 
-    Glass {
-        id: panel
-        anchors.fill: parent
-        role: "menu"
-        radius: Theme.radiusMenu
-        opacity: menu.open ? 1 : 0
-        scale: menu.open ? 1 : 0.94
+    onOpenChanged: if (open) {
+        vanish.stop()
+        list.opacity = 1
+        list.selected = -1
+        list.scale = 1
+        if (!instant && !Theme.reduceMotion) appear.restart()
+        list.forceActiveFocus()
+    }
+
+    NumberAnimation {
+        id: appear
+        target: list; property: "scale"; from: 0.9; to: 1
+        duration: Theme.popover.duration
+        easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.popover.curve
+    }
+
+    SequentialAnimation {
+        id: vanish
+        property var action
+        NumberAnimation { target: list; property: "opacity"; to: 0; duration: Theme.reduceMotion ? 0 : 160 }
+        ScriptAction { script: { const a = vanish.action; vanish.action = null; if (a) a() } }
+    }
+
+    Shared.MenuList {
+        id: list
+        items: menu.items
+        minimumWidth: 220
         transformOrigin: Item.TopLeft
-        Behavior on opacity { NumberAnimation { id: fade; duration: menu.open ? Theme.popover.duration : 140 } }
-        Behavior on scale { Spring { spring: Theme.popover } }
-
-        ColumnLayout {
-            id: column
-            anchors { fill: parent; margins: 6 }
-            spacing: 0
-            Repeater {
-                model: menu.items
-                delegate: Loader {
-                    required property var modelData
-                    Layout.fillWidth: true
-                    sourceComponent: modelData === "-" ? separator : row
-                    Component {
-                        id: separator
-                        Rectangle { implicitHeight: 11; color: "transparent"
-                            Rectangle { anchors.centerIn: parent; width: parent.width - 20; height: 1; color: Theme.separator } }
-                    }
-                    Component {
-                        id: row
-                        Rectangle {
-                            implicitHeight: 26
-                            radius: Theme.radiusMenuItem
-                            color: hover.containsMouse ? Theme.accent : "transparent"
-                            Behavior on color { ColorAnimation { duration: Prefs.reduceMotion ? 1 : 85 } }
-                            RowLayout {
-                                anchors { fill: parent; leftMargin: 10; rightMargin: 10 }
-                                Text {
-                                    Layout.fillWidth: true
-                                    text: modelData.label
-                                    color: hover.containsMouse ? "#ffffff" : Theme.label
-                                    font { family: Theme.fontUi; pixelSize: 13 }
-                                }
-                                Text {
-                                    text: modelData.shortcut ?? ""
-                                    color: hover.containsMouse ? "#ffffff" : Theme.secondaryLabel
-                                    font { family: Theme.fontUi; pixelSize: 12 }
-                                }
-                            }
-                            MouseArea {
-                                id: hover
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                onClicked: { menu.open = false; menu.dismissed(); modelData.action?.() }
-                            }
-                        }
-                    }
-                }
-            }
+        onDismissed: { menu.open = false; menu.dismissed() }
+        onChosen: (item) => {
+            vanish.action = item.action
+            vanish.restart()            // first, so the surface stays up while it fades
+            menu.open = false
+            menu.dismissed()
         }
     }
 }

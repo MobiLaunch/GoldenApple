@@ -24,7 +24,8 @@ Item {
         if (!enabled || !menuParent || !options.length) return
         forceActiveFocus()
         menu.popup(pop, 0, pop.height + 4, options.map((o, i) => ({
-            text: (i === current ? "✓  " : "     ") + o,
+            text: o,
+            checked: i === current,
             action: () => { pop.current = i; pop.picked(i) }
         })), current)
     }

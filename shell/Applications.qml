@@ -189,8 +189,8 @@ PanelWindow {
     MenuPopup {
         id: appMenu
         anchor.window: apps
-        anchor.rect.x: Math.max(8, Math.min(apps.contextX, apps.width - implicitWidth - 8))
-        anchor.rect.y: Math.max(8, Math.min(apps.contextY, apps.height - implicitHeight - 8))
+        anchor.rect.x: Math.max(8, Math.min(apps.contextX, apps.width - menuWidth - 8))
+        anchor.rect.y: Math.max(8, Math.min(apps.contextY, apps.height - menuHeight - 8))
         items: apps.contextItems
     }
     HyprlandFocusGrab {

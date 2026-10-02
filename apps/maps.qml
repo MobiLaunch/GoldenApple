@@ -600,7 +600,7 @@ ShellRoot {
                     id: styleBtn
                     symbol: "layers"
                     onClicked: menu.popup(styleBtn, -180, height + 6, Object.keys(Api.STYLES).filter((k) => k !== "dark").map((k) => ({
-                        text: Api.STYLES[k].name + (app.mapStyle === k ? "  ✓" : ""), action: () => { app.mapStyle = k; app.save() } })))
+                        text: Api.STYLES[k].name, checked: app.mapStyle === k, action: () => { app.mapStyle = k; app.save() } })))
                 }
             }
             Column {
