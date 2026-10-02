@@ -4,9 +4,9 @@
 
 [org.gnome.desktop.interface]
 icon-theme='GoldenGate'
-font-name='Inter Variable 10'
-document-font-name='Inter Variable 10'
-monospace-font-name='JetBrains Mono 10'
+font-name='SF Pro Text 10'
+document-font-name='SF Pro Text 10'
+monospace-font-name='SF Mono 10'
 accent-color='blue'
 
 [org.gnome.desktop.wm.preferences]
