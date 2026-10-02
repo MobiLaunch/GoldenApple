@@ -41,6 +41,13 @@ for forbidden in ("dockMagnification", "dockMagnifiedSize", "pointerTargetX", "s
     if forbidden in dock:
         errors.append(f"shell/Dock.qml: removed magnification path reintroduced: {forbidden}")
 
+control_center = (root / "shell" / "ControlCenter.qml").read_text(encoding="utf-8")
+for required in ("Big Sur-inspired Control Center", 'id: panel', 'title: "Display"', 'title: "Sound"'):
+    if required not in control_center:
+        errors.append(f"shell/ControlCenter.qml: Big Sur control surface missing {required!r}")
+if 'tint: Theme.dark ? "#7021262e" : "#5f343941"' not in dock:
+    errors.append("shell/Dock.qml: smoked real-hardware Dock material was removed")
+
 prefs = (root / "shell" / "components" / "Prefs.qml").read_text(encoding="utf-8")
 for forbidden in ("dockMagnification", "dockMagnifiedSize", "magnifiedSize"):
     if forbidden in prefs:
