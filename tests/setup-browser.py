@@ -118,7 +118,8 @@ class BrowserData(unittest.TestCase):
             path = Path(tmp) / 'state.json'
             path.write_text(json.dumps({
                 'settings': {'tabLayout': 'broken', 'searchEngine': 'evil',
-                             'showFavoritesOnFocus': 'yes', 'restoreSession': None},
+                             'showFavoritesOnFocus': 'yes', 'restoreSession': None,
+                             'privacyProtection': 'yes'},
                 'tabGroups': [
                     {'name': 'Work', 'tabs': [
                         {'title': 'Good', 'url': 'https://example.com'},
@@ -131,6 +132,7 @@ class BrowserData(unittest.TestCase):
             self.assertEqual(store.data['settings']['searchEngine'], 'duckduckgo')
             self.assertTrue(store.data['settings']['showFavoritesOnFocus'])
             self.assertTrue(store.data['settings']['restoreSession'])
+            self.assertTrue(store.data['settings']['privacyProtection'])
             self.assertEqual(store.data['tabGroups'], [
                 {'name': 'Work', 'tabs': [{'title': 'Good', 'url': 'https://example.com'}]}
             ])
