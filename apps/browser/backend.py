@@ -63,7 +63,19 @@ class BrowserBackend(QObject):
         self._cache_dir = cache
         self._downloads_dir = downloads
         self._ensure_profile_registered(self.profile_name)
-        self.store = Store(data / ("private-state.json" if self.private else "state.json"), self.private)
+        if self.private:
+            # Private Browsing can still see the active profile's Favorites,
+            # Reading List, groups and preferences, but its Store is explicitly
+            # off-record so none of its visits/tabs/changes are written back.
+            saved = Store(data / "state.json", False)
+            self.store = Store(data / "private-state.json", True)
+            for key in ("bookmarks", "readingList", "tabGroups", "settings"):
+                self.store.data[key] = json.loads(json.dumps(saved.data[key]))
+            self.store.data["tabs"] = ["about:blank"]
+            self.store.data["history"] = []
+            self.store.data["closedTabs"] = []
+        else:
+            self.store = Store(data / "state.json", False)
         self._dark = self._is_dark()
         QGuiApplication.styleHints().colorSchemeChanged.connect(self._scheme_changed)
 
