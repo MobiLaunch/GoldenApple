@@ -28,6 +28,7 @@ Window {
     property bool downloadsOpen: false
     property bool settingsOpen: false
     property bool readerOpen: false
+    property bool tabOverviewOpen: false
     property string readerTitle: ""
     property string readerText: ""
     property var downloads: []
@@ -640,6 +641,17 @@ Window {
                 }
             }
             BrowserButton {
+                symbol: "apps"
+                tooltip: "Tab Overview"
+                selected: root.tabOverviewOpen
+                onClicked: {
+                    root.tabOverviewOpen = !root.tabOverviewOpen
+                    root.pageMenuOpen = false
+                    root.downloadsOpen = false
+                    root.settingsOpen = false
+                }
+            }
+            BrowserButton {
                 symbol: "plus"
                 tooltip: "New Tab  ⌘T"
                 onClicked: root.newTab("about:blank", true)
@@ -1169,6 +1181,162 @@ Window {
                             text: "Clear History"
                             destructive: true
                             onClicked: BrowserBackend.clearHistory()
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Rectangle {
+        id: tabOverview
+        z: 42
+        visible: root.tabOverviewOpen
+        anchors.fill: body
+        color: Theme.dark ? "#f31b1b20" : "#f5f2f3f6"
+
+        Column {
+            anchors { fill: parent; margins: 26 }
+            spacing: 18
+
+            Row {
+                width: parent.width
+                Column {
+                    width: parent.width - overviewClose.width
+                    spacing: 2
+                    Text {
+                        text: "Tab Overview"
+                        color: Theme.label
+                        font { family: Theme.fontDisplay; pixelSize: 26; weight: Font.DemiBold; letterSpacing: -0.4 }
+                    }
+                    Text {
+                        text: tabsModel.count + (tabsModel.count === 1 ? " open tab" : " open tabs")
+                        color: Theme.secondaryLabel
+                        font { family: Theme.fontUi; pixelSize: 12 }
+                    }
+                }
+                BrowserButton {
+                    id: overviewClose
+                    symbol: "xmark"; tooltip: "Close Tab Overview"
+                    onClicked: root.tabOverviewOpen = false
+                }
+            }
+
+            Flickable {
+                width: parent.width
+                height: parent.height - 72
+                contentHeight: overviewGrid.height + 16
+                clip: true
+                boundsBehavior: Flickable.StopAtBounds
+
+                Grid {
+                    id: overviewGrid
+                    width: parent.width
+                    spacing: 14
+                    columns: Math.max(1, Math.floor((width + spacing) / 244))
+
+                    Repeater {
+                        model: tabsModel
+                        delegate: Rectangle {
+                            id: overviewCard
+                            required property int index
+                            required property string title
+                            required property string url
+                            required property string icon
+                            required property bool loading
+                            readonly property bool selected: index === root.currentIndex
+                            width: (overviewGrid.width - overviewGrid.spacing * (overviewGrid.columns - 1)) / overviewGrid.columns
+                            height: 142
+                            radius: 18
+                            color: Theme.dark ? "#ca303035" : "#ecffffff"
+                            border {
+                                width: selected ? 2 : 0.5
+                                color: selected ? Theme.accent : Theme.separator
+                            }
+                            scale: overviewArea.pressed && !Theme.reduceMotion ? 0.985 : 1
+                            Behavior on scale { NumberAnimation { duration: Theme.reduceMotion ? 1 : 80; easing.type: Easing.OutCubic } }
+
+                            Rectangle {
+                                anchors { left: parent.left; right: parent.right; top: parent.top }
+                                height: 86
+                                radius: 18
+                                color: Theme.dark ? "#16ffffff" : "#09000000"
+                                Rectangle {
+                                    anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
+                                    height: 18
+                                    color: parent.color
+                                }
+
+                                Image {
+                                    anchors.centerIn: parent
+                                    width: 34; height: 34
+                                    source: overviewCard.icon
+                                    sourceSize: Qt.size(68, 68)
+                                    visible: !!overviewCard.icon && !overviewCard.loading
+                                }
+                                Rectangle {
+                                    anchors.centerIn: parent
+                                    width: 34; height: 34; radius: 10
+                                    visible: !overviewCard.icon && !overviewCard.loading
+                                    color: Theme.dark ? "#18ffffff" : "#10000000"
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: (overviewCard.title || "N").charAt(0).toUpperCase()
+                                        color: Theme.secondaryLabel
+                                        font { family: Theme.fontUi; pixelSize: 15; weight: Font.DemiBold }
+                                    }
+                                }
+                                Rectangle {
+                                    anchors.centerIn: parent
+                                    width: 22; height: 22; radius: 11
+                                    visible: overviewCard.loading
+                                    color: "transparent"
+                                    border { width: 2; color: Theme.accent }
+                                    RotationAnimation on rotation {
+                                        running: overviewCard.loading && !Theme.reduceMotion
+                                        loops: Animation.Infinite
+                                        from: 0; to: 360; duration: 750
+                                    }
+                                }
+                            }
+
+                            Column {
+                                anchors { left: parent.left; right: overviewCardClose.left; bottom: parent.bottom; leftMargin: 12; rightMargin: 8; bottomMargin: 11 }
+                                spacing: 1
+                                Text {
+                                    width: parent.width
+                                    text: overviewCard.title || "Start Page"
+                                    color: Theme.label
+                                    elide: Text.ElideRight
+                                    font { family: Theme.fontUi; pixelSize: 12; weight: Font.Medium }
+                                }
+                                Text {
+                                    width: parent.width
+                                    text: overviewCard.url === "about:blank" ? "Start Page" : BrowserBackend.displayAddress(overviewCard.url)
+                                    color: Theme.secondaryLabel
+                                    elide: Text.ElideRight
+                                    font { family: Theme.fontUi; pixelSize: 10 }
+                                }
+                            }
+
+                            BrowserButton {
+                                id: overviewCardClose
+                                anchors { right: parent.right; rightMargin: 7; bottom: parent.bottom; bottomMargin: 8 }
+                                width: 25; height: 25
+                                symbol: "xmark"; tooltip: "Close Tab"
+                                onClicked: root.closeTab(overviewCard.index)
+                            }
+
+                            MouseArea {
+                                id: overviewArea
+                                anchors { left: parent.left; right: parent.right; top: parent.top; bottom: overviewCardClose.top }
+                                hoverEnabled: true
+                                onClicked: {
+                                    root.currentIndex = overviewCard.index
+                                    root.tabOverviewOpen = false
+                                    root.syncAddress()
+                                }
+                            }
                         }
                     }
                 }
@@ -2042,6 +2210,7 @@ Window {
         sequence: "Escape"
         onActivated: {
             if (root.readerOpen) root.readerOpen = false
+            else if (root.tabOverviewOpen) root.tabOverviewOpen = false
             else if (root.websitePermissionsOpen) root.websitePermissionsOpen = false
             else if (root.profileSheetOpen) root.profileSheetOpen = false
             else if (root.settingsOpen) root.settingsOpen = false
