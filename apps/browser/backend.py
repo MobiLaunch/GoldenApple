@@ -21,13 +21,13 @@ class BrowserBackend(QObject):
     toastRequested = Signal(str)
     externalUrls = Signal(str)
 
-    def __init__(self, *, private=False, launch_values=None, parent=None):
+    def __init__(self, *, private=False, launch_values=None, data_dir=None, cache_dir=None, download_dir=None, parent=None):
         super().__init__(parent)
         self.private = bool(private)
         self.launch_values = list(launch_values or [])
-        data = Path(QStandardPaths.writableLocation(QStandardPaths.AppDataLocation))
-        cache = Path(QStandardPaths.writableLocation(QStandardPaths.CacheLocation))
-        downloads = Path(QStandardPaths.writableLocation(QStandardPaths.DownloadLocation))
+        data = Path(data_dir or QStandardPaths.writableLocation(QStandardPaths.AppDataLocation))
+        cache = Path(cache_dir or QStandardPaths.writableLocation(QStandardPaths.CacheLocation))
+        downloads = Path(download_dir or QStandardPaths.writableLocation(QStandardPaths.DownloadLocation))
         data.mkdir(parents=True, exist_ok=True, mode=0o700)
         cache.mkdir(parents=True, exist_ok=True, mode=0o700)
         downloads.mkdir(parents=True, exist_ok=True)
