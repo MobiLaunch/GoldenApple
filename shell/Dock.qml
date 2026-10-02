@@ -25,6 +25,64 @@ PanelWindow {
     property real baseSize: Math.min(Prefs.dockSize, Math.max(16, (width - 48) / (tileCount + 3) - 6))
     property var launcher: null   // AppLaunch on this screen: the icon grows into the window
     property var applications: null
+    property real contextX: 0
+    property real contextY: 0
+    property var contextItems: []
+
+    function openEntry(entry) {
+        const parked = minimizedFor(entry)
+        const wins = windowsFor(entry)
+        if (parked) restore(parked)
+        else if (wins.length) wins[0].activate()
+        else entry.execute()
+    }
+
+    function quitEntry(entry) {
+        const wins = windowsFor(entry)
+        for (let i = 0; i < wins.length; i++) {
+            const address = wins[i].lastIpcObject?.address
+            if (address) Hyprland.dispatch("closewindow address:" + address)
+        }
+    }
+
+    function showEntryMenu(entry, item, localX, localY) {
+        const point = item.mapToItem(dock, localX, localY)
+        const wins = windowsFor(entry)
+        let menu = [
+            { label: wins.length ? "Show" : "Open", action: () => dock.openEntry(entry) }
+        ]
+        if (wins.length) {
+            menu.push("-")
+            for (let i = 0; i < wins.length; i++) {
+                const win = wins[i]
+                menu.push({ label: win.title || entry.name || "Window", action: () => win.activate() })
+            }
+            menu.push("-")
+            menu.push({ label: "Quit", shortcut: "⌘Q", action: () => dock.quitEntry(entry) })
+        }
+        contextItems = menu
+        contextX = point.x
+        contextY = point.y
+        dockMenu.open = true
+    }
+
+    function showPlaceMenu(place, item, localX, localY) {
+        const point = item.mapToItem(dock, localX, localY)
+        if (place.action === "applications") {
+            contextItems = [{ label: "Open Applications", action: () => dock.openApplications() }]
+        } else if (place.name === "Downloads") {
+            contextItems = [{ label: "Open Downloads", action: () => Quickshell.execDetached(place.exec) }]
+        } else {
+            contextItems = [
+                { label: "Open Trash", action: () => Quickshell.execDetached(place.exec) },
+                "-",
+                { label: "Empty Trash", action: () => Quickshell.execDetached(["sh", "-c", "rm -rf \"$HOME/.local/share/Trash/files/\"* \"$HOME/.local/share/Trash/info/\"* 2>/dev/null || true"]) }
+            ]
+        }
+        contextX = point.x
+        contextY = point.y
+        dockMenu.open = true
+    }
 
     function openApplications() {
         if (applications)
@@ -207,15 +265,22 @@ PanelWindow {
                         id: tipArea
                         anchors.fill: parent
                         hoverEnabled: true
-                        onClicked: {
+                        acceptedButtons: Qt.LeftButton | Qt.RightButton
+                        onClicked: mouse => {
+                            if (mouse.button === Qt.RightButton) {
+                                dock.showEntryMenu(tile.modelData, tile, mouse.x, mouse.y)
+                                return
+                            }
                             const parked = dock.minimizedFor(tile.modelData)
                             if (parked) dock.restore(parked)
                             else if (tile.wins.length) tile.wins[0].activate()
                             else if (dock.launcher?.enabled && Prefs.animateLaunch) {
-                                // The Dock window sits at the bottom of the launcher's full-screen one.
                                 const p = icon.mapToItem(null, 0, 0)
                                 dock.launcher.launch(tile.modelData, Qt.rect(p.x, dock.launcher.height - dock.height + p.y, icon.width, icon.height))
-                            } else { if (!Prefs.reduceMotion && Prefs.animateLaunch) bounce.restart(); tile.modelData.execute() }
+                            } else {
+                                if (!Prefs.reduceMotion && Prefs.animateLaunch) bounce.restart()
+                                tile.modelData.execute()
+                            }
                         }
                     }
                 }
@@ -272,17 +337,29 @@ PanelWindow {
                         id: placeArea
                         anchors.fill: parent
                         hoverEnabled: true
-                        onClicked: {
-                            if (place.modelData.action === "applications") {
-                                dock.openApplications()
-                            } else {
-                                Quickshell.execDetached(place.modelData.exec)
+                        acceptedButtons: Qt.LeftButton | Qt.RightButton
+                        onClicked: mouse => {
+                            if (mouse.button === Qt.RightButton) {
+                                dock.showPlaceMenu(place.modelData, place, mouse.x, mouse.y)
+                                return
                             }
+                            if (place.modelData.action === "applications")
+                                dock.openApplications()
+                            else
+                                Quickshell.execDetached(place.modelData.exec)
                         }
                     }
                 }
             }
         }
     }
+    MenuPopup {
+        id: dockMenu
+        anchor.window: dock
+        anchor.rect.x: Math.max(8, Math.min(dock.contextX, dock.width - implicitWidth - 8))
+        anchor.rect.y: Math.max(8, dock.contextY - implicitHeight - 10)
+        items: dock.contextItems
+    }
+
 }
 
