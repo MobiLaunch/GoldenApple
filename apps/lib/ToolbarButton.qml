@@ -19,7 +19,7 @@ Item {
     property bool round: false
     property real symbolSize: 17
     property string tone: "auto"
-    property color glassColor: Theme.dark ? "#eb3a3a3e" : "#ebffffff"
+    property color glassColor: Theme.glassControl.tint
     signal clicked()
 
     implicitHeight: round ? 36 : 30
@@ -39,9 +39,8 @@ Item {
         anchors.fill: parent
         visible: button.round
         radius: height / 2
+        role: "control"
         tint: button.glassColor
-        rimLow: Theme.dark ? "#1fffffff" : "#14000000"
-        lens: 5
         pressed: tap.pressed
         hovered: hover.hovered && button.enabled
     }

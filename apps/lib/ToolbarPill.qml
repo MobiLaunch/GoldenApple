@@ -18,9 +18,7 @@ Item {
     Glass {
         anchors.fill: parent
         radius: height / 2
-        tint: Theme.dark ? "#eb3a3a3e" : "#ebffffff"
-        rimLow: Theme.dark ? "#1fffffff" : "#14000000"
-        lens: 5
+        role: "control"
     }
     Row {
         id: row

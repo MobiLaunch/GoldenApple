@@ -61,13 +61,13 @@ PanelWindow {
         function commit(): void { sw.commit() }
     }
 
-    Glass { variant: "clear";
+    Glass {
         id: panel
         anchors.centerIn: parent
         width: row.implicitWidth + 28
         height: row.implicitHeight + 28
+        role: "regular"
         radius: 30
-        tint: Theme.glassRegular.tint
         scale: sw.open ? 1 : 0.9
         Behavior on scale { Spring { spring: Theme.popover } }
 

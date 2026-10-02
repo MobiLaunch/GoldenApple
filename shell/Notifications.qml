@@ -49,14 +49,14 @@ PanelWindow {
 
         Repeater {
             model: root.list.slice(0, 4)
-            delegate: Glass { variant: "clear";
+            delegate: Glass {
                 id: banner
                 required property var modelData
                 readonly property var n: modelData
                 Layout.fillWidth: true
                 Layout.preferredHeight: content.implicitHeight + 24
+                role: "regular"
                 radius: 22
-                tint: Theme.glassRegular.tint
                 // Slide in from the right; follows the finger/pointer when swiped.
                 property real dragX: 0
                 property bool shown: false
@@ -132,9 +132,9 @@ PanelWindow {
                     }
                 }
                 // Close button appears on hover, top-left like the system banners.
-                Glass { variant: "clear";
+                Glass {
+                    role: "control"
                     x: -7; y: -7; width: 22; height: 22; radius: 11
-                    tint: Theme.glassRegular.tint
                     opacity: hover.hovered ? 1 : 0
                     Behavior on opacity { NumberAnimation { duration: 150 } }
                     Symbol { anchors.centerIn: parent; name: "xmark"; size: 10; tone: Theme.dark ? "white" : "dark" }

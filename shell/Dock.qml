@@ -159,22 +159,13 @@ PanelWindow {
         Hyprland.dispatch(`movetoworkspace ${ws},address:${t.lastIpcObject.address}`)
         if (monitor?.name) Hyprland.dispatch(`focusmonitor ${monitor.name}`)
     }
-    Glass { variant: "clear";
+    Glass {
         id: shelf
         anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: 6 }
         width: row.width + 18
         height: dock.baseSize + 18
+        role: "dock"
         radius: Theme.radiusDock + 2
-        // Real GPUs make the generic light clear-glass tint read far whiter than
-        // llvmpipe/VMs. Give the Dock its own smoked graphite material so icon
-        // colors stay vivid and the shelf remains visible without becoming a
-        // bright white bar over light wallpapers.
-        tint: Theme.dark ? "#7021262e" : "#5f343941"
-        rim: Theme.dark ? "#68ffffff" : "#52ffffff"
-        rimLow: Theme.dark ? "#20ffffff" : "#16000000"
-        shine: Theme.dark ? "#36ffffff" : "#24ffffff"
-        lens: 4
-        shadow: "#72000000"
 
         Row {
             id: row
@@ -244,7 +235,7 @@ PanelWindow {
                         opacity: tile.wins.length && Prefs.dockIndicators ? 1 : 0
                         Behavior on opacity { NumberAnimation { duration: 300 } }
                     }
-                    Glass { variant: "clear";
+                    Glass {
                         id: tip
                         readonly property bool shown: tipArea.containsMouse && !tipArea.pressed
                         visible: opacity > 0
@@ -256,7 +247,7 @@ PanelWindow {
                         anchors { bottom: icon.top; bottomMargin: 10 }
                         x: Math.max(8 - (shelf.x + row.x + tile.x), Math.min((parent.width - width) / 2, dock.width - 8 - (shelf.x + row.x + tile.x) - width))
                         width: Math.min(dock.width - 16, tipText.implicitWidth + 24); height: 26; radius: 13
-                        tint: Theme.dark ? "#b8282830" : "#c8f4f4f6"
+                        role: "menu"
                         Text { id: tipText; anchors.centerIn: parent; width: Math.min(implicitWidth, parent.width - 24); elide: Text.ElideRight; textFormat: Text.PlainText; text: tile.modelData.name; color: Theme.label; font { family: Theme.fontUi; pixelSize: 13; weight: Font.Medium } }
                     }
                     MouseArea {
@@ -316,7 +307,7 @@ PanelWindow {
                         layer.effect: MultiEffect { brightness: -0.28 }
                         opacity: !gpu && placeArea.pressed ? 0.7 : 1
                     }
-                    Glass { variant: "clear";
+                    Glass {
                         id: placeTip
                         readonly property bool shown: placeArea.containsMouse && !placeArea.pressed
                         visible: opacity > 0
@@ -328,7 +319,7 @@ PanelWindow {
                         anchors { bottom: placeIcon.top; bottomMargin: 10 }
                         x: Math.max(8 - (shelf.x + row.x + place.x), Math.min((parent.width - width) / 2, dock.width - 8 - (shelf.x + row.x + place.x) - width))
                         width: Math.min(dock.width - 16, placeText.implicitWidth + 24); height: 26; radius: 13
-                        tint: Theme.dark ? "#b8282830" : "#c8f4f4f6"
+                        role: "menu"
                         Text { id: placeText; anchors.centerIn: parent; width: Math.min(implicitWidth, parent.width - 24); elide: Text.ElideRight; textFormat: Text.PlainText; text: place.modelData.name; color: Theme.label; font { family: Theme.fontUi; pixelSize: 13; weight: Font.Medium } }
                     }
                     MouseArea {

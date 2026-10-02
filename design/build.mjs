@@ -144,6 +144,12 @@ function material(name, m) {
       `        readonly property color rim: "${qmlColor(m.rim)}"`,
       `        readonly property color rimLow: "${qmlColor(m.rimLow)}"`,
       `        readonly property color shine: "${qmlColor(m.shine)}"`,
+      `        readonly property color edge: "${qmlColor(m.edge)}"`,
+      `        readonly property real lens: ${m.lens}`,
+      `        readonly property real shadowY: ${m.shadowY}`,
+      `        readonly property real shadowOpacity: ${m.shadowOpacity}`,
+      `        readonly property real tinted: ${m.tinted}`,
+      `        readonly property real reduced: ${m.reduced}`,
       "    }");
   }
   q.push("", "    // Springs: use as NumberAnimation { duration: Theme.snappy.duration; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.snappy.curve }");

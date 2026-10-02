@@ -3,7 +3,7 @@ import QtQuick
 import QtQuick.Layouts
 import "../ui/theme"
 
-Glass { variant: "clear";
+Glass {
     id: root
     property string title
     property string lowIcon
@@ -62,7 +62,7 @@ Glass { variant: "clear";
                 }
                 // Liquid Glass knob: white at rest; while dragging it grows into a
                 // clear glass lens over the track, as in iOS and macOS 26.
-                Glass { variant: "clear";
+                Glass {
                     id: knob
                     property real size: drag.pressed ? 28 : drag.containsMouse ? 18 : 0
                     width: size * 1.35; height: size

@@ -73,12 +73,11 @@ Item {
             Text { anchors.centerIn: parent; text: root.initials; color: "white"; font { family: Theme.fontUi; pixelSize: 24; weight: Font.DemiBold } }
         }
         Text { Layout.alignment: Qt.AlignHCenter; text: root.userName; color: "white"; font { family: Theme.fontUi; pixelSize: 15; weight: Font.DemiBold } }
-        Glass { variant: "clear";
+        Glass {
             id: capsule
             Layout.alignment: Qt.AlignHCenter
             Layout.preferredWidth: 220; Layout.preferredHeight: 34
             radius: 17
-            tint: "#38ffffff"
             transform: Translate { id: shakeX }
             TextField {
                 id: field

@@ -63,11 +63,11 @@ PanelWindow {
         Behavior on opacity { NumberAnimation { duration: Prefs.reduceMotion ? 1 : 140; easing.type: Easing.OutCubic } }
         Behavior on scale { enabled: !Prefs.reduceMotion; Spring { spring: Theme.popover } }
 
-        Glass { variant: "clear";
+        Glass {
             Layout.fillWidth: true
             Layout.preferredHeight: 56
+            role: "regular"
             radius: 28
-            tint: Theme.glassRegular.tint
             TextField {
                 id: input
                 anchors { fill: parent; margins: 8 }
@@ -87,12 +87,12 @@ PanelWindow {
             }
         }
 
-        Glass { variant: "clear";
+        Glass {
             visible: spot.results.length > 0
             Layout.fillWidth: true
             Layout.preferredHeight: Math.min(list.contentHeight + 16, Math.max(60, spot.height * 0.78 - 90))
+            role: "regular"
             radius: 24
-            tint: Theme.glassRegular.tint
             ListView {
                 id: list
                 anchors { fill: parent; margins: 8 }

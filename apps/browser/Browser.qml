@@ -1005,7 +1005,7 @@ Window {
                         onActivated: libraryOverlay.showCollection("history", "History")
                     }
                     SideRow {
-                        symbol: "notes"
+                        symbol: "doc"
                         label: "Reading List"
                         onActivated: libraryOverlay.showCollection("readingList", "Reading List")
                     }
@@ -1511,7 +1511,7 @@ Window {
                             name: modelData.kind === "tab" ? "apps"
                                 : modelData.kind === "favorite" ? "bookmark"
                                 : modelData.kind === "history" ? "clock"
-                                : modelData.kind === "reading" ? "notes" : "search"
+                                : modelData.kind === "reading" ? "doc" : "search"
                             tone: modelData.kind === "search" ? "accent" : "gray"
                             size: 15
                         }
@@ -1718,7 +1718,7 @@ Window {
                 MouseArea { id: menuArea; anchors.fill: parent; hoverEnabled: true; enabled: mr.enabled; onClicked: mr.activated() }
             }
 
-            MenuRow { symbol: "notes"; label: "Reader"; enabled: root.currentUrl !== "about:blank"; onActivated: root.enterReader() }
+            MenuRow { symbol: "doc"; label: "Reader"; enabled: root.currentUrl !== "about:blank"; onActivated: root.enterReader() }
             MenuRow {
                 symbol: "shield"
                 label: "Privacy Report"

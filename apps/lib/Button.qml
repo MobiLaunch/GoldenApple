@@ -24,8 +24,9 @@ Item {
     Glass {
         anchors.fill: parent
         radius: height / 2
-        tint: b.prominent ? Theme.accent : (Theme.dark ? "#4d5a5a5e" : "#f2ffffff")
-        lens: 4
+        role: "control"
+        // The default button is stained with the accent; the others are plain glass.
+        tint: b.prominent ? Theme.accent : material.tint
         pressed: ma.pressed
         hovered: ma.containsMouse
         shadow: Theme.dark ? "#40000000" : "#1a000000"

@@ -45,7 +45,10 @@ control_center = (root / "shell" / "ControlCenter.qml").read_text(encoding="utf-
 for required in ("Big Sur-inspired Control Center", 'id: panel', 'title: "Display"', 'title: "Sound"'):
     if required not in control_center:
         errors.append(f"shell/ControlCenter.qml: Big Sur control surface missing {required!r}")
-if 'tint: Theme.dark ? "#7021262e" : "#5f343941"' not in dock:
+# Real GPUs make the light clear tint a bright white bar; the Dock keeps its
+# smoked graphite material, now a role in the design tokens.
+theme_qml = (root / "apps" / "lib" / "theme" / "Theme.qml").read_text(encoding="utf-8")
+if 'role: "dock"' not in dock or 'dark ? "#7021262e" : "#5f343941"' not in theme_qml:
     errors.append("shell/Dock.qml: smoked real-hardware Dock material was removed")
 
 prefs = (root / "shell" / "components" / "Prefs.qml").read_text(encoding="utf-8")

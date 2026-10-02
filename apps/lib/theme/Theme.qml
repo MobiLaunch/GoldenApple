@@ -60,24 +60,81 @@ QtObject {
     readonly property color menuHighlight: dark ? "#1affffff" : "#0f000000"
     readonly property QtObject glassClear: QtObject {
         readonly property real blur: 24
-        readonly property color tint: dark ? "#61283c6e" : "#6bffffff"
-        readonly property color rim: "#b8ffffff"
-        readonly property color rimLow: "#33ffffff"
-        readonly property color shine: "#85ffffff"
+        readonly property color tint: dark ? "#571c1c20" : "#5cffffff"
+        readonly property color rim: "#b3ffffff"
+        readonly property color rimLow: "#2effffff"
+        readonly property color shine: "#75ffffff"
+        readonly property color edge: "#1a000000"
+        readonly property real lens: 10
+        readonly property real shadowY: 5
+        readonly property real shadowOpacity: 0.18
+        readonly property real tinted: 0.72
+        readonly property real reduced: 0.94
     }
     readonly property QtObject glassRegular: QtObject {
         readonly property real blur: 32
-        readonly property color tint: dark ? "#ad242428" : "#b8fafafc"
+        readonly property color tint: dark ? "#ad202024" : "#b8fafafc"
         readonly property color rim: "#b3ffffff"
         readonly property color rimLow: "#1affffff"
-        readonly property color shine: "#73ffffff"
+        readonly property color shine: "#66ffffff"
+        readonly property color edge: "#1f000000"
+        readonly property real lens: 12
+        readonly property real shadowY: 6
+        readonly property real shadowOpacity: 0.22
+        readonly property real tinted: 0.88
+        readonly property real reduced: 0.96
     }
     readonly property QtObject menu: QtObject {
         readonly property real blur: 40
-        readonly property color tint: dark ? "#b328282c" : "#bdf6f6f8"
+        readonly property color tint: dark ? "#c726262a" : "#ccf6f6f8"
         readonly property color rim: "#bfffffff"
         readonly property color rimLow: "#1fffffff"
+        readonly property color shine: "#57ffffff"
+        readonly property color edge: "#1a000000"
+        readonly property real lens: 8
+        readonly property real shadowY: 10
+        readonly property real shadowOpacity: 0.28
+        readonly property real tinted: 0.92
+        readonly property real reduced: 0.97
+    }
+    readonly property QtObject glassControl: QtObject {
+        readonly property real blur: 20
+        readonly property color tint: dark ? "#9948484e" : "#dbffffff"
+        readonly property color rim: "#b8ffffff"
+        readonly property color rimLow: "#1fffffff"
         readonly property color shine: "#66ffffff"
+        readonly property color edge: "#14000000"
+        readonly property real lens: 5
+        readonly property real shadowY: 2
+        readonly property real shadowOpacity: 0.14
+        readonly property real tinted: 0.94
+        readonly property real reduced: 0.98
+    }
+    readonly property QtObject glassSidebar: QtObject {
+        readonly property real blur: 40
+        readonly property color tint: dark ? "#9428282c" : "#9ef4f4f7"
+        readonly property color rim: "#8cffffff"
+        readonly property color rimLow: "#14ffffff"
+        readonly property color shine: "#3dffffff"
+        readonly property color edge: "#0f000000"
+        readonly property real lens: 0
+        readonly property real shadowY: 2
+        readonly property real shadowOpacity: 0.1
+        readonly property real tinted: 0.86
+        readonly property real reduced: 0.97
+    }
+    readonly property QtObject glassDock: QtObject {
+        readonly property real blur: 24
+        readonly property color tint: dark ? "#7021262e" : "#5f343941"
+        readonly property color rim: "#61ffffff"
+        readonly property color rimLow: "#1affffff"
+        readonly property color shine: "#2effffff"
+        readonly property color edge: "#1f000000"
+        readonly property real lens: 4
+        readonly property real shadowY: 5
+        readonly property real shadowOpacity: 0.3
+        readonly property real tinted: 0.8
+        readonly property real reduced: 0.94
     }
 
     // Springs: use as NumberAnimation { duration: Theme.snappy.duration; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.snappy.curve }

@@ -70,9 +70,11 @@ PanelWindow {
     component GroupCard: Rectangle {
         id: card
         property bool pressed: false
+        // A module is a fill on the panel's glass, not glass on glass; its
+        // corners are concentric with the panel's (25 - 12 padding ≈ 17).
         radius: 17
-        color: Theme.dark ? "#5effffff" : "#72ffffff"
-        border { width: 0.5; color: Theme.dark ? "#24ffffff" : "#18000000" }
+        color: Theme.dark ? "#1affffff" : "#8cffffff"
+        border { width: 0.5; color: Theme.dark ? "#1affffff" : "#0f000000" }
         scale: pressed && !Prefs.reduceMotion ? 0.985 : 1
         Behavior on scale { NumberAnimation { duration: Prefs.reduceMotion ? 1 : 85; easing.type: Easing.OutCubic } }
     }
@@ -159,7 +161,7 @@ PanelWindow {
 
         RoundToggle {
             anchors { left: parent.left; leftMargin: 11; top: parent.top; topMargin: 10 }
-            width: 34; height: 34; radius: 17
+            width: 30; height: 30; radius: 15
             icon: tile.icon
             on: tile.on
             onActivated: tile.activated()
@@ -206,7 +208,7 @@ PanelWindow {
         RowLayout {
             anchors { left: parent.left; right: parent.right; bottom: parent.bottom; leftMargin: 13; rightMargin: 13; bottomMargin: 11 }
             spacing: 8
-            Symbol { name: slider.lowIcon; size: 13; tone: "gray" }
+            Symbol { name: slider.lowIcon; size: 13; tone: "auto"; opacity: 0.6 }
             Item {
                 id: track
                 Layout.fillWidth: true
@@ -239,23 +241,17 @@ PanelWindow {
                     onPositionChanged: mouse => { if (pressed) slider.setFromX(mouse.x) }
                 }
             }
-            Symbol { name: slider.highIcon; size: 15; tone: "gray" }
+            Symbol { name: slider.highIcon; size: 15; tone: "auto"; opacity: 0.6 }
         }
     }
 
     Glass {
         id: panel
-        variant: "regular"
+        role: "regular"
         anchors { top: parent.top; right: parent.right; topMargin: 24 }
         width: 344
         height: content.implicitHeight + 24
         radius: 25
-        tint: Theme.dark ? "#e32b2b30" : "#e5e9e9ed"
-        rim: Theme.dark ? "#48ffffff" : "#68ffffff"
-        rimLow: Theme.dark ? "#18ffffff" : "#26000000"
-        shine: Theme.dark ? "#24ffffff" : "#36ffffff"
-        lens: 4
-        shadow: "#a8000000"
         opacity: cc.open ? 1 : 0
         scale: cc.open || Prefs.reduceMotion ? 1 : 0.965
         transformOrigin: Item.TopRight
@@ -410,7 +406,7 @@ PanelWindow {
             Layout.fillWidth: true
             spacing: 8
             ActionTile {
-                Layout.fillWidth: true; Layout.preferredHeight: 66
+                Layout.fillWidth: true; Layout.preferredHeight: 78
                 icon: "sun"; title: "Night Shift"; subtitle: cc.nightShift ? "On" : ""; on: cc.nightShift
                 onActivated: {
                     const enabled = !cc.nightShift
@@ -419,7 +415,7 @@ PanelWindow {
                 }
             }
             ActionTile {
-                Layout.fillWidth: true; Layout.preferredHeight: 66
+                Layout.fillWidth: true; Layout.preferredHeight: 78
                 icon: "contrast"; title: "Appearance"; subtitle: Theme.dark ? "Dark" : "Light"; on: Theme.dark
                 onActivated: {
                     Theme.dark = !Theme.dark
@@ -430,7 +426,7 @@ PanelWindow {
                 }
             }
             ActionTile {
-                Layout.fillWidth: true; Layout.preferredHeight: 66
+                Layout.fillWidth: true; Layout.preferredHeight: 78
                 icon: "screenshot"; title: "Capture"; subtitle: ""
                 onActivated: {
                     cc.open = false

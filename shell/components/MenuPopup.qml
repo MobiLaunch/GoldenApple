@@ -16,11 +16,11 @@ PopupWindow {
     implicitWidth: 240
     implicitHeight: column.implicitHeight + 12
 
-    Glass { variant: "clear";
+    Glass {
         id: panel
         anchors.fill: parent
+        role: "menu"
         radius: Theme.radiusMenu
-        tint: Theme.dark ? "#b8282830" : "#c8f4f4f6"
         opacity: menu.open ? 1 : 0
         scale: menu.open ? 1 : 0.94
         transformOrigin: Item.TopLeft

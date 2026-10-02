@@ -1,7 +1,19 @@
-// Liquid Glass material for Golden Gate apps: tint, sheen, a lens band inside
-// the edge and one hairline rim lit from the top left. `pressed` squashes and
-// brightens it, `hovered` lifts it. HyprGlass owns compositor optics wherever
-// a window exposes backdrop; this component owns only application chrome.
+// Liquid Glass, by role. Each role is a material from design/tokens.json, so a
+// caller says what the glass is for and never paints its own tint:
+//   clear    shell glass over the wallpaper (Dock, widgets, lock screen)
+//   regular  panels (Control Center, notifications, Spotlight, the switcher)
+//   menu     menus and popovers, thicker and more opaque
+//   control  small controls on a window (toolbar groups, buttons, pop-ups)
+//   sidebar  window sidebars
+//   dock     the Dock: smoked graphite, so icons stay vivid on real GPUs
+// The layers, as Apple describes them: a neutral tint (glass takes its colour
+// from what is behind it), a lens band that gathers light inside the edge, a
+// one-pixel specular rim lit from the top left, the darker inner edge on the
+// far side (macOS 27), a top light catch and a shadow that follows the
+// interaction. HyprGlass blurs the backdrop where a surface exposes one.
+// `tint` stays settable for stained glass (the accent on a default button,
+// red on an error banner); Tinted style and Reduce Transparency only ever
+// thicken it.
 import QtQuick
 import QtQuick.Shapes
 import QtQuick.Effects
@@ -10,102 +22,115 @@ import "theme"
 Item {
     id: root
     property real radius: 26
-    // One implementation, two material roles. Native app content defaults to
-    // the denser readable material; HyprGlass-backed shell surfaces opt into
-    // "clear" without maintaining a separate Glass component.
-    property string variant: "regular" // "regular" | "clear"
-    readonly property bool clearMaterial: variant === "clear"
-    property color tint: clearMaterial ? Theme.glassClear.tint : Theme.glassRegular.tint
-    property color rim: clearMaterial ? Theme.glassClear.rim : Theme.glassRegular.rim
-    property color rimLow: clearMaterial ? Theme.glassClear.rimLow : Theme.glassRegular.rimLow
-    property color shine: clearMaterial ? Theme.glassClear.shine : Theme.glassRegular.shine
+    // `variant` is the older name for the two roles it had; `role` wins.
+    property string variant: "regular"
+    property string role: variant === "clear" ? "clear" : "regular"
+    readonly property QtObject material: role === "clear" ? Theme.glassClear
+        : role === "menu" ? Theme.menu
+        : role === "control" ? Theme.glassControl
+        : role === "sidebar" ? Theme.glassSidebar
+        : role === "dock" ? Theme.glassDock
+        : Theme.glassRegular
+    readonly property bool clearMaterial: role === "clear"
+    property color tint: material.tint
+    property color rim: material.rim
+    property color rimLow: material.rimLow
+    property color shine: material.shine
+    property color edge: material.edge
     property bool filled: false
     property bool pressed: false
     property bool hovered: false
-    property real lens: Math.min(9, radius * 0.45)      // width of the lens band
-    property color shadow: "transparent"                // a contact shadow 1px below (knobs, buttons)
+    // Width of the lens band; never more than a little under half the radius,
+    // so a small control's band doesn't fill it.
+    property real lens: material.lens
+    property color shadow: "transparent"                // a darker contact shadow (knobs)
     default property alias content: body.data
 
     readonly property real r: Math.min(radius, width / 2, height / 2)
-    readonly property color shownTint: Theme.reduceTransparency
-        ? Qt.rgba(tint.r, tint.g, tint.b, Math.max(tint.a, clearMaterial ? 0.94 : 0.96))
-        : Theme.glassStyle === "tinted"
-            ? Qt.rgba(tint.r, tint.g, tint.b, Math.max(tint.a, clearMaterial ? 0.72 : 0.88))
-            : Qt.rgba(tint.r, tint.g, tint.b,
-                Math.max(tint.a, clearMaterial ? (Theme.dark ? 0.38 : 0.42) : 0.74))
+    readonly property real band: Math.min(lens, r * 0.45)
+    readonly property real minAlpha: Theme.reduceTransparency ? material.reduced
+        : Theme.glassStyle === "tinted" ? material.tinted : 0
+    readonly property color shownTint: Qt.rgba(tint.r, tint.g, tint.b, Math.max(tint.a, minAlpha))
 
-    // The press: a little smaller and brighter, springing back. A transform, so
-    // users can still animate `scale` (Control Center's modules spring in).
-    property real pressScale: pressed ? 0.955 : 1
-    Behavior on pressScale { Spring { spring: Theme.snappy } }
+    // The press: the glass gives a few pixels whatever its size and bounces
+    // back (macOS 27). A transform, so callers can still animate `scale`.
+    property real pressScale: pressed ? Math.max(0.94, 1 - 5 / Math.max(1, Math.max(width, height))) : 1
+    Behavior on pressScale { Spring { spring: root.pressed ? Theme.snappy : Theme.bouncy } }
     transform: Scale { origin.x: root.width / 2; origin.y: root.height / 2; xScale: root.pressScale; yScale: root.pressScale }
 
     Rectangle { id: shadowShape; anchors.fill: parent; radius: root.r; color: "#ffffff"; visible: false }
     MultiEffect {
         anchors.fill: shadowShape; source: shadowShape; autoPaddingEnabled: true
+        visible: root.material.shadowOpacity > 0
         shadowEnabled: true
-        shadowColor: root.shadow.a > 0 ? root.shadow : "#70000000"
-        shadowOpacity: root.pressed ? 0.14 : root.hovered ? (root.clearMaterial ? 0.27 : 0.26) : 0.20
-        shadowBlur: 1.0
-        shadowVerticalOffset: root.pressed ? (root.clearMaterial ? 2 : 1)
-            : root.hovered ? (root.clearMaterial ? 7 : 6)
-            : (root.clearMaterial ? 5 : 4)
+        shadowColor: root.shadow.a > 0 ? root.shadow : "#000000"
+        shadowOpacity: root.material.shadowOpacity + (root.pressed ? -0.06 : root.hovered ? 0.05 : 0)
+        shadowBlur: root.role === "control" ? 0.5 : 1.0
+        shadowVerticalOffset: root.material.shadowY * (root.pressed ? 0.4 : root.hovered ? 1.3 : 1)
+        Behavior on shadowOpacity { NumberAnimation { duration: 160 } }
     }
     Rectangle {
-        id: bodyFill
         anchors.fill: parent
         radius: root.r
         color: root.filled ? (Theme.dark ? "#e6ffffff" : "#f2ffffff") : root.shownTint
         Behavior on color { ColorAnimation { duration: 180 } }
     }
+    // The interaction glow: the glass lights up under the pointer.
     Rectangle {
         anchors.fill: parent
         radius: root.r
         color: "#ffffff"
-        opacity: root.pressed ? 0.16 : root.hovered ? 0.08 : 0
+        opacity: root.pressed ? 0.16 : root.hovered ? 0.07 : 0
         Behavior on opacity { NumberAnimation { duration: 140 } }
     }
-    // Sheen
+    // Light catch along the top.
     Rectangle {
         anchors.fill: parent
         radius: root.r
         visible: !root.filled
-        opacity: root.clearMaterial ? 0.72 : 0.64
         gradient: Gradient {
             GradientStop { position: 0.0; color: root.shine }
-            GradientStop { position: 0.42; color: "transparent" }
+            GradientStop { position: Math.min(0.42, 28 / Math.max(1, root.height)); color: "transparent" }
         }
     }
-    // Lens band: light gathering toward the edge, brighter at the top. Four
-    // nested rings of a quarter strength each, so it fades in steps too small to
-    // read as an edge (one ring drew a hard inner outline, like a smaller copy).
+    // Lens band: light gathering toward the edge, brightest top left. Four
+    // nested rings of a quarter strength each, so it fades in steps too small
+    // to read as a second outline. The ring takes its geometry as properties:
+    // an inline component can't see this file's ids.
     component LensRing: ShapePath {
         property real depth
+        property real w
+        property real h
+        property real rr
+        property real strength
         strokeColor: "transparent"
         fillRule: ShapePath.OddEvenFill
         fillGradient: LinearGradient {
-            x1: 0; y1: 0; x2: root.width * 0.35; y2: root.height
-            GradientStop { position: 0; color: Qt.rgba(1, 1, 1, root.clearMaterial ? 0.10 : 0.075) }
-            GradientStop { position: 0.55; color: Qt.rgba(1, 1, 1, root.clearMaterial ? 0.025 : 0.020) }
-            GradientStop { position: 1; color: Qt.rgba(1, 1, 1, root.clearMaterial ? 0.055 : 0.045) }
+            x1: 0; y1: 0; x2: w * 0.35; y2: h
+            GradientStop { position: 0; color: Qt.rgba(1, 1, 1, strength) }
+            GradientStop { position: 0.55; color: Qt.rgba(1, 1, 1, strength * 0.25) }
+            GradientStop { position: 1; color: Qt.rgba(1, 1, 1, strength * 0.55) }
         }
-        PathRectangle { x: 0; y: 0; width: root.width; height: root.height; radius: root.r }
+        PathRectangle { x: 0; y: 0; width: w; height: h; radius: rr }
         PathRectangle {
             x: depth; y: depth
-            width: Math.max(0, root.width - 2 * depth); height: Math.max(0, root.height - 2 * depth)
-            radius: Math.max(0, root.r - depth)
+            width: Math.max(0, w - 2 * depth); height: Math.max(0, h - 2 * depth)
+            radius: Math.max(0, rr - depth)
         }
     }
     Shape {
+        id: lensShape
         anchors.fill: parent
-        visible: !root.filled && root.lens > 1
+        visible: !root.filled && root.band > 1
         preferredRendererType: Shape.CurveRenderer
-        LensRing { depth: root.lens }
-        LensRing { depth: root.lens * 0.68 }
-        LensRing { depth: root.lens * 0.42 }
-        LensRing { depth: root.lens * 0.2 }
+        readonly property real s: root.clearMaterial ? 0.10 : 0.075
+        LensRing { depth: root.band; w: root.width; h: root.height; rr: root.r; strength: lensShape.s }
+        LensRing { depth: root.band * 0.68; w: root.width; h: root.height; rr: root.r; strength: lensShape.s }
+        LensRing { depth: root.band * 0.42; w: root.width; h: root.height; rr: root.r; strength: lensShape.s }
+        LensRing { depth: root.band * 0.2; w: root.width; h: root.height; rr: root.r; strength: lensShape.s }
     }
-    // Rim: one hairline ring, lit from the top left.
+    // Rim: the specular hairline, lit top left, and just inside it the darker
+    // edge that macOS 27 draws on the far side.
     Shape {
         anchors.fill: parent
         preferredRendererType: Shape.CurveRenderer
@@ -121,6 +146,17 @@ Item {
             }
             PathRectangle { x: 0; y: 0; width: root.width; height: root.height; radius: root.r }
             PathRectangle { x: 1; y: 1; width: Math.max(0, root.width - 2); height: Math.max(0, root.height - 2); radius: Math.max(0, root.r - 1) }
+        }
+        ShapePath {
+            strokeColor: "transparent"
+            fillRule: ShapePath.OddEvenFill
+            fillGradient: LinearGradient {
+                x1: 0; y1: 0; x2: root.width; y2: root.height
+                GradientStop { position: 0.45; color: "transparent" }
+                GradientStop { position: 1; color: root.filled ? "transparent" : root.edge }
+            }
+            PathRectangle { x: 1; y: 1; width: Math.max(0, root.width - 2); height: Math.max(0, root.height - 2); radius: Math.max(0, root.r - 1) }
+            PathRectangle { x: 2; y: 2; width: Math.max(0, root.width - 4); height: Math.max(0, root.height - 4); radius: Math.max(0, root.r - 2) }
         }
     }
     Item {

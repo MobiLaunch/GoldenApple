@@ -56,7 +56,7 @@ PanelWindow {
         return entry ? entry.name : active.appId;
     }
 
-    // A menu bar item: a glass capsule lights up under it while pressed and while
+    // A menu bar item: a capsule lights up under it while pressed and while
     // its menu is open, and the item dips a little as you press it.
     component BarItem: Item {
         id: item
@@ -65,13 +65,15 @@ PanelWindow {
         signal clicked()
         implicitWidth: row.implicitWidth + 18
         implicitHeight: 24
-        Glass { variant: "clear";
-            anchors.fill: parent
-            radius: 12
-            lens: 3
-            tint: Qt.rgba(1, 1, 1, item.highlighted ? 0.24 : 0.18)
-            opacity: item.highlighted || barTap.pressed ? 1 : barTap.containsMouse ? 0.42 : 0
-            Behavior on opacity { NumberAnimation { duration: Prefs.reduceMotion ? 1 : (item.highlighted || barTap.pressed ? 80 : 130) } }
+        // The menu bar has no hover state; an open or pressed item sits on a
+        // plain white capsule, not glass and not the accent.
+        Rectangle {
+            anchors.centerIn: parent
+            width: parent.width; height: 22
+            radius: height / 2
+            color: Qt.rgba(1, 1, 1, 0.22)
+            opacity: item.highlighted || barTap.pressed ? 1 : 0
+            Behavior on opacity { NumberAnimation { duration: Prefs.reduceMotion ? 1 : (item.highlighted || barTap.pressed ? 60 : 150) } }
         }
         RowLayout {
             id: row

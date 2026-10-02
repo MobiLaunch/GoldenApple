@@ -33,8 +33,7 @@ Item {
     Glass {
         anchors.fill: parent
         radius: 7
-        tint: Theme.dark ? "#4d5a5a5e" : "#f2ffffff"
-        lens: 3
+        role: "control"
         pressed: ma.pressed
         hovered: ma.containsMouse
         shadow: Theme.dark ? "#40000000" : "#14000000"
