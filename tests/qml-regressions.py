@@ -47,6 +47,10 @@ for forbidden in ("dockMagnification", "dockMagnifiedSize", "magnifiedSize"):
         errors.append(f"shell/components/Prefs.qml: removed Dock magnification preference reintroduced: {forbidden}")
 
 browser = (root / "apps" / "browser" / "Browser.qml").read_text(encoding="utf-8")
+browser_ids = re.findall(r"\bid:\s*([A-Za-z_]\w*)", browser)
+for qml_id in sorted(set(browser_ids)):
+    if browser_ids.count(qml_id) > 1:
+        errors.append(f"apps/browser/Browser.qml: duplicate QML id {qml_id!r}")
 for function in ("openTabGroup", "saveCurrentTabGroup", "createProfile", "reorderTab"):
     count = len(re.findall(r"\bfunction\s+" + re.escape(function) + r"\s*\(", browser))
     if count != 1:
