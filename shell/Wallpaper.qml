@@ -3,6 +3,7 @@
 // light/dark sampling, so all three always agree.
 import Quickshell
 import Quickshell.Wayland
+import Quickshell.Hyprland
 import QtQuick
 import "components"
 
@@ -50,5 +51,10 @@ PanelWindow {
             { label: "Change Wallpaper…", action: () => Quickshell.execDetached(["gg-settings", "wallpaper"]) },
             { label: "Display Settings…", action: () => Quickshell.execDetached(["gg-settings", "display"]) }
         ]
+    }
+    HyprlandFocusGrab {
+        windows: [desktopMenu]
+        active: desktopMenu.open
+        onCleared: desktopMenu.open = false
     }
 }
