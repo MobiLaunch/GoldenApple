@@ -21,8 +21,9 @@ PanelWindow {
     visible: open || closeTimer.running
     anchors { top: true; right: true }
     margins { top: 8; right: 10 }
-    implicitWidth: 64 * 4 + 12 * 3
-    implicitHeight: grid.implicitHeight + 40
+    // One coherent iPad-style control surface rather than unrelated floating tiles.
+    implicitWidth: 324
+    implicitHeight: grid.implicitHeight + 68
     exclusionMode: ExclusionMode.Ignore
     color: "transparent"
     WlrLayershell.namespace: "gg-controlcenter"
@@ -67,7 +68,7 @@ PanelWindow {
 
     // ---------------------------------------------------------------- building blocks
     // Stagger: each module springs in slightly after the previous one.
-    component Module: Glass { variant: "clear";
+    component Module: Glass { variant: "regular";
         id: mod
         property int order: 0
         // Stagger: each module springs in slightly after the previous one; a timer
@@ -75,8 +76,9 @@ PanelWindow {
         property bool shown: false
         Timer { interval: 1 + mod.order * 10; running: cc.open && !mod.shown; onTriggered: mod.shown = true }
         Connections { target: cc; function onOpenChanged() { if (!cc.open) mod.shown = false } }
-        // Faint cool tint so white glyphs stay legible over bright windows.
-        tint: "#3d1c3060"
+        // Modules are readable in both appearances; the outer panel supplies the
+        // stronger separation/shadow from whatever is behind Control Center.
+        tint: Theme.dark ? "#a834343a" : "#b8f5f5f7"
         opacity: shown ? 1 : 0
         scale: shown || Prefs.reduceMotion ? 1 : 0.94
         transformOrigin: Item.TopRight
@@ -89,7 +91,7 @@ PanelWindow {
         property bool on: false
         signal activated()
         Layout.preferredWidth: 64; Layout.preferredHeight: 64
-        radius: 32
+        radius: 22
         filled: on
         pressed: cma.pressed
         hovered: cma.containsMouse
@@ -97,7 +99,7 @@ PanelWindow {
             anchors.centerIn: parent
             name: c.icon
             size: 25
-            tone: c.on ? "accent" : "white"
+            tone: c.on ? "accent" : "auto"
             scale: !Prefs.reduceMotion && cma.pressed ? 0.90 : !Prefs.reduceMotion && cma.containsMouse ? 1.045 : 1
             Behavior on scale { NumberAnimation { duration: Prefs.reduceMotion ? 1 : 85; easing.type: Easing.OutCubic } }
         }
@@ -111,7 +113,7 @@ PanelWindow {
         property bool on: false
         signal activated()
         Layout.columnSpan: 2; Layout.preferredWidth: 140; Layout.preferredHeight: 64
-        radius: 32
+        radius: 22
         RowLayout {
             anchors { fill: parent; leftMargin: 8; rightMargin: 12 }
             spacing: 10
@@ -126,7 +128,7 @@ PanelWindow {
                     anchors.centerIn: parent
                     name: w.icon
                     size: 22
-                    tone: w.on ? "accent" : "white"
+                    tone: w.on ? "accent" : "auto"
                     scale: !Prefs.reduceMotion && wma.pressed ? 0.92 : !Prefs.reduceMotion && wma.containsMouse ? 1.04 : 1
                     Behavior on scale { NumberAnimation { duration: Prefs.reduceMotion ? 1 : 85; easing.type: Easing.OutCubic } }
                 }
@@ -134,19 +136,33 @@ PanelWindow {
             }
             ColumnLayout {
                 spacing: 0
-                Text { text: w.title; color: "#ffffff"; font { family: Theme.fontUi; pixelSize: 14; weight: Font.DemiBold } }
-                Text { visible: w.subtitle !== ""; text: w.subtitle; color: Qt.rgba(1, 1, 1, 0.72); elide: Text.ElideRight; Layout.maximumWidth: 76; font { family: Theme.fontUi; pixelSize: 12 } }
+                Text { text: w.title; color: Theme.label; font { family: Theme.fontUi; pixelSize: 14; weight: Font.DemiBold } }
+                Text { visible: w.subtitle !== ""; text: w.subtitle; color: Theme.secondaryLabel; elide: Text.ElideRight; Layout.maximumWidth: 76; font { family: Theme.fontUi; pixelSize: 12 } }
             }
         }
     }
 
     // ---------------------------------------------------------------- layout
+    // A single elevated surface fixes the old "tiles floating directly over the
+    // desktop" look and gives the whole panel a soft, readable edge.
+    Glass {
+        id: panel
+        variant: "regular"
+        anchors { top: parent.top; right: parent.right; topMargin: 24 }
+        width: parent.width
+        height: grid.implicitHeight + 30
+        radius: 30
+        tint: Theme.dark ? "#d22b2b30" : "#d8f4f4f7"
+        shadow: Theme.dark ? "#b0000000" : "#78000000"
+    }
+
     GridLayout {
         id: grid
-        anchors { top: parent.top; right: parent.right; topMargin: 30 }
+        z: 1
+        anchors { top: parent.top; right: parent.right; topMargin: 39; rightMargin: 15 }
         columns: 4
-        columnSpacing: 12
-        rowSpacing: 12
+        columnSpacing: 10
+        rowSpacing: 10
 
         Wide {
             order: 0; icon: "wifi"; title: "Wi-Fi"; subtitle: cc.wifiOn ? (cc.ssid || "Not Connected") : "Off"; on: cc.wifiOn
@@ -155,7 +171,7 @@ PanelWindow {
         Module {
             order: 1
             Layout.columnSpan: 2; Layout.rowSpan: 2; Layout.preferredWidth: 140; Layout.preferredHeight: 140
-            radius: 32
+            radius: 22
             ColumnLayout {
                 anchors { fill: parent; margins: 14 }
                 spacing: 2
@@ -166,7 +182,7 @@ PanelWindow {
                 }
                 Item { Layout.fillHeight: true }
                 Text { Layout.fillWidth: true; text: cc.player?.trackTitle || "Not Playing"; color: "#ffffff"; elide: Text.ElideRight; font { family: Theme.fontUi; pixelSize: 14; weight: Font.DemiBold } }
-                Text { Layout.fillWidth: true; text: cc.player?.trackArtist ?? ""; color: Qt.rgba(1, 1, 1, 0.72); elide: Text.ElideRight; font { family: Theme.fontUi; pixelSize: 12 } }
+                Text { Layout.fillWidth: true; text: cc.player?.trackArtist ?? ""; color: Theme.secondaryLabel; elide: Text.ElideRight; font { family: Theme.fontUi; pixelSize: 12 } }
                 RowLayout {
                     Layout.fillWidth: true
                     Repeater {
