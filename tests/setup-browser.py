@@ -91,6 +91,17 @@ class BrowserData(unittest.TestCase):
         self.assertEqual(web.address_url('127.0.0.1:8000'), 'http://127.0.0.1:8000')
         self.assertIn('q=repair+tips',web.address_url('repair tips'))
 
+    def test_search_engine_selection(self):
+        self.assertIn("duckduckgo.com", web.address_url("golden gate linux", "duckduckgo"))
+        self.assertIn("search.brave.com", web.address_url("golden gate linux", "brave"))
+        self.assertIn("bing.com", web.address_url("golden gate linux", "bing"))
+        self.assertIn("google.com", web.address_url("golden gate linux", "google"))
+        # Direct URLs must never be rewritten through a search engine.
+        self.assertEqual(
+            web.address_url("https://example.com/path", "google"),
+            "https://example.com/path",
+        )
+
     def test_pasted_active_content_rejected(self):
         for value in ['javascript:alert(1)', 'data:text/html,hi', 'file:///etc/passwd', 'ftp://example.com']:
             with self.assertRaises(ValueError):
