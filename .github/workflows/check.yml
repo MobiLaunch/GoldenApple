@@ -44,9 +44,18 @@ jobs:
           grep -q 'Search or enter website name' apps/browser/Browser.qml
           grep -q 'WebEngineProfile' apps/browser/Browser.qml
           grep -q 'Reading List' apps/browser/Browser.qml
+          grep -q 'TAB GROUPS' apps/browser/Browser.qml
+          grep -q 'text: "Profiles"' apps/browser/Browser.qml
+          grep -q 'options: \["DuckDuckGo", "Brave", "Bing", "Google"\]' apps/browser/Browser.qml
+          grep -q 'WebEngineProfile' apps/browser/Browser.qml
           grep -q 'QtWebEngineQuick.initialize' apps/browser/browser.py
+          grep -q 'parse_arguments' apps/browser/browser.py
+          grep -q 'profile_key' apps/browser/browser.py
+          grep -q 'browser.py' apps/browser/launch.sh
           ! grep -q 'QtWidgets' apps/browser/browser.py
           test ! -e apps/browser/ui.py
+          test ! -e apps/browser/qml_browser.py
+          test ! -e apps/browser/WebWindow.qml
           grep -q 'hyprglass.so' distro/archiso/build.sh
           grep -q 'HyprGlass owns blur/refraction' compositor/hyprland/hyprland.conf
           ! grep -Rqs 'ShaderEffect' apps/setup
@@ -205,11 +214,3 @@ jobs:
         env:
           QT_QPA_PLATFORM: xcb
           QTWEBENGINE_CHROMIUM_FLAGS: --disable-gpu
-      - name: Upload browser previews
-        if: always()
-        continue-on-error: true
-        uses: actions/upload-artifact@v4
-        with:
-          name: native-browser-preview
-          path: out/browser
-          retention-days: 3
