@@ -70,11 +70,37 @@ class Store:
                               and isinstance(r.get('title'), str) and self.valid(r.get('url'))]
         self.data['closedTabs'] = self.data['closedTabs'][:30]
         self.data['tabs'] = [v for v in self.data['tabs'] if v == 'about:blank' or self.valid(v)][:30] or ['about:blank']
-        self.data['tabGroups'] = [
-            g for g in self.data['tabGroups']
-            if isinstance(g, dict) and isinstance(g.get('name'), str)
-            and isinstance(g.get('tabs', []), list)
-        ][:20]
+
+        groups = []
+        for group in self.data['tabGroups'][:20]:
+            if not isinstance(group, dict) or not isinstance(group.get('name'), str):
+                continue
+            name = group['name'].strip()[:60]
+            if not name or not isinstance(group.get('tabs'), list):
+                continue
+            tabs = []
+            for record in group['tabs'][:30]:
+                if not isinstance(record, dict):
+                    continue
+                url = record.get('url')
+                title = record.get('title')
+                if not (url == 'about:blank' or self.valid(url)):
+                    continue
+                if not isinstance(title, str):
+                    title = url
+                tabs.append({'title': title[:200], 'url': url})
+            if tabs:
+                groups.append({'name': name, 'tabs': tabs})
+        self.data['tabGroups'] = groups
+
+        settings = self.data['settings']
+        if settings.get('tabLayout') not in ('separate', 'compact'):
+            settings['tabLayout'] = 'separate'
+        if settings.get('searchEngine') not in ('duckduckgo', 'brave', 'bing', 'google'):
+            settings['searchEngine'] = 'duckduckgo'
+        for key in ('showFavoritesOnFocus', 'restoreSession'):
+            if not isinstance(settings.get(key), bool):
+                settings[key] = True
 
     @staticmethod
     def valid(url):
