@@ -16,6 +16,7 @@ PanelWindow {
     property var controlCenter
     property var spotlight
     property var session                // SessionDialog: Restart, Shut Down and Log Out ask first
+    property var notifications          // the clock opens Notification Center
 
     anchors { top: true; left: true; right: true }
     implicitHeight: Theme.sizeMenubar
@@ -143,6 +144,8 @@ PanelWindow {
             Symbol { name: "control-center"; size: 16; tone: bar.darkRight ? "dark" : "white" }
         }
         BarItem {
+            highlighted: bar.notifications?.centerOpen ?? false
+            onClicked: if (bar.notifications) bar.notifications.centerOpen = !bar.notifications.centerOpen
             SystemClock { id: clock; precision: SystemClock.Minutes }
             BarText { text: Qt.formatDateTime(clock.date, "ddd MMM d   h:mm AP"); dark: bar.darkRight }
         }

@@ -26,12 +26,29 @@ PanelWindow {
     WlrLayershell.layer: WlrLayer.Overlay
     mask: Region {}
 
-    // One entry per app, most recently used first, each holding a window to raise.
+    // Apps and windows in the order they were last used, newest first: ⌘Tab
+    // goes back to the previous app, as on the Mac.
+    property var recentApps: []
+    property var recentWindows: []
+    Connections {
+        target: ToplevelManager
+        function onActiveToplevelChanged() {
+            const t = ToplevelManager.activeToplevel;
+            if (!t || !t.appId) return;
+            sw.recentApps = [t.appId].concat(sw.recentApps.filter((a) => a !== t.appId)).slice(0, 64);
+            sw.recentWindows = [t].concat(sw.recentWindows.filter((w) => w !== t)).slice(0, 128);
+        }
+    }
+
+    // One entry per app, most recently used first, each holding the app's most
+    // recently used window to raise.
     function collect() {
         const seen = {}, out = [];
         const tops = ToplevelManager.toplevels.values;
-        for (let i = tops.length - 1; i >= 0; i--) {
-            const t = tops[i];
+        const rank = (t) => { const i = recentApps.indexOf(t.appId); return i < 0 ? 1e6 - tops.indexOf(t) : i };
+        const used = (t) => { const i = recentWindows.indexOf(t); return i < 0 ? 1e6 : i };
+        const ordered = tops.slice().sort((a, b) => rank(a) - rank(b) || used(a) - used(b));
+        for (const t of ordered) {
             if (seen[t.appId]) continue;
             seen[t.appId] = true;
             const entry = DesktopEntries.byId(t.appId);

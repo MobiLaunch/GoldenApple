@@ -19,8 +19,9 @@ desktop_ids = {p.stem for p in desktop_dir.glob("*.desktop")}
 
 # Every Golden Gate app pinned in the Dock must have a desktop entry. Ignore the
 # live-only installer distinction; it is still a real entry.
+# The default set is `defaultPinned`; the user's own list lives in desktop.json.
 pinned_match = re.search(
-    r"property var pinned:.*?concat\(\[(.*?)\]\)",
+    r"property var defaultPinned:\s*\[(.*?)\]",
     dock,
     flags=re.S,
 )
@@ -29,11 +30,8 @@ if not pinned_match:
     pinned_ids: list[str] = []
 else:
     pinned_ids = re.findall(r'"(org\.goldengate\.[A-Za-z0-9_-]+)"', pinned_match.group(1))
-    # Installer sits in the prefix before concat().
-    pinned_ids += re.findall(
-        r'"(org\.goldengate\.Installer)"',
-        dock[: pinned_match.start(1)],
-    )
+    # The live session adds Installer in front of the kept apps.
+    pinned_ids += re.findall(r'"(org\.goldengate\.Installer)"', dock)
 
 for app_id in sorted(set(pinned_ids)):
     if app_id not in desktop_ids:

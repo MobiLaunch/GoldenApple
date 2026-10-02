@@ -2,7 +2,7 @@ pragma Singleton
 // Desktop preferences set in Settings, from ~/.config/golden-gate/desktop.json
 // (watched, so changes apply at once):
 //   { "wallpaper": "/path.png",
-//     "dock": { "size": 54, "indicators": true, "animateLaunch": true },
+//     "dock": { "size": 54, "indicators": true, "animateLaunch": true, "pinned": ["org.goldengate.Files", …] },
 //     "glass": "clear" | "tinted", "reduceMotion": false, "reduceTransparency": false }
 import Quickshell
 import Quickshell.Io
@@ -17,6 +17,7 @@ Singleton {
     readonly property real dockSize: data.dock?.size ?? 54
     readonly property bool dockIndicators: data.dock?.indicators ?? true
     readonly property bool animateLaunch: (data.dock?.animateLaunch ?? true) && !reduceMotion
+    readonly property var dockPinned: Array.isArray(data.dock?.pinned) ? data.dock.pinned : null   // null: the default set
     readonly property string glass: data.glass ?? "clear"
     readonly property bool reduceMotion: data.reduceMotion ?? false
     readonly property bool reduceTransparency: data.reduceTransparency ?? false

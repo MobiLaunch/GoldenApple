@@ -97,6 +97,7 @@ ShellRoot {
     }
     Notifications { id: notificationCenter }
     SessionDialog { id: sessionDialog }
+    Osd {}
     Switcher {}
     // Loaded separately so a Quickshell built without PAM still runs the shell.
     LazyLoader { active: true; source: "LockScreen.qml" }
@@ -120,14 +121,14 @@ ShellRoot {
                 Component.onCompleted: root.controlCenters = root.controlCenters.concat([cc])
                 Component.onDestruction: root.controlCenters = root.controlCenters.filter((c) => c !== cc)
             }
-            MenuBar { screen: perScreen.modelData; controlCenter: cc; spotlight: spotlightPanel; session: sessionDialog }
+            MenuBar { screen: perScreen.modelData; controlCenter: cc; spotlight: spotlightPanel; session: sessionDialog; notifications: notificationCenter }
             AppLaunch {
                 id: launch
                 screen: perScreen.modelData
                 Component.onCompleted: root.launchers = root.launchers.concat([launch])
                 Component.onDestruction: root.launchers = root.launchers.filter((l) => l !== launch)
             }
-            Dock { screen: perScreen.modelData; launcher: launch; applications: applicationsPanel }
+            Dock { screen: perScreen.modelData; launcher: launch; applications: applicationsPanel; notifications: notificationCenter }
         }
     }
 
