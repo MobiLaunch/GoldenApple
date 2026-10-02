@@ -51,6 +51,8 @@ jobs:
           grep -q 'listAllPermissions' apps/browser/Browser.qml
           grep -q 'id: tabOverview' apps/browser/Browser.qml
           grep -q 'DragHandler' apps/browser/Browser.qml
+          grep -q 'label: "Find on Page…"' apps/browser/Browser.qml
+          grep -q 'currentView.findText' apps/browser/Browser.qml
           grep -q 'id: tabGroupsManager' apps/browser/Browser.qml
           grep -q 'Save Tabs as Group' apps/browser/Browser.qml
           grep -q 'WebEngineProfile' apps/browser/Browser.qml
