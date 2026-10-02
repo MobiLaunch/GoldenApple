@@ -247,44 +247,6 @@ class BrowserBackend(QObject):
         self.store.data["settings"][key] = value
         self._save()
 
-    @Slot(str, str, result=bool)
-    def saveTabGroup(self, name, tabs_json):
-        name = (name or "").strip()
-        if not name or len(name) > 48:
-            self.toastRequested.emit("Enter a tab group name.")
-            return False
-        try:
-            raw = json.loads(tabs_json)
-        except (TypeError, ValueError):
-            return False
-        tabs = []
-        for record in raw[:30] if isinstance(raw, list) else []:
-            if isinstance(record, dict):
-                url = record.get("url")
-                title = record.get("title") or self.displayAddress(url)
-            else:
-                url = record
-                title = self.displayAddress(url)
-            if url == "about:blank" or self.store.valid(url):
-                tabs.append({"title": title or "New Tab", "url": url})
-        if not tabs:
-            self.toastRequested.emit("There are no tabs to save.")
-            return False
-        groups = [g for g in self.store.data["tabGroups"] if g.get("name") != name]
-        groups.insert(0, {"name": name, "tabs": tabs})
-        self.store.data["tabGroups"] = groups[:20]
-        self._save()
-        self.libraryChanged.emit()
-        self.toastRequested.emit("Tab Group saved")
-        return True
-
-    @Slot(int)
-    def removeTabGroup(self, index):
-        groups = self.store.data["tabGroups"]
-        if 0 <= index < len(groups):
-            groups.pop(index)
-            self._save()
-            self.libraryChanged.emit()
 
     @Slot(str, str, result=bool)
     def saveTabGroup(self, name, tabs_json):
