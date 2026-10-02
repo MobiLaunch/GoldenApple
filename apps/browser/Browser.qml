@@ -210,25 +210,6 @@ Window {
         BrowserBackend.setSetting(key, JSON.stringify(value))
     }
 
-    function openTabGroup(group) {
-        if (!group || !group.tabs || !group.tabs.length) return
-        tabsModel.clear()
-        currentIndex = 0
-        for (let i = 0; i < group.tabs.length; i++)
-            newTab(group.tabs[i].url, false)
-        currentIndex = 0
-        libraryOverlay.mode = ""
-        Qt.callLater(syncAddress)
-        saveTabsSoon()
-    }
-
-    function saveCurrentTabGroup(name) {
-        if (BrowserBackend.saveTabGroup(name, JSON.stringify(tabSnapshot()))) {
-            tabGroups = JSON.parse(BrowserBackend.collectionJson("tabGroups"))
-            groupSheetOpen = false
-        }
-    }
-
     function refreshTabGroups() {
         try { tabGroups = JSON.parse(BrowserBackend.collectionJson("tabGroups")) }
         catch (_) { tabGroups = [] }
