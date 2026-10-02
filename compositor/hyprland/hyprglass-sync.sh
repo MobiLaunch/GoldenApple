@@ -44,42 +44,70 @@ kw plugin:hyprglass:enabled 1
 kw plugin:hyprglass:manage_window_blur 1
 kw plugin:hyprglass:default_theme "$THEME"
 kw plugin:hyprglass:default_preset default
-kw plugin:hyprglass:blur_strength 1.85
-kw plugin:hyprglass:blur_iterations 3
-kw plugin:hyprglass:refraction_strength 0.38
-kw plugin:hyprglass:chromatic_aberration 0.14
-kw plugin:hyprglass:fresnel_strength 0.46
-kw plugin:hyprglass:specular_strength 0.58
-kw plugin:hyprglass:edge_thickness 0.045
-kw plugin:hyprglass:lens_distortion 0.28
-kw plugin:hyprglass:dark:brightness 0.82
-kw plugin:hyprglass:dark:contrast 0.94
-kw plugin:hyprglass:dark:saturation 0.88
-kw plugin:hyprglass:dark:vibrancy 0.16
-kw plugin:hyprglass:dark:adaptive_dim 0.32
-kw plugin:hyprglass:light:brightness 1.08
-kw plugin:hyprglass:light:contrast 0.95
-kw plugin:hyprglass:light:saturation 0.90
-kw plugin:hyprglass:light:vibrancy 0.12
-kw plugin:hyprglass:light:adaptive_boost 0.28
+# Real GPUs render HyprGlass' specular/brightness path much more strongly than
+# llvmpipe/virtual GPUs. Preserve the existing VM profile, but use a restrained
+# optical profile on physical hardware so light glass stays translucent instead
+# of collapsing toward opaque white.
+VIRT="$(systemd-detect-virt --vm 2>/dev/null || true)"
+if [ -n "$VIRT" ] && [ "$VIRT" != none ]; then
+  kw plugin:hyprglass:blur_strength 1.85
+  kw plugin:hyprglass:blur_iterations 3
+  kw plugin:hyprglass:refraction_strength 0.38
+  kw plugin:hyprglass:chromatic_aberration 0.14
+  kw plugin:hyprglass:fresnel_strength 0.46
+  kw plugin:hyprglass:specular_strength 0.58
+  kw plugin:hyprglass:edge_thickness 0.045
+  kw plugin:hyprglass:lens_distortion 0.28
+  kw plugin:hyprglass:dark:brightness 0.82
+  kw plugin:hyprglass:dark:contrast 0.94
+  kw plugin:hyprglass:dark:saturation 0.88
+  kw plugin:hyprglass:dark:vibrancy 0.16
+  kw plugin:hyprglass:dark:adaptive_dim 0.32
+  kw plugin:hyprglass:light:brightness 1.08
+  kw plugin:hyprglass:light:contrast 0.95
+  kw plugin:hyprglass:light:saturation 0.90
+  kw plugin:hyprglass:light:vibrancy 0.12
+  kw plugin:hyprglass:light:adaptive_boost 0.28
+else
+  kw plugin:hyprglass:blur_strength 1.42
+  kw plugin:hyprglass:blur_iterations 3
+  kw plugin:hyprglass:refraction_strength 0.24
+  kw plugin:hyprglass:chromatic_aberration 0.055
+  kw plugin:hyprglass:fresnel_strength 0.28
+  kw plugin:hyprglass:specular_strength 0.30
+  kw plugin:hyprglass:edge_thickness 0.032
+  kw plugin:hyprglass:lens_distortion 0.18
+  kw plugin:hyprglass:dark:brightness 0.80
+  kw plugin:hyprglass:dark:contrast 0.98
+  kw plugin:hyprglass:dark:saturation 0.92
+  kw plugin:hyprglass:dark:vibrancy 0.08
+  kw plugin:hyprglass:dark:adaptive_dim 0.24
+  kw plugin:hyprglass:light:brightness 0.94
+  kw plugin:hyprglass:light:contrast 1.01
+  kw plugin:hyprglass:light:saturation 0.94
+  kw plugin:hyprglass:light:vibrancy 0.06
+  kw plugin:hyprglass:light:adaptive_boost 0.08
+fi
 
 if [ "$REDUCE" = 1 ]; then
   kw plugin:hyprglass:glass_opacity 0.96
   kw plugin:hyprglass:refraction_strength 0.16
   kw plugin:hyprglass:chromatic_aberration 0.04
 elif [ "$GLASS" = tinted ]; then
-  kw plugin:hyprglass:glass_opacity 0.90
-  if [ "$THEME" = dark ]; then
-    kw plugin:hyprglass:tint_color 0x283c6e70
+  if [ -n "$VIRT" ] && [ "$VIRT" != none ]; then
+    kw plugin:hyprglass:glass_opacity 0.90
+    [ "$THEME" = dark ] && kw plugin:hyprglass:tint_color 0x283c6e70 || kw plugin:hyprglass:tint_color 0xf5f7ff72
   else
-    kw plugin:hyprglass:tint_color 0xf5f7ff72
+    kw plugin:hyprglass:glass_opacity 0.76
+    [ "$THEME" = dark ] && kw plugin:hyprglass:tint_color 0x283c6e42 || kw plugin:hyprglass:tint_color 0xf5f7ff38
   fi
 else
-  kw plugin:hyprglass:glass_opacity 0.80
-  if [ "$THEME" = dark ]; then
-    kw plugin:hyprglass:tint_color 0x283c6e38
+  if [ -n "$VIRT" ] && [ "$VIRT" != none ]; then
+    kw plugin:hyprglass:glass_opacity 0.80
+    [ "$THEME" = dark ] && kw plugin:hyprglass:tint_color 0x283c6e38 || kw plugin:hyprglass:tint_color 0xffffff42
   else
-    kw plugin:hyprglass:tint_color 0xffffff42
+    kw plugin:hyprglass:glass_opacity 0.60
+    [ "$THEME" = dark ] && kw plugin:hyprglass:tint_color 0x283c6e24 || kw plugin:hyprglass:tint_color 0xffffff18
   fi
 fi
 
@@ -92,4 +120,4 @@ kw plugin:hyprglass:layers:live_resample 1
 kw plugin:hyprglass:layers:live_resample_fps 30
 kw plugin:hyprglass:layers:manage_blur 1
 
-logger -t gg-hyprglass "HyprGlass applied ($THEME, $GLASS, reduceTransparency=$REDUCE)"
+logger -t gg-hyprglass "HyprGlass applied ($THEME, $GLASS, reduceTransparency=$REDUCE, virt=${VIRT:-none})"
