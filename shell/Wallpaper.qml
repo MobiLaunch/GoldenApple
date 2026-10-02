@@ -9,6 +9,8 @@ import "components"
 PanelWindow {
     id: wall
     property string path: Prefs.wallpaper
+    property real contextX: 0
+    property real contextY: 0
 
     anchors { top: true; bottom: true; left: true; right: true }
     exclusionMode: ExclusionMode.Ignore
@@ -25,5 +27,30 @@ PanelWindow {
         smooth: true
         opacity: status === Image.Ready ? 1 : 0
         Behavior on opacity { NumberAnimation { duration: 400; easing.type: Easing.OutCubic } }
+    }
+
+    MouseArea {
+        anchors.fill: parent
+        acceptedButtons: Qt.RightButton
+        onClicked: mouse => {
+            wall.contextX = mouse.x
+            wall.contextY = mouse.y
+            desktopMenu.open = true
+        }
+    }
+
+    MenuPopup {
+        id: desktopMenu
+        anchor.window: wall
+        anchor.rect.x: Math.min(wall.contextX, Math.max(0, wall.width - implicitWidth - 8))
+        anchor.rect.y: Math.min(wall.contextY, Math.max(0, wall.height - implicitHeight - 8))
+        items: [
+            { label: "New Folder", action: () => Quickshell.execDetached(["sh", "-c", "d=$HOME/Desktop; mkdir -p \"$d\"; n=\"New Folder\"; p=\"$d/$n\"; i=2; while [ -e \"$p\" ]; do p=\"$d/$n $i\"; i=$((i+1)); done; mkdir \"$p\""]) },
+            "-",
+            { label: "Open Applications", action: () => Quickshell.execDetached(["qs", "ipc", "call", "applications", "open"]) },
+            "-",
+            { label: "Change Wallpaper…", action: () => Quickshell.execDetached(["gg-settings", "wallpaper"]) },
+            { label: "Display Settings…", action: () => Quickshell.execDetached(["gg-settings", "display"]) }
+        ]
     }
 }
