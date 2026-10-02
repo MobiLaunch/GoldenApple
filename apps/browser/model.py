@@ -34,19 +34,41 @@ class Store:
     def __init__(self, path, private=False):
         self.path = Path(path)
         self.private = private
-        self.data = {'bookmarks': [], 'history': [], 'tabs': ['about:blank']}
+        self.data = {
+            'bookmarks': [],
+            'history': [],
+            'tabs': ['about:blank'],
+            'readingList': [],
+            'closedTabs': [],
+            'tabGroups': [],
+            'settings': {
+                'tabLayout': 'separate',
+                'searchEngine': 'duckduckgo',
+                'showFavoritesOnFocus': True,
+                'restoreSession': True,
+            },
+        }
         if not private:
             try:
                 saved = json.loads(self.path.read_text())
-                for key in self.data:
-                    if isinstance(saved.get(key), list):
-                        self.data[key] = saved[key]
+                for key, default in self.data.items():
+                    value = saved.get(key)
+                    if isinstance(default, list) and isinstance(value, list):
+                        self.data[key] = value
+                    elif isinstance(default, dict) and isinstance(value, dict):
+                        self.data[key] = {**default, **value}
             except (OSError, ValueError, AttributeError):
                 pass
-        for key in ('bookmarks', 'history'):
+        for key in ('bookmarks', 'history', 'readingList', 'closedTabs'):
             self.data[key] = [r for r in self.data[key] if isinstance(r, dict)
                               and isinstance(r.get('title'), str) and self.valid(r.get('url'))]
+        self.data['closedTabs'] = self.data['closedTabs'][:30]
         self.data['tabs'] = [v for v in self.data['tabs'] if v == 'about:blank' or self.valid(v)][:30] or ['about:blank']
+        self.data['tabGroups'] = [
+            g for g in self.data['tabGroups']
+            if isinstance(g, dict) and isinstance(g.get('name'), str)
+            and isinstance(g.get('tabs', []), list)
+        ][:20]
 
     @staticmethod
     def valid(url):
