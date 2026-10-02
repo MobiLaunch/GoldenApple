@@ -155,7 +155,10 @@ class BrowserBackend(QObject):
         except ValueError:
             search_url = ""
         if search_url:
-            is_search = "duckduckgo.com/?q=" in search_url
+            is_search = any(host in search_url for host in (
+                "duckduckgo.com/?q=", "search.brave.com/search?q=",
+                "bing.com/search?q=", "google.com/search?q="
+            ))
             add("search" if is_search else "go", query, search_url,
                 "Search the Web" if is_search else self.displayAddress(search_url))
         return json.dumps(out[:8])
