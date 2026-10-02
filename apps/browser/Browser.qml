@@ -50,11 +50,48 @@ Window {
     property bool profileSheetOpen: false
     property string newProfileName: ""
     property bool websitePermissionsOpen: false
+    property bool webContextOpen: false
+    property real webContextX: 0
+    property real webContextY: 0
+    property var webContextItems: []
     property string permissionOriginFilter: ""
     property var websitePermissions: []
     readonly property bool compactTabs: browserSettings.tabLayout === "compact"
 
     Binding { target: Theme; property: "dark"; value: BrowserBackend.dark }
+
+    function openWebContext(request, view) {
+        request.accepted = true
+        const point = view.mapToItem(root, request.position.x, request.position.y)
+        const link = request.linkUrl ? request.linkUrl.toString() : ""
+        const selected = request.selectedText || ""
+        let items = []
+
+        if (link) {
+            items.push({ label: "Open Link in New Tab", action: () => root.newTab(link, true) })
+            items.push({ label: "Copy Link", action: () => BrowserBackend.copyText(link) })
+            items.push({ separator: true })
+        }
+
+        if (selected.length) {
+            items.push({ label: "Copy", shortcut: "⌘C", action: () => BrowserBackend.copyText(selected) })
+        }
+        if (request.isContentEditable) {
+            items.push({ label: "Cut", shortcut: "⌘X", action: () => view.triggerWebAction(WebEngineView.Cut) })
+            items.push({ label: "Paste", shortcut: "⌘V", action: () => view.triggerWebAction(WebEngineView.Paste) })
+        }
+        if (selected.length || request.isContentEditable)
+            items.push({ separator: true })
+
+        items.push({ label: "Back", shortcut: "⌘[", enabled: view.canGoBack, action: () => view.goBack() })
+        items.push({ label: "Forward", shortcut: "⌘]", enabled: view.canGoForward, action: () => view.goForward() })
+        items.push({ label: "Reload", shortcut: "⌘R", action: () => view.reload() })
+
+        webContextItems = items
+        webContextX = Math.max(8, Math.min(point.x, root.width - 258))
+        webContextY = Math.max(8, Math.min(point.y, root.height - 280))
+        webContextOpen = true
+    }
 
     function refreshStartPage() {
         startPageData = JSON.parse(BrowserBackend.startPageJson())
@@ -1126,6 +1163,9 @@ Window {
                         }
                     }
                         onNewWindowRequested: function(request) { root.requestNewWindow(request) }
+                        onContextMenuRequested: function(request) {
+                            root.openWebContext(request, web)
+                        }
                         onPermissionRequested: function(permission) {
                             root.pendingPermission = permission
                         }
@@ -1510,6 +1550,83 @@ Window {
                         onClicked: {
                             addressInput.focus = false
                             root.activateUrl(modelData.url)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    MouseArea {
+        anchors.fill: parent
+        z: 88
+        visible: root.webContextOpen
+        acceptedButtons: Qt.AllButtons
+        onClicked: root.webContextOpen = false
+    }
+
+    Rectangle {
+        id: webContextMenu
+        z: 89
+        visible: root.webContextOpen
+        x: root.webContextX
+        y: root.webContextY
+        width: 250
+        height: contextColumn.implicitHeight + 12
+        radius: 15
+        color: Theme.dark ? "#f3323237" : "#fcf7f7f9"
+        border { width: 0.5; color: Theme.separator }
+
+        Column {
+            id: contextColumn
+            anchors { fill: parent; margins: 6 }
+            spacing: 0
+
+            Repeater {
+                model: root.webContextItems
+                delegate: Rectangle {
+                    id: contextRow
+                    required property var modelData
+                    readonly property bool separator: modelData.separator === true
+                    readonly property bool enabledItem: modelData.enabled === undefined ? true : modelData.enabled
+                    width: contextColumn.width
+                    height: separator ? 9 : 30
+                    radius: 8
+                    opacity: enabledItem ? 1 : 0.38
+                    color: !separator && contextArea.containsMouse && enabledItem ? Theme.accent : "transparent"
+
+                    Rectangle {
+                        visible: contextRow.separator
+                        anchors.centerIn: parent
+                        width: parent.width - 16
+                        height: 1
+                        color: Theme.separator
+                    }
+                    RowLayout {
+                        visible: !contextRow.separator
+                        anchors { fill: parent; leftMargin: 9; rightMargin: 9 }
+                        spacing: 8
+                        Text {
+                            Layout.fillWidth: true
+                            text: contextRow.modelData.label || ""
+                            color: contextArea.containsMouse && contextRow.enabledItem ? "#ffffff" : Theme.label
+                            elide: Text.ElideRight
+                            font { family: Theme.fontUi; pixelSize: 12 }
+                        }
+                        Text {
+                            text: contextRow.modelData.shortcut || ""
+                            color: contextArea.containsMouse && contextRow.enabledItem ? "#d9ffffff" : Theme.secondaryLabel
+                            font { family: Theme.fontUi; pixelSize: 11 }
+                        }
+                    }
+                    MouseArea {
+                        id: contextArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        enabled: !contextRow.separator && contextRow.enabledItem
+                        onClicked: {
+                            root.webContextOpen = false
+                            contextRow.modelData.action?.()
                         }
                     }
                 }
@@ -2650,7 +2767,8 @@ Window {
     Shortcut {
         sequence: "Escape"
         onActivated: {
-            if (root.findOpen) root.closeFind()
+            if (root.webContextOpen) root.webContextOpen = false
+            else if (root.findOpen) root.closeFind()
             else if (root.readerOpen) root.readerOpen = false
             else if (root.tabOverviewOpen) root.tabOverviewOpen = false
             else if (root.websitePermissionsOpen) root.websitePermissionsOpen = false
