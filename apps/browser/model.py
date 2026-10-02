@@ -6,7 +6,7 @@ from pathlib import Path
 from urllib.parse import quote_plus, urlsplit
 
 
-def address_url(text):
+def address_url(text, search_engine='duckduckgo'):
     value = text.strip()
     if not value or value == 'about:blank':
         return 'about:blank'
@@ -27,7 +27,13 @@ def address_url(text):
         pass
     if not any(c.isspace() for c in value) and (local or '.' in host):
         return ('http://' if local else 'https://') + value
-    return 'https://duckduckgo.com/?q=' + quote_plus(value)
+    engines = {
+        'duckduckgo': 'https://duckduckgo.com/?q=',
+        'brave': 'https://search.brave.com/search?q=',
+        'bing': 'https://www.bing.com/search?q=',
+        'google': 'https://www.google.com/search?q=',
+    }
+    return engines.get(search_engine, engines['duckduckgo']) + quote_plus(value)
 
 
 class Store:
