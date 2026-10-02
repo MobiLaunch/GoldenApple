@@ -8,6 +8,7 @@ Flickable {
     property var data: ({ favorites: [], frequent: [], readingList: [], recentlyClosed: [], private: false })
     signal openUrl(string url)
     signal addFavoriteRequested()
+    signal privacyRequested()
     clip: true
     contentWidth: width
     contentHeight: page.implicitHeight + 100
@@ -215,6 +216,7 @@ Flickable {
             }
 
             Rectangle {
+                id: privacyCard
                 Layout.fillWidth: true
                 visible: !root.data.private
                 height: 126
@@ -253,6 +255,20 @@ Flickable {
                             font { family: Theme.fontUi; pixelSize: 12 }
                         }
                     }
+                }
+                MouseArea {
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: root.privacyRequested()
+                }
+                scale: privacyArea.pressed ? 0.985 : privacyArea.containsMouse ? 1.008 : 1
+                Behavior on scale { NumberAnimation { duration: Theme.reduceMotion ? 1 : 100; easing.type: Easing.OutCubic } }
+                MouseArea {
+                    id: privacyArea
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    acceptedButtons: Qt.NoButton
                 }
             }
         }
