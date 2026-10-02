@@ -9,6 +9,20 @@ import "components"
 PanelWindow {
     id: apps
     property bool open: false
+    property real contextX: 0
+    property real contextY: 0
+    property var contextItems: []
+
+    function showAppMenu(entry, item, localX, localY) {
+        const point = item.mapToItem(apps, localX, localY)
+        contextItems = [
+            { label: "Open", action: () => { entry.execute(); apps.dismiss() } },
+            { label: "Open New Window", action: () => entry.execute() }
+        ]
+        contextX = point.x
+        contextY = point.y
+        appMenu.open = true
+    }
     // Avoid QWindow.show()/hide() name collisions. Calling those inherited
     // methods can make the layer surface visible without changing our `open`
     // state, which leaves the launcher fully transparent and non-interactive.
@@ -154,11 +168,29 @@ PanelWindow {
                         }
                     }
                     MouseArea {
-                        id: area; anchors.fill: parent; hoverEnabled: true
-                        onClicked: { modelData.execute(); apps.dismiss() }
+                        id: area
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        acceptedButtons: Qt.LeftButton | Qt.RightButton
+                        onClicked: mouse => {
+                            if (mouse.button === Qt.RightButton) {
+                                apps.showAppMenu(modelData, parent, mouse.x, mouse.y)
+                                return
+                            }
+                            modelData.execute()
+                            apps.dismiss()
+                        }
                     }
                 }
             }
         }
     }
+    MenuPopup {
+        id: appMenu
+        anchor.window: apps
+        anchor.rect.x: Math.max(8, Math.min(apps.contextX, apps.width - implicitWidth - 8))
+        anchor.rect.y: Math.max(8, Math.min(apps.contextY, apps.height - implicitHeight - 8))
+        items: apps.contextItems
+    }
+
 }
