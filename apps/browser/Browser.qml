@@ -1142,6 +1142,7 @@ Window {
                         data: root.startPageData
                         onOpenUrl: function(value) { root.navigateTo(value) }
                         onAddFavoriteRequested: root.focusAddress()
+                        onPrivacyRequested: root.openPrivacyReport()
                     }
                 }
             }
