@@ -38,6 +38,9 @@ Window {
     property var tabGroups: []
     property bool tabGroupEditorOpen: false
     property string tabGroupName: ""
+    property var profiles: []
+    property bool profileSheetOpen: false
+    property string newProfileName: ""
     readonly property bool compactTabs: browserSettings.tabLayout === "compact"
 
     Binding { target: Theme; property: "dark"; value: BrowserBackend.dark }
@@ -258,6 +261,23 @@ Window {
             item.view.audioMuted = !item.view.audioMuted
     }
 
+    function refreshProfiles() {
+        try { profiles = JSON.parse(BrowserBackend.profilesJson) }
+        catch (_) { profiles = ["Personal"] }
+    }
+
+    function createProfile() {
+        const name = newProfileName.trim()
+        if (!name) {
+            BrowserBackend.notify("Enter a profile name.")
+            return
+        }
+        if (BrowserBackend.createProfile(name)) {
+            newProfileName = ""
+            refreshProfiles()
+        }
+    }
+
     Timer {
         id: saveTimer
         interval: 350
@@ -290,6 +310,7 @@ Window {
         for (let i = 0; i < initial.length; i++) newTab(initial[i], false)
         currentIndex = 0
         refreshTabGroups()
+        refreshProfiles()
         Qt.callLater(syncAddress)
     }
 
@@ -303,6 +324,7 @@ Window {
             root.refreshTabGroups()
             if (libraryOverlay.visible) libraryOverlay.reload()
         }
+        function onProfilesChanged() { root.refreshProfiles() }
         function onToastRequested(message) {
             toastLabel.text = message
             toast.opacity = 1
@@ -759,13 +781,21 @@ Window {
                     width: parent.width
                     spacing: 4
 
-                    Text {
-                        text: BrowserBackend.privateMode ? "Private Browsing" : "Web"
-                        color: Theme.label
+                    Column {
                         leftPadding: 8
                         topPadding: 8
                         bottomPadding: 10
-                        font { family: Theme.fontDisplay; pixelSize: 22; weight: Font.DemiBold; letterSpacing: -0.3 }
+                        spacing: 1
+                        Text {
+                            text: BrowserBackend.privateMode ? "Private Browsing" : "Web"
+                            color: Theme.label
+                            font { family: Theme.fontDisplay; pixelSize: 22; weight: Font.DemiBold; letterSpacing: -0.3 }
+                        }
+                        Text {
+                            text: BrowserBackend.profileName
+                            color: Theme.secondaryLabel
+                            font { family: Theme.fontUi; pixelSize: 11; weight: Font.Medium }
+                        }
                     }
 
                     component SideRow: Rectangle {
@@ -1383,7 +1413,7 @@ Window {
         visible: root.settingsOpen
         anchors.centerIn: parent
         width: Math.min(560, root.width - 60)
-        height: Math.min(500, root.height - 80)
+        height: Math.min(560, root.height - 80)
         radius: 22
         color: Theme.dark ? "#fa2c2c30" : "#fdf8f8fa"
         border { width: 0.5; color: Theme.separator }
@@ -1416,6 +1446,29 @@ Window {
             }
 
             Rectangle { width: parent.width; height: 1; color: Theme.separator }
+
+            Row {
+                width: parent.width
+                Text {
+                    width: 190
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: "Profile"
+                    color: Theme.label
+                    font { family: Theme.fontUi; pixelSize: 13; weight: Font.Medium }
+                }
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 170
+                    text: BrowserBackend.profileName
+                    color: Theme.secondaryLabel
+                    elide: Text.ElideRight
+                    font { family: Theme.fontUi; pixelSize: 13 }
+                }
+                Button {
+                    text: "Manage…"
+                    onClicked: root.profileSheetOpen = true
+                }
+            }
 
             Row {
                 width: parent.width
@@ -1490,6 +1543,134 @@ Window {
                     : "Website permissions are stored per origin by Qt WebEngine. Use the prompt shown by Web when a site requests access."
                 color: Theme.secondaryLabel
                 font { family: Theme.fontUi; pixelSize: 12 }
+            }
+        }
+    }
+
+    Rectangle {
+        id: profileSheet
+        z: 66
+        visible: root.profileSheetOpen
+        anchors.centerIn: parent
+        width: 470
+        height: Math.min(460, root.height - 90)
+        radius: 22
+        color: Theme.dark ? "#fc303034" : "#fff8f8fa"
+        border { width: 0.5; color: Theme.separator }
+
+        Rectangle {
+            z: -1
+            anchors { fill: parent; margins: -14 }
+            radius: 30
+            color: "#40000000"
+            opacity: 0.24
+        }
+
+        Column {
+            anchors { fill: parent; margins: 22 }
+            spacing: 14
+
+            Row {
+                width: parent.width
+                Text {
+                    text: "Profiles"
+                    color: Theme.label
+                    font { family: Theme.fontDisplay; pixelSize: 21; weight: Font.DemiBold }
+                }
+                Item { width: Math.max(0, parent.width - parent.children[0].width - closeProfiles.width); height: 1 }
+                BrowserButton {
+                    id: closeProfiles
+                    symbol: "xmark"; tooltip: "Close"
+                    onClicked: root.profileSheetOpen = false
+                }
+            }
+
+            Text {
+                width: parent.width
+                wrapMode: Text.WordWrap
+                text: "Each profile keeps its own cookies, website data, history, Favorites, Reading List, Tab Groups, and restored tabs."
+                color: Theme.secondaryLabel
+                font { family: Theme.fontUi; pixelSize: 12 }
+            }
+
+            Column {
+                width: parent.width
+                spacing: 4
+                Repeater {
+                    model: root.profiles
+                    delegate: Rectangle {
+                        required property var modelData
+                        width: parent ? parent.width : 400
+                        height: 44
+                        radius: 10
+                        color: modelData === BrowserBackend.profileName
+                            ? (Theme.dark ? "#18ffffff" : "#0d000000") : "transparent"
+
+                        Row {
+                            anchors { fill: parent; leftMargin: 10; rightMargin: 8 }
+                            spacing: 10
+                            Rectangle {
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: 28; height: 28; radius: 9
+                                color: Theme.accent
+                                opacity: modelData === BrowserBackend.profileName ? 1 : 0.70
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: String(modelData).charAt(0).toUpperCase()
+                                    color: "#ffffff"
+                                    font { family: Theme.fontUi; pixelSize: 13; weight: Font.DemiBold }
+                                }
+                            }
+                            Text {
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: parent.width - 130
+                                text: modelData
+                                color: Theme.label
+                                elide: Text.ElideRight
+                                font { family: Theme.fontUi; pixelSize: 13; weight: Font.Medium }
+                            }
+                            Button {
+                                anchors.verticalCenter: parent.verticalCenter
+                                visible: modelData !== BrowserBackend.profileName
+                                text: "Open"
+                                onClicked: BrowserBackend.openProfile(modelData)
+                            }
+                            Text {
+                                anchors.verticalCenter: parent.verticalCenter
+                                visible: modelData === BrowserBackend.profileName
+                                text: "Current"
+                                color: Theme.secondaryLabel
+                                font { family: Theme.fontUi; pixelSize: 11 }
+                            }
+                        }
+                    }
+                }
+            }
+
+            Rectangle { width: parent.width; height: 1; color: Theme.separator }
+
+            Text {
+                text: "New Profile"
+                color: Theme.label
+                font { family: Theme.fontUi; pixelSize: 13; weight: Font.DemiBold }
+            }
+            Row {
+                width: parent.width
+                spacing: 8
+                TextField {
+                    id: profileNameField
+                    width: parent.width - createProfileButton.width - 8
+                    placeholder: "Profile Name"
+                    text: root.newProfileName
+                    onTextChanged: root.newProfileName = text
+                    onAccepted: root.createProfile()
+                }
+                Button {
+                    id: createProfileButton
+                    text: "Create"
+                    prominent: true
+                    onClicked: root.createProfile()
+                }
             }
         }
     }
@@ -1663,6 +1844,7 @@ Window {
         sequence: "Escape"
         onActivated: {
             if (root.readerOpen) root.readerOpen = false
+            else if (root.profileSheetOpen) root.profileSheetOpen = false
             else if (root.settingsOpen) root.settingsOpen = false
             else if (root.tabGroupEditorOpen) root.tabGroupEditorOpen = false
             else if (root.pageMenuOpen) root.pageMenuOpen = false
