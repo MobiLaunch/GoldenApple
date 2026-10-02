@@ -1,5 +1,6 @@
-// Dock: glass shelf with cosine magnification, running indicators, launch
-// bounce and tooltips. Pinned apps are desktop-entry ids.
+// Dock: iPad-style glass shelf with fixed-size icons, running indicators,
+ // launch bounce and tooltips. Pointer-driven magnification is intentionally
+ // absent: the shelf never changes geometry while the pointer moves.
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
@@ -18,17 +19,10 @@ PanelWindow {
         "org.goldengate.Photos", "org.goldengate.Music", "org.goldengate.Calendar", "org.goldengate.Notes",
         "org.goldengate.Weather", "org.goldengate.Software", "org.goldengate.Settings", "org.goldengate.Terminal"
     ])
-    // Size and magnification from Settings › Desktop & Dock.
+    // Size from Settings › Desktop & Dock. Keep every icon on one stable grid.
     readonly property int tileCount: entries.length + places.length
-    readonly property real restingWidth: tileCount * (baseSize + 3) + 25
-    property real baseSize: Math.min(Prefs.dockSize, Math.max(16, (width - 48) / (tileCount + 6) - 3))
-    // Make magnification visually obvious on real hardware. Settings still gate the effect,
-    // but an enabled Dock now reaches ~1.95x at the pointer instead of being capped at 1.8x.
-    property real maxSize: Prefs.dockMagnification && !Prefs.reduceMotion
-        ? Math.max(baseSize, Math.min(Math.max(Prefs.dockMagnifiedSize, baseSize * 1.95), baseSize * 2.15))
-        : baseSize
-    property real pointerX: -1
-    property real pointerTargetX: -1
+    readonly property real restingWidth: tileCount * (baseSize + 6) + 28
+    property real baseSize: Math.min(Prefs.dockSize, Math.max(16, (width - 48) / (tileCount + 3) - 6))
     property var launcher: null   // AppLaunch on this screen: the icon grows into the window
     property var applications: null
 
@@ -39,13 +33,13 @@ PanelWindow {
 
     anchors { bottom: true; left: true; right: true }
     // Include the label, its gap, bounce and spring overshoot inside the layer surface.
-    implicitHeight: maxSize + 90
+    implicitHeight: baseSize + 70
     exclusiveZone: baseSize + 22
     color: "transparent"
     WlrLayershell.namespace: "gg-dock"
     WlrLayershell.layer: WlrLayer.Top
-    // Only the shelf (and the magnified icons above it while hovering) take input.
-    mask: Region { item: hitbox }
+    // Touch-style shelf: only the shelf itself takes input.
+    mask: Region { item: shelf }
 
     SystemClock { id: clock; precision: SystemClock.Minutes }
     Process {
@@ -109,79 +103,18 @@ PanelWindow {
         Hyprland.dispatch(`movetoworkspace ${ws},address:${t.lastIpcObject.address}`)
         if (monitor?.name) Hyprland.dispatch(`focusmonitor ${monitor.name}`)
     }
-    // Magnification targets are measured against resting slot centres. Neither
-    // the row nor the shelf changes width while magnifying.
-    function centerFor(index) {
-        const left = shelf.x + 7
-        if (index < entries.length)
-            return left + index * (baseSize + 3) + baseSize / 2
-        const placeIndex = index - entries.length
-        const appWidth = entries.length * (baseSize + 3)
-        return left + appWidth + 14 + placeIndex * (baseSize + 3) + baseSize / 2
-    }
-    function sizeAt(index) {
-        if (pointerX < 0 || !Prefs.dockMagnification || Prefs.reduceMotion)
-            return baseSize
-        const range = baseSize * 2.7
-        const d = Math.abs(pointerX - centerFor(index))
-        if (d >= range)
-            return baseSize
-        const influence = Math.pow(Math.cos(d / range * Math.PI / 2), 1.28)
-        return baseSize + (maxSize - baseSize) * influence
-    }
-    function offsetAt(index) {
-        if (pointerX < 0 || Prefs.reduceMotion)
-            return 0
-        const delta = centerFor(index) - pointerX
-        if (Math.abs(delta) < 0.5)
-            return 0
-        return (delta < 0 ? -1 : 1) * (sizeAt(index) - baseSize) * 0.25
-    }
-
-    Item {
-        id: hitbox
-        readonly property real overhang: Math.max(0, dock.maxSize - dock.baseSize) * 0.72
-        // Keep the input geometry fixed while hovering. The old hover-dependent
-        // x/width change altered HoverHandler's local coordinate system on entry,
-        // producing the visible one-frame magnification jump.
-        x: Math.max(0, shelf.x - overhang)
-        width: Math.min(dock.width - x, shelf.width + overhang * 2)
-        y: dock.height - maxSize - 18
-        height: dock.height - y
-        HoverHandler {
-            id: hover
-            // Pointer devices can report substantially faster than the display
-            // refresh rate. Record the latest location here and let FrameAnimation
-            // apply at most one magnification/layout update per rendered frame.
-            onPointChanged: dock.pointerTargetX = hovered ? point.position.x + hitbox.x : -1
-            onHoveredChanged: {
-                if (!hovered) {
-                    dock.pointerTargetX = -1
-                    dock.pointerX = -1
-                }
-            }
-        }
-        FrameAnimation {
-            running: hover.hovered && Prefs.dockMagnification && !Prefs.reduceMotion
-            onTriggered: {
-                if (dock.pointerX !== dock.pointerTargetX)
-                    dock.pointerX = dock.pointerTargetX
-            }
-        }
-    }
-
     Glass { variant: "clear";
         id: shelf
         anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: 6 }
-        width: row.width + 14
-        height: dock.baseSize + 16
+        width: row.width + 18
+        height: dock.baseSize + 18
         radius: Theme.radiusDock + 2
 
         Row {
             id: row
-            anchors { left: parent.left; leftMargin: 7; bottom: parent.bottom; bottomMargin: 7 }
-            spacing: 3
-            height: dock.maxSize
+            anchors { left: parent.left; leftMargin: 9; bottom: parent.bottom; bottomMargin: 9 }
+            spacing: 6
+            height: dock.baseSize
             Repeater {
                 model: dock.entries
                 delegate: Item {
@@ -192,35 +125,18 @@ PanelWindow {
                     width: dock.baseSize
                     height: row.height
 
-                    SpringValue {
-                        id: iconSize
-                        target: dock.sizeAt(index)
-                        value: dock.baseSize
-                        response: 0.19
-                        dampingFraction: 0.88
-                        epsilon: 0.04
-                    }
-                    SpringValue {
-                        id: iconOffset
-                        target: dock.offsetAt(index)
-                        value: 0
-                        response: 0.20
-                        dampingFraction: 0.91
-                        epsilon: 0.04
-                    }
-
                     // Calendar apps show today's date, drawn over a date-less icon.
                     readonly property bool calendar: /calendar/i.test(modelData.icon ?? "") && calBlank.loaded
 
                     Image {
                         id: icon
-                        width: iconSize.value; height: iconSize.value
-                        x: (tile.width - width) / 2 + iconOffset.value
+                        width: dock.baseSize; height: dock.baseSize
+                        x: 0
                         property real launchOffset: 0
                         y: tile.height - height + launchOffset
                         z: Math.round(width * 10)
                         source: tile.calendar ? calBlank.source : Quickshell.iconPath(tile.modelData.icon, "application-x-executable")
-                        sourceSize: Qt.size(dock.maxSize * 2, dock.maxSize * 2)
+                        sourceSize: Qt.size(dock.baseSize * 2, dock.baseSize * 2)
                         smooth: true; mipmap: true
                         // Pressed, the icon darkens and settles a few percent, without
                         // fighting the Dock's size-based magnification wave.
@@ -272,7 +188,7 @@ PanelWindow {
                         Behavior on opacity { NumberAnimation { duration: Prefs.reduceMotion ? 1 : (tip.shown ? 115 : 80) } }
                         Behavior on scale { Spring { spring: Theme.popover } }
                         anchors { bottom: icon.top; bottomMargin: 10 }
-                        x: Math.max(8 - (shelf.x + row.x + tile.x), Math.min((parent.width - width) / 2 + iconOffset.value, dock.width - 8 - (shelf.x + row.x + tile.x) - width))
+                        x: Math.max(8 - (shelf.x + row.x + tile.x), Math.min((parent.width - width) / 2, dock.width - 8 - (shelf.x + row.x + tile.x) - width))
                         width: Math.min(dock.width - 16, tipText.implicitWidth + 24); height: 26; radius: 13
                         tint: Theme.dark ? "#b8282830" : "#c8f4f4f6"
                         Text { id: tipText; anchors.centerIn: parent; width: Math.min(implicitWidth, parent.width - 24); elide: Text.ElideRight; textFormat: Text.PlainText; text: tile.modelData.name; color: Theme.label; font { family: Theme.fontUi; pixelSize: 13; weight: Font.Medium } }
@@ -308,33 +224,17 @@ PanelWindow {
                     width: dock.baseSize
                     height: row.height
 
-                    SpringValue {
-                        id: placeSize
-                        target: dock.sizeAt(dock.entries.length + index)
-                        value: dock.baseSize
-                        response: 0.19
-                        dampingFraction: 0.88
-                        epsilon: 0.04
-                    }
-                    SpringValue {
-                        id: placeOffset
-                        target: dock.offsetAt(dock.entries.length + index)
-                        value: 0
-                        response: 0.20
-                        dampingFraction: 0.91
-                        epsilon: 0.04
-                    }
                     Image {
                         id: placeIcon
-                        width: placeSize.value
-                        height: placeSize.value
-                        x: (place.width - width) / 2 + placeOffset.value
+                        width: dock.baseSize
+                        height: dock.baseSize
+                        x: 0
                         y: place.height - height
                         z: Math.round(width * 10)
                         source: place.modelData.action === "applications"
                             ? Qt.resolvedUrl("assets/symbols/apps@accent.svg")
                             : Quickshell.iconPath(place.modelData.icon, "folder")
-                        sourceSize: Qt.size(dock.maxSize * 2, dock.maxSize * 2)
+                        sourceSize: Qt.size(dock.baseSize * 2, dock.baseSize * 2)
                         smooth: true; mipmap: true
                         scale: !Prefs.reduceMotion && placeArea.pressed ? 0.955 : 1
                         Behavior on scale { enabled: !Prefs.reduceMotion; NumberAnimation { duration: 75; easing.type: Easing.OutCubic } }
@@ -353,7 +253,7 @@ PanelWindow {
                         Behavior on opacity { NumberAnimation { duration: Prefs.reduceMotion ? 1 : (placeTip.shown ? 115 : 80) } }
                         Behavior on scale { Spring { spring: Theme.popover } }
                         anchors { bottom: placeIcon.top; bottomMargin: 10 }
-                        x: Math.max(8 - (shelf.x + row.x + place.x), Math.min((parent.width - width) / 2 + placeOffset.value, dock.width - 8 - (shelf.x + row.x + place.x) - width))
+                        x: Math.max(8 - (shelf.x + row.x + place.x), Math.min((parent.width - width) / 2, dock.width - 8 - (shelf.x + row.x + place.x) - width))
                         width: Math.min(dock.width - 16, placeText.implicitWidth + 24); height: 26; radius: 13
                         tint: Theme.dark ? "#b8282830" : "#c8f4f4f6"
                         Text { id: placeText; anchors.centerIn: parent; width: Math.min(implicitWidth, parent.width - 24); elide: Text.ElideRight; textFormat: Text.PlainText; text: place.modelData.name; color: Theme.label; font { family: Theme.fontUi; pixelSize: 13; weight: Font.Medium } }
