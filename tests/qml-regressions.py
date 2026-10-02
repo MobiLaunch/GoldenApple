@@ -37,6 +37,10 @@ for forbidden in ("x: hover.hovered ?", "width: hover.hovered", "y: hover.hovere
     if forbidden in dock:
         errors.append(f"shell/Dock.qml: hover-dependent hitbox geometry reintroduced: {forbidden}")
 
+for forbidden in ("dockMagnification", "dockMagnifiedSize", "pointerTargetX", "sizeAt(", "offsetAt("):
+    if forbidden in dock:
+        errors.append(f"shell/Dock.qml: removed magnification path reintroduced: {forbidden}")
+
 if errors:
     print("\n".join(errors), file=sys.stderr)
     raise SystemExit(1)
