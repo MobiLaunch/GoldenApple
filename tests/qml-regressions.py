@@ -53,6 +53,21 @@ for forbidden in ("dockMagnification", "dockMagnifiedSize", "magnifiedSize"):
     if forbidden in prefs:
         errors.append(f"shell/components/Prefs.qml: removed Dock magnification preference reintroduced: {forbidden}")
 
+wallpaper = (root / "shell" / "Wallpaper.qml").read_text(encoding="utf-8")
+applications_qml = (root / "shell" / "Applications.qml").read_text(encoding="utf-8")
+files_qml = (root / "apps" / "files.qml").read_text(encoding="utf-8")
+for path_name, text in (
+    ("shell/Wallpaper.qml", wallpaper),
+    ("shell/Dock.qml", dock),
+    ("shell/Applications.qml", applications_qml),
+):
+    if "Qt.RightButton" not in text:
+        errors.append(f"{path_name}: right-click context-menu trigger is missing")
+if "onContextMenuRequested" not in (root / "apps" / "browser" / "Browser.qml").read_text(encoding="utf-8"):
+    errors.append("apps/browser/Browser.qml: WebEngine context menu hook is missing")
+if "Qt.RightButton" not in files_qml or "menu.popup" not in files_qml:
+    errors.append("apps/files.qml: file/folder context menus are missing")
+
 browser = (root / "apps" / "browser" / "Browser.qml").read_text(encoding="utf-8")
 browser_ids = re.findall(r"\bid:\s*([A-Za-z_]\w*)", browser)
 for qml_id in sorted(set(browser_ids)):
