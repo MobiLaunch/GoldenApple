@@ -52,6 +52,7 @@ class Store:
                 'searchEngine': 'duckduckgo',
                 'showFavoritesOnFocus': True,
                 'restoreSession': True,
+                'privacyProtection': True,
             },
         }
         if not private:
@@ -98,7 +99,7 @@ class Store:
             settings['tabLayout'] = 'separate'
         if settings.get('searchEngine') not in ('duckduckgo', 'brave', 'bing', 'google'):
             settings['searchEngine'] = 'duckduckgo'
-        for key in ('showFavoritesOnFocus', 'restoreSession'):
+        for key in ('showFavoritesOnFocus', 'restoreSession', 'privacyProtection'):
             if not isinstance(settings.get(key), bool):
                 settings[key] = True
 
