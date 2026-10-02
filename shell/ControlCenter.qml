@@ -258,6 +258,7 @@ PanelWindow {
         z: 2
         anchors { top: panel.top; left: panel.left; right: panel.right; topMargin: 12; leftMargin: 12; rightMargin: 12 }
         spacing: 9
+        opacity: panel.opacity
 
         RowLayout {
             Layout.fillWidth: true
