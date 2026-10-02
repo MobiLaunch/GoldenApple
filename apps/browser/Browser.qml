@@ -2638,6 +2638,7 @@ Window {
             else if (root.readerOpen) root.readerOpen = false
             else if (root.tabOverviewOpen) root.tabOverviewOpen = false
             else if (root.websitePermissionsOpen) root.websitePermissionsOpen = false
+            else if (root.privacySheetOpen) root.privacySheetOpen = false
             else if (root.profileSheetOpen) root.profileSheetOpen = false
             else if (root.settingsOpen) root.settingsOpen = false
             else if (root.tabGroupsSheetOpen) root.tabGroupsSheetOpen = false
