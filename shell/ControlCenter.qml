@@ -9,6 +9,7 @@ import Quickshell.Services.Mpris
 import Quickshell.Services.Pipewire
 import QtQuick
 import QtQuick.Layouts
+import "ui" as Shared
 import "ui/theme"
 import "components"
 
@@ -24,6 +25,22 @@ PanelWindow {
     readonly property var player: Mpris.players.values.length ? Mpris.players.values[0] : null
 
     function toggle() { open = !open; if (open) refresh() }
+
+    // A module opens into its detail view in place, as on the Mac: the Wi-Fi
+    // networks, the paired Bluetooth devices, the sound outputs.
+    property string detail: ""          // "" | "wifi" | "bluetooth" | "sound"
+    property var networks: []           // [{ ssid, signal, secure, active }]
+    function showDetail(kind) {
+        detail = kind
+        if (kind === "wifi") { networks = []; scanProc.running = true }
+    }
+    readonly property var sinks: Pipewire.nodes.values.filter((n) => n.isSink && !n.isStream && n.audio)
+    readonly property var btDevices: (Bluetooth.defaultAdapter?.devices.values ?? []).filter((d) => d.paired || d.connected)
+    // Known networks connect at once; open ones join; a new secured network is
+    // joined in Settings, which asks for its password (never on a command line).
+    function joinNetwork(ssid) {
+        cc.run("sh -c 'nmcli -w 15 connection up id \"$1\" >/dev/null 2>&1 || nmcli -w 15 device wifi connect \"$1\" >/dev/null 2>&1 || gg-settings wifi' sh " + JSON.stringify(ssid))
+    }
     function run(cmd) { Hyprland.dispatch("exec " + cmd) }
     function refresh() {
         wifiState.running = true
@@ -41,7 +58,7 @@ PanelWindow {
     WlrLayershell.namespace: "gg-controlcenter"
     WlrLayershell.layer: WlrLayer.Overlay
 
-    onOpenChanged: if (!open) closeTimer.restart()
+    onOpenChanged: if (!open) { closeTimer.restart(); detail = "" }
     Timer { id: closeTimer; interval: 180 }
     HyprlandFocusGrab { windows: [cc]; active: cc.open; onCleared: cc.open = false }
     PwObjectTracker { objects: [cc.sink] }
@@ -56,6 +73,27 @@ PanelWindow {
         command: ["sh", "-c", "nmcli -t -f ACTIVE,SSID dev wifi | awk -F: '$1==\"yes\"{print $2; exit}'"]
         stdout: SplitParser { onRead: line => cc.ssid = line.trim() }
     }
+    Process {
+        id: scanProc
+        // SSID last: it is the one field that may itself contain colons.
+        command: ["nmcli", "-t", "-f", "IN-USE,SIGNAL,SECURITY,SSID", "device", "wifi", "list", "--rescan", "auto"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const seen = {}, out = []
+                for (const line of text.split("\n")) {
+                    const parts = line.split(":")
+                    if (parts.length < 4) continue
+                    const ssid = parts.slice(3).join(":").replace(/\\:/g, ":").trim()
+                    if (!ssid || seen[ssid]) continue
+                    seen[ssid] = true
+                    out.push({ ssid: ssid, active: parts[0] === "*", signal: parseInt(parts[1]) || 0,
+                               secure: parts[2] !== "" && parts[2] !== "--" })
+                }
+                cc.networks = out.sort((a, b) => b.active - a.active || b.signal - a.signal).slice(0, 10)
+            }
+        }
+    }
+    PwObjectTracker { objects: cc.sinks }
     Process {
         id: brightProc
         command: ["brightnessctl", "-m"]
@@ -191,7 +229,9 @@ PanelWindow {
         property string lowIcon
         property string highIcon
         property real value: 0.5
+        property bool expandable: false     // a button to the module's detail view
         signal moved(real value)
+        signal expand()
         implicitHeight: 72
 
         function setFromX(x) {
@@ -204,6 +244,14 @@ PanelWindow {
             text: slider.title
             color: Theme.label
             font { family: Theme.fontUi; pixelSize: 12; weight: Font.DemiBold }
+        }
+        Rectangle {
+            visible: slider.expandable
+            anchors { right: parent.right; rightMargin: 9; top: parent.top; topMargin: 6 }
+            width: 22; height: 22; radius: 11
+            color: expandArea.pressed ? Theme.selection : expandArea.containsMouse ? Theme.fill : "transparent"
+            Symbol { anchors.centerIn: parent; name: "chevron-right"; size: 10; tone: "gray" }
+            MouseArea { id: expandArea; anchors.fill: parent; hoverEnabled: true; onClicked: slider.expand() }
         }
         RowLayout {
             anchors { left: parent.left; right: parent.right; bottom: parent.bottom; leftMargin: 13; rightMargin: 13; bottomMargin: 11 }
@@ -250,7 +298,8 @@ PanelWindow {
         role: "regular"
         anchors { top: parent.top; right: parent.right; topMargin: 24 }
         width: 344
-        height: content.implicitHeight + 24
+        height: (cc.detail ? detailView.implicitHeight : content.implicitHeight) + 24
+        Behavior on height { enabled: !Prefs.reduceMotion; Spring { spring: Theme.snappy } }
         radius: 25
         opacity: cc.open ? 1 : 0
         scale: cc.open || Prefs.reduceMotion ? 1 : 0.965
@@ -264,7 +313,9 @@ PanelWindow {
         z: 2
         anchors { top: panel.top; left: panel.left; right: panel.right; topMargin: 12; leftMargin: 12; rightMargin: 12 }
         spacing: 9
-        opacity: panel.opacity
+        opacity: cc.detail ? 0 : panel.opacity
+        visible: opacity > 0
+        Behavior on opacity { NumberAnimation { duration: Prefs.reduceMotion ? 1 : 120 } }
 
         RowLayout {
             Layout.fillWidth: true
@@ -286,7 +337,7 @@ PanelWindow {
                             cc.wifiOn = !cc.wifiOn
                             Quickshell.execDetached(["nmcli", "radio", "wifi", cc.wifiOn ? "on" : "off"])
                         }
-                        onActivated: { cc.open = false; cc.run("gg-settings wifi") }
+                        onActivated: cc.showDetail("wifi")
                     }
                     Rectangle { width: parent.width - 48; x: 48; height: 0.5; color: Theme.separator }
                     ConnectivityRow {
@@ -298,7 +349,7 @@ PanelWindow {
                             const enabled = !(Bluetooth.defaultAdapter?.enabled ?? false)
                             Quickshell.execDetached(["bluetoothctl", "power", enabled ? "on" : "off"])
                         }
-                        onActivated: { cc.open = false; cc.run("gg-settings bluetooth") }
+                        onActivated: cc.showDetail("bluetooth")
                     }
                     Rectangle { width: parent.width - 48; x: 48; height: 0.5; color: Theme.separator }
                     ConnectivityRow {
@@ -344,6 +395,8 @@ PanelWindow {
         BigSurSlider {
             Layout.fillWidth: true
             title: "Sound"; lowIcon: "speaker"; highIcon: "speaker-wave"
+            expandable: true
+            onExpand: cc.showDetail("sound")
             value: cc.sink?.audio?.volume ?? 0
             onMoved: value => { if (cc.sink?.audio) cc.sink.audio.volume = value }
         }
@@ -431,6 +484,152 @@ PanelWindow {
                 onActivated: {
                     cc.open = false
                     cc.run("sh -c 'sleep 0.25; grim -g \"$(slurp)\" ~/Pictures/Screenshot-$(date +%F-%H%M%S).png'")
+                }
+            }
+        }
+    }
+
+    // The detail view of one module, in the same panel.
+    ColumnLayout {
+        id: detailView
+        z: 2
+        anchors { top: panel.top; left: panel.left; right: panel.right; topMargin: 12; leftMargin: 12; rightMargin: 12 }
+        spacing: 2
+        opacity: cc.detail ? panel.opacity : 0
+        visible: opacity > 0
+        Behavior on opacity { NumberAnimation { duration: Prefs.reduceMotion ? 1 : 140 } }
+        focus: cc.detail !== ""
+        Keys.onEscapePressed: cc.detail = ""
+
+        readonly property string title: ({ wifi: "Wi-Fi", bluetooth: "Bluetooth", sound: "Sound Output" })[cc.detail] ?? ""
+        readonly property bool hasSwitch: cc.detail === "wifi" || cc.detail === "bluetooth"
+        readonly property bool on: cc.detail === "wifi" ? cc.wifiOn : (Bluetooth.defaultAdapter?.enabled ?? false)
+
+        RowLayout {
+            Layout.fillWidth: true
+            Layout.leftMargin: 2; Layout.rightMargin: 4
+            Layout.preferredHeight: 34
+            spacing: 6
+            Rectangle {
+                width: 24; height: 24; radius: 12
+                color: backArea.pressed ? Theme.selection : backArea.containsMouse ? Theme.fill : "transparent"
+                Symbol { anchors.centerIn: parent; name: "chevron-left"; size: 11; tone: "auto" }
+                MouseArea { id: backArea; anchors.fill: parent; hoverEnabled: true; onClicked: cc.detail = "" }
+                Accessible.role: Accessible.Button
+                Accessible.name: "Back"
+            }
+            Text {
+                Layout.fillWidth: true
+                text: detailView.title
+                color: Theme.label
+                font { family: Theme.fontUi; pixelSize: 15; weight: Font.Bold }
+            }
+            Shared.Switch {
+                visible: detailView.hasSwitch
+                checked: detailView.on
+                onToggled: {
+                    if (cc.detail === "wifi") {
+                        cc.wifiOn = !cc.wifiOn
+                        Quickshell.execDetached(["nmcli", "radio", "wifi", cc.wifiOn ? "on" : "off"])
+                        if (cc.wifiOn) scanProc.running = true
+                    } else {
+                        Quickshell.execDetached(["bluetoothctl", "power", detailView.on ? "off" : "on"])
+                    }
+                }
+            }
+        }
+        Rectangle { Layout.fillWidth: true; Layout.bottomMargin: 4; height: 0.5; color: Theme.separator }
+
+        Text {
+            visible: rows.count === 0
+            Layout.fillWidth: true
+            Layout.topMargin: 6; Layout.bottomMargin: 6
+            horizontalAlignment: Text.AlignHCenter
+            text: cc.detail === "wifi" ? (cc.wifiOn ? (scanProc.running ? "Searching…" : "No Networks") : "Wi-Fi is off")
+                : cc.detail === "bluetooth" ? ((Bluetooth.defaultAdapter?.enabled ?? false) ? "No Devices" : "Bluetooth is off")
+                : "No Outputs"
+            color: Theme.secondaryLabel
+            font { family: Theme.fontUi; pixelSize: 12 }
+        }
+
+        // Rows: an icon circle (in the accent when in use), the name, and a
+        // lock for a secured network.
+        Repeater {
+            id: rows
+            model: cc.detail === "wifi" ? (cc.wifiOn ? cc.networks : [])
+                : cc.detail === "bluetooth" ? ((Bluetooth.defaultAdapter?.enabled ?? false) ? cc.btDevices : [])
+                : cc.detail === "sound" ? cc.sinks : []
+            delegate: Rectangle {
+                id: item
+                required property var modelData
+                readonly property string label: cc.detail === "wifi" ? modelData.ssid
+                    : cc.detail === "bluetooth" ? (modelData.name || modelData.deviceName || "Device")
+                    : (modelData.description || modelData.nickname || modelData.name || "Output")
+                readonly property bool active: cc.detail === "wifi" ? modelData.active
+                    : cc.detail === "bluetooth" ? modelData.connected
+                    : modelData === Pipewire.defaultAudioSink
+                Layout.fillWidth: true
+                Layout.preferredHeight: 34
+                radius: 9
+                color: rowArea.pressed ? Theme.selection : rowArea.containsMouse ? Theme.menuHighlight : "transparent"
+                RowLayout {
+                    anchors { fill: parent; leftMargin: 6; rightMargin: 10 }
+                    spacing: 9
+                    Rectangle {
+                        width: 26; height: 26; radius: 13
+                        color: item.active ? Theme.accent : Theme.dark ? "#26ffffff" : "#14000000"
+                        Symbol {
+                            anchors.centerIn: parent
+                            name: cc.detail === "wifi" ? "wifi" : cc.detail === "bluetooth" ? "bluetooth" : "speaker-wave"
+                            size: 12
+                            tone: item.active ? "white" : "auto"
+                        }
+                    }
+                    Text {
+                        Layout.fillWidth: true
+                        text: item.label
+                        elide: Text.ElideRight
+                        color: Theme.label
+                        font { family: Theme.fontUi; pixelSize: 13; weight: item.active ? Font.DemiBold : Font.Normal }
+                    }
+                    Symbol {
+                        visible: cc.detail === "wifi" && item.modelData.secure
+                        name: "lock"; size: 11; tone: "gray"
+                    }
+                }
+                MouseArea {
+                    id: rowArea
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    onClicked: {
+                        if (cc.detail === "wifi") { if (!item.active) cc.joinNetwork(item.modelData.ssid) }
+                        else if (cc.detail === "bluetooth") { if (item.active) item.modelData.disconnect(); else item.modelData.connect() }
+                        else Pipewire.preferredDefaultAudioSink = item.modelData
+                    }
+                }
+            }
+        }
+
+        Rectangle { Layout.fillWidth: true; Layout.topMargin: 4; height: 0.5; color: Theme.separator }
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 30
+            radius: 9
+            color: settingsArea.pressed ? Theme.selection : settingsArea.containsMouse ? Theme.menuHighlight : "transparent"
+            Text {
+                anchors { left: parent.left; leftMargin: 8; verticalCenter: parent.verticalCenter }
+                text: detailView.title.replace(" Output", "") + " Settings…"
+                color: Theme.label
+                font { family: Theme.fontUi; pixelSize: 13 }
+            }
+            MouseArea {
+                id: settingsArea
+                anchors.fill: parent
+                hoverEnabled: true
+                onClicked: {
+                    const pane = ({ wifi: "wifi", bluetooth: "bluetooth", sound: "sound" })[cc.detail]
+                    cc.open = false
+                    cc.run("gg-settings " + pane)
                 }
             }
         }

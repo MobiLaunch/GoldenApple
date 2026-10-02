@@ -14,12 +14,19 @@ ShellRoot {
     property var launchers: []
     // One Control Center per screen; ⌥⌘C toggles the one on the focused screen.
     property var controlCenters: []
+    function focusedControlCenter() {
+        const name = Hyprland.focusedMonitor?.name
+        return controlCenters.find((c) => c.screen?.name === name) ?? controlCenters[0]
+    }
     IpcHandler {
         target: "controlcenter"
-        function toggle(): void {
-            const name = Hyprland.focusedMonitor?.name
-            const cc = root.controlCenters.find((c) => c.screen?.name === name) ?? root.controlCenters[0]
-            cc?.toggle()
+        function toggle(): void { root.focusedControlCenter()?.toggle() }
+        // wifi | bluetooth | sound: open Control Center at that module's detail view.
+        function detail(kind: string): void {
+            const cc = root.focusedControlCenter()
+            if (!cc) return
+            if (!cc.open) cc.toggle()
+            cc.showDetail(kind)
         }
     }
     Binding { target: Theme; property: "reduceMotion"; value: Prefs.reduceMotion }
