@@ -74,9 +74,7 @@ PanelWindow {
             contextItems = [{ label: "Open Downloads", action: () => Quickshell.execDetached(place.exec) }]
         } else {
             contextItems = [
-                { label: "Open Trash", action: () => Quickshell.execDetached(place.exec) },
-                "-",
-                { label: "Empty Trash", action: () => Quickshell.execDetached(["sh", "-c", "rm -rf \"$HOME/.local/share/Trash/files/\"* \"$HOME/.local/share/Trash/info/\"* 2>/dev/null || true"]) }
+                { label: "Open Trash", action: () => Quickshell.execDetached(place.exec) }
             ]
         }
         contextX = point.x
