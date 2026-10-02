@@ -27,6 +27,8 @@ Window {
     property bool pageMenuOpen: false
     property bool downloadsOpen: false
     property bool settingsOpen: false
+    property bool privacySheetOpen: false
+    property var sitePrivacyReport: ({ enabled: true, blocked: 0, domains: [] })
     property bool readerOpen: false
     property bool tabOverviewOpen: false
     property string readerTitle: ""
@@ -217,6 +219,13 @@ Window {
         BrowserBackend.setSetting(key, JSON.stringify(value))
     }
 
+    function openPrivacyReport() {
+        try { sitePrivacyReport = JSON.parse(BrowserBackend.privacyReportForUrl(currentUrl)) }
+        catch (_) { sitePrivacyReport = ({ enabled: true, blocked: 0, domains: [] }) }
+        pageMenuOpen = false
+        privacySheetOpen = true
+    }
+
     function refreshTabGroups() {
         try { tabGroups = JSON.parse(BrowserBackend.collectionJson("tabGroups")) }
         catch (_) { tabGroups = [] }
@@ -345,6 +354,7 @@ Window {
     }
 
     Component.onCompleted: {
+        BrowserBackend.attachProfile(profile)
         let initial = JSON.parse(BrowserBackend.initialTabsJson)
         if (!initial.length) initial = ["about:blank"]
         for (let i = 0; i < initial.length; i++) newTab(initial[i], false)
@@ -365,6 +375,10 @@ Window {
             if (libraryOverlay.visible) libraryOverlay.reload()
         }
         function onProfilesChanged() { root.refreshProfiles() }
+        function onPrivacyChanged() {
+            root.refreshStartPage()
+            if (root.privacySheetOpen) root.openPrivacyReport()
+        }
         function onToastRequested(message) {
             toastLabel.text = message
             toast.opacity = 1
@@ -1477,6 +1491,12 @@ Window {
             }
 
             MenuRow { symbol: "notes"; label: "Reader"; enabled: root.currentUrl !== "about:blank"; onActivated: root.enterReader() }
+            MenuRow {
+                symbol: "shield"
+                label: "Privacy Report"
+                trailing: root.currentUrl === "about:blank" ? "" : String(JSON.parse(BrowserBackend.privacyReportForUrl(root.currentUrl)).blocked || "")
+                onActivated: root.openPrivacyReport()
+            }
             MenuRow { symbol: "bookmark"; label: "Add to Favorites"; enabled: root.currentUrl !== "about:blank"; onActivated: { BrowserBackend.addBookmark(root.currentUrl, root.currentTitle); root.pageMenuOpen = false } }
             MenuRow { symbol: "clock"; label: "Add to Reading List"; enabled: root.currentUrl !== "about:blank"; onActivated: { BrowserBackend.addReadingList(root.currentUrl, root.currentTitle); root.pageMenuOpen = false } }
             MenuRow { symbol: "globe"; label: "Copy Link"; enabled: root.currentUrl !== "about:blank"; onActivated: { BrowserBackend.copyText(root.currentUrl); root.pageMenuOpen = false; BrowserBackend.notify("Link copied") } }
@@ -1733,6 +1753,21 @@ Window {
                 Text {
                     width: 190
                     anchors.verticalCenter: parent.verticalCenter
+                    text: "Privacy Protection"
+                    color: Theme.label
+                    font { family: Theme.fontUi; pixelSize: 13; weight: Font.Medium }
+                }
+                Switch {
+                    checked: root.browserSettings.privacyProtection !== false
+                    onToggled: function(on) { root.setBrowserSetting("privacyProtection", on) }
+                }
+            }
+
+            Row {
+                width: parent.width
+                Text {
+                    width: 190
+                    anchors.verticalCenter: parent.verticalCenter
                     text: "Search Engine"
                     color: Theme.label
                     font { family: Theme.fontUi; pixelSize: 13; weight: Font.Medium }
@@ -1909,6 +1944,125 @@ Window {
                         }
                     }
                 }
+            }
+        }
+    }
+
+    Rectangle {
+        id: privacySheet
+        z: 67
+        visible: root.privacySheetOpen
+        anchors.centerIn: parent
+        width: Math.min(500, root.width - 70)
+        height: Math.min(480, Math.max(260, privacyContent.implicitHeight + 44))
+        radius: 22
+        color: Theme.dark ? "#fc303034" : "#fff8f8fa"
+        border { width: 0.5; color: Theme.separator }
+
+        Rectangle {
+            z: -1
+            anchors { fill: parent; margins: -14 }
+            radius: 30
+            color: "#40000000"
+            opacity: 0.24
+        }
+
+        Column {
+            id: privacyContent
+            anchors { left: parent.left; right: parent.right; top: parent.top; margins: 22 }
+            spacing: 14
+
+            Row {
+                width: parent.width
+                Text {
+                    text: "Privacy Report"
+                    color: Theme.label
+                    font { family: Theme.fontDisplay; pixelSize: 21; weight: Font.DemiBold }
+                }
+                Item { width: Math.max(0, parent.width - parent.children[0].width - closePrivacy.width); height: 1 }
+                BrowserButton {
+                    id: closePrivacy
+                    symbol: "xmark"; tooltip: "Close"
+                    onClicked: root.privacySheetOpen = false
+                }
+            }
+
+            Text {
+                width: parent.width
+                text: root.currentUrl === "about:blank" ? "Start Page" : BrowserBackend.displayAddress(root.currentUrl)
+                color: Theme.secondaryLabel
+                elide: Text.ElideRight
+                font { family: Theme.fontUi; pixelSize: 12 }
+            }
+
+            Row {
+                spacing: 14
+                Rectangle {
+                    width: 50; height: 50; radius: 15
+                    color: Theme.dark ? "#1dffffff" : "#120078ff"
+                    Symbol { anchors.centerIn: parent; name: "shield"; tone: "accent"; size: 24 }
+                }
+                Column {
+                    anchors.verticalCenter: parent.verticalCenter
+                    Text {
+                        text: root.sitePrivacyReport.enabled
+                            ? (root.sitePrivacyReport.blocked + " tracking request"
+                               + (root.sitePrivacyReport.blocked === 1 ? "" : "s") + " blocked")
+                            : "Privacy Protection is off"
+                        color: Theme.label
+                        font { family: Theme.fontUi; pixelSize: 15; weight: Font.DemiBold }
+                    }
+                    Text {
+                        text: "Known third-party tracker domains are blocked before Chromium sends the request."
+                        color: Theme.secondaryLabel
+                        font { family: Theme.fontUi; pixelSize: 11 }
+                    }
+                }
+            }
+
+            Rectangle { width: parent.width; height: 1; color: Theme.separator }
+
+            Text {
+                visible: root.sitePrivacyReport.enabled && root.sitePrivacyReport.domains.length === 0
+                text: "No known tracker domains have been blocked for this site in this session."
+                width: parent.width; wrapMode: Text.WordWrap
+                color: Theme.secondaryLabel
+                font { family: Theme.fontUi; pixelSize: 12 }
+            }
+
+            Column {
+                width: parent.width
+                spacing: 2
+                Repeater {
+                    model: root.sitePrivacyReport.domains
+                    delegate: Rectangle {
+                        required property var modelData
+                        width: privacyContent.width
+                        height: 36; radius: 8
+                        color: Theme.dark ? "#0cffffff" : "#07000000"
+                        Text {
+                            x: 10; anchors.verticalCenter: parent.verticalCenter
+                            width: parent.width - 70; elide: Text.ElideRight
+                            text: modelData.domain
+                            color: Theme.label
+                            font { family: Theme.fontUi; pixelSize: 12 }
+                        }
+                        Text {
+                            anchors { right: parent.right; rightMargin: 10; verticalCenter: parent.verticalCenter }
+                            text: String(modelData.count)
+                            color: Theme.secondaryLabel
+                            font { family: Theme.fontUi; pixelSize: 11 }
+                        }
+                    }
+                }
+            }
+
+            Text {
+                width: parent.width
+                wrapMode: Text.WordWrap
+                text: "Golden Gate Privacy Protection uses a conservative built-in tracker list. It is not Safari Intelligent Tracking Prevention."
+                color: Theme.tertiaryLabel
+                font { family: Theme.fontUi; pixelSize: 10 }
             }
         }
     }
