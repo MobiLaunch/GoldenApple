@@ -150,6 +150,25 @@ class NativeQmlBrowser(unittest.TestCase):
             self.assertIn(BASE + "/first", tabs)
             self.assertIn(BASE + "/second", tabs)
 
+    def test_named_profiles_keep_separate_sessions(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            personal = self.run_browser(root, BASE + "/personal")
+            self.assertEqual(personal.returncode, 0, personal.stderr)
+
+            work = self.run_browser(root, "--profile", "Work", BASE + "/work")
+            self.assertEqual(work.returncode, 0, work.stderr)
+
+            files = state_files(root)
+            self.assertEqual(len(files), 2, [str(p) for p in files])
+            states = [(p, json.loads(p.read_text())) for p in files]
+            personal_state = next(data for path, data in states if "profiles" not in path.parts)
+            work_state = next(data for path, data in states if "profiles" in path.parts)
+            self.assertIn(BASE + "/personal", personal_state["tabs"])
+            self.assertNotIn(BASE + "/work", personal_state["tabs"])
+            self.assertIn(BASE + "/work", work_state["tabs"])
+            self.assertNotIn(BASE + "/personal", work_state["tabs"])
+
     def test_production_path_is_qml_not_qtwidgets(self):
         launcher = (ROOT / "apps/browser/browser.py").read_text()
         qml = (ROOT / "apps/browser/Browser.qml").read_text()
@@ -160,6 +179,12 @@ class NativeQmlBrowser(unittest.TestCase):
         self.assertIn("WebEngineView", qml)
         self.assertIn("Search or enter website name", qml)
         self.assertIn("Reading List", qml)
+        self.assertIn("TAB GROUPS", qml)
+        self.assertIn("Save Tabs as Group", qml)
+        self.assertIn("Profiles", qml)
+        self.assertIn("Search Engine", qml)
+        self.assertIn("Separate", qml)
+        self.assertIn("Compact", qml)
         self.assertIn("browser.py", shell)
         self.assertFalse((ROOT / "apps/browser/ui.py").exists())
 
