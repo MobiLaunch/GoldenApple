@@ -102,11 +102,6 @@ ShellRoot {
             // Persistent per-screen Applications surface. Keeping the object alive
             // removes the lazy-loader race that made the Dock button appear dead.
             Applications { id: applicationsPanel; screen: perScreen.modelData }
-            IpcHandler {
-                target: "applications"
-                function open(): void { applicationsPanel.present() }
-                function toggle(): void { applicationsPanel.toggle() }
-            }
             ControlCenter { id: cc; screen: perScreen.modelData; notifications: notificationCenter }
             MenuBar { screen: perScreen.modelData; controlCenter: cc; spotlight: spotlightPanel }
             AppLaunch {
