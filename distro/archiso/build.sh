@@ -204,24 +204,14 @@ ln -sf /etc/systemd/system/gg-live-home.service "$WANTS/gg-live-home.service"
 say "installing the Golden Gate desktop into the image"
 bash "$REPO/scripts/install.sh" --system "$AIR"
 
-# Which Golden Gate this is, for Software Update: it checks this repository and
-# branch on GitHub for newer commits. A clone whose origin isn't GitHub (a copy
-# of a Windows checkout, say) falls back to the project's own repository.
-gg_origin="$(git -C "$REPO" remote get-url origin 2>/dev/null || true)"
-gg_repo="$(printf '%s' "$gg_origin" | sed -nE 's#^(https://|git@)github\.com[:/]([^/]+/[^/]+)/?$#\2#p' | sed 's/\.git$//')"
-[[ -n $gg_repo ]] || gg_repo="MobiLaunch/GoldenApple"
-gg_branch="$(git -C "$REPO" rev-parse --abbrev-ref HEAD 2>/dev/null || echo main)"
-[[ $gg_branch != HEAD ]] || gg_branch=main
-python3 - "$AIR/usr/share/golden-gate/version.json" "$gg_repo" "$gg_branch" \
-  "$(git -C "$REPO" rev-parse HEAD 2>/dev/null || true)" \
-  "$(git -C "$REPO" log -1 --format=%cI 2>/dev/null || true)" \
-  "$(git -C "$REPO" log -1 --format=%s 2>/dev/null || true)" <<'PY'
-import json, sys
-out, repo, branch, commit, date, subject = sys.argv[1:7]
-json.dump({"repo": repo, "branch": branch, "commit": commit, "date": date, "subject": subject},
-          open(out, "w"), indent=2)
-PY
-say "Software Update source: $gg_repo ($gg_branch)"
+# Which Golden Gate this is, for Software Update (the repository and branch on
+# GitHub it checks for newer commits), and its own source, so the live ISO can
+# update a Golden Gate already installed on the disk: sudo gg-update-disk.
+bash "$REPO/scripts/make-update-bundle.sh" "$AIR/usr/share/golden-gate/source.tar.gz" \
+  "$AIR/usr/share/golden-gate/version.json"
+printf '#!/bin/sh\nexec sudo python3 /usr/share/golden-gate/apps/settings/golden_update.py update-disk "$@"\n' \
+  > "$AIR/usr/local/bin/gg-update-disk"
+chmod 755 "$AIR/usr/local/bin/gg-update-disk"
 
 # Optional locally supplied Apple typography/symbol assets. These directories are
 # ignored by git so proprietary files are never committed or redistributed by

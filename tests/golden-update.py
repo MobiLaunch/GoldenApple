@@ -151,6 +151,39 @@ class GoldenUpdate(unittest.TestCase):
             self.assertTrue(any("Kept your edited" in kw.get("message", "") for e, kw in events if e == "notice"))
 
 
+class FromUsb(unittest.TestCase):
+    """The command line, as from the live ISO: an update bundle installed onto
+    a Golden Gate system mounted somewhere else, whose accounts are its own."""
+    def test_bundle_onto_a_mounted_system(self):
+        work = Path(tempfile.mkdtemp(prefix="gg-usb-"))
+        try:
+            bundle = work / "golden-gate-update.tar.gz"
+            subprocess.run(["bash", str(ROOT / "scripts/make-update-bundle.sh"), str(bundle)],
+                           check=True, capture_output=True)
+            target = work / "disk"
+            (target / "usr/share/golden-gate").mkdir(parents=True)
+            (target / "etc").mkdir()
+            (target / "etc/passwd").write_text("root:x:0:0::/root:/bin/bash\n"
+                                               "jordan:x:1000:1000::/home/jordan:/bin/bash\n")
+            shell = target / "home/jordan/.config/quickshell/golden-gate"
+            shell.mkdir(parents=True)
+            (shell / "old.qml").write_text("old")
+            env = {k: v for k, v in os.environ.items() if not k.startswith("GG_UPDATE")}
+            proc = subprocess.run([sys.executable, str(ROOT / "apps/settings/golden_update.py"), "install-local",
+                                   "--from", str(bundle), "--root", str(target)],
+                                  capture_output=True, text=True, env=env, timeout=900)
+            self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+            version = json.loads((target / "usr/share/golden-gate/version.json").read_text())
+            self.assertEqual(version["commit"], SHA)
+            self.assertTrue((shell / "shell.qml").exists())
+            self.assertFalse((shell / "old.qml").exists())
+            if os.geteuid() == 0:
+                self.assertEqual((shell / "shell.qml").stat().st_uid, 1000)
+            self.assertFalse((target / "etc/systemd/system/gg-live-home.service").exists())
+        finally:
+            subprocess.run(["rm", "-rf", str(work)])
+
+
 if __name__ == "__main__":
     try:
         unittest.main(verbosity=2)

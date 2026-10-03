@@ -185,13 +185,25 @@ repository and branch the ISO was built from (recorded in
 `/usr/share/golden-gate/version.json`); Update Source changes them, and takes a
 read-only fine-grained token (Contents: read) for a private repository. Each
 account's shell is refreshed; a Hyprland, GTK or Ghostty file you edited is
-kept, with the new one beside it as `*.golden-gate-new`. A system installed
-before this existed is brought up to date once from a checkout:
+kept, with the new one beside it as `*.golden-gate-new`.
 
-```sh
-git clone -b claude/linux-macos-golden-gate-ui-pckc7s https://github.com/MobiLaunch/GoldenApple
-sudo python3 GoldenApple/apps/settings/golden_update.py install-local
-```
+Without GitHub, from a USB stick, either way keeps accounts and files:
+
+- **Boot the new ISO and update the disk:** open Terminal in the live session
+  and run `sudo gg-update-disk`. It finds the Golden Gate installed on the
+  computer, asks to confirm, and installs the ISO's own version onto it
+  (the ISO carries its source as `/usr/share/golden-gate/source.tar.gz`).
+- **Carry an update bundle to the installed system:** make one with
+  `scripts/make-update-bundle.sh golden-gate-update.tar.gz`, copy that one file
+  to any USB stick, then on the installed system:
+
+  ```sh
+  tar xzf /run/media/$USER/*/golden-gate-update.tar.gz
+  sudo python3 golden-gate/apps/settings/golden_update.py install-local
+  ```
+
+  This is also how a system installed before Software Update knew about Golden
+  Gate gets the updater the first time.
 
 ## Testing
 

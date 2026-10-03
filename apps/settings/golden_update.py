@@ -26,10 +26,19 @@ Settings ▸ Software Update ▸ Update Source.
 GG_UPDATE_API and GG_UPDATE_ROOT point the module at a stand-in GitHub and a
 staging root (tests).
 
-A system installed before Software Update knew about Golden Gate is brought
-up to date once from a checkout of the repository:
+Without GitHub, from a USB stick:
 
-    sudo python3 apps/settings/golden_update.py install-local
+  on the installed system, from an update bundle made with
+  scripts/make-update-bundle.sh (or a checkout of the repository):
+      tar xzf golden-gate-update.tar.gz
+      sudo python3 golden-gate/apps/settings/golden_update.py install-local
+
+  from the live ISO, onto the Golden Gate installed on this computer's disk
+  (the ISO carries its own source as /usr/share/golden-gate/source.tar.gz):
+      sudo gg-update-disk
+
+    install-local [--from TREE|BUNDLE.tar.gz] [--root MOUNTED-SYSTEM]
+    update-disk   find the installed system, confirm, and install-local onto it
 """
 from __future__ import annotations
 
@@ -213,8 +222,12 @@ def download(src: dict, sha: str, into: Path) -> Path:
         raise GitHubError(e.code, f"Couldn't download the update ({e.code}).")
     except (urllib.error.URLError, OSError) as e:
         raise GitHubError(0, f"Couldn't download the update: {getattr(e, 'reason', e)}")
-    dest = into / "src"
-    dest.mkdir()
+    return unpack(archive, into / "src")
+
+
+def unpack(archive: Path, dest: Path) -> Path:
+    """A snapshot or bundle, unpacked safely; returns its one top folder."""
+    dest.mkdir(parents=True, exist_ok=True)
     with tarfile.open(archive) as tar:
         members = []
         for m in tar.getmembers():
@@ -248,17 +261,18 @@ def _package_list(tree: Path) -> list[str]:
 def install_packages(tree: Path, emit: Emit) -> list[str]:
     """New packages from the list that the official repos have; returns the
     ones that must be built from the AUR and so were left out."""
-    if not shutil.which("pacman") or ROOT != Path("/"):
+    if not shutil.which("pacman") or not path("/var/lib/pacman/local").is_dir():
         return []
+    pacman = ["pacman"] if ROOT == Path("/") else ["pacman", "--sysroot", str(ROOT)]
     wanted = _package_list(tree)
-    missing = [p for p in _run(["pacman", "-T", *wanted]).stdout.split() if p]
+    missing = [p for p in _run([*pacman, "-T", *wanted]).stdout.split() if p]
     if not missing:
         return []
-    available = [p for p in missing if _run(["pacman", "-Si", p]).returncode == 0]
+    available = [p for p in missing if _run([*pacman, "-Si", p]).returncode == 0]
     skipped = [p for p in missing if p not in available]
     if available:
         emit("progress", progress=0.9, message="Installing " + ", ".join(available[:4]) + ("…" if len(available) > 4 else ""), remaining=-1)
-        proc = _run(["pacman", "-S", "--needed", "--noconfirm", "--noprogressbar", *available], timeout=3600)
+        proc = _run([*pacman, "-S", "--needed", "--noconfirm", "--noprogressbar", *available], timeout=3600)
         if proc.returncode != 0:
             skipped += available
     return skipped
@@ -275,8 +289,21 @@ def _snapshot_skel(into: Path) -> Path:
     return keep
 
 
+def _target_passwd():
+    """The accounts of the system being updated: this one, or the one mounted
+    at ROOT (a disk updated from the live ISO has its own users)."""
+    if ROOT == Path("/") or not path("/etc/passwd").exists():
+        return pwd.getpwall()
+    rows = []
+    for line in path("/etc/passwd").read_text().splitlines():
+        f = line.split(":")
+        if len(f) == 7 and f[2].isdigit() and f[3].isdigit():
+            rows.append(pwd.struct_passwd((f[0], f[1], int(f[2]), int(f[3]), f[4], f[5], f[6])))
+    return rows
+
+
 def _accounts():
-    for entry in pwd.getpwall():
+    for entry in _target_passwd():
         if not (1000 <= entry.pw_uid < 60000) or entry.pw_shell.endswith(("nologin", "false")):
             continue
         home = path(entry.pw_dir) if ROOT != Path("/") else Path(entry.pw_dir)
@@ -362,14 +389,16 @@ def update_hyprglass(tree: Path):
 
 
 def enable_services(tree: Path):
-    if ROOT != Path("/") or not shutil.which("systemctl"):
+    if not shutil.which("systemctl"):
         return
+    # A mounted system is enabled offline; it starts them when it boots.
+    ctl = ["systemctl"] if ROOT == Path("/") else ["systemctl", f"--root={ROOT}"]
     text = (tree / "distro/archiso/build.sh").read_text()
     for unit in sorted(set(re.findall(r'/usr/lib/systemd/system/([\w@.-]+\.service) "\$WANTS/', text))):
-        if unit.startswith("gg-live") or not Path("/usr/lib/systemd/system", unit).exists():
+        if unit.startswith("gg-live") or not path("/usr/lib/systemd/system/" + unit).exists():
             continue
-        if _run(["systemctl", "is-enabled", unit]).stdout.strip() != "enabled":
-            _run(["systemctl", "enable", "--now", unit], timeout=60)
+        if _run([*ctl, "is-enabled", unit]).stdout.strip() != "enabled":
+            _run([*ctl, "enable", *(["--now"] if ROOT == Path("/") else []), unit], timeout=60)
 
 
 def apply(emit: Emit) -> bool:
@@ -390,43 +419,6 @@ def apply(emit: Emit) -> bool:
     except GitHubError as e:
         emit("error", message=str(e))
         return False
-
-
-def install_local() -> int:
-    """As root, from a checkout of the repository: install it as an update."""
-    if os.geteuid() != 0 and ROOT == Path("/"):
-        print("Run this with sudo: it installs Golden Gate for the whole system.")
-        return 77
-    tree = Path(__file__).resolve().parents[2]
-    git = lambda *a: _run(["git", "-C", str(tree), *a]).stdout.strip()
-    origin = git("remote", "get-url", "origin")
-    m = re.match(r"^(?:https://|git@)github\.com[:/]([^/]+/[^/]+?)(?:\.git)?/?$", origin)
-    branch = git("rev-parse", "--abbrev-ref", "HEAD")
-    version = {"repo": m.group(1) if m else DEFAULT_REPO,
-               "branch": branch if branch and branch != "HEAD" else DEFAULT_BRANCH,
-               "commit": git("rev-parse", "HEAD"), "date": git("log", "-1", "--format=%cI"),
-               "subject": git("log", "-1", "--format=%s")}
-
-    def say(event, **kw):
-        if kw.get("message"):
-            print(("! " if event in ("error", "notice") else "› ") + kw["message"], flush=True)
-
-    work = Path(tempfile.mkdtemp(prefix="gg-golden-update-"))
-    try:
-        ok = install_tree(tree, version, say, work)
-    finally:
-        shutil.rmtree(work, ignore_errors=True)
-    if ok:
-        print(f"› Golden Gate {version['commit'][:7]} installed from {version['repo']} ({version['branch']}).")
-        print("› Settings ▸ Software Update will find later updates on GitHub. Log out and back in to finish.")
-    return 0 if ok else 1
-
-
-if __name__ == "__main__":
-    import sys
-    if sys.argv[1:] == ["install-local"]:
-        raise SystemExit(install_local())
-    print(__doc__)
 
 
 def install_tree(tree: Path, version: dict, emit: Emit, work: Path) -> bool:
@@ -474,3 +466,165 @@ def install_tree(tree: Path, version: dict, emit: Emit, work: Path) -> bool:
         return False
     finally:
         shutil.rmtree(work, ignore_errors=True)
+
+
+# ------------------------------------------------------------ from a USB stick
+def _say(event, **kw):
+    if kw.get("message"):
+        print(("! " if event in ("error", "notice") else "› ") + kw["message"], flush=True)
+
+
+def _tree_version(tree: Path) -> dict:
+    """Which Golden Gate a tree is: git when it's a checkout, else the record
+    an update bundle (or the ISO's source) carries."""
+    git = lambda *a: _run(["git", "-C", str(tree), *a]).stdout.strip()
+    if git("rev-parse", "--is-inside-work-tree") == "true":
+        origin = git("remote", "get-url", "origin")
+        m = re.match(r"^(?:https://|git@)github\.com[:/]([^/]+/[^/]+?)(?:\.git)?/?$", origin)
+        branch = git("rev-parse", "--abbrev-ref", "HEAD")
+        return {"repo": m.group(1) if m else DEFAULT_REPO,
+                "branch": branch if branch and branch != "HEAD" else DEFAULT_BRANCH,
+                "commit": git("rev-parse", "HEAD"), "date": git("log", "-1", "--format=%cI"),
+                "subject": git("log", "-1", "--format=%s")}
+    try:
+        data = json.loads((tree / "golden-gate-version.json").read_text())
+        if isinstance(data, dict):
+            return data
+    except (OSError, ValueError):
+        pass
+    return {"repo": DEFAULT_REPO, "branch": DEFAULT_BRANCH, "commit": ""}
+
+
+def install_local(source: str | None = None, root: str | None = None) -> int:
+    """As root: install Golden Gate from a tree or bundle, onto this system or
+    onto one mounted at `root`."""
+    global ROOT
+    if os.geteuid() != 0 and not root:
+        print("Run this with sudo: it installs Golden Gate for the whole system.")
+        return 77
+    if root:
+        target = Path(root).resolve()
+        if not (target / "usr/share/golden-gate").is_dir() or not (target / "etc/passwd").is_file():
+            print(f"! {target} doesn't look like an installed Golden Gate system.")
+            return 2
+        ROOT = target
+    work = Path(tempfile.mkdtemp(prefix="gg-golden-update-"))
+    try:
+        if source is None:
+            own = Path(__file__).resolve().parents[2]
+            if (own / "scripts/install.sh").exists():
+                source = str(own)
+            elif Path("/usr/share/golden-gate/source.tar.gz").exists():
+                source = "/usr/share/golden-gate/source.tar.gz"
+            else:
+                print("! No Golden Gate source here: pass --from an update bundle or a checkout.")
+                return 2
+        src = Path(source)
+        tree = unpack(src, work / "src") if src.is_file() else src
+        if not (tree / "scripts/install.sh").exists():
+            print(f"! {src} doesn't contain Golden Gate.")
+            return 2
+        version = _tree_version(tree)
+        where = f"onto {ROOT}" if ROOT != Path("/") else "on this computer"
+        print(f"› Installing Golden Gate {str(version.get('commit', ''))[:7] or '(unknown version)'} {where}…", flush=True)
+        ok = install_tree(tree, version, _say, work)
+    except (GitHubError, tarfile.TarError, OSError) as e:
+        print(f"! {e}")
+        ok = False
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
+    if ok:
+        print(f"› Done. Golden Gate {str(version.get('commit', ''))[:7]} is installed {where}.")
+        print("› Settings ▸ Software Update finds later updates on GitHub."
+              + (" Restart into the installed system." if ROOT != Path("/") else " Log out and back in to finish."))
+    return 0 if ok else 1
+
+
+def _candidates():
+    """Linux partitions holding an installed Golden Gate, mounting the ones
+    that aren't yet. Yields (device, mountpoint, mounted_by_us)."""
+    out = _run(["lsblk", "-rpno", "PATH,FSTYPE,MOUNTPOINT", "-e", "7,11"]).stdout
+    for line in out.splitlines():
+        parts = line.split(" ")
+        dev, fstype = parts[0], parts[1] if len(parts) > 1 else ""
+        mnt = parts[2].replace("\\x20", " ") if len(parts) > 2 else ""
+        if fstype not in ("ext4", "btrfs", "xfs", "f2fs") or mnt.startswith("/run/archiso"):
+            continue
+        ours = False
+        if not mnt:
+            mnt = tempfile.mkdtemp(prefix="gg-disk-")
+            if _run(["mount", dev, mnt]).returncode != 0:
+                os.rmdir(mnt)
+                continue
+            ours = True
+        if mnt != "/" and Path(mnt, "usr/share/golden-gate").is_dir() and Path(mnt, "etc/passwd").is_file():
+            yield dev, mnt, ours
+        elif ours:
+            _run(["umount", mnt])
+            os.rmdir(mnt)
+
+
+def update_disk() -> int:
+    """From the live ISO: update the Golden Gate installed on this computer."""
+    if os.geteuid() != 0:
+        print("Run this with sudo: sudo gg-update-disk")
+        return 77
+    if not Path("/usr/share/golden-gate/source.tar.gz").exists():
+        print("! This Golden Gate doesn't carry its source; update from a bundle with install-local --from.")
+        return 2
+    found = list(_candidates())
+    try:
+        if not found:
+            print("! No installed Golden Gate found on this computer's disks.")
+            return 1
+        for i, (dev, mnt, _) in enumerate(found, 1):
+            host = (Path(mnt, "etc/hostname").read_text().strip() if Path(mnt, "etc/hostname").exists() else "?")
+            try:
+                ver = json.loads(Path(mnt, "usr/share/golden-gate/version.json").read_text()).get("commit", "")[:7]
+            except (OSError, ValueError):
+                ver = ""
+            print(f"  {i}. {dev}  {host}  Golden Gate {ver or '(version unknown)'}")
+        new = _tree_version_from_bundle()
+        pick = 1
+        if len(found) > 1:
+            answer = input(f"Which one? [1-{len(found)}] ").strip()
+            if not answer.isdigit() or not 1 <= int(answer) <= len(found):
+                print("Nothing changed.")
+                return 1
+            pick = int(answer)
+        dev, mnt, _ = found[pick - 1]
+        if input(f"Update {dev} to Golden Gate {new}? Accounts and files are kept. [y/N] ").strip().lower() not in ("y", "yes"):
+            print("Nothing changed.")
+            return 1
+        return install_local("/usr/share/golden-gate/source.tar.gz", mnt)
+    finally:
+        for _, mnt, ours in found:
+            if ours:
+                _run(["umount", mnt])
+                try:
+                    os.rmdir(mnt)
+                except OSError:
+                    pass
+
+
+def _tree_version_from_bundle() -> str:
+    try:
+        with tarfile.open("/usr/share/golden-gate/source.tar.gz") as tar:
+            for m in tar:
+                if m.name.endswith("/golden-gate-version.json") and m.name.count("/") == 1:
+                    return json.load(tar.extractfile(m)).get("commit", "")[:7] or "(this ISO's)"
+    except (OSError, tarfile.TarError, ValueError, AttributeError):
+        pass
+    return "(this ISO's)"
+
+
+if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser(description="Install Golden Gate updates without GitHub.")
+    sub = parser.add_subparsers(dest="command", required=True)
+    local = sub.add_parser("install-local", help="install from a checkout or update bundle")
+    local.add_argument("--from", dest="source", help="a checkout or golden-gate-update.tar.gz")
+    local.add_argument("--root", help="a mounted Golden Gate system to update instead of this one")
+    sub.add_parser("update-disk", help="from the live ISO: update the Golden Gate on this computer's disk")
+    args = parser.parse_args()
+    raise SystemExit(install_local(args.source, args.root) if args.command == "install-local" else update_disk())
