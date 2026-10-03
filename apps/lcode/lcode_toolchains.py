@@ -185,12 +185,16 @@ class Missing(RuntimeError):
 
 def steps(toolchain: str, action: str, root: str, product: str, exe: str, settings: dict,
           configuration: str = "debug") -> list[tuple[list[str], str, str]]:
-    """The commands for build / test / clean."""
+    """The commands for build / test / clean, and archive (a release build, laid out to install)."""
+    if action == "archive":
+        return steps(toolchain, "build", root, product, exe, settings, "release") + \
+            [([sys.executable, str(HERE / "lcode_archive.py"), "stage", root], root, root)]
     release = configuration == "release"
     if toolchain == "swift":
         if action == "build":
             args = ["build", "--product", product] if product else ["build"]
-            return [([exe, *args, *(["-c", "release"] if release else [])], root, root)]
+            # Release builds carry the Swift runtime with them, so they run anywhere.
+            return [([exe, *args, *(["-c", "release", "--static-swift-stdlib"] if release else [])], root, root)]
         if action == "test":
             return [([exe, "test"], root, root)]
         return [([exe, "package", "clean"], root, root)]

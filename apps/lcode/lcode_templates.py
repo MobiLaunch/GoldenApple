@@ -681,6 +681,8 @@ def create_project(parent: str, template: str, name: str, organization: str = ""
     }
     if (options or {}).get("accent"):
         meta["accent"] = options["accent"]
+    import lcode_icon
+    meta["icon"] = lcode_icon.default_icon(toolchain, (options or {}).get("accent") or "#0a84ff", kind)
     write_json(root / ".lcode/project.json", meta)
     if git:
         git_init(root)

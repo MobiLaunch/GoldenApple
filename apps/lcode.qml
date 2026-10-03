@@ -65,6 +65,7 @@ ShellRoot {
 
         signal revealLocation(string path, int line, int column, string message)
         signal alertRequested(string title, string message)
+        signal organizerRequested()
 
         readonly property var simDevice: Devices.byId(simDeviceId) || Devices.DEVICES[0]
         readonly property string destinationName: destination === "host" ? "My Linux PC" : (Devices.byId(destination)?.name ?? destination)
@@ -114,7 +115,8 @@ ShellRoot {
                 if (!r.ok) return
                 const p = r.project
                 if (!p.products.includes(ide.scheme)) ide.scheme = p.products[0] || ""
-                ide.project = Object.assign({}, ide.project, { products: p.products, name: p.name, isPackage: p.isPackage })
+                ide.project = Object.assign({}, ide.project, { products: p.products, name: p.name, isPackage: p.isPackage, kind: p.kind,
+                    meta: p.meta, displayName: p.displayName, version: p.version, bundleId: p.bundleId, toolchain: p.toolchain })
             })
         }
 
@@ -166,6 +168,7 @@ ShellRoot {
         }
         function build() { prepare(() => helper.call("build", { product: scheme }, ide.taskReply)) }
         function test() { prepare(() => helper.call("test", {}, ide.taskReply)) }
+        function archive() { prepare(() => helper.call("archive", { product: scheme }, ide.taskReply)) }
         function clean() { prepare(() => helper.call("clean", {}, ide.taskReply)) }
         function stop() { helper.call("stop", {}) }
         function taskReply(r) { if (!r.ok) alertRequested("Couldn't Start", r.error) }
@@ -193,7 +196,8 @@ ShellRoot {
                 progress = -2
                 issues = []
                 logs[e.gen] = ""
-                status = e.kind === "build" ? "Building " + schemeName + "…" : e.kind === "test" ? "Testing " + schemeName + "…" : "Cleaning…"
+                status = e.kind === "build" ? "Building " + schemeName + "…" : e.kind === "test" ? "Testing " + schemeName + "…"
+                       : e.kind === "archive" ? "Archiving " + schemeName + "…" : "Cleaning…"
                 reports = [{ gen: e.gen, title: e.title, time: Qt.formatTime(new Date(), "hh:mm:ss"), status: "running" }].concat(reports)
                 if (e.kind === "test") consoleText = ""
                 break
@@ -214,12 +218,13 @@ ShellRoot {
                 reports = reports.map((r) => r.gen === e.gen ? Object.assign({}, r, { status: e.cancelled ? "cancelled" : ok ? "ok" : "failed" }) : r)
                 if (e.gen !== taskGen) break
                 progress = -1
-                const noun = e.kind === "build" ? "Build" : e.kind === "test" ? "Test" : "Clean"
+                const noun = e.kind === "build" ? "Build" : e.kind === "test" ? "Test" : e.kind === "archive" ? "Archive" : "Clean"
                 status = e.cancelled ? noun + " Cancelled" : ok ? (e.kind === "clean" ? "Clean Finished" : noun + " Succeeded") : noun + " Failed"
                 status += "  |  Today at " + timestamp()
                 // A successful Run build goes straight on to run.run.started.
                 if (!(ok && e.kind === "build" && pendingRunTitle)) busy = false
                 if (!ok) pendingRunTitle = ""
+                if (ok && e.kind === "archive") organizerRequested()
                 if (!ok && !e.cancelled) {
                     const first = issues.find((i) => i.severity === "error" && i.path)
                     if (first) revealLocation(first.path, first.line, first.column, first.message)

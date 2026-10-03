@@ -41,6 +41,8 @@ sys.path.insert(0, str(HERE))
 import lcode_project as proj  # noqa: E402
 import lcode_toolchains as toolchains  # noqa: E402
 import lcode_design as design  # noqa: E402
+import lcode_icon as icons  # noqa: E402
+import lcode_archive as archive  # noqa: E402
 
 _out = threading.Lock()
 
@@ -656,6 +658,28 @@ class Server:
         p = self.project()
         return {"gen": self.tasks.tool("clean", self.root, p["toolchain"], "", "Clean Build Folder")}
 
+    def c_archive(self, req: dict) -> dict:
+        p = self.project()
+        product = req.get("product") or (p["products"][0] if p["products"] else "")
+        return {"gen": self.tasks.tool("archive", self.root, p["toolchain"], product, f"Archive {p['displayName'] or p['name']}")}
+
+    def c_archiveInfo(self, _req: dict) -> dict:
+        return archive.archive_summary(self.root)
+
+    def c_distribute(self, req: dict) -> dict:
+        """Install the archive, or export it (pkgbuild, flatpak, tarball); uninstall."""
+        method = req.get("method")
+        log = []
+        if method == "install":
+            r = archive.install(self.root, req.get("prefix") or None, out=log.append)
+        elif method == "uninstall":
+            r = archive.uninstall(archive.Info(self.root).app_id, out=log.append)
+        elif method in ("pkgbuild", "flatpak", "tarball"):
+            r = getattr(archive, method)(self.root, out=log.append)
+        else:
+            raise ValueError(f"Unknown way to distribute: {method!r}")
+        return {**r, "log": "\n".join(log), "info": archive.archive_summary(self.root)}
+
     def c_run(self, req: dict) -> dict:
         p = self.project()
         return {"gen": self.tasks.run(self.root, p["toolchain"], req["product"], req["destination"],
@@ -678,6 +702,13 @@ class Server:
         if not screen:
             raise ValueError("No such screen.")
         return {"code": gen.screen(screen)}
+
+    def c_iconPreview(self, req: dict) -> dict:
+        """Draw the project's icon (or one being edited) for the project editor."""
+        meta = self.project()["meta"]
+        icon = req.get("icon") or meta.get("icon") or icons.default_icon(self.project()["toolchain"], meta.get("accent") or "#0a84ff")
+        light, dark = icons.write(icon, pathlib.Path(self.root) / ".lcode/userdata", "icon-preview", pathlib.Path(self.root))
+        return {"light": str(light), "dark": str(dark), "icon": icon}
 
     def c_symbols(self, _req: dict) -> dict:
         folder = design.UI / "assets" / "symbols"
@@ -779,12 +810,12 @@ class Server:
         except (OSError, ValueError, RuntimeError, KeyError, FileExistsError, TypeError) as exc:
             reply = {"ok": False, "error": str(exc) or exc.__class__.__name__}
         if rid is not None:
-            emit({"id": rid, **reply})
+            emit({**reply, "id": rid})          # the request's id wins over any "id" in the reply
 
     def serve(self) -> int:
         # Quick requests answer inline; slow ones run off the reading thread so
         # input (Simulator touches) is never stuck behind them.
-        slow = {"find", "create", "clone", "tree", "hello", "settings", "dirs", "files", "designCode", "symbols", "assets", "importAsset"}
+        slow = {"find", "create", "clone", "tree", "hello", "settings", "dirs", "files", "designCode", "symbols", "assets", "importAsset", "iconPreview", "distribute", "archiveInfo"}
         try:
             for line in sys.stdin:
                 line = line.strip()

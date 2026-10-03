@@ -63,6 +63,17 @@ Item {
         })
     }
 
+    // The project editor (General, App Icon, Capabilities, Run), in its own tab.
+    property int projectPage: 0
+    function openProjectEditor(page) {
+        projectPage = page || 0
+        const i = indexOf("project:")
+        if (i >= 0) { current = i; const ed = editorAt(i); if (ed) ed.page = projectPage; return }
+        docs.append({ path: "project:", title: app.project ? (app.project.displayName || app.project.name) : "Project", kind: "project",
+                      locked: false, dirty: false, content: "", lang: "" })
+        current = docs.count - 1
+    }
+
     // A read-only tab: a build log, or generated code (with its language).
     function openLog(title, text, lang) {
         for (let i = 0; i < docs.count; i++) {
@@ -185,9 +196,9 @@ Item {
                     x: 12
                     anchors.verticalCenter: parent.verticalCenter
                     size: 14
-                    name: tab.kind === "log" ? "hammer" : Languages.fileInfo(tab.title).symbol
+                    name: tab.kind === "log" ? "hammer" : tab.kind === "project" ? "appicon" : Languages.fileInfo(tab.title).symbol
                     tone: "auto"
-                    color: tab.kind === "log" ? "transparent" : Languages.fileInfo(tab.title).color
+                    color: tab.kind === "log" || tab.kind === "project" ? "transparent" : Languages.fileInfo(tab.title).color
                 }
                 Text {
                     id: tabLabel
@@ -410,7 +421,7 @@ Item {
                 required property string lang
                 anchors.fill: parent
                 visible: index === area.current
-                sourceComponent: kind === "design" ? designComponent : codeComponent
+                sourceComponent: kind === "design" ? designComponent : kind === "project" ? projectComponent : codeComponent
                 onVisibleChanged: if (visible && item && item.editor) item.editor.forceActiveFocus()
 
                 Connections {
@@ -421,6 +432,17 @@ Item {
                     }
                     function onSavedTextChanged() {
                         if (docs.get(holder.index)) docs.setProperty(holder.index, "dirty", holder.item.text !== holder.item.savedText)
+                    }
+                }
+
+                Component {
+                    id: projectComponent
+                    ProjectEditor {
+                        app: area.app
+                        backend: area.backend
+                        overlay: area.overlay
+                        menu: area.menu
+                        page: area.projectPage
                     }
                 }
 

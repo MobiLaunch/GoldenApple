@@ -17,6 +17,7 @@ Item {
     property bool findCase: false
     property bool searching: false
     signal openFile(string path, int line, int column)
+    signal openProjectEditor()
     signal openReport(var report)
     signal fileMenu(Item from, real x, real y, string path, bool isDir)
     signal newItem(string dir, bool folder)
@@ -145,7 +146,7 @@ Item {
                 }
             }
             leadingSize: 18
-            onClicked: nav.selectedPath = ""
+            onClicked: { nav.selectedPath = ""; nav.openProjectEditor() }
             TapHandler {
                 acceptedButtons: Qt.RightButton
                 onTapped: (p) => nav.fileMenu(projectRow, p.position.x, p.position.y, nav.app.project.root, true)

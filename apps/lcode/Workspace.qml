@@ -20,8 +20,10 @@ AppWindow {
     property bool inspectorOpen: true
     property bool debugOpen: true
     property bool designDebugOpen: false      // the console stays out of the way of the App Designer
-    readonly property bool showDebug: editorArea.currentDesigner ? designDebugOpen : debugOpen
-    function toggleDebug() { if (editorArea.currentDesigner) designDebugOpen = !designDebugOpen; else debugOpen = !debugOpen }
+    // The console keeps out of the way of the App Designer and the project editor.
+    readonly property bool designing: !!editorArea.currentDesigner || editorArea.currentPath === "project:"
+    readonly property bool showDebug: designing ? designDebugOpen : debugOpen
+    function toggleDebug() { if (designing) designDebugOpen = !designDebugOpen; else debugOpen = !debugOpen }
     property real debugHeight: 210
 
     title: app.project ? app.project.name : "LCode"
@@ -85,6 +87,7 @@ AppWindow {
             if (m && path.endsWith(".lcdesign")) Qt.callLater(() => { if (editorArea.currentDesigner) editorArea.currentDesigner.revealNode(m[1], m[2]) })
         }
         function onAlertRequested(title, message) { confirm.ask(title, message, [{ text: "OK", id: "ok", prominent: true }], null) }
+        function onOrganizerRequested() { organizer.open() }
         function onSchemeChanged() { win.app.saveState(editorArea.openFiles(), editorArea.currentIsFile ? editorArea.currentPath : "") }
     }
 
@@ -203,6 +206,10 @@ AppWindow {
             { text: "Test", shortcut: "⌘U", action: () => app.test() },
             { text: "Build", shortcut: "⌘B", symbol: "hammer", action: () => app.build() },
             { text: "Clean Build Folder", shortcut: "⇧⌘K", action: () => app.clean() },
+            { text: "Archive", symbol: "shippingbox", enabled: !!app.project && app.project.kind !== "library", action: () => app.archive() },
+            { text: "Organizer…", action: () => organizer.open() },
+            { text: "Edit Scheme…", shortcut: "⌘<", action: () => editorArea.openProjectEditor(3) },
+            { text: "Project Settings…", action: () => editorArea.openProjectEditor(0) },
             { text: "Stop", shortcut: "⌘.", enabled: app.busy, action: () => app.stop() },
             { separator: true },
             { header: "File" },
@@ -233,6 +240,7 @@ AppWindow {
             backend: win.backend
             selectedPath: editorArea.currentIsFile ? editorArea.currentPath : ""
             onOpenFile: (path, line, column) => editorArea.open(path, line, column)
+            onOpenProjectEditor: editorArea.openProjectEditor(0)
             onOpenReport: (report) => editorArea.openLog(report.title + " — " + report.time, win.app.logs[report.gen] || "(no output)")
             onFileMenu: (from, x, y, path, isDir) => win.fileMenu(from, x, y, path, isDir)
         }
@@ -491,6 +499,14 @@ AppWindow {
         parent: win.overlay
     }
 
+    OrganizerSheet {
+        id: organizer
+        objectName: "organizer"
+        parent: win.overlay
+        app: win.app
+        backend: win.backend
+    }
+
     // ------------------------------------------------------------ shortcuts
     // Apple's ⌘ shortcuts: Golden Gate's keyd layer turns ⌘ into Ctrl in apps.
     Shortcut { sequence: "Ctrl+R"; onActivated: win.app.run() }
@@ -521,6 +537,7 @@ AppWindow {
     Shortcut { sequence: "Ctrl+K"; onActivated: win.app.consoleText = "" }
     Shortcut { sequence: "Ctrl+,"; onActivated: settingsSheet.open() }
     Shortcut { sequence: "Ctrl+Shift+2"; onActivated: win.app.simulatorOpen = true }
+    Shortcut { sequences: ["Ctrl+<", "Ctrl+Shift+,"]; onActivated: editorArea.openProjectEditor(3) }
 
     Sheet {
         id: goToLine

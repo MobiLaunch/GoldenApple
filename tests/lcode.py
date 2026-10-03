@@ -15,6 +15,7 @@ import queue
 import shutil
 import subprocess
 import sys
+import tarfile
 import tempfile
 import threading
 import time
@@ -493,6 +494,82 @@ class Designer(unittest.TestCase):
         js("rt.back()")
         self.assertEqual(js("rt.screen"), "home")
         view.close()
+
+
+class Distribution(unittest.TestCase):
+    """Archive, install, and export packages."""
+
+    def setUp(self):
+        import lcode_archive
+        self.a = lcode_archive
+        self.tmp = tempfile.mkdtemp()
+        self.saved = os.environ.get("XDG_DATA_HOME")
+        os.environ["XDG_DATA_HOME"] = os.path.join(self.tmp, "home/.local/share")
+
+    def tearDown(self):
+        if self.saved is None:
+            os.environ.pop("XDG_DATA_HOME", None)
+        else:
+            os.environ["XDG_DATA_HOME"] = self.saved
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def test_python_app_archives_installs_and_uninstalls(self):
+        root = proj.create_project(self.tmp, "python-app", "Weather Now", "Acme", "com.acme", True, False)
+        proj.save_meta(root, {"category": "Utility", "comment": "Rain or shine", "capabilities": ["network", "pictures"]})
+        info = self.a.stage(root, out=lambda _: None)
+        self.assertEqual(info.app_id, "com.acme.Weather_Now")
+        launcher = info.stage / "bin/weather-now"
+        self.assertIn('python3 "$here/../share/weather-now/main.py"', launcher.read_text())
+        self.assertTrue(os.access(launcher, os.X_OK))
+        self.assertFalse((info.stage / "share/weather-now/tests").exists())
+        self.assertIn("<svg", (info.stage / "share/icons/hicolor/scalable/apps/com.acme.Weather_Now.svg").read_text())
+        self.assertIn("<summary>Rain or shine</summary>", (info.stage / "share/metainfo/com.acme.Weather_Now.metainfo.xml").read_text())
+
+        self.a.install(root, out=lambda _: None)
+        local = pathlib.Path(self.tmp) / "home/.local"
+        entry = (local / "share/applications/com.acme.Weather_Now.desktop").read_text()
+        self.assertIn(f"Exec={local}/bin/weather-now", entry)
+        self.assertIn("Comment=Rain or shine", entry)
+        self.assertTrue(self.a.archive_summary(root)["installed"])
+        self.a.uninstall(info.app_id, out=lambda _: None)
+        self.assertFalse((local / "bin/weather-now").exists())
+        self.assertFalse((local / "share/weather-now").exists())
+        self.assertFalse(self.a.archive_summary(root)["installed"])
+
+        manifest = json.loads(pathlib.Path(self.a.flatpak(root, out=lambda _: None)["path"], "com.acme.Weather_Now.json").read_text())
+        self.assertEqual(manifest["id"], "com.acme.Weather_Now")
+        self.assertIn("--share=network", manifest["finish-args"])
+        self.assertIn("--filesystem=xdg-pictures", manifest["finish-args"])
+        self.assertNotIn("--filesystem=home", manifest["finish-args"])
+        pkg = (pathlib.Path(self.a.pkgbuild(root, out=lambda _: None)["path"]) / "PKGBUILD").read_text()
+        self.assertIn("depends=('python' 'python-gobject' 'gtk4' 'libadwaita')", pkg)
+        self.assertIn("pkgdesc='Rain or shine'", pkg)
+        with tarfile.open(self.a.tarball(root, out=lambda _: None)["path"]) as tar:
+            names = tar.getnames()
+        self.assertIn("weather-now-1.0/install.sh", names)
+        self.assertIn("weather-now-1.0/bin/weather-now", names)
+
+    def test_golden_gate_apps_bring_their_ui_and_skip_flatpak(self):
+        import lcode_design
+        root = proj.create_project(self.tmp, "gg-app", "Tally", "", "org.example", True, False, options={"style": "window"})
+        lcode_design.build(root, release=True, out=lambda _: None)
+        info = self.a.stage(root, out=lambda _: None)
+        ui = info.stage / "share/tally/ui"
+        self.assertTrue(ui.is_dir() and not ui.is_symlink())
+        self.assertTrue((ui / "kit/Box.qml").is_file())
+        self.assertIn('qs -n -p "$here/../share/tally/App.qml"', (info.stage / "bin/tally").read_text())
+        with self.assertRaises(RuntimeError):
+            self.a.flatpak(root, out=lambda _: None)
+        self.assertIn("depends=('quickshell' 'qt6-svg')", (pathlib.Path(self.a.pkgbuild(root, out=lambda _: None)["path"]) / "PKGBUILD").read_text())
+
+    def test_icons_follow_the_golden_gate_style(self):
+        import lcode_icon
+        icon = lcode_icon.default_icon("python", "#ff9f0a")
+        light, dark = lcode_icon.render(icon), lcode_icon.render(icon, dark=True)
+        self.assertIn('stop-color="#ff9f0a"', light)
+        self.assertIn('stop-color="#161618"', dark)            # graphite body…
+        self.assertIn('stroke="#ff9f0a"', dark)                # …and the glyph in the icon's colour
+        self.assertNotIn("<script", lcode_icon.render({"glyph": {"kind": "text", "value": "<script>"}}))
 
 
 class CodeEditor(unittest.TestCase):

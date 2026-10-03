@@ -8,6 +8,7 @@ Column {
     id: oe
     property var values: []
     property bool checkable: false
+    property var newItem: null                // what Add puts in (else "Option n" or a new row)
     signal commit(var list)
     width: parent ? parent.width : 0
     spacing: 4
@@ -60,7 +61,7 @@ Column {
         text: "Add"
         onClicked: {
             const objects = oe.checkable || (oe.values.length && typeof oe.values[0] === "object")
-            oe.commit(oe.values.concat([objects ? { title: "New item", done: false } : "Option " + (oe.values.length + 1)]))
+            oe.commit(oe.values.concat([oe.newItem !== null ? oe.newItem : objects ? { title: "New item", done: false } : "Option " + (oe.values.length + 1)]))
         }
     }
 }
