@@ -392,6 +392,7 @@ def install() -> int:
             "sddm.service",
             "keyd.service",
             "power-profiles-daemon.service",
+            "avahi-daemon.service",          # AirPlay Receiver and AirDrop discovery
         ]:
             enabled = run(
                 ["arch-chroot", str(TARGET), "systemctl", "enable", service],

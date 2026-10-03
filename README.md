@@ -178,6 +178,21 @@ virtual machine the desktop always runs at 1× scale, and without a GPU it uses
 lighter effects (`compositor/hyprland/machine-conf.sh`). If the desktop can't
 start, the session drops to a shell that says why.
 
+**Updating an installed system.** Settings ▸ General ▸ Software Update's
+Update Now installs Arch updates and Golden Gate's newest commit from GitHub
+together, no new ISO needed (`apps/settings/golden_update.py`). It follows the
+repository and branch the ISO was built from (recorded in
+`/usr/share/golden-gate/version.json`); Update Source changes them, and takes a
+read-only fine-grained token (Contents: read) for a private repository. Each
+account's shell is refreshed; a Hyprland, GTK or Ghostty file you edited is
+kept, with the new one beside it as `*.golden-gate-new`. A system installed
+before this existed is brought up to date once from a checkout:
+
+```sh
+git clone -b claude/linux-macos-golden-gate-ui-pckc7s https://github.com/MobiLaunch/GoldenApple
+sudo python3 GoldenApple/apps/settings/golden_update.py install-local
+```
+
 ## Testing
 
 ```sh

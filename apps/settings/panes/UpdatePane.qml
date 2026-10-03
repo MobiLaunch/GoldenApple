@@ -3,6 +3,11 @@
 // through the org.goldengate.update polkit action, which an administrator at
 // the computer runs without a password) and then the user's Flatpak apps.
 // Progress stays inside Settings; nothing opens a terminal.
+//
+// Golden Gate itself updates from its GitHub repository (golden_update.py):
+// the check lists what changed since the installed commit, and Update Now
+// installs it with the system packages. Update Source sets the repository,
+// branch and, for a private repository, a read-only access token.
 import Quickshell
 import Quickshell.Io
 import QtQuick
@@ -36,6 +41,11 @@ Pane {
     property int systemCount: 0         // pacman packages and system Flatpaks
     property int userAppCount: 0        // the user's own Flatpak apps
     property bool installAfterCheck: false
+    property var golden: ({})           // Golden Gate's check: available, notes, needsToken…
+    property var source: ({})           // repo, branch, hasToken, commit, date, subject
+    property bool editingSource: false
+    property bool relogin: false        // Golden Gate was updated: log out to finish
+    property string notice: ""
 
     function consume(line) {
         if (!line || !line.trim())
@@ -51,6 +61,7 @@ Pane {
                 systemCount = (event.system ?? 0) + ((event.apps ?? 0) - (event.userApps ?? 0))
                 userAppCount = event.userApps ?? 0
                 packages = event.packages ?? []
+                golden = event.golden ?? ({})
                 state = updateCount > 0 ? "available" : "current"
                 message = updateCount > 0
                     ? updateCount + (updateCount === 1 ? " update is available." : " updates are available.")
@@ -65,6 +76,7 @@ Pane {
                 currentPackage = event.current ?? currentPackage
                 totalPackages = event.total ?? totalPackages
             } else if (event.event === "done") {
+                if (event.restart) { relogin = true; readSource() }
                 if (pane.phase === "system" && pane.userAppCount > 0) return   // the apps are next
                 state = "current"
                 progress = 1
@@ -73,6 +85,10 @@ Pane {
                 message = event.message ?? "Golden Gate is up to date."
                 last = "Just now"
                 error = ""
+            } else if (event.event === "notice") {
+                notice = event.message ?? ""
+            } else if (event.event === "source") {
+                source = event
             } else if (event.event === "error") {
                 state = "error"
                 error = event.message ?? "Software Update could not complete."
@@ -135,7 +151,41 @@ Pane {
         updateProcess.running = true
     }
 
+    function readSource() { sourceProcess.running = true }
+    function saveSource(repo, branch, token) {
+        sourceSave.payload = JSON.stringify({ repo: repo.trim(), branch: branch.trim(), token: token ? token.trim() : null }) + "\n"
+        sourceSave.running = true
+    }
+    Process {
+        id: sourceProcess
+        command: ["python3", pane.helper, "source"]
+        stdout: SplitParser { onRead: (line) => pane.consume(line) }
+    }
+    // Saving needs an administrator, like installing: the same polkit action.
+    Process {
+        id: sourceSave
+        property string payload: ""
+        command: ["sh", "-c", "if sudo -n true >/dev/null 2>&1; then exec sudo -n \"$1\" set-source; else exec pkexec \"$1\" set-source; fi",
+                  "sh", pane.helper]
+        stdinEnabled: true
+        stdout: SplitParser {
+            onRead: (line) => {
+                try {
+                    const e = JSON.parse(line)
+                    if (e.event === "error") pane.sourceError = e.message
+                } catch (err) {}
+            }
+        }
+        onStarted: write(payload)
+        onExited: (code) => {
+            if (code === 0) { pane.editingSource = false; pane.sourceError = ""; pane.readSource(); pane.checkNow() }
+            else if (!pane.sourceError) pane.sourceError = code === 126 || code === 127 ? "Authorization was cancelled." : "Couldn't save the update source."
+        }
+    }
+    property string sourceError: ""
+
     Component.onCompleted: {
+        readSource()
         sys.sh("tac /var/log/pacman.log 2>/dev/null | grep -m1 'starting full system upgrade' | cut -c2-17",
                (o) => last = o.trim())
         checkTimer.start()
@@ -250,8 +300,92 @@ Pane {
 
         SetRow {
             visible: pane.state === "available" && pane.packages.length > 0
-            title: pane.updateCount + (pane.updateCount === 1 ? " package" : " packages")
+            title: pane.updateCount + (pane.updateCount === 1 ? " update" : " updates")
             subtitle: pane.packages.slice(0, 4).join("  •  ") + (pane.packages.length > 4 ? "  •  …" : "")
+        }
+    }
+
+    // Golden Gate: the installed version, what an update brings, and where
+    // updates come from.
+    Group {
+        title: "Golden Gate"
+        SetRow {
+            title: pane.source.commit ? "Golden Gate " + pane.source.commit.slice(0, 7) : "Golden Gate"
+            subtitle: pane.source.commit
+                ? (pane.source.subject || "") + (pane.source.date ? "  •  " + String(pane.source.date).slice(0, 10) : "")
+                : "Installed from an image without a version record; the next update adds one."
+            Button {
+                text: pane.editingSource ? "Cancel" : "Update Source…"
+                onClicked: { pane.editingSource = !pane.editingSource; pane.sourceError = "" }
+            }
+        }
+        SetRow {
+            visible: !!pane.golden.available
+            title: "What's New"
+            subtitle: (pane.golden.ahead || (pane.golden.notes || []).length) + " change"
+                + ((pane.golden.ahead || (pane.golden.notes || []).length) === 1 ? "" : "s")
+                + " since this version, from " + (pane.golden.repo || "GitHub")
+        }
+        Repeater {
+            model: pane.golden.available ? (pane.golden.notes || []).slice(0, 8) : []
+            delegate: SetRow {
+                required property var modelData
+                title: "•  " + modelData
+            }
+        }
+        SetRow {
+            visible: pane.relogin
+            title: "Golden Gate was updated"
+            subtitle: "Log out and back in to start using the new version everywhere."
+            Button {
+                text: "Log Out…"
+                onClicked: Quickshell.execDetached(["qs", "-c", "golden-gate", "ipc", "call", "session", "ask", "logout"])
+            }
+        }
+        SetRow {
+            visible: !!pane.notice
+            title: "Note"
+            subtitle: pane.notice
+        }
+        SetRow {
+            visible: pane.editingSource
+            title: "Repository"
+            subtitle: "owner/name on GitHub"
+            TextField { id: repoField; onAccepted: saveButton.clicked(); width: 230; text: pane.source.repo || ""; placeholder: "MobiLaunch/GoldenApple" }
+        }
+        SetRow {
+            visible: pane.editingSource
+            title: "Branch"
+            TextField { id: branchField; onAccepted: saveButton.clicked(); width: 230; text: pane.source.branch || ""; placeholder: "main" }
+        }
+        SetRow {
+            visible: pane.editingSource
+            title: "Access Token"
+            subtitle: pane.source.hasToken ? "A token is saved. Leave this empty to keep it."
+                : "Only for a private repository: a fine-grained token with read-only Contents access."
+            TextField { id: tokenField; onAccepted: saveButton.clicked(); width: 230; password: true; placeholder: pane.source.hasToken ? "••••••••" : "github_pat_…" }
+        }
+        SetRow {
+            visible: pane.editingSource
+            title: pane.sourceError ? "Couldn't save" : ""
+            subtitle: pane.sourceError
+            Button {
+                id: saveButton
+                text: "Save"
+                prominent: true
+                enabled: !sourceSave.running && repoField.text.trim() !== "" && branchField.text.trim() !== ""
+                onClicked: pane.saveSource(repoField.text, branchField.text, tokenField.text)
+            }
+        }
+    }
+
+    Group {
+        visible: !!pane.golden.needsToken && !pane.editingSource
+        title: "Golden Gate Updates"
+        SetRow {
+            title: "Golden Gate's repository needs access"
+            subtitle: pane.golden.error || "Add a read-only access token to get Golden Gate updates."
+            Button { text: "Add Token…"; onClicked: pane.editingSource = true }
         }
     }
 

@@ -1,12 +1,17 @@
 #!/usr/bin/env python3
 """Golden Gate Software Update backend: one button checks and installs
-everything, the system's Arch packages and the Flatpak apps from the App
-Store, with progress shown in Settings and no terminal.
+everything, the system's Arch packages, Golden Gate itself (from its GitHub
+repository, see golden_update.py) and the Flatpak apps from the App Store,
+with progress shown in Settings and no terminal.
 
     check        unprivileged: how many updates there are, and which
     apply        as root (pkexec, see org.goldengate.update.policy): the
-                 system packages (pacman -Syu) and system-wide Flatpaks
+                 system packages (pacman -Syu), system-wide Flatpaks, then
+                 Golden Gate
     apply-user   unprivileged: the user's own Flatpak apps
+    source       unprivileged: where Golden Gate updates come from
+    set-source   as root: save {"repo", "branch", "token"} read from stdin
+                 (token null keeps the saved one, "" removes it)
 
 Every line on stdout is one JSON event for Settings.
 """
@@ -20,6 +25,9 @@ import subprocess
 import sys
 import tempfile
 from datetime import datetime
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import golden_update  # noqa: E402
 
 
 def emit(event: str, **payload: object) -> None:
@@ -75,10 +83,19 @@ def check() -> int:
         apps_user = flatpak_updates("--user")
     except (OSError, subprocess.SubprocessError):
         apps_system, apps_user = [], []
+    emit("checking", progress=0.8, message="Checking for Golden Gate updates…")
+    try:
+        golden = golden_update.check()
+    except Exception as exc:                      # never let it hide the other updates
+        golden = {"available": False, "error": f"Couldn't check Golden Gate: {exc}"}
     packages = [p.split()[0] + " " + p.split()[-1] if len(p.split()) >= 4 else p for p in system]
     packages += [a + " (app)" for a in apps_system + apps_user]
-    emit("result", count=len(packages), system=len(system), apps=len(apps_system) + len(apps_user),
-         userApps=len(apps_user), packages=packages[:40], stale=not fresh,
+    if golden.get("available"):
+        n = golden.get("ahead") or len(golden.get("notes") or [])
+        packages.insert(0, "Golden Gate" + (f" ({n} change{'s' if n != 1 else ''})" if n else ""))
+    emit("result", count=len(packages), system=len(system) + (1 if golden.get("available") else 0),
+         apps=len(apps_system) + len(apps_user),
+         userApps=len(apps_user), packages=packages[:40], stale=not fresh, golden=golden,
          message="" if fresh else "Couldn't reach the update servers; showing what was last known.")
     return 0
 
@@ -135,8 +152,10 @@ def apply() -> int:
         emit("error", message=last or f"pacman exited with status {code}.")
         return code
     if shutil.which("flatpak"):
-        stream(["flatpak", "--system", "update", "-y", "--noninteractive"], 0.85, 0.12, "Apps")
-    emit("done", progress=1.0, message="Golden Gate is up to date.", completed=datetime.now().isoformat())
+        stream(["flatpak", "--system", "update", "-y", "--noninteractive"], 0.8, 0.05, "Apps")
+    updated = golden_update.apply(emit)
+    emit("done", progress=1.0, completed=datetime.now().isoformat(), restart=updated,
+         message="Golden Gate is up to date." + (" Log out and back in to finish." if updated else ""))
     return 0
 
 
@@ -153,10 +172,36 @@ def apply_user() -> int:
     return 0
 
 
+def show_source() -> int:
+    src = golden_update.source()
+    now = golden_update.installed()
+    emit("source", repo=src["repo"], branch=src["branch"], hasToken=bool(src["token"]),
+         tokenReadable=os.access(golden_update.path("/etc/golden-gate/update-token"), os.R_OK)
+         or not golden_update.path("/etc/golden-gate/update-token").exists(),
+         commit=now.get("commit", ""), date=now.get("date", ""), subject=now.get("subject", ""))
+    return 0
+
+
+def set_source() -> int:
+    if os.geteuid() != 0:
+        emit("error", message="Changing the update source needs administrator authorization.")
+        return 77
+    try:
+        data = json.loads(sys.stdin.readline() or "{}")
+        golden_update.set_source(str(data.get("repo", "")).strip(), str(data.get("branch", "")).strip(),
+                                 None if data.get("token") is None else str(data["token"]))
+    except (ValueError, OSError) as exc:
+        emit("error", message=str(exc))
+        return 1
+    emit("done", message="Saved.")
+    return 0
+
+
 def main() -> int:
-    commands = {"check": check, "apply": apply, "apply-user": apply_user}
+    commands = {"check": check, "apply": apply, "apply-user": apply_user,
+                "source": show_source, "set-source": set_source}
     if len(sys.argv) != 2 or sys.argv[1] not in commands:
-        print("usage: update-helper.py check|apply|apply-user", file=sys.stderr)
+        print("usage: update-helper.py check|apply|apply-user|source|set-source", file=sys.stderr)
         return 2
     return commands[sys.argv[1]]()
 

@@ -219,7 +219,8 @@ place() { # place SRC DEST: copy with backup of a differing existing file
 }
 
 # 1. Regenerate themes from tokens (outputs are committed, so Node is optional).
-if command -v node >/dev/null; then
+# Software Update installs a downloaded snapshot as is (GG_SKIP_BUILD=1).
+if [[ "${GG_SKIP_BUILD:-0}" != 1 ]] && command -v node >/dev/null; then
   say "building design tokens and icons"
   node "$REPO/design/build.mjs" >/dev/null
   node "$REPO/icons/build.mjs" >/dev/null

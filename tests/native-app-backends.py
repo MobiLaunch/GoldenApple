@@ -139,11 +139,18 @@ esac
     (fakebin / "fakeroot").chmod(0o755)
     update_env = env.copy()
     update_env["PATH"] = str(fakebin) + os.pathsep + update_env.get("PATH", "")
+    # Golden Gate's own check, offline: GitHub out of reach must not count as
+    # an update or hide the other results.
+    update_root = Path(tempfile.mkdtemp())
+    (update_root / "usr/share/golden-gate").mkdir(parents=True)
+    (update_root / "usr/share/golden-gate/version.json").write_text('{"commit": "abc"}', encoding="utf-8")
+    update_env.update(GG_UPDATE_ROOT=str(update_root), GG_UPDATE_API="http://127.0.0.1:9")
     code, out = run("apps/settings/update-helper.py", "check", env=update_env)
     update_lines = [json.loads(line) for line in out.splitlines() if line.strip()]
     assert code == 0
     assert update_lines[-1]["event"] == "result"
     assert update_lines[-1]["count"] == 0
+    assert update_lines[-1]["golden"]["error"] and not update_lines[-1]["golden"]["available"]
 
     # Mail with an empty profile must be safely unconfigured and must not
     # attempt network access or require a keyring unlock.
