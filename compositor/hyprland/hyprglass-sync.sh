@@ -114,8 +114,8 @@ fi
 # Only the shell surfaces that are intentionally made of glass are included.
 # The menu bar and wallpaper stay optically clean.
 kw plugin:hyprglass:layers:enabled 1
-kw plugin:hyprglass:layers:namespaces "gg-dock,gg-controlcenter,gg-spotlight,gg-applications,gg-notifications"
-kw plugin:hyprglass:layers:namespace_mask_thresholds "gg-dock=0.08,gg-controlcenter=0.08,gg-spotlight=0.08,gg-applications=0.06,gg-notifications=0.08"
+kw plugin:hyprglass:layers:namespaces "gg-dock,gg-controlcenter,gg-spotlight,gg-applications,gg-notifications,gg-nearby"
+kw plugin:hyprglass:layers:namespace_mask_thresholds "gg-dock=0.08,gg-controlcenter=0.08,gg-spotlight=0.08,gg-applications=0.06,gg-notifications=0.08,gg-nearby=0.08"
 kw plugin:hyprglass:layers:live_resample 1
 kw plugin:hyprglass:layers:live_resample_fps 30
 kw plugin:hyprglass:layers:manage_blur 1

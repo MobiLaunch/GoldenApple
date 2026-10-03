@@ -115,6 +115,7 @@ ShellRoot {
     Notifications { id: notificationCenter }
     SessionDialog { id: sessionDialog }
     Osd {}
+    Nearby {}
     Switcher {}
     // Loaded separately so a Quickshell built without PAM still runs the shell.
     LazyLoader { active: true; source: "LockScreen.qml" }
