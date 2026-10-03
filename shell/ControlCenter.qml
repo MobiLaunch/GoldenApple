@@ -32,7 +32,9 @@ PanelWindow {
     property var networks: []           // [{ ssid, signal, secure, active }]
     function showDetail(kind) {
         detail = kind
-        if (kind === "wifi") { networks = []; scanProc.running = true }
+        // Keep the last networks on screen while rescanning, so the list
+        // doesn't collapse and regrow under the pointer.
+        if (kind === "wifi") scanProc.running = true
         if (kind === "mirroring") airplayProbe.running = true
     }
     // AirPlay Receiver: the gg-airplay user service (UxPlay) lets an iPhone,
@@ -60,7 +62,12 @@ PanelWindow {
     anchors { top: true; right: true }
     margins { top: 8; right: 10 }
     implicitWidth: 356
-    implicitHeight: panel.height + 42
+    // A fixed-size surface: the panel grows and shrinks inside it. Resizing the
+    // layer surface on every frame of that animation made the Wi-Fi and
+    // Bluetooth views stutter. Only the panel takes input; HyprGlass draws the
+    // glass from the panel's painted shape, not the surface's.
+    implicitHeight: Math.min(760, (screen ? screen.height : 800) - 16)
+    mask: Region { item: panel }
     exclusionMode: ExclusionMode.Ignore
     color: "transparent"
     WlrLayershell.namespace: "gg-controlcenter"
@@ -322,14 +329,28 @@ PanelWindow {
         Behavior on scale { enabled: !Prefs.reduceMotion; NumberAnimation { duration: 170; easing.type: Easing.OutCubic } }
     }
 
+    // The module grid and a module's detail view share the panel: the grid
+    // slides out to the left as the detail slides in from the right, both
+    // clipped to the glass while its height follows.
+    Item {
+    id: stage
+    z: 2
+    anchors.fill: panel
+    clip: true
+    scale: panel.scale
+    transformOrigin: Item.TopRight
+
     ColumnLayout {
         id: content
-        z: 2
-        anchors { top: panel.top; left: panel.left; right: panel.right; topMargin: 12; leftMargin: 12; rightMargin: 12 }
+        anchors { top: parent.top; left: parent.left; right: parent.right; topMargin: 12; leftMargin: 12; rightMargin: 12 }
         spacing: 9
         opacity: cc.detail ? 0 : panel.opacity
         visible: opacity > 0
-        Behavior on opacity { NumberAnimation { duration: Prefs.reduceMotion ? 1 : 120 } }
+        Behavior on opacity { NumberAnimation { duration: Prefs.reduceMotion ? 1 : 160; easing.type: Easing.OutCubic } }
+        transform: Translate {
+            x: cc.detail && !Prefs.reduceMotion ? -28 : 0
+            Behavior on x { NumberAnimation { duration: 260; easing.type: Easing.OutCubic } }
+        }
 
         RowLayout {
             Layout.fillWidth: true
@@ -506,12 +527,15 @@ PanelWindow {
     // The detail view of one module, in the same panel.
     ColumnLayout {
         id: detailView
-        z: 2
-        anchors { top: panel.top; left: panel.left; right: panel.right; topMargin: 12; leftMargin: 12; rightMargin: 12 }
+        anchors { top: parent.top; left: parent.left; right: parent.right; topMargin: 12; leftMargin: 12; rightMargin: 12 }
         spacing: 2
         opacity: cc.detail ? panel.opacity : 0
         visible: opacity > 0
-        Behavior on opacity { NumberAnimation { duration: Prefs.reduceMotion ? 1 : 140 } }
+        Behavior on opacity { NumberAnimation { duration: Prefs.reduceMotion ? 1 : 180; easing.type: Easing.OutCubic } }
+        transform: Translate {
+            x: cc.detail || Prefs.reduceMotion ? 0 : 28
+            Behavior on x { NumberAnimation { duration: 260; easing.type: Easing.OutCubic } }
+        }
         focus: cc.detail !== ""
         Keys.onEscapePressed: cc.detail = ""
 
@@ -703,5 +727,6 @@ PanelWindow {
                 }
             }
         }
+    }
     }
 }
