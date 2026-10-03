@@ -314,6 +314,11 @@ export const apps = {
      <path class="tint-stroke" d="M30 36L16 50l14 14M70 36l14 14-14 14" fill="none" stroke="#fff" stroke-opacity=".6" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
      <path class="tint" fill="#fff" d="M41 26h10v38h17v10H41z"/>`),
 
+  airdrop: app("airdrop", "#0a84ff", lin("airdrop-bg", "#5ac8fa", "#0a6cf0"),
+    `<rect class="bg" fill="url(#airdrop-bg)" width="100" height="100"/>
+     <path class="tint-stroke" d="M42.22 63.78A11 11 0 1 1 57.78 63.78 M35.15 70.85A21 21 0 1 1 64.85 70.85 M28.08 77.92A31 31 0 1 1 71.92 77.92" fill="none" stroke="#fff" stroke-width="6.5" stroke-linecap="round"/>
+     <circle class="tint" cx="50" cy="56" r="4.5" fill="#fff"/>`),
+
   weather: app("weather", "#64d2ff", lin("weather-bg", "#3aa0f5", "#1a5fd0") + lin("weather-sun", "#ffe36b", "#ffb300"),
     `<rect class="bg" fill="url(#weather-bg)" width="100" height="100"/>
      <circle cx="40" cy="40" r="15" fill="url(#weather-sun)"/>

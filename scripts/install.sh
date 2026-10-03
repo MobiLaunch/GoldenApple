@@ -71,11 +71,12 @@ install_extras() {
   printf '#!/bin/sh\nexec sh /usr/share/golden-gate/apps/software/open.sh "$@"\n' > "$BIN/gg-software"
   printf '#!/bin/sh\nexec sh /usr/share/golden-gate/apps/files/open.sh "$@"\n' > "$BIN/gg-files"
   printf '#!/bin/sh\nexec sh /usr/share/golden-gate/apps/lcode/open.sh "$@"\n' > "$BIN/gg-lcode"
+  printf '#!/bin/sh\nexec sh /usr/share/golden-gate/apps/airdrop/share.sh "$@"\n' > "$BIN/gg-airdrop"
   printf '#!/bin/sh\nexec python3 /usr/lib/golden-gate/pref-helper.py "$@"\n' > "$BIN/gg-pref"
   printf '#!/bin/sh\nexec /usr/lib/golden-gate/hyprglass-sync.sh "$@"\n' > "$BIN/gg-hyprglass-sync"
   printf '#!/bin/sh\nexec /usr/lib/golden-gate/apply-preferences.sh "$@"\n' > "$BIN/gg-apply-preferences"
   cp "$REPO/distro/archiso/overlay/usr/local/bin/gg-session" "$BIN/gg-session"
-  chmod 755 "$BIN/gg-diagnostics" "$BIN/gg-settings" "$BIN/gg-web" "$BIN/gg-install" "$BIN/gg-software" "$BIN/gg-files" "$BIN/gg-lcode" "$BIN/gg-pref" "$BIN/gg-hyprglass-sync" "$BIN/gg-apply-preferences" "$BIN/gg-session"
+  chmod 755 "$BIN/gg-diagnostics" "$BIN/gg-settings" "$BIN/gg-web" "$BIN/gg-install" "$BIN/gg-software" "$BIN/gg-files" "$BIN/gg-lcode" "$BIN/gg-airdrop" "$BIN/gg-pref" "$BIN/gg-hyprglass-sync" "$BIN/gg-apply-preferences" "$BIN/gg-session"
   mkdir -p "$R/usr/share/wayland-sessions"
   cat > "$R/usr/share/wayland-sessions/golden-gate.desktop" <<'EOF'
 [Desktop Entry]
@@ -290,6 +291,7 @@ printf '#!/bin/sh\nexec bash "%s/settings/open.sh" "$@"\n' "$APPS_RUN" > "$BIN/g
 printf '#!/bin/sh\nexec sh "%s/software/open.sh" "$@"\n' "$APPS_RUN" > "$BIN/gg-software"
 printf '#!/bin/sh\nexec sh "%s/files/open.sh" "$@"\n' "$APPS_RUN" > "$BIN/gg-files"
 printf '#!/bin/sh\nexec sh "%s/lcode/open.sh" "$@"\n' "$APPS_RUN" > "$BIN/gg-lcode"
+printf '#!/bin/sh\nexec sh "%s/airdrop/share.sh" "$@"\n' "$APPS_RUN" > "$BIN/gg-airdrop"
 RUNTIME="$DATA/golden-gate/runtime"
 mkdir -p "$RUNTIME"
 cp "$REPO/apps/setup/pref-helper.py" "$RUNTIME/pref-helper.py"
@@ -305,7 +307,7 @@ else
   printf '#!/bin/sh\nexec "%s/hyprglass-sync.sh" "$@"\n' "$RUNTIME" > "$BIN/gg-hyprglass-sync"
   printf '#!/bin/sh\nexec "%s/apply-preferences.sh" "$@"\n' "$RUNTIME" > "$BIN/gg-apply-preferences"
 fi
-chmod +x "$BIN/gg-settings" "$BIN/gg-software" "$BIN/gg-files" "$BIN/gg-lcode" "$BIN/gg-pref" "$BIN/gg-hyprglass-sync" "$BIN/gg-apply-preferences"
+chmod +x "$BIN/gg-settings" "$BIN/gg-software" "$BIN/gg-files" "$BIN/gg-lcode" "$BIN/gg-airdrop" "$BIN/gg-pref" "$BIN/gg-hyprglass-sync" "$BIN/gg-apply-preferences"
 for f in "$REPO"/apps/desktop/*.desktop; do
   sed "s#@APPS@#$APPS_RUN#g" "$f" > "$DATA/applications/$(basename "$f")"
 done

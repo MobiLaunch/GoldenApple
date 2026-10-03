@@ -62,7 +62,7 @@ PanelWindow {
         "org.goldengate.Files", "org.goldengate.Web", "org.goldengate.Mail", "org.goldengate.Messages",
         "org.goldengate.Maps", "org.goldengate.Photos", "org.goldengate.Music", "org.goldengate.Calendar",
         "org.goldengate.Notes", "org.goldengate.Weather", "org.goldengate.Clock", "org.goldengate.Calculator",
-        "org.goldengate.TextEdit", "org.goldengate.LCode", "org.goldengate.Software", "org.goldengate.Settings",
+        "org.goldengate.TextEdit", "org.goldengate.LCode", "org.goldengate.AirDrop", "org.goldengate.Software", "org.goldengate.Settings",
         "org.goldengate.Terminal"
     ]
     // Icon names the Golden Gate theme draws itself, and the desktop files of

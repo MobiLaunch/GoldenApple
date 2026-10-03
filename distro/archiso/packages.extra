@@ -3,7 +3,6 @@
 # (e.g. from the AUR with makepkg) into distro/localrepo/, which build.sh adds as
 # a local pacman repository.
 quickshell
-localsend-bin
 # Messages: iMessage and SMS through a paired iPhone over Bluetooth
 # (github.com/erikwb/blueferry, built from source by build.sh).
 blueferry-backend

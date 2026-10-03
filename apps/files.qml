@@ -269,6 +269,7 @@ ShellRoot {
                         editDialog.visible = true
                         Qt.callLater(() => dialogField.input.forceActiveFocus())
                     }},
+                    { text: "Share with AirDrop…", enabled: !!selectedPath, action: () => Quickshell.execDetached(["gg-airdrop", selectedPath]) },
                     { text: "Move to Trash", enabled: !!selectedPath, action: () => runOperation(["trash", selectedPath], "trash") },
                     { separator: true },
                     { text: "Refresh", action: () => reload() }
@@ -445,6 +446,7 @@ ShellRoot {
                                         editDialog.visible = true
                                         Qt.callLater(() => dialogField.input.forceActiveFocus())
                                     }},
+                                    { text: "Share with AirDrop…", action: () => Quickshell.execDetached(["gg-airdrop", cell.modelData.path]) },
                                     { separator: true },
                                     { text: "Move to Trash", action: () => files.runOperation(["trash", cell.modelData.path], "trash") }
                                 ])

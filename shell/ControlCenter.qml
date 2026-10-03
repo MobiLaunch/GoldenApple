@@ -53,6 +53,7 @@ PanelWindow {
     }
     function run(cmd) { Hyprland.dispatch("exec " + cmd) }
     function refresh() {
+        airdropProbe.running = true
         wifiState.running = true
         ssidProc.running = true
         brightProc.running = true
@@ -109,6 +110,17 @@ PanelWindow {
         }
     }
     PwObjectTracker { objects: cc.sinks }
+    // AirDrop's setting, from the file its service keeps.
+    property bool airdropOn: true
+    Process {
+        id: airdropProbe
+        command: ["sh", "-c", 'cat "${XDG_CONFIG_HOME:-$HOME/.config}/golden-gate/airdrop.json" 2>/dev/null']
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try { cc.airdropOn = JSON.parse(text || "{}").discoverable !== "off" } catch (e) { cc.airdropOn = true }
+            }
+        }
+    }
     Process {
         id: airplayProbe
         running: true
@@ -387,11 +399,18 @@ PanelWindow {
                         onActivated: cc.showDetail("bluetooth")
                     }
                     Rectangle { width: parent.width - 48; x: 48; height: 0.5; color: Theme.separator }
+                    // AirDrop: the circle turns receiving on and off; the row
+                    // opens the AirDrop window.
                     ConnectivityRow {
                         width: parent.width
-                        icon: "broadcast"; title: "Nearby Sharing"; subtitle: "LocalSend"
-                        on: false
-                        onActivated: { cc.open = false; cc.run("command -v localsend_app >/dev/null && exec localsend_app || exec localsend") }
+                        icon: "broadcast"; title: "AirDrop"
+                        subtitle: cc.airdropOn ? "Everyone" : "Receiving Off"
+                        on: cc.airdropOn
+                        toggleAction: () => {
+                            cc.airdropOn = !cc.airdropOn
+                            Quickshell.execDetached(["gg-airdrop", "--set", cc.airdropOn ? "everyone" : "off"])
+                        }
+                        onActivated: { cc.open = false; Quickshell.execDetached(["gg-airdrop"]) }
                     }
                 }
             }
