@@ -182,7 +182,9 @@ PanelWindow {
                 anchors.horizontalCenter: parent.horizontalCenter
                 columns: apps.columns
                 Repeater {
-                    model: apps.entries.slice(page.index * apps.perPage, (page.index + 1) * apps.perPage)
+                    // A ScriptModel keeps each tile alive while the list
+                    // changes around it (an app installing while open).
+                    model: ScriptModel { values: apps.entries.slice(page.index * apps.perPage, (page.index + 1) * apps.perPage) }
                     delegate: Item {
                         id: cell
                         required property var modelData
