@@ -191,6 +191,7 @@ mkdir -p "$WANTS"
 rm -f "$WANTS/systemd-networkd.service" "$AIR/etc/systemd/system/network-online.target.wants/systemd-networkd-wait-online.service"
 ln -sf /usr/lib/systemd/system/NetworkManager.service "$WANTS/NetworkManager.service"
 ln -sf /usr/lib/systemd/system/bluetooth.service "$WANTS/bluetooth.service"
+ln -sf /usr/lib/systemd/system/avahi-daemon.service "$WANTS/avahi-daemon.service"   # AirPlay Receiver discovery
 ln -sf /usr/lib/systemd/system/keyd.service "$WANTS/keyd.service"
 ln -sf /usr/lib/systemd/system/power-profiles-daemon.service "$WANTS/power-profiles-daemon.service"
 # A Secret Service for apps that keep passwords (Fractal, Geary, Web).

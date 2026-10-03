@@ -1,0 +1,15 @@
+# AirPlay Receiver (Control Center › Screen Mirroring): an iPhone, iPad or Mac
+# on the same network can mirror its screen or play video to this computer,
+# under the computer's name. The mirrored screen opens in its own window.
+[Unit]
+Description=Golden Gate AirPlay Receiver
+After=graphical-session.target
+PartOf=graphical-session.target
+
+[Service]
+ExecStart=/bin/sh -c 'exec /usr/bin/uxplay -n "$(hostnamectl --pretty 2>/dev/null | grep . || hostname)" -nh -vs waylandsink'
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=graphical-session.target

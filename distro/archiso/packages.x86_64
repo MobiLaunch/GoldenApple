@@ -92,3 +92,13 @@ fakeroot
 git
 xorg-server-xvfb
 libxtst
+
+# Screen Mirroring. AirPlay Receiver (UxPlay, packages.extra) lets an iPhone,
+# iPad or Mac mirror to this computer: Avahi announces it, GStreamer decodes
+# the H.264 stream. Mirroring this computer to a TV goes through GNOME Network
+# Displays (Miracast and Chromecast, packages.extra).
+avahi
+gst-plugins-base
+gst-plugins-good
+gst-plugins-bad
+gst-libav

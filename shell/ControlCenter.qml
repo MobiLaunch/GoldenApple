@@ -33,6 +33,14 @@ PanelWindow {
     function showDetail(kind) {
         detail = kind
         if (kind === "wifi") { networks = []; scanProc.running = true }
+        if (kind === "mirroring") airplayProbe.running = true
+    }
+    // AirPlay Receiver: the gg-airplay user service (UxPlay) lets an iPhone,
+    // iPad or Mac mirror to this computer.
+    property bool airplayOn: false
+    function setAirplay(on) {
+        airplayOn = on
+        Quickshell.execDetached(["systemctl", "--user", on ? "enable" : "disable", "--now", "gg-airplay.service"])
     }
     readonly property var sinks: Pipewire.nodes.values.filter((n) => n.isSink && !n.isStream && n.audio)
     readonly property var btDevices: (Bluetooth.defaultAdapter?.devices.values ?? []).filter((d) => d.paired || d.connected)
@@ -94,6 +102,12 @@ PanelWindow {
         }
     }
     PwObjectTracker { objects: cc.sinks }
+    Process {
+        id: airplayProbe
+        running: true
+        command: ["systemctl", "--user", "is-active", "--quiet", "gg-airplay.service"]
+        onExited: (code) => cc.airplayOn = code === 0
+    }
     Process {
         id: brightProc
         command: ["brightnessctl", "-m"]
@@ -376,8 +390,8 @@ PanelWindow {
                 }
                 ActionTile {
                     Layout.fillWidth: true
-                    icon: "mirror"; title: "Screen"; subtitle: "Mirroring"; on: false
-                    onActivated: { cc.open = false; cc.run("gg-settings displays") }
+                    icon: "mirror"; title: "Screen"; subtitle: cc.airplayOn ? "AirPlay On" : "Mirroring"; on: cc.airplayOn
+                    onActivated: cc.showDetail("mirroring")
                 }
             }
         }
@@ -501,7 +515,7 @@ PanelWindow {
         focus: cc.detail !== ""
         Keys.onEscapePressed: cc.detail = ""
 
-        readonly property string title: ({ wifi: "Wi-Fi", bluetooth: "Bluetooth", sound: "Sound Output" })[cc.detail] ?? ""
+        readonly property string title: ({ wifi: "Wi-Fi", bluetooth: "Bluetooth", sound: "Sound Output", mirroring: "Screen Mirroring" })[cc.detail] ?? ""
         readonly property bool hasSwitch: cc.detail === "wifi" || cc.detail === "bluetooth"
         readonly property bool on: cc.detail === "wifi" ? cc.wifiOn : (Bluetooth.defaultAdapter?.enabled ?? false)
 
@@ -540,8 +554,64 @@ PanelWindow {
         }
         Rectangle { Layout.fillWidth: true; Layout.bottomMargin: 4; height: 0.5; color: Theme.separator }
 
+        // Screen Mirroring: this computer as an AirPlay receiver, and mirroring
+        // it to a Miracast or Chromecast TV.
+        Column {
+            visible: cc.detail === "mirroring"
+            Layout.fillWidth: true
+            spacing: 2
+            Rectangle {
+                width: parent.width; height: 52; radius: 9
+                color: "transparent"
+                Rectangle {
+                    id: airplayIcon
+                    anchors { left: parent.left; leftMargin: 6; verticalCenter: parent.verticalCenter }
+                    width: 26; height: 26; radius: 13
+                    color: cc.airplayOn ? Theme.accent : Theme.dark ? "#26ffffff" : "#14000000"
+                    Symbol { anchors.centerIn: parent; name: "airplay"; size: 13; tone: cc.airplayOn ? "white" : "auto" }
+                }
+                Column {
+                    anchors { left: airplayIcon.right; leftMargin: 9; right: airplaySwitch.left; rightMargin: 8; verticalCenter: parent.verticalCenter }
+                    Text { text: "AirPlay Receiver"; color: Theme.label; font { family: Theme.fontUi; pixelSize: 13 } }
+                    Text {
+                        width: parent.width
+                        text: "Mirror your iPhone or iPad here"
+                        elide: Text.ElideRight
+                        color: Theme.secondaryLabel
+                        font { family: Theme.fontUi; pixelSize: 10 }
+                    }
+                }
+                Shared.Switch {
+                    id: airplaySwitch
+                    anchors { right: parent.right; rightMargin: 4; verticalCenter: parent.verticalCenter }
+                    checked: cc.airplayOn
+                    onToggled: cc.setAirplay(!cc.airplayOn)
+                }
+            }
+            Rectangle {
+                width: parent.width; height: 34; radius: 9
+                color: tvArea.pressed ? Theme.selection : tvArea.containsMouse ? Theme.menuHighlight : "transparent"
+                Row {
+                    anchors { left: parent.left; leftMargin: 6; verticalCenter: parent.verticalCenter }
+                    spacing: 9
+                    Rectangle {
+                        width: 26; height: 26; radius: 13
+                        color: Theme.dark ? "#26ffffff" : "#14000000"
+                        Symbol { anchors.centerIn: parent; name: "mirror"; size: 13; tone: "auto" }
+                    }
+                    Text { anchors.verticalCenter: parent.verticalCenter; text: "Mirror to a TV or Display…"; color: Theme.label; font { family: Theme.fontUi; pixelSize: 13 } }
+                }
+                MouseArea {
+                    id: tvArea
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    onClicked: { cc.open = false; cc.run("gnome-network-displays") }
+                }
+            }
+        }
+
         Text {
-            visible: rows.count === 0
+            visible: rows.count === 0 && cc.detail !== "mirroring"
             Layout.fillWidth: true
             Layout.topMargin: 6; Layout.bottomMargin: 6
             horizontalAlignment: Text.AlignHCenter
@@ -618,7 +688,7 @@ PanelWindow {
             color: settingsArea.pressed ? Theme.selection : settingsArea.containsMouse ? Theme.menuHighlight : "transparent"
             Text {
                 anchors { left: parent.left; leftMargin: 8; verticalCenter: parent.verticalCenter }
-                text: detailView.title.replace(" Output", "") + " Settings…"
+                text: cc.detail === "mirroring" ? "Display Settings…" : detailView.title.replace(" Output", "") + " Settings…"
                 color: Theme.label
                 font { family: Theme.fontUi; pixelSize: 13 }
             }
@@ -627,7 +697,7 @@ PanelWindow {
                 anchors.fill: parent
                 hoverEnabled: true
                 onClicked: {
-                    const pane = ({ wifi: "wifi", bluetooth: "bluetooth", sound: "sound" })[cc.detail]
+                    const pane = ({ wifi: "wifi", bluetooth: "bluetooth", sound: "sound", mirroring: "displays" })[cc.detail]
                     cc.open = false
                     cc.run("gg-settings " + pane)
                 }

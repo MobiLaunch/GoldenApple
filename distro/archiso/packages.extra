@@ -7,3 +7,6 @@ localsend-bin
 # Messages: iMessage and SMS through a paired iPhone over Bluetooth
 # (github.com/erikwb/blueferry, built from source by build.sh).
 blueferry-backend
+# Screen Mirroring: AirPlay Receiver, and mirroring to Miracast/Chromecast TVs.
+uxplay
+gnome-network-displays
