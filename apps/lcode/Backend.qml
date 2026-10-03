@@ -13,11 +13,18 @@ Item {
     readonly property bool ready: proc.running
     readonly property string helper: Qt.resolvedUrl("helper.py").toString().replace("file://", "")
 
+    // Requests made before the helper has started (the window's first
+    // "hello", from Component.onCompleted) wait here: a write to a process that
+    // isn't running yet is dropped, and LCode would never open.
+    property bool started: false
+    property var queue: []
     function call(cmd, args, callback) {
         const id = nextId++
         if (callback)
             pending[id] = callback
-        proc.write(JSON.stringify(Object.assign({ id: id, cmd: cmd }, args || {})) + "\n")
+        const line = JSON.stringify(Object.assign({ id: id, cmd: cmd }, args || {})) + "\n"
+        if (started) proc.write(line)
+        else queue.push(line)
     }
 
     function receive(line) {
@@ -39,8 +46,14 @@ Item {
         stdinEnabled: true
         command: ["python3", backend.helper, "serve"]
         stdout: SplitParser { onRead: (line) => backend.receive(line) }
+        onStarted: {
+            backend.started = true
+            const lines = backend.queue
+            backend.queue = []
+            for (const l of lines) proc.write(l)
+        }
         // The helper only stops with LCode; restart it if it ever dies.
-        onExited: restart.start()
+        onExited: { backend.started = false; restart.start() }
     }
     Timer {
         id: restart
