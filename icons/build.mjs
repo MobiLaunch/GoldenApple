@@ -77,6 +77,7 @@ const appNames = {
   store: ["system-software-install", "org.gnome.Software", "org.kde.discover"],
   launcher: ["view-app-grid", "start-here"],
   weather: ["weather", "org.gnome.Weather"],
+  lcode: ["org.goldengate.LCode", "lcode"],
 };
 const placeNames = { trash: ["user-trash"], "trash-full": ["user-trash-full"], folder: ["folder"], document: ["text-x-generic"], audio: ["audio-x-generic"], image: ["image-x-generic"], disk: ["drive-harddisk"] };
 const symbolNames = {

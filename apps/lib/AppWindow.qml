@@ -1,6 +1,7 @@
 // A Golden Gate app window, drawn by the app as on the Mac: frameless, rounded,
 // with traffic lights, a 52 px toolbar row to drag it by, edges to resize from,
-// and optionally a sidebar floating 8 px inside the window.
+// and optionally a sidebar floating 8 px inside the window (and a trailing one,
+// for inspectors, on the right).
 //
 // The sidebar is Liquid Glass for real: the window leaves that area transparent
 // and Hyprland blurs the desktop behind it (decoration:blur), so it takes on
@@ -22,6 +23,7 @@ import "theme"
 FloatingWindow {
     id: win
     property real sidebarWidth: 0
+    property real trailingSidebarWidth: 0  // an inspector floating at the right edge
     property color background: Theme.windowBg
     property bool forceDark: false        // Calculator is dark in both appearances
     property bool resizable: true
@@ -35,10 +37,13 @@ FloatingWindow {
     readonly property bool active: win._backingWindow ? win._backingWindow.active : true
     // The content column starts right of the sidebar.
     readonly property real contentX: sidebarWidth > 0 ? inset + sidebarWidth : 0
+    // The content column ends left of the trailing sidebar.
+    readonly property real contentWidth: width - contentX - (trailingSidebarWidth > 0 ? trailingSidebarWidth + inset : 0)
     default property alias content: contentArea.data
     property alias toolbarLeft: leftRow.data
     property alias toolbarRight: rightRow.data
     property alias sidebar: sidebarArea.data
+    property alias trailingSidebar: trailingArea.data
     property alias toolbarCenter: centerSlot.data
     // Buttons at the sidebar's right edge (new folder, sidebar toggle in Notes);
     // next to the traffic lights while the sidebar is hidden.
@@ -110,7 +115,7 @@ FloatingWindow {
         // The window body: opaque everywhere except under the floating sidebar.
         Shape {
             anchors.fill: parent
-            visible: win.sidebarWidth > 0
+            visible: win.sidebarWidth > 0 || win.trailingSidebarWidth > 0
             preferredRendererType: Shape.CurveRenderer
             ShapePath {
                 fillColor: win.background
@@ -118,11 +123,12 @@ FloatingWindow {
                 fillRule: ShapePath.OddEvenFill
                 PathRectangle { x: 0; y: 0; width: frame.width; height: frame.height; radius: Theme.radiusWindow }
                 PathRectangle { x: win.inset; y: win.inset; width: win.sidebarWidth; height: frame.height - 2 * win.inset; radius: Theme.radiusSidebar }
+                PathRectangle { x: frame.width - win.inset - win.trailingSidebarWidth; y: win.inset; width: win.trailingSidebarWidth; height: frame.height - 2 * win.inset; radius: Theme.radiusSidebar }
             }
         }
         Rectangle {
             anchors.fill: parent
-            visible: win.sidebarWidth <= 0
+            visible: win.sidebarWidth <= 0 && win.trailingSidebarWidth <= 0
             radius: Theme.radiusWindow
             color: win.background
         }
@@ -147,11 +153,25 @@ FloatingWindow {
             }
         }
 
+        // Trailing glass sidebar (inspectors), the mirror of the leading one.
+        Rectangle {
+            visible: win.trailingSidebarWidth > 0
+            x: parent.width - win.inset - win.trailingSidebarWidth; y: win.inset
+            width: win.trailingSidebarWidth; height: parent.height - 2 * win.inset
+            radius: Theme.radiusSidebar
+            color: sidebarGlass.color
+            border { width: 1; color: sidebarGlass.border.color }
+            Item {
+                id: trailingArea
+                anchors { fill: parent; topMargin: win.toolbarHeight - win.inset; leftMargin: 8; rightMargin: 8; bottomMargin: 8 }
+            }
+        }
+
         Item {
             id: contentArea
             x: win.contentX
             y: win.fullSizeContent ? 0 : win.toolbarHeight
-            width: parent.width - x
+            width: win.contentWidth
             height: parent.height - y
         }
 

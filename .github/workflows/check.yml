@@ -108,6 +108,7 @@ jobs:
           test -x "$root/usr/local/bin/gg-install"
           test -x "$root/usr/local/bin/gg-software"
           test -x "$root/usr/local/bin/gg-files"
+          test -x "$root/usr/local/bin/gg-lcode"
           test -x "$root/usr/local/bin/gg-pref"
           test -x "$root/usr/local/bin/gg-hyprglass-sync"
           test -x "$root/usr/local/bin/gg-apply-preferences"
@@ -126,6 +127,8 @@ jobs:
           test -f "$root/usr/share/applications/org.goldengate.Clock.desktop"
           test -f "$root/usr/share/applications/org.goldengate.TextEdit.desktop"
           test -f "$root/usr/share/applications/org.goldengate.Terminal.desktop"
+          test -f "$root/usr/share/applications/org.goldengate.LCode.desktop"
+          test -f "$root/usr/share/golden-gate/apps/lcode/helper.py"
           test -f "$root/usr/share/golden-gate/apps/installer.qml"
           test -f "$root/usr/share/golden-gate/apps/installer/helper.py"
           test -f "$root/usr/share/golden-gate/apps/settings/update-helper.py"
@@ -189,7 +192,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: sudo apt-get update && sudo apt-get install -y libegl1 libopengl0
+      - run: sudo apt-get update && sudo apt-get install -y libegl1 libopengl0 xvfb libx11-6 libxtst6
       - run: python -m pip install PySide6-Essentials==6.11.2
       - name: Compile native Python helpers
         run: python -m compileall -q apps tests
@@ -213,6 +216,11 @@ jobs:
         run: python tests/native-app-backends.py
       - name: Exercise native control keyboard and pointer behavior
         run: python tests/native-controls.py
+        env:
+          QT_QPA_PLATFORM: offscreen
+          QT_QUICK_BACKEND: software
+      - name: Test LCode projects, builds, Simulator and code editor
+        run: python tests/lcode.py
         env:
           QT_QPA_PLATFORM: offscreen
           QT_QUICK_BACKEND: software

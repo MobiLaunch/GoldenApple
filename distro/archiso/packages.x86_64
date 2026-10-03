@@ -83,3 +83,10 @@ mkinitcpio
 rsync
 pacman-contrib
 
+
+# LCode (Golden Gate's IDE): Git for projects, and the Simulator's private
+# display (Xvfb) and input injection (XTEST). Swift itself comes from the AUR
+# (swift-bin) or swiftly, so the image stays small.
+git
+xorg-server-xvfb
+libxtst

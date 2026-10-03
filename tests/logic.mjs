@@ -96,3 +96,53 @@ test('failed note rename preserves the original, draft and dirty state', () => {
   assert.equal(c.loadedPath,'/notes/New.md'); assert.equal(c.dirty,false);
   assert.equal(removed.length,1); assert.equal(removed[0].at(-1),'/notes/Old.md');
 });
+
+function library(path) {
+  const c = vm.createContext({});
+  vm.runInContext(readFileSync(new URL('../' + path, import.meta.url), 'utf8').replace('.pragma library', ''), c);
+  return c;
+}
+
+test('LCode syntax: Swift runs, multi-line state and Xcode colours', () => {
+  const s = library('apps/lib/syntax.js');
+  const plain = (r) => JSON.parse(JSON.stringify(r));
+  assert.deepEqual(plain(s.tokenize('let x = "a\\(b)" // hi', 0, 'swift')), {state: 0, runs: [
+    ['keyword', 'let'], ['plain', ' '], ['plain', 'x'], ['plain', ' = '], ['string', '"a\\(b)"'], ['plain', ' '], ['comment', '// hi']]});
+  assert.equal(s.tokenize('/* open', 0, 'swift').state, 1);
+  assert.deepEqual(plain(s.tokenize('close */ let', 1, 'swift').runs[0]), ['comment', 'close */']);
+  assert.deepEqual(plain(s.lineStates(['"""', 'text', '"""', 'x'], 'swift')), [0, 2, 2, 0]);
+  assert.deepEqual(['a/b.swift', 'x.py', 'PKGBUILD', 'x.qml', 'README'].map(s.languageFor), ['swift', 'hash', 'hash', 'c', 'plain']);
+  const html = s.html('\tlet a = 1 < 2', 0, 'swift', false, 4);
+  assert.match(html, /^<font color="#262626">(&nbsp;){4}<\/font><b><font color="#9b2393">let<\/font><\/b>/);
+  assert.match(html, /&nbsp;&lt;&nbsp;/);
+  assert.notEqual(s.PALETTES.light.keyword, s.PALETTES.dark.keyword);
+});
+
+test('LCode syntax: document items and comment toggling', () => {
+  const s = library('apps/lib/syntax.js');
+  const items = s.symbols('import Foo\n// MARK: - Views\nstruct A: View {\n    @State private var x = 1\n' +
+    '    func body() {}\n    private static func make() -> A {}\n}\nextension A {}\n');
+  assert.deepEqual(JSON.parse(JSON.stringify(items)).map(i => `${i.line}:${i.kind}:${i.name}`),
+    ['2:mark:Views', '3:struct:A', '5:func:body', '6:func:make', '8:extension:A']);
+  const commented = s.toggleComment(['    a', '', '  b'], 'swift');
+  assert.deepEqual([...commented], ['  //   a', '', '  // b']);
+  assert.deepEqual([...s.toggleComment(commented, 'swift')], ['    a', '', '  b']);
+  assert.deepEqual([...s.toggleComment(['x = 1'], 'hash')], ['# x = 1']);
+  assert.equal(s.expandTabs('\ta\tb', 4), '    a   b');
+});
+
+test('LCode devices: Simulator displays fit portrait and landscape apps', () => {
+  const d = library('apps/lcode/devices.js');
+  for (const device of d.DEVICES) {
+    const side = d.displaySide(device);
+    for (const o of [0, 1]) {
+      const t = d.runTarget(device, o);
+      assert.equal(t.side, side, device.id);
+      assert.ok(t.w > 0 && t.h > 0 && t.w <= side && t.h <= side, `${device.id} ${o}`);
+      const screen = d.screenSize(device, o), inset = d.insets(device, o);
+      assert.equal(t.w, screen.w - inset.left - inset.right);
+      assert.equal(t.h, screen.h - inset.top - inset.bottom);
+    }
+  }
+  assert.equal(d.byId('nope'), null);
+});

@@ -1,5 +1,6 @@
-// A toolbar control: a glyph (or text) that highlights on hover, for use inside a
-// ToolbarPill, or on its own as a round glass button (round: true).
+// A toolbar control: a glyph (or text, or both side by side) that highlights on
+// hover, for use inside a ToolbarPill, or on its own as a round glass button
+// (round: true).
 import QtQuick
 import "theme"
 
@@ -21,9 +22,10 @@ Item {
     property string tone: "auto"
     property color glassColor: Theme.glassControl.tint
     signal clicked()
+    readonly property bool both: !!symbol && !!text && !round
 
     implicitHeight: round ? 36 : 30
-    implicitWidth: round ? 36 : Math.max(34, (label.visible ? label.implicitWidth + 20 : 0))
+    implicitWidth: round ? 36 : Math.max(34, (label.visible ? label.implicitWidth + 20 : 0) + (both ? symbolSize + 6 : 0))
     opacity: enabled ? 1 : 0.35
     scale: !Theme.reduceMotion && tap.pressed ? 0.965 : !Theme.reduceMotion && hover.hovered && button.enabled ? 1.018 : 1
     Behavior on scale { enabled: !Theme.reduceMotion; NumberAnimation { duration: 85; easing.type: Easing.OutCubic } }
@@ -60,7 +62,9 @@ Item {
         opacity: 0.12
     }
     Symbol {
-        anchors.centerIn: parent
+        anchors.centerIn: button.both ? undefined : parent
+        anchors.verticalCenter: button.both ? parent.verticalCenter : undefined
+        x: button.both ? 10 : 0
         scale: 1
         name: button.symbol
         tone: button.tone
@@ -69,7 +73,9 @@ Item {
     }
     Text {
         id: label
-        anchors.centerIn: parent
+        anchors.centerIn: button.both ? undefined : parent
+        anchors.verticalCenter: button.both ? parent.verticalCenter : undefined
+        x: button.both ? 10 + button.symbolSize + 6 : 0
         visible: !!button.text
         text: button.text
         color: Theme.label

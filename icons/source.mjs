@@ -134,6 +134,19 @@ export const symbols = {
   brush: S(`<path d="M14.5 4.5l5 5-8 8-5-5zM6.5 12.5c-2 0-3 1.5-3 3.5v3.5H7c2 0 3.5-1 3.5-3"/>`),
   briefcase: S(`<rect x="3.5" y="7.5" width="17" height="12" rx="2.5"/><path d="M9 7.5V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5v2M3.5 12.5h17"/>`),
   code: S(`<path d="M8 7l-5 5 5 5M16 7l5 5-5 5M13.5 5l-3 14"/>`),
+  // LCode: build, issues, devices and the Simulator's hardware buttons.
+  hammer: S(`<path d="M8.5 4h8l3.5 3v2.2h-5L13 10.4h-1.4l-1.1-1.2h-2z" fill="currentColor"/><path d="M12.2 11.2L5.4 19.8" stroke-width="2.6"/>`),
+  smartphone: S(`<rect x="6.5" y="2.5" width="11" height="19" rx="2.8"/><path d="M10.5 5.2h3"/>`),
+  warning: S(`<path d="M10.6 4.3a1.6 1.6 0 0 1 2.8 0l7.9 14a1.6 1.6 0 0 1-1.4 2.4H4.1a1.6 1.6 0 0 1-1.4-2.4z"/><path d="M12 9.3v4.7"/>${dot(12, 17.2, 1.2)}`),
+  "xmark-circle": S(`<circle cx="12" cy="12" r="8.5"/><path d="M9 9l6 6M15 9l-6 6"/>`),
+  stop: S(`<rect x="6" y="6" width="12" height="12" rx="2.2" fill="currentColor"/>`),
+  "rotate-left": S(`<rect x="9.5" y="7.5" width="11" height="13" rx="2.2"/><path d="M3.5 12a7 7 0 0 1 7-7.5h1.5M10 2.5l2 2-2 2"/>`),
+  "rotate-right": S(`<rect x="3.5" y="7.5" width="11" height="13" rx="2.2"/><path d="M20.5 12a7 7 0 0 0-7-7.5H12M14 2.5l-2 2 2 2"/>`),
+  tablet: S(`<rect x="4" y="3" width="16" height="18" rx="2.6"/><path d="M10.5 18h3"/>`),
+  terminal: S(`<rect x="3" y="4.5" width="18" height="15" rx="2.5"/><path d="M7 10l3 2.5L7 15M12.5 15.5h4.5"/>`),
+  "sidebar-right": S(`<rect x="3" y="4.5" width="18" height="15" rx="2.8"/><path d="M14.5 4.5v15M17 8h1.5M17 11h1.5"/>`),
+  "panel-bottom": S(`<rect x="3" y="4.5" width="18" height="15" rx="2.8"/><path d="M3 14.5h18"/>`),
+  "chevron-small-right": S(`<path d="M10 7.5l4.5 4.5-4.5 4.5"/>`, ' stroke-width="1.6"'),
   eye: S(`<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/>`),
   thermometer: S(`<path d="M10 4.5a2 2 0 0 1 4 0v9.3a4 4 0 1 1-4 0z"/><path d="M12 11v5"/>`),
   drop: S(`<path d="M12 3.5s6 6.4 6 11a6 6 0 0 1-12 0c0-4.6 6-11 6-11z"/>`),
@@ -254,6 +267,12 @@ export const apps = {
   launcher: app("launcher", "#bf5af2", lin("launcher-bg", "#3d3d56", "#15151f"),
     `<rect class="bg" fill="url(#launcher-bg)" width="100" height="100"/>
      ${[["#ff453a", "#ff9f0a", "#ffd60a"], ["#30d158", "#64d2ff", "#0a84ff"], ["#5e5ce6", "#bf5af2", "#ff375f"]].map((row, r) => row.map((c, i) => `<rect x="${21 + i * 21}" y="${21 + r * 21}" width="16" height="16" rx="4.6" fill="${c}"/>`).join("")).join("")}`),
+
+  lcode: app("lcode", "#0a84ff", lin("lcode-bg", "#2f9bff", "#0b4fd0"),
+    `<rect class="bg" fill="url(#lcode-bg)" width="100" height="100"/>
+     ${[16, 28, 40, 52, 64, 76, 88].map((v) => `<path d="M${v} 0v100M0 ${v}h100" stroke="#fff" stroke-opacity=".08" stroke-width="1"/>`).join("")}
+     <path class="tint-stroke" d="M30 36L16 50l14 14M70 36l14 14-14 14" fill="none" stroke="#fff" stroke-opacity=".6" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+     <path class="tint" fill="#fff" d="M41 26h10v38h17v10H41z"/>`),
 
   weather: app("weather", "#64d2ff", lin("weather-bg", "#3aa0f5", "#1a5fd0") + lin("weather-sun", "#ffe36b", "#ffb300"),
     `<rect class="bg" fill="url(#weather-bg)" width="100" height="100"/>

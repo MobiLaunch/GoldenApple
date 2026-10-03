@@ -1,0 +1,301 @@
+//@ pragma AppId org.goldengate.LCode
+// LCode, Golden Gate's IDE, laid out like Xcode on macOS 27: navigators in a
+// floating glass sidebar, the editor with tabs and a jump bar, the debug
+// area underneath, inspectors in a trailing sidebar, and Run, the scheme and
+// the activity view in the toolbar. Projects are Swift packages; builds go
+// through SwiftPM, and apps run on "My Linux PC" or in the Simulator.
+//
+// The window talks to lcode/helper.py (JSON lines); the Simulator's display
+// lives in its own agent process (lcode/lcode_sim.py).
+import Quickshell
+import Quickshell.Io
+import QtQuick
+import "lib"
+import "lib/theme"
+import "lcode"
+import "lcode/devices.js" as Devices
+
+ShellRoot {
+    id: shell
+
+    Backend {
+        id: helper
+        onEvent: (e) => ide.handle(e)
+    }
+
+    Item {
+        id: ide
+
+        // ---------------------------------------------------------- state
+        property var settings: ({ fontSize: 13, tabWidth: 4, showMinimap: true, showWelcome: true, defaultSimulator: "lphone-16", recent: [] })
+        property string swiftPath: ""
+        property string swiftVersion: ""
+        property bool xvfbInstalled: true
+        property bool helloDone: false
+
+        property var project: null              // root, name, kind, products, bundleId, destination, isPackage
+        property var nodes: []                  // the project tree, flat and parent-linked
+        property string scheme: ""
+        property string destination: "host"
+
+        property var issues: []                 // { severity, message, path, line, column }
+        readonly property int errorCount: issues.filter((i) => i.severity === "error").length
+        readonly property int warningCount: issues.filter((i) => i.severity === "warning").length
+        property var reports: []                // newest first: { gen, title, time, status }
+        property var logs: ({})                 // gen → text (not bound; read on demand)
+
+        property int taskGen: 0
+        property string taskKind: ""
+        property bool busy: false
+        property bool appRunning: false
+        property string status: "Ready"
+        property real progress: -1              // -1 hidden, -2 indeterminate, else 0…1
+        property string consoleText: ""
+        property string pendingRunTitle: ""
+
+        property bool simulatorOpen: false
+        property string simPower: "off"
+        property string simError: ""
+        property var simFrame: null
+        property string simDeviceId: settings.defaultSimulator || "lphone-16"
+        property int simOrientation: 0
+        property var installedApps: []          // product names, for the home screen
+        property bool simShowingHome: true
+
+        signal revealLocation(string path, int line, int column)
+        signal alertRequested(string title, string message)
+
+        readonly property var simDevice: Devices.byId(simDeviceId) || Devices.DEVICES[0]
+        readonly property string destinationName: destination === "host" ? "My Linux PC" : (Devices.byId(destination)?.name ?? destination)
+        readonly property string schemeName: scheme || (project ? project.name : "")
+
+        Component.onCompleted: {
+            helper.call("hello", {}, (r) => {
+                if (!r.ok) return
+                ide.applySettings(r)
+                ide.xvfbInstalled = r.xvfb
+                ide.helloDone = true
+                const path = Quickshell.env("LCODE_PROJECT") || ""
+                if (path) ide.openProject(path)
+            })
+        }
+
+        function applySettings(r) {
+            settings = r.settings
+            swiftPath = r.swift || ""
+            swiftVersion = r.swiftVersion || ""
+            simDeviceId = settings.defaultSimulator || simDeviceId
+        }
+
+        function saveSettings(values) {
+            helper.call("settings", { values: values }, (r) => { if (r.ok) ide.applySettings(r) })
+        }
+
+        // ------------------------------------------------------- projects
+        function openProject(path) {
+            if (project && project.root !== path) {
+                // One project per window, as in Xcode: a new LCode for another one.
+                Quickshell.execDetached(["sh", Qt.resolvedUrl("lcode/open.sh").toString().replace("file://", ""), path])
+                return
+            }
+            helper.call("open", { path: path }, (r) => {
+                if (!r.ok) { ide.alertRequested("Couldn't Open the Project", r.error); return }
+                const p = r.project
+                const st = p.state || {}
+                ide.scheme = (st.scheme && p.products.includes(st.scheme)) ? st.scheme : (p.products[0] || "")
+                ide.destination = st.destination || p.destination
+                ide.project = p
+                ide.refreshTree()
+            })
+        }
+
+        function refreshProject() {
+            helper.call("projectInfo", {}, (r) => {
+                if (!r.ok) return
+                const p = r.project
+                if (!p.products.includes(ide.scheme)) ide.scheme = p.products[0] || ""
+                ide.project = Object.assign({}, ide.project, { products: p.products, name: p.name, isPackage: p.isPackage })
+            })
+        }
+
+        function refreshTree() {
+            helper.call("tree", {}, (r) => { if (r.ok) ide.nodes = r.nodes })
+        }
+
+        function saveState(openFiles, selected) {
+            if (!project) return
+            helper.call("saveState", { state: { open_files: openFiles, selected_file: selected, scheme: scheme, destination: destination } })
+        }
+
+        // ---------------------------------------------------------- tasks
+        property var beforeTask: null           // the workspace saves open files first
+
+        function prepare(then) {
+            if (!project) return
+            if (!project.isPackage) {
+                alertRequested("No Package.swift", "LCode builds Swift packages. Add a Package.swift to this folder, or create a new project.")
+                return
+            }
+            if (!swiftPath) {
+                alertRequested("Swift Toolchain Not Found",
+                    "LCode needs a Swift toolchain to build projects. On Golden Gate, install one from the AUR (for example swift-bin) or with swiftly, then set its location in LCode Settings if it isn't on your PATH.")
+                return
+            }
+            if (beforeTask) beforeTask(then); else then()
+        }
+
+        function run() {
+            if (!scheme) { build(); return }
+            prepare(() => {
+                const target = destination === "host" ? {} : Devices.runTarget(Devices.byId(destination) || simDevice, simOrientation)
+                if (destination !== "host") {
+                    simDeviceId = destination
+                    simulatorOpen = true
+                }
+                pendingRunTitle = scheme
+                helper.call("run", { product: scheme, destination: destination, device: target }, ide.taskReply)
+            })
+        }
+        function build() { prepare(() => helper.call("build", { product: scheme }, ide.taskReply)) }
+        function test() { prepare(() => helper.call("test", {}, ide.taskReply)) }
+        function clean() { prepare(() => helper.call("clean", {}, ide.taskReply)) }
+        function stop() { helper.call("stop", {}) }
+        function taskReply(r) { if (!r.ok) alertRequested("Couldn't Start", r.error) }
+
+        function timestamp() { return Qt.formatTime(new Date(), "hh:mm") }
+        function appendConsole(text) {
+            let t = consoleText + text
+            if (t.length > 200000) t = t.slice(t.length - 150000)
+            consoleText = t
+        }
+
+        function handle(e) {
+            switch (e.event) {
+            case "tree.changed":
+                refreshTree()
+                break
+            case "task.started":
+                taskGen = e.gen
+                taskKind = e.kind
+                busy = true
+                if (e.kind === "run") {             // relaunching a built app
+                    status = "Launching " + pendingRunTitle + "…"
+                    break
+                }
+                progress = -2
+                issues = []
+                logs[e.gen] = ""
+                status = e.kind === "build" ? "Building " + schemeName + "…" : e.kind === "test" ? "Testing " + schemeName + "…" : "Cleaning…"
+                reports = [{ gen: e.gen, title: e.title, time: Qt.formatTime(new Date(), "hh:mm:ss"), status: "running" }].concat(reports)
+                if (e.kind === "test") consoleText = ""
+                break
+            case "task.log":
+                logs[e.gen] = (logs[e.gen] || "") + e.text
+                if (e.gen === taskGen && taskKind === "test") appendConsole(e.text)
+                break
+            case "task.progress":
+                if (e.gen !== taskGen) break
+                if (e.total > 0) progress = e.done / e.total
+                status = (e.message || "Building") + "  (" + e.done + " of " + e.total + ")"
+                break
+            case "task.issue":
+                if (e.gen === taskGen) issues = issues.concat([e])
+                break
+            case "task.finished": {
+                const ok = e.code === 0 && e.errors === 0 && !e.cancelled
+                reports = reports.map((r) => r.gen === e.gen ? Object.assign({}, r, { status: e.cancelled ? "cancelled" : ok ? "ok" : "failed" }) : r)
+                if (e.gen !== taskGen) break
+                progress = -1
+                const noun = e.kind === "build" ? "Build" : e.kind === "test" ? "Test" : "Clean"
+                status = e.cancelled ? noun + " Cancelled" : ok ? (e.kind === "clean" ? "Clean Finished" : noun + " Succeeded") : noun + " Failed"
+                status += "  |  Today at " + timestamp()
+                // A successful Run build goes straight on to run.run.started.
+                if (!(ok && e.kind === "build" && pendingRunTitle)) busy = false
+                if (!ok) pendingRunTitle = ""
+                if (!ok && !e.cancelled) {
+                    const first = issues.find((i) => i.severity === "error" && i.path)
+                    if (first) revealLocation(first.path, first.line, first.column)
+                }
+                break
+            }
+            case "run.started":
+                if (e.gen !== taskGen) break
+                busy = true
+                appRunning = true
+                consoleText = ""
+                status = "Running " + e.product + " on " + destinationName
+                if (e.destination !== "host") {
+                    if (!installedApps.includes(e.product)) installedApps = installedApps.concat([e.product])
+                    simShowingHome = false
+                }
+                break
+            case "run.output":
+                if (e.gen === taskGen) appendConsole(e.text)
+                break
+            case "run.exited":
+                if (e.gen !== taskGen) break
+                busy = false
+                appRunning = false
+                if (e.error) appendConsole(e.error + "\n")
+                appendConsole(e.code === null || e.code === undefined ? "Program was terminated.\n" : "Program ended with exit code: " + e.code + "\n")
+                status = "Finished running " + (pendingRunTitle || schemeName) + " on " + destinationName + "  |  Today at " + timestamp()
+                pendingRunTitle = ""
+                simShowingHome = true
+                break
+            case "sim.state":
+                simPower = e.power
+                simError = e.error || ""
+                if (e.power === "off") simFrame = null
+                break
+            case "sim.frame":
+                simFrame = e
+                break
+            }
+        }
+
+        // ------------------------------------------------------ simulator
+        function bootSimulator() {
+            const t = Devices.runTarget(simDevice, simOrientation)
+            helper.call("simBoot", { side: t.side, w: t.w, h: t.h })
+        }
+        function shutDownSimulator() {
+            if (appRunning && destination !== "host") stop()
+            helper.call("simShutdown", {})
+        }
+        function setSimDevice(id) {
+            if (id === simDeviceId) return
+            shutDownSimulator()
+            simDeviceId = id
+            simOrientation = 0
+            saveSettings({ defaultSimulator: id })
+            if (simulatorOpen) bootTimer.start()
+        }
+        // Tap an icon on the Simulator's home screen.
+        function launchInstalled(name) {
+            if (appRunning && pendingRunTitle === name) { simShowingHome = false; return }
+            pendingRunTitle = name
+            helper.call("launch", { product: name, destination: simDeviceId, device: Devices.runTarget(simDevice, simOrientation) }, ide.taskReply)
+        }
+        function rotateSimulator(left) {
+            simOrientation = simOrientation === 0 ? (left ? -90 : 90) : 0
+            const a = Devices.appSize(simDevice, simOrientation)
+            helper.call("simRegion", { w: a.w, h: a.h })
+        }
+        Timer { id: bootTimer; interval: 300; onTriggered: ide.bootSimulator() }
+    }
+
+    LazyLoader {
+        active: ide.helloDone && !ide.project && !Quickshell.env("LCODE_PROJECT")
+        Welcome { app: ide; backend: helper }
+    }
+
+    LazyLoader {
+        active: !!ide.project
+        Workspace { app: ide; backend: helper }
+    }
+
+    LazyLoader {
+        active: ide.simulatorOpen
+        SimulatorWindow { app: ide; backend: helper }
+    }
+}

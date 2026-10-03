@@ -14,6 +14,7 @@ Item {
     property color selectedSymbolColor: symbolColor
     property Component leading: null
     property real leadingSize: 22
+    property real indent: 0                 // outline levels (a project tree)
     property color selectedFill: Theme.selection
     property color selectedTextColor: Theme.label
     signal clicked()
@@ -42,7 +43,7 @@ Item {
         visible: row.leading !== null
         active: visible
         sourceComponent: row.leading
-        x: 8
+        x: 8 + row.indent
         anchors.verticalCenter: parent.verticalCenter
         width: row.leadingSize
         height: row.leadingSize
@@ -53,7 +54,7 @@ Item {
     Symbol {
         id: icon
         visible: row.leading === null && !!row.symbol
-        x: 10
+        x: 10 + row.indent
         anchors.verticalCenter: parent.verticalCenter
         name: row.symbol
         size: 16
@@ -64,7 +65,7 @@ Item {
     }
 
     Text {
-        x: row.leading !== null ? 38 : row.symbol ? 36 : 12
+        x: row.indent + (row.leading !== null ? 8 + row.leadingSize + 8 : row.symbol ? 36 : 12)
         anchors.verticalCenter: parent.verticalCenter
         width: parent.width - x - (row.badge ? 42 : 10)
         text: row.text
