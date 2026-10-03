@@ -57,10 +57,20 @@ FloatingWindow {
 
     color: "transparent"
 
-    // Follow the system appearance (gsettings), like the shell.
-    function followScheme(line) { if (!forceDark) Theme.dark = line.includes("dark") }
-    onForceDarkChanged: if (forceDark) Theme.dark = true
-    Component.onCompleted: if (forceDark) Theme.dark = true
+    // Follow the system appearance (gsettings), like the shell, unless the app
+    // chooses one: appearance "light" or "dark" (LCode's Settings ▸ General).
+    property string appearance: ""
+    property bool _systemDark: false
+    property bool _systemKnown: false
+    function followScheme(line) { _systemDark = line.includes("dark"); _systemKnown = true; applyScheme() }
+    function applyScheme() {
+        if (forceDark || appearance === "dark") Theme.dark = true
+        else if (appearance === "light") Theme.dark = false
+        else if (_systemKnown) Theme.dark = _systemDark
+    }
+    onForceDarkChanged: applyScheme()
+    onAppearanceChanged: applyScheme()
+    Component.onCompleted: if (forceDark || appearance) applyScheme()
     Process {
         running: true
         command: ["gsettings", "monitor", "org.gnome.desktop.interface", "color-scheme"]

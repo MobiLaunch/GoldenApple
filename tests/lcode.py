@@ -256,6 +256,28 @@ class Backend(unittest.TestCase):
         r = self.s.call("settings", values={"fontSize": 15, "recent": ["/nope"]})
         self.assertEqual((r["settings"]["fontSize"], r["settings"]["recent"]), (15, [self.root]))
 
+    def test_settings_are_checked_and_git_identity(self):
+        r = self.s.call("settings", values={"appearance": "dark", "showLineNumbers": "yes", "fontSize": True,
+                                            "keyBindings": {"run": ["Ctrl+Shift+R"]}, "nope": 1,
+                                            "customDevices": [{"id": "custom-a", "name": "A", "width": 400, "height": 800}]})
+        st = r["settings"]
+        self.assertEqual((st["appearance"], st["showLineNumbers"], st["fontSize"]), ("dark", True, 13))
+        self.assertEqual(st["keyBindings"], {"run": ["Ctrl+Shift+R"]})
+        self.assertEqual(st["customDevices"][0]["name"], "A")
+        self.assertNotIn("nope", st)
+        if not shutil.which("git"):
+            self.skipTest("git not installed")
+        r = self.s.call("gitIdentity", values={"name": "Ada Lovelace", "email": "ada@example.com", "bogus": "x"})
+        self.assertEqual(r["identity"], {"name": "Ada Lovelace", "email": "ada@example.com", "defaultBranch": ""})
+        self.assertIn("Ada Lovelace", pathlib.Path(self.home, ".gitconfig").read_text())
+        # New files are created by you.
+        main = os.path.join(self.root, "Sources/Greeter")
+        made = self.s.call("newFile", dir=main, name="Extra.swift")
+        self.assertIn("Created by Ada Lovelace", pathlib.Path(made["path"]).read_text())
+        r = self.s.call("gitIdentity", values={"email": ""})
+        self.assertEqual(r["identity"]["email"], "")
+        self.assertIsInstance(self.s.call("fonts")["families"], list)
+
     def test_files_read_write_rename_and_new(self):
         main = os.path.join(self.root, "Sources/Greeter/main.swift")
         text = self.s.call("read", path=main)["text"]
@@ -641,6 +663,41 @@ class CodeEditor(unittest.TestCase):
         self.js("newline()")
         self.assertEqual(self.text().split("\n")[3], "        ")
         self.assertEqual(self.js("cursorLine"), 4)
+
+    def test_pairs_close_and_step_over(self):
+        self.js("text = 'x\\n'; editor.cursorPosition = 1")
+        self.assertTrue(self.js("typePair('(')"))
+        self.assertEqual(self.text(), "x()\n")
+        self.assertEqual(self.js("editor.cursorPosition"), 2)
+        self.assertTrue(self.js("typePair(')')"))
+        self.assertEqual((self.text(), self.js("editor.cursorPosition")), ("x()\n", 3))
+        self.js("editor.cursorPosition = 2")
+        self.assertTrue(self.js("deletePair()"))
+        self.assertEqual(self.text(), "x\n")
+        # Quotes don't pair after a letter; a selection gets wrapped.
+        self.assertFalse(self.js("typePair('\"')"))
+        self.js("editor.select(0, 1)")
+        self.assertTrue(self.js("typePair('[')"))
+        self.assertEqual(self.text(), "[x]\n")
+
+    def test_tidy_whitespace_on_save(self):
+        self.js("text = 'a  \\nb\\t\\n  c  '; editor.cursorPosition = 0")
+        self.js("trimTrailingWhitespace()")
+        self.js("ensureFinalNewline()")
+        self.assertEqual(self.text(), "a  \nb\n  c\n")       # the cursor's line is left alone
+
+    def test_placeholders_and_theme(self):
+        self.js("text = 'for <#item#> in <#items#> {}'; editor.cursorPosition = 0")
+        self.assertTrue(self.js("hasPlaceholders"))
+        self.assertTrue(self.js("selectPlaceholder(false)"))
+        self.assertEqual(self.js("editor.selectedText"), "<#item#>")
+        self.js("selectPlaceholder(false)")
+        self.assertEqual(self.js("editor.selectedText"), "<#items#>")
+        self.js("selectPlaceholder(false)")
+        self.assertEqual(self.js("editor.selectedText"), "<#item#>")
+        self.js("colors = { background: '#102030', plain: '#ffffff', dark: true }")
+        self.assertEqual(self.js("String(background)"), "#102030")
+        self.assertTrue(self.js("darkColors"))
 
 
 if __name__ == "__main__":

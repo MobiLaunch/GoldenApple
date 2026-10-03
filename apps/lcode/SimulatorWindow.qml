@@ -97,7 +97,7 @@ FloatingWindow {
                     symbolSize: 16
                     Accessible.name: "Choose Device"
                     onClicked: menu.popup(deviceButton, deviceButton.width - 230, deviceButton.height + 6,
-                        [{ header: "Device" }].concat(Devices.DEVICES.map((d) => ({
+                        [{ header: "Device" }].concat(win.app.devices.map((d) => ({
                             text: d.name, symbol: d.tablet ? "tablet" : "smartphone", checked: d.id === win.app.simDeviceId,
                             action: () => win.app.setSimDevice(d.id) })),
                         [{ separator: true },

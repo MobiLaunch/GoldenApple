@@ -77,8 +77,38 @@ DEFAULTS = {
     "defaultSimulator": "lphone-16",
     "organizationName": "",
     "organizationIdentifier": "com.example",
+    "projectsFolder": "",
+    "reopenFiles": True,
+    # Settings ▸ General, Themes and Text Editing.
+    "appearance": "system",             # system | light | dark
+    "editorThemeLight": "default-light",
+    "editorThemeDark": "default-dark",
+    "customThemes": [],
+    "fontFamily": "monospace",
+    "showLineNumbers": True,
+    "highlightCurrentLine": True,
+    "autoClose": True,
+    "insertSpaces": True,
+    "trimWhitespace": True,
+    "ensureNewline": True,
+    "codeCompletion": True,
+    # Settings ▸ Key Bindings, Behaviors and Simulators.
+    "keyBindings": {},
+    "behaviors": {},
+    "customDevices": [],
+    "userSnippets": [],                 # Library ▸ Snippets: your own
     "recent": [],
 }
+
+
+def valid_setting(key: str, value) -> bool:
+    """A value of the default's type (any number for a number)."""
+    default = DEFAULTS[key]
+    if isinstance(default, bool):
+        return isinstance(value, bool)
+    if isinstance(default, (int, float)):
+        return isinstance(value, (int, float)) and not isinstance(value, bool)
+    return isinstance(value, type(default))
 
 
 def load_settings() -> dict:
@@ -516,10 +546,41 @@ class Server:
     def c_settings(self, req: dict) -> dict:
         data = load_settings()
         for k, v in (req.get("values") or {}).items():
-            if k in DEFAULTS and k != "recent":
+            if k in DEFAULTS and k != "recent" and valid_setting(k, v):
                 data[k] = v
         save_settings(data)
         return {"settings": data, "toolchains": toolchain_report(data)}
+
+    GIT_KEYS = {"name": "user.name", "email": "user.email", "defaultBranch": "init.defaultBranch"}
+
+    def c_gitIdentity(self, req: dict) -> dict:
+        """Settings ▸ Accounts: your name and email for commits (git config --global)."""
+        if not shutil.which("git"):
+            return {"installed": False, "identity": {}}
+        for key, value in (req.get("values") or {}).items():
+            if key not in self.GIT_KEYS or not isinstance(value, str):
+                continue
+            value = value.strip()
+            args = ["git", "config", "--global"] + (["--unset", self.GIT_KEYS[key]] if not value else [self.GIT_KEYS[key], value])
+            subprocess.run(args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        identity = {}
+        for key, name in self.GIT_KEYS.items():
+            p = subprocess.run(["git", "config", "--global", "--get", name], stdout=subprocess.PIPE,
+                               stderr=subprocess.DEVNULL, text=True)
+            identity[key] = p.stdout.strip()
+        return {"installed": True, "identity": identity}
+
+    def c_fonts(self, _req: dict) -> dict:
+        """Monospaced font families, for Settings ▸ Text Editing."""
+        families = []
+        if shutil.which("fc-list"):
+            p = subprocess.run(["fc-list", ":spacing=mono", "family"], stdout=subprocess.PIPE,
+                               stderr=subprocess.DEVNULL, text=True)
+            for line in p.stdout.splitlines():
+                name = line.split(",")[0].strip()
+                if name and name not in families:
+                    families.append(name)
+        return {"families": sorted(families, key=str.lower)}
 
     def c_recent(self, req: dict) -> dict:
         data = load_settings()
@@ -815,7 +876,7 @@ class Server:
     def serve(self) -> int:
         # Quick requests answer inline; slow ones run off the reading thread so
         # input (Simulator touches) is never stuck behind them.
-        slow = {"find", "create", "clone", "tree", "hello", "settings", "dirs", "files", "designCode", "symbols", "assets", "importAsset", "iconPreview", "distribute", "archiveInfo"}
+        slow = {"find", "create", "clone", "tree", "hello", "settings", "dirs", "files", "designCode", "symbols", "assets", "importAsset", "iconPreview", "distribute", "archiveInfo", "gitIdentity", "fonts"}
         try:
             for line in sys.stdin:
                 line = line.strip()

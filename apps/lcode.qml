@@ -15,6 +15,8 @@ import "lib"
 import "lib/theme"
 import "lcode"
 import "lcode/devices.js" as Devices
+import "lcode/commands.js" as Commands
+import "lib/syntax.js" as Syntax
 
 ShellRoot {
     id: shell
@@ -54,6 +56,26 @@ ShellRoot {
         property string consoleText: ""
         property string pendingRunTitle: ""
 
+        // Settings ▸ General: "light" or "dark" overrides the system appearance.
+        readonly property string appearance: settings.appearance === "light" || settings.appearance === "dark" ? settings.appearance : ""
+        property bool settingsOpen: false
+        property int settingsPage: 0
+        function revealSettingsFile() {
+            const base = Quickshell.env("XDG_CONFIG_HOME") || Quickshell.env("HOME") + "/.config"
+            Quickshell.execDetached(["gg-files", "--select", base + "/golden-gate/lcode.json"])
+        }
+        function openSettings(page) {
+            if (page !== undefined) settingsPage = page
+            settingsOpen = true
+            settingsRaised()
+        }
+        // The code editor's colours: the theme chosen for the current appearance.
+        readonly property var editorColors: Syntax.resolveTheme(Theme.dark ? settings.editorThemeDark : settings.editorThemeLight,
+                                                                Theme.dark, settings.customThemes || [])
+        readonly property var keyBindings: settings.keyBindings || ({})
+        function keysFor(id) { return Commands.keysFor(id, keyBindings) }
+        function shortcutFor(id) { return Commands.displayFor(id, keyBindings) }
+
         property bool simulatorOpen: false
         property string simPower: "off"
         property string simError: ""
@@ -66,9 +88,30 @@ ShellRoot {
         signal revealLocation(string path, int line, int column, string message)
         signal alertRequested(string title, string message)
         signal organizerRequested()
+        signal settingsRaised()
+        // Settings ▸ Behaviors: the workspace shows or hides its areas.
+        signal behaviorRequested(string event, var options)
 
-        readonly property var simDevice: Devices.byId(simDeviceId) || Devices.DEVICES[0]
-        readonly property string destinationName: destination === "host" ? "My Linux PC" : (Devices.byId(destination)?.name ?? destination)
+        function behave(event, title, detail) {
+            const b = Commands.behavior(event, settings.behaviors)
+            if (b.notify)
+                Quickshell.execDetached(["notify-send", "-a", "LCode", "-i", "org.goldengate.LCode", title, detail || ""])
+            if (b.sound) {
+                const name = event.endsWith("Failed") ? "dialog-warning" : "complete"
+                Quickshell.execDetached(["sh", "-c", "canberra-gtk-play -i " + name + " 2>/dev/null || pw-play /usr/share/sounds/freedesktop/stereo/" + name + ".oga 2>/dev/null || paplay /usr/share/sounds/freedesktop/stereo/" + name + ".oga"])
+            }
+            behaviorRequested(event, b)
+            if (b.reveal) {
+                const first = issues.find((i) => i.severity === "error" && i.path)
+                if (first) revealLocation(first.path, first.line, first.column, first.message)
+            }
+        }
+
+        // The Simulator's devices, with your own from Settings ▸ Simulators.
+        readonly property var devices: Devices.all(settings.customDevices || [])
+        function deviceById(id) { return devices.find((d) => d.id === id) || null }
+        readonly property var simDevice: deviceById(simDeviceId) || Devices.DEVICES[0]
+        readonly property string destinationName: destination === "host" ? "My Linux PC" : (deviceById(destination)?.name ?? destination)
         readonly property string schemeName: scheme || (project ? project.name : "")
 
         Component.onCompleted: {
@@ -157,7 +200,7 @@ ShellRoot {
                 return
             }
             prepare(() => {
-                const target = destination === "host" ? {} : Devices.runTarget(Devices.byId(destination) || simDevice, simOrientation)
+                const target = destination === "host" ? {} : Devices.runTarget(deviceById(destination) || simDevice, simOrientation)
                 if (destination !== "host") {
                     simDeviceId = destination
                     simulatorOpen = true
@@ -225,10 +268,8 @@ ShellRoot {
                 if (!(ok && e.kind === "build" && pendingRunTitle)) busy = false
                 if (!ok) pendingRunTitle = ""
                 if (ok && e.kind === "archive") organizerRequested()
-                if (!ok && !e.cancelled) {
-                    const first = issues.find((i) => i.severity === "error" && i.path)
-                    if (first) revealLocation(first.path, first.line, first.column, first.message)
-                }
+                if (!e.cancelled && (e.kind === "build" || e.kind === "test"))
+                    behave(e.kind + (ok ? "Succeeded" : "Failed"), status.split("  |")[0], schemeName)
                 break
             }
             case "run.started":
@@ -237,6 +278,7 @@ ShellRoot {
                 appRunning = true
                 consoleText = ""
                 status = "Running " + e.product + " on " + destinationName
+                behave("runStarted", "Running " + e.product, destinationName)
                 if (e.destination !== "host") {
                     if (!installedApps.includes(e.product)) installedApps = installedApps.concat([e.product])
                     simShowingHome = false
@@ -252,6 +294,7 @@ ShellRoot {
                 if (e.error) appendConsole(e.error + "\n")
                 appendConsole(e.code === null || e.code === undefined ? "Program was terminated.\n" : "Program ended with exit code: " + e.code + "\n")
                 status = "Finished running " + (pendingRunTitle || schemeName) + " on " + destinationName + "  |  Today at " + timestamp()
+                behave("runExited", (pendingRunTitle || schemeName) + " Exited", e.code === null || e.code === undefined ? "Terminated" : "Exit code " + e.code)
                 pendingRunTitle = ""
                 simShowingHome = true
                 break
@@ -305,6 +348,11 @@ ShellRoot {
     LazyLoader {
         active: !!ide.project
         Workspace { app: ide; backend: helper }
+    }
+
+    LazyLoader {
+        active: ide.settingsOpen
+        SettingsWindow { app: ide; backend: helper }
     }
 
     LazyLoader {

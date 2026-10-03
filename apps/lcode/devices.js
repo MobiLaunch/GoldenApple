@@ -52,3 +52,31 @@ function runTarget(d, o) {
     var a = appSize(d, o);
     return { id: d.id, name: d.name, side: displaySide(d), w: a.w, h: a.h };
 }
+
+// Your own devices (Settings ▸ Simulators): a name, a screen size in points,
+// and the kind of hardware around it.
+var STYLES = ["island", "home-button", "none"];
+function customDevice(spec) {
+    var tablet = !!spec.tablet, style = STYLES.indexOf(spec.style) >= 0 ? spec.style : "island";
+    var homeButton = style === "home-button";
+    return {
+        id: spec.id, name: spec.name || "Custom Device", tablet: tablet, custom: true, style: style,
+        width: Math.max(240, Math.min(2048, Math.round(spec.width || 393))),
+        height: Math.max(240, Math.min(2048, Math.round(spec.height || 852))),
+        corner: homeButton ? 0 : (spec.corner !== undefined ? spec.corner : (tablet ? 18 : 55)),
+        bezelX: homeButton ? 22 : (tablet ? 22 : 14), bezelY: homeButton ? 96 : (tablet ? 22 : 14),
+        statusBar: homeButton ? 20 : tablet ? 24 : style === "none" ? 24 : 54,
+        homeIndicator: homeButton ? 0 : tablet ? 20 : 34,
+        cutout: style,
+    };
+}
+function all(custom) {
+    var out = DEVICES.slice();
+    for (var i = 0; i < (custom || []).length; i++) out.push(customDevice(custom[i]));
+    return out;
+}
+function find(id, custom) {
+    var list = all(custom);
+    for (var i = 0; i < list.length; i++) if (list[i].id === id) return list[i];
+    return null;
+}

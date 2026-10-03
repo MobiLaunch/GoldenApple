@@ -293,6 +293,7 @@ Sheet {
         width: parent.width
         height: parent.height - y - footer.height - 30
         backend: sheet.backend
+        path: sheet.app.settings.projectsFolder || ""
     }
     Text {
         visible: sheet.step === 2

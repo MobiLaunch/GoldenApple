@@ -18,6 +18,8 @@ AppWindow {
     resizable: false
     trailingSidebarWidth: 300
     background: Theme.windowBg
+    appearance: app.appearance
+    Shortcut { sequences: win.app.keysFor("settings"); onActivated: win.app.openSettings() }
 
     component Action: Item {
         id: action

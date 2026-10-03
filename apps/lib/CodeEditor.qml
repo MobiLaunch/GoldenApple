@@ -25,19 +25,33 @@ Item {
     property var issues: []                 // [{ line, severity: "error" | "warning", message }]
     property string highlightText: ""       // find matches to mark
     property bool caseSensitive: false
+    // A colour theme from Syntax.THEMES (or a custom one); null follows the
+    // system appearance with the default themes.
+    property var colors: null
+    property string fontFamily: "monospace"
+    property bool showLineNumbers: true
+    property bool highlightCurrentLine: true
+    property bool autoClose: true           // type ( [ { " and get the closing one too
+    readonly property var editorPalette: colors || (Theme.dark ? Syntax.THEMES[1] : Syntax.THEMES[0])
+    readonly property bool darkColors: editorPalette.dark === undefined ? Theme.dark : !!editorPalette.dark
     readonly property alias editor: edit
     readonly property int cursorLine: Math.floor(edit.cursorRectangle.y / lineHeight + 0.5) + 1
     readonly property int cursorColumn: edit.cursorPosition - edit.positionAt(0, edit.cursorRectangle.y + lineHeight / 2) + 1
     readonly property int lineCount: lines.length
-    readonly property color background: Theme.dark ? "#1f1f24" : "#ffffff"
+    readonly property color background: editorPalette.background || (Theme.dark ? "#1f1f24" : "#ffffff")
     signal contextMenuRequested(real x, real y)
+    // After a character (or "\b" for Backspace) has gone into the text: for
+    // completion as you type.
+    signal typed(string text)
+    // Sees keys first while it returns true (a completion list, say).
+    property var keyFilter: null
 
     property var lines: [""]
     property var tokenStates: [0]
     property int revision: 0
     readonly property real lineHeight: edit.lineCount > 0 && edit.contentHeight > 0 ? edit.contentHeight / edit.lineCount : metrics.height
     readonly property real charWidth: widthProbe.advanceWidth / 64
-    readonly property real gutterWidth: Math.max(3, String(lines.length).length) * charWidth + 30
+    readonly property real gutterWidth: showLineNumbers ? Math.max(3, String(lines.length).length) * charWidth + 30 : 22
     readonly property real minimapWidth: showMinimap ? 92 : 0
     readonly property real topPad: 6
     readonly property int firstVisible: Math.max(0, Math.floor((view.contentY - topPad) / lineHeight) - 1)
@@ -52,7 +66,7 @@ Item {
     Component.onCompleted: reparse()
 
     function lineHtml(i) {
-        return i < lines.length ? Syntax.html(lines[i], tokenStates[i] || 0, language, Theme.dark, tabWidth) : ""
+        return i < lines.length ? Syntax.html(lines[i], tokenStates[i] || 0, language, editorPalette, tabWidth) : ""
     }
     function visualLength(i) { return i < lines.length ? Syntax.expandTabs(lines[i], tabWidth).length : 0 }
     function lineY(line) { return topPad + (line - 1) * lineHeight }   // 1-based
@@ -100,7 +114,7 @@ Item {
     function toggleComment() {
         if (readOnly) return
         const [start, end] = selectedLineRange()
-        const lang = language === "hash" ? "hash" : "swift"
+        const lang = language
         replaceRange(start, end, Syntax.toggleComment(edit.text.slice(start, end).split("\n"), lang).join("\n"), true)
     }
 
@@ -149,6 +163,65 @@ Item {
         }
     }
 
+    // Tidy up before saving: trailing spaces and tabs off every line but the
+    // cursor's (edited in place, so undo and the cursor survive), and a
+    // newline at the end.
+    function trimTrailingWhitespace() {
+        if (readOnly) return
+        const ls = edit.text.split("\n")
+        let pos = edit.text.length
+        for (let i = ls.length - 1; i >= 0; i--) {
+            pos -= ls[i].length
+            const m = /[ \t]+$/.exec(ls[i])
+            if (m && i !== cursorLine - 1) edit.remove(pos + m.index, pos + ls[i].length)
+            pos -= 1
+        }
+    }
+    function ensureFinalNewline() {
+        if (!readOnly && edit.length > 0 && !edit.text.endsWith("\n")) {
+            const cursor = edit.cursorPosition
+            edit.insert(edit.length, "\n")
+            edit.cursorPosition = cursor
+        }
+    }
+
+    // Auto-closing pairs: an opener types its closer too (or wraps the
+    // selection); typing a closer that's already next steps over it.
+    readonly property var pairs: ({ "(": ")", "[": "]", "{": "}", "\"": "\"", "'": "'" })
+    function typePair(ch) {
+        if (!ch || ch.length !== 1) return false
+        const pos = edit.cursorPosition
+        const next = edit.text.charAt(pos)
+        const prev = pos > 0 ? edit.text.charAt(pos - 1) : ""
+        const quote = ch === "\"" || ch === "'"
+        if ((ch === ")" || ch === "]" || ch === "}" || quote) && next === ch && !edit.selectedText.length) {
+            edit.cursorPosition = pos + 1
+            return true
+        }
+        const close = pairs[ch]
+        if (!close) return false
+        if (quote && (/\w/.test(prev) || (ch === "'" && (language === "rust" || language === "plain")))) return false
+        if (edit.selectedText.length && !edit.selectedText.includes("\n")) {
+            const start = edit.selectionStart, end = edit.selectionEnd, inner = edit.selectedText
+            edit.remove(start, end)
+            edit.insert(start, ch + inner + close)
+            edit.select(start + 1, start + 1 + inner.length)
+            return true
+        }
+        if (next && !/[\s)\]},;:]/.test(next)) return false
+        edit.insert(pos, ch + close)
+        edit.cursorPosition = pos + 1
+        return true
+    }
+    function deletePair() {
+        const pos = edit.cursorPosition
+        if (edit.selectedText.length || pos < 1) return false
+        const prev = edit.text.charAt(pos - 1)
+        if (!pairs[prev] || edit.text.charAt(pos) !== pairs[prev]) return false
+        edit.remove(pos - 1, pos + 1)
+        return true
+    }
+
     // Find: select the next (or previous) match after the selection.
     function findNext(query, forward, matchCase) {
         if (!query) return false
@@ -186,6 +259,40 @@ Item {
     }
 
     // Matches in the visible lines, for the find highlight.
+    // Placeholders: <#name#> tokens, as in Xcode snippets. Tab selects the
+    // next one; clicking into one selects it whole.
+    readonly property bool hasPlaceholders: revision >= 0 && edit.text.indexOf("<#") >= 0
+    function placeholderRanges(fromLine, toLine) {
+        const out = []
+        const re = /<#[^#\n]*#>/g
+        for (let i = fromLine; i < toLine && i < lines.length; i++) {
+            if (lines[i].indexOf("<#") < 0) continue
+            let m
+            re.lastIndex = 0
+            while ((m = re.exec(lines[i])) !== null)
+                out.push({ line: i + 1, start: lineStart(i + 1) + m.index, end: lineStart(i + 1) + m.index + m[0].length })
+        }
+        return out
+    }
+    function selectPlaceholder(backwards) {
+        const all = placeholderRanges(0, lines.length)
+        if (!all.length) return false
+        const pos = backwards ? edit.selectionStart : edit.selectionEnd
+        let pick = null
+        if (backwards) { for (let i = all.length - 1; i >= 0 && !pick; i--) if (all[i].end <= pos && !(all[i].start === edit.selectionStart)) pick = all[i] }
+        else { for (const r of all) if (!pick && r.start >= pos) pick = r }
+        pick = pick || (backwards ? all[all.length - 1] : all[0])
+        edit.select(pick.start, pick.end)
+        return true
+    }
+    function selectPlaceholderAt(pos) {
+        if (!hasPlaceholders || edit.selectedText.length) return
+        const line = edit.text.lastIndexOf("\n", pos - 1) + 1
+        const lineNo = edit.text.slice(0, line).split("\n").length
+        for (const r of placeholderRanges(lineNo - 1, lineNo))
+            if (pos > r.start && pos < r.end) { edit.select(r.start, r.end); return }
+    }
+
     function visibleMatches() {
         const out = []
         if (!highlightText) return out
@@ -232,12 +339,12 @@ Item {
 
         // Current line.
         Rectangle {
-            visible: edit.selectedText.length === 0
+            visible: root.highlightCurrentLine && edit.selectedText.length === 0
             x: 0
             y: root.lineY(root.cursorLine)
             width: view.contentWidth
             height: root.lineHeight
-            color: Theme.dark ? "#23252b" : "#ecf5ff"
+            color: root.editorPalette.currentLine || (root.darkColors ? "#23252b" : "#ecf5ff")
         }
 
         // Issue lines.
@@ -249,7 +356,7 @@ Item {
                 y: root.lineY(modelData.line)
                 width: view.contentWidth
                 height: root.lineHeight
-                color: modelData.severity === "error" ? (Theme.dark ? "#33ff453a" : "#1fff3b30") : (Theme.dark ? "#2effd60a" : "#24ffcc00")
+                color: modelData.severity === "error" ? (root.darkColors ? "#33ff453a" : "#1fff3b30") : (root.darkColors ? "#2effd60a" : "#24ffcc00")
             }
         }
 
@@ -263,7 +370,22 @@ Item {
                 width: root.xAt(modelData.end) - root.xAt(modelData.start) + 2
                 height: root.lineHeight
                 radius: 3
-                color: Theme.dark ? "#806a5a1e" : "#80ffe873"
+                color: root.darkColors ? "#806a5a1e" : "#80ffe873"
+            }
+        }
+
+        // Placeholder tokens.
+        Repeater {
+            model: root.hasPlaceholders ? root.placeholderRanges(root.firstVisible, root.firstVisible + root.visibleCount) : []
+            delegate: Rectangle {
+                required property var modelData
+                x: edit.x + root.xAt(modelData.start) + root.charWidth * 0.5
+                y: root.lineY(modelData.line) + 1
+                width: root.xAt(modelData.end) - root.xAt(modelData.start) - root.charWidth
+                height: root.lineHeight - 2
+                radius: 4
+                color: Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, root.darkColors ? 0.35 : 0.2)
+                border { width: 1; color: Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.5) }
             }
         }
 
@@ -280,12 +402,12 @@ Item {
             textFormat: TextEdit.PlainText
             color: "transparent"
             selectedTextColor: "transparent"
-            selectionColor: Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, Theme.dark ? 0.42 : 0.26)
-            font { family: "monospace"; pixelSize: root.fontSize }
+            selectionColor: root.editorPalette.selection || Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, root.darkColors ? 0.42 : 0.26)
+            font { family: root.fontFamily; pixelSize: root.fontSize }
             tabStopDistance: root.tabWidth * root.charWidth
             cursorDelegate: Rectangle {
                 width: 2
-                color: Theme.dark ? "#ffffff" : "#000000"
+                color: root.editorPalette.cursor || (root.darkColors ? "#ffffff" : "#000000")
                 visible: edit.activeFocus && !root.readOnly
                 SequentialAnimation on opacity {
                     running: edit.activeFocus && !Theme.reduceMotion
@@ -298,10 +420,19 @@ Item {
             }
             onTextChanged: root.reparse()
             onCursorRectangleChanged: root.ensureCursorVisible()
+            onCursorPositionChanged: if (root.hasPlaceholders) Qt.callLater(() => root.selectPlaceholderAt(edit.cursorPosition))
             Keys.onPressed: (event) => {
                 if (root.readOnly) return
+                if (root.keyFilter && root.keyFilter(event)) { event.accepted = true; return }
+                const typedText = event.key === Qt.Key_Backspace ? "\b" : event.text
+                if (typedText && (typedText === "\b" || typedText >= " ") && !(event.modifiers & (Qt.ControlModifier | Qt.MetaModifier)))
+                    Qt.callLater(() => root.typed(typedText))
                 const mods = event.modifiers & (Qt.ControlModifier | Qt.AltModifier | Qt.MetaModifier)
-                if (event.key === Qt.Key_Tab && !mods) {
+                if (event.key === Qt.Key_Tab && !mods && !edit.selectedText.includes("\n") && root.hasPlaceholders && root.selectPlaceholder(false)) {
+                    event.accepted = true
+                } else if (event.key === Qt.Key_Backtab && !edit.selectedText.includes("\n") && root.hasPlaceholders && root.selectPlaceholder(true)) {
+                    event.accepted = true
+                } else if (event.key === Qt.Key_Tab && !mods) {
                     if (edit.selectedText.includes("\n")) root.shiftLines(true)
                     else edit.insert(edit.cursorPosition, root.insertSpaces
                         ? " ".repeat(root.tabWidth - ((root.cursorColumn - 1) % root.tabWidth)) : "\t")
@@ -311,6 +442,10 @@ Item {
                     event.accepted = true
                 } else if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter) && !mods && !(event.modifiers & Qt.ShiftModifier)) {
                     root.newline()
+                    event.accepted = true
+                } else if (event.key === Qt.Key_Backspace && !mods && root.autoClose && root.deletePair()) {
+                    event.accepted = true
+                } else if (root.autoClose && !mods && root.typePair(event.text)) {
                     event.accepted = true
                 } else if ((event.text === "}" || event.text === ")" || event.text === "]") && !mods) {
                     root.closeBrace(event.text)
@@ -394,9 +529,10 @@ Item {
                 height: root.lineHeight
                 horizontalAlignment: Text.AlignRight
                 verticalAlignment: Text.AlignVCenter
+                visible: root.showLineNumbers
                 text: line
-                color: current ? Theme.label : (Theme.dark ? "#747478" : "#a6a6a6")
-                font { family: "monospace"; pixelSize: root.fontSize - 1; weight: current ? Font.DemiBold : Font.Normal }
+                color: current ? root.editorPalette.plain : (root.editorPalette.lineNumber || (root.darkColors ? "#747478" : "#a6a6a6"))
+                font { family: root.fontFamily; pixelSize: root.fontSize - 1; weight: current ? Font.DemiBold : Font.Normal }
             }
         }
         Repeater {
@@ -445,7 +581,7 @@ Item {
                 ctx.reset()
                 const lines = root.lines
                 if (lines.length > 6000) return
-                const palette = Theme.dark ? Syntax.PALETTES.dark : Syntax.PALETTES.light
+                const palette = root.editorPalette
                 const rh = minimap.rowHeight, cw = 1.1
                 let state = 0
                 for (let i = 0; i < lines.length; i++) {
@@ -478,6 +614,10 @@ Item {
             Connections {
                 target: Theme
                 function onDarkChanged() { repaint.restart() }
+            }
+            Connections {
+                target: root
+                function onEditorPaletteChanged() { repaint.restart() }
             }
         }
         Rectangle {

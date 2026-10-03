@@ -243,3 +243,98 @@ test('Kit: colours adapt to the appearance; templates fill in variables', () => 
   assert.equal(K.qtWeight(650), 700);
   assert.equal(K.fontSize('title', 0), 22);
 });
+
+test('LCode themes: complete colour sets, custom copies and placeholder-aware highlighting', () => {
+  const s = library('apps/lib/syntax.js');
+  const ids = new Set();
+  for (const t of s.THEMES) {
+    for (const k of s.THEME_KEYS) assert.ok(typeof t[k] === 'string' && (t[k] === '' ? k === 'selection' : /^#[0-9a-f]{6}$/i.test(t[k])), `${t.id}.${k}`);
+    assert.ok(!ids.has(t.id), t.id); ids.add(t.id);
+    assert.equal(typeof t.dark, 'boolean');
+  }
+  assert.equal(s.resolveTheme('nope', true, []).id, 'default-dark');
+  assert.equal(s.resolveTheme('nope', false, []).id, 'default-light');
+  const copy = s.duplicateTheme(s.themeById('midnight'), []);
+  assert.equal(copy.name, 'Midnight copy'); assert.equal(copy.builtIn, false); assert.notEqual(copy.id, 'midnight');
+  assert.equal(s.duplicateTheme(s.themeById('midnight'), [copy]).name, 'Midnight copy 2');
+  assert.equal(s.resolveTheme(copy.id, true, [copy]).id, copy.id);
+  // A theme object colours the line; booleans keep the default themes.
+  assert.match(s.html('let a', 0, 'swift', s.themeById('midnight'), 4), /#d31895/);
+  assert.match(s.html('let a', 0, 'swift', true, 4), new RegExp(s.PALETTES.dark.keyword));
+  // <#name#> placeholders read as plain names, even with # comments around.
+  const runs = s.tokenize('if <#condition#>: # done', 0, 'python').runs;
+  assert.equal(runs.map(r => r[1]).join(''), 'if <#condition#>: # done');
+  assert.ok(runs.some(r => r[0] !== 'comment' && r[1].includes('<#condition#>')));
+  assert.match(s.html('x = <#value#>', 0, 'python', false, 4), /<font color="#00000000">&lt;#<\/font>value/);
+});
+
+test('LCode key bindings: display, recording, conflicts and every command handled', () => {
+  const c = library('apps/lcode/commands.js');
+  assert.equal(c.display('Ctrl+Shift+K'), '⇧⌘K');
+  assert.equal(c.display('Ctrl+Alt+S'), '⌥⌘S');
+  assert.equal(c.display('Ctrl++'), '⌘+');
+  assert.equal(c.display('Ctrl+Space'), '⌘Space');
+  const CTRL = 0x04000000, SHIFT = 0x02000000;
+  assert.equal(c.sequenceFor(0x45, CTRL | SHIFT, 'E'), 'Ctrl+Shift+E');
+  assert.equal(c.sequenceFor(0x01000021, CTRL, ''), '');           // Ctrl alone
+  assert.equal(c.sequenceFor(0x01000030 + 4, 0, ''), 'F5');
+  // Taking ⌘S for Save All leaves Save unbound.
+  const next = c.bind('saveAll', 'Ctrl+S', {});
+  assert.deepEqual([...c.keysFor('saveAll', next)], ['Ctrl+S']);
+  assert.deepEqual([...c.keysFor('save', next)], []);
+  assert.deepEqual([...c.conflicts('Ctrl+S', 'save', next).map(x => x.id)], ['saveAll']);
+  assert.deepEqual([...c.keysFor('save', c.reset('save', next))], ['Ctrl+S']);
+  assert.ok(c.isCustomized('save', next) && !c.isCustomized('run', next));
+  // No two commands share a default key.
+  const seen = {};
+  for (const cmd of c.COMMANDS) for (const k of cmd.keys) { assert.ok(!seen[k], `${k}: ${seen[k]} and ${cmd.id}`); seen[k] = cmd.id; }
+  // The project window performs every command.
+  const ws = readFileSync(new URL('../apps/lcode/Workspace.qml', import.meta.url), 'utf8');
+  for (const cmd of c.COMMANDS) assert.ok(ws.includes(`case "${cmd.id}":`), cmd.id);
+  // Behaviors: defaults, overridden one key at a time.
+  assert.equal(c.behavior('buildFailed', {}).navigator, 'issues');
+  const b = c.behavior('buildFailed', { buildFailed: { notify: true } });
+  assert.equal(b.notify, true); assert.equal(b.reveal, true);
+});
+
+test('LCode completion: names, keywords and snippets with placeholders', () => {
+  const syntax = library('apps/lib/syntax.js');
+  const src = readFileSync(new URL('../apps/lcode/completion.js', import.meta.url), 'utf8')
+    .replace('.pragma library', '').replace(/^\.import .*$/m, '');
+  const c = vm.createContext({ Syntax: syntax }); vm.runInContext(src, c);
+  const text = 'struct Greeter {\n    let greeting = "hi"\n    func greet() {}\n}\ngre';
+  const r = c.complete(text, text.length, 'swift', {});
+  assert.equal(r.prefix, 'gre'); assert.equal(r.start, text.length - 3);
+  const titles = r.items.map(i => i.title);
+  assert.ok(titles.includes('greet') && titles.includes('greeting') && titles.includes('Greeter'), titles.join());
+  assert.equal(r.items.find(i => i.title === 'greet').kind, 'function');
+  assert.equal(r.items.find(i => i.title === 'Greeter').kind, 'type');
+  // Prefix matches beat letters-in-order; keywords and snippets come too.
+  const g = c.complete('gu', 2, 'swift', {}).items;
+  assert.ok(g.some(i => i.kind === 'snippet' && i.title === 'guard'));
+  assert.ok(g.some(i => i.kind === 'keyword' && i.title === 'guard'));
+  assert.equal(c.complete('x.', 2, 'swift', {}).items.length, 0);
+  assert.ok(c.complete('x ', 2, 'swift', { explicit: true }).items.length > 10);
+  // Your snippets, for their language.
+  const own = [{ id: 'a', title: 'Fetch', trigger: 'fetchjson', language: 'python', body: 'x' }];
+  assert.ok(c.complete('fetch', 5, 'python', { userSnippets: own }).items[0].own);
+  assert.ok(!c.complete('fetch', 5, 'swift', { userSnippets: own }).items.some(i => i.own));
+  // Expanding re-indents to the line and the indent unit.
+  assert.equal(c.expand('if <#c#> {\n    <#s#>\n}', '\t', '\t'), 'if <#c#> {\n\t\t<#s#>\n\t}');
+  assert.equal(c.expand('a\n    b', '  ', '  '), 'a\n    b');
+  const ph = c.placeholders('a <#x#> b <#y#>');
+  assert.deepEqual([...ph.map(p => p.name)], ['x', 'y']);
+  assert.equal(c.nextPlaceholder('a <#x#> b <#y#>', 8).name, 'y');
+  assert.equal(c.nextPlaceholder('a <#x#> b <#y#>', 15).name, 'x');     // wraps
+  for (const [lang, list] of Object.entries(c.SNIPPETS))
+    for (const s of list) assert.ok(s.trigger && s.title && s.body, `${lang} ${s.title}`);
+});
+
+test('LCode devices: your own Simulator devices', () => {
+  const d = library('apps/lcode/devices.js');
+  const all = d.all([{ id: 'custom-x', name: 'X', width: 5000, height: 10, tablet: true, style: 'home-button' }]);
+  assert.equal(all.length, d.DEVICES.length + 1);
+  const x = d.find('custom-x', [{ id: 'custom-x', name: 'X', width: 5000, height: 10, tablet: true, style: 'home-button' }]);
+  assert.equal(x.width, 2048); assert.equal(x.height, 240); assert.equal(x.cutout, 'home-button');
+  assert.ok(d.runTarget(x, 0).side >= 2048 - 1);
+});

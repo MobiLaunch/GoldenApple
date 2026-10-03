@@ -6,6 +6,7 @@ import "../lib"
 import "../lib/theme"
 import "../lib/syntax.js" as Syntax
 import "languages.js" as Languages
+import "completion.js" as Completion
 import "design"
 
 Item {
@@ -33,7 +34,7 @@ Item {
 
     function editorAt(i) { const holder = editors.itemAt(i); return holder ? holder.item : null }
     function isFileKind(kind) { return kind === "file" || kind === "design" }
-    onCurrentChanged: fileShown(currentPath)
+    onCurrentChanged: { closeCompletion(); fileShown(currentPath) }
 
     ListModel { id: docs }
     readonly property alias documents: docs
@@ -114,6 +115,12 @@ Item {
         const doc = docs.get(index)
         const editor = editorAt(index)
         if (!doc || !isFileKind(doc.kind) || doc.locked || !editor) { if (done) done(true); return }
+        // Settings ▸ Text Editing: tidy whitespace (not in Markdown, where
+        // trailing spaces mean a line break).
+        if (doc.kind === "file" && !/\.(md|markdown|patch|diff)$/i.test(doc.path)) {
+            if (area.app.settings.trimWhitespace !== false) editor.trimTrailingWhitespace()
+            if (area.app.settings.ensureNewline !== false) editor.ensureFinalNewline()
+        }
         const text = editor.text
         backend.call("write", { path: doc.path, text: text }, (r) => {
             if (r.ok) {
@@ -158,6 +165,116 @@ Item {
         findVisible = false
         if (currentEditor) currentEditor.editor.forceActiveFocus()
     }
+    // ------------------------------------------------------- completion
+    // As you type (Settings ▸ Text Editing) or with ⌘Space: the list under
+    // the word; ↑↓ choose, Return or Tab take one, Escape closes it.
+    property var completionState: null        // { start, prefix }
+    function complete(explicit) {
+        explicit = explicit !== false
+        const ed = currentEditor
+        if (!ed || !currentIsCode || ed.readOnly) { closeCompletion(); return }
+        const text = ed.editor.text, pos = ed.editor.cursorPosition
+        // Names declared in the other open files too.
+        let declared = []
+        for (let i = 0; i < docs.count && declared.length < 400; i++) {
+            if (i === current || docs.get(i).kind !== "file") continue
+            const other = editorAt(i)
+            if (other && other.language === ed.language) declared = declared.concat(Completion.declarations(other.text))
+        }
+        const r = Completion.complete(text, pos, ed.language, { explicit: explicit, userSnippets: app.settings.userSnippets || [],
+                                                                extraDeclarations: declared })
+        if (!r.items.length || (!explicit && r.prefix.length < 1)) { closeCompletion(); return }
+        completionState = { start: r.start, prefix: r.prefix }
+        completionList.fontSize = ed.fontSize
+        completionList.prefix = r.prefix
+        completionList.items = r.items
+        placeCompletion()
+    }
+    function placeCompletion() {
+        const ed = currentEditor
+        if (!ed || !completionState) return
+        const rect = ed.editor.positionToRectangle(completionState.start)
+        const p = ed.editor.mapToItem(area, rect.x, rect.y + rect.height)
+        completionList.x = Math.max(4, Math.min(p.x - 30, area.width - completionList.width - 4))
+        completionList.y = p.y + 4 + completionList.height > area.height ? p.y - rect.height - completionList.height - 4 : p.y + 4
+    }
+    function closeCompletion() {
+        if (completionList.items.length) completionList.items = []
+        completionState = null
+    }
+    function acceptCompletion(item) {
+        const ed = currentEditor
+        if (!ed || !item || !completionState) return
+        const e = ed.editor
+        const start = completionState.start
+        let end = e.cursorPosition
+        while (end < e.length && /[A-Za-z0-9_]/.test(e.text.charAt(end))) end++
+        closeCompletion()
+        e.remove(start, end)
+        if (item.snippet) insertSnippet(item.insert, start)
+        else { e.insert(start, item.insert); e.cursorPosition = start + item.insert.length }
+    }
+    // A snippet at `at` (the cursor by default), indented to fit, with its
+    // first placeholder selected.
+    function insertSnippet(body, at) {
+        const ed = currentEditor
+        if (!ed || ed.readOnly) return
+        const e = ed.editor
+        if (at === undefined) { at = e.selectionStart; if (e.selectedText.length) e.remove(e.selectionStart, e.selectionEnd) }
+        const lineStart = e.text.lastIndexOf("\n", at - 1) + 1
+        const indent = /^[ \t]*/.exec(e.text.slice(lineStart, at))[0]
+        const text = Completion.expand(body, indent, ed.indentUnit())
+        e.insert(at, text)
+        e.cursorPosition = at
+        if (!ed.selectPlaceholder(false) || e.selectionStart < at || e.selectionEnd > at + text.length) e.cursorPosition = at + text.length
+        e.forceActiveFocus()
+    }
+    function insertText(text) {
+        const ed = currentEditor
+        if (!ed || ed.readOnly) return
+        const e = ed.editor
+        if (e.selectedText.length) e.remove(e.selectionStart, e.selectionEnd)
+        const at = e.cursorPosition
+        e.insert(at, text)
+        e.cursorPosition = at + text.length
+        e.forceActiveFocus()
+    }
+    function completionKey(ed, event) {
+        if (!completionList.visible || ed !== currentEditor) return false
+        switch (event.key) {
+        case Qt.Key_Up: completionList.move(-1); return true
+        case Qt.Key_Down: completionList.move(1); return true
+        case Qt.Key_PageUp: completionList.move(-8); return true
+        case Qt.Key_PageDown: completionList.move(8); return true
+        case Qt.Key_Return: case Qt.Key_Enter: case Qt.Key_Tab:
+            acceptCompletion(completionList.currentItem); return true
+        case Qt.Key_Escape: closeCompletion(); return true
+        case Qt.Key_Left: case Qt.Key_Right: case Qt.Key_Home: case Qt.Key_End:
+            closeCompletion(); return false
+        }
+        return false
+    }
+    function typedInto(ed, t) {
+        if (ed !== currentEditor) return
+        if (/^[A-Za-z0-9_]$/.test(t)) {
+            if (completionList.visible || app.settings.codeCompletion !== false) completionTimer.restart()
+        } else if (t === "\b") {
+            if (completionList.visible) completionTimer.restart()
+        } else {
+            closeCompletion()
+        }
+    }
+    Timer { id: completionTimer; interval: 40; onTriggered: area.complete(false) }
+    Connections {
+        target: area.currentEditor ? area.currentEditor.editor : null
+        function onCursorPositionChanged() {
+            if (!area.completionState || completionTimer.running) return
+            const pos = area.currentEditor.editor.cursorPosition
+            if (pos < area.completionState.start || pos > area.completionState.start + area.completionState.prefix.length + 1) area.closeCompletion()
+        }
+        function onActiveFocusChanged() { if (area.currentEditor && !area.currentEditor.editor.activeFocus) Qt.callLater(area.closeCompletion) }
+    }
+
     function findNext(forward) {
         if (currentEditor && findField.text) currentEditor.findNext(findField.text, forward, matchCase.checked)
     }
@@ -472,9 +589,17 @@ Item {
                         fontSize: area.app.settings.fontSize || 13
                         tabWidth: area.app.settings.tabWidth || 4
                         showMinimap: holder.kind === "file" && area.app.settings.showMinimap !== false
+                        colors: area.app.editorColors
+                        fontFamily: area.app.settings.fontFamily || "monospace"
+                        showLineNumbers: area.app.settings.showLineNumbers !== false
+                        highlightCurrentLine: area.app.settings.highlightCurrentLine !== false
+                        autoClose: area.app.settings.autoClose !== false
+                        insertSpaces: area.app.settings.insertSpaces !== false
                         highlightText: area.findVisible ? findField.text : ""
                         caseSensitive: matchCase.checked
                         issues: area.app.issues.filter((i) => i.path === holder.path && i.line > 0)
+                        keyFilter: (event) => area.completionKey(ed, event)
+                        onTyped: (t) => area.typedInto(ed, t)
                         Component.onCompleted: {
                             editor.text = holder.content
                             savedText = editor.text
@@ -501,5 +626,12 @@ Item {
                 }
             }
         }
+    }
+
+    CompletionList {
+        id: completionList
+        objectName: "completionList"
+        z: 50
+        onAccepted: (item) => area.acceptCompletion(item)
     }
 }

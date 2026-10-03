@@ -39,6 +39,77 @@ var PALETTES = {
             type: "#d0a8ff", attribute: "#bf8555", preprocessor: "#fd8f3f", declaration: "#41a1c0" },
 };
 
+// Editor colour themes, after the classic Apple IDE set. Each has the token
+// colours above plus the editor's own: background, current line, selection
+// (blank: the accent colour), cursor and line numbers.
+var THEME_KEYS = ["plain", "keyword", "string", "comment", "number", "type", "attribute", "preprocessor",
+                  "declaration", "background", "currentLine", "selection", "cursor", "lineNumber"];
+var THEME_TITLES = { plain: "Plain Text", keyword: "Keywords", string: "Strings", comment: "Comments",
+                     number: "Numbers", type: "Types", attribute: "Attributes", preprocessor: "Preprocessor",
+                     declaration: "Declarations", background: "Background", currentLine: "Current Line",
+                     selection: "Selection", cursor: "Cursor", lineNumber: "Line Numbers" };
+function theme(id, name, dark, colors) {
+    return Object.assign({ id: id, name: name, dark: dark, builtIn: true }, colors);
+}
+var THEMES = [
+    theme("default-light", "Default (Light)", false, Object.assign({}, PALETTES.light,
+        { background: "#ffffff", currentLine: "#ecf5ff", selection: "", cursor: "#000000", lineNumber: "#a6a6a6" })),
+    theme("default-dark", "Default (Dark)", true, Object.assign({}, PALETTES.dark,
+        { background: "#1f1f24", currentLine: "#23252b", selection: "", cursor: "#ffffff", lineNumber: "#747478" })),
+    theme("presentation-light", "Presentation (Light)", false, Object.assign({}, PALETTES.light,
+        { plain: "#000000", background: "#ffffff", currentLine: "#e8f2ff", selection: "", cursor: "#000000", lineNumber: "#8e8e93" })),
+    theme("presentation-dark", "Presentation (Dark)", true, Object.assign({}, PALETTES.dark,
+        { plain: "#ffffff", background: "#1c1c1e", currentLine: "#2c2c30", selection: "", cursor: "#ffffff", lineNumber: "#98989d" })),
+    theme("midnight", "Midnight", true, { plain: "#ffffff", keyword: "#d31895", string: "#ff2c38", comment: "#41cc45",
+        number: "#786dff", type: "#00a0ff", attribute: "#ec7600", preprocessor: "#de6c4a", declaration: "#4eb0cc",
+        background: "#000000", currentLine: "#16171c", selection: "#404a5f", cursor: "#ffffff", lineNumber: "#5c5c66" }),
+    theme("dusk", "Dusk", true, { plain: "#ffffff", keyword: "#b21889", string: "#db2c38", comment: "#41b645",
+        number: "#786dc4", type: "#00a0be", attribute: "#c77c48", preprocessor: "#c67c48", declaration: "#83c057",
+        background: "#1e2028", currentLine: "#272a33", selection: "#4b5165", cursor: "#ffffff", lineNumber: "#6c6f7c" }),
+    theme("sunset", "Sunset", false, { plain: "#000000", keyword: "#294277", string: "#df0700", comment: "#c3741c",
+        number: "#294277", type: "#476a97", attribute: "#a5490a", preprocessor: "#a5490a", declaration: "#294277",
+        background: "#fffce5", currentLine: "#f5efc7", selection: "#ffe2b8", cursor: "#000000", lineNumber: "#b5ac85" }),
+    theme("low-key", "Low Key", false, { plain: "#000000", keyword: "#262c6a", string: "#702c51", comment: "#4c8273",
+        number: "#262c6a", type: "#7059a4", attribute: "#763f57", preprocessor: "#763f57", declaration: "#4a5c9b",
+        background: "#ffffff", currentLine: "#f0f2f7", selection: "#dee2ef", cursor: "#000000", lineNumber: "#a6a8b5" }),
+    theme("civic", "Civic", true, { plain: "#e1e2e7", keyword: "#e12da0", string: "#d3232e", comment: "#45bb3e",
+        number: "#149c92", type: "#25908d", attribute: "#d28f5a", preprocessor: "#d28f5a", declaration: "#8de9d8",
+        background: "#1e2028", currentLine: "#2b2d36", selection: "#38506b", cursor: "#ffffff", lineNumber: "#6b6e7a" }),
+    theme("classic", "Classic (Light)", false, { plain: "#000000", keyword: "#aa0d91", string: "#c41a16", comment: "#007400",
+        number: "#1c00cf", type: "#5c2699", attribute: "#836c28", preprocessor: "#643820", declaration: "#3f6e74",
+        background: "#ffffff", currentLine: "#edf4ff", selection: "#b4d8fd", cursor: "#000000", lineNumber: "#a6a6a6" }),
+    theme("spartan", "Spartan", false, { plain: "#000000", keyword: "#000000", string: "#000000", comment: "#8e8e93",
+        number: "#000000", type: "#000000", attribute: "#000000", preprocessor: "#000000", declaration: "#000000",
+        background: "#ffffff", currentLine: "#f4f4f4", selection: "#d8d8d8", cursor: "#000000", lineNumber: "#b0b0b0" }),
+    theme("solarized-light", "Solarized (Light)", false, { plain: "#586e75", keyword: "#859900", string: "#2aa198",
+        comment: "#93a1a1", number: "#d33682", type: "#b58900", attribute: "#cb4b16", preprocessor: "#cb4b16",
+        declaration: "#268bd2", background: "#fdf6e3", currentLine: "#eee8d5", selection: "#e3dcc5", cursor: "#586e75", lineNumber: "#93a1a1" }),
+    theme("solarized-dark", "Solarized (Dark)", true, { plain: "#93a1a1", keyword: "#859900", string: "#2aa198",
+        comment: "#586e75", number: "#d33682", type: "#b58900", attribute: "#cb4b16", preprocessor: "#cb4b16",
+        declaration: "#268bd2", background: "#002b36", currentLine: "#073642", selection: "#0f4b5a", cursor: "#93a1a1", lineNumber: "#586e75" }),
+    theme("golden-gate", "Golden Gate", true, { plain: "#f2ece4", keyword: "#ff7b54", string: "#ffc56b", comment: "#8a8f9c",
+        number: "#c7a6ff", type: "#7fd1ff", attribute: "#ff9f7a", preprocessor: "#ffb08a", declaration: "#6fe3c1",
+        background: "#1b1d26", currentLine: "#252834", selection: "#5a3a33", cursor: "#ff7b54", lineNumber: "#5e6272" }),
+];
+function themeById(id, custom) {
+    const all = THEMES.concat(custom || []);
+    for (const t of all) if (t.id === id) return t;
+    return null;
+}
+// The theme to draw with: the chosen one for this appearance, else the default.
+function resolveTheme(id, dark, custom) {
+    const t = themeById(id, custom);
+    if (t) return t;
+    return dark ? THEMES[1] : THEMES[0];
+}
+// A copy to customize, with a fresh id.
+function duplicateTheme(t, existing) {
+    const names = (existing || []).map((e) => e.name);
+    let name = t.name.replace(/ copy( \d+)?$/, "") + " copy", n = 2;
+    while (names.includes(name)) name = t.name.replace(/ copy( \d+)?$/, "") + " copy " + n++;
+    return Object.assign({}, t, { id: "custom-" + Date.now().toString(36) + Math.floor(Math.random() * 1e4), name: name, builtIn: false });
+}
+
 // The language family for a file: swift, c, rust, js (JavaScript and QML),
 // python, css, hash (shell, TOML, YAML, Meson: # comments), json or plain.
 function languageFor(path) {
@@ -63,7 +134,7 @@ function keywordsFor(lang) {
 function commentMarker(lang) { return lang === "hash" || lang === "python" ? "#" : "//"; }
 
 // Split one line into [kind, text] runs; returns { runs, state }.
-function tokenize(line, state, lang) {
+function tokenizeRaw(line, state, lang) {
     const runs = [];
     const push = (kind, text) => { if (text) runs.push([kind, text]); };
     if (lang === "plain")
@@ -168,6 +239,17 @@ function tokenize(line, state, lang) {
 }
 
 // The state at the start of every line, for a whole document.
+// Placeholder tokens (<#name#>) read as plain names, whatever is inside.
+function tokenize(line, state, lang) {
+    if (line.indexOf("<#") < 0) return tokenizeRaw(line, state, lang);
+    const masked = line.replace(/<#[^#\n]*#>/g, (m) => "_".repeat(m.length));
+    if (masked === line) return tokenizeRaw(line, state, lang);
+    const result = tokenizeRaw(masked, state, lang);
+    let at = 0;
+    const runs = result.runs.map(([kind, text]) => { const r = [kind, line.slice(at, at + text.length)]; at += text.length; return r; });
+    return { runs: runs, state: result.state };
+}
+
 function lineStates(lines, lang) {
     const states = new Array(lines.length);
     let state = NORMAL;
@@ -199,8 +281,9 @@ function escape(text) {
 }
 
 // StyledText for one line.
-function html(line, state, lang, dark, tabWidth) {
-    const palette = dark ? PALETTES.dark : PALETTES.light;
+// `colors` is a theme (or palette) object, or true/false for the default dark or light.
+function html(line, state, lang, colors, tabWidth) {
+    const palette = typeof colors === "object" && colors ? colors : colors ? PALETTES.dark : PALETTES.light;
     const { runs } = tokenize(line, state, lang);
     let col = 0, out = "";
     for (const [kind, raw] of runs) {
@@ -215,6 +298,9 @@ function html(line, state, lang, dark, tabWidth) {
             ? `<b><font color="${palette.keyword}">${body}</font></b>`
             : `<font color="${palette[kind] || palette.plain}">${body}</font>`;
     }
+    // Placeholder tokens show just their name (the editor draws the pill).
+    if (line.indexOf("<#") >= 0 && /<#[^#\n]*#>/.test(line))
+        out = out.replace(/&lt;#/g, '<font color="#00000000">&lt;#</font>').replace(/#&gt;/g, '<font color="#00000000">#&gt;</font>');
     return out;
 }
 

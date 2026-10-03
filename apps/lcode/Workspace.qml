@@ -10,6 +10,7 @@ import "../lib/theme"
 import "languages.js" as Languages
 import "design"
 import "devices.js" as Devices
+import "commands.js" as Commands
 
 AppWindow {
     id: win
@@ -34,11 +35,13 @@ AppWindow {
     trailingSidebarWidth: inspectorOpen ? 260 : 0
     background: Theme.contentBg
     closeAction: () => win.requestClose()
+    appearance: app.appearance
 
     // ------------------------------------------------------------ lifecycle
     Component.onCompleted: {
         app.beforeTask = (then) => editorArea.saveAll((ok) => { if (ok) then() })
-        const st = app.project.state || {}
+        // Settings ▸ General: reopen the files you had open, or start fresh.
+        const st = app.settings.reopenFiles === false ? {} : (app.project.state || {})
         for (const p of (st.open_files || [])) editorArea.open(p, 0, 0)
         // gg-lcode path/to/File.swift (like xed) opens the package at that file.
         const launched = Quickshell.env("LCODE_FILE") || ""
@@ -88,6 +91,12 @@ AppWindow {
         }
         function onAlertRequested(title, message) { confirm.ask(title, message, [{ text: "OK", id: "ok", prominent: true }], null) }
         function onOrganizerRequested() { organizer.open() }
+        function onBehaviorRequested(event, b) {
+            if (b.debug === "show") win.debugOpen = true
+            else if (b.debug === "hide") win.debugOpen = false
+            const page = { project: 0, issues: 2, reports: 3 }[b.navigator]
+            if (page !== undefined) { win.navigatorOpen = true; navigator.page = page }
+        }
         function onSchemeChanged() { win.app.saveState(editorArea.openFiles(), editorArea.currentIsFile ? editorArea.currentPath : "") }
     }
 
@@ -149,14 +158,14 @@ AppWindow {
             }
             ToolbarButton {
                 id: destinationButton
-                symbol: win.app.destination === "host" ? "window" : (Devices.byId(win.app.destination)?.tablet ? "tablet" : "smartphone")
+                symbol: win.app.destination === "host" ? "window" : (win.app.deviceById(win.app.destination)?.tablet ? "tablet" : "smartphone")
                 symbolSize: 15
                 text: win.app.destinationName
                 onClicked: menu.popup(destinationButton, 0, destinationButton.height + 8,
                     [{ header: "My Computer" },
                      { text: "My Linux PC", symbol: "window", checked: win.app.destination === "host", action: () => win.app.destination = "host" },
                      { header: "Simulators" }].concat(
-                        Devices.DEVICES.map((d) => ({ text: d.name, symbol: d.tablet ? "tablet" : "smartphone", checked: win.app.destination === d.id,
+                        win.app.devices.map((d) => ({ text: d.name, symbol: d.tablet ? "tablet" : "smartphone", checked: win.app.destination === d.id,
                                                       action: () => win.app.destination = d.id }))))
             }
         },
@@ -179,9 +188,9 @@ AppWindow {
             id: addButton
             round: true
             symbol: "plus"
-            Accessible.name: editorArea.currentDesigner ? "Library (⇧⌘L)" : "New File (⌘N)"
-            onClicked: editorArea.currentDesigner ? editorArea.currentDesigner.openLibrary(addButton, addButton.width - 380, addButton.height + 8)
-                                                  : win.promptNewItem(win.newItemFolder(), false)
+            Accessible.name: editorArea.currentDesigner || editorArea.currentIsCode ? "Library (⇧⌘L)" : "New File (⌘N)"
+            onClicked: editorArea.currentDesigner || editorArea.currentIsCode ? win.perform("library")
+                                                                                 : win.promptNewItem(win.newItemFolder(), false)
         },
         ToolbarButton {
             id: moreButton
@@ -202,32 +211,33 @@ AppWindow {
     function productMenu() {
         return [
             { header: "Product" },
-            { text: "Run", shortcut: "⌘R", symbol: "play", action: () => app.run() },
-            { text: "Test", shortcut: "⌘U", action: () => app.test() },
-            { text: "Build", shortcut: "⌘B", symbol: "hammer", action: () => app.build() },
-            { text: "Clean Build Folder", shortcut: "⇧⌘K", action: () => app.clean() },
-            { text: "Archive", symbol: "shippingbox", enabled: !!app.project && app.project.kind !== "library", action: () => app.archive() },
+            { text: "Run", shortcut: app.shortcutFor("run"), symbol: "play", action: () => app.run() },
+            { text: "Test", shortcut: app.shortcutFor("test"), action: () => app.test() },
+            { text: "Build", shortcut: app.shortcutFor("build"), symbol: "hammer", action: () => app.build() },
+            { text: "Clean Build Folder", shortcut: app.shortcutFor("clean"), action: () => app.clean() },
+            { text: "Archive", shortcut: app.shortcutFor("archive"), symbol: "shippingbox", enabled: !!app.project && app.project.kind !== "library", action: () => app.archive() },
             { text: "Organizer…", action: () => organizer.open() },
-            { text: "Edit Scheme…", shortcut: "⌘<", action: () => editorArea.openProjectEditor(3) },
+            { text: "Edit Scheme…", shortcut: app.shortcutFor("editScheme"), action: () => editorArea.openProjectEditor(3) },
             { text: "Project Settings…", action: () => editorArea.openProjectEditor(0) },
-            { text: "Stop", shortcut: "⌘.", enabled: app.busy, action: () => app.stop() },
+            { text: "Stop", shortcut: app.shortcutFor("stop"), enabled: app.busy, action: () => app.stop() },
             { separator: true },
             { header: "File" },
-            { text: "New File…", shortcut: "⌘N", action: () => win.promptNewItem(win.newItemFolder(), false) },
-            { text: "New Project…", shortcut: "⇧⌘N", action: () => newProject.open() },
-            { text: "Open…", shortcut: "⌘O", action: () => openPanel.open() },
-            { text: "Open Quickly…", shortcut: "⇧⌘O", action: () => openQuickly.open() },
-            { text: "Save All", shortcut: "⌥⌘S", action: () => editorArea.saveAll(null) },
+            { text: "New File…", shortcut: app.shortcutFor("newFile"), action: () => win.promptNewItem(win.newItemFolder(), false) },
+            { text: "New Project…", shortcut: app.shortcutFor("newProject"), action: () => newProject.open() },
+            { text: "Open…", shortcut: app.shortcutFor("open"), action: () => openPanel.open() },
+            { text: "Open Quickly…", shortcut: app.shortcutFor("openQuickly"), action: () => openQuickly.open() },
+            { text: "Save All", shortcut: app.shortcutFor("saveAll"), action: () => editorArea.saveAll(null) },
             { separator: true },
             { header: "View" },
-            { text: "Navigator", shortcut: "⌘0", checked: navigatorOpen, action: () => navigatorOpen = !navigatorOpen },
-            { text: "Debug Area", shortcut: "⇧⌘Y", checked: showDebug, action: () => toggleDebug() },
-            { text: "Inspectors", shortcut: "⌥⌘0", checked: inspectorOpen, action: () => inspectorOpen = !inspectorOpen },
+            { text: "Navigator", shortcut: app.shortcutFor("toggleNavigator"), checked: navigatorOpen, action: () => navigatorOpen = !navigatorOpen },
+            { text: "Debug Area", shortcut: app.shortcutFor("toggleDebug"), checked: showDebug, action: () => toggleDebug() },
+            { text: "Inspectors", shortcut: app.shortcutFor("toggleInspector"), checked: inspectorOpen, action: () => inspectorOpen = !inspectorOpen },
             { text: "Minimap", checked: app.settings.showMinimap !== false, action: () => app.saveSettings({ showMinimap: app.settings.showMinimap === false }) },
             { separator: true },
             { text: "Simulator", symbol: "smartphone", action: () => { app.simulatorOpen = true } },
-            { text: "Settings…", shortcut: "⌘,", symbol: "gear", action: () => settingsSheet.open() },
+            { text: "Settings…", shortcut: app.shortcutFor("settings"), symbol: "gear", action: () => app.openSettings() },
             { text: "Keyboard Shortcuts", action: () => shortcutsSheet.open() },
+            { text: "Customize Key Bindings…", action: () => app.openSettings(6) },
         ]
     }
 
@@ -488,15 +498,19 @@ AppWindow {
         onChosen: (path) => win.app.openProject(path)
     }
 
-    SettingsSheet {
-        id: settingsSheet
+    ShortcutsSheet {
+        id: shortcutsSheet
         parent: win.overlay
         app: win.app
     }
 
-    ShortcutsSheet {
-        id: shortcutsSheet
+    CodeLibrary {
+        id: codeLibrary
+        objectName: "codeLibrary"
         parent: win.overlay
+        app: win.app
+        backend: win.backend
+        editorArea: editorArea
     }
 
     OrganizerSheet {
@@ -508,36 +522,60 @@ AppWindow {
     }
 
     // ------------------------------------------------------------ shortcuts
-    // Apple's ⌘ shortcuts: Golden Gate's keyd layer turns ⌘ into Ctrl in apps.
-    Shortcut { sequence: "Ctrl+R"; onActivated: win.app.run() }
-    Shortcut { sequence: "Ctrl+B"; onActivated: win.app.build() }
-    Shortcut { sequence: "Ctrl+U"; onActivated: win.app.test() }
-    Shortcut { sequence: "Ctrl+Shift+K"; onActivated: win.app.clean() }
-    Shortcut { sequence: "Ctrl+."; onActivated: win.app.stop() }
-    Shortcut { sequence: "Ctrl+S"; onActivated: if (editorArea.current >= 0) editorArea.save(editorArea.current, null) }
-    Shortcut { sequence: "Ctrl+Alt+S"; onActivated: editorArea.saveAll(null) }
-    Shortcut { sequence: "Ctrl+N"; onActivated: win.promptNewItem(win.newItemFolder(), false) }
-    Shortcut { sequence: "Ctrl+Shift+N"; onActivated: newProject.open() }
-    Shortcut { sequence: "Ctrl+O"; onActivated: openPanel.open() }
-    Shortcut { sequence: "Ctrl+Shift+O"; onActivated: openQuickly.open() }
-    Shortcut { sequence: "Ctrl+0"; onActivated: win.navigatorOpen = !win.navigatorOpen }
-    Shortcut { sequence: "Ctrl+Shift+Y"; onActivated: win.toggleDebug() }
-    Shortcut { sequence: "Ctrl+Alt+0"; onActivated: win.inspectorOpen = !win.inspectorOpen }
-    Shortcut { sequence: "Ctrl+1"; onActivated: { win.navigatorOpen = true; navigator.page = 0 } }
-    Shortcut { sequence: "Ctrl+4"; onActivated: { win.navigatorOpen = true; navigator.page = 1 } }
-    Shortcut { sequence: "Ctrl+5"; onActivated: { win.navigatorOpen = true; navigator.page = 2 } }
-    Shortcut { sequence: "Ctrl+9"; onActivated: { win.navigatorOpen = true; navigator.page = 3 } }
-    Shortcut { sequence: "Ctrl+Shift+F"; onActivated: { win.navigatorOpen = true; navigator.focusFind(editorArea.currentEditor ? editorArea.currentEditor.editor.selectedText : "") } }
-    Shortcut { sequence: "Ctrl+F"; onActivated: editorArea.showFind(false) }
-    Shortcut { sequence: "Ctrl+Alt+F"; onActivated: editorArea.showFind(true) }
-    Shortcut { sequence: "Ctrl+G"; onActivated: editorArea.findNext(true) }
-    Shortcut { sequence: "Ctrl+Shift+G"; onActivated: editorArea.findNext(false) }
-    Shortcut { sequence: "Ctrl+/"; onActivated: if (editorArea.currentEditor) editorArea.currentEditor.toggleComment() }
-    Shortcut { sequence: "Ctrl+L"; onActivated: if (editorArea.currentEditor) goToLine.ask() }
-    Shortcut { sequence: "Ctrl+K"; onActivated: win.app.consoleText = "" }
-    Shortcut { sequence: "Ctrl+,"; onActivated: settingsSheet.open() }
-    Shortcut { sequence: "Ctrl+Shift+2"; onActivated: win.app.simulatorOpen = true }
-    Shortcut { sequences: ["Ctrl+<", "Ctrl+Shift+,"]; onActivated: editorArea.openProjectEditor(3) }
+    // Apple's ⌘ shortcuts (Golden Gate's keyd layer turns ⌘ into Ctrl in
+    // apps), rebindable in Settings ▸ Key Bindings.
+    function perform(id) {
+        const ed = editorArea.currentEditor
+        switch (id) {
+        case "run": app.run(); break
+        case "build": app.build(); break
+        case "test": app.test(); break
+        case "clean": app.clean(); break
+        case "stop": app.stop(); break
+        case "archive": if (app.project.kind !== "library") app.archive(); break
+        case "editScheme": editorArea.openProjectEditor(3); break
+        case "save": if (editorArea.current >= 0) editorArea.save(editorArea.current, null); break
+        case "saveAll": editorArea.saveAll(null); break
+        case "newFile": promptNewItem(newItemFolder(), false); break
+        case "newProject": newProject.open(); break
+        case "open": openPanel.open(); break
+        case "openQuickly": openQuickly.open(); break
+        case "find": editorArea.showFind(false); break
+        case "findReplace": editorArea.showFind(true); break
+        case "findNext": editorArea.findNext(true); break
+        case "findPrevious": editorArea.findNext(false); break
+        case "findInProject": navigatorOpen = true; navigator.focusFind(ed ? ed.editor.selectedText : ""); break
+        case "toggleComment": if (ed) ed.toggleComment(); break
+        case "complete": if (ed && editorArea.currentIsCode) editorArea.complete(); break
+        case "goToLine": if (ed) goToLine.ask(); break
+        case "fontBigger": app.saveSettings({ fontSize: Math.min(36, (app.settings.fontSize || 13) + 1) }); break
+        case "fontSmaller": app.saveSettings({ fontSize: Math.max(8, (app.settings.fontSize || 13) - 1) }); break
+        case "fontReset": app.saveSettings({ fontSize: 13 }); break
+        case "library":
+            if (editorArea.currentDesigner) editorArea.currentDesigner.openLibrary(addButton, addButton.width - 380, addButton.height + 8)
+            else if (editorArea.currentIsCode) codeLibrary.openAt(addButton, addButton.width - 360, addButton.height + 8)
+            break
+        case "toggleNavigator": navigatorOpen = !navigatorOpen; break
+        case "toggleDebug": toggleDebug(); break
+        case "toggleInspector": inspectorOpen = !inspectorOpen; break
+        case "projectNavigator": navigatorOpen = true; navigator.page = 0; break
+        case "findNavigator": navigatorOpen = true; navigator.page = 1; break
+        case "issueNavigator": navigatorOpen = true; navigator.page = 2; break
+        case "reportNavigator": navigatorOpen = true; navigator.page = 3; break
+        case "clearConsole": app.consoleText = ""; break
+        case "simulator": app.simulatorOpen = true; break
+        case "settings": app.openSettings(); break
+        }
+    }
+    Instantiator {
+        model: Commands.COMMANDS
+        delegate: Shortcut {
+            required property var modelData
+            sequences: win.app.keysFor(modelData.id)
+            enabled: sequences.length > 0
+            onActivated: win.perform(modelData.id)
+        }
+    }
 
     Sheet {
         id: goToLine

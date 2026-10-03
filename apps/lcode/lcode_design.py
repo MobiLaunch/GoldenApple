@@ -526,7 +526,7 @@ class Gen:
             f"        minimumSize: Qt.size({int(a.get('minWidth') or 320)}, {int(a.get('minHeight') or 240)})",
             f"        resizable: {'true' if a.get('resizable', True) else 'false'}",
             f"        sidebarWidth: {int(a.get('sidebarWidth') or 220) if sidebar else 0}",
-            f"        forceDark: {'true' if a.get('appearance') == 'dark' else 'false'}",
+            f"        appearance: {json.dumps(a.get('appearance') if a.get('appearance') in ('light', 'dark') else '')}",
         ]
         if a.get("background"):
             out.append(f"        background: K.color({json.dumps(a['background'])}, root.env, Theme.windowBg)")

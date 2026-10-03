@@ -55,7 +55,7 @@ Sheet {
                 width: 64; height: 64
                 sourceSize: Qt.size(128, 128)
                 cache: false
-                source: sheet.app.project ? "file://" + sheet.app.project.root + "/.lcode/userdata/icon-preview.svg" : ""
+                source: sheet.shown && sheet.app.project ? "file://" + sheet.app.project.root + "/.lcode/userdata/icon-preview.svg" : ""
             }
             Column {
                 anchors.verticalCenter: parent.verticalCenter

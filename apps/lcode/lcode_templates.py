@@ -67,6 +67,14 @@ def application_id(bundle_id: str) -> str:
 
 
 def author_name() -> str:
+    """Your Git name (Settings ▸ Accounts), else your account's full name."""
+    try:
+        p = subprocess.run(["git", "config", "--global", "--get", "user.name"], stdout=subprocess.PIPE,
+                           stderr=subprocess.DEVNULL, text=True, timeout=5)
+        if p.stdout.strip():
+            return p.stdout.strip()
+    except (OSError, subprocess.SubprocessError):
+        pass
     try:
         gecos = pwd.getpwuid(os.getuid()).pw_gecos.split(",")[0].strip()
         if gecos:

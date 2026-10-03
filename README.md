@@ -39,7 +39,7 @@ and built entirely from original artwork.
 | **Compositor**: blur, refraction, squircle corners, springs, key bindings | `compositor/` | Hyprland + HyprGlass; the ISO bundles a Hyprland-version-matched plugin and Golden Gate applies its presets per shell surface |
 | **Shared UI**: AppWindow, Glass, buttons, fields, switches, sliders, progress, sidebars, motion and symbols | `apps/lib/` | One canonical QML component store, consumed by apps, shell adapters, Setup and SDDM; Web has a centralized Qt adapter around its isolated Chromium process |
 | **Golden Gate apps**: Files, Web, Mail, Messages, Maps, Photos, Music, Calendar, Notes, Weather, App Store, Settings, Clock, TextEdit, Calculator and Installer | `apps/` | First-party frontends use the shared component store; mature backends such as Qt WebEngine, Flatpak, IMAP/SMTP, Matrix and Ghostty remain isolated behind Golden Gate UI |
-| **LCode**: an Xcode-style IDE for Swift on Linux: Welcome window, project navigator, tabbed editor with Xcode syntax colours, minimap and inline issues, Run/Stop and scheme ▸ destination pills, activity view, debug console, inspectors, Open Quickly, Find in Project, and a Simulator that runs the built app inside a device frame | `apps/lcode.qml`, `apps/lcode/` | Swift packages (SwiftCrossUI app, command-line tool, library) build, test and run; no debugger or code completion yet |
+| **LCode**: an Xcode-style IDE: Welcome window and template gallery, project navigator, tabbed editor with colour themes, code completion and snippets, minimap and inline issues, a visual App Designer for Golden Gate apps, the project editor (app info, icon, capabilities, scheme), Archive and the Organizer, Run/Stop and scheme ▸ destination pills, activity view, debug console, inspectors, Open Quickly, Find in Project, a Settings window, and a Simulator that runs the built app inside a device frame | `apps/lcode.qml`, `apps/lcode/` | Golden Gate apps, Swift packages, Rust crates, Meson (C) projects and Python programs build, test, run and package; no debugger yet |
 | **System Settings**: a near copy of macOS System Settings (glass sidebar with search suggestions, back and forward, grouped panes) that changes the real system: Wi-Fi, Bluetooth, Network, Battery, General (About, Software Update, Storage, Date & Time, Language & Region), Accessibility, Appearance (mode, accent, Liquid Glass clear or tinted), Desktop & Dock, Displays, Wallpaper, Focus, Sound, Privacy & Security, Users & Groups, Keyboard, Trackpad & Mouse | `apps/settings.qml`, `apps/settings/` | Done; `gg-settings [pane]` and `gnome-control-center [panel]` open it at a pane |
 | **Setup Assistant**: the first-login hello and shared Golden Gate controls over the HyprGlass desktop material, then local account creation, country or region, Wi-Fi, Data & Privacy, Location Services, time zone, crash and diagnostics sharing, and Choose Your Look | `apps/setup.qml`, `apps/setup/` | Done; runs once (`~/.config/golden-gate/setup-done`), `gg.nosetup` on the kernel command line skips it |
 | **Theming**: fonts, ⌘ key layer, login screen, boot splash, terminal | `themes/` | Done: fontconfig, keyd, SDDM theme, Plymouth theme, Ghostty |
@@ -97,15 +97,43 @@ Golden Gate does not ship a second browser frontend: Web owns the browser experi
 while Qt WebEngine/Chromium remains isolated from the Quickshell desktop process.
 
 **Developing apps: LCode.** `gg-lcode` (or LCode in Applications) is Golden Gate's
-Xcode. It follows Xcode 26's layout and keyboard shortcuts, and with the ⌘ layer
-they are the same keys: ⌘R runs, ⌘B builds, ⌘U tests, ⌘. stops, ⇧⌘O is Open
-Quickly, ⌘0/⌥⌘0/⇧⌘Y toggle the navigator, inspectors and debug area, ⌘L goes to a
-line and ⌘/ comments. Like `xed`, `gg-lcode path/to/File.swift` opens the package
-that contains the file, and `gg-lcode .` opens the current folder. Projects are
-plain Swift packages (LCode's own settings live in `.lcode/`), so they also build
-with `swift build` and open in Xcode. LCode needs a Swift toolchain: `yay -S
-swift-bin` from the AUR, or [swiftly](https://www.swift.org/install/linux/); set
-another one in LCode ▸ Settings or with `LCODE_SWIFT`.
+Xcode, made so that anyone can build good-looking Linux apps. It follows Xcode 26's
+layout and keyboard shortcuts, and with the ⌘ layer they are the same keys: ⌘R runs,
+⌘B builds, ⌘U tests, ⌘. stops, ⇧⌘O is Open Quickly, ⇧⌘L the Library, ⌘0/⌥⌘0/⇧⌘Y
+toggle the navigator, inspectors and debug area, ⌘L goes to a line and ⌘/ comments.
+Like `xed`, `gg-lcode path/to/File.swift` opens the project that contains the file,
+and `gg-lcode .` opens the current folder.
+
+New Project offers apps, command-line tools and libraries in five toolchains:
+*Golden Gate apps* (designed in the App Designer, no code needed), *Swift* packages
+(SwiftCrossUI), *Python* (GTK 4 + libadwaita), *Rust* (gtk4-rs + libadwaita) and
+*C* (Meson, GTK 4). Projects stay ordinary projects for their language (LCode keeps
+its own settings in `.lcode/`), so they also build with `swift build`, `cargo`,
+`meson` or `python`. Set toolchain locations in Settings ▸ Locations, or with
+`LCODE_SWIFT` and friends.
+
+- **App Designer** (`Interface.lcdesign`): drag stacks, text, buttons, toggles,
+  sliders, lists, images, symbols and shapes from the Library onto a live canvas in
+  Light, Dark or both; style them in the inspector (colours, gradients, materials,
+  corners, shadows, fonts, layout); give the app variables and named colours, and
+  wire events to actions (set, toggle, add to a list, navigate, alert, open a link,
+  run a command) without writing code. Live mode runs the design on the canvas.
+  Building turns it into a real Golden Gate app (Quickshell/QML) that saves its state.
+- **Code editor**: themes, completion (keywords, your code's names, snippets whose
+  `<#placeholders#>` Tab steps through), closing brackets and quotes, and tidying
+  whitespace on save. The Library has snippets (make your own from a selection),
+  Golden Gate's symbols and the system colours.
+- **Project editor**: display name, version, bundle identifier, the app icon
+  (colours, gradient, symbol or text, previewed light and dark), capabilities, and
+  the scheme's arguments, environment and build configuration.
+- **Archive and the Organizer**: Product ▸ Archive makes a release build; the
+  Organizer installs it on this computer (with its icon in Applications), or exports
+  a PKGBUILD, a Flatpak manifest or a portable archive.
+- **Settings** (⌘,): appearance, git identity, Behaviors (show the console or issues,
+  notify or play a sound when builds and runs start and end), editor Themes (14
+  built in, or duplicate one and change every colour), Text Editing (font, line
+  numbers, minimap, indentation, completion), Key Bindings (rebind any command),
+  your own Simulator devices, and toolchain Locations.
 
 Run an app on *My Linux PC*, or on an LPhone or LPad. The Simulator is a private
 X server (Xvfb) the size of the device's screen: LCode starts the built program
@@ -161,8 +189,9 @@ shell/tests/screenshot.sh out/   # runs the real Quickshell shell in headless Sw
 The test suite covers the browser reference, QML parsing, native control behavior,
 installer safety gates, Settings wiring, shared-component architecture, default-app
 identity/MIME handling, browser isolation, native application backends, and
-LCode's projects, builds, Simulator and code editor (`tests/lcode.py`, with a
-stand-in `swift`, so no toolchain is needed). The
+LCode's projects, toolchains, App Designer, packaging, settings, Simulator and code
+editor (`tests/lcode.py`, with a stand-in `swift`, so no toolchain is needed; themes,
+key bindings and completion in `tests/logic.mjs`). The
 live desktop is also validated directly on the ISO because compositor, layer-shell
 and hardware behavior cannot be proven by the browser prototype alone.
 

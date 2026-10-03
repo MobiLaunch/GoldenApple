@@ -43,7 +43,7 @@ Item {
             anchors.fill: parent
             radius: 14
             color: Theme.windowBg
-            opacity: 0.92
+            opacity: 0.97
         }
         Glass { anchors.fill: parent; radius: 14; role: "menu" }
         MouseArea { anchors.fill: parent }

@@ -3,20 +3,23 @@
 import QtQuick
 import "../lib"
 import "../lib/theme"
+import "commands.js" as Commands
 
 Sheet {
     id: sheet
     panelWidth: 560
     panelHeight: 520
 
-    readonly property var groups: [
-        ["Product", [["Run", "⌘R"], ["Build", "⌘B"], ["Test", "⌘U"], ["Stop", "⌘."], ["Clean Build Folder", "⇧⌘K"]]],
-        ["File", [["New File", "⌘N"], ["New Project", "⇧⌘N"], ["Open", "⌘O"], ["Open Quickly", "⇧⌘O"], ["Save", "⌘S"], ["Save All", "⌥⌘S"]]],
-        ["Edit", [["Comment Selection", "⌘/"], ["Shift Right / Left", "⌘] / ⌘["], ["Go to Line", "⌘L"]]],
-        ["Find", [["Find", "⌘F"], ["Find and Replace", "⌥⌘F"], ["Find Next / Previous", "⌘G / ⇧⌘G"], ["Find in Project", "⇧⌘F"]]],
-        ["View", [["Navigator", "⌘0"], ["Project / Find / Issue / Report Navigator", "⌘1 / ⌘4 / ⌘5 / ⌘9"], ["Debug Area", "⇧⌘Y"], ["Inspectors", "⌥⌘0"], ["Clear Console", "⌘K"]]],
-        ["Simulator", [["Home", "⇧⌘H"], ["Rotate Left / Right", "⌘← / ⌘→"], ["Save Screen", "⌘S"]]],
-    ]
+    property var app
+    // Your key bindings (Settings ▸ Key Bindings), menu by menu, and the fixed
+    // editing and Simulator keys.
+    readonly property var groups: {
+        const out = Commands.MENUS.map((m) => [m, Commands.COMMANDS.filter((c) => c.menu === m && app && app.keysFor(c.id).length)
+            .map((c) => [c.title.replace("…", ""), app.keysFor(c.id).map(Commands.display).join("  ")])]).filter((g) => g[1].length)
+        out.push(["Editing", [["Shift Right / Left", "⌘] / ⌘["], ["Indent / Outdent", "⇥ / ⇧⇥"]]])
+        out.push(["Simulator", [["Home", "⇧⌘H"], ["Rotate Left / Right", "⌘← / ⌘→"], ["Save Screen", "⌘S"]]])
+        return out
+    }
 
     Text {
         id: title
@@ -54,5 +57,10 @@ Sheet {
             }
         }
     }
-    Button { anchors { right: parent.right; bottom: parent.bottom } text: "Done"; prominent: true; onClicked: sheet.close() }
+    Row {
+        anchors { right: parent.right; bottom: parent.bottom }
+        spacing: 8
+        Button { text: "Customize…"; onClicked: { sheet.close(); sheet.app.openSettings(6) } }
+        Button { text: "Done"; prominent: true; onClicked: sheet.close() }
+    }
 }
