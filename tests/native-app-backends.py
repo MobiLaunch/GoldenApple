@@ -145,21 +145,25 @@ esac
     assert update_lines[-1]["event"] == "result"
     assert update_lines[-1]["count"] == 0
 
-    # Mail/Messages with an empty profile must be safely unconfigured and must
-    # not attempt network access or require a keyring unlock.
+    # Mail with an empty profile must be safely unconfigured and must not
+    # attempt network access or require a keyring unlock.
     code, out = run("apps/mail/helper.py", "status", env=env)
-    assert code == 0 and json.loads(out)["configured"] is False
-    code, out = run("apps/messages/helper.py", "status", env=env)
     assert code == 0 and json.loads(out)["configured"] is False
 
 # Secrets must live in the keyring, never in JSON config.
 mail = (ROOT / "apps/mail/helper.py").read_text(encoding="utf-8")
-messages = (ROOT / "apps/messages/helper.py").read_text(encoding="utf-8")
-for name, source in [("Mail", mail), ("Messages", messages)]:
-    assert "secret-tool" in source, f"{name} no longer uses the system keyring"
+assert "secret-tool" in mail, "Mail no longer uses the system keyring"
 assert '"password": password' not in mail
-assert '"access_token": token' not in messages
 assert "secret_store(email_addr, password)" in mail
-assert "secret_store(user_id, token)" in messages
+
+# Messages talks to the iPhone through BlueFerry's bridge: message text and
+# recipients go over the bridge's stdin, never into a command line, and
+# requests made before the bridge starts are queued, not dropped.
+bridge = (ROOT / "apps/messages/Bridge.qml").read_text(encoding="utf-8")
+messages_qml = (ROOT / "apps/messages.qml").read_text(encoding="utf-8")
+assert "/usr/bin/blueferry-quickshell-bridge" in bridge
+assert "stdinEnabled: true" in bridge and "onStarted" in bridge and "queue.push" in bridge
+assert "Process {" not in messages_qml, "Messages runs its own processes instead of the bridge"
+assert 'bridge.call("send"' in messages_qml and 'bridge.call("send_to_thread"' in messages_qml
 
 print("Native app backends: filesystem, calendar, editor, store, updater and account-state smoke tests passed")

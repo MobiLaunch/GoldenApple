@@ -26,13 +26,20 @@ Scope {
     property real now: Date.now()
 
     // Unread notifications for an app, for the Dock's badge.
+    // Services that notify on an app's behalf: BlueFerry delivers Messages'
+    // iPhone messages, so its notifications belong to Messages.
+    readonly property var owners: ({ "blueferry": "org.goldengate.Messages", "io.weirdware.blueferry": "org.goldengate.Messages" })
+    function ownerOf(n) {
+        return owners[(n.desktopEntry || "").toLowerCase()] || owners[(n.appName || "").toLowerCase()] || ""
+    }
     function countFor(appId, startupClass) {
         const ids = [appId, appId.split(".").pop(), startupClass ?? ""].map((s) => s.toLowerCase()).filter((s) => s)
         return list.filter((n) => ids.includes((n.desktopEntry || "").toLowerCase())
-            || ids.includes((n.appName || "").toLowerCase())).length
+            || ids.includes((n.appName || "").toLowerCase()) || ids.includes(ownerOf(n).toLowerCase())).length
     }
     function iconFor(n) {
         if (n.image) return n.image
+        if (ownerOf(n)) return Quickshell.iconPath(ownerOf(n), true)
         const entry = n.appName ? DesktopEntries.heuristicLookup(n.appName) : null
         // iconPath(…, true) returns "" for a missing icon instead of Qt's checkerboard.
         for (const name of [n.appIcon, n.desktopEntry, entry?.icon ?? ""]) {
@@ -42,7 +49,7 @@ Scope {
         return ""
     }
     function appLabel(n) {
-        const entry = n.desktopEntry ? DesktopEntries.byId(n.desktopEntry) : null
+        const entry = ownerOf(n) ? DesktopEntries.byId(ownerOf(n)) : n.desktopEntry ? DesktopEntries.byId(n.desktopEntry) : null
         return entry?.name || n.appName || "Notification"
     }
     function timeLabel(n) {
@@ -59,7 +66,10 @@ Scope {
     function open(n) {
         const action = n.actions.find((a) => a.identifier === "default")
         if (action) action.invoke()
-        else {
+        // BlueFerry's default action asks a running Messages to show the
+        // message; make sure Messages is running to receive it.
+        if (ownerOf(n)) DesktopEntries.byId(ownerOf(n))?.execute()
+        else if (!action) {
             const entry = n.desktopEntry ? DesktopEntries.byId(n.desktopEntry)
                 : n.appName ? DesktopEntries.heuristicLookup(n.appName) : null
             entry?.execute()

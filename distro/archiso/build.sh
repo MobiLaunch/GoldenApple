@@ -78,6 +78,31 @@ file_permissions+=(
 )
 EOF
 
+# BlueFerry (Messages' iPhone connection: iMessage and SMS over Bluetooth) is
+# built from its tagged source with its own Arch packaging; only the backend
+# (daemon, CLI and the Quickshell bridge Messages talks to) goes into the image.
+# Its package checks need GTK, KDE and lint tooling, so they're skipped here.
+BLUEFERRY_TAG=v0.8.1
+build_blueferry() {
+  local src="$1" f built=0
+  say "building BlueFerry $BLUEFERRY_TAG"
+  (
+    cd "$src"
+    sudo -u gg-builder env HOME=/home/gg-builder git clone -q --depth 1 --branch "$BLUEFERRY_TAG" \
+      https://github.com/erikwb/blueferry.git blueferry
+    cd blueferry
+    sudo -u gg-builder env HOME=/home/gg-builder ./build.sh --prepare-only
+    cd packaging/arch
+    sudo -u gg-builder env HOME=/home/gg-builder makepkg --syncdeps --noconfirm --needed --nocheck
+  )
+  for f in "$src"/blueferry/packaging/arch/blueferry-backend-*.pkg.tar.zst; do
+    [[ -e $f ]] || continue
+    cp "$f" "$REPO/distro/localrepo/"
+    built=1
+  done
+  ((built)) || { echo "makepkg produced no blueferry-backend package"; exit 1; }
+}
+
 # Builds AUR packages into distro/localrepo/ as an unprivileged user (makepkg
 # refuses to run as root). AUR-only dependencies of these packages are not resolved.
 build_aur() {
@@ -90,6 +115,7 @@ build_aur() {
   chown gg-builder: "$src"
   mkdir -p "$REPO/distro/localrepo"
   for pkg in "$@"; do
+    if [[ $pkg == blueferry-backend ]]; then build_blueferry "$src"; continue; fi
     # The repository may itself live under /root. Always enter the builder-owned
     # temp tree before dropping privileges so git/makepkg never inherit an
     # inaccessible current working directory.
