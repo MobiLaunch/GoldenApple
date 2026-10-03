@@ -192,6 +192,25 @@ ShellRoot {
             property bool sending: false
             property string error: ""
             property var pendingGroupSend: null
+            property bool unlocking: false
+            property bool unlockFailed: false
+            property bool autoUnlockTried: false
+
+            // Encrypted history lives under a key in the desktop keyring;
+            // this asks the keyring to open (it may show its password prompt).
+            function unlockStorage() {
+                unlocking = true
+                bridge.call("unlock_storage", {}, (ok, result) => {
+                    unlocking = false
+                    const state = ok && result ? result.storage_state : ""
+                    if (!ok || (state && state !== "ready")) {
+                        unlockFailed = true
+                        app.error = ok ? "The keyring didn't unlock" + (result.storage_detail ? " (" + result.storage_detail + ")" : "") + ". You can keep messages without it."
+                                       : "Couldn't unlock: " + String(result)
+                    } else unlockFailed = false
+                    app.refreshStatus(); app.reload()
+                })
+            }
 
             readonly property var pinned: threads.filter((t) => t.starred)
             readonly property var listed: {
@@ -215,7 +234,19 @@ ShellRoot {
                     if (app.current && app.current.unread && win.active) app.markRead(app.current)
                 })
             }
-            function refreshStatus() { bridge.call("status", {}, (ok, s) => { if (ok) app.status = s || {} }) }
+            function refreshStatus() {
+                bridge.call("status", {}, (ok, s) => {
+                    if (!ok) return
+                    app.status = s || {}
+                    // Opening Messages is the moment to open the keyring, as
+                    // BlueFerry's own app does: the first time, this creates the
+                    // history key; with the login keyring already open it's silent.
+                    if (app.status.storage_state === "locked" && !app.autoUnlockTried) {
+                        app.autoUnlockTried = true
+                        app.unlockStorage()
+                    }
+                })
+            }
             function open(thread) {
                 composing = false
                 currentKey = thread.key
@@ -367,8 +398,21 @@ ShellRoot {
                     Button {
                         visible: app.phoneState === "locked"
                         height: 20
-                        text: "Unlock"
-                        onClicked: bridge.call("unlock_storage", {}, () => app.refreshStatus())
+                        text: app.unlocking ? "Unlocking…" : "Unlock"
+                        enabled: !app.unlocking
+                        onClicked: app.unlockStorage()
+                    }
+                    // No keyring to open (or it refused): keep messages in a
+                    // private file in your home folder instead.
+                    Button {
+                        visible: app.phoneState === "locked" && app.unlockFailed
+                        height: 20
+                        text: "Keep Without Keyring"
+                        onClicked: bridge.call("set_storage_policy", { policy: "plaintext" }, (ok, result) => {
+                            if (!ok) app.error = String(result)
+                            app.unlockFailed = false
+                            app.refreshStatus(); app.reload()
+                        })
                     }
                 }
             }

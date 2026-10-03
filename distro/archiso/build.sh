@@ -238,6 +238,17 @@ cat > "$AIR/home/golden/.bash_profile" <<'EOF'
 # shell if the compositor can't start, instead of looping through autologin.
 if [[ -z $WAYLAND_DISPLAY && $(tty) == /dev/tty1 ]]; then gg-session; fi
 EOF
+# The live user logs in without a password, so no login keyring is ever created
+# or unlocked, and apps that keep secrets (Messages' encrypted history, Web,
+# Mail) find the keyring locked. Give it an open login keyring: gnome-keyring
+# keeps a keyring with no password as plain text, which is all a passwordless
+# account could protect anyway. Installed accounts get theirs from SDDM's PAM.
+mkdir -p "$AIR/home/golden/.local/share/keyrings"
+printf '[keyring]\ndisplay-name=Login\nctime=0\nmtime=0\nlock-on-idle=false\nlock-after=false\n' \
+  > "$AIR/home/golden/.local/share/keyrings/login.keyring"
+printf 'login' > "$AIR/home/golden/.local/share/keyrings/default"
+chmod 700 "$AIR/home/golden/.local/share/keyrings"
+chmod 600 "$AIR/home/golden/.local/share/keyrings/login.keyring" "$AIR/home/golden/.local/share/keyrings/default"
 # New local accounts inherit the desktop start too (useradd copies /etc/skel).
 cp "$AIR/home/golden/.bash_profile" "$AIR/etc/skel/.bash_profile"
 # The live user has no password, so there is nothing for an idle lock to protect.
