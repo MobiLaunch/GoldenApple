@@ -12,6 +12,16 @@ ShellRoot {
     id: root
     // One AppLaunch per screen; Spotlight picks the one on its own screen.
     property var launchers: []
+    // Launchpad (F4, or the Dock's Applications), on the focused screen.
+    property var launchpads: []
+    IpcHandler {
+        target: "launchpad"
+        function toggle(): void {
+            const name = Hyprland.focusedMonitor?.name
+            const l = root.launchpads.find((x) => x.screen?.name === name) ?? root.launchpads[0]
+            l?.toggle()
+        }
+    }
     // One Control Center per screen; ⌥⌘C toggles the one on the focused screen.
     property var controlCenters: []
     function focusedControlCenter() {
@@ -120,7 +130,12 @@ ShellRoot {
             LazyLoader { active: Quickshell.env("GG_WIDGETS") === "1"; source: "DesktopWidgets.qml" }
             // Persistent per-screen Applications surface. Keeping the object alive
             // removes the lazy-loader race that made the Dock button appear dead.
-            Applications { id: applicationsPanel; screen: perScreen.modelData }
+            Applications {
+                id: applicationsPanel
+                screen: perScreen.modelData
+                Component.onCompleted: root.launchpads = root.launchpads.concat([applicationsPanel])
+                Component.onDestruction: root.launchpads = root.launchpads.filter((l) => l !== applicationsPanel)
+            }
             ControlCenter {
                 id: cc
                 screen: perScreen.modelData

@@ -1,9 +1,15 @@
-// Applications: macOS-style all-apps surface backed by the desktop-entry database.
+// Launchpad: every app on pages of large icons over the blurred desktop, as on
+// the Mac. The wallpaper blurs and dims behind a small search field; the
+// icons sit in a 7 × 5 grid (fewer columns on narrow screens) with page dots
+// below. Swipe, scroll, or press ← → to change pages; type to search; Return
+// opens the first result; Escape or a click on empty space closes. It zooms
+// in as it opens and back out as it closes. Golden Gate's own apps come first,
+// in the Dock's order, then everything else alphabetically.
 import Quickshell
 import Quickshell.Wayland
 import Quickshell.Hyprland
 import QtQuick
-import QtQuick.Layouts
+import QtQuick.Effects
 import "ui/theme"
 import "components"
 
@@ -28,12 +34,16 @@ PanelWindow {
     // methods can make the layer surface visible without changing our `open`
     // state, which leaves the launcher fully transparent and non-interactive.
     function present() {
+        pages.currentIndex = 0
+        pages.positionViewAtBeginning()
         open = true
-        console.info("Applications opened; visible desktop entries:", applicationModel.values.length)
+        console.info("Launchpad opened; visible desktop entries:", entries.length)
         Qt.callLater(() => search.input.forceActiveFocus())
     }
     function dismiss() { open = false; search.text = "" }
     function toggle() { open ? dismiss() : present() }
+    function launch(entry) { entry.execute(); dismiss() }
+
     visible: open || fade.running
     anchors { top: true; bottom: true; left: true; right: true }
     exclusionMode: ExclusionMode.Ignore
@@ -44,148 +54,215 @@ PanelWindow {
     Item { id: closedMask; width: 0; height: 0; visible: false }
     mask: Region { item: apps.open ? backdrop : closedMask }
 
-    Rectangle {
+    // ------------------------------------------------------------ the apps
+    readonly property var firstParty: [
+        "org.goldengate.Files", "org.goldengate.Web", "org.goldengate.Mail", "org.goldengate.Messages",
+        "org.goldengate.Maps", "org.goldengate.Photos", "org.goldengate.Music", "org.goldengate.Calendar",
+        "org.goldengate.Notes", "org.goldengate.Weather", "org.goldengate.Clock", "org.goldengate.Calculator",
+        "org.goldengate.TextEdit", "org.goldengate.LCode", "org.goldengate.Software", "org.goldengate.Settings",
+        "org.goldengate.Terminal"
+    ]
+    readonly property var entries: {
+        const q = search.text.trim().toLowerCase()
+        const list = [...DesktopEntries.applications.values].filter((e) => {
+            if (!e || !e.name || e.noDisplay) return false
+            if (!q) return true
+            return [e.name, e.genericName, e.comment, e.keywords].map((s) => String(s ?? "")).join(" ").toLowerCase().includes(q)
+        })
+        const rank = (e) => { const i = firstParty.indexOf(e.id); return i < 0 ? 1000 : i }
+        // One tile per app: the same app can be listed twice (a user copy of a
+        // system entry, a wrapper beside the real thing); the first one wins.
+        const seen = {}
+        return list.sort((a, b) => rank(a) - rank(b) || String(a.name).localeCompare(String(b.name)))
+            .filter((e) => { const k = String(e.name).toLowerCase(); if (seen[k]) return false; seen[k] = true; return true })
+    }
+
+    // Grid metrics, from the screen: Launchpad's 7 × 5 with generous margins.
+    readonly property int columns: Math.max(4, Math.min(7, Math.floor((width - 160) / 150)))
+    readonly property int rows: Math.max(3, Math.min(5, Math.floor((height - 220) / 150)))
+    readonly property int perPage: columns * rows
+    readonly property int pageCount: Math.max(1, Math.ceil(entries.length / perPage))
+    readonly property real gridWidth: Math.min(width - 2 * Math.max(60, width * 0.1), columns * 190)
+    readonly property real gridHeight: height - 120 - 90
+    readonly property real cellW: gridWidth / columns
+    readonly property real cellH: gridHeight / rows
+    readonly property real iconSize: Math.round(Math.min(cellW * 0.6, cellH * 0.62, 112))
+
+    // ------------------------------------------------------------ backdrop
+    // The desktop, blurred and dimmed, as Launchpad shows it.
+    Item {
         id: backdrop
         anchors.fill: parent
-        color: Theme.dark ? "#9c121722" : "#78e8edf6"
         opacity: apps.open ? 1 : 0
-        Behavior on opacity { NumberAnimation { id: fade; duration: Prefs.reduceMotion ? 1 : 180 } }
-        MouseArea { anchors.fill: parent; onClicked: apps.dismiss() }
+        Behavior on opacity { NumberAnimation { id: fade; duration: Theme.reduceMotion ? 1 : 260; easing.type: Easing.OutCubic } }
+
+        Image {
+            id: wall
+            anchors.fill: parent
+            source: "file://" + Prefs.wallpaper
+            sourceSize: Qt.size(Math.max(1, apps.width / 4), Math.max(1, apps.height / 4))
+            fillMode: Image.PreserveAspectCrop
+            asynchronous: true
+            visible: false
+        }
+        MultiEffect {
+            anchors.fill: parent
+            source: wall
+            blurEnabled: true
+            blur: 1.0
+            blurMax: 48
+            saturation: 0.1
+            autoPaddingEnabled: false
+        }
+        Rectangle { anchors.fill: parent; color: Theme.dark ? "#73000000" : "#40000000" }
+        MouseArea {
+            anchors.fill: parent
+            onClicked: apps.dismiss()
+            onWheel: (w) => {
+                const d = Math.abs(w.angleDelta.x) > Math.abs(w.angleDelta.y) ? -w.angleDelta.x : -w.angleDelta.y
+                if (Math.abs(d) >= 60) pages.flip(d > 0 ? 1 : -1)
+            }
+        }
     }
-    Item {
-        anchors { fill: parent; margins: 44 }
-        opacity: apps.open ? 1 : 0
-        scale: apps.open || Prefs.reduceMotion ? 1 : 0.985
-        Behavior on opacity { NumberAnimation { duration: Prefs.reduceMotion ? 1 : 210 } }
-        Behavior on scale { Spring { spring: Theme.popover } }
 
-        ColumnLayout {
-            anchors.fill: parent; spacing: 28
-            Glass {
-                Layout.alignment: Qt.AlignHCenter
-                Layout.preferredWidth: Math.min(520, parent.width - 40)
-                Layout.preferredHeight: 52
-                radius: 26
-                TextField {
-                    id: search
-                    anchors { fill: parent; margins: 7 }
-                    search: true
-                    placeholder: "Search"
-                    color: "transparent"
-                    border.width: input.activeFocus ? 1.5 : 0
-                    border.color: input.activeFocus
-                        ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.46)
-                        : "transparent"
-                    input.font.pixelSize: 17
-                    input.Keys.onEscapePressed: apps.dismiss()
-                }
-            }
-            ScriptModel {
-                id: applicationModel
-                values: {
-                    const q = search.text.trim().toLowerCase()
-                    return [...DesktopEntries.applications.values]
-                        .filter((e) => {
-                            if (!e || !e.name || e.noDisplay)
-                                return false
-                            if (!q)
-                                return true
-                            const haystack = [
-                                String(e.name ?? ""),
-                                String(e.genericName ?? ""),
-                                String(e.comment ?? ""),
-                                String(e.keywords ?? "")
-                            ].join(" ").toLowerCase()
-                            return haystack.includes(q)
-                        })
-                        .sort((a, b) => String(a.name).localeCompare(String(b.name)))
-                }
-            }
+    // --------------------------------------------------------------- search
+    Rectangle {
+        id: searchBox
+        anchors { horizontalCenter: parent.horizontalCenter; top: parent.top; topMargin: 64 }
+        width: 236; height: 30; radius: 9
+        color: Qt.rgba(1, 1, 1, search.input.activeFocus ? 0.24 : 0.18)
+        border { width: 0.5; color: Qt.rgba(1, 1, 1, 0.28) }
+        opacity: backdrop.opacity
+        TextField {
+            id: search
+            anchors { fill: parent; leftMargin: 4; rightMargin: 6 }
+            search: true
+            bare: true
+            placeholder: "Search"
+            foreground: "#ffffff"
+            placeholderColor: Qt.rgba(1, 1, 1, 0.62)
+            input.selectedTextColor: "#ffffff"
+            input.font.pixelSize: 13
+            onTextChanged: { pages.currentIndex = 0; pages.positionViewAtBeginning() }
+            input.Keys.onEscapePressed: search.text ? search.text = "" : apps.dismiss()
+            input.Keys.onReturnPressed: if (apps.entries.length) apps.launch(apps.entries[0])
+            input.Keys.onRightPressed: (e) => { if (!search.text) pages.flip(1); else e.accepted = false }
+            input.Keys.onLeftPressed: (e) => { if (!search.text) pages.flip(-1); else e.accepted = false }
+        }
+    }
 
-            Item {
-                visible: applicationModel.values.length === 0
-                Layout.fillWidth: true
-                Layout.fillHeight: true
+    // ---------------------------------------------------------------- pages
+    ListView {
+        id: pages
+        anchors { top: searchBox.bottom; topMargin: 48; horizontalCenter: parent.horizontalCenter }
+        width: apps.width
+        height: apps.gridHeight
+        orientation: ListView.Horizontal
+        snapMode: ListView.SnapOneItem
+        highlightRangeMode: ListView.StrictlyEnforceRange
+        highlightMoveDuration: Theme.reduceMotion ? 0 : 380
+        boundsBehavior: Flickable.StopAtBounds
+        clip: false
+        model: apps.pageCount
+        function flip(step) { currentIndex = Math.max(0, Math.min(count - 1, currentIndex + step)) }
 
-                Column {
-                    anchors.centerIn: parent
-                    width: Math.min(420, parent.width - 40)
-                    spacing: 10
+        // Opening zooms the icons in from a little larger, as on the Mac.
+        opacity: backdrop.opacity
+        scale: apps.open || Theme.reduceMotion ? 1 : 1.08
+        Behavior on scale { NumberAnimation { duration: 320; easing.type: Easing.OutCubic } }
 
-                    Symbol {
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        name: search.text.trim() ? "search" : "apps"
-                        size: 46
-                        tone: "gray"
-                        opacity: 0.78
-                    }
-                    Text {
-                        width: parent.width
-                        horizontalAlignment: Text.AlignHCenter
-                        text: search.text.trim() ? "No Applications Found" : "No Applications Available"
-                        color: Theme.label
-                        font { family: Theme.fontUi; pixelSize: 19; weight: Font.DemiBold }
-                    }
-                    Text {
-                        width: parent.width
-                        horizontalAlignment: Text.AlignHCenter
-                        wrapMode: Text.WordWrap
-                        text: search.text.trim()
-                            ? "Try another search."
-                            : "Golden Gate could not discover any desktop entries. Run gg-diagnostics and check the Golden Gate shell section."
-                        color: Theme.secondaryLabel
-                        font { family: Theme.fontUi; pixelSize: 13 }
-                    }
-                }
-            }
-
-            GridView {
-                id: grid
-                visible: applicationModel.values.length > 0
-                Layout.fillWidth: true; Layout.fillHeight: true
-                cellWidth: Math.max(116, width / Math.max(1, Math.floor(width / 136)))
-                cellHeight: 124
-                clip: true
-                model: applicationModel
-                delegate: Item {
-                    required property var modelData
-                    width: grid.cellWidth; height: grid.cellHeight
-                    scale: !Prefs.reduceMotion && area.pressed ? 0.965 : !Prefs.reduceMotion && area.containsMouse ? 1.025 : 1
-                    Behavior on scale { enabled: !Prefs.reduceMotion; NumberAnimation { duration: 90; easing.type: Easing.OutCubic } }
-                    Column {
-                        anchors.centerIn: parent; spacing: 7
+        delegate: Item {
+            id: page
+            required property int index
+            width: pages.width
+            height: pages.height
+            // Clicks between the icons close Launchpad, like the backdrop.
+            MouseArea { anchors.fill: parent; onClicked: apps.dismiss() }
+            Grid {
+                anchors.horizontalCenter: parent.horizontalCenter
+                columns: apps.columns
+                Repeater {
+                    model: apps.entries.slice(page.index * apps.perPage, (page.index + 1) * apps.perPage)
+                    delegate: Item {
+                        id: cell
+                        required property var modelData
+                        width: apps.cellW
+                        height: apps.cellH
                         Image {
-                            anchors.horizontalCenter: parent.horizontalCenter
-                            width: 76; height: 76
-                            opacity: area.pressed ? 0.86 : 1
-                            Behavior on opacity { NumberAnimation { duration: Prefs.reduceMotion ? 1 : 70 } }
-                            source: Quickshell.iconPath(modelData.icon, "application-x-executable")
-                            sourceSize: Qt.size(144,144); smooth: true; mipmap: true
+                            id: icon
+                            anchors { horizontalCenter: parent.horizontalCenter; top: parent.top; topMargin: (apps.cellH - apps.iconSize - 26) / 2 }
+                            width: apps.iconSize; height: apps.iconSize
+                            source: Quickshell.iconPath(cell.modelData.icon, "application-x-executable")
+                            sourceSize: Qt.size(apps.iconSize * 2, apps.iconSize * 2)
+                            smooth: true; mipmap: true
+                            scale: area.pressed && !Theme.reduceMotion ? 0.92 : 1
+                            Behavior on scale { NumberAnimation { duration: 90; easing.type: Easing.OutCubic } }
+                            layer.enabled: area.pressed
+                            layer.effect: MultiEffect { brightness: -0.3 }
                         }
                         Text {
-                            width: Math.min(112, grid.cellWidth - 8); horizontalAlignment: Text.AlignHCenter
-                            text: modelData.name; elide: Text.ElideRight; color: Theme.label
+                            anchors { horizontalCenter: parent.horizontalCenter; top: icon.bottom; topMargin: 8 }
+                            width: Math.min(apps.cellW - 10, apps.iconSize + 36)
+                            horizontalAlignment: Text.AlignHCenter
+                            text: cell.modelData.name
+                            elide: Text.ElideRight
+                            color: "#ffffff"
+                            style: Text.Raised; styleColor: "#59000000"
                             font { family: Theme.fontUi; pixelSize: 13; weight: Font.Medium }
                         }
-                    }
-                    MouseArea {
-                        id: area
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        acceptedButtons: Qt.LeftButton | Qt.RightButton
-                        onClicked: mouse => {
-                            if (mouse.button === Qt.RightButton) {
-                                apps.showAppMenu(modelData, parent, mouse.x, mouse.y)
-                                return
+                        MouseArea {
+                            id: area
+                            anchors { fill: icon; margins: -8; bottomMargin: -30 }
+                            acceptedButtons: Qt.LeftButton | Qt.RightButton
+                            onClicked: (mouse) => {
+                                if (mouse.button === Qt.RightButton) apps.showAppMenu(cell.modelData, cell, mouse.x, mouse.y)
+                                else apps.launch(cell.modelData)
                             }
-                            modelData.execute()
-                            apps.dismiss()
                         }
                     }
                 }
             }
         }
     }
+
+    // Nothing to show.
+    Column {
+        visible: apps.entries.length === 0
+        anchors.centerIn: parent
+        spacing: 8
+        opacity: backdrop.opacity
+        Text {
+            anchors.horizontalCenter: parent.horizontalCenter
+            text: search.text.trim() ? "No Results" : "No Applications"
+            color: "#ffffff"
+            font { family: Theme.fontUi; pixelSize: 20; weight: Font.DemiBold }
+        }
+        Text {
+            anchors.horizontalCenter: parent.horizontalCenter
+            text: search.text.trim() ? "Try another search." : "Run gg-diagnostics and check the Golden Gate shell section."
+            color: Qt.rgba(1, 1, 1, 0.7)
+            font { family: Theme.fontUi; pixelSize: 13 }
+        }
+    }
+
+    // ------------------------------------------------------------ page dots
+    Row {
+        visible: apps.pageCount > 1
+        anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: 46 }
+        spacing: 10
+        opacity: backdrop.opacity
+        Repeater {
+            model: apps.pageCount
+            delegate: Rectangle {
+                required property int index
+                width: 7; height: 7; radius: 3.5
+                color: index === pages.currentIndex ? "#ffffff" : Qt.rgba(1, 1, 1, 0.38)
+                Behavior on color { ColorAnimation { duration: 160 } }
+                MouseArea { anchors { fill: parent; margins: -6 } onClicked: pages.currentIndex = parent.index }
+            }
+        }
+    }
+
     MenuPopup {
         id: appMenu
         anchor.window: apps
@@ -198,5 +275,4 @@ PanelWindow {
         active: appMenu.open
         onCleared: appMenu.open = false
     }
-
 }
