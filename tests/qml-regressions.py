@@ -91,6 +91,18 @@ for needle in (
 if re.search(r"id:\s*tabArea[\\s\\S]{0,160}z:\s*-1", browser):
     errors.append("apps/browser/Browser.qml: tab click surface was moved behind its contents")
 
+# Web: a renderer that ends normally (Chromium swapping processes when the first
+# typed address leaves about:blank) is not a crash; reloading it cancelled the
+# navigation. And the current tab's view must stay Active under the Start Page:
+# a discarded about:blank page restored itself over the typed address.
+browser = (root / "apps" / "browser" / "Browser.qml").read_text(encoding="utf-8")
+if "status === WebEngineView.NormalTerminationStatus) return" not in browser:
+    errors.append("apps/browser/Browser.qml: normal renderer termination must not reload the tab")
+if "lifecycleState: visible ?" in browser:
+    errors.append("apps/browser/Browser.qml: the current tab's view must stay Active while its Start Page shows")
+if "mapToItem(root," in browser:
+    errors.append("apps/browser/Browser.qml: root is a Window; map to root.contentItem")
+
 if errors:
     print("\n".join(errors), file=sys.stderr)
     raise SystemExit(1)

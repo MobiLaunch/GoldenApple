@@ -1155,7 +1155,10 @@ Window {
                         backgroundColor: Theme.dark ? "#1d1d20" : "#ffffff"
                         settings.fullScreenSupportEnabled: true
                         settings.scrollAnimatorEnabled: true
-                        lifecycleState: visible ? WebEngineView.LifecycleState.Active : recommendedState
+                        // The current tab stays Active even while its Start Page covers
+                        // about:blank: a hidden view is frozen and then discarded, and a
+                        // discarded page restores about:blank over the address just typed.
+                        lifecycleState: webTab.visible ? WebEngineView.LifecycleState.Active : recommendedState
 
                         onTitleChanged: {
                             tabsModel.setProperty(webTab.index, "title", title || BrowserBackend.displayAddress(url.toString()) || "New Tab")
@@ -1205,6 +1208,13 @@ Window {
                             onTriggered: web.reload()
                         }
                         onRenderProcessTerminated: function(status, exitCode) {
+                            // Chromium ends a page's renderer normally when a
+                            // navigation moves to another site (about:blank →
+                            // the first page you type). Reloading then would
+                            // cancel that navigation, so only a real crash or
+                            // kill counts as a failure.
+                            if (status === WebEngineView.NormalTerminationStatus) return
+                            console.warn("Web: renderer stopped, status", status, "exit code", exitCode)
                             rendererRestarts += 1
                             if (rendererRestarts === 1) {
                                 if (webTab.index === root.currentIndex)
@@ -1512,11 +1522,11 @@ Window {
         z: 50
         visible: addressField.input.activeFocus && root.suggestionData.length > 0
         x: {
-            let p = smartField.mapToItem(root, 0, smartField.height + 5)
+            let p = smartField.mapToItem(root.contentItem, 0, smartField.height + 5)
             return Math.max(10, Math.min(root.width - width - 10, p.x))
         }
         y: {
-            let p = smartField.mapToItem(root, 0, smartField.height + 5)
+            let p = smartField.mapToItem(root.contentItem, 0, smartField.height + 5)
             return p.y
         }
         width: smartField.width
@@ -1591,7 +1601,9 @@ Window {
         id: findBar
         visible: root.findOpen
         z: 52
-        anchors { top: webArea.top; right: webArea.right; topMargin: 12; rightMargin: 16 }
+        // webArea sits inside the content row, so place the bar by mapping.
+        x: { webArea.x; root.width; return webArea.mapToItem(root.contentItem, webArea.width, 0).x - width - 16 }
+        y: { webArea.y; return webArea.mapToItem(root.contentItem, 0, 0).y + 12 }
         width: 360
         height: 44
         radius: 14
