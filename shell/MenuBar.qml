@@ -2,6 +2,7 @@
 // Global application menus need the appmenu D-Bus bridge (see docs/ROADMAP.md);
 // until then the bar shows the app name without its menus.
 import Quickshell
+import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Hyprland
 import Quickshell.Services.UPower
@@ -17,6 +18,33 @@ PanelWindow {
     property var spotlight
     property var session                // SessionDialog: Restart, Shut Down and Log Out ask first
     property var notifications          // the clock opens Notification Center
+
+    // Wi-Fi as the Mac shows it: no item without a Wi-Fi adapter (a wired PC or
+    // a VM), a dimmed fan when Wi-Fi is off or not joined to a network, the
+    // full fan when connected. NetworkManager's monitor says when to look again.
+    property string wifiState: "none"   // "none" | "off" | "disconnected" | "connected"
+    Process {
+        id: wifiProbe
+        running: true
+        command: ["nmcli", "-t", "-f", "TYPE,STATE", "device"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const rows = text.split("\n").filter((l) => l.startsWith("wifi:")).map((l) => l.slice(5))
+                bar.wifiState = !rows.length ? "none"
+                    : rows.some((s) => s === "connected") ? "connected"
+                    : rows.every((s) => s === "unavailable") ? "off" : "disconnected"
+            }
+        }
+    }
+    Process {
+        id: wifiMonitor
+        running: true
+        command: ["nmcli", "monitor"]
+        stdout: SplitParser { onRead: wifiRefresh.restart() }
+        onExited: wifiRetry.start()
+    }
+    Timer { id: wifiRefresh; interval: 400; onTriggered: wifiProbe.running = true }
+    Timer { id: wifiRetry; interval: 30000; onTriggered: { wifiProbe.running = true; wifiMonitor.running = true } }
 
     anchors { top: true; left: true; right: true }
     implicitHeight: Theme.sizeMenubar
@@ -136,7 +164,17 @@ PanelWindow {
                 Rectangle { implicitWidth: 1.8; implicitHeight: 4.5; color: Qt.rgba(battery.ink.r, battery.ink.g, battery.ink.b, 0.45) }
             }
         }
-        BarItem { Symbol { name: "wifi"; size: 16; tone: bar.darkRight ? "dark" : "white" } onClicked: bar.controlCenter.toggle() }
+        BarItem {
+            visible: bar.wifiState !== "none"
+            Symbol {
+                name: "wifi"; size: 16; tone: bar.darkRight ? "dark" : "white"
+                opacity: bar.wifiState === "connected" ? 1 : 0.35
+            }
+            onClicked: {
+                if (!bar.controlCenter.open) bar.controlCenter.toggle()
+                bar.controlCenter.showDetail("wifi")
+            }
+        }
         BarItem { Symbol { name: "search"; size: 15; tone: bar.darkRight ? "dark" : "white" } onClicked: bar.spotlight.toggle() }
         BarItem {
             highlighted: bar.controlCenter.open
