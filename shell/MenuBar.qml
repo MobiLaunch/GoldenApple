@@ -129,10 +129,13 @@ PanelWindow {
         BarItem {
             id: logo
             highlighted: systemMenu.open
-            onClicked: systemMenu.open = !systemMenu.open
+            onClicked: { appMenu.open = false; systemMenu.open = !systemMenu.open }
             Symbol { name: "logo"; size: 18; tone: bar.darkLeft ? "dark" : "white" }
         }
         BarItem {
+            id: appItem
+            highlighted: appMenu.open
+            onClicked: { systemMenu.open = false; appMenu.open = !appMenu.open }
             BarText { text: bar.appName; font.weight: Font.Bold; dark: bar.darkLeft }
         }
     }
@@ -215,5 +218,30 @@ PanelWindow {
         windows: [systemMenu]
         active: systemMenu.open
         onCleared: systemMenu.open = false
+    }
+
+    // The app's own menu, under its name: Hide and Quit for the app in front
+    // (every one of its windows), as the Mac's application menu has them.
+    readonly property var appWindows: active ? ToplevelManager.toplevels.values.filter((t) => t.appId === active.appId) : []
+    MenuPopup {
+        id: appMenu
+        instant: true
+        anchor.window: bar
+        anchor.rect.x: appItem.x + 8
+        anchor.rect.y: bar.height + 5
+        items: bar.active ? [
+            { label: "Hide " + bar.appName, shortcut: "⌘H", action: () => Hyprland.dispatch("movetoworkspacesilent special:hidden,class:^(" + String(bar.active.appId).replace(/[.^$*+?()[\]{}|\\]/g, "\\$&") + ")$") },
+            "-",
+            { label: "Quit " + bar.appName, shortcut: "⌘Q", action: () => bar.appWindows.forEach((w) => w.close()) }
+        ] : [
+            { label: "New Files Window", shortcut: "⌘N", action: () => Hyprland.dispatch("exec gg-files") },
+            "-",
+            { label: "Open Launchpad", action: () => Hyprland.dispatch("exec qs -c golden-gate ipc call launchpad toggle") }
+        ]
+    }
+    HyprlandFocusGrab {
+        windows: [appMenu]
+        active: appMenu.open
+        onCleared: appMenu.open = false
     }
 }

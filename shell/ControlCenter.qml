@@ -297,13 +297,16 @@ PanelWindow {
                 Rectangle {
                     anchors.verticalCenter: parent.verticalCenter
                     width: parent.width; height: 7; radius: 3.5
-                    color: Theme.dark ? "#38ffffff" : "#1d000000"
+                    color: Theme.dark ? "#38ffffff" : "#2b000000"
                 }
+                // The filled part is white, as on the Mac; on light modules it
+                // carries a hairline so it doesn't vanish into the card.
                 Rectangle {
                     anchors.verticalCenter: parent.verticalCenter
-                    width: parent.width * Math.max(0, Math.min(1, slider.value))
+                    width: Math.max(height, parent.width * Math.max(0, Math.min(1, slider.value)))
                     height: 7; radius: 3.5
                     color: "#f2ffffff"
+                    border { width: Theme.dark ? 0 : 0.5; color: "#33000000" }
                 }
                 Rectangle {
                     width: drag.pressed ? 18 : 15

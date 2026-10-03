@@ -68,16 +68,15 @@ PanelWindow {
             Layout.preferredHeight: 56
             role: "regular"
             radius: 28
+            // One capsule, as in macOS 26: the glass is the field, with no
+            // second ring inside it.
             TextField {
                 id: input
-                anchors { fill: parent; margins: 8 }
+                anchors { fill: parent; leftMargin: 18; rightMargin: 18 }
                 search: true
+                bare: true
+                glyphSize: 20
                 placeholder: "Spotlight Search"
-                color: "transparent"
-                border.width: input.input.activeFocus ? 1.5 : 0
-                border.color: input.input.activeFocus
-                    ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.46)
-                    : "transparent"
                 input.font.pixelSize: 21
                 input.Keys.onEscapePressed: spot.open = false
                 input.Keys.onDownPressed: spot.selected = Math.max(0, Math.min(spot.results.length - 1, spot.selected + 1))

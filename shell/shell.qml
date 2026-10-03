@@ -112,7 +112,7 @@ ShellRoot {
         }
         function opened(x: int, y: int, w: int, h: int): void { root.launchers[0]?.landOn(Qt.rect(x, y, w, h)) }
     }
-    Notifications { id: notificationCenter }
+    Notifications { id: notificationCenter; controlCenterOpen: root.controlCenters.some((c) => c.open) }
     SessionDialog { id: sessionDialog }
     Osd {}
     Nearby {}

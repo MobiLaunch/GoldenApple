@@ -4,6 +4,7 @@
 //   signal submitted(string password)   → check it; call fail() on a wrong one
 import QtQuick
 import QtQuick.Layouts
+import QtQuick.Effects
 import "../ui/theme"
 
 Item {
@@ -41,6 +42,8 @@ Item {
             Layout.alignment: Qt.AlignHCenter
             text: Qt.formatDate(clock.now, "dddd, MMMM d")
             color: "#ebffffff"
+            style: Text.Raised
+            styleColor: "#33001e5a"
             font { family: Theme.fontUi; pixelSize: 24; weight: Font.DemiBold }
         }
         // Glass numerals: translucent white with a brighter top.
@@ -50,9 +53,12 @@ Item {
             // "h" is 24-hour unless an AM/PM marker is present; the lock clock shows 1:34, not 13:34.
             text: Qt.formatTime(clock.now, "h:mm AP").replace(/\s*[AP]M$/i, "")
             font { family: Theme.fontUi; pixelSize: 132; weight: Font.Bold; letterSpacing: -6 }
-            color: "#d8ffffff"
+            color: "#e6ffffff"
+            // A soft shadow keeps the numerals readable over a pale sky.
+            layer.enabled: GraphicsInfo.api !== GraphicsInfo.Software
+            layer.effect: MultiEffect { shadowEnabled: true; shadowColor: "#59001433"; shadowBlur: 0.6; shadowVerticalOffset: 2 }
             style: Text.Raised
-            styleColor: "#18001e5a"
+            styleColor: "#2e001e5a"
         }
     }
 
@@ -78,6 +84,10 @@ Item {
             Layout.alignment: Qt.AlignHCenter
             Layout.preferredWidth: 220; Layout.preferredHeight: 34
             radius: 17
+            // The same smoky glass in light and dark: the field sits on the
+            // wallpaper, not on a window, and carries white text either way.
+            role: "clear"
+            tint: "#701c2333"
             transform: Translate { id: shakeX }
             TextField {
                 id: field

@@ -23,6 +23,7 @@ Scope {
     property var banners: []            // notifications showing as banners, newest first
     property var received: ({})         // notification id → time received (ms)
     property bool centerOpen: false
+    property bool controlCenterOpen: false   // banners step aside for Control Center
     property real now: Date.now()
 
     // Unread notifications for an app, for the Dock's badge.
@@ -40,7 +41,10 @@ Scope {
     function iconFor(n) {
         if (n.image) return n.image
         if (ownerOf(n)) return Quickshell.iconPath(ownerOf(n), true)
-        const entry = n.appName ? DesktopEntries.heuristicLookup(n.appName) : null
+        // An app that names itself ("Mail") rather than its desktop file.
+        const label = String(n.appName || "").toLowerCase()
+        const entry = !label ? null : DesktopEntries.heuristicLookup(n.appName)
+            ?? DesktopEntries.applications.values.find((e) => String(e.name).toLowerCase() === label)
         // iconPath(…, true) returns "" for a missing icon instead of Qt's checkerboard.
         for (const name of [n.appIcon, n.desktopEntry, entry?.icon ?? ""]) {
             const path = name ? Quickshell.iconPath(name, true) : ""
@@ -192,7 +196,7 @@ Scope {
         id: bannerWindow
         screen: Quickshell.screens.find((s) => s.name === Hyprland.focusedMonitor?.name) ?? Quickshell.screens[0]
         anchors { top: true; right: true }
-        margins { top: 8; right: 10 }
+        margins { top: 8; right: root.controlCenterOpen ? 366 : 10 }
         implicitWidth: 360
         implicitHeight: Math.max(1, column.implicitHeight + 8)
         exclusionMode: ExclusionMode.Normal   // sit below the menu bar
@@ -224,8 +228,12 @@ Scope {
                     Component.onCompleted: shown = true
 
                     // The banner goes; the notification stays in Notification Center.
+                    // Its time counts from when it arrived: the list rebuilds these
+                    // cards whenever another banner comes or goes, and restarting the
+                    // full time then kept older banners up for good.
+                    readonly property int life: banner.n.expireTimeout > 0 ? banner.n.expireTimeout * 1000 : 5500
                     Timer {
-                        interval: banner.n.expireTimeout > 0 ? banner.n.expireTimeout * 1000 : 5500
+                        interval: Math.max(600, banner.life - (Date.now() - (root.received[banner.n.id] ?? Date.now())))
                         running: !bannerHover.hovered && !banner.n.resident
                         onTriggered: root.dropBanner(banner.n)
                     }
@@ -294,7 +302,7 @@ Scope {
                             Layout.fillWidth: true
                             text: "Notifications"
                             color: "#ffffff"
-                            style: Text.Raised; styleColor: "#40000000"
+                            style: Text.Raised; styleColor: "#80000000"
                             font { family: Theme.fontUi; pixelSize: 15; weight: Font.Bold }
                         }
                         Glass {
