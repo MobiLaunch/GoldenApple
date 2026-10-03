@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Colors modelled on a classic Apple-style IDE palette. -->
+<style-scheme id="lcode-light" name="LCode Default (Light)" version="1.0" kind="light">
+  <author>LCode</author>
+  <description>LCode's default editor theme.</description>
+
+  <style name="text"                    foreground="#262626" background="#FFFFFF"/>
+  <style name="selection"               background="#B2D7FF"/>
+  <style name="selection-unfocused"     background="#B2D7FF"/>
+  <style name="current-line"            background="#ECF5FF"/>
+  <style name="current-line-number"     foreground="#262626" background="#ECF5FF"/>
+  <style name="line-numbers"            foreground="#A6A6A6" background="#FFFFFF"/>
+  <style name="cursor"                  foreground="#262626"/>
+  <style name="bracket-match"           background="#FDF2A6" bold="true"/>
+  <style name="bracket-mismatch"        background="#FF5F57"/>
+  <style name="search-match"            background="#FFE873"/>
+  <style name="right-margin"            foreground="#A6A6A6" background="#ECF5FF"/>
+  <style name="draw-spaces"             foreground="#A6A6A6"/>
+  <style name="map-overlay"             background="#B2D7FF"/>
+
+  <style name="def:comment"             foreground="#5D6C79"/>
+  <style name="def:doc-comment-element" foreground="#5D6C79" bold="true"/>
+  <style name="def:shebang"             foreground="#5D6C79"/>
+  <style name="def:keyword"             foreground="#9B2393" bold="true"/>
+  <style name="def:builtin"             foreground="#9B2393" bold="true"/>
+  <style name="def:boolean"             foreground="#9B2393" bold="true"/>
+  <style name="def:special-constant"    foreground="#9B2393" bold="true"/>
+  <style name="def:string"              foreground="#C41A16"/>
+  <style name="def:character"           foreground="#C41A16"/>
+  <style name="def:special-char"        foreground="#1C00CF"/>
+  <style name="def:decimal"             foreground="#1C00CF"/>
+  <style name="def:base-n-integer"      foreground="#1C00CF"/>
+  <style name="def:floating-point"      foreground="#1C00CF"/>
+  <style name="def:number"              foreground="#1C00CF"/>
+  <style name="def:type"                foreground="#3900A0"/>
+  <style name="def:identifier"          foreground="#262626"/>
+  <style name="def:function"            foreground="#0F68A0"/>
+  <style name="def:preprocessor"        foreground="#643820"/>
+  <style name="def:operator"            foreground="#262626"/>
+  <style name="def:error"               underline="error" underline-color="#FF3B30"/>
+  <style name="def:note"                foreground="#5D6C79" bold="true"/>
+  <style name="def:net-address"         foreground="#0F68A0" underline="single"/>
+
+  <!-- Swift: declaration keywords and modifiers read as keywords, as they do in Apple's IDE. -->
+  <style name="swift:declaration"       foreground="#9B2393" bold="true"/>
+  <style name="swift:modifier"          foreground="#9B2393" bold="true"/>
+  <style name="swift:external"          foreground="#9B2393" bold="true"/>
+  <style name="swift:type"              foreground="#3900A0"/>
+  <style name="swift:compiler-control"  foreground="#643820"/>
+  <style name="swift:interpolated"      foreground="#262626"/>
+  <style name="swift:operator"          foreground="#262626"/>
+</style-scheme>

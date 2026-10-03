@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2A8CFF"/>
+      <stop offset="1" stop-color="#0B46B8"/>
+    </linearGradient>
+    <linearGradient id="mark" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#DCE9FF"/>
+    </linearGradient>
+    <pattern id="grid" width="12" height="12" patternUnits="userSpaceOnUse">
+      <path d="M12 0H0V12" fill="none" stroke="#FFFFFF" stroke-opacity="0.12" stroke-width="1"/>
+    </pattern>
+  </defs>
+  <rect x="8" y="8" width="112" height="112" rx="26" fill="url(#bg)"/>
+  <rect x="8" y="8" width="112" height="112" rx="26" fill="url(#grid)"/>
+  <rect x="8.5" y="8.5" width="111" height="111" rx="25.5" fill="none" stroke="#000000" stroke-opacity="0.15"/>
+  <!-- Angle brackets -->
+  <path d="M40 44 L22 64 L40 84" fill="none" stroke="#FFFFFF" stroke-opacity="0.55" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M88 44 L106 64 L88 84" fill="none" stroke="#FFFFFF" stroke-opacity="0.55" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- The L -->
+  <path d="M52 32 h13 v48 h22 v12 h-35 z" fill="url(#mark)" stroke="#0A3A99" stroke-opacity="0.25" stroke-width="1.5" stroke-linejoin="round"/>
+</svg>

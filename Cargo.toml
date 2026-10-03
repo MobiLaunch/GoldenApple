@@ -1,0 +1,20 @@
+[package]
+name = "lcode"
+version = "0.1.0"
+edition = "2024"
+description = "An Apple-style IDE for Swift on Linux, with a built-in device Simulator"
+license = "MIT"
+repository = "https://github.com/mobilaunch/goldenapple"
+
+[dependencies]
+adw = { version = "0.9.2", package = "libadwaita", features = ["v1_5"] }
+async-channel = "2.5.0"
+cairo-rs = { version = "0.22", features = ["png"] }
+gtk = { version = "0.11.5", package = "gtk4", features = ["v4_12"] }
+libc = "0.2.190"
+pangocairo = "0.22"
+regex = "1.13.1"
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.151"
+sourceview5 = { version = "0.11.2", features = ["v5_10"] }
+x11rb = { version = "0.14.0", features = ["xtest", "shm", "randr"] }

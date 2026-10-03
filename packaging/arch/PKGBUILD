@@ -1,0 +1,48 @@
+# Maintainer: The LCode Contributors
+#
+# Builds LCode from this source checkout:
+#   cd packaging/arch && makepkg -si
+
+pkgname=lcode
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="An Apple-style IDE for Swift on Linux, with a built-in device Simulator"
+arch=('x86_64' 'aarch64')
+url="https://github.com/mobilaunch/goldenapple"
+license=('MIT')
+depends=('gtk4' 'libadwaita' 'gtksourceview5' 'librsvg' 'xorg-server-xvfb' 'git')
+makedepends=('cargo')
+optdepends=('swift-bin: Swift toolchain for building projects (AUR)')
+options=('!lto')
+
+_srcroot() {
+  realpath "$startdir/../.."
+}
+
+prepare() {
+  cd "$(_srcroot)"
+  export RUSTUP_TOOLCHAIN=stable
+  cargo fetch --locked --target "$(rustc -vV | sed -n 's/host: //p')"
+}
+
+build() {
+  cd "$(_srcroot)"
+  export RUSTUP_TOOLCHAIN=stable
+  export CARGO_TARGET_DIR="$srcdir/target"
+  cargo build --frozen --release
+}
+
+check() {
+  cd "$(_srcroot)"
+  export RUSTUP_TOOLCHAIN=stable
+  export CARGO_TARGET_DIR="$srcdir/target"
+  cargo test --frozen --release
+}
+
+package() {
+  cd "$(_srcroot)"
+  install -Dm755 "$srcdir/target/release/lcode" "$pkgdir/usr/bin/lcode"
+  install -Dm644 data/dev.lcode.LCode.desktop "$pkgdir/usr/share/applications/dev.lcode.LCode.desktop"
+  install -Dm644 data/icons/dev.lcode.LCode.svg "$pkgdir/usr/share/icons/hicolor/scalable/apps/dev.lcode.LCode.svg"
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

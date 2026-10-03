@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Name=LCode
+GenericName=Integrated Development Environment
+Comment=Build and run Swift apps, with a built-in device Simulator
+Exec=lcode %F
+Icon=dev.lcode.LCode
+Terminal=false
+Categories=Development;IDE;GTK;
+MimeType=inode/directory;
+Keywords=swift;ide;simulator;editor;
+StartupNotify=true
+StartupWMClass=dev.lcode.LCode
