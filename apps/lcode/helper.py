@@ -39,6 +39,8 @@ import time
 HERE = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 import lcode_project as proj  # noqa: E402
+import lcode_toolchains as toolchains  # noqa: E402
+import lcode_design as design  # noqa: E402
 
 _out = threading.Lock()
 
@@ -62,6 +64,10 @@ def config_path() -> pathlib.Path:
 
 DEFAULTS = {
     "swiftPath": "",
+    "pythonPath": "",
+    "cargoPath": "",
+    "mesonPath": "",
+    "qsPath": "",
     "fontSize": 13,
     "tabWidth": 4,
     "showMinimap": True,
@@ -84,23 +90,18 @@ def save_settings(data: dict) -> None:
     proj.write_json(config_path(), data)
 
 
-def swift_executable() -> str | None:
-    configured = load_settings().get("swiftPath") or ""
-    if configured:
-        return configured
-    if os.environ.get("LCODE_SWIFT"):
-        return os.environ["LCODE_SWIFT"]
-    return shutil.which("swift")
-
-
-def swift_version(path: str | None) -> str:
-    if not path:
-        return ""
-    try:
-        out = subprocess.run([path, "--version"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, timeout=10)
-        return out.stdout.strip().splitlines()[0] if out.returncode == 0 and out.stdout.strip() else ""
-    except (OSError, subprocess.TimeoutExpired):
-        return ""
+def toolchain_report(settings: dict) -> dict:
+    """Which toolchains are installed: {id: {path, version, hint}}."""
+    out = {}
+    for t in toolchains.IDS:
+        path = toolchains.executable(t, settings)
+        if path and not os.path.isabs(path):
+            path = shutil.which(path) or path
+        if path and not (os.path.isfile(path) and os.access(path, os.X_OK)):
+            path = None
+        out[t] = {"path": path or "", "version": toolchains.version(t, path) if path else "",
+                  "hint": toolchains.install_hint(t), "name": toolchains.NAMES[t]}
+    return out
 
 
 # ---------------------------------------------------------------- processes
@@ -237,7 +238,7 @@ class Simulator:
     def input(self, cmd: dict) -> None:
         self._agent(cmd)
 
-    def launch(self, exe: str, cwd: str, device: dict, on_text, on_exit) -> Proc:
+    def launch(self, argv: list[str], cwd: str, device: dict, on_text, on_exit, extra_env: dict | None = None) -> Proc:
         env = dict(os.environ)
         env.pop("WAYLAND_DISPLAY", None)
         env.update({
@@ -250,9 +251,10 @@ class Simulator:
             "LCODE_SIMULATOR": "1",
             "LCODE_DEVICE_ID": str(device.get("id", "")), "LCODE_DEVICE_NAME": str(device.get("name", "")),
         })
+        env.update(extra_env or {})
         with self.lock:
             self.stop_app()
-            self.app = Proc([exe], cwd, env, on_text, on_exit)
+            self.app = Proc(argv, cwd, env, on_text, on_exit)
             return self.app
 
     def stop_app(self) -> None:
@@ -320,42 +322,70 @@ class Tasks:
         emit({"event": "task.started", "gen": gen, "kind": kind, "title": title})
         return gen
 
-    def tool(self, kind: str, root: str, args: list[str], title: str, then=None) -> int:
-        swift = swift_executable()
-        if not swift:
-            raise RuntimeError("Swift toolchain not found. Install one (for example yay -S swift-bin) "
-                               "or set its location in LCode Settings.")
+    def tool(self, kind: str, root: str, toolchain: str, product: str, title: str, then=None,
+             configuration: str = "debug") -> int:
+        settings = load_settings()
+        exe = toolchains.executable(toolchain, settings) if toolchain else None
+        needs_exe = toolchain in ("swift", "cargo", "meson", "python")
+        if needs_exe and not exe:
+            name = toolchains.NAMES[toolchain]
+            raise RuntimeError(f"No {name} toolchain was found. Install it ({toolchains.install_hint(toolchain)}) "
+                               "or set its location in LCode Settings ▸ Locations.")
+        plan = toolchains.steps(toolchain, kind, root, product, exe or "", settings, configuration)
         gen = self._begin(kind, title)
         counts = {"error": 0, "warning": 0}
-        pending = {"text": ""}
         seen: set[tuple] = set()
 
-        def on_text(_stream: str, text: str) -> None:
-            emit({"event": "task.log", "gen": gen, "text": proj.strip_ansi(text)})
-            pending["text"] += text
-            *lines, pending["text"] = pending["text"].split("\n")
-            for line in lines:
-                handle(line)
+        def start(index: int) -> None:
+            argv, cwd, diag_root = plan[index]
+            pending = {"text": ""}
 
-        def handle(line: str) -> None:
-            issue = proj.parse_diagnostic(line, root)
-            if issue and issue["severity"] in counts:
-                key = (issue["severity"], issue["message"], issue["path"], issue["line"])
-                if key not in seen:
-                    seen.add(key)
-                    counts[issue["severity"]] += 1
-                    emit({"event": "task.issue", "gen": gen, **issue})
-            progress = proj.parse_progress(line)
-            if progress:
-                emit({"event": "task.progress", "gen": gen, **progress})
+            def handle(line: str) -> None:
+                issue = toolchains.parse_diagnostic(line, diag_root)
+                if issue and issue["severity"] in counts:
+                    key = (issue["severity"], issue["message"], issue["path"], issue["line"])
+                    if key not in seen:
+                        seen.add(key)
+                        counts[issue["severity"]] += 1
+                        emit({"event": "task.issue", "gen": gen, **issue})
+                progress = toolchains.parse_progress(line)
+                if progress:
+                    emit({"event": "task.progress", "gen": gen, **progress})
 
-        def on_exit(code: int | None) -> None:
-            if pending["text"]:
-                handle(pending["text"])
+            def on_text(_stream: str, text: str) -> None:
+                emit({"event": "task.log", "gen": gen, "text": toolchains.strip_ansi(text)})
+                pending["text"] += text
+                *lines, pending["text"] = pending["text"].split("\n")
+                for line in lines:
+                    handle(line)
+
+            def on_exit(code: int | None) -> None:
+                if pending["text"]:
+                    handle(pending["text"])
+                with self.lock:
+                    cancelled = self.cancelled and self.gen == gen
+                    current = self.gen == gen
+                    if current:
+                        self.proc = None
+                if code == 0 and not cancelled and current and index + 1 < len(plan):
+                    try:
+                        start(index + 1)
+                    except RuntimeError as exc:
+                        emit({"event": "task.log", "gen": gen, "text": str(exc) + "\n"})
+                        finish(None, False)
+                    return
+                finish(code, cancelled)
+
+            emit({"event": "task.log", "gen": gen, "text": "$ " + " ".join(argv) + "\n"})
+            try:
+                proc = Proc(argv, cwd, None, on_text, on_exit)
+            except OSError as exc:
+                raise RuntimeError(f"Couldn't run {argv[0]}: {exc}") from exc
             with self.lock:
-                cancelled = self.cancelled and self.gen == gen
                 if self.gen == gen:
-                    self.proc = None
+                    self.proc = proc
+
+        def finish(code: int | None, cancelled: bool) -> None:
             if code not in (0, None) and not cancelled and counts["error"] == 0:
                 counts["error"] += 1
                 emit({"event": "task.issue", "gen": gen, "severity": "error", "path": "", "line": 0, "column": 0,
@@ -369,33 +399,44 @@ class Tasks:
                     threading.Thread(target=then, args=(gen,), daemon=True).start()
 
         try:
-            proc = Proc([swift, *args], root, None, on_text, on_exit)
-        except OSError as exc:
+            start(0)
+        except RuntimeError as exc:
             emit({"event": "task.finished", "gen": gen, "kind": kind, "code": None, "cancelled": False,
                   "errors": 1, "warnings": 0, "error": str(exc)})
-            raise RuntimeError(f"Couldn't run {swift}: {exc}") from exc
-        with self.lock:
-            if self.gen == gen:
-                self.proc = proc
+            raise
         return gen
 
-    def run(self, root: str, product: str, destination: str, device: dict) -> int:
+    def run(self, root: str, toolchain: str, product: str, destination: str, device: dict, scheme: dict) -> int:
         def launch(gen: int) -> None:
-            self.launch(gen, root, product, destination, device)
-        return self.tool("build", root, ["build", "--product", product], f"Build {product}", then=launch)
+            self.launch(gen, root, toolchain, product, destination, device, scheme)
+        return self.tool("build", root, toolchain, product, f"Build {product}", then=launch,
+                         configuration=scheme.get("configuration") or "debug")
 
-    def launch(self, gen: int, root: str, product: str, destination: str, device: dict) -> None:
-        exe = os.path.join(root, ".build", "debug", product)
-        if not os.path.isfile(exe):
-            emit({"event": "run.exited", "gen": gen, "code": None, "error": f"The built product wasn't found at {exe}."})
+    def launch(self, gen: int, root: str, toolchain: str, product: str, destination: str, device: dict,
+               scheme: dict) -> None:
+        configuration = scheme.get("configuration") or "debug"
+        try:
+            argv = toolchains.program(toolchain, root, product, load_settings(), configuration)
+        except RuntimeError as exc:
+            emit({"event": "run.exited", "gen": gen, "code": None, "error": str(exc)})
             return
+        if toolchain in ("swift", "cargo", "meson") and not os.path.isfile(argv[0]):
+            emit({"event": "run.exited", "gen": gen, "code": None, "error": f"The built product wasn't found at {argv[0]}."})
+            return
+        argv = argv + [str(a) for a in (scheme.get("arguments") or []) if str(a)]
+        extra_env = {str(k): str(v) for k, v in (scheme.get("environment") or {}).items() if str(k)}
+        cwd = scheme.get("workingDirectory") or root
         with self.lock:
             if self.gen != gen:
                 return
             self.kind = "run"
+        runtime = toolchains.RuntimeIssues(root) if toolchain == "python" else None
 
         def on_text(stream: str, text: str) -> None:
             emit({"event": "run.output", "gen": gen, "stream": stream, "text": text})
+            if runtime and stream == "stderr":
+                for issue in runtime.feed(text):
+                    emit({"event": "task.issue", "gen": gen, **issue})
 
         def on_exit(code: int | None) -> None:
             with self.lock:
@@ -406,12 +447,13 @@ class Tasks:
         emit({"event": "run.started", "gen": gen, "product": product, "destination": destination})
         try:
             if destination == proj.HOST:
-                proc = Proc([exe], root, None, on_text, on_exit)
+                env = dict(os.environ, **extra_env) if extra_env else None
+                proc = Proc(argv, cwd, env, on_text, on_exit)
             else:
                 self.sim.boot(int(device["side"]), int(device["w"]), int(device["h"]))
                 with self.lock:
                     self.in_simulator = True
-                proc = self.sim.launch(exe, root, device, on_text, on_exit)
+                proc = self.sim.launch(argv, cwd, device, on_text, on_exit, extra_env)
         except (OSError, RuntimeError, KeyError, ValueError) as exc:
             emit({"event": "run.exited", "gen": gen, "code": None, "error": str(exc)})
             return
@@ -427,10 +469,11 @@ class Tasks:
         elif current:
             self.sim.stop_app()
 
-    def relaunch(self, root: str, product: str, destination: str, device: dict) -> int:
+    def relaunch(self, root: str, toolchain: str, product: str, destination: str, device: dict, scheme: dict) -> int:
         """Launch an already-built product (the Simulator's home screen)."""
         gen = self._begin("run", f"Run {product}")
-        threading.Thread(target=self.launch, args=(gen, root, product, destination, device), daemon=True).start()
+        threading.Thread(target=self.launch, args=(gen, root, toolchain, product, destination, device, scheme),
+                         daemon=True).start()
         return gen
 
     def stdin(self, text: str) -> None:
@@ -465,9 +508,8 @@ class Server:
 
     # Each handler returns the reply payload or raises.
     def c_hello(self, _req: dict) -> dict:
-        swift = swift_executable()
-        return {"settings": load_settings(), "swift": swift or "", "swiftVersion": swift_version(swift),
-                "xvfb": bool(shutil.which("Xvfb"))}
+        settings = load_settings()
+        return {"settings": settings, "toolchains": toolchain_report(settings), "xvfb": bool(shutil.which("Xvfb"))}
 
     def c_settings(self, req: dict) -> dict:
         data = load_settings()
@@ -475,8 +517,7 @@ class Server:
             if k in DEFAULTS and k != "recent":
                 data[k] = v
         save_settings(data)
-        swift = swift_executable()
-        return {"settings": data, "swift": swift or "", "swiftVersion": swift_version(swift)}
+        return {"settings": data, "toolchains": toolchain_report(data)}
 
     def c_recent(self, req: dict) -> dict:
         data = load_settings()
@@ -488,6 +529,17 @@ class Server:
         save_settings(data)
         return {"recent": data["recent"]}
 
+    def project(self) -> dict:
+        if not self.root:
+            raise ValueError("No project is open.")
+        return proj.open_project(self.root, load_settings().get("defaultSimulator", "lphone-16"))
+
+    def scheme(self, req: dict) -> dict:
+        """Run options: the project's scheme (.lcode/project.json) unless the request has its own."""
+        scheme = dict(self.project()["meta"].get("scheme") or {})
+        scheme.update(req.get("scheme") or {})
+        return scheme
+
     def c_open(self, req: dict) -> dict:
         project = proj.open_project(req["path"], load_settings().get("defaultSimulator", "lphone-16"))
         self.root = project["root"]
@@ -495,15 +547,19 @@ class Server:
         return {"project": project}
 
     def c_projectInfo(self, _req: dict) -> dict:
-        return {"project": proj.open_project(self.root, load_settings().get("defaultSimulator", "lphone-16"))}
+        return {"project": self.project()}
 
     def c_saveState(self, req: dict) -> dict:
         proj.save_state(self.root, req.get("state") or {})
         return {}
 
     def c_saveMeta(self, req: dict) -> dict:
-        proj.save_meta(self.root, req.get("kind", "tool"), req.get("bundleId", ""))
-        return {}
+        values = dict(req.get("values") or {})
+        if "kind" in req:
+            values["kind"] = req["kind"]
+        if "bundleId" in req:
+            values["bundle_identifier"] = req["bundleId"]
+        return {"meta": proj.save_meta(self.root, values)}
 
     def c_tree(self, _req: dict) -> dict:
         return {"nodes": proj.tree(self.root)}
@@ -573,7 +629,7 @@ class Server:
         save_settings(settings)
         root = proj.create_project(req["parent"], req["template"], req["name"], req.get("organization", ""),
                                    req.get("organizationId", ""), bool(req.get("tests", True)), bool(req.get("git", True)),
-                                   settings.get("defaultSimulator", "lphone-16"))
+                                   settings.get("defaultSimulator", "lphone-16"), req.get("options") or {})
         return {"root": root}
 
     def c_clone(self, req: dict) -> dict:
@@ -586,21 +642,76 @@ class Server:
         return {"root": target}
 
     def c_build(self, req: dict) -> dict:
+        p = self.project()
         product = req.get("product") or ""
-        args = ["build", "--product", product] if product else ["build"]
-        return {"gen": self.tasks.tool("build", self.root, args, f"Build {product or 'Package'}")}
+        configuration = req.get("configuration") or self.scheme(req).get("configuration") or "debug"
+        return {"gen": self.tasks.tool("build", self.root, p["toolchain"], product, f"Build {product or p['name']}",
+                                       configuration=configuration)}
 
     def c_test(self, _req: dict) -> dict:
-        return {"gen": self.tasks.tool("test", self.root, ["test"], "Test")}
+        p = self.project()
+        return {"gen": self.tasks.tool("test", self.root, p["toolchain"], "", "Test")}
 
     def c_clean(self, _req: dict) -> dict:
-        return {"gen": self.tasks.tool("clean", self.root, ["package", "clean"], "Clean Build Folder")}
+        p = self.project()
+        return {"gen": self.tasks.tool("clean", self.root, p["toolchain"], "", "Clean Build Folder")}
 
     def c_run(self, req: dict) -> dict:
-        return {"gen": self.tasks.run(self.root, req["product"], req["destination"], req.get("device") or {})}
+        p = self.project()
+        return {"gen": self.tasks.run(self.root, p["toolchain"], req["product"], req["destination"],
+                                      req.get("device") or {}, self.scheme(req))}
 
     def c_launch(self, req: dict) -> dict:
-        return {"gen": self.tasks.relaunch(self.root, req["product"], req["destination"], req.get("device") or {})}
+        p = self.project()
+        return {"gen": self.tasks.relaunch(self.root, p["toolchain"], req["product"], req["destination"],
+                                           req.get("device") or {}, self.scheme(req))}
+
+    # ---------------------------------------------------------- designer
+    def c_designCode(self, req: dict) -> dict:
+        """The QML a design (as edited, maybe unsaved) generates for one screen, or the app."""
+        doc = json.loads(req["text"])
+        gen = design.Gen(doc)
+        if req.get("screen") == "@app":
+            meta = self.project()["meta"] if self.root else {}
+            return {"code": gen.app(meta.get("bundle_identifier") or "org.example.App", True)}
+        screen = next((s for s in doc.get("screens") or [] if s.get("id") == req.get("screen")), None)
+        if not screen:
+            raise ValueError("No such screen.")
+        return {"code": gen.screen(screen)}
+
+    def c_symbols(self, _req: dict) -> dict:
+        folder = design.UI / "assets" / "symbols"
+        names = sorted({p.stem for p in folder.glob("*.svg") if "@" not in p.stem})
+        return {"symbols": names}
+
+    IMAGE_TYPES = (".png", ".jpg", ".jpeg", ".svg", ".webp", ".gif")
+
+    def c_assets(self, _req: dict) -> dict:
+        root = pathlib.Path(self.root)
+        folder = root / "Assets"
+        out = []
+        if folder.is_dir():
+            for p in sorted(folder.rglob("*")):
+                if p.is_file() and p.suffix.lower() in self.IMAGE_TYPES:
+                    out.append(str(p.relative_to(root)))
+        return {"assets": out}
+
+    def c_importAsset(self, req: dict) -> dict:
+        src = pathlib.Path(os.path.expanduser(req["path"].strip()))
+        if not src.is_file():
+            raise FileNotFoundError(f"“{src}” isn't a file.")
+        if src.suffix.lower() not in self.IMAGE_TYPES:
+            raise ValueError("Choose a PNG, JPEG, SVG, WebP or GIF image.")
+        folder = pathlib.Path(self.root) / "Assets"
+        folder.mkdir(exist_ok=True)
+        target = folder / src.name
+        n = 2
+        while target.exists() and not target.samefile(src):
+            target = folder / f"{src.stem}-{n}{src.suffix}"
+            n += 1
+        if not target.exists():
+            shutil.copy2(src, target)
+        return {"path": str(target.relative_to(self.root))}
 
     def c_dirs(self, req: dict) -> dict:
         """Folders inside a folder, for the location browser."""
@@ -611,13 +722,13 @@ class Server:
         for e in sorted(os.scandir(path), key=lambda e: e.name.lower()):
             if e.name.startswith(".") or not e.is_dir():
                 continue
-            dirs.append({"name": e.name, "path": e.path, "isProject": os.path.isfile(os.path.join(e.path, "Package.swift"))})
+            dirs.append({"name": e.name, "path": e.path, "isProject": toolchains.is_project(e.path)})
         home = pathlib.Path.home()
         places = [{"name": n, "path": str(home / d)} for n, d in
                   (("Home", ""), ("Developer", "Developer"), ("Documents", "Documents"), ("Desktop", "Desktop"))
                   if (home / d).is_dir()]
         return {"path": str(path), "parent": str(path.parent), "dirs": dirs, "places": places,
-                "isProject": (path / "Package.swift").is_file()}
+                "isProject": toolchains.is_project(str(path))}
 
     def c_mkdir(self, req: dict) -> dict:
         path = pathlib.Path(os.path.expanduser(req["path"]))
@@ -665,7 +776,7 @@ class Server:
             if handler is None:
                 raise ValueError(f"Unknown command {req.get('cmd')!r}")
             reply = {"ok": True, **handler(req)}
-        except (OSError, ValueError, RuntimeError, KeyError, FileExistsError) as exc:
+        except (OSError, ValueError, RuntimeError, KeyError, FileExistsError, TypeError) as exc:
             reply = {"ok": False, "error": str(exc) or exc.__class__.__name__}
         if rid is not None:
             emit({"id": rid, **reply})
@@ -673,7 +784,7 @@ class Server:
     def serve(self) -> int:
         # Quick requests answer inline; slow ones run off the reading thread so
         # input (Simulator touches) is never stuck behind them.
-        slow = {"find", "create", "clone", "tree", "hello", "settings", "dirs", "files"}
+        slow = {"find", "create", "clone", "tree", "hello", "settings", "dirs", "files", "designCode", "symbols", "assets", "importAsset"}
         try:
             for line in sys.stdin:
                 line = line.strip()

@@ -3,6 +3,7 @@
 import QtQuick
 import "../lib"
 import "../lib/theme"
+import "languages.js" as Languages
 
 Flickable {
     id: inspector
@@ -16,16 +17,7 @@ Flickable {
     boundsBehavior: Flickable.StopAtBounds
 
     readonly property string fileName: path ? path.split("/").pop() : ""
-    readonly property string fileType: {
-        const n = fileName.toLowerCase()
-        if (n === "package.swift") return "Swift Package Manifest"
-        if (n.endsWith(".swift")) return "Swift Source"
-        if (n.endsWith(".md")) return "Markdown Text"
-        if (n.endsWith(".json")) return "JSON"
-        if (/\.(c|h)$/.test(n)) return "C Source"
-        if (/\.(png|jpe?g|svg|gif)$/.test(n)) return "Image"
-        return "Plain Text"
-    }
+    readonly property string fileType: Languages.fileInfo(fileName).type
 
     component Field: Column {
         property string label
@@ -145,6 +137,9 @@ Flickable {
                 onAccepted: inspector.backend.call("saveMeta", { kind: inspector.app.project.kind, bundleId: text })
             }
         }
-        Field { label: "Swift"; value: inspector.app.swiftVersion || (inspector.app.swiftPath ? inspector.app.swiftPath : "Not found") }
+        Field {
+            label: inspector.app.projectToolchain ? inspector.app.projectToolchain.name : "Toolchain"
+            value: !inspector.app.projectToolchain ? "None" : inspector.app.projectToolchain.version || inspector.app.projectToolchain.path || "Not found"
+        }
     }
 }

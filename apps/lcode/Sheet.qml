@@ -37,8 +37,8 @@ Item {
     Item {
         id: panel
         focus: true
-        width: sheet.panelWidth
-        height: sheet.panelHeight
+        width: Math.min(sheet.panelWidth, sheet.width - 32)
+        height: Math.min(sheet.panelHeight, sheet.height - Theme.sizeToolbar - 12)
         x: (parent.width - width) / 2
         y: Theme.sizeToolbar - 4 + (sheet.shown ? 0 : -24)
         opacity: sheet.shown ? 1 : 0
@@ -48,6 +48,14 @@ Item {
         Behavior on scale { NumberAnimation { duration: Theme.reduceMotion ? 1 : Theme.popover.duration; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.popover.curve } }
         Keys.onEscapePressed: if (sheet.dismissible) sheet.close()
 
+        // Sheets read like a page: an almost opaque backing under the glass,
+        // so the window behind doesn't show through the text.
+        Rectangle {
+            anchors.fill: parent
+            radius: 22
+            color: Theme.windowBg
+            opacity: 0.9
+        }
         Glass {
             anchors.fill: parent
             radius: 22

@@ -2,8 +2,9 @@
 // LCode, Golden Gate's IDE, laid out like Xcode on macOS 27: navigators in a
 // floating glass sidebar, the editor with tabs and a jump bar, the debug
 // area underneath, inspectors in a trailing sidebar, and Run, the scheme and
-// the activity view in the toolbar. Projects are Swift packages; builds go
-// through SwiftPM, and apps run on "My Linux PC" or in the Simulator.
+// the activity view in the toolbar. Projects are Golden Gate apps made in the
+// App Designer, Swift packages, Rust crates, Meson (C) projects or Python
+// programs; apps run on "My Linux PC" or in the Simulator.
 //
 // The window talks to lcode/helper.py (JSON lines); the Simulator's display
 // lives in its own agent process (lcode/lcode_sim.py).
@@ -28,8 +29,8 @@ ShellRoot {
 
         // ---------------------------------------------------------- state
         property var settings: ({ fontSize: 13, tabWidth: 4, showMinimap: true, showWelcome: true, defaultSimulator: "lphone-16", recent: [] })
-        property string swiftPath: ""
-        property string swiftVersion: ""
+        property var toolchains: ({})           // id → { path, version, hint, name }, from the helper
+        readonly property var projectToolchain: project && toolchains[project.toolchain] ? toolchains[project.toolchain] : null
         property bool xvfbInstalled: true
         property bool helloDone: false
 
@@ -62,7 +63,7 @@ ShellRoot {
         property var installedApps: []          // product names, for the home screen
         property bool simShowingHome: true
 
-        signal revealLocation(string path, int line, int column)
+        signal revealLocation(string path, int line, int column, string message)
         signal alertRequested(string title, string message)
 
         readonly property var simDevice: Devices.byId(simDeviceId) || Devices.DEVICES[0]
@@ -82,8 +83,7 @@ ShellRoot {
 
         function applySettings(r) {
             settings = r.settings
-            swiftPath = r.swift || ""
-            swiftVersion = r.swiftVersion || ""
+            if (r.toolchains) toolchains = r.toolchains
             simDeviceId = settings.defaultSimulator || simDeviceId
         }
 
@@ -132,13 +132,17 @@ ShellRoot {
 
         function prepare(then) {
             if (!project) return
-            if (!project.isPackage) {
-                alertRequested("No Package.swift", "LCode builds Swift packages. Add a Package.swift to this folder, or create a new project.")
+            if (!project.toolchain) {
+                alertRequested("Nothing to Build",
+                    "LCode builds Golden Gate apps, Swift packages, Rust crates, Meson projects and Python programs. Add a Package.swift, Cargo.toml, meson.build or main.py to this folder, or create a new project.")
                 return
             }
-            if (!swiftPath) {
-                alertRequested("Swift Toolchain Not Found",
-                    "LCode needs a Swift toolchain to build projects. On Golden Gate, install one from the AUR (for example swift-bin) or with swiftly, then set its location in LCode Settings if it isn't on your PATH.")
+            const tc = projectToolchain
+            if (project.toolchain !== "goldengate" && (!tc || !tc.path)) {
+                const name = tc ? tc.name : project.toolchain
+                alertRequested(name + " Not Found",
+                    "LCode needs " + name + " to build this project. Install it with:\n\n" + (tc ? tc.hint : "") +
+                    "\n\nthen set its location in LCode Settings ▸ Locations if it isn't on your PATH.")
                 return
             }
             if (beforeTask) beforeTask(then); else then()
@@ -146,6 +150,10 @@ ShellRoot {
 
         function run() {
             if (!scheme) { build(); return }
+            if (project && project.toolchain === "goldengate" && !(toolchains.goldengate && toolchains.goldengate.path)) {
+                alertRequested("Quickshell Not Found", "Golden Gate apps run with Quickshell (qs), which Golden Gate includes. Install it with:\n\nsudo pacman -S quickshell")
+                return
+            }
             prepare(() => {
                 const target = destination === "host" ? {} : Devices.runTarget(Devices.byId(destination) || simDevice, simOrientation)
                 if (destination !== "host") {
@@ -196,7 +204,7 @@ ShellRoot {
             case "task.progress":
                 if (e.gen !== taskGen) break
                 if (e.total > 0) progress = e.done / e.total
-                status = (e.message || "Building") + "  (" + e.done + " of " + e.total + ")"
+                status = (e.message || "Building") + (e.total > 0 ? "  (" + e.done + " of " + e.total + ")" : "…")
                 break
             case "task.issue":
                 if (e.gen === taskGen) issues = issues.concat([e])
@@ -214,7 +222,7 @@ ShellRoot {
                 if (!ok) pendingRunTitle = ""
                 if (!ok && !e.cancelled) {
                     const first = issues.find((i) => i.severity === "error" && i.path)
-                    if (first) revealLocation(first.path, first.line, first.column)
+                    if (first) revealLocation(first.path, first.line, first.column, first.message)
                 }
                 break
             }

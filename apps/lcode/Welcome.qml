@@ -7,11 +7,13 @@ import "../lib/theme"
 
 AppWindow {
     id: win
+    objectName: "welcome"
     property var app
     property var backend
     title: "Welcome to LCode"
-    implicitWidth: 820
-    implicitHeight: 500
+    // New Project's template gallery needs more room than the welcome page.
+    implicitWidth: newProject.shown ? 880 : 820
+    implicitHeight: newProject.shown ? 660 : 500
     minimumSize: Qt.size(820, 500)
     resizable: false
     trailingSidebarWidth: 300
@@ -70,7 +72,7 @@ AppWindow {
                 anchors.horizontalCenter: parent.horizontalCenter
                 symbol: "plus"
                 title: "Create New Project…"
-                detail: "An app, a command-line tool or a Swift package"
+                detail: "Design an app, or start from a Swift, Python, Rust or C template"
                 onTriggered: newProject.open()
             }
             Action {
@@ -169,6 +171,7 @@ AppWindow {
 
     NewProjectSheet {
         id: newProject
+        objectName: "newProjectSheet"
         parent: win.overlay
         app: win.app
         backend: win.backend

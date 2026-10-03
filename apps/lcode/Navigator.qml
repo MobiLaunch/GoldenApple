@@ -4,6 +4,7 @@ import Quickshell
 import QtQuick
 import "../lib"
 import "../lib/theme"
+import "languages.js" as Languages
 
 Item {
     id: nav
@@ -91,19 +92,8 @@ Item {
         return out
     }
 
-    function fileSymbol(name, isDir) {
-        if (isDir) return "folder"
-        if (name === "Package.swift") return "gear"
-        if (name.endsWith(".swift") || /\.(c|h|cpp|m|rs|py|js|ts|sh)$/.test(name)) return "code"
-        if (/\.(png|jpe?g|svg|gif)$/.test(name)) return "photo"
-        return "doc"
-    }
-    function fileColor(name, isDir) {
-        if (isDir) return "transparent"
-        if (name.endsWith(".swift")) return "#f05138"
-        if (name === "Package.swift") return "#a2845e"
-        return "transparent"
-    }
+    function fileSymbol(name, isDir) { return isDir ? "folder" : Languages.fileInfo(name).symbol }
+    function fileColor(name, isDir) { return isDir ? "transparent" : Languages.fileInfo(name).color }
 
     // ---------------------------------------------------------------- strip
     Row {
@@ -386,7 +376,7 @@ Item {
                 HoverHandler { id: issueHover }
                 TapHandler {
                     enabled: !issue.modelData.header && !!issue.modelData.path
-                    onTapped: nav.openFile(issue.modelData.path, issue.modelData.line, issue.modelData.column)
+                    onTapped: nav.app.revealLocation(issue.modelData.path, issue.modelData.line, issue.modelData.column, issue.modelData.message)
                 }
             }
         }

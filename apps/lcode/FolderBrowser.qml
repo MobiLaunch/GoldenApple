@@ -1,6 +1,6 @@
 // A compact folder browser for choosing where a project lives (New Project,
 // Open, Clone): places on the left, the folders of the current one on the
-// right, Swift packages marked. Double-click a folder to go into it.
+// right, projects marked. Double-click a folder to go into it.
 import QtQuick
 import "../lib"
 import "../lib/theme"
@@ -84,7 +84,7 @@ Item {
                 height: 28
                 text: modelData.name
                 symbol: modelData.isProject ? "hammer" : "folder"
-                badge: modelData.isProject ? "Swift" : ""
+                badge: modelData.isProject ? "Project" : ""
                 selected: browser.selected === modelData.path
                 onClicked: browser.selected = modelData.path
                 TapHandler {

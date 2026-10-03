@@ -5,12 +5,15 @@ import QtQuick
 import "../lib"
 import "../lib/theme"
 import "../lib/syntax.js" as Syntax
+import "languages.js" as Languages
+import "design"
 
 Item {
     id: area
     property var app
     property var backend
     property var menu                         // the window's PopupMenu
+    property Item overlay: null               // the window's overlay (the designer's popovers)
     property int current: -1
     property bool findVisible: false
     property bool replaceVisible: false
@@ -20,9 +23,16 @@ Item {
     signal closeConfirm(int index, var proceed)
     signal findInProjectRequested(string text)
 
-    readonly property var currentEditor: current >= 0 && editors.count > current ? editors.itemAt(current) : null
+    readonly property var currentEditor: current >= 0 && editors.count > current ? editorAt(current) : null
     readonly property string currentPath: current >= 0 && current < docs.count ? docs.get(current).path : ""
-    readonly property bool currentIsFile: current >= 0 && current < docs.count && docs.get(current).kind === "file"
+    // Files on disk: source code, or a design open in the App Designer.
+    readonly property bool currentIsFile: current >= 0 && current < docs.count && (docs.get(current).kind === "file" || docs.get(current).kind === "design")
+    readonly property bool currentIsCode: currentIsFile && docs.get(current).kind === "file"
+    readonly property var currentDesigner: current >= 0 && current < docs.count && docs.get(current).kind === "design" ? currentEditor : null
+    signal revealNodeRequested(string screen, string node)
+
+    function editorAt(i) { const holder = editors.itemAt(i); return holder ? holder.item : null }
+    function isFileKind(kind) { return kind === "file" || kind === "design" }
     onCurrentChanged: fileShown(currentPath)
 
     ListModel { id: docs }
@@ -33,31 +43,36 @@ Item {
         return -1
     }
 
-    function open(path, line, column) {
+    // Open a file in a tab: a design in the App Designer (unless asText), anything else as text.
+    function open(path, line, column, asText) {
         const i = indexOf(path)
         if (i >= 0) {
+            if (asText && docs.get(i).kind === "design") { closeAt(i, false); Qt.callLater(() => area.open(path, line, column, true)); return }
             current = i
-            if (line > 0) editors.itemAt(i).goTo(line, column)
+            const ed = editorAt(i)
+            if (line > 0 && ed) ed.goTo(line, column)
             return
         }
         backend.call("read", { path: path }, (r) => {
             if (!r.ok) { area.error("Couldn't Open the File", r.error); return }
             if (area.indexOf(path) >= 0) return
             area.pendingJump = line > 0 ? { path: path, line: line, column: column } : null
-            docs.append({ path: path, title: path.split("/").pop(), kind: "file", locked: !!r.readOnly, dirty: false, content: r.text })
+            const kind = path.endsWith(".lcdesign") && !asText ? "design" : "file"
+            docs.append({ path: path, title: path.split("/").pop(), kind: kind, locked: !!r.readOnly, dirty: false, content: r.text, lang: "" })
             area.current = docs.count - 1
         })
     }
 
-    function openLog(title, text) {
+    // A read-only tab: a build log, or generated code (with its language).
+    function openLog(title, text, lang) {
         for (let i = 0; i < docs.count; i++) {
             if (docs.get(i).kind === "log" && docs.get(i).title === title) {
-                editors.itemAt(i).text = text
+                editorAt(i).text = text
                 current = i
                 return
             }
         }
-        docs.append({ path: "log:" + title, title: title, kind: "log", locked: true, dirty: false, content: text })
+        docs.append({ path: "log:" + title, title: title, kind: "log", locked: true, dirty: false, content: text, lang: lang || "" })
         current = docs.count - 1
     }
 
@@ -86,13 +101,13 @@ Item {
 
     function save(index, done) {
         const doc = docs.get(index)
-        const editor = editors.itemAt(index)
-        if (!doc || doc.kind !== "file" || doc.locked || !editor) { if (done) done(true); return }
+        const editor = editorAt(index)
+        if (!doc || !isFileKind(doc.kind) || doc.locked || !editor) { if (done) done(true); return }
         const text = editor.text
         backend.call("write", { path: doc.path, text: text }, (r) => {
             if (r.ok) {
                 editor.savedText = text
-                if (doc.path.endsWith("Package.swift")) area.app.refreshProject()
+                if (/(Package\.swift|Cargo\.toml|meson\.build|pyproject\.toml)$/.test(doc.path)) area.app.refreshProject()
             } else {
                 area.error("Couldn't Save “" + doc.title + "”", r.error)
             }
@@ -115,12 +130,12 @@ Item {
 
     function openFiles() {
         const out = []
-        for (let i = 0; i < docs.count; i++) if (docs.get(i).kind === "file") out.push(docs.get(i).path)
+        for (let i = 0; i < docs.count; i++) if (isFileKind(docs.get(i).kind)) out.push(docs.get(i).path)
         return out
     }
 
     function showFind(replace) {
-        if (!currentEditor) return
+        if (!currentEditor || !currentEditor.editor) return
         findVisible = true
         replaceVisible = !!replace
         const sel = currentEditor.editor.selectedText
@@ -170,9 +185,9 @@ Item {
                     x: 12
                     anchors.verticalCenter: parent.verticalCenter
                     size: 14
-                    name: tab.kind === "log" ? "hammer" : "code"
+                    name: tab.kind === "log" ? "hammer" : Languages.fileInfo(tab.title).symbol
                     tone: "auto"
-                    color: tab.title.endsWith(".swift") ? "#f05138" : "transparent"
+                    color: tab.kind === "log" ? "transparent" : Languages.fileInfo(tab.title).color
                 }
                 Text {
                     id: tabLabel
@@ -234,7 +249,7 @@ Item {
             }
             return out
         }
-        readonly property var symbols: area.currentEditor && area.currentIsFile && area.currentEditor.revision >= 0
+        readonly property var symbols: area.currentEditor && area.currentIsCode && area.currentEditor.revision >= 0
             ? Syntax.symbols(area.currentEditor.text) : []
         readonly property var currentSymbol: {
             const line = area.currentEditor ? area.currentEditor.cursorLine : 0
@@ -282,7 +297,7 @@ Item {
                 }
             }
             Symbol {
-                visible: area.currentIsFile
+                visible: area.currentIsCode
                 anchors.verticalCenter: parent.verticalCenter
                 name: "chevron-small-right"
                 size: 11
@@ -290,7 +305,7 @@ Item {
             }
             ToolbarButton {
                 id: symbolCrumb
-                visible: area.currentIsFile
+                visible: area.currentIsCode
                 anchors.verticalCenter: parent.verticalCenter
                 height: 22
                 text: jumpBar.currentSymbol ? jumpBar.currentSymbol.name : "No Selection"
@@ -385,52 +400,83 @@ Item {
         Repeater {
             id: editors
             model: docs
-            delegate: CodeEditor {
-                id: ed
+            delegate: Loader {
+                id: holder
                 required property int index
                 required property string path
                 required property string kind
                 required property bool locked
                 required property string content
-                property string savedText: ""
+                required property string lang
                 anchors.fill: parent
                 visible: index === area.current
-                readOnly: locked
-                language: kind === "log" ? "plain" : Syntax.languageFor(path)
-                fontSize: area.app.settings.fontSize || 13
-                tabWidth: area.app.settings.tabWidth || 4
-                showMinimap: kind === "file" && area.app.settings.showMinimap !== false
-                highlightText: area.findVisible ? findField.text : ""
-                caseSensitive: matchCase.checked
-                issues: area.app.issues.filter((i) => i.path === path && i.line > 0)
-                Component.onCompleted: {
-                    editor.text = content
-                    savedText = editor.text
-                    editor.cursorPosition = 0
-                    const jump = area.pendingJump
-                    if (jump && jump.path === path) {
-                        area.pendingJump = null
-                        Qt.callLater(() => ed.goTo(jump.line, jump.column))
+                sourceComponent: kind === "design" ? designComponent : codeComponent
+                onVisibleChanged: if (visible && item && item.editor) item.editor.forceActiveFocus()
+
+                Connections {
+                    target: holder.item
+                    function onRevisionChanged() {
+                        const dirty = area.isFileKind(holder.kind) && holder.item.text !== holder.item.savedText
+                        if (docs.get(holder.index) && docs.get(holder.index).dirty !== dirty) docs.setProperty(holder.index, "dirty", dirty)
                     }
-                    if (visible) editor.forceActiveFocus()
+                    function onSavedTextChanged() {
+                        if (docs.get(holder.index)) docs.setProperty(holder.index, "dirty", holder.item.text !== holder.item.savedText)
+                    }
                 }
-                onRevisionChanged: {
-                    const dirty = kind === "file" && editor.text !== savedText
-                    if (docs.get(index) && docs.get(index).dirty !== dirty) docs.setProperty(index, "dirty", dirty)
+
+                Component {
+                    id: designComponent
+                    DesignEditor {
+                        path: holder.path
+                        readOnly: holder.locked
+                        menu: area.menu
+                        overlay: area.overlay
+                        backend: area.backend
+                        app: area.app
+                        Component.onCompleted: load(holder.content)
+                        onOpenAsText: area.open(holder.path, 0, 0, true)
+                        onShowCode: (title, code) => area.openLog(title, code, "js")
+                        onError: (title, message) => area.error(title, message)
+                    }
                 }
-                onSavedTextChanged: if (docs.get(index)) docs.setProperty(index, "dirty", false)
-                onVisibleChanged: if (visible) editor.forceActiveFocus()
-                onContextMenuRequested: (x, y) => area.menu.popup(ed, x, y, [
-                    { text: "Cut", shortcut: "⌘X", enabled: !ed.readOnly && ed.editor.selectedText.length > 0, action: () => ed.editor.cut() },
-                    { text: "Copy", shortcut: "⌘C", enabled: ed.editor.selectedText.length > 0, action: () => ed.editor.copy() },
-                    { text: "Paste", shortcut: "⌘V", enabled: !ed.readOnly && ed.editor.canPaste, action: () => ed.editor.paste() },
-                    { separator: true },
-                    { text: "Comment Selection", shortcut: "⌘/", enabled: !ed.readOnly, action: () => ed.toggleComment() },
-                    { text: "Shift Right", shortcut: "⌘]", enabled: !ed.readOnly, action: () => ed.shiftLines(true) },
-                    { text: "Shift Left", shortcut: "⌘[", enabled: !ed.readOnly, action: () => ed.shiftLines(false) },
-                    { separator: true },
-                    { text: "Find in Project…", shortcut: "⇧⌘F", action: () => area.findInProjectRequested(ed.editor.selectedText) },
-                ])
+
+                Component {
+                    id: codeComponent
+                    CodeEditor {
+                        id: ed
+                        property string savedText: ""
+                        readOnly: holder.locked
+                        language: holder.kind === "log" ? (holder.lang || "plain") : Syntax.languageFor(holder.path)
+                        fontSize: area.app.settings.fontSize || 13
+                        tabWidth: area.app.settings.tabWidth || 4
+                        showMinimap: holder.kind === "file" && area.app.settings.showMinimap !== false
+                        highlightText: area.findVisible ? findField.text : ""
+                        caseSensitive: matchCase.checked
+                        issues: area.app.issues.filter((i) => i.path === holder.path && i.line > 0)
+                        Component.onCompleted: {
+                            editor.text = holder.content
+                            savedText = editor.text
+                            editor.cursorPosition = 0
+                            const jump = area.pendingJump
+                            if (jump && jump.path === holder.path) {
+                                area.pendingJump = null
+                                Qt.callLater(() => ed.goTo(jump.line, jump.column))
+                            }
+                            if (holder.visible) editor.forceActiveFocus()
+                        }
+                        onContextMenuRequested: (x, y) => area.menu.popup(ed, x, y, [
+                            { text: "Cut", shortcut: "⌘X", enabled: !ed.readOnly && ed.editor.selectedText.length > 0, action: () => ed.editor.cut() },
+                            { text: "Copy", shortcut: "⌘C", enabled: ed.editor.selectedText.length > 0, action: () => ed.editor.copy() },
+                            { text: "Paste", shortcut: "⌘V", enabled: !ed.readOnly && ed.editor.canPaste, action: () => ed.editor.paste() },
+                            { separator: true },
+                            { text: "Comment Selection", shortcut: "⌘/", enabled: !ed.readOnly, action: () => ed.toggleComment() },
+                            { text: "Shift Right", shortcut: "⌘]", enabled: !ed.readOnly, action: () => ed.shiftLines(true) },
+                            { text: "Shift Left", shortcut: "⌘[", enabled: !ed.readOnly, action: () => ed.shiftLines(false) },
+                            { separator: true },
+                            { text: "Find in Project…", shortcut: "⇧⌘F", action: () => area.findInProjectRequested(ed.editor.selectedText) },
+                        ].concat(holder.path.endsWith(".lcdesign") ? [{ separator: true }, { text: "Open in App Designer", action: () => { area.closeAt(holder.index, false); Qt.callLater(() => area.open(holder.path, 0, 0)) } }] : []))
+                    }
+                }
             }
         }
     }

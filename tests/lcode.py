@@ -57,11 +57,11 @@ class Projects(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.tmp, ignore_errors=True)
 
-    def test_templates_create_valid_packages(self):
-        for template in proj.TEMPLATES:
+    def test_swift_templates_create_valid_packages(self):
+        for template in ("app", "tool", "library"):
             root = proj.create_project(self.tmp, template, f"My {template}", "Acme", "com.acme", True, False)
             p = proj.open_project(root)
-            self.assertEqual(p["kind"], template)
+            self.assertEqual((p["kind"], p["toolchain"]), (template, "swift"))
             self.assertEqual(p["bundleId"], f"com.acme.My-{template}")
             self.assertTrue((pathlib.Path(root) / "Package.swift").read_text().startswith("// swift-tools-version:"))
             self.assertTrue((pathlib.Path(root) / ".gitignore").read_text().count(".lcode/userdata/"))
@@ -72,6 +72,33 @@ class Projects(unittest.TestCase):
                 self.assertEqual(p["destination"], "lphone-16" if template == "app" else "host")
             with self.assertRaises(FileExistsError):
                 proj.create_project(self.tmp, template, f"My {template}")
+
+    def test_every_template_is_recognised_as_what_it_is(self):
+        expect = {
+            "gg-app": ("goldengate", "app", ["Clock Work"], "host"),
+            "python-app": ("python", "app", ["Clock Work"], "lphone-16"),
+            "python-tool": ("python", "tool", ["Clock Work"], "host"),
+            "rust-app": ("cargo", "app", ["clock-work"], "lphone-16"),
+            "rust-tool": ("cargo", "tool", ["clock-work"], "host"),
+            "rust-library": ("cargo", "library", [], "host"),
+            "c-app": ("meson", "app", ["clock-work"], "lphone-16"),
+            "c-tool": ("meson", "tool", ["clock-work"], "host"),
+        }
+        self.assertEqual(set(expect) | {"app", "tool", "library"}, set(proj.TEMPLATES))
+        for template, (toolchain, kind, products, destination) in expect.items():
+            folder = pathlib.Path(self.tmp) / template
+            folder.mkdir()
+            root = proj.create_project(str(folder), template, "Clock Work", "", "org.example", True, False,
+                                       options={"accent": "#30d158", "style": "window"})
+            p = proj.open_project(root)
+            self.assertEqual((p["toolchain"], p["kind"], p["products"], p["destination"]), (toolchain, kind, products, destination), template)
+            self.assertEqual(p["meta"]["toolchain"], toolchain)
+            # Without LCode's own data the build files alone say what it is.
+            shutil.rmtree(pathlib.Path(root) / ".lcode")
+            self.assertEqual(proj.open_project(root)["toolchain"], toolchain, template)
+        app_id = (pathlib.Path(self.tmp) / "c-app/Clock Work/src/main.c").read_text()
+        self.assertIn('adw_application_new ("org.example.Clock_Work"', app_id)
+        self.assertIn("#30d158", (pathlib.Path(self.tmp) / "python-app/Clock Work/clock_work/style.css").read_text())
 
     def test_git_repository_is_created_with_a_first_commit(self):
         if not shutil.which("git"):
@@ -85,6 +112,10 @@ class Projects(unittest.TestCase):
         self.assertIn("struct SettingsView: View", proj.new_file_contents("SettingsView.swift", "App"))
         self.assertIn("import Foundation", proj.new_file_contents("Model.swift", "App"))
         self.assertEqual(proj.new_file_contents("notes.txt", "App"), "")
+        self.assertTrue(proj.new_file_contents("tool.py", "App").startswith("#\n#  tool.py"))
+        self.assertIn('#include "util.h"', proj.new_file_contents("util.c", "App"))
+        self.assertEqual(proj.snake_name("2048 Game!"), "app_2048_game")
+        self.assertEqual(proj.application_id("com.acme.My-App"), "com.acme.My_App")
 
     def test_existing_packages_are_recognised(self):
         root = pathlib.Path(self.tmp) / "Existing"
@@ -120,12 +151,46 @@ class Diagnostics(unittest.TestCase):
         self.assertIsNone(proj.parse_diagnostic("[3/7] Compiling A main.swift", "/p"))
         self.assertEqual(proj.parse_progress("[3/7] Compiling A main.swift"), {"done": 3, "total": 7, "message": "Compiling A main.swift"})
 
+    def test_rust_c_and_python_formats(self):
+        d = proj.parse_diagnostic("src/main.rs:2:5: error[E0425]: cannot find value `x` in this scope", "/r")
+        self.assertEqual((d["path"], d["line"], d["column"], d["severity"]), ("/r/src/main.rs", 2, 5, "error"))
+        d = proj.parse_diagnostic("../src/main.c:9:3: fatal error: gtk.h: No such file or directory", "/c/build")
+        self.assertEqual((d["path"], d["severity"]), ("/c/src/main.c", "error"))
+        # Summaries that repeat what was reported aren't issues of their own.
+        for line in ("error: could not compile `demo` (bin \"demo\") due to 1 previous error",
+                     "warning: `demo` (bin \"demo\") generated 1 warning"):
+            self.assertIsNone(proj.parse_diagnostic(line, "/r"), line)
+        self.assertEqual(proj.parse_progress("   Compiling gtk4 v0.11.5"), {"done": 0, "total": 0, "message": "Compiling gtk4 v0.11.5"})
+
+    def test_python_tracebacks_become_runtime_issues(self):
+        import lcode_toolchains as tc
+        with tempfile.TemporaryDirectory() as root:
+            r = tc.RuntimeIssues(root)
+            out = r.feed("Traceback (most recent call last):\n"
+                         f'  File "{root}/main.py", line 7, in <module>\n    main()\n'
+                         f'  File "{root}/app/window.py", line 31, in main\n    x = 1 / 0\n'
+                         '  File "/usr/lib/python3/thing.py", line 3, in helper\n')
+            self.assertEqual(out, [])
+            out = r.feed("ZeroDivisionError: division by zero\n")
+            self.assertEqual(out[0]["path"], os.path.realpath(f"{root}/app/window.py"))
+            self.assertEqual((out[0]["line"], out[0]["message"]), (31, "ZeroDivisionError: division by zero"))
+
+    def test_python_check_reports_syntax_errors_like_a_compiler(self):
+        with tempfile.TemporaryDirectory() as root:
+            pathlib.Path(root, "ok.py").write_text("x = 1\n")
+            pathlib.Path(root, "bad.py").write_text("def f(:\n    pass\n")
+            p = subprocess.run([sys.executable, str(ROOT / "apps/lcode/lcode_tool.py"), "check", root],
+                               stdout=subprocess.PIPE, text=True)
+            self.assertEqual(p.returncode, 1)
+            issues = [d for d in (proj.parse_diagnostic(l, root) for l in p.stdout.splitlines()) if d]
+            self.assertEqual([(pathlib.Path(i["path"]).name, i["line"]) for i in issues if i["path"]], [("bad.py", 1)])
+
 
 class Session:
     """helper.py serve, driven like the LCode window drives it."""
 
-    def __init__(self, home: str, swift: str):
-        env = dict(os.environ, HOME=home, XDG_CONFIG_HOME=home + "/config", XDG_RUNTIME_DIR=home + "/run", LCODE_SWIFT=swift)
+    def __init__(self, home: str, swift: str, **extra):
+        env = dict(os.environ, HOME=home, XDG_CONFIG_HOME=home + "/config", XDG_RUNTIME_DIR=home + "/run", LCODE_SWIFT=swift, **extra)
         os.makedirs(home + "/run", exist_ok=True)
         self.p = subprocess.Popen([sys.executable, str(ROOT / "apps/lcode/helper.py"), "serve"], stdin=subprocess.PIPE,
                                   stdout=subprocess.PIPE, text=True, env=env, bufsize=1)
@@ -184,7 +249,8 @@ class Backend(unittest.TestCase):
 
     def test_hello_settings_and_recents(self):
         r = self.s.call("hello")
-        self.assertEqual(r["swiftVersion"], "Swift version 6.1 (test stand-in)")
+        self.assertEqual(r["toolchains"]["swift"]["version"], "Swift version 6.1 (test stand-in)")
+        self.assertEqual(r["toolchains"]["python"]["name"], "Python")
         self.assertEqual(r["settings"]["recent"], [self.root])
         r = self.s.call("settings", values={"fontSize": 15, "recent": ["/nope"]})
         self.assertEqual((r["settings"]["fontSize"], r["settings"]["recent"]), (15, [self.root]))
@@ -252,6 +318,181 @@ class Backend(unittest.TestCase):
         self.s.call("simShutdown")
         self.s.wait(lambda m: m.get("event") == "sim.state" and m["power"] == "off")
         self.assertFalse(os.path.exists(os.path.dirname(frame["frame"])))
+
+
+class OtherToolchains(unittest.TestCase):
+    """Python always; C and Rust when Meson and cargo are installed."""
+
+    def setUp(self):
+        self.home = tempfile.mkdtemp()
+        self.s = Session(self.home, "/nonexistent/swift", LCODE_PYTHON=sys.executable)
+
+    def tearDown(self):
+        self.s.close()
+        shutil.rmtree(self.home, ignore_errors=True)
+
+    def project(self, template: str, name: str) -> dict:
+        r = self.s.call("create", parent=self.home, template=template, name=name, organization="", organizationId="org.example", git=False)
+        self.assertTrue(r["ok"], r)
+        return self.s.call("open", path=r["root"])["project"]
+
+    def task(self, cmd: str, timeout: float = 120, **args) -> tuple[dict, list[dict]]:
+        self.s.events.clear()
+        self.assertTrue(self.s.call(cmd, **args)["ok"])
+        done = self.s.wait(lambda m: m.get("event") == "task.finished", timeout)
+        return done, [e for e in self.s.events if e.get("event") == "task.issue"]
+
+    def build_test_run(self, template: str, timeout: float = 120) -> None:
+        p = self.project(template, "Demo " + template)
+        product = p["products"][0]
+        done, issues = self.task("build", timeout, product=product)
+        self.assertEqual((done["code"], done["errors"]), (0, 0), issues)
+        done, _ = self.task("test", timeout)
+        self.assertEqual(done["code"], 0)
+        gen = self.s.call("run", product=product, destination="host", device={})["gen"]
+        self.s.wait(lambda m: m.get("event") == "run.output" and "Hello, World!" in m["text"], timeout)
+        self.s.call("stdin", text="Ada\n")
+        self.s.wait(lambda m: m.get("event") == "run.output" and "Hello, Ada!" in m["text"])
+        self.assertEqual(self.s.wait(lambda m: m.get("event") == "run.exited" and m["gen"] == gen)["code"], 0)
+        done, _ = self.task("clean", timeout)
+        self.assertEqual(done["code"], 0)
+
+    def test_python_script(self):
+        self.build_test_run("python-tool")
+
+    def test_python_errors_at_build_and_run_time(self):
+        p = self.project("python-tool", "Broken")
+        main = pathlib.Path(p["root"]) / "main.py"
+        main.write_text("def broken(:\n    pass\n")
+        done, issues = self.task("build", product=p["products"][0])
+        self.assertEqual(done["errors"], 1)
+        self.assertEqual((issues[0]["path"], issues[0]["line"]), (str(main), 1))
+        main.write_text("import sys\n\nprint('starting')\nvalue = {}['missing']\n")
+        self.s.call("run", product=p["products"][0], destination="host", device={})
+        issue = self.s.wait(lambda m: m.get("event") == "task.issue" and m.get("runtime"))
+        self.assertEqual((issue["path"], issue["line"], issue["message"]), (str(main), 4, "KeyError: 'missing'"))
+
+    @unittest.skipUnless(shutil.which("meson") and shutil.which("cc"), "Meson and a C compiler aren't installed")
+    def test_c_tool(self):
+        self.build_test_run("c-tool")
+
+    @unittest.skipUnless(shutil.which("cargo"), "cargo isn't installed")
+    def test_rust_tool(self):
+        self.build_test_run("rust-tool", timeout=300)
+
+
+class Designer(unittest.TestCase):
+    """Golden Gate apps from the App Designer: checking, generating, loading."""
+
+    def setUp(self):
+        import lcode_design
+        self.d = lcode_design
+        self.tmp = tempfile.mkdtemp()
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def make(self, style: str) -> pathlib.Path:
+        folder = pathlib.Path(self.tmp) / style
+        folder.mkdir()
+        return pathlib.Path(proj.create_project(str(folder), "gg-app", "Notes App", "", "org.example", True, False,
+                                                options={"style": style, "accent": "#5e5ce6"}))
+
+    def test_starters_check_out_and_build(self):
+        for style, screens in (("sidebar", 3), ("window", 1), ("utility", 1)):
+            root = self.make(style)
+            doc = json.loads((root / "Interface.lcdesign").read_text())
+            self.assertEqual(doc["app"]["accent"], "#5e5ce6")
+            self.assertEqual(self.d.check(doc, root), [])
+            lines: list[str] = []
+            self.assertEqual(self.d.build(str(root), out=lines.append), 0, lines)
+            app = root / ".build/app"
+            self.assertEqual(len(list((app / "screens").glob("*.qml"))), screens)
+            text = (app / "App.qml").read_text()
+            self.assertTrue(text.startswith("//@ pragma AppId org.example.Notes-App"))
+            self.assertEqual(os.path.realpath(app / "ui"), str(ROOT / "apps/lib"))
+            self.assertEqual("sidebar: [" in text, style == "sidebar")
+
+    def test_problems_are_reported_with_the_node(self):
+        root = self.make("sidebar")
+        doc = json.loads((root / "Interface.lcdesign").read_text())
+        home = doc["screens"][0]["root"]
+        button = home["children"][1]["children"][1]["children"][1]
+        button["actions"]["tap"] = [{"do": "increment", "var": "clicks"}, {"do": "navigate", "screen": "nowhere"}]
+        home["children"][0]["children"][1]["props"]["text"] = "Hi {nobody}"
+        doc["state"].append({"name": "2bad", "type": "text", "value": ""})
+        issues = self.d.check(doc, root)
+        messages = [(i["severity"], i["node"]) for i in issues]
+        self.assertIn(("error", button["id"]), messages)
+        self.assertEqual(sum(1 for i in issues if i["severity"] == "error"), 3)
+        self.assertTrue(any(i["severity"] == "warning" and "{nobody}" in i["message"] for i in issues))
+        (root / "Interface.lcdesign").write_text(json.dumps(doc))
+        lines: list[str] = []
+        self.assertEqual(self.d.build(str(root), out=lines.append), 1)
+        located = [proj.parse_diagnostic(l, str(root)) for l in lines]
+        self.assertTrue(any(x and x["severity"] == "error" and x["message"].endswith(f"[home#{button['id']}]") for x in located))
+
+    def test_generated_code_reads_like_qml(self):
+        root = self.make("sidebar")
+        doc = json.loads((root / "Interface.lcdesign").read_text())
+        tasks = self.d.Gen(doc).screen(doc["screens"][1])
+        self.assertIn('text: app.str(app.values.todos) + " tasks, saved when you quit"', tasks)
+        self.assertIn('onItemDeleted: (index) => app.removeAt("todos", index)', tasks)
+        self.assertIn('app.append("todos", app.values.newTask)', tasks)
+        settings = self.d.Gen(doc).screen(doc["screens"][2])
+        self.assertIn("shown: app.values.showTips", settings)
+        formatter = shutil.which("pyside6-qmlformat") or shutil.which("qmlformat")
+        if formatter:
+            self.d.build(str(root), out=lambda _: None)
+            for f in [root / ".build/app/App.qml", *(root / ".build/app/screens").glob("*.qml")]:
+                p = subprocess.run([formatter, str(f)], stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
+                self.assertEqual(p.returncode, 0, f"{f.name}: {p.stderr}")
+
+    def test_generated_screens_run_with_the_kit(self):
+        try:
+            from PySide6.QtCore import QUrl
+            from PySide6.QtGui import QGuiApplication
+            from PySide6.QtQml import QQmlComponent, QQmlEngine, QQmlExpression
+            from PySide6.QtQuick import QQuickView
+        except ImportError:
+            self.skipTest("PySide6 not installed")
+        os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+        app = QGuiApplication.instance() or QGuiApplication([])
+        root = self.make("sidebar")
+        self.d.build(str(root), out=lambda _: None)
+        doc = json.loads((root / "Interface.lcdesign").read_text())
+        initial = json.dumps({v["name"]: v["value"] for v in doc["state"]})
+        view = QQuickView()
+        component = QQmlComponent(view.engine())
+        url = QUrl.fromLocalFile(str(root / ".build/app/Harness.qml"))
+        component.setData(("import QtQuick\nimport \"ui/kit\" as Kit\nimport \"screens\"\n"
+                           "Item { width: 900; height: 640\n"
+                           f"  property alias rt: rt\n  Kit.AppRuntime {{ id: rt; initial: {initial}; screens: [\"home\", \"tasks\", \"settings\"] }}\n"
+                           "  Kit.Scope { anchors.fill: parent; env: ({ dark: true, accent: \"#5e5ce6\" })\n"
+                           "    ScreenTasks { id: tasks; anchors.fill: parent; app: rt }\n"
+                           "    ScreenSettings { anchors.fill: parent; app: rt; visible: false } } }").encode(), url)
+        self.assertEqual(component.status(), QQmlComponent.Ready, "\n".join(e.toString() for e in component.errors()))
+        item = component.create()
+        view.setContent(url, component, item)
+        view.show()
+        app.processEvents()
+
+        def js(expr):
+            e = QQmlExpression(QQmlEngine.contextForObject(item), item, expr)
+            value, _ = e.evaluate()
+            self.assertFalse(e.hasError(), e.error().toString())
+            app.processEvents()
+            return value
+
+        self.assertEqual(js("rt.values.todos.length"), 2)
+        js('rt.set("newTask", "Write tests"); rt.append("todos", rt.values.newTask); rt.clear("newTask")')
+        self.assertEqual(js("rt.values.todos[2].title"), "Write tests")
+        self.assertEqual(js("rt.values.newTask"), "")
+        js('rt.perform([{ do: "increment", var: "count", by: 2 }, { do: "toggle", var: "showTips" }, { do: "navigate", screen: "settings" }])')
+        self.assertEqual((js("rt.values.count"), js("rt.values.showTips"), js("rt.screen")), (2, False, "settings"))
+        js("rt.back()")
+        self.assertEqual(js("rt.screen"), "home")
+        view.close()
 
 
 class CodeEditor(unittest.TestCase):

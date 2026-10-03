@@ -1,4 +1,4 @@
-// Open: pick a project folder (any Swift package, or any folder).
+// Open: pick a project folder (any project LCode can build, or any folder).
 import QtQuick
 import "../lib"
 import "../lib/theme"
@@ -22,7 +22,7 @@ Sheet {
         Text {
             width: parent.width
             wrapMode: Text.WordWrap
-            text: "Choose a folder with a Package.swift. Double-click to go into a folder."
+            text: "Choose a project folder (Package.swift, Cargo.toml, meson.build, main.py or an LCode app). Double-click to go into a folder."
             color: Theme.secondaryLabel
             font { family: Theme.fontUi; pixelSize: 12 }
         }

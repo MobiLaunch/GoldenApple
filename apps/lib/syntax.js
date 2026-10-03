@@ -6,7 +6,7 @@
 // visible line without re-reading the file.
 .pragma library
 
-const NORMAL = 0, BLOCK_COMMENT = 1, MULTILINE_STRING = 2;
+const NORMAL = 0, BLOCK_COMMENT = 1, MULTILINE_STRING = 2, MULTILINE_SINGLE = 3;
 
 const SWIFT_KEYWORDS = new Set(("associatedtype class deinit enum extension fileprivate func import init inout internal let open " +
     "operator private precedencegroup protocol public rethrows static struct subscript typealias var break case catch continue " +
@@ -16,12 +16,21 @@ const SWIFT_KEYWORDS = new Set(("associatedtype class deinit enum extension file
 const C_KEYWORDS = new Set(("auto break case char const continue default do double else enum extern float for goto if inline int " +
     "long register return short signed sizeof static struct switch typedef union unsigned void volatile while bool true false " +
     "class namespace template typename public private protected virtual override final new delete this nullptr using try catch " +
-    "throw const_cast static_cast dynamic_cast reinterpret_cast constexpr noexcept fn let mut pub impl trait mod use crate self " +
-    "Self match loop where async await move ref type dyn unsafe extern as in function var import export from of interface " +
-    "package func go defer chan select map range fallthrough val fun object when is null").split(" "));
+    "throw const_cast static_cast dynamic_cast reinterpret_cast constexpr noexcept NULL TRUE FALSE size_t gboolean gint gchar " +
+    "interface package func go defer chan select map range fallthrough val fun object when is null").split(" "));
+const RUST_KEYWORDS = new Set(("as async await break const continue crate dyn else enum extern false fn for if impl in let loop " +
+    "match mod move mut pub ref return self Self static struct super trait true type union unsafe use where while " +
+    "Some None Ok Err").split(" "));
+const JS_KEYWORDS = new Set(("break case catch class const continue debugger default delete do else export extends false finally " +
+    "for function if import in instanceof let new null return super switch this throw true try typeof undefined var void " +
+    "while with yield async await of property readonly required signal alias component pragma on").split(" "));
 const PY_KEYWORDS = new Set(("and as assert async await break class continue def del elif else except False finally for from " +
-    "global if import in is lambda None nonlocal not or pass raise return True try while with yield match case self " +
-    "then fi done esac function local export echo exit").split(" "));
+    "global if import in is lambda None nonlocal not or pass raise return True try while with yield match case self").split(" "));
+const SHELL_KEYWORDS = new Set(("if then else elif fi for while until do done case esac function in local export return exit " +
+    "true false echo set unset readonly shift source").split(" "));
+const DECLARERS = ["func", "struct", "class", "enum", "protocol", "actor", "extension", "typealias", "def", "fn", "trait", "impl",
+                   "interface", "function", "mod", "type", "component", "signal"];
+const JS_TYPES = new Set("int real string bool var color url list double alias date point rect size font".split(" "));
 
 var PALETTES = {
     light: { plain: "#262626", keyword: "#9b2393", string: "#c41a16", comment: "#5d6c79", number: "#1c00cf",
@@ -30,19 +39,28 @@ var PALETTES = {
             type: "#d0a8ff", attribute: "#bf8555", preprocessor: "#fd8f3f", declaration: "#41a1c0" },
 };
 
+// The language family for a file: swift, c, rust, js (JavaScript and QML),
+// python, css, hash (shell, TOML, YAML, Meson: # comments), json or plain.
 function languageFor(path) {
     const name = String(path || "").split("/").pop().toLowerCase();
     const ext = name.includes(".") ? name.split(".").pop() : "";
     if (ext === "swift") return "swift";
-    if (["c", "h", "cc", "cpp", "hpp", "m", "mm", "rs", "js", "mjs", "ts", "java", "kt", "go", "cs", "qml"].includes(ext)) return "c";
-    if (["py", "sh", "bash", "zsh", "toml", "yml", "yaml", "cmake"].includes(ext) || name === "makefile" || name === "pkgbuild") return "hash";
+    if (ext === "rs") return "rust";
+    if (ext === "py" || ext === "pyw") return "python";
+    if (["js", "mjs", "cjs", "ts", "qml", "lcdesign"].includes(ext)) return ext === "lcdesign" ? "json" : "js";
+    if (ext === "css") return "css";
+    if (["c", "h", "cc", "cpp", "hpp", "m", "mm", "java", "kt", "go", "cs", "vala"].includes(ext)) return "c";
+    if (["sh", "bash", "zsh", "toml", "yml", "yaml", "cmake", "ini", "desktop", "conf"].includes(ext) ||
+        ["makefile", "pkgbuild", "meson.build", "meson_options.txt", "dockerfile"].includes(name)) return "hash";
     if (ext === "json") return "json";
     return "plain";
 }
 
 function keywordsFor(lang) {
-    return lang === "swift" ? SWIFT_KEYWORDS : lang === "c" ? C_KEYWORDS : lang === "hash" ? PY_KEYWORDS : null;
+    return { swift: SWIFT_KEYWORDS, c: C_KEYWORDS, rust: RUST_KEYWORDS, js: JS_KEYWORDS, python: PY_KEYWORDS, hash: SHELL_KEYWORDS }[lang] || null;
 }
+
+function commentMarker(lang) { return lang === "hash" || lang === "python" ? "#" : "//"; }
 
 // Split one line into [kind, text] runs; returns { runs, state }.
 function tokenize(line, state, lang) {
@@ -51,7 +69,7 @@ function tokenize(line, state, lang) {
     if (lang === "plain")
         return { runs: [["plain", line]], state: NORMAL };
     const keywords = keywordsFor(lang);
-    const hashComments = lang === "hash";
+    const hashComments = lang === "hash" || lang === "python";
     let i = 0, n = line.length;
     let prevWord = "";
 
@@ -59,8 +77,8 @@ function tokenize(line, state, lang) {
         const end = line.indexOf("*/");
         if (end < 0) return { runs: [["comment", line]], state };
         push("comment", line.slice(0, end + 2)); i = end + 2; state = NORMAL;
-    } else if (state === MULTILINE_STRING) {
-        const end = line.indexOf('"""');
+    } else if (state === MULTILINE_STRING || state === MULTILINE_SINGLE) {
+        const end = line.indexOf(state === MULTILINE_STRING ? '"""' : "\'\'\'");
         if (end < 0) return { runs: [["string", line]], state };
         push("string", line.slice(0, end + 3)); i = end + 3; state = NORMAL;
     }
@@ -69,6 +87,7 @@ function tokenize(line, state, lang) {
         const c = line[i], next = line[i + 1];
         // Comments.
         if ((!hashComments && c === "/" && next === "/") || (hashComments && c === "#" && !(lang === "hash" && line[i - 1] === "$"))) {
+            if (lang === "css") { push("plain", c); i++; continue; }
             push("comment", line.slice(i)); break;
         }
         if (!hashComments && c === "/" && next === "*") {
@@ -77,19 +96,40 @@ function tokenize(line, state, lang) {
             push("comment", line.slice(i, end + 2)); i = end + 2; continue;
         }
         // Strings.
-        if (c === '"' && line.startsWith('"""', i) && (lang === "swift" || lang === "hash")) {
-            const end = line.indexOf('"""', i + 3);
-            if (end < 0) { push("string", line.slice(i)); state = MULTILINE_STRING; break; }
+        if ((c === '"' && line.startsWith('"""', i) && (lang === "swift" || lang === "hash" || lang === "python")) ||
+            (c === "'" && line.startsWith("\'\'\'", i) && lang === "python")) {
+            const quote = line.slice(i, i + 3);
+            const end = line.indexOf(quote, i + 3);
+            if (end < 0) { push("string", line.slice(i)); state = c === '"' ? MULTILINE_STRING : MULTILINE_SINGLE; break; }
             push("string", line.slice(i, end + 3)); i = end + 3; continue;
         }
-        if (c === '"' || (c === "'" && lang !== "swift") || (c === "`" && lang === "c")) {
+        // Rust lifetimes ('a) aren't strings; its char literals ('a') are.
+        if (c === "'" && lang === "rust" && line[i + 2] !== "'" && !(next === "\\")) {
+            let j = i + 1; while (j < n && /[\w]/.test(line[j])) j++;
+            push("attribute", line.slice(i, j)); i = j; continue;
+        }
+        // CSS: #hex colours are numbers, .class and #id selectors declarations.
+        if (lang === "css" && c === "#" ) {
+            let j = i + 1; while (j < n && /[\w-]/.test(line[j])) j++;
+            push(/^#[0-9a-fA-F]{3,8}$/.test(line.slice(i, j)) ? "number" : "declaration", line.slice(i, j)); i = j; continue;
+        }
+        if (lang === "css" && c === "." && /[A-Za-z_-]/.test(next || "") && !/[\w]/.test(line[i - 1] || "")) {
+            let j = i + 1; while (j < n && /[\w-]/.test(line[j])) j++;
+            push("declaration", line.slice(i, j)); i = j; continue;
+        }
+        if (c === '"' || (c === "'" && lang !== "swift") || (c === "`" && (lang === "c" || lang === "js"))) {
             let j = i + 1;
             while (j < n && line[j] !== c) j += line[j] === "\\" ? 2 : 1;
             push("string", line.slice(i, Math.min(n, j + 1))); i = j + 1; continue;
         }
         // Attributes (@State) and compiler directives (#if, #include).
         if (c === "@" && /[A-Za-z_]/.test(next || "")) {
-            let j = i + 1; while (j < n && /[\w]/.test(line[j])) j++;
+            let j = i + 1; while (j < n && (/[\w]/.test(line[j]) || (lang === "css" && line[j] === "-"))) j++;
+            push("attribute", line.slice(i, j)); i = j; continue;
+        }
+        if (c === "#" && lang === "rust" && (next === "[" || next === "!")) {
+            let depth = 0, j = i + 1;
+            while (j < n) { if (line[j] === "[") depth++; else if (line[j] === "]" && --depth === 0) { j++; break } j++ }
             push("attribute", line.slice(i, j)); i = j; continue;
         }
         if (c === "#" && !hashComments && /[A-Za-z]/.test(next || "")) {
@@ -103,14 +143,17 @@ function tokenize(line, state, lang) {
         }
         // Words.
         if (/[A-Za-z_$]/.test(c)) {
-            let j = i + 1; while (j < n && /[\w$]/.test(line[j])) j++;
+            let j = i + 1; while (j < n && /[\w$]/.test(line[j]) || (lang === "css" && line[j] === "-")) j++;
             const word = line.slice(i, j);
             let kind = "plain";
             if (lang === "json") kind = (word === "true" || word === "false" || word === "null") ? "keyword" : "plain";
+            else if (lang === "css") kind = line[j] === ":" || /^\s*:/.test(line.slice(j)) ? "keyword" : line[i - 1] === "@" ? "attribute" : "plain";
+            else if (lang === "rust" && line[j] === "!") { kind = "preprocessor"; j++; }
             else if (keywords && keywords.has(word)) kind = "keyword";
-            else if (["func", "struct", "class", "enum", "protocol", "actor", "extension", "typealias", "def", "fn", "trait", "impl", "interface", "function"].includes(prevWord)) kind = "declaration";
+            else if (lang === "js" && JS_TYPES.has(word) && (prevWord === "property" || prevWord === "readonly" || prevWord === "required")) kind = "type";
+            else if (DECLARERS.includes(prevWord) || (lang === "js" && JS_TYPES.has(prevWord))) kind = "declaration";
             else if (/^[A-Z]/.test(word) && lang !== "hash") kind = "type";
-            push(kind, word);
+            push(kind, line.slice(i, j));
             if (kind !== "plain" || word) prevWord = word;
             i = j; continue;
         }
@@ -133,7 +176,7 @@ function lineStates(lines, lang) {
         const line = lines[k];
         if (lang === "plain" || lang === "json") continue;
         // Fast path: lines with no comment or string openers can't change the state.
-        if (state === NORMAL && !line.includes("/*") && !line.includes('"""')) continue;
+        if (state === NORMAL && !line.includes("/*") && !line.includes('"""') && !line.includes("\'\'\'")) continue;
         state = tokenize(line, state, lang).state;
     }
     return states;
@@ -197,9 +240,18 @@ function symbols(text) {
     return out;
 }
 
-// Comment or uncomment lines with `// ` at their common indentation.
+// CSS has only block comments: wrap or unwrap each line in /* */.
+function toggleBlockComment(lines) {
+    const used = lines.filter((l) => l.trim().length > 0);
+    if (used.length && used.every((l) => /^\s*\/\*.*\*\/\s*$/.test(l)))
+        return lines.map((l) => l.replace(/^(\s*)\/\* ?(.*?) ?\*\/\s*$/, "$1$2"));
+    return lines.map((l) => l.trim().length ? l.replace(/^(\s*)(.*)$/, "$1/* $2 */") : l);
+}
+
+// Comment or uncomment lines with `// ` (or `# `) at their common indentation.
 function toggleComment(lines, lang) {
-    const marker = lang === "hash" ? "#" : "//";
+    const marker = lang === "css" ? null : commentMarker(lang);
+    if (!marker) return toggleBlockComment(lines);
     const used = lines.filter((l) => l.trim().length > 0);
     if (!used.length) return lines;
     if (used.every((l) => ltrim(l).startsWith(marker))) {

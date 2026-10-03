@@ -111,7 +111,7 @@ test('LCode syntax: Swift runs, multi-line state and Xcode colours', () => {
   assert.equal(s.tokenize('/* open', 0, 'swift').state, 1);
   assert.deepEqual(plain(s.tokenize('close */ let', 1, 'swift').runs[0]), ['comment', 'close */']);
   assert.deepEqual(plain(s.lineStates(['"""', 'text', '"""', 'x'], 'swift')), [0, 2, 2, 0]);
-  assert.deepEqual(['a/b.swift', 'x.py', 'PKGBUILD', 'x.qml', 'README'].map(s.languageFor), ['swift', 'hash', 'hash', 'c', 'plain']);
+  assert.deepEqual(['a/b.swift', 'x.py', 'PKGBUILD', 'x.qml', 'README'].map(s.languageFor), ['swift', 'python', 'hash', 'js', 'plain']);
   const html = s.html('\tlet a = 1 < 2', 0, 'swift', false, 4);
   assert.match(html, /^<font color="#262626">(&nbsp;){4}<\/font><b><font color="#9b2393">let<\/font><\/b>/);
   assert.match(html, /&nbsp;&lt;&nbsp;/);
@@ -145,4 +145,101 @@ test('LCode devices: Simulator displays fit portrait and landscape apps', () => 
     }
   }
   assert.equal(d.byId('nope'), null);
+});
+
+function designModel() {
+  const Catalog = library('apps/lib/kit/catalog.js');
+  const c = vm.createContext({ Catalog });
+  const src = readFileSync(new URL('../apps/lcode/design.js', import.meta.url), 'utf8')
+    .replace('.pragma library', '').replace(/^\.import .*$/m, '');
+  vm.runInContext(src, c);
+  return c;
+}
+const plain = (x) => JSON.parse(JSON.stringify(x));
+
+test('App Designer: catalog components, library pieces and actions are complete', () => {
+  const { CATALOG } = library('apps/lib/kit/catalog.js');
+  const kit = new Set(readFileSync(new URL('../apps/lib/kit/qmldir', import.meta.url), 'utf8').split('\n')
+    .map((l) => l.split(' ')[0]).filter(Boolean));
+  for (const [type, c] of Object.entries(CATALOG.components)) {
+    assert.ok(kit.has(type), `${type} is a Kit component`);
+    assert.ok(c.title && c.symbol && c.detail && Array.isArray(c.fields), type);
+    for (const t of c.templates || []) assert.ok(t in (c.defaults || {}) || c.fields.some((f) => f.key === t), `${type}.${t}`);
+    if (c.bind) assert.ok(['text', 'number', 'bool', 'list'].includes(c.bind.type), type);
+  }
+  for (const e of CATALOG.library) if (!e.section) assert.ok(CATALOG.components[e.type], e.title);
+  assert.deepEqual(plain(CATALOG.actions.map((a) => a.do).sort()), ['alert', 'append', 'back', 'clear', 'copy', 'increment', 'navigate',
+    'notify', 'openUrl', 'quit', 'removeItem', 'run', 'script', 'set', 'toggle']);
+});
+
+test('App Designer: editing a design never changes the old one (undo is snapshots)', () => {
+  const D = designModel();
+  const doc = D.parse(JSON.stringify({ app: { name: 'T' }, state: [], screens: [{ id: 'home', title: 'Home',
+    root: { id: 'n1', type: 'VStack', props: {}, children: [{ id: 'n2', type: 'Text', props: { text: 'Hi' } }] } }] }));
+  const before = JSON.stringify(doc);
+  const card = D.createNode(doc, { type: 'VStack', props: { padding: 18 }, children: [{ type: 'Text' }, { type: 'Button' }] });
+  assert.deepEqual(plain([card.id, card.children[0].id, card.children[1].id]), ['n3', 'n4', 'n5']);
+  assert.equal(card.children[1].props.buttonStyle, 'bordered');
+  const d1 = D.insert(doc, 'n1', 0, card);
+  assert.equal(JSON.stringify(doc), before);
+  assert.deepEqual(plain(D.find(d1, 'n1').node.children.map((c) => c.id)), ['n3', 'n2']);
+  // Move the text into the card, then try to move the card into itself.
+  const d2 = D.move(d1, 'n2', 'n3', 1);
+  assert.deepEqual(plain(D.pathTo(d2, 'n2')), ['n1', 'n3', 'n2']);
+  assert.equal(D.move(d2, 'n3', 'n4', 0), d2);
+  const dup = D.duplicate(d2, 'n4');
+  assert.equal(dup.id, 'n6');
+  assert.deepEqual(plain(D.find(dup.doc, 'n3').node.children.map((c) => c.id)), ['n4', 'n6', 'n2', 'n5']);
+  const wrapped = D.embed(d2, 'n2', 'HStack');
+  assert.equal(D.find(wrapped.doc, 'n2').parent.type, 'HStack');
+  const unwrapped = D.unembed(wrapped.doc, wrapped.id);
+  assert.equal(D.find(unwrapped, 'n2').parent.id, 'n3');
+  assert.equal(D.find(D.remove(d2, 'n3'), 'n2'), null);
+  assert.equal(D.find(D.remove(d2, 'n1'), 'n1').node.id, 'n1'); // the root stays
+  const patched = D.update(d2, 'n2', { text: 'Bye', textStyle: null });
+  assert.deepEqual(plain(D.find(patched, 'n2').node.props), { text: 'Bye' });
+  assert.deepEqual(plain(D.insertionPoint(d2, 'home', 'n4')), { parent: 'n3', index: 1 });
+  assert.deepEqual(plain(D.insertionPoint(d2, 'home', 'n3')), { parent: 'n3', index: 3 });
+});
+
+test('App Designer: renaming a variable follows it everywhere', () => {
+  const D = designModel();
+  let doc = D.parse(JSON.stringify({ app: {}, state: [{ name: 'count', type: 'number', value: 0 }], screens: [{ id: 'home', root: {
+    id: 'n1', type: 'VStack', props: {}, children: [
+      { id: 'n2', type: 'Text', props: { text: 'Count: {count}' } },
+      { id: 'n3', type: 'Slider', props: { binding: 'count' } },
+      { id: 'n4', type: 'Button', props: { visibleWhen: 'count' }, actions: { tap: [{ do: 'increment', var: 'count', by: 1 },
+                                                                                   { do: 'alert', title: 'Now {count}' }] } }] } }] }));
+  assert.equal(D.usesOf(doc, 'count').length, 3);
+  doc = D.updateVariable(doc, 'count', { name: 'clicks' });
+  assert.equal(D.find(doc, 'n2').node.props.text, 'Count: {clicks}');
+  assert.equal(D.find(doc, 'n3').node.props.binding, 'clicks');
+  assert.deepEqual(plain(D.find(doc, 'n4').node.actions.tap.map((a) => a.var || a.title)), ['clicks', 'Now {clicks}']);
+  const added = D.addVariable(doc, 'list');
+  assert.equal(added.name, 'items');
+  assert.deepEqual(plain(D.variable(added.doc, 'items').value), []);
+  assert.deepEqual(plain(D.initialValues(added.doc)), { clicks: 0, items: [] });
+  const screen = D.addScreen(doc, 'About Us');
+  assert.equal(screen.id, 'about-us');
+  assert.equal(D.addScreen(screen.doc, 'About Us').id, 'about-us-2');
+});
+
+test('Kit: colours adapt to the appearance; templates fill in variables', () => {
+  const K = library('apps/lib/kit/kit.js');
+  const env = { dark: false, accent: '#ff375f', colors: { Brand: { light: '#112233', dark: '#445566' } } };
+  assert.equal(K.color('accent', env), '#ff375f');
+  assert.equal(K.color('red', env), '#ff3b30');
+  assert.equal(K.color('red', { dark: true }), '#ff453a');
+  assert.equal(K.color('Brand', env), '#112233');
+  assert.equal(K.color('Brand', Object.assign({}, env, { dark: true })), '#445566');
+  assert.equal(K.color('#80ffffff', env), '#80ffffff');
+  assert.equal(K.color('', env, 'fallback'), 'fallback');
+  assert.equal(K.alpha('#0a84ff', 0.5), '#800a84ff');
+  assert.equal(K.interpolate('{count} of {todos} · {item.title}', { count: 2.5, todos: [1, 2, 3] }, { item: { title: 'Milk' } }), '2.5 of 3 · Milk');
+  assert.equal(K.interpolate('{missing} stays', {}), '{missing} stays');
+  assert.deepEqual(plain(K.references('Hi {name}, {item.title}')), ['name', 'item']);
+  assert.deepEqual(plain(K.edges([1, 2, 3, 4])), { top: 1, right: 2, bottom: 3, left: 4 });
+  assert.equal(K.place('trailing', 100, 30), 70);
+  assert.equal(K.qtWeight(650), 700);
+  assert.equal(K.fontSize('title', 0), 22);
 });

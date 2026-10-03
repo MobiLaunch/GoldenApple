@@ -2,6 +2,7 @@
 import QtQuick
 import "../lib"
 import "../lib/theme"
+import "languages.js" as Languages
 
 Sheet {
     id: oq
@@ -89,10 +90,10 @@ Sheet {
             Symbol {
                 x: 10
                 anchors.verticalCenter: parent.verticalCenter
-                name: row.modelData.name.endsWith(".swift") ? "code" : "doc"
+                name: Languages.fileInfo(row.modelData.name).symbol
                 size: 18
                 tone: row.index === oq.selectedIndex ? "white" : "auto"
-                color: row.index !== oq.selectedIndex && row.modelData.name.endsWith(".swift") ? "#f05138" : "transparent"
+                color: row.index !== oq.selectedIndex ? Languages.fileInfo(row.modelData.name).color : "transparent"
             }
             Column {
                 x: 38

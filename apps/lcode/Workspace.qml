@@ -7,15 +7,21 @@ import Quickshell
 import QtQuick
 import "../lib"
 import "../lib/theme"
+import "languages.js" as Languages
+import "design"
 import "devices.js" as Devices
 
 AppWindow {
     id: win
+    objectName: "workspace"
     property var app
     property var backend
     property bool navigatorOpen: true
     property bool inspectorOpen: true
     property bool debugOpen: true
+    property bool designDebugOpen: false      // the console stays out of the way of the App Designer
+    readonly property bool showDebug: editorArea.currentDesigner ? designDebugOpen : debugOpen
+    function toggleDebug() { if (editorArea.currentDesigner) designDebugOpen = !designDebugOpen; else debugOpen = !debugOpen }
     property real debugHeight: 210
 
     title: app.project ? app.project.name : "LCode"
@@ -43,8 +49,10 @@ AppWindow {
         interval: 300
         onTriggered: {
             const files = win.app.nodes.filter((n) => !n.dir)
-            const pick = files.find((n) => n.name === "ContentView.swift" || n.name === "main.swift")
-                || files.find((n) => n.name.endsWith(".swift"))
+            const wanted = Languages.START_FILES[win.app.project.toolchain] || []
+            let pick = null
+            for (const name of wanted) { pick = pick || files.find((n) => n.name === name) }
+            pick = pick || files.find((n) => Languages.fileInfo(n.name).symbol === "code")
             if (pick) { navigator.reveal(pick.path); editorArea.open(pick.path, 0, 0) }
         }
     }
@@ -67,10 +75,14 @@ AppWindow {
 
     Connections {
         target: win.app
-        function onRevealLocation(path, line, column) {
+        function onRevealLocation(path, line, column, message) {
             win.navigatorOpen = true
             navigator.page = 2
+            if (!path) return
             editorArea.open(path, line, column)
+            // Design issues end with [screen#node]: select that node in the App Designer.
+            const m = /\[([\w-]+)#(n\d+)\]$/.exec(message || "")
+            if (m && path.endsWith(".lcdesign")) Qt.callLater(() => { if (editorArea.currentDesigner) editorArea.currentDesigner.revealNode(m[1], m[2]) })
         }
         function onAlertRequested(title, message) { confirm.ask(title, message, [{ text: "OK", id: "ok", prominent: true }], null) }
         function onSchemeChanged() { win.app.saveState(editorArea.openFiles(), editorArea.currentIsFile ? editorArea.currentPath : "") }
@@ -112,7 +124,8 @@ AppWindow {
             anchors.verticalCenter: parent.verticalCenter
             ToolbarButton {
                 id: schemeButton
-                symbol: win.app.project && win.app.project.kind === "app" ? "smartphone" : win.app.project && win.app.project.kind === "library" ? "layers" : "terminal"
+                symbol: !win.app.project ? "terminal" : win.app.project.kind === "app" ? (win.app.project.toolchain === "goldengate" ? "window" : "smartphone")
+                    : win.app.project.kind === "library" ? "layers" : "terminal"
                 symbolSize: 15
                 text: win.app.schemeName
                 onClicked: menu.popup(schemeButton, 0, schemeButton.height + 8,
@@ -120,7 +133,10 @@ AppWindow {
                         win.app.project.products.length
                             ? win.app.project.products.map((p) => ({ text: p, checked: p === win.app.scheme, action: () => win.app.scheme = p }))
                             : [{ text: "No Executable Products", enabled: false }],
-                        [{ separator: true }, { text: "Edit Package.swift…", action: () => editorArea.open(win.app.project.root + "/Package.swift", 0, 0) }]))
+                        Languages.toolchain(win.app.project.toolchain).manifest
+                            ? [{ separator: true }, { text: "Edit " + Languages.toolchain(win.app.project.toolchain).manifest + "…",
+                                 action: () => editorArea.open(win.app.project.root + "/" + Languages.toolchain(win.app.project.toolchain).manifest, 0, 0) }]
+                            : []))
             }
             Symbol {
                 anchors.verticalCenter: parent.verticalCenter
@@ -160,8 +176,9 @@ AppWindow {
             id: addButton
             round: true
             symbol: "plus"
-            Accessible.name: "New File (⌘N)"
-            onClicked: win.promptNewItem(win.newItemFolder(), false)
+            Accessible.name: editorArea.currentDesigner ? "Library (⇧⌘L)" : "New File (⌘N)"
+            onClicked: editorArea.currentDesigner ? editorArea.currentDesigner.openLibrary(addButton, addButton.width - 380, addButton.height + 8)
+                                                  : win.promptNewItem(win.newItemFolder(), false)
         },
         ToolbarButton {
             id: moreButton
@@ -197,7 +214,7 @@ AppWindow {
             { separator: true },
             { header: "View" },
             { text: "Navigator", shortcut: "⌘0", checked: navigatorOpen, action: () => navigatorOpen = !navigatorOpen },
-            { text: "Debug Area", shortcut: "⇧⌘Y", checked: debugOpen, action: () => debugOpen = !debugOpen },
+            { text: "Debug Area", shortcut: "⇧⌘Y", checked: showDebug, action: () => toggleDebug() },
             { text: "Inspectors", shortcut: "⌥⌘0", checked: inspectorOpen, action: () => inspectorOpen = !inspectorOpen },
             { text: "Minimap", checked: app.settings.showMinimap !== false, action: () => app.saveSettings({ showMinimap: app.settings.showMinimap === false }) },
             { separator: true },
@@ -242,7 +259,7 @@ AppWindow {
     }
 
     function promptNewItem(dir, folder) {
-        prompt.ask(folder ? "New Folder" : "New File", folder ? "New Folder" : "File.swift", folder ? "Create" : "Create",
+        prompt.ask(folder ? "New Folder" : "New File", folder ? "New Folder" : (Languages.NEW_FILE[app.project.toolchain] || "File.txt"), "Create",
             (name) => backend.call("newFile", { dir: dir, name: name, folder: folder }, (r) => {
                 if (!r.ok) { app.alertRequested("Couldn't Create “" + name + "”", r.error); return }
                 app.refreshTree()
@@ -285,11 +302,13 @@ AppWindow {
 
         EditorArea {
             id: editorArea
+            objectName: "editorArea"
             width: parent.width
-            height: parent.height - (win.debugOpen ? debugArea.height : 0)
+            height: parent.height - (win.showDebug ? debugArea.height : 0)
             app: win.app
             backend: win.backend
             menu: menu
+            overlay: win.overlay
             onError: (title, message) => win.app.alertRequested(title, message)
             onFileShown: (path) => { if (path && !path.startsWith("log:")) navigator.reveal(path) }
             onFindInProjectRequested: (text) => { win.navigatorOpen = true; navigator.focusFind(text) }
@@ -302,13 +321,13 @@ AppWindow {
 
         DebugArea {
             id: debugArea
-            visible: win.debugOpen
+            visible: win.showDebug
             y: parent.height - height
             width: parent.width
             height: Math.max(90, Math.min(win.debugHeight, parent.height - 160))
             app: win.app
             backend: win.backend
-            onHideRequested: win.debugOpen = false
+            onHideRequested: win.toggleDebug()
             onResizeBy: (dy) => win.debugHeight = Math.max(90, win.debugHeight - dy)
         }
     }
@@ -316,11 +335,20 @@ AppWindow {
     trailingSidebar: [
         Inspector {
             anchors.fill: parent
+            visible: !editorArea.currentDesigner
             app: win.app
             backend: win.backend
             menuParent: win.overlay
             path: editorArea.currentIsFile ? editorArea.currentPath : ""
-            editor: editorArea.currentIsFile ? editorArea.currentEditor : null
+            editor: editorArea.currentIsCode ? editorArea.currentEditor : null
+        },
+        // The App Designer's inspectors for the design in front.
+        DesignInspector {
+            anchors.fill: parent
+            visible: !!editorArea.currentDesigner
+            designer: editorArea.currentDesigner
+            overlay: win.overlay
+            backend: win.backend
         }
     ]
 
@@ -477,7 +505,7 @@ AppWindow {
     Shortcut { sequence: "Ctrl+O"; onActivated: openPanel.open() }
     Shortcut { sequence: "Ctrl+Shift+O"; onActivated: openQuickly.open() }
     Shortcut { sequence: "Ctrl+0"; onActivated: win.navigatorOpen = !win.navigatorOpen }
-    Shortcut { sequence: "Ctrl+Shift+Y"; onActivated: win.debugOpen = !win.debugOpen }
+    Shortcut { sequence: "Ctrl+Shift+Y"; onActivated: win.toggleDebug() }
     Shortcut { sequence: "Ctrl+Alt+0"; onActivated: win.inspectorOpen = !win.inspectorOpen }
     Shortcut { sequence: "Ctrl+1"; onActivated: { win.navigatorOpen = true; navigator.page = 0 } }
     Shortcut { sequence: "Ctrl+4"; onActivated: { win.navigatorOpen = true; navigator.page = 1 } }
