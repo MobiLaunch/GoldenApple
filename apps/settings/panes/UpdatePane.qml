@@ -1,6 +1,8 @@
-// Native Golden Gate Software Update.
-// Checks run quietly in the background; installation progress stays inside
-// Settings instead of opening a terminal or a second application.
+// Native Golden Gate Software Update. One button does it all: Update Now
+// checks for updates and installs them, the system's packages first (as root,
+// through the org.goldengate.update polkit action, which an administrator at
+// the computer runs without a password) and then the user's Flatpak apps.
+// Progress stays inside Settings; nothing opens a terminal.
 import Quickshell
 import Quickshell.Io
 import QtQuick
@@ -31,6 +33,9 @@ Pane {
         : -1
     property var packages: []
     property string error: ""
+    property int systemCount: 0         // pacman packages and system Flatpaks
+    property int userAppCount: 0        // the user's own Flatpak apps
+    property bool installAfterCheck: false
 
     function consume(line) {
         if (!line || !line.trim())
@@ -43,6 +48,8 @@ Pane {
                 progress = event.progress ?? 0
             } else if (event.event === "result") {
                 updateCount = event.count ?? 0
+                systemCount = (event.system ?? 0) + ((event.apps ?? 0) - (event.userApps ?? 0))
+                userAppCount = event.userApps ?? 0
                 packages = event.packages ?? []
                 state = updateCount > 0 ? "available" : "current"
                 message = updateCount > 0
@@ -58,6 +65,7 @@ Pane {
                 currentPackage = event.current ?? currentPackage
                 totalPackages = event.total ?? totalPackages
             } else if (event.event === "done") {
+                if (pane.phase === "system" && pane.userAppCount > 0) return   // the apps are next
                 state = "current"
                 progress = 1
                 remaining = 0
@@ -86,9 +94,21 @@ Pane {
         checkProcess.running = true
     }
 
+    // Update Now: check first unless a check just found updates, then install.
     function updateNow() {
-        if (updateProcess.running || checkProcess.running || updateCount <= 0)
+        if (updateProcess.running || checkProcess.running)
             return
+        if (state !== "available" || updateCount <= 0) {
+            installAfterCheck = true
+            checkNow()
+            return
+        }
+        install()
+    }
+
+    property string phase: ""           // "system" | "apps" while installing
+    function install() {
+        installAfterCheck = false
         error = ""
         state = "updating"
         progress = 0.02
@@ -97,12 +117,21 @@ Pane {
         totalPackages = updateCount
         updateStartedAt = Date.now()
         elapsedSeconds = 0
-        message = "Waiting for administrator authorization…"
-        updateProcess.command = [
-            "sh", "-c",
-            "if sudo -n true >/dev/null 2>&1; then exec sudo -n python3 \"$1\" apply; else exec pkexec python3 \"$1\" apply; fi",
-            "sh", pane.helper
-        ]
+        if (systemCount > 0) {
+            phase = "system"
+            message = "Preparing update…"
+            // The live session's user has passwordless sudo; an installed
+            // system uses the polkit action for this exact helper path.
+            updateProcess.command = [
+                "sh", "-c",
+                "if sudo -n true >/dev/null 2>&1; then exec sudo -n \"$1\" apply; else exec pkexec \"$1\" apply; fi",
+                "sh", pane.helper
+            ]
+        } else {
+            phase = "apps"
+            message = "Updating apps…"
+            updateProcess.command = [pane.helper, "apply-user"]
+        }
         updateProcess.running = true
     }
 
@@ -151,6 +180,9 @@ Pane {
             if (code !== 0 && pane.state === "checking") {
                 pane.state = "error"
                 pane.error = "Could not check for updates. Verify your internet connection and try again."
+            } else if (pane.installAfterCheck) {
+                if (pane.state === "available") pane.install()
+                else pane.installAfterCheck = false
             }
         }
     }
@@ -160,11 +192,19 @@ Pane {
         stdout: SplitParser { onRead: (line) => pane.consume(line) }
         onExited: (code) => {
             if (code !== 0 && pane.state === "updating") {
+                pane.phase = ""
                 pane.state = "error"
                 pane.error = code === 126 || code === 127
                     ? "Administrator authorization was cancelled."
                     : "Software Update stopped before it finished."
-            } else if (code === 0 && pane.state === "current") {
+            } else if (code === 0 && pane.phase === "system" && pane.userAppCount > 0) {
+                // System done; now the user's apps, still without a terminal.
+                pane.phase = "apps"
+                pane.message = "Updating apps…"
+                updateProcess.command = [pane.helper, "apply-user"]
+                Qt.callLater(() => updateProcess.running = true)
+            } else if (code === 0) {
+                pane.phase = ""
                 Qt.callLater(() => pane.checkNow())
             }
         }
@@ -185,16 +225,12 @@ Pane {
                 ? "Last successful system update: " + pane.last.replace("T", " at ")
                 : "Updates include Golden Gate, Arch Linux and installed applications."
 
+            // One click: checks for updates and installs whatever it finds.
             Button {
-                visible: pane.state === "available"
+                visible: pane.state !== "checking" && pane.state !== "updating"
                 text: "Update Now"
-                prominent: true
+                prominent: pane.state === "available"
                 onClicked: pane.updateNow()
-            }
-            Button {
-                visible: pane.state === "error" || pane.state === "current"
-                text: "Check Again"
-                onClicked: pane.checkNow()
             }
         }
 
@@ -225,7 +261,7 @@ Pane {
         SetRow {
             title: "Software Update couldn't finish"
             subtitle: pane.error
-            Button { text: "Try Again"; onClicked: pane.checkNow() }
+            Button { text: "Try Again"; onClicked: pane.updateNow() }
         }
     }
 }

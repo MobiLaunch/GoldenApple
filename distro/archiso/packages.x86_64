@@ -82,6 +82,8 @@ e2fsprogs
 mkinitcpio
 rsync
 pacman-contrib
+# checkupdates refreshes a private copy of the package databases under fakeroot.
+fakeroot
 
 
 # LCode (Golden Gate's IDE): Git for projects, and the Simulator's private
