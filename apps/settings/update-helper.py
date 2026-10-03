@@ -40,6 +40,8 @@ def pacman_updates() -> tuple[list[str], bool]:
         proc = run([tool], timeout=120)
         if proc.returncode in (0, 2):        # 2: nothing to update
             return [l.strip() for l in proc.stdout.splitlines() if l.strip()], True
+    if not shutil.which("pacman"):
+        return [], False
     with tempfile.TemporaryDirectory(prefix="gg-update-") as db:
         os.symlink("/var/lib/pacman/local", os.path.join(db, "local"))
         sync = os.path.join(db, "sync")

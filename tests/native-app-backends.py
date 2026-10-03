@@ -134,6 +134,9 @@ esac
     checkupdates = fakebin / "checkupdates"
     checkupdates.write_text("#!/bin/sh\nexit 2\n", encoding="utf-8")
     checkupdates.chmod(0o755)
+    # checkupdates refreshes under fakeroot (shipped in the image).
+    (fakebin / "fakeroot").write_text("#!/bin/sh\nexec \"$@\"\n", encoding="utf-8")
+    (fakebin / "fakeroot").chmod(0o755)
     update_env = env.copy()
     update_env["PATH"] = str(fakebin) + os.pathsep + update_env.get("PATH", "")
     code, out = run("apps/settings/update-helper.py", "check", env=update_env)
