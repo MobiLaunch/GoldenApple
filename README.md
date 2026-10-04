@@ -100,7 +100,10 @@ while Qt WebEngine/Chromium remains isolated from the Quickshell desktop process
 for Move & Resize (halves, quarters, Fill, Center), as in macOS Sequoia; the menu
 bar's Window menu has the same, with Minimize and Full Screen. From the keyboard:
 ⌃⌥←→↑↓ for halves, ⌃⌥U I J K for quarters, ⌃⌥↩ to fill, ⌃⌥C to center and ⌃⌥⌫
-to put the window back (`gg-tile`). Spotlight (⌘Space) answers sums (`15% of 240`),
+to put the window back (`gg-tile`). Mission Control (⌃↑, F3, or three fingers up)
+spreads out every window on the desktop, live, with your desktops along the top:
+click one to go there, + to add one, or drag a window onto it; ⌃↓ or three fingers
+down is App Exposé, and three fingers sideways move between desktops. Spotlight (⌘Space) answers sums (`15% of 240`),
 unit conversions (`5 km in mi`, `70 f to c`), finds System Settings panes and
 files in your home folder, and falls back to a web search. In Files, Space or ⌘Y
 is Quick Look, the arrows move, Return renames, ⌘O/⌘↓ opens, ⌘↑ goes up and ⌘⌫

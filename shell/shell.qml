@@ -39,6 +39,18 @@ ShellRoot {
             cc.showDetail(kind)
         }
     }
+    // Mission Control and App Exposé, on the focused screen (⌃↑ ⌃↓, F3, swipes).
+    property var missionControls: []
+    function focusedMissionControl() {
+        const name = Hyprland.focusedMonitor?.name
+        return missionControls.find((m) => m.screen?.name === name) ?? missionControls[0]
+    }
+    IpcHandler {
+        target: "missioncontrol"
+        function toggle(): void { root.focusedMissionControl()?.toggle(false) }
+        function appExpose(): void { root.focusedMissionControl()?.toggle(true) }
+        function close(): void { root.missionControls.forEach((m) => m.dismiss()) }
+    }
     // The menu bar's menus on the focused screen: system | app | window.
     property var menuBars: []
     IpcHandler {
@@ -159,6 +171,12 @@ ShellRoot {
                 screen: perScreen.modelData; controlCenter: cc; spotlight: spotlightPanel; session: sessionDialog; notifications: notificationCenter
                 Component.onCompleted: root.menuBars = root.menuBars.concat([menuBar])
                 Component.onDestruction: root.menuBars = root.menuBars.filter((m) => m !== menuBar)
+            }
+            MissionControl {
+                id: missionControl
+                screen: perScreen.modelData
+                Component.onCompleted: root.missionControls = root.missionControls.concat([missionControl])
+                Component.onDestruction: root.missionControls = root.missionControls.filter((m) => m !== missionControl)
             }
             AppLaunch {
                 id: launch

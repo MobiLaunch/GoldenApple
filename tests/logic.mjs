@@ -367,3 +367,47 @@ test('Spotlight finds Settings panes by name and by what people call them', () =
   assert.equal(a.settings('wi')[0].pane, 'wifi');
   assert.equal(a.settings('x').length, 0);
 });
+
+function missionControl() {
+  const src = readFileSync(new URL('../shell/missioncontrol/layout.js', import.meta.url), 'utf8').replace('.pragma library', '');
+  const c = vm.createContext({}); vm.runInContext(src, c);
+  return c;
+}
+
+test('Mission Control spreads windows without overlap, inside the area, never enlarged', () => {
+  const { spread } = missionControl();
+  const area = { x: 48, y: 186, width: 1344, height: 606 };
+  const windows = [
+    { x: 90, y: 80, w: 880, h: 560 }, { x: 640, y: 170, w: 700, h: 520 },
+    { x: 220, y: 400, w: 780, h: 430 }, { x: 1010, y: 60, w: 400, h: 330 },
+  ];
+  const out = spread(windows, area, 28, 26);
+  assert.equal(out.length, windows.length);
+  out.forEach((r, i) => {
+    assert.ok(r.x >= area.x - 0.5 && r.y >= area.y - 0.5, `window ${i} starts inside`);
+    assert.ok(r.x + r.width <= area.x + area.width + 0.5 && r.y + r.height <= area.y + area.height + 0.5, `window ${i} ends inside`);
+    assert.ok(r.width <= windows[i].w + 0.01 && r.height <= windows[i].h + 0.01, `window ${i} isn't enlarged`);
+    assert.ok(Math.abs(r.width / r.height - windows[i].w / windows[i].h) < 0.01, `window ${i} keeps its shape`);
+  });
+  for (let i = 0; i < out.length; i++) for (let j = i + 1; j < out.length; j++) {
+    const a = out[i], b = out[j];
+    const apart = a.x + a.width <= b.x || b.x + b.width <= a.x || a.y + a.height <= b.y || b.y + b.height <= a.y;
+    assert.ok(apart, `windows ${i} and ${j} don't overlap`);
+  }
+  // Files (left) stays left of Weather (right) in the top row.
+  assert.ok(out[0].x < out[3].x);
+  // One small window isn't blown up to fill the screen.
+  const [one] = spread([{ x: 0, y: 0, w: 400, h: 300 }], area);
+  assert.equal(one.width, 400); assert.equal(one.height, 300);
+  assert.equal(spread([], area).length, 0);
+});
+
+test('Mission Control arrow keys move to the closest window in the next row', () => {
+  const { nearest } = missionControl();
+  const rects = [{ x: 0, y: 0, width: 100, height: 80 }, { x: 200, y: 0, width: 100, height: 80 },
+                 { x: 20, y: 200, width: 100, height: 80 }, { x: 220, y: 200, width: 100, height: 80 }];
+  assert.equal(nearest(rects, 1, 1), 3);
+  assert.equal(nearest(rects, 2, -1), 0);
+  assert.equal(nearest(rects, 0, -1), 0);
+  assert.equal(nearest(rects, -1, 1), 0);
+});

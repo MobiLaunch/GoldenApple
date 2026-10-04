@@ -19,6 +19,8 @@ Some states have a switch of their own:
 ```sh
 # an app in front, with the menu bar's Window menu open
 python3 tools/preview/preview.py shell --env GG_PREVIEW_ACTIVE=org.goldengate.Files --do menubar.open:window -o window.png
+# Mission Control, with sample windows on three desktops
+python3 tools/preview/preview.py shell --env GG_PREVIEW_WINDOWS=1 --do missioncontrol.toggle -o mc.png
 # the green button's Move & Resize menu
 python3 tools/preview/preview.py app apps/files.qml --env GG_ZOOM_MENU_PREVIEW=1 -o zoom.png
 # Quick Look on a file

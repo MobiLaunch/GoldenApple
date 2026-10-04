@@ -121,6 +121,7 @@ class WlSessionLockSurface(QQuickItem):
 
 
 qmlRegisterSingletonType(QUrl.fromLocalFile(str(HERE / "qml/Wayland/ToplevelManager.qml")), "Quickshell.Wayland", 1, 0, "ToplevelManager")
+qmlRegisterType(QUrl.fromLocalFile(str(HERE / "qml/Wayland/ScreencopyView.qml")), "Quickshell.Wayland", 1, 0, "ScreencopyView")
 
 
 # Quickshell's ScriptModel: a list model over a JS array, each entry as modelData.

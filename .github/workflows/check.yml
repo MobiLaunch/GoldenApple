@@ -263,3 +263,7 @@ jobs:
         run: python tests/quicklook.py
         env:
           QT_QPA_PLATFORM: offscreen
+      - name: Mission Control spreads this desktop's windows; App Exposé the front app's
+        run: python tests/missioncontrol.py
+        env:
+          QT_QPA_PLATFORM: offscreen
