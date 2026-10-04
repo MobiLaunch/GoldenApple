@@ -1,7 +1,8 @@
 // Close, minimise and zoom, glossy as on macOS 27. The glyphs show while the
 // pointer is over the group; an inactive window shows them grey.
 //   close: quits the app. minimise: moves the window to Hyprland's minimised
-//   space (the Dock brings it back). zoom: fills the screen.
+//   space (the Dock brings it back). zoom: fills the screen; resting the
+//   pointer on it opens the window's Move & Resize menu (AppWindow's ZoomMenu).
 import Quickshell
 import Quickshell.Hyprland
 import QtQuick
@@ -14,6 +15,8 @@ Row {
     property bool canZoom: true
     property var closeAction: null      // a function; without one, close quits the app
     readonly property bool showGlyphs: hover.hovered
+    property bool zoomHovered: false
+    readonly property real zoomX: 2 * (13 + spacing)
     spacing: 8
 
     HoverHandler { id: hover }
@@ -63,6 +66,10 @@ Row {
                     strokeColor: "transparent"; fillColor: light.modelData.kind === "zoom" ? Qt.rgba(0, 0, 0, 0.55) : "transparent"
                     PathSvg { path: "M3.8 3.8 L7.6 3.8 L3.8 7.6 Z M9.2 9.2 L5.4 9.2 L9.2 5.4 Z" }
                 }
+            }
+            HoverHandler {
+                enabled: light.modelData.kind === "zoom" && light.enabled_
+                onHoveredChanged: lights.zoomHovered = hovered
             }
             TapHandler {
                 id: tap

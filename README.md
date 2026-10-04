@@ -96,6 +96,16 @@ The launcher keeps Chromium sandboxing enabled and must run as your desktop user
 Golden Gate does not ship a second browser frontend: Web owns the browser experience
 while Qt WebEngine/Chromium remains isolated from the Quickshell desktop process.
 
+**Windows, Spotlight and Files.** Rest the pointer on a window's green button
+for Move & Resize (halves, quarters, Fill, Center), as in macOS Sequoia; the menu
+bar's Window menu has the same, with Minimize and Full Screen. From the keyboard:
+⌃⌥←→↑↓ for halves, ⌃⌥U I J K for quarters, ⌃⌥↩ to fill, ⌃⌥C to center and ⌃⌥⌫
+to put the window back (`gg-tile`). Spotlight (⌘Space) answers sums (`15% of 240`),
+unit conversions (`5 km in mi`, `70 f to c`), finds System Settings panes and
+files in your home folder, and falls back to a web search. In Files, Space or ⌘Y
+is Quick Look, the arrows move, Return renames, ⌘O/⌘↓ opens, ⌘↑ goes up and ⌘⌫
+moves to the Trash.
+
 **Developing apps: LCode.** `gg-lcode` (or LCode in Applications) is Golden Gate's
 Xcode, made so that anyone can build good-looking Linux apps. It follows Xcode 26's
 layout and keyboard shortcuts, and with the ⌘ layer they are the same keys: ⌘R runs,

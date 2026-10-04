@@ -6,6 +6,7 @@ import QtQuick
 import QtQuick.Layouts
 import "lib"
 import "lib/theme"
+import "files"
 
 ShellRoot {
     AppWindow {
@@ -136,9 +137,10 @@ ShellRoot {
             }
         ]
 
-        Item {
+        FocusScope {
             id: files
             anchors.fill: parent
+            focus: true
 
             readonly property string helper: Qt.resolvedUrl("files/helper.py").toString().replace("file://", "")
             readonly property string home: Quickshell.env("HOME")
@@ -229,6 +231,52 @@ ShellRoot {
                 selectedPath = entry.path
                 selectedName = entry.name
                 selectedFolder = entry.folder
+                files.forceActiveFocus()
+            }
+
+            // The keyboard, as in Finder: arrows move the selection (by rows in
+            // the grid), Space or ⌘Y is Quick Look, Return renames, ⌘O or ⌘↓
+            // opens, ⌘↑ goes to the enclosing folder, ⌘⌫ moves to the Trash.
+            // (keyd sends ⌘ shortcuts as Ctrl, and ⌘↑ ⌘↓ as Ctrl+Home/End.)
+            readonly property int selectedIndex: entries.findIndex((e) => e.path === selectedPath)
+            readonly property var selectedEntry: selectedIndex >= 0 ? entries[selectedIndex] : null
+            function moveSelection(step) {
+                if (!entries.length) return
+                const i = selectedIndex < 0 ? 0 : Math.max(0, Math.min(entries.length - 1, selectedIndex + step))
+                select(entries[i])
+                if (view === "grid") grid.positionViewAtIndex(i, GridView.Contain)
+                else list.positionViewAtIndex(i, ListView.Contain)
+            }
+            function rename() {
+                if (!selectedEntry) return
+                dialogMode = "rename"
+                dialogText = selectedName
+                editDialog.visible = true
+                Qt.callLater(() => dialogField.input.forceActiveFocus())
+            }
+            function enclosingFolder() {
+                const up = path.replace(/\/[^/]+\/?$/, "") || "/"
+                if (up !== path) navigate(up)
+            }
+            Keys.onPressed: (event) => {
+                const ctrl = event.modifiers & Qt.ControlModifier
+                const columns = view === "grid" ? Math.max(1, Math.floor(grid.width / grid.cellWidth)) : 1
+                if (event.key === Qt.Key_Space || (ctrl && event.key === Qt.Key_Y)) {
+                    if (selectedEntry || quickLook.open) quickLook.open = !quickLook.open
+                } else if (event.key === Qt.Key_Escape && quickLook.open) quickLook.open = false
+                else if (ctrl && (event.key === Qt.Key_O || event.key === Qt.Key_End)) {
+                    if (selectedEntry) { quickLook.open = false; openEntry(selectedEntry) }
+                } else if (ctrl && event.key === Qt.Key_Home) enclosingFolder()
+                else if (ctrl && event.key === Qt.Key_Backspace) {
+                    if (selectedEntry) runOperation(["trash", selectedPath], "trash")
+                } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+                    if (!quickLook.open) rename()
+                } else if (event.key === Qt.Key_Left && view === "grid") moveSelection(-1)
+                else if (event.key === Qt.Key_Right && view === "grid") moveSelection(1)
+                else if (event.key === Qt.Key_Up) moveSelection(-columns)
+                else if (event.key === Qt.Key_Down) moveSelection(columns)
+                else return
+                event.accepted = true
             }
 
             function openEntry(entry) {
@@ -263,12 +311,8 @@ ShellRoot {
                         const item = entries.find((e) => e.path === selectedPath)
                         if (item) openEntry(item)
                     }},
-                    { text: "Rename", enabled: !!selectedPath, action: () => {
-                        dialogMode = "rename"
-                        dialogText = selectedName
-                        editDialog.visible = true
-                        Qt.callLater(() => dialogField.input.forceActiveFocus())
-                    }},
+                    { text: "Quick Look", shortcut: "Space", enabled: !!selectedPath, action: () => quickLook.open = true },
+                    { text: "Rename", enabled: !!selectedPath, action: () => rename() },
                     { text: "Share with AirDrop…", enabled: !!selectedPath, action: () => Quickshell.execDetached(["gg-airdrop", selectedPath]) },
                     { text: "Move to Trash", enabled: !!selectedPath, action: () => runOperation(["trash", selectedPath], "trash") },
                     { separator: true },
@@ -442,6 +486,7 @@ ShellRoot {
                             if (mouse.button === Qt.RightButton)
                                 menu.popup(cell, mouse.x, mouse.y, [
                                     { text: "Open", action: () => files.openEntry(cell.modelData) },
+                                    { text: "Quick Look", shortcut: "Space", action: () => quickLook.open = true },
                                     { text: "Rename", action: () => {
                                         files.dialogMode = "rename"
                                         files.dialogText = cell.modelData.name
@@ -538,6 +583,23 @@ ShellRoot {
 
             PopupMenu { id: menu; parent: win.overlay }
 
+            QuickLook {
+                id: quickLook
+                parent: win.overlay
+                entry: files.selectedEntry
+                onOpenRequested: (entry) => { open = false; files.openEntry(entry) }
+                onClosed: open = false
+                onOpenChanged: if (!open) files.forceActiveFocus()
+                // Nothing selected (a folder changed, the item went to the Trash):
+                // nothing to show. GG_FILES_QUICKLOOK=1 with GG_FILES_SELECT opens
+                // it on that item, for screenshots.
+                property bool openOnSelect: Quickshell.env("GG_FILES_QUICKLOOK") === "1"
+                onEntryChanged: {
+                    if (!entry) open = false
+                    else if (openOnSelect) { openOnSelect = false; open = true }
+                }
+            }
+
             Glass {
                 id: editDialog
                 parent: win.overlay
@@ -548,6 +610,7 @@ ShellRoot {
                 radius: 22
                 tint: Theme.glassRegular.tint
                 z: 110
+                onVisibleChanged: if (!visible) files.forceActiveFocus()
 
                 Column {
                     anchors { fill: parent; margins: 18 }

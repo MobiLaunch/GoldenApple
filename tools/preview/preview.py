@@ -391,9 +391,32 @@ PHOTOS = [
 ]
 
 
+BRIEF = """# Golden Gate: design brief
+
+A desktop that feels like home on a Mac, on hardware you already own.
+
+## Principles
+
+- Familiar first. The menu bar, the Dock, Spotlight and the traffic lights are
+  where your hands expect them, and ⌘ works the way it does on a Mac.
+- Calm glass. Materials take their colour from what is behind them and get
+  out of the way of the content.
+- Nothing to configure. Wi-Fi, Bluetooth, printers and updates work from the
+  first boot; the settings are there when you want them.
+
+## This quarter
+
+1. Window tiling from the green button and the Window menu
+2. Quick Look in Files (press Space)
+3. Spotlight answers: maths, units and System Settings
+
+Review on Thursday at 10:30 in the studio.
+"""
+
+
 def populate_home(home: Path) -> None:
     """A lived-in home folder for the apps to show: notes, documents and photos."""
-    stamp = home / ".preview-populated-3"
+    stamp = home / ".preview-populated-4"
     if stamp.exists():
         return
     for rel, text in NOTES.items():
@@ -401,12 +424,13 @@ def populate_home(home: Path) -> None:
         f.parent.mkdir(parents=True, exist_ok=True)
         f.write_text(text)
     for rel, size in (("Documents/Q4 Plan.pdf", 48_000), ("Documents/Budget 2026.xlsx", 22_000),
-                      ("Documents/Golden Gate brief.md", 3_000), ("Downloads/inter-4.1.zip", 2_400_000),
+                      ("Downloads/inter-4.1.zip", 2_400_000),
                       ("Downloads/ferry-schedule.pdf", 120_000), ("Desktop/Moodboard.key", 860_000),
                       ("Music/.keep", 0), ("Videos/.keep", 0)):
         f = home / rel
         f.parent.mkdir(parents=True, exist_ok=True)
         f.write_bytes(b"\0" * size)
+    (home / "Documents/Golden Gate brief.md").write_text(BRIEF)
     pics = home / "Pictures"
     pics.mkdir(parents=True, exist_ok=True)
     names = ["Sunset over Tiburon", "Muir Woods", "Night at Ocean Beach", "Baker Beach", "Dolores Park", "Lands End"]

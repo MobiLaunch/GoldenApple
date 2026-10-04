@@ -6,7 +6,7 @@ QtObject {
     readonly property QtObject toplevels: QtObject { readonly property var values: [] }
     readonly property QtObject monitors: QtObject { readonly property var values: [focusedMonitor] }
     readonly property QtObject workspaces: QtObject { readonly property var values: [focusedWorkspace] }
-    readonly property QtObject activeToplevel: null
+    readonly property var activeToplevel: __preview.env["GG_PREVIEW_ACTIVE"] ? ({ address: "5a5a5a5a5a5a", title: "" }) : null
     signal rawEvent(var event)
     function dispatch(request) { __preview.log("hyprland " + request) }
     function monitorFor(screen) { return focusedMonitor }

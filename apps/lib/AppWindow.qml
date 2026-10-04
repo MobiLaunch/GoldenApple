@@ -231,7 +231,16 @@ FloatingWindow {
             active: win.active
             canZoom: win.resizable
             closeAction: win.closeAction
+            onZoomHoveredChanged: zoomDelay.restart()
         }
+        // Resting on the green button opens Move & Resize, after a beat as on
+        // the Mac; it goes once the pointer has left both the button and it.
+        Timer {
+            id: zoomDelay
+            interval: zoomMenu.open ? 300 : 650
+            onTriggered: zoomMenu.open = lights.zoomHovered || (zoomMenu.open && zoomMenu.hovered)
+        }
+        Connections { target: zoomMenu; function onHoveredChanged() { zoomDelay.restart() } }
 
         // Window outline, drawn over everything.
         Rectangle {
@@ -251,6 +260,11 @@ FloatingWindow {
             id: overlayArea
             anchors.fill: parent
             z: 10
+        }
+        ZoomMenu {
+            id: zoomMenu
+            anchorX: lights.x + lights.zoomX
+            anchorY: lights.y + 13 + 6
         }
 
         // Resize edges.

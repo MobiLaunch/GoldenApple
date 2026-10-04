@@ -224,6 +224,8 @@ jobs:
         run: python tests/update-keyring.py
       - name: Title bars with traffic lights for apps that leave theirs to the compositor
         run: python tests/titlebars.py
+      - name: Window › Move & Resize tiles inside the usable area
+        run: python tests/tiling.py
       - name: Exercise native control keyboard and pointer behavior
         run: python tests/native-controls.py
         env:
@@ -255,5 +257,9 @@ jobs:
           QTWEBENGINE_CHROMIUM_FLAGS: --disable-gpu
       - name: Load the shell and every app through the preview harness (no QML errors)
         run: sudo apt-get install -y librsvg2-bin libpulse0 && python tests/qml-load.py
+        env:
+          QT_QPA_PLATFORM: offscreen
+      - name: Files' Quick Look previews pictures, text and other files
+        run: python tests/quicklook.py
         env:
           QT_QPA_PLATFORM: offscreen

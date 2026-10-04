@@ -36,6 +36,15 @@ function S(body, extra = "") {
 }
 const dot = (x, y, r = 1.3) => `<circle cx="${x}" cy="${y}" r="${r}" fill="currentColor" stroke="none"/>`;
 
+// A tile glyph: the screen's outline, with (x, y, w, h) of it filled, inset
+// from the outline so the two read apart.
+function tile(x, y, w, h) {
+  const g = 1.6, r = (v, a, b) => Math.max(a, Math.min(b, v));
+  const x0 = r(x + g, 3 + g, 21 - g), y0 = r(y + g, 4.5 + g, 19.5 - g);
+  const x1 = r(x + w - g, 3 + g, 21 - g), y1 = r(y + h - g, 4.5 + g, 19.5 - g);
+  return S(`<rect x="3" y="4.5" width="18" height="15" rx="2.8"/><rect x="${x0}" y="${y0}" width="${+(x1 - x0).toFixed(2)}" height="${+(y1 - y0).toFixed(2)}" rx="1.2" fill="currentColor" stroke="none"/>`);
+}
+
 export const symbols = {
   // A single suspension-bridge tower: the Golden Gate mark used where a platform logo goes.
   logo: S(`<path fill="currentColor" stroke="none" d="M7.6 21.5V5.4l.9-2.4h1.3l.6 2.4v16.1zM13.6 21.5V5.4l.6-2.4h1.3l.9 2.4v16.1z"/><path d="M10 7.6h4M10 11.4h4M10 15.2h4" stroke-width="1.5"/><path d="M1.8 17.6C4.4 13.4 6.4 9 8.2 4.4M22.2 17.6C19.6 13.4 17.6 9 15.8 4.4" stroke-width="1.2"/><path d="M1 18.6h22" stroke-width="1.7"/>`),
@@ -145,6 +154,17 @@ export const symbols = {
   tablet: S(`<rect x="4" y="3" width="16" height="18" rx="2.6"/><path d="M10.5 18h3"/>`),
   terminal: S(`<rect x="3" y="4.5" width="18" height="15" rx="2.5"/><path d="M7 10l3 2.5L7 15M12.5 15.5h4.5"/>`),
   "sidebar-right": S(`<rect x="3" y="4.5" width="18" height="15" rx="2.8"/><path d="M14.5 4.5v15M17 8h1.5M17 11h1.5"/>`),
+  // Window › Move & Resize: the screen with the tile's part filled in.
+  "tile-left": tile(3, 4.5, 9, 15),
+  "tile-right": tile(12, 4.5, 9, 15),
+  "tile-top": tile(3, 4.5, 18, 7.5),
+  "tile-bottom": tile(3, 12, 18, 7.5),
+  "tile-top-left": tile(3, 4.5, 9, 7.5),
+  "tile-top-right": tile(12, 4.5, 9, 7.5),
+  "tile-bottom-left": tile(3, 12, 9, 7.5),
+  "tile-bottom-right": tile(12, 12, 9, 7.5),
+  "tile-fill": tile(3, 4.5, 18, 15),
+  "tile-center": tile(6.5, 7.5, 11, 9),
   "panel-bottom": S(`<rect x="3" y="4.5" width="18" height="15" rx="2.8"/><path d="M3 14.5h18"/>`),
   "chevron-small-right": S(`<path d="M10 7.5l4.5 4.5-4.5 4.5"/>`, ' stroke-width="1.6"'),
   eye: S(`<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/>`),

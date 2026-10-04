@@ -14,6 +14,18 @@ tools/preview/gallery.sh /tmp/gallery          # every surface and app, light an
 `--do target.function[:arg…]` calls an `IpcHandler`, as `qs ipc call` would.
 `--crop x,y,w,h` keeps part of the screen.
 
+Some states have a switch of their own:
+
+```sh
+# an app in front, with the menu bar's Window menu open
+python3 tools/preview/preview.py shell --env GG_PREVIEW_ACTIVE=org.goldengate.Files --do menubar.open:window -o window.png
+# the green button's Move & Resize menu
+python3 tools/preview/preview.py app apps/files.qml --env GG_ZOOM_MENU_PREVIEW=1 -o zoom.png
+# Quick Look on a file
+python3 tools/preview/preview.py app apps/files.qml --env GG_FILES_PATH=$PWD/tools/preview/cache/home/Pictures \
+  "--env=GG_FILES_SELECT=$PWD/tools/preview/cache/home/Pictures/Muir Woods.png" --env GG_FILES_QUICKLOOK=1 -o look.png
+```
+
 How it works:
 
 - `qml/` stands in for Quickshell's modules. Every window (`PanelWindow`,

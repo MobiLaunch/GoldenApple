@@ -129,14 +129,25 @@ PanelWindow {
         BarItem {
             id: logo
             highlighted: systemMenu.open
-            onClicked: { appMenu.open = false; systemMenu.open = !systemMenu.open }
+            onClicked: { appMenu.open = false; windowMenu.open = false; systemMenu.open = !systemMenu.open }
             Symbol { name: "logo"; size: 18; tone: bar.darkLeft ? "dark" : "white" }
         }
         BarItem {
             id: appItem
             highlighted: appMenu.open
-            onClicked: { systemMenu.open = false; appMenu.open = !appMenu.open }
+            onClicked: { systemMenu.open = false; windowMenu.open = false; appMenu.open = !appMenu.open }
             BarText { text: bar.appName; font.weight: Font.Bold; dark: bar.darkLeft }
+        }
+        BarItem {
+            id: windowItem
+            visible: !!bar.active
+            highlighted: windowMenu.open
+            onClicked: {
+                systemMenu.open = false; appMenu.open = false
+                if (!windowMenu.open) bar.tileTarget = bar.activeAddress()
+                windowMenu.open = !windowMenu.open
+            }
+            BarText { text: "Window"; dark: bar.darkLeft }
         }
     }
 
@@ -243,5 +254,61 @@ PanelWindow {
         windows: [appMenu]
         active: appMenu.open
         onCleared: appMenu.open = false
+    }
+
+    // Window: the Mac's Window menu with Sequoia's Move & Resize, for the window
+    // in front. gg-tile is told its address, since this menu holds the focus
+    // while it's open.
+    property string tileTarget: ""
+    function openMenu(name) {
+        systemMenu.open = name === "system"
+        appMenu.open = name === "app"
+        if (name === "window" && !windowMenu.open) tileTarget = activeAddress()
+        windowMenu.open = name === "window" && !!active
+    }
+    function activeAddress() {
+        const a = Hyprland.activeToplevel?.address ?? ""
+        return a ? "0x" + String(a).replace(/^0x/, "") : ""
+    }
+    function tile(layout) { Hyprland.dispatch("exec gg-tile " + layout + (tileTarget ? " " + tileTarget : "")) }
+    function minimize() { Hyprland.dispatch("movetoworkspacesilent special:minimized" + (tileTarget ? ",address:" + tileTarget : "")) }
+    // Full screen and Zoom act on the focused window: focus it first.
+    function fullscreen(mode) {
+        if (tileTarget) Hyprland.dispatch("focuswindow address:" + tileTarget)
+        Hyprland.dispatch("fullscreen " + mode)
+    }
+    MenuPopup {
+        id: windowMenu
+        instant: true
+        anchor.window: bar
+        anchor.rect.x: windowItem.x + 8
+        anchor.rect.y: bar.height + 5
+        items: [
+            { label: "Minimize", shortcut: "⌘M", action: () => bar.minimize() },
+            { label: "Zoom", shortcut: "⌥⌘F", action: () => bar.fullscreen(1) },
+            "-",
+            { label: "Fill", shortcut: "⌃⌥↩", symbol: "tile-fill", action: () => bar.tile("fill") },
+            { label: "Center", shortcut: "⌃⌥C", symbol: "tile-center", action: () => bar.tile("center") },
+            "-",
+            { header: "Move & Resize" },
+            { label: "Left", shortcut: "⌃⌥←", symbol: "tile-left", action: () => bar.tile("left") },
+            { label: "Right", shortcut: "⌃⌥→", symbol: "tile-right", action: () => bar.tile("right") },
+            { label: "Top", shortcut: "⌃⌥↑", symbol: "tile-top", action: () => bar.tile("top") },
+            { label: "Bottom", shortcut: "⌃⌥↓", symbol: "tile-bottom", action: () => bar.tile("bottom") },
+            "-",
+            { label: "Top Left", shortcut: "⌃⌥U", symbol: "tile-top-left", action: () => bar.tile("top-left") },
+            { label: "Top Right", shortcut: "⌃⌥I", symbol: "tile-top-right", action: () => bar.tile("top-right") },
+            { label: "Bottom Left", shortcut: "⌃⌥J", symbol: "tile-bottom-left", action: () => bar.tile("bottom-left") },
+            { label: "Bottom Right", shortcut: "⌃⌥K", symbol: "tile-bottom-right", action: () => bar.tile("bottom-right") },
+            "-",
+            { label: "Return to Previous Size", shortcut: "⌃⌥⌫", action: () => bar.tile("restore") },
+            "-",
+            { label: "Enter Full Screen", shortcut: "⌃⌘F", action: () => bar.fullscreen(0) }
+        ]
+    }
+    HyprlandFocusGrab {
+        windows: [windowMenu]
+        active: windowMenu.open
+        onCleared: windowMenu.open = false
     }
 }

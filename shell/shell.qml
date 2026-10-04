@@ -39,6 +39,16 @@ ShellRoot {
             cc.showDetail(kind)
         }
     }
+    // The menu bar's menus on the focused screen: system | app | window.
+    property var menuBars: []
+    IpcHandler {
+        target: "menubar"
+        function open(menu: string): void {
+            const name = Hyprland.focusedMonitor?.name
+            const m = root.menuBars.find((x) => x.screen?.name === name) ?? root.menuBars[0]
+            m?.openMenu(menu)
+        }
+    }
     Binding { target: Theme; property: "reduceMotion"; value: Prefs.reduceMotion }
     Binding { target: Theme; property: "reduceTransparency"; value: Prefs.reduceTransparency }
     Binding { target: Theme; property: "glassStyle"; value: Prefs.glass }
@@ -144,7 +154,12 @@ ShellRoot {
                 Component.onCompleted: root.controlCenters = root.controlCenters.concat([cc])
                 Component.onDestruction: root.controlCenters = root.controlCenters.filter((c) => c !== cc)
             }
-            MenuBar { screen: perScreen.modelData; controlCenter: cc; spotlight: spotlightPanel; session: sessionDialog; notifications: notificationCenter }
+            MenuBar {
+                id: menuBar
+                screen: perScreen.modelData; controlCenter: cc; spotlight: spotlightPanel; session: sessionDialog; notifications: notificationCenter
+                Component.onCompleted: root.menuBars = root.menuBars.concat([menuBar])
+                Component.onDestruction: root.menuBars = root.menuBars.filter((m) => m !== menuBar)
+            }
             AppLaunch {
                 id: launch
                 screen: perScreen.modelData

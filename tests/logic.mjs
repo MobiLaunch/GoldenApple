@@ -338,3 +338,32 @@ test('LCode devices: your own Simulator devices', () => {
   assert.equal(x.width, 2048); assert.equal(x.height, 240); assert.equal(x.cutout, 'home-button');
   assert.ok(d.runTarget(x, 0).side >= 2048 - 1);
 });
+
+// Spotlight answers: arithmetic, conversions and Settings panes, from the shell's library.
+function spotlightAnswers() {
+  const src = readFileSync(new URL('../shell/spotlight/answers.js', import.meta.url), 'utf8').replace('.pragma library', '');
+  const c = vm.createContext({}); vm.runInContext(src, c); return c;
+}
+test('Spotlight calculates, and leaves words and plain numbers alone', () => {
+  const a = spotlightAnswers();
+  for (const [q, shown] of [['2+2', '4'], ['12*(3+4)', '84'], ['2^10', '1,024'], ['sqrt(144)', '12'], ['20% of 150', '30'],
+                            ['2x3', '6'], ['1/3', '0.3333333333'], ['1234567*3', '3,703,701'], ['-5+2', '-3']])
+    assert.equal(a.calculate(q)?.display, shown, q);
+  for (const q of ['photos', '42', '(1+2', '100/0', 'rm -rf', 'Messages']) assert.equal(a.calculate(q), null, q);
+});
+test('Spotlight converts units, and refuses mismatched kinds', () => {
+  const a = spotlightAnswers();
+  assert.equal(a.convert('5 km in mi').display, '3.11 mi');
+  assert.equal(a.convert('100 c in f').display, '212 °F');
+  assert.equal(a.convert('70 f to c').display, '21.11 °C');
+  assert.equal(a.convert('3 cups in ml').display, '709.8 mL');
+  assert.equal(a.convert('5 km in kg'), null);
+  assert.equal(a.convert('5 apples to oranges'), null);
+});
+test('Spotlight finds Settings panes by name and by what people call them', () => {
+  const a = spotlightAnswers();
+  assert.equal(a.settings('dark mode')[0].pane, 'appearance');
+  assert.equal(a.settings('brightness')[0].pane, 'displays');
+  assert.equal(a.settings('wi')[0].pane, 'wifi');
+  assert.equal(a.settings('x').length, 0);
+});
