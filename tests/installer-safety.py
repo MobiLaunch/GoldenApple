@@ -116,3 +116,14 @@ packages = (root / "distro" / "archiso" / "packages.x86_64").read_text(encoding=
 assert "DisplayServer=wayland" in install_sh and "weston --shell=kiosk" in install_sh, "SDDM must use a Wayland greeter"
 assert "weston" in packages and "sddm" in packages, "the Wayland greeter needs weston on the image"
 print("installer: SDDM's login screen runs on Wayland")
+
+
+# mkarchiso copies the image's files without their modes: Software Update's
+# helper (run directly by pkexec) and the other programs must get their
+# executable bit back through file_permissions, or saving a token and
+# installing updates fail with "command not found".
+build_sh = (root / "distro" / "archiso" / "build.sh").read_text(encoding="utf-8")
+assert "find apps -type f -perm -u+x" in build_sh and '["/usr/share/golden-gate/%s"]="0:0:755"' in build_sh, \
+    "build.sh must restore the executable bit on Golden Gate's programs"
+assert os.access(root / "apps" / "settings" / "update-helper.py", os.X_OK), "update-helper.py must be executable"
+print("installer: Golden Gate's programs stay executable on the image")
