@@ -12,6 +12,8 @@ gnome-keyring
 libsecret
 plymouth
 sddm
+# SDDM draws its Wayland login screen inside Weston's kiosk shell (there is no X server).
+weston
 qt6-declarative
 qt6-svg
 qt6-wayland

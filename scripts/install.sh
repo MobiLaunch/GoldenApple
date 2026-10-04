@@ -168,7 +168,10 @@ EOF
   cp "$REPO/shell/components/LockSurface.qml" "$T/components/LockSurface.qml"
   cp "$REPO/shell/components/SystemClockProxy.qml" "$T/components/SystemClockProxy.qml"
   mkdir -p "$R/etc/sddm.conf.d"
-  printf '[Theme]\nCurrent=golden-gate\n\n[General]\nGreeterEnvironment=QT_WAYLAND_SHELL_INTEGRATION=layer-shell\n' > "$R/etc/sddm.conf.d/golden-gate.conf"
+  # Golden Gate has no X server, and SDDM's greeter runs on X11 unless told
+  # otherwise: left at that default, the installed system booted to a black
+  # screen. The greeter runs on Wayland, full screen in Weston's kiosk shell.
+  printf '[Theme]\nCurrent=golden-gate\n\n[General]\nDisplayServer=wayland\n\n[Wayland]\nCompositorCommand=weston --shell=kiosk --idle-time=0\n' > "$R/etc/sddm.conf.d/golden-gate.conf"
 
   say "Plymouth splash → $R/usr/share/plymouth/themes/golden-gate"
   local P="$R/usr/share/plymouth/themes/golden-gate"
