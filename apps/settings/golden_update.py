@@ -118,6 +118,17 @@ LIVE_LEFTOVERS = (
 )
 
 
+def ensure_keyring(root: Path) -> None:
+    """The live ISO kept pacman's keyring on a tmpfs, rebuilt every boot; an
+    installed system keeps one on disk. Create it if the copy didn't bring one."""
+    gnupg = root / "etc/pacman.d/gnupg"
+    if any((gnupg / f).exists() for f in ("pubring.kbx", "pubring.gpg")) or not shutil.which("pacman-key"):
+        return
+    pre = [] if root == Path("/") else ["arch-chroot", str(root)]
+    _run([*pre, "pacman-key", "--init"], timeout=300)
+    _run([*pre, "pacman-key", "--populate"], timeout=300)
+
+
 def remove_live_leftovers(root: Path) -> bool:
     """Remove the live ISO's leftovers from an installed system at `root`.
     True when the boot image must be rebuilt (archiso's hooks were in it)."""
@@ -503,7 +514,9 @@ def install_tree(tree: Path, version: dict, emit: Emit, work: Path) -> bool:
         enable_services(tree)
         # Installs made before the installer cleaned these up still carry
         # them; the boot image is rebuilt if it was built with archiso's hooks.
-        if remove_live_leftovers(ROOT) and shutil.which("mkinitcpio") and path("/boot/vmlinuz-linux").exists():
+        rebuild = remove_live_leftovers(ROOT)
+        ensure_keyring(ROOT)
+        if rebuild and shutil.which("mkinitcpio") and path("/boot/vmlinuz-linux").exists():
             emit("progress", progress=0.98, message="Rebuilding the boot image…", remaining=-1)
             _run(["mkinitcpio", "-P"] if ROOT == Path("/") else ["arch-chroot", str(ROOT), "mkinitcpio", "-P"],
                  timeout=900)

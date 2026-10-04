@@ -282,6 +282,7 @@ def install() -> int:
         # above all: left in place, it made the installed initramfs wait for
         # the live USB's volume and stop at boot.
         golden_update.remove_live_leftovers(TARGET)
+        golden_update.ensure_keyring(TARGET)
         shutil.rmtree(TARGET / "home/golden", ignore_errors=True)
 
         # The live account must not survive onto the installed system, and the
