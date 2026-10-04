@@ -105,11 +105,11 @@ TRANSACTION = re.compile(r"\(\s*(\d+)\/(\d+)\)\s+(?:upgrading|installing|reinsta
 
 def stream(cmd: list[str], start: float, span: float, label: str) -> tuple[int, str]:
     """Run cmd, turning pacman/flatpak output into progress events between
-    start and start + span."""
+    start and start + span. Returns its status and its error lines."""
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1,
                             stdin=subprocess.DEVNULL, env={**os.environ, "LC_ALL": "C"})
     assert proc.stdout is not None
-    last = ""
+    errors: list[str] = []
     for raw in proc.stdout:
         line = raw.strip()
         if not line:
@@ -132,9 +132,64 @@ def stream(cmd: list[str], start: float, span: float, label: str) -> tuple[int, 
             emit("progress", progress=start + span * 0.98, message="Finishing installation…", remaining=0)
         elif lower.startswith("updating") or lower.startswith("installing"):
             emit("progress", progress=start + span * 0.5, message=f"{label}: {line[:120]}", remaining=-1)
-        if line.startswith("error:") or lower.startswith("error"):
-            last = line
-    return proc.wait(), last
+        if lower.startswith("error"):
+            errors.append(line)
+    return proc.wait(), "\n".join(errors[-20:])
+
+
+# pacman couldn't verify a package or a database: the keyring is missing,
+# out of date or damaged.
+SIGNATURE = re.compile(r"signature|unknown trust|pgp|gpgme|keyring|corrupted package|could not be looked up|"
+                       r"invalid key|key .* (?:disabled|expired)|marginal trust", re.I)
+
+
+def system_upgrade() -> tuple[int, str]:
+    return stream(["pacman", "-Syu", "--noconfirm", "--noprogressbar"], 0.03, 0.8, "System")
+
+
+def repair_keyring(initial: bool) -> None:
+    """Bring pacman's keyring up to date: create it if it's missing; on a
+    repair, rebuild it from the installed keyring package and fetch the
+    current packager keys. Then install the newest archlinux-keyring, which
+    carries the keys that sign today's packages."""
+    golden_update.ensure_keyring(golden_update.ROOT)
+    if not initial:
+        run(["pacman-key", "--init"], timeout=300)
+        run(["pacman-key", "--populate"], timeout=300)
+        if shutil.which("archlinux-keyring-wkd-sync"):
+            emit("progress", progress=0.12, message="Fetching the current package signing keys…", remaining=-1)
+            try:
+                run(["archlinux-keyring-wkd-sync"], timeout=600)
+            except subprocess.TimeoutExpired:
+                pass
+    emit("progress", progress=0.05 if initial else 0.15, message="Updating the package signing keys…", remaining=-1)
+    try:
+        run(["pacman", "-Sy", "--noconfirm", "--needed", "--noprogressbar", "archlinux-keyring"], timeout=600)
+    except subprocess.TimeoutExpired:
+        pass
+
+
+def explain_pacman(errors: str) -> str:
+    """The error to show for a failed system update: what went wrong, in words
+    that say what to do, with pacman's own line after it."""
+    last = errors.strip().splitlines()[-1] if errors.strip() else ""
+    if not last:
+        return ""
+    if SIGNATURE.search(errors):
+        hint = ("Packages couldn't be verified because the package signing keys are out of date. "
+                "In Terminal, run: sudo pacman-key --populate && sudo pacman -Sy archlinux-keyring, "
+                "then try again.")
+    elif "could not resolve host" in errors.lower() or "failed retrieving file" in errors.lower():
+        hint = "Couldn't download the updates. Check the internet connection and try again."
+    elif "conflicting files" in errors.lower() or "exists in filesystem" in errors.lower():
+        hint = "An update would overwrite files that another package owns."
+    elif "not enough free disk space" in errors.lower():
+        hint = "There isn't enough free disk space for the updates."
+    elif "unable to lock database" in errors.lower():
+        hint = "Another app is installing software right now. Try again when it finishes."
+    else:
+        return last
+    return f"{hint} ({last})"
 
 
 def apply() -> int:
@@ -145,15 +200,31 @@ def apply() -> int:
     # A previous interrupted run can leave the database locked; only remove the
     # lock when no pacman is running.
     lock = "/var/lib/pacman/db.lck"
-    if os.path.exists(lock) and run(["pgrep", "-x", "pacman"]).returncode != 0:
+    if os.path.exists(lock):
+        if run(["pgrep", "-x", "pacman"]).returncode == 0:
+            emit("error", message="Another app is installing software right now. Try again when it finishes.")
+            return 1
         os.remove(lock)
-    code, last = stream(["pacman", "-Syu", "--noconfirm", "--noprogressbar"], 0.03, 0.8, "System")
-    if code != 0:
-        emit("error", message=last or f"pacman exited with status {code}.")
-        return code
+    # Packages are signed by keys newer than the ones the computer was
+    # installed with, so bring the keyring up to date first (as Arch advises),
+    # and repair it once if pacman still can't verify a package.
+    repair_keyring(initial=True)
+    code, errors = system_upgrade()
+    if code != 0 and SIGNATURE.search(errors):
+        emit("progress", progress=0.1, message="Repairing the package signing keys…", remaining=-1)
+        repair_keyring(initial=False)
+        code, errors = system_upgrade()
+    failed = (explain_pacman(errors) or f"pacman exited with status {code}.") if code != 0 else ""
     if shutil.which("flatpak"):
         stream(["flatpak", "--system", "update", "-y", "--noninteractive"], 0.8, 0.05, "Apps")
+    # Golden Gate still updates when the system packages couldn't: its fixes
+    # (including ones for updating itself) shouldn't wait on them.
     updated = golden_update.apply(emit)
+    if failed:
+        if not updated:
+            emit("error", message=failed)
+            return code
+        emit("notice", message="Golden Gate was updated, but the system packages weren't: " + failed)
     emit("done", progress=1.0, completed=datetime.now().isoformat(), restart=updated,
          message="Golden Gate is up to date." + (" Log out and back in to finish." if updated else ""))
     return 0
@@ -164,9 +235,9 @@ def apply_user() -> int:
         emit("done", progress=1.0, message="Golden Gate is up to date.")
         return 0
     emit("progress", progress=0.05, message="Updating apps…", remaining=-1)
-    code, last = stream(["flatpak", "--user", "update", "-y", "--noninteractive"], 0.05, 0.9, "Apps")
+    code, errors = stream(["flatpak", "--user", "update", "-y", "--noninteractive"], 0.05, 0.9, "Apps")
     if code != 0:
-        emit("error", message=last or f"Flatpak exited with status {code}.")
+        emit("error", message=(errors.splitlines() or [""])[-1] or f"Flatpak exited with status {code}.")
         return code
     emit("done", progress=1.0, message="Golden Gate is up to date.", completed=datetime.now().isoformat())
     return 0

@@ -220,6 +220,8 @@ jobs:
         run: python tests/nearby.py
       - name: Install Golden Gate from GitHub as a Software Update (staged root)
         run: python tests/golden-update.py
+      - name: Software Update repairs an out-of-date pacman keyring
+        run: python tests/update-keyring.py
       - name: Exercise native control keyboard and pointer behavior
         run: python tests/native-controls.py
         env:
