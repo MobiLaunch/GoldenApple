@@ -22,6 +22,8 @@ for needle in [
     "wait_for_partitions(boot, root)",
     '"--info=progress2"',
     "boot_disk = live_device()",
+    "golden_update.remove_live_leftovers(TARGET)",
+    '"hooks/archiso" in listing',
 ]:
     if needle not in source:
         raise SystemExit(f"installer safety gate missing: {needle}")
@@ -77,3 +79,32 @@ if proc.returncode == 0 or "live environment" not in proc.stdout:
     raise SystemExit("installer did not reject destructive operation outside live media")
 
 print("Installer safety: discovery is read-only and install is gated by live/root/exact erase confirmation")
+
+# The copied live system loses what only the live ISO needs. archiso.conf above
+# all: mkinitcpio reads conf.d after mkinitcpio.conf, so leaving it built the
+# installed boot image with archiso's hooks, which wait for the USB and stop.
+sys.path.insert(0, str(root / "apps" / "settings"))
+import golden_update  # noqa: E402
+with tempfile.TemporaryDirectory() as td:
+    target = Path(td)
+    for rel in golden_update.LIVE_LEFTOVERS:
+        p = target / rel
+        p.parent.mkdir(parents=True, exist_ok=True)
+        if rel.endswith(".wants"):
+            p.mkdir()
+            (p / "cloud-init-main.service").write_text("")
+        else:
+            p.write_text("live")
+    (target / "etc/mkinitcpio.conf").write_text("HOOKS=(base systemd)\n")
+    (target / "etc/systemd/system/multi-user.target.wants/NetworkManager.service").write_text("")
+    assert golden_update.remove_live_leftovers(target) is True
+    leftovers = [rel for rel in golden_update.LIVE_LEFTOVERS if (target / rel).exists()]
+    assert not leftovers, leftovers
+    assert (target / "etc/mkinitcpio.conf").exists()
+    assert (target / "etc/systemd/system/multi-user.target.wants/NetworkManager.service").exists()
+    assert golden_update.remove_live_leftovers(target) is False      # nothing left to rebuild
+for must in ("etc/mkinitcpio.conf.d/archiso.conf", "etc/systemd/system/cloud-init.target.wants",
+             "etc/systemd/journald.conf.d/volatile-storage.conf", "etc/systemd/system/etc-pacman.d-gnupg.mount"):
+    assert must in golden_update.LIVE_LEFTOVERS, must
+print("installer: live ISO leftovers removed from the installed system")
+

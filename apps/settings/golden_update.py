@@ -80,6 +80,56 @@ LIVE_ONLY = (
     "etc/systemd/system/gg-live-home.service",
 )
 
+# What the live ISO (archiso's releng profile plus Golden Gate's overlay) leaves
+# on a system the installer copies from it, and an installed system must not
+# keep. archiso.conf matters most: mkinitcpio reads conf.d after
+# mkinitcpio.conf, so it swapped the installed boot image's hooks for the live
+# ISO's, which wait for the USB stick's volume and stop when it isn't there.
+LIVE_LEFTOVERS = (
+    "etc/mkinitcpio.conf.d/archiso.conf",
+    "etc/sudoers.d/10-golden-live",
+    "etc/systemd/system/getty@tty1.service.d",
+    "etc/systemd/system/gg-live-home.service",
+    "etc/systemd/system/multi-user.target.wants/gg-live-home.service",
+    "etc/systemd/system/cloud-init.target.wants",              # waits for cloud datasources
+    "etc/systemd/system/sysinit.target.wants/systemd-time-wait-sync.service",
+    "etc/systemd/system/network-online.target.wants/systemd-networkd-wait-online.service",
+    "etc/systemd/system/systemd-networkd-wait-online.service.d/wait-for-only-one-interface.conf",
+    "etc/systemd/system/etc-pacman.d-gnupg.mount",            # the keyring on a tmpfs
+    "etc/systemd/system/pacman-init.service",
+    "etc/systemd/system/multi-user.target.wants/pacman-init.service",
+    "etc/systemd/system/choose-mirror.service",
+    "etc/systemd/system/multi-user.target.wants/choose-mirror.service",
+    "etc/systemd/system/livecd-talk.service",
+    "etc/systemd/system/multi-user.target.wants/livecd-talk.service",
+    "etc/systemd/system/livecd-alsa-unmuter.service",
+    "etc/systemd/system/sound.target.wants/livecd-alsa-unmuter.service",
+    "etc/systemd/system/multi-user.target.wants/sshd.service",   # with root login allowed
+    "etc/ssh/sshd_config.d/10-archiso.conf",
+    "etc/systemd/journald.conf.d/volatile-storage.conf",      # logs that vanish at reboot
+    "etc/systemd/logind.conf.d/do-not-suspend.conf",
+    "etc/pacman.d/hooks/zzzz99-remove-custom-hooks-from-airootfs.hook",
+    "etc/pacman.d/hooks/uncomment-mirrors.hook",
+    "etc/motd",
+    "usr/local/bin/choose-mirror",
+    "usr/local/bin/Installation_guide",
+    "usr/local/bin/livecd-sound",
+    "usr/local/share/livecd-sound",
+)
+
+
+def remove_live_leftovers(root: Path) -> bool:
+    """Remove the live ISO's leftovers from an installed system at `root`.
+    True when the boot image must be rebuilt (archiso's hooks were in it)."""
+    rebuild = (root / "etc/mkinitcpio.conf.d/archiso.conf").exists()
+    for rel in LIVE_LEFTOVERS:
+        p = root / rel
+        if p.is_dir() and not p.is_symlink():
+            shutil.rmtree(p, ignore_errors=True)
+        elif p.exists() or p.is_symlink():
+            p.unlink()
+    return rebuild
+
 
 def path(p: str) -> Path:
     return ROOT / p.lstrip("/")
@@ -451,6 +501,12 @@ def install_tree(tree: Path, version: dict, emit: Emit, work: Path) -> bool:
         except (OSError, GitHubError, urllib.error.URLError):
             pass                                # the old plugin keeps working
         enable_services(tree)
+        # Installs made before the installer cleaned these up still carry
+        # them; the boot image is rebuilt if it was built with archiso's hooks.
+        if remove_live_leftovers(ROOT) and shutil.which("mkinitcpio") and path("/boot/vmlinuz-linux").exists():
+            emit("progress", progress=0.98, message="Rebuilding the boot image…", remaining=-1)
+            _run(["mkinitcpio", "-P"] if ROOT == Path("/") else ["arch-chroot", str(ROOT), "mkinitcpio", "-P"],
+                 timeout=900)
         (runtime / "version.json").write_text(json.dumps({
             **version, "date": version.get("date") or datetime.now(timezone.utc).isoformat(),
             "installed": datetime.now(timezone.utc).isoformat(),

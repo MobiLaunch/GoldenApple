@@ -18,6 +18,9 @@ import sys
 import time
 from typing import Any
 
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "settings"))
+import golden_update  # noqa: E402  (shared list of live-only files)
+
 TARGET = pathlib.Path("/mnt/golden-gate")
 
 
@@ -89,7 +92,7 @@ def preflight() -> int:
         "lsblk", "findmnt", "wipefs", "sgdisk", "partprobe", "udevadm",
         "mkfs.fat", "mkfs.ext4", "mount", "umount", "swapoff", "rsync", "arch-chroot",
         "genfstab", "bootctl", "mkinitcpio", "useradd", "userdel", "chpasswd",
-        "passwd", "systemctl", "blkid",
+        "passwd", "systemctl", "blkid", "lsinitcpio",
     ]
     missing = [name for name in required if shutil.which(name) is None]
     live = pathlib.Path("/run/archiso").is_dir()
@@ -274,13 +277,11 @@ def install() -> int:
             )
 
         stage(0.58, "Converting live system", "Removing live-session state…")
-        for path in [
-            TARGET / "etc/sudoers.d/10-golden-live",
-            TARGET / "etc/systemd/system/gg-live-home.service",
-            TARGET / "etc/systemd/system/multi-user.target.wants/gg-live-home.service",
-        ]:
-            path.unlink(missing_ok=True)
-        shutil.rmtree(TARGET / "etc/systemd/system/getty@tty1.service.d", ignore_errors=True)
+        # The live ISO's boot hooks, autologin, cloud-init, volatile logs, the
+        # tmpfs keyring, sshd… (golden_update.LIVE_LEFTOVERS). archiso.conf
+        # above all: left in place, it made the installed initramfs wait for
+        # the live USB's volume and stop at boot.
+        golden_update.remove_live_leftovers(TARGET)
         shutil.rmtree(TARGET / "home/golden", ignore_errors=True)
 
         # The live account must not survive onto the installed system, and the
@@ -425,6 +426,11 @@ def install() -> int:
         missing = [str(path.relative_to(TARGET)) for path in required_paths if not path.exists()]
         if missing:
             raise RuntimeError("Installation verification failed; missing: " + ", ".join(missing))
+        # The installed boot image must not carry the live ISO's hooks: they
+        # wait for the USB stick and stop the boot when it isn't there.
+        listing = run(["lsinitcpio", str(TARGET / "boot/initramfs-linux.img")], check=False).stdout
+        if "hooks/archiso" in listing:
+            raise RuntimeError("The boot image was built with the live ISO's hooks; it would not start.")
 
         stage(0.99, "Syncing data", "Making sure everything is safely written to disk…")
         os.sync()
