@@ -81,7 +81,7 @@ for function in ("openTabGroup", "saveCurrentTabGroup", "createProfile", "reorde
     if count != 1:
         errors.append(f"apps/browser/Browser.qml: expected one {function}() implementation, found {count}")
 for needle in (
-    "BrowserBackend.attachProfile(profile)",
+    "BrowserBackend.attachProfile(root.profile)",
     "QWebEngineUrlRequestInterceptor",
     "DragHandler",
 ):
@@ -102,6 +102,13 @@ if "lifecycleState: visible ?" in browser:
     errors.append("apps/browser/Browser.qml: the current tab's view must stay Active while its Start Page shows")
 if "mapToItem(root," in browser:
     errors.append("apps/browser/Browser.qml: root is a Window; map to root.contentItem")
+# From Qt 6.9 a plain WebEngineProfile in QML never reaches the disk (every
+# login is lost when Web closes): the profile comes from a prototype, asked for
+# in Component.onCompleted (asking during creation crashes Qt).
+if re.search(r"^\s*WebEngineProfile\s*\{", browser, re.M) or "WebEngineProfilePrototype" not in browser:
+    errors.append("apps/browser/Browser.qml: create the profile with WebEngineProfilePrototype")
+if re.search(r"property\s+WebEngineProfile\s+profile:\s*profilePrototype\.instance", browser):
+    errors.append("apps/browser/Browser.qml: ask the profile prototype for its instance in Component.onCompleted")
 
 if errors:
     print("\n".join(errors), file=sys.stderr)

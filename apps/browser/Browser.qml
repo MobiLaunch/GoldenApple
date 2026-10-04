@@ -430,7 +430,7 @@ Window {
     }
 
     function refreshWebsitePermissions() {
-        try { websitePermissions = profile.listAllPermissions() }
+        try { websitePermissions = root.profile.listAllPermissions() }
         catch (_) { websitePermissions = [] }
     }
 
@@ -454,21 +454,35 @@ Window {
 
     ListModel { id: tabsModel }
 
-    WebEngineProfile {
-        id: profile
+    // The browsing profile: cookies, logins, site data and permissions, kept
+    // on disk (except in Private Browsing). From Qt 6.9 a profile declared as
+    // a plain WebEngineProfile in QML is created before its storage settings
+    // apply and stays in memory, so every login was lost when Web closed; the
+    // prototype creates it with them. Session cookies are kept too, as Safari
+    // and Chrome do when they reopen your tabs, so "remember me"-less logins
+    // last until you sign out.
+    WebEngineProfilePrototype {
+        id: profilePrototype
         storageName: BrowserBackend.privateMode ? "" : "GoldenGateWeb"
-        offTheRecord: BrowserBackend.privateMode
         persistentStoragePath: BrowserBackend.privateMode ? "" : BrowserBackend.dataDir + "/profile"
         cachePath: BrowserBackend.privateMode ? "" : BrowserBackend.cacheDir + "/web"
-        downloadPath: BrowserBackend.downloadDir
-        persistentCookiesPolicy: BrowserBackend.privateMode ? WebEngineProfile.NoPersistentCookies : WebEngineProfile.AllowPersistentCookies
+        httpCacheType: BrowserBackend.privateMode ? WebEngineProfile.MemoryHttpCache : WebEngineProfile.DiskHttpCache
+        persistentCookiesPolicy: BrowserBackend.privateMode ? WebEngineProfile.NoPersistentCookies : WebEngineProfile.ForcePersistentCookies
         persistentPermissionsPolicy: BrowserBackend.privateMode ? WebEngineProfile.StoreInMemory : WebEngineProfile.StoreOnDisk
-        spellCheckEnabled: true
-        onDownloadRequested: function(download) { root.acceptDownload(download) }
+    }
+    // Set first thing in Component.onCompleted, before any tab opens: asking
+    // the prototype for it while QML is still being created crashes Qt.
+    property WebEngineProfile profile: null
+    Binding { target: root.profile; property: "downloadPath"; value: BrowserBackend.downloadDir }
+    Binding { target: root.profile; property: "spellCheckEnabled"; value: true }
+    Connections {
+        target: root.profile
+        function onDownloadRequested(download) { root.acceptDownload(download) }
     }
 
     Component.onCompleted: {
-        BrowserBackend.attachProfile(profile)
+        profile = profilePrototype.instance()
+        BrowserBackend.attachProfile(root.profile)
         let initial = JSON.parse(BrowserBackend.initialTabsJson)
         if (!initial.length) initial = ["about:blank"]
         for (let i = 0; i < initial.length; i++) newTab(initial[i], false)
@@ -1149,7 +1163,7 @@ Window {
                         id: web
                         property int rendererRestarts: 0
                         anchors.fill: parent
-                        profile: profile
+                        profile: root.profile
                         visible: webTab.visible && webTab.url !== "about:blank" && !root.readerOpen
                         url: webTab.url
                         backgroundColor: Theme.dark ? "#1d1d20" : "#ffffff"

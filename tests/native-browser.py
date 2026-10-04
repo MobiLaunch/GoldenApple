@@ -23,14 +23,22 @@ ROOT = Path(__file__).resolve().parents[1]
 BROWSER = ROOT / "apps/browser/browser.py"
 
 
+COOKIES_SEEN = []
+
+
 class Fixture(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
+        COOKIES_SEEN.append((self.path, self.headers.get("Cookie") or ""))
         page = (
             f"<title>Fixture {self.path}</title>"
             '<article><h1>Reader Test</h1><p>Golden Gate browser fixture content.</p></article>'
             '<a href="/second">Second page</a>'
         )
         self.send_response(200)
+        if self.path.startswith("/login"):
+            # A site's login: one cookie for the browser session only, one kept for a day.
+            self.send_header("Set-Cookie", "session=signed-in; Path=/; HttpOnly")
+            self.send_header("Set-Cookie", "remember=yes; Path=/; Max-Age=86400")
         self.send_header("Content-Type", "text/html; charset=utf-8")
         self.end_headers()
         try:
@@ -97,12 +105,28 @@ class NativeQmlBrowser(unittest.TestCase):
             state = json.loads(files[0].read_text())
             self.assertIn(BASE + "/first", state["tabs"])
 
+    def test_logins_survive_closing_web(self):
+        # Closing Web used to sign you out of every site: from Qt 6.9 the QML
+        # profile stayed in memory and no cookie ever reached the disk.
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            first = self.run_browser(root, BASE + "/login-a", exit_ms=2500, timeout=30)
+            self.assertEqual(first.returncode, 0, first.stderr)
+            again = self.run_browser(root, BASE + "/check-a", exit_ms=2500, timeout=30)
+            self.assertEqual(again.returncode, 0, again.stderr)
+            sent = [cookie for path, cookie in COOKIES_SEEN if path == "/check-a"]
+            self.assertTrue(sent, COOKIES_SEEN)
+            self.assertIn("session=signed-in", sent[0])
+            self.assertIn("remember=yes", sent[0])
+            self.assertTrue(list(root.rglob("Cookies")), "no cookie store on disk")
+
     def test_private_window_is_off_record(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            result = self.run_browser(root, "--private", BASE + "/private")
+            result = self.run_browser(root, "--private", BASE + "/login-private")
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(state_files(root), [])
+            self.assertEqual(list(root.rglob("Cookies")), [])
 
     def test_named_profile_uses_isolated_state(self):
         with tempfile.TemporaryDirectory() as directory:
