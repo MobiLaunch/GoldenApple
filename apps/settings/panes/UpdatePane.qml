@@ -379,13 +379,19 @@ Pane {
         }
     }
 
+    // Why the Golden Gate check failed, whatever the reason: no token, a token
+    // GitHub refused or that can't see the repository, a missing branch, no network.
     Group {
-        visible: !!pane.golden.needsToken && !pane.editingSource
+        visible: (!!pane.golden.needsToken || !!pane.golden.error) && !pane.editingSource
         title: "Golden Gate Updates"
         SetRow {
-            title: "Golden Gate's repository needs access"
+            title: !pane.golden.needsToken ? "Couldn't check for Golden Gate updates"
+                : pane.source.hasToken ? "The access token didn't work" : "Golden Gate's repository needs access"
             subtitle: pane.golden.error || "Add a read-only access token to get Golden Gate updates."
-            Button { text: "Add Token…"; onClicked: pane.editingSource = true }
+            Button {
+                text: pane.golden.needsToken ? (pane.source.hasToken ? "Change Token…" : "Add Token…") : "Update Source…"
+                onClicked: pane.editingSource = true
+            }
         }
     }
 

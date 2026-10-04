@@ -23,7 +23,8 @@ import threading
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
-TOKEN = "github_pat_test"
+TOKEN = "github_pat_" + "T" * 30
+BLIND = "github_pat_" + "B" * 30        # a valid token that can't see the repository
 SHA = subprocess.run(["git", "-C", str(ROOT), "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip() or "f" * 40
 OLD = "0" * 40
 BRANCH = "claude/linux-macos-golden-gate-ui-pckc7s"
@@ -48,9 +49,14 @@ ARCHIVE = snapshot()
 
 class FakeGitHub(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
-        if self.headers.get("Authorization") != f"Bearer {TOKEN}":
+        auth = self.headers.get("Authorization")
+        if auth and auth not in (f"Bearer {TOKEN}", f"Bearer {BLIND}"):
+            return self.reply(401, {"message": "Bad credentials"})
+        if auth != f"Bearer {TOKEN}":
             return self.reply(404, {"message": "Not Found"})
         base = "/repos/MobiLaunch/GoldenApple"
+        if self.path == base:
+            return self.reply(200, {"full_name": "MobiLaunch/GoldenApple", "private": True})
         if self.path == f"{base}/commits/{BRANCH}":
             return self.reply(200, {"sha": SHA, "commit": {"message": "Newest work\n\ndetails",
                                                          "committer": {"date": "2026-10-04T10:00:00Z"}}})
@@ -115,6 +121,25 @@ class GoldenUpdate(unittest.TestCase):
         status = golden_update.check()
         self.assertFalse(status["available"])
         self.assertTrue(status["needsToken"])
+
+    def test_1b_says_why_a_token_fails(self):
+        golden_update.set_source("MobiLaunch/GoldenApple", BRANCH, "github_pat_" + "X" * 30)
+        status = golden_update.check()
+        self.assertTrue(status["needsToken"])
+        self.assertIn("didn't accept the access token", status["error"])
+        golden_update.set_source("MobiLaunch/GoldenApple", BRANCH, BLIND)
+        status = golden_update.check()
+        self.assertTrue(status["needsToken"])
+        self.assertIn("can't see MobiLaunch/GoldenApple", status["error"])
+        self.assertIn("Only select repositories", status["error"])
+        # Pasted with a line break, quotes and a Bearer prefix: still the token.
+        golden_update.set_source("MobiLaunch/GoldenApple", "no-such-branch", f' "Bearer {TOKEN[:20]}\n{TOKEN[20:]}" ')
+        self.assertEqual(golden_update.source()["token"], TOKEN)
+        status = golden_update.check()
+        self.assertFalse(status["needsToken"])
+        self.assertIn("no branch named", status["error"])
+        with self.assertRaises(ValueError):
+            golden_update.set_source("MobiLaunch/GoldenApple", BRANCH, "my password")
 
     def test_2_check_with_token(self):
         golden_update.set_source("MobiLaunch/GoldenApple", BRANCH, TOKEN)

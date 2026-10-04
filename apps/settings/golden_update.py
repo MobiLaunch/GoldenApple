@@ -181,13 +181,15 @@ def set_source(repo: str, branch: str, token: str | None) -> None:
         raise ValueError("The repository should look like owner/name.")
     if not BRANCH_RE.match(branch):
         raise ValueError("That isn't a valid branch name.")
+    if token is not None:
+        token = clean_token(token)
     folder = path("/etc/golden-gate")
     folder.mkdir(parents=True, exist_ok=True)
     (folder / "update.json").write_text(json.dumps({"repo": repo, "branch": branch}, indent=2) + "\n")
     if token is not None:
         tok = folder / "update-token"
         if token:
-            tok.write_text(token.strip() + "\n")
+            tok.write_text(token + "\n")
             os.chmod(tok, 0o640)
             try:
                 os.chown(tok, 0, _gid("wheel"))
@@ -197,6 +199,20 @@ def set_source(repo: str, branch: str, token: str | None) -> None:
             tok.unlink(missing_ok=True)
 
 
+def clean_token(token: str) -> str:
+    """A token as pasted, without what copying tends to add: spaces, line
+    breaks, quotes or a "Bearer " in front. GitHub tokens are letters, digits
+    and underscores only."""
+    t = "".join(token.split()).strip("\"'`")
+    for prefix in ("Bearer", "bearer", "token", "Token"):
+        if t.startswith(prefix) and len(t) > len(prefix) + 20:
+            t = t[len(prefix):].lstrip(":=")
+    if t and not re.fullmatch(r"[A-Za-z0-9_]{20,255}", t):
+        raise ValueError("That doesn't look like a GitHub access token. Copy it again from GitHub "
+                         "(it starts with github_pat_ or ghp_).")
+    return t
+
+
 def _gid(group: str) -> int:
     import grp
     return grp.getgrnam(group).gr_gid
@@ -204,9 +220,10 @@ def _gid(group: str) -> int:
 
 # ------------------------------------------------------------------ GitHub
 class GitHubError(Exception):
-    def __init__(self, status: int, message: str):
+    def __init__(self, status: int, message: str, rate_limited: bool = False):
         super().__init__(message)
         self.status = status
+        self.rate_limited = rate_limited
 
 
 def _request(url: str, token: str, accept: str = "application/vnd.github+json", timeout: int = 20):
@@ -221,9 +238,40 @@ def api(endpoint: str, token: str) -> dict:
         with _request(API + endpoint, token) as r:
             return json.load(r)
     except urllib.error.HTTPError as e:
-        raise GitHubError(e.code, e.reason or "")
+        raise GitHubError(e.code, e.reason or "", e.code in (403, 429)
+                          and (e.headers.get("X-RateLimit-Remaining") == "0" or e.code == 429))
     except (urllib.error.URLError, OSError, ValueError) as e:
         raise GitHubError(0, str(getattr(e, "reason", e)))
+
+
+TOKEN_HELP = ("For a fine-grained token, set Repository access to Only select repositories → {name}, "
+              "and Permissions → Contents to Read-only. A classic token needs the repo scope.")
+
+
+def refusal(e: GitHubError, src: dict) -> tuple[str, bool]:
+    """Why GitHub said no, in words that say what to change, and whether the
+    fix is a (different) access token."""
+    repo, branch, token = src["repo"], src["branch"], src["token"]
+    help_ = TOKEN_HELP.format(name=repo.split("/")[-1])
+    if e.status == 0:
+        return "Couldn't reach GitHub to check for Golden Gate updates.", False
+    if e.rate_limited:
+        return "GitHub's limit on checks was reached for now. Try again in an hour" + \
+            ("." if token else ", or add an access token in Update Source."), False
+    if e.status == 401:
+        return "GitHub didn't accept the access token: it may be mistyped, expired or revoked. " \
+               "Make a new one and save it in Update Source.", True
+    if e.status == 403:
+        return f"The access token isn't allowed to read {repo}. " + help_, True
+    if e.status == 404:
+        if not token:
+            return f"{repo} is private (or doesn't exist). Add an access token in Update Source.", True
+        try:
+            api(f"/repos/{repo}", token)
+        except GitHubError:
+            return f"The access token can't see {repo}. " + help_, True
+        return f"{repo} has no branch named \u201c{branch}\u201d. Check the branch in Update Source.", False
+    return f"GitHub refused the request ({e.status}).", False
 
 
 def check() -> dict:
@@ -233,16 +281,15 @@ def check() -> dict:
     out = {"repo": src["repo"], "branch": src["branch"], "current": now.get("commit", ""),
            "currentDate": now.get("date", ""), "available": False, "notes": [], "ahead": 0,
            "needsToken": False, "error": ""}
+    token_file = path("/etc/golden-gate/update-token")
+    if not src["token"] and token_file.exists():
+        out["error"] = ("A token is saved, but this account can't read it. "
+                        "Only administrators can check for Golden Gate updates.")
+        return out
     try:
         head = api(f"/repos/{src['repo']}/commits/{src['branch']}", src["token"])
     except GitHubError as e:
-        if e.status in (401, 403, 404):
-            out["needsToken"] = not src["token"] or e.status == 401
-            out["error"] = ("Golden Gate's repository is private or the branch is missing. "
-                            "Add an access token in Update Source." if out["needsToken"]
-                            else f"GitHub refused the request ({e.status}).")
-        else:
-            out["error"] = "Couldn't reach GitHub to check for Golden Gate updates."
+        out["error"], out["needsToken"] = refusal(e, src)
         return out
     latest = head.get("sha", "")
     commit = head.get("commit") or {}
