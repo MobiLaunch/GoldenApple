@@ -547,7 +547,7 @@ PanelWindow {
                 icon: "screenshot"; title: "Capture"; subtitle: ""
                 onActivated: {
                     cc.open = false
-                    cc.run("sh -c 'sleep 0.25; grim -g \"$(slurp)\" ~/Pictures/Screenshot-$(date +%F-%H%M%S).png'")
+                    cc.run("qs -c golden-gate ipc call screenshot toolbar")
                 }
             }
         }

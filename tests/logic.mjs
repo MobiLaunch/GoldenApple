@@ -442,3 +442,53 @@ test('Files drops: move within Files, copy from other apps, Trash, never into it
   c.dropOn(d, 'trash:');
   assert.deepEqual(ops.pop(), ['trash', 'trash', '/home/j/Documents/Plan B.txt']);
 });
+
+test('Screenshots: grim gets the right region and a Mac-style file name, quoted safely', async () => {
+  const { execFileSync } = await import('node:child_process');
+  const { mkdtempSync, writeFileSync, chmodSync, readFileSync: read, existsSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const dir = mkdtempSync(tmpdir() + '/gg-shot-');
+  // A grim that writes down its arguments and makes the file it's given.
+  writeFileSync(dir + '/grim', '#!/bin/sh\nprintf "%s\\n" "$@" > "$GG_ARGS"\nfor a; do last=$a; done\n[ "$last" = - ] && printf png || : > "$last"\n');
+  writeFileSync(dir + '/wl-copy', '#!/bin/sh\ncat > "$GG_CLIP"\n');
+  chmodSync(dir + '/grim', 0o755); chmodSync(dir + '/wl-copy', 0o755);
+  const shooter = {};
+  const state = {
+    toClipboard: false, saveTo: 'desktop', showPointer: false, lastFile: '',
+    pendingRect: { x: 100.4, y: 50, width: 640, height: 400 }, screen: { name: 'DP-2' },
+    monitor: { x: 1440, y: 0 }, shooter, Quickshell: { env: () => dir },
+    Qt: { formatDateTime: () => '2026-10-04 at 9.41.12 PM' },
+  };
+  const c = context('shell/Screenshot.qml', ['home', 'folder', 'stamp', 'geometry', 'capture'], state);
+  const run = () => execFileSync(shooter.command[0], shooter.command.slice(1),
+    { env: { ...process.env, PATH: dir + ':' + process.env.PATH, GG_ARGS: dir + '/args', GG_CLIP: dir + '/clip' } });
+
+  c.capture();
+  run();
+  const file = dir + '/Desktop/Screenshot 2026-10-04 at 9.41.12 PM.png';
+  assert.equal(c.lastFile, file);
+  assert.ok(existsSync(file), 'saved on the Desktop, spaces and all');
+  assert.deepEqual(read(dir + '/args', 'utf8').trim().split('\n'), ['-g', '1540,50 640x400', file]);
+
+  c.pendingRect = null; c.showPointer = true; c.saveTo = 'pictures';
+  c.capture(); run();
+  assert.deepEqual(read(dir + '/args', 'utf8').trim().split('\n'),
+    ['-c', '-o', 'DP-2', dir + '/Pictures/Screenshot 2026-10-04 at 9.41.12 PM.png'], 'the whole screen, with the pointer');
+
+  c.toClipboard = true;
+  c.capture(); run();
+  assert.equal(c.lastFile, '', 'nothing saved');
+  assert.equal(read(dir + '/clip', 'utf8'), 'png', 'the picture goes to the clipboard');
+});
+
+test('Screen recording: wf-recorder records the selection or the screen to a named file', () => {
+  const recorder = {};
+  const c = context('shell/Screenshot.qml', ['home', 'folder', 'stamp', 'geometry', 'startRecording'], {
+    saveTo: 'documents', lastFile: '', pendingRect: { x: 0, y: 30, width: 800, height: 600 },
+    screen: { name: 'eDP-1' }, monitor: { x: 0, y: 0 }, recorder, Quickshell: { env: () => '/home/j' },
+    Qt: { formatDateTime: () => '2026-10-04 at 9.41.12 PM' },
+  });
+  c.startRecording();
+  assert.deepEqual(Array.from(recorder.command), ['wf-recorder', '-y', '-f', '/home/j/Documents/Screen Recording 2026-10-04 at 9.41.12 PM.mp4', '-g', '0,30 800x600']);
+  assert.equal(recorder.running, true);
+});

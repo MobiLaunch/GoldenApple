@@ -52,6 +52,8 @@ power-profiles-daemon
 keyd
 grim
 slurp
+wf-recorder
+sound-theme-freedesktop
 wl-clipboard
 libnotify
 xdg-user-dirs

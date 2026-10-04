@@ -45,7 +45,7 @@
 
 - [ ] `hyprglass` plugin: per-surface refraction using `liquid-glass.frag`
 - [ ] Genie minimise as a Hyprland plugin (mesh-warp the window texture)
-- [ ] Mission Control / Spaces overview in the Linux shell
+- [x] Mission Control / Spaces overview in the Linux shell
 - [ ] Global app menus in the menu bar (appmenu D-Bus bridge; GTK3/Qt first)
 - [ ] Widgets on the desktop
 

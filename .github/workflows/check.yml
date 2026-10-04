@@ -269,3 +269,7 @@ jobs:
         run: python tests/missioncontrol.py
         env:
           QT_QPA_PLATFORM: offscreen
+      - name: The screenshot toolbar draws and its keys are wired
+        run: python tests/screenshot.py
+        env:
+          QT_QPA_PLATFORM: offscreen

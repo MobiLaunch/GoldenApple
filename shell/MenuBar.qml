@@ -18,6 +18,7 @@ PanelWindow {
     property var spotlight
     property var session                // SessionDialog: Restart, Shut Down and Log Out ask first
     property var notifications          // the clock opens Notification Center
+    property var screenshots            // while recording the screen, a stop button
 
     // Wi-Fi as the Mac shows it: no item without a Wi-Fi adapter (a wired PC or
     // a VM), a dimmed fan when Wi-Fi is off or not joined to a network, the
@@ -154,6 +155,17 @@ PanelWindow {
     RowLayout {
         anchors { right: parent.right; rightMargin: 8; verticalCenter: parent.verticalCenter }
         spacing: 1
+        // Recording the screen (⇧⌘5): stop, as on the Mac.
+        BarItem {
+            visible: bar.screenshots?.recording ?? false
+            onClicked: bar.screenshots.stopRecording()
+            Rectangle {
+                implicitWidth: 17; implicitHeight: 17; radius: 8.5
+                color: "transparent"
+                border { width: 1.4; color: bar.darkRight ? "#d6000000" : "#ffffff" }
+                Rectangle { anchors.centerIn: parent; width: 6.5; height: 6.5; radius: 1.2; color: bar.darkRight ? "#d6000000" : "#ffffff" }
+            }
+        }
         BarItem {
             visible: UPower.displayDevice.isLaptopBattery
             // Drawn in the bar's ink (dark over a light wallpaper), red when low

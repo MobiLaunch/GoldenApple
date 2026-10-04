@@ -70,7 +70,7 @@ skips the boot and opens those apps; `?lock` starts at the lock screen.
 
 ```sh
 sudo pacman -S hyprland hypridle quickshell qt6-svg qt6-wayland inter-font \
-               ttf-jetbrains-mono networkmanager bluez brightnessctl playerctl grim slurp librsvg \
+               ttf-jetbrains-mono networkmanager bluez brightnessctl playerctl grim slurp wf-recorder librsvg \
                pyside6 qt6-webengine python git xorg-server-xvfb libxtst
 scripts/install.sh           # backs up anything it replaces (*.bak-<timestamp>)
 sudo scripts/install.sh --extras   # optional (needs keyd, sddm, plymouth): ⌘ layer, login theme, boot splash
@@ -110,7 +110,10 @@ is Quick Look, the arrows move, Return renames, ⌘O/⌘↓ opens, ⌘↑ goes u
 moves to the Trash. Drag items onto a folder or a sidebar place to move them
 (another disk, or a file from another app, is copied), onto the Trash to throw
 them away, or out to another app. Recents lists what you've opened and changed
-lately, and the Trash has Put Back and Empty Trash.
+lately, and the Trash has Put Back and Empty Trash. Screenshots work as on a Mac: ⇧⌘3 the
+screen, ⇧⌘4 a part of it (Space for a window), ⌃ added for the clipboard, and ⇧⌘5
+the toolbar, which also records the screen or a selection (stop it from the menu
+bar) and keeps your choice of where to save, a timer and the floating thumbnail.
 
 **Developing apps: LCode.** `gg-lcode` (or LCode in Applications) is Golden Gate's
 Xcode, made so that anyone can build good-looking Linux apps. It follows Xcode 26's

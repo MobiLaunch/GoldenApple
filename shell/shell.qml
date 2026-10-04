@@ -134,6 +134,7 @@ ShellRoot {
         }
         function opened(x: int, y: int, w: int, h: int): void { root.launchers[0]?.landOn(Qt.rect(x, y, w, h)) }
     }
+    Screenshot { id: screenshots }
     Notifications { id: notificationCenter; controlCenterOpen: root.controlCenters.some((c) => c.open) }
     SessionDialog { id: sessionDialog }
     Osd {}
@@ -169,6 +170,7 @@ ShellRoot {
             MenuBar {
                 id: menuBar
                 screen: perScreen.modelData; controlCenter: cc; spotlight: spotlightPanel; session: sessionDialog; notifications: notificationCenter
+                screenshots: screenshots
                 Component.onCompleted: root.menuBars = root.menuBars.concat([menuBar])
                 Component.onDestruction: root.menuBars = root.menuBars.filter((m) => m !== menuBar)
             }

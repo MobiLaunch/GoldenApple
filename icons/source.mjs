@@ -154,6 +154,12 @@ export const symbols = {
   tablet: S(`<rect x="4" y="3" width="16" height="18" rx="2.6"/><path d="M10.5 18h3"/>`),
   terminal: S(`<rect x="3" y="4.5" width="18" height="15" rx="2.5"/><path d="M7 10l3 2.5L7 15M12.5 15.5h4.5"/>`),
   "sidebar-right": S(`<rect x="3" y="4.5" width="18" height="15" rx="2.8"/><path d="M14.5 4.5v15M17 8h1.5M17 11h1.5"/>`),
+  // The screenshot toolbar (⇧⌘5): the whole screen, a selection (dashed), and
+  // each with the record dot for recording.
+  "capture-screen": S(`<rect x="2.5" y="4.5" width="19" height="13" rx="2.2"/><path d="M8.5 20.5h7"/>`),
+  "capture-selection": S(`<rect x="3.5" y="5" width="17" height="14" rx="1.5" stroke-dasharray="2.6 2.4"/>`),
+  "record-screen": S(`<rect x="2.5" y="4.5" width="19" height="13" rx="2.2"/><path d="M8.5 20.5h7"/>${dot(17, 13.5, 2.6)}`),
+  "record-selection": S(`<rect x="3.5" y="5" width="17" height="14" rx="1.5" stroke-dasharray="2.6 2.4"/>${dot(16.5, 14.5, 2.6)}`),
   // Window › Move & Resize: the screen with the tile's part filled in.
   "tile-left": tile(3, 4.5, 9, 15),
   "tile-right": tile(12, 4.5, 9, 15),
