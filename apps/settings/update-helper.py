@@ -259,12 +259,20 @@ def set_source() -> int:
         return 77
     try:
         data = json.loads(sys.stdin.readline() or "{}")
-        golden_update.set_source(str(data.get("repo", "")).strip(), str(data.get("branch", "")).strip(),
-                                 None if data.get("token") is None else str(data["token"]))
+        repo, branch = str(data.get("repo", "")).strip(), str(data.get("branch", "")).strip()
+        token = None if data.get("token") is None else golden_update.clean_token(str(data["token"]))
+        # Ask GitHub first, so a token it won't take is refused here, with the
+        # reason, instead of being saved and failing quietly later. Without a
+        # connection it's saved anyway.
+        problem = golden_update.verify_source(repo, branch, golden_update.source()["token"] if token is None else token)
+        if problem and problem[1]:
+            emit("error", message=problem[0])
+            return 1
+        golden_update.set_source(repo, branch, token)
     except (ValueError, OSError) as exc:
         emit("error", message=str(exc))
         return 1
-    emit("done", message="Saved.")
+    emit("done", message="Saved." if not problem else "Saved, but " + problem[0][0].lower() + problem[0][1:])
     return 0
 
 

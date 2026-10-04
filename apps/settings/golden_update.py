@@ -274,6 +274,20 @@ def refusal(e: GitHubError, src: dict) -> tuple[str, bool]:
     return f"GitHub refused the request ({e.status}).", False
 
 
+def verify_source(repo: str, branch: str, token: str) -> tuple[str, bool] | None:
+    """None when GitHub serves `branch` of `repo` with this token; otherwise
+    refusal()'s reason, and whether the token is what has to change."""
+    if not REPO_RE.match(repo) or not BRANCH_RE.match(branch):
+        return None                     # set_source says what's wrong with them
+    try:
+        api(f"/repos/{repo}/commits/{branch}", token)
+    except GitHubError as e:
+        message, token_problem = refusal(e, {"repo": repo, "branch": branch, "token": token})
+        missing_branch = e.status == 404 and "no branch named" in message
+        return message, token_problem or missing_branch
+    return None
+
+
 def check() -> dict:
     """What Software Update shows for Golden Gate."""
     src = source()

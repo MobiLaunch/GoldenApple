@@ -141,6 +141,25 @@ class GoldenUpdate(unittest.TestCase):
         with self.assertRaises(ValueError):
             golden_update.set_source("MobiLaunch/GoldenApple", BRANCH, "my password")
 
+    @unittest.skipUnless(os.geteuid() == 0, "saving the update source needs root")
+    def test_1c_save_asks_github_first(self):
+        def save(token):
+            proc = subprocess.run([sys.executable, str(ROOT / "apps/settings/update-helper.py"), "set-source"],
+                                  input=json.dumps({"repo": "MobiLaunch/GoldenApple", "branch": BRANCH, "token": token}) + "\n",
+                                  capture_output=True, text=True, env=os.environ, timeout=60)
+            return proc.returncode, [json.loads(l) for l in proc.stdout.splitlines() if l.startswith("{")]
+        code, events = save("github_pat_" + "X" * 30)
+        self.assertNotEqual(code, 0)
+        self.assertIn("didn't accept the access token", events[-1]["message"])
+        code, events = save(BLIND)
+        self.assertNotEqual(code, 0)
+        self.assertIn("can't see", events[-1]["message"])
+        self.assertNotEqual(golden_update.source()["token"], BLIND)       # refused tokens aren't kept
+        code, events = save(TOKEN)
+        self.assertEqual(code, 0, events)
+        self.assertEqual(events[-1], {"event": "done", "message": "Saved."})
+        self.assertEqual(golden_update.source()["token"], TOKEN)
+
     def test_2_check_with_token(self):
         golden_update.set_source("MobiLaunch/GoldenApple", BRANCH, TOKEN)
         status = golden_update.check()

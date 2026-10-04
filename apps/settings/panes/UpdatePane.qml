@@ -173,13 +173,19 @@ Pane {
                 try {
                     const e = JSON.parse(line)
                     if (e.event === "error") pane.sourceError = e.message
+                    else if (e.event === "done" && e.message && e.message !== "Saved.") pane.notice = e.message
                 } catch (err) {}
             }
         }
-        onStarted: write(payload)
+        // pkexec and sudo say on stderr why they didn't run the helper.
+        stderr: SplitParser { onRead: (line) => { if (line.trim()) sourceSave.stderrLine = line.trim() } }
+        property string stderrLine: ""
+        onStarted: { stderrLine = ""; pane.sourceError = ""; write(payload) }
         onExited: (code) => {
-            if (code === 0) { pane.editingSource = false; pane.sourceError = ""; pane.readSource(); pane.checkNow() }
-            else if (!pane.sourceError) pane.sourceError = code === 126 || code === 127 ? "Authorization was cancelled." : "Couldn't save the update source."
+            if (code === 0) { pane.editingSource = false; pane.sourceError = ""; tokenField.text = ""; pane.readSource(); pane.checkNow() }
+            else if (!pane.sourceError)
+                pane.sourceError = (code === 126 ? "Authorization was cancelled." : "Couldn't save the update source.")
+                    + (stderrLine ? " (" + stderrLine + ")" : "")
         }
     }
     property string sourceError: ""
