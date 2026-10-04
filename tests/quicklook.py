@@ -64,12 +64,29 @@ with tempfile.TemporaryDirectory() as tmp:
         check(card.lightness() > 200, f"other: expected the light card in the middle, got {card.name()}")
         check(around.lightness() < card.lightness() - 8, f"other: expected the window dimmed around the card, got {around.name()}")
 
+    # The Trash and Recents are views of their own: the sample Trash's picture
+    # (IMG_0412.png) comes first; Recents lists files, newest first.
+    for view, what in (("trash:", "Trash"), ("recents:", "Recents")):
+        out = tmp / f"{what}.png"
+        proc = subprocess.run([sys.executable, str(PREVIEW), "app", "apps/files.qml", "--wait", "900",
+                               "--env", f"GG_FILES_PATH={view}", "-o", str(out)],
+                              capture_output=True, text=True, timeout=180, cwd=ROOT)
+        img = QImage(str(out))
+        check(proc.returncode == 0 and not img.isNull(), f"{what}: preview failed")
+        if not img.isNull():
+            # The first item's icon (in the grid's first cell) is drawn, not "Folder Unavailable".
+            colourful = sum(1 for x in range(465, 515, 2) for y in range(185, 235, 2)
+                            if img.pixelColor(x, y).hsvSaturation() > 80 or img.pixelColor(x, y).lightness() < 200)
+            check(colourful > 30, f"{what}: expected its first item in the grid, found {colourful} icon pixels")
+
 files = (ROOT / "apps/files.qml").read_text()
 for needle, what in [("Qt.Key_Space", "Space toggles Quick Look"), ("Qt.Key_Y", "⌘Y toggles Quick Look"),
                      ("moveSelection(-columns)", "↑ moves up a row"), ("moveSelection(columns)", "↓ moves down a row"),
                      ("Qt.Key_Return", "Return renames"), ("Qt.Key_End", "⌘↓ opens"),
                      ("enclosingFolder()", "⌘↑ goes up"), ("Qt.Key_Backspace", "⌘⌫ moves to the Trash"),
-                     ("QuickLook {", "Files has Quick Look"), ('text: "Quick Look", shortcut: "Space"', "the context menu offers Quick Look")]:
+                     ("QuickLook {", "Files has Quick Look"), ("Drag.dragType: Drag.Automatic", "items drag out"),
+                     ("files.dropOn(drop, cell.modelData.path)", "folders take drops"), ("files.dropOn(drop, place.modelData.path)", "the sidebar takes drops"),
+                     ('path: "trash:"', "the sidebar has the Trash"), ('path: "recents:"', "the sidebar has Recents"), ('text: "Quick Look", shortcut: "Space"', "the context menu offers Quick Look")]:
     check(needle in files, what)
 
 if failures:

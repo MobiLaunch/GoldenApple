@@ -5,7 +5,9 @@ home=${HOME:?}
 path="$home"
 select=""
 
-if [ "${1:-}" = "--select" ] && [ -n "${2:-}" ]; then
+if [ "${1:-}" = "trash:" ] || [ "${1:-}" = "recents:" ]; then
+  path="$1"                 # the Trash and Recents views
+elif [ "${1:-}" = "--select" ] && [ -n "${2:-}" ]; then
   select=$(realpath -m -- "$2")
   path=$(dirname -- "$select")
 elif [ -n "${1:-}" ]; then

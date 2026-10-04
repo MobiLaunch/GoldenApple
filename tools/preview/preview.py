@@ -201,6 +201,10 @@ DANGER = re.compile(r"\b(rm|mv|pkexec|sudo|systemctl|hyprctl|kill|pkill|reboot|p
                     r"open|write|save|delete|trash|move|rename|apply|install|remove|connect|disconnect|pair|power)\b")
 
 
+# Read-only all the same, though a word above matches ("list trash:").
+SAFE = re.compile(r"files/helper\.py list ")
+
+
 class Preview(QObject):
     """The harness, as `__preview` in every QML context."""
     def __init__(self, env: dict, shell_dir: str, scheme: str):
@@ -240,7 +244,7 @@ class Preview(QObject):
                 if code == "hang":
                     return {"stdout": "", "stderr": "", "code": 0, "hang": True}
                 return {"stdout": out.replace("{scheme}", self._scheme), "stderr": "", "code": code}
-        if cmd and not DANGER.search(line):
+        if cmd and (not DANGER.search(line) or SAFE.search(line)):
             # Read-only commands run for real, in the sample home, with the fake tools first.
             import subprocess
             env = {**os.environ, **{k: str(v) for k, v in self._env.items()},
@@ -417,7 +421,7 @@ Review on Thursday at 10:30 in the studio.
 
 def populate_home(home: Path) -> None:
     """A lived-in home folder for the apps to show: notes, documents and photos."""
-    stamp = home / ".preview-populated-4"
+    stamp = home / ".preview-populated-5"
     if stamp.exists():
         return
     for rel, text in NOTES.items():
@@ -432,6 +436,13 @@ def populate_home(home: Path) -> None:
         f.parent.mkdir(parents=True, exist_ok=True)
         f.write_bytes(b"\0" * size)
     (home / "Documents/Golden Gate brief.md").write_text(BRIEF)
+    # Two things in the Trash, with where they came from.
+    for name, origin in (("Old draft.md", "Documents/Old draft.md"), ("IMG_0412.png", "Desktop/IMG_0412.png")):
+        (home / ".local/share/Trash/files").mkdir(parents=True, exist_ok=True)
+        (home / ".local/share/Trash/info").mkdir(parents=True, exist_ok=True)
+        (home / ".local/share/Trash/files" / name).write_text("draft")
+        (home / ".local/share/Trash/info" / f"{name}.trashinfo").write_text(
+            f"[Trash Info]\nPath={home / origin}\nDeletionDate=2026-10-02T18:20:00\n")
     pics = home / "Pictures"
     pics.mkdir(parents=True, exist_ok=True)
     names = ["Sunset over Tiburon", "Muir Woods", "Night at Ocean Beach", "Baker Beach", "Dolores Park", "Lands End"]

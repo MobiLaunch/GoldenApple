@@ -107,7 +107,10 @@ down is App Exposé, and three fingers sideways move between desktops. Spotlight
 unit conversions (`5 km in mi`, `70 f to c`), finds System Settings panes and
 files in your home folder, and falls back to a web search. In Files, Space or ⌘Y
 is Quick Look, the arrows move, Return renames, ⌘O/⌘↓ opens, ⌘↑ goes up and ⌘⌫
-moves to the Trash.
+moves to the Trash. Drag items onto a folder or a sidebar place to move them
+(another disk, or a file from another app, is copied), onto the Trash to throw
+them away, or out to another app. Recents lists what you've opened and changed
+lately, and the Trash has Put Back and Empty Trash.
 
 **Developing apps: LCode.** `gg-lcode` (or LCode in Applications) is Golden Gate's
 Xcode, made so that anyone can build good-looking Linux apps. It follows Xcode 26's

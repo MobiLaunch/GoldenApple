@@ -7,6 +7,7 @@ import QtQuick.Layouts
 import "lib"
 import "lib/theme"
 import "files"
+import "lib/paths.js" as Paths
 
 ShellRoot {
     AppWindow {
@@ -76,9 +77,18 @@ ShellRoot {
                     }
                 }
 
+                Button {
+                    anchors.verticalCenter: parent.verticalCenter
+                    visible: files.inTrash
+                    enabled: files.entries.length > 0
+                    text: "Empty"
+                    onClicked: files.askEmptyTrash()
+                }
+
                 ToolbarButton {
                     round: true
                     symbol: "folder"
+                    enabled: !files.special
                     onClicked: {
                         files.dialogMode = "new"
                         files.dialogText = "untitled folder"
@@ -126,12 +136,23 @@ ShellRoot {
                 Repeater {
                     model: files.locations
                     delegate: SidebarRow {
+                        id: place
                         required property var modelData
                         width: parent.width
                         text: modelData.name
                         symbol: modelData.icon
-                        selected: files.path === modelData.path
+                        selected: files.path === modelData.path || placeDrop.containsDrag
                         onClicked: files.navigate(modelData.path)
+                        // Drop on a place to move there; on the Trash to throw away.
+                        DropArea {
+                            id: placeDrop
+                            anchors.fill: parent
+                            enabled: place.modelData.path !== "recents:"
+                            onEntered: (drag) => drag.accepted = place.modelData.path === "trash:"
+                                ? files.pathsOf(drag.urls).length > 0 && !files.inTrash
+                                : files.accepts(drag, place.modelData.path)
+                            onDropped: (drop) => files.dropOn(drop, place.modelData.path)
+                        }
                     }
                 }
             }
@@ -160,20 +181,29 @@ ShellRoot {
             property string dialogText: ""
             property string pendingOp: ""
 
+            // Two views that aren't folders: Recents and the Trash.
+            readonly property bool inTrash: path === "trash:"
+            readonly property bool inRecents: path === "recents:"
+            readonly property bool special: inTrash || inRecents
+
             readonly property string title: {
+                if (inTrash) return "Trash"
+                if (inRecents) return "Recents"
                 if (path === home) return "Home"
                 const bits = path.split("/").filter((x) => x)
                 return bits.length ? bits[bits.length - 1] : "Computer"
             }
 
             readonly property var locations: [
+                { name: "Recents", icon: "clock", path: "recents:" },
                 { name: "Home", icon: "house", path: home },
                 { name: "Desktop", icon: "rectangle-fill", path: home + "/Desktop" },
                 { name: "Documents", icon: "doc", path: home + "/Documents" },
                 { name: "Downloads", icon: "download", path: home + "/Downloads" },
                 { name: "Pictures", icon: "photo", path: home + "/Pictures" },
                 { name: "Music", icon: "music", path: home + "/Music" },
-                { name: "Videos", icon: "film", path: home + "/Videos" }
+                { name: "Videos", icon: "film", path: home + "/Videos" },
+                { name: "Trash", icon: "trash", path: "trash:" }
             ]
 
             function reload() {
@@ -255,6 +285,7 @@ ShellRoot {
                 Qt.callLater(() => dialogField.input.forceActiveFocus())
             }
             function enclosingFolder() {
+                if (special) return
                 const up = path.replace(/\/[^/]+\/?$/, "") || "/"
                 if (up !== path) navigate(up)
             }
@@ -268,7 +299,7 @@ ShellRoot {
                     if (selectedEntry) { quickLook.open = false; openEntry(selectedEntry) }
                 } else if (ctrl && event.key === Qt.Key_Home) enclosingFolder()
                 else if (ctrl && event.key === Qt.Key_Backspace) {
-                    if (selectedEntry) runOperation(["trash", selectedPath], "trash")
+                    if (selectedEntry && !inTrash) runOperation(["trash", selectedPath], "trash")
                 } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
                     if (!quickLook.open) rename()
                 } else if (event.key === Qt.Key_Left && view === "grid") moveSelection(-1)
@@ -298,9 +329,74 @@ ShellRoot {
                 opProc.running = true
             }
 
+            // ---------------------------------------------------- Trash
+            function putBack(entry) { if (entry?.trashName) runOperation(["put-back", entry.trashName], "put-back") }
+            function askEmptyTrash() { confirmEmpty.visible = true }
+            // An item in Recents, shown where it lives.
+            function showInFolder(entry) {
+                initialSelect = entry.path
+                navigate(entry.path.replace(/\/[^/]+$/, "") || "/")
+            }
+
+            // ---------------------------------------------------- drag and drop
+            // Dropped on a folder (or on the window: this folder), items move
+            // when they come from Files on the same disk and are copied from
+            // another disk or another app; on the Trash they go to the Trash.
+            function pathsOf(urls) {
+                return Array.from(urls ?? []).map((u) => String(u)).filter((u) => u.startsWith("file://"))
+                    .map((u) => decodeURIComponent(u.slice(7)))
+            }
+            function accepts(drag, dest) {
+                const paths = pathsOf(drag.urls)
+                // Not onto itself, and not a folder into its own contents.
+                return paths.length > 0 && !paths.some((p) => dest === p || dest.startsWith(p + "/"))
+            }
+            function dropOn(drop, dest) {
+                const paths = pathsOf(drop.urls)
+                if (!paths.length) return
+                const ours = drop.source !== null && drop.source !== undefined
+                if (dest === "trash:") {
+                    runOperation(["trash"].concat(paths), "trash")
+                    drop.accept(Qt.MoveAction)
+                    return
+                }
+                const copy = !ours || drop.proposedAction === Qt.CopyAction
+                runOperation(["drop", dest, copy ? "copy" : "auto"].concat(paths), "drop")
+                drop.accept(copy ? Qt.CopyAction : Qt.MoveAction)
+            }
+
+            // An item's menu (right-click), for where it is.
+            function itemMenu(anchor, x, y, entry) {
+                select(entry)
+                const items = inTrash ? [
+                    { text: "Put Back", action: () => putBack(entry) },
+                    { text: "Quick Look", shortcut: "Space", action: () => quickLook.open = true },
+                    { separator: true },
+                    { text: "Empty Trash", destructive: true, action: () => askEmptyTrash() }
+                ] : [
+                    { text: "Open", action: () => openEntry(entry) },
+                    { text: "Quick Look", shortcut: "Space", action: () => quickLook.open = true }
+                ].concat(inRecents ? [{ text: "Show in Enclosing Folder", action: () => showInFolder(entry) }] : [], [
+                    { text: "Rename", action: () => rename() },
+                    { text: "Share with AirDrop…", action: () => Quickshell.execDetached(["gg-airdrop", entry.path]) },
+                    { separator: true },
+                    { text: "Move to Trash", action: () => runOperation(["trash", entry.path], "trash") }
+                ])
+                menu.popup(anchor, x, y, items)
+            }
+
             function openActions(anchor) {
+                if (inTrash) {
+                    menu.popup(anchor, 0, anchor.height + 6, [
+                        { text: "Put Back", enabled: !!selectedEntry, action: () => putBack(selectedEntry) },
+                        { text: "Quick Look", shortcut: "Space", enabled: !!selectedPath, action: () => quickLook.open = true },
+                        { separator: true },
+                        { text: "Empty Trash", destructive: true, enabled: entries.length > 0, action: () => askEmptyTrash() }
+                    ])
+                    return
+                }
                 const actions = [
-                    { text: "New Folder", action: () => {
+                    { text: "New Folder", enabled: !special, action: () => {
                         dialogMode = "new"
                         dialogText = "untitled folder"
                         editDialog.visible = true
@@ -313,6 +409,7 @@ ShellRoot {
                     }},
                     { text: "Quick Look", shortcut: "Space", enabled: !!selectedPath, action: () => quickLook.open = true },
                     { text: "Rename", enabled: !!selectedPath, action: () => rename() },
+                    { text: "Show in Enclosing Folder", enabled: inRecents && !!selectedEntry, action: () => showInFolder(selectedEntry) },
                     { text: "Share with AirDrop…", enabled: !!selectedPath, action: () => Quickshell.execDetached(["gg-airdrop", selectedPath]) },
                     { text: "Move to Trash", enabled: !!selectedPath, action: () => runOperation(["trash", selectedPath], "trash") },
                     { separator: true },
@@ -408,6 +505,17 @@ ShellRoot {
             }
 
             EmptyState {
+                visible: files.special && !files.loading && !files.error && files.entries.length === 0
+                anchors.centerIn: parent
+                width: Math.min(420, parent.width - 40)
+                height: 220
+                symbol: files.inTrash ? "trash" : "clock"
+                title: files.inTrash ? "Trash Is Empty" : "No Recent Files"
+                text: files.inTrash ? "Items you move to the Trash stay here until you empty it."
+                    : "Files you open or change show up here."
+            }
+
+            EmptyState {
                 visible: !!files.error && !files.loading
                 anchors.centerIn: parent
                 width: Math.min(460, parent.width - 40)
@@ -415,6 +523,32 @@ ShellRoot {
                 symbol: "info"
                 title: "Folder Unavailable"
                 text: files.error
+            }
+
+            // What an item hands over when it's dragged: its file, to a folder,
+            // the sidebar, the Trash or another app. (Nothing leaves the Trash
+            // by dragging; Put Back does that.)
+            component DragSource: Item {
+                id: source
+                property var entry
+                property MouseArea area
+                width: 1; height: 1
+                Drag.active: !!area && area.drag.active && !files.inTrash
+                Drag.dragType: Drag.Automatic
+                Drag.supportedActions: Qt.MoveAction | Qt.CopyAction
+                Drag.proposedAction: Qt.MoveAction
+                Drag.mimeData: ({ "text/uri-list": Paths.fileUrl(entry?.path ?? "") + "\r\n" })
+                Drag.imageSource: Quickshell.iconPath(entry?.icon ?? "", entry?.folder ? "folder" : "text-x-generic")
+                Drag.imageSourceSize: Qt.size(64, 64)
+                Drag.onDragFinished: { source.x = 0; source.y = 0; files.reload() }
+            }
+
+            // Dropped on the window, not on a folder: into this folder.
+            DropArea {
+                anchors.fill: parent
+                enabled: !files.special
+                onEntered: (drag) => drag.accepted = files.accepts(drag, files.path)
+                onDropped: (drop) => files.dropOn(drop, files.path)
             }
 
             GridView {
@@ -433,7 +567,7 @@ ShellRoot {
                     required property var modelData
                     width: grid.cellWidth
                     height: grid.cellHeight
-                    readonly property bool selected: files.selectedPath === modelData.path
+                    readonly property bool selected: files.selectedPath === modelData.path || cellDrop.containsDrag
 
                     Rectangle {
                         anchors { fill: parent; margins: 4 }
@@ -476,29 +610,28 @@ ShellRoot {
                     }
 
                     HoverHandler { id: cellHover }
+                    DragSource { id: cellDrag; entry: cell.modelData; area: cellArea }
                     MouseArea {
                         id: cellArea
                         anchors.fill: parent
                         hoverEnabled: true
                         acceptedButtons: Qt.LeftButton | Qt.RightButton
+                        drag.target: files.inTrash ? null : cellDrag
+                        drag.threshold: 6
+                        onPressed: (mouse) => { if (mouse.button === Qt.LeftButton) files.select(cell.modelData) }
                         onClicked: (mouse) => {
-                            files.select(cell.modelData)
-                            if (mouse.button === Qt.RightButton)
-                                menu.popup(cell, mouse.x, mouse.y, [
-                                    { text: "Open", action: () => files.openEntry(cell.modelData) },
-                                    { text: "Quick Look", shortcut: "Space", action: () => quickLook.open = true },
-                                    { text: "Rename", action: () => {
-                                        files.dialogMode = "rename"
-                                        files.dialogText = cell.modelData.name
-                                        editDialog.visible = true
-                                        Qt.callLater(() => dialogField.input.forceActiveFocus())
-                                    }},
-                                    { text: "Share with AirDrop…", action: () => Quickshell.execDetached(["gg-airdrop", cell.modelData.path]) },
-                                    { separator: true },
-                                    { text: "Move to Trash", action: () => files.runOperation(["trash", cell.modelData.path], "trash") }
-                                ])
+                            if (mouse.button === Qt.RightButton) files.itemMenu(cell, mouse.x, mouse.y, cell.modelData)
+                            else files.select(cell.modelData)
                         }
                         onDoubleClicked: files.openEntry(cell.modelData)
+                    }
+                    // A folder takes what's dropped on it.
+                    DropArea {
+                        id: cellDrop
+                        anchors.fill: parent
+                        enabled: cell.modelData.folder && !files.special
+                        onEntered: (drag) => drag.accepted = files.accepts(drag, cell.modelData.path)
+                        onDropped: (drop) => files.dropOn(drop, cell.modelData.path)
                     }
                 }
             }
@@ -517,7 +650,7 @@ ShellRoot {
                     width: list.width
                     height: 36
                     radius: 7
-                    readonly property bool selected: files.selectedPath === modelData.path
+                    readonly property bool selected: files.selectedPath === modelData.path || rowDrop.containsDrag
                     color: selected
                         ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.18)
                         : rowHover.hovered
@@ -545,7 +678,9 @@ ShellRoot {
 
                     Text {
                         anchors { right: sizeText.left; rightMargin: 24; verticalCenter: parent.verticalCenter }
-                        text: new Date(row.modelData.modified * 1000).toLocaleDateString(Qt.locale(), Locale.ShortFormat)
+                        text: files.inTrash && row.modelData.origin
+                            ? row.modelData.origin.replace(/\/[^/]+$/, "").replace(files.home, "~")
+                            : new Date(row.modelData.modified * 1000).toLocaleDateString(Qt.locale(), Locale.ShortFormat)
                         color: Theme.secondaryLabel
                         font { family: Theme.fontUi; pixelSize: 11 }
                     }
@@ -561,15 +696,26 @@ ShellRoot {
                     }
 
                     HoverHandler { id: rowHover }
+                    DragSource { id: rowDrag; entry: row.modelData; area: rowArea }
                     MouseArea {
+                        id: rowArea
                         anchors.fill: parent
                         acceptedButtons: Qt.LeftButton | Qt.RightButton
+                        drag.target: files.inTrash ? null : rowDrag
+                        drag.threshold: 6
+                        onPressed: (mouse) => { if (mouse.button === Qt.LeftButton) files.select(row.modelData) }
                         onClicked: (mouse) => {
-                            files.select(row.modelData)
-                            if (mouse.button === Qt.RightButton)
-                                files.openActions(row)
+                            if (mouse.button === Qt.RightButton) files.itemMenu(row, mouse.x, mouse.y, row.modelData)
+                            else files.select(row.modelData)
                         }
                         onDoubleClicked: files.openEntry(row.modelData)
+                    }
+                    DropArea {
+                        id: rowDrop
+                        anchors.fill: parent
+                        enabled: row.modelData.folder && !files.special
+                        onEntered: (drag) => drag.accepted = files.accepts(drag, row.modelData.path)
+                        onDropped: (drop) => files.dropOn(drop, row.modelData.path)
                     }
                 }
             }
@@ -582,6 +728,56 @@ ShellRoot {
             }
 
             PopupMenu { id: menu; parent: win.overlay }
+
+            // Empty Trash asks first, as on the Mac.
+            Glass {
+                id: confirmEmpty
+                parent: win.overlay
+                visible: false
+                anchors.centerIn: parent
+                width: 300
+                height: confirmColumn.implicitHeight + 40
+                radius: 22
+                tint: Theme.glassRegular.tint
+                z: 110
+                onVisibleChanged: if (visible) emptyButton.forceActiveFocus(); else files.forceActiveFocus()
+                Keys.onEscapePressed: visible = false
+                Column {
+                    id: confirmColumn
+                    anchors { left: parent.left; right: parent.right; top: parent.top; margins: 20 }
+                    spacing: 10
+                    Symbol { anchors.horizontalCenter: parent.horizontalCenter; name: "trash"; size: 34; tone: "auto" }
+                    Text {
+                        width: parent.width
+                        horizontalAlignment: Text.AlignHCenter
+                        wrapMode: Text.WordWrap
+                        text: "Are you sure you want to permanently erase the items in the Trash?"
+                        color: Theme.label
+                        font { family: Theme.fontUi; pixelSize: 13; weight: Font.Bold }
+                    }
+                    Text {
+                        width: parent.width
+                        horizontalAlignment: Text.AlignHCenter
+                        text: "You can’t undo this action."
+                        color: Theme.secondaryLabel
+                        font { family: Theme.fontUi; pixelSize: 11 }
+                    }
+                    Item { width: 1; height: 4 }
+                    Row {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        spacing: 8
+                        Button { width: 122; text: "Cancel"; onClicked: confirmEmpty.visible = false }
+                        Button {
+                            id: emptyButton
+                            width: 122
+                            text: "Empty Trash"
+                            prominent: true
+                            destructive: true
+                            onClicked: { confirmEmpty.visible = false; files.runOperation(["empty-trash"], "empty-trash") }
+                        }
+                    }
+                }
+            }
 
             QuickLook {
                 id: quickLook

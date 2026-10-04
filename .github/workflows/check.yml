@@ -226,6 +226,8 @@ jobs:
         run: python tests/titlebars.py
       - name: Window › Move & Resize tiles inside the usable area
         run: python tests/tiling.py
+      - name: Files' backend (drag and drop, Trash, Recents)
+        run: python tests/files-helper.py
       - name: Exercise native control keyboard and pointer behavior
         run: python tests/native-controls.py
         env:
