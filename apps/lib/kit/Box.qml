@@ -187,7 +187,7 @@ Item {
                 anchors { fill: parent; margins: 1 }
                 radius: Math.max(0, parent.radius - 1)
                 gradient: Gradient {
-                    GradientStop { position: 0; color: cell.dark ? "#14ffffff" : "#40ffffff" }
+                    GradientStop { position: 0; color: cell.dark ? "#0affffff" : "#24ffffff" }
                     GradientStop { position: 0.4; color: "#00ffffff" }
                 }
             }

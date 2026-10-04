@@ -123,7 +123,9 @@ Item {
         anchors.fill: parent
         visible: !root.filled && root.band > 1
         preferredRendererType: Shape.CurveRenderer
-        readonly property real s: root.clearMaterial ? 0.10 : 0.075
+        // Faint: the band should be felt at the edge, not seen as a sheen. Over
+        // dark glass the same white reads twice as strong, so it's halved there.
+        readonly property real s: (root.clearMaterial ? 0.07 : 0.05) * (Theme.dark ? 0.5 : 1)
         LensRing { depth: root.band; w: root.width; h: root.height; rr: root.r; strength: lensShape.s }
         LensRing { depth: root.band * 0.68; w: root.width; h: root.height; rr: root.r; strength: lensShape.s }
         LensRing { depth: root.band * 0.42; w: root.width; h: root.height; rr: root.r; strength: lensShape.s }

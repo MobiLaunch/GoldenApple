@@ -84,6 +84,9 @@ function material(name, m) {
     `${p}-rim: ${m.rim};`,
     `${p}-rim-low: ${m.rimLow};`,
     `${p}-shine: ${m.shine};`,
+    `${p}-rim-dark: ${m.rimDark ?? m.rim};`,
+    `${p}-rim-low-dark: ${m.rimLowDark ?? m.rimLow};`,
+    `${p}-shine-dark: ${m.shineDark ?? m.shine};`,
     `${p}-shadow: ${m.shadow};`,
   ];
 }
@@ -141,9 +144,9 @@ function material(name, m) {
     q.push(`    readonly property QtObject ${k}: QtObject {`,
       `        readonly property real blur: ${m.blur}`,
       `        readonly property color tint: dark ? "${qmlColor(m.tintDark)}" : "${qmlColor(m.tintLight)}"`,
-      `        readonly property color rim: "${qmlColor(m.rim)}"`,
-      `        readonly property color rimLow: "${qmlColor(m.rimLow)}"`,
-      `        readonly property color shine: "${qmlColor(m.shine)}"`,
+      `        readonly property color rim: dark ? "${qmlColor(m.rimDark ?? m.rim)}" : "${qmlColor(m.rim)}"`,
+      `        readonly property color rimLow: dark ? "${qmlColor(m.rimLowDark ?? m.rimLow)}" : "${qmlColor(m.rimLow)}"`,
+      `        readonly property color shine: dark ? "${qmlColor(m.shineDark ?? m.shine)}" : "${qmlColor(m.shine)}"`,
       `        readonly property color edge: "${qmlColor(m.edge)}"`,
       `        readonly property real lens: ${m.lens}`,
       `        readonly property real shadowY: ${m.shadowY}`,

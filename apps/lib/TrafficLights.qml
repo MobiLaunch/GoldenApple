@@ -1,4 +1,4 @@
-// Close, minimise and zoom, glossy as on macOS 27. The glyphs show while the
+// Close, minimise and zoom, with the faint sheen of macOS 27. The glyphs show while the
 // pointer is over the group; an inactive window shows them grey.
 //   close: quits the app. minimise: moves the window to Hyprland's minimised
 //   space (the Dock brings it back). zoom: fills the screen; resting the
@@ -37,13 +37,13 @@ Row {
             Behavior on color { ColorAnimation { duration: Theme.reduceMotion ? 1 : 120 } }
             Behavior on scale { NumberAnimation { duration: Theme.reduceMotion ? 1 : 85; easing.type: Easing.OutCubic } }
             border { width: 0.5; color: Qt.rgba(0, 0, 0, 0.16) }
-            // The gloss: a soft light catch across the top half.
+            // A soft light catch across the top: a hint of depth, not a glossy bead.
             Rectangle {
                 anchors { left: parent.left; right: parent.right; top: parent.top; margins: 1.5 }
                 height: parent.height * 0.5
                 radius: height / 2
                 gradient: Gradient {
-                    GradientStop { position: 0; color: Qt.rgba(1, 1, 1, 0.55) }
+                    GradientStop { position: 0; color: Qt.rgba(1, 1, 1, Theme.dark ? 0.12 : 0.22) }
                     GradientStop { position: 1; color: Qt.rgba(1, 1, 1, 0) }
                 }
             }

@@ -61,9 +61,9 @@ QtObject {
     readonly property QtObject glassClear: QtObject {
         readonly property real blur: 24
         readonly property color tint: dark ? "#571c1c20" : "#5cffffff"
-        readonly property color rim: "#b3ffffff"
-        readonly property color rimLow: "#2effffff"
-        readonly property color shine: "#75ffffff"
+        readonly property color rim: dark ? "#4dffffff" : "#94ffffff"
+        readonly property color rimLow: dark ? "#0fffffff" : "#24ffffff"
+        readonly property color shine: dark ? "#14ffffff" : "#42ffffff"
         readonly property color edge: "#1a000000"
         readonly property real lens: 10
         readonly property real shadowY: 5
@@ -74,9 +74,9 @@ QtObject {
     readonly property QtObject glassRegular: QtObject {
         readonly property real blur: 32
         readonly property color tint: dark ? "#ad202024" : "#b8fafafc"
-        readonly property color rim: "#b3ffffff"
-        readonly property color rimLow: "#1affffff"
-        readonly property color shine: "#66ffffff"
+        readonly property color rim: dark ? "#3dffffff" : "#8cffffff"
+        readonly property color rimLow: dark ? "#0dffffff" : "#14ffffff"
+        readonly property color shine: dark ? "#0fffffff" : "#38ffffff"
         readonly property color edge: "#1f000000"
         readonly property real lens: 12
         readonly property real shadowY: 6
@@ -87,9 +87,9 @@ QtObject {
     readonly property QtObject menu: QtObject {
         readonly property real blur: 40
         readonly property color tint: dark ? "#c726262a" : "#ccf6f6f8"
-        readonly property color rim: "#bfffffff"
-        readonly property color rimLow: "#1fffffff"
-        readonly property color shine: "#57ffffff"
+        readonly property color rim: dark ? "#2effffff" : "#80ffffff"
+        readonly property color rimLow: dark ? "#0affffff" : "#14ffffff"
+        readonly property color shine: dark ? "#0affffff" : "#29ffffff"
         readonly property color edge: "#1a000000"
         readonly property real lens: 8
         readonly property real shadowY: 10
@@ -100,9 +100,9 @@ QtObject {
     readonly property QtObject glassControl: QtObject {
         readonly property real blur: 20
         readonly property color tint: dark ? "#9948484e" : "#dbffffff"
-        readonly property color rim: "#b8ffffff"
-        readonly property color rimLow: "#1fffffff"
-        readonly property color shine: "#66ffffff"
+        readonly property color rim: dark ? "#33ffffff" : "#99ffffff"
+        readonly property color rimLow: dark ? "#0dffffff" : "#1affffff"
+        readonly property color shine: dark ? "#0dffffff" : "#33ffffff"
         readonly property color edge: "#14000000"
         readonly property real lens: 5
         readonly property real shadowY: 2
@@ -113,9 +113,9 @@ QtObject {
     readonly property QtObject glassSidebar: QtObject {
         readonly property real blur: 40
         readonly property color tint: dark ? "#9428282c" : "#9ef4f4f7"
-        readonly property color rim: "#8cffffff"
-        readonly property color rimLow: "#14ffffff"
-        readonly property color shine: "#3dffffff"
+        readonly property color rim: dark ? "#24ffffff" : "#6bffffff"
+        readonly property color rimLow: dark ? "#08ffffff" : "#0fffffff"
+        readonly property color shine: dark ? "#08ffffff" : "#1fffffff"
         readonly property color edge: "#0f000000"
         readonly property real lens: 0
         readonly property real shadowY: 2
@@ -126,9 +126,9 @@ QtObject {
     readonly property QtObject glassDock: QtObject {
         readonly property real blur: 24
         readonly property color tint: dark ? "#7021262e" : "#5f343941"
-        readonly property color rim: "#61ffffff"
-        readonly property color rimLow: "#1affffff"
-        readonly property color shine: "#2effffff"
+        readonly property color rim: dark ? "#33ffffff" : "#42ffffff"
+        readonly property color rimLow: dark ? "#0fffffff" : "#14ffffff"
+        readonly property color shine: dark ? "#0fffffff" : "#1affffff"
         readonly property color edge: "#1f000000"
         readonly property real lens: 4
         readonly property real shadowY: 5
