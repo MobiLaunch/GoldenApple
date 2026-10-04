@@ -510,6 +510,36 @@ def update_hyprglass(tree: Path):
     tmp.replace(plugin)
 
 
+def update_hyprbars(tree: Path, emit: Emit) -> None:
+    """Title bars for apps that leave theirs to the compositor: build hyprbars
+    for the Hyprland installed now when it's missing or was built for another
+    release (Hyprland refuses a plugin built for another). The build tools are
+    installed when they aren't there. Only on the running system."""
+    plugin = path("/usr/lib/golden-gate/hyprbars.so")
+    stamp = plugin.with_name(plugin.name + ".hyprland")
+    if ROOT != Path("/") or not plugin.parent.is_dir() or not shutil.which("pacman"):
+        return
+    query = _run(["pacman", "-Q", "hyprland"])
+    if query.returncode != 0:
+        return
+    release = query.stdout.split()[-1].split("-")[0]
+    if plugin.exists() and stamp.exists() and stamp.read_text().strip() == release:
+        return
+    emit("progress", progress=0.95, message="Building title bars for downloaded apps…", remaining=-1)
+    tools = ["gcc", "make", "git", "pkgconf"]
+    missing = [t for t in _run(["pacman", "-T", *tools]).stdout.split() if t]
+    if missing:
+        _run(["pacman", "-S", "--needed", "--noconfirm", "--noprogressbar", *missing], timeout=1800)
+    proc = _run(["bash", str(tree / "scripts/build-hyprbars.sh"), str(plugin)], timeout=1800)
+    if proc.returncode == 0:
+        return
+    if plugin.exists() and (not stamp.exists() or stamp.read_text().strip() != release):
+        plugin.unlink()                         # built for another Hyprland: it would only fail to load
+        stamp.unlink(missing_ok=True)
+    reason = (proc.stdout + proc.stderr).strip().splitlines()[-1:] or ["unknown error"]
+    emit("notice", message="Title bars for downloaded apps couldn't be built: " + reason[0][:200])
+
+
 def enable_services(tree: Path):
     if not shutil.which("systemctl"):
         return
@@ -572,6 +602,10 @@ def install_tree(tree: Path, version: dict, emit: Emit, work: Path) -> bool:
             update_hyprglass(tree)
         except (OSError, GitHubError, urllib.error.URLError):
             pass                                # the old plugin keeps working
+        try:
+            update_hyprbars(tree, emit)
+        except (OSError, subprocess.SubprocessError) as exc:
+            emit("notice", message=f"Title bars for downloaded apps couldn't be built: {exc}")
         enable_services(tree)
         # Installs made before the installer cleaned these up still carry
         # them; the boot image is rebuilt if it was built with archiso's hooks.

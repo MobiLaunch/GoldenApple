@@ -329,9 +329,12 @@ PanelWindow {
         }
     }
 
+    // The Dock's glass: smoked and clear enough to show the blurred desktop,
+    // where the regular panel material read as frosted milk. Everything with
+    // text sits on a module card, so it stays legible over any wallpaper.
     Glass {
         id: panel
-        role: "regular"
+        role: "dock"
         anchors { top: parent.top; right: parent.right; topMargin: 24 }
         width: 344
         height: (cc.detail ? detailView.implicitHeight : content.implicitHeight) + 24
@@ -546,6 +549,19 @@ PanelWindow {
         }
     }
 
+    // The detail view's card, the same fill as the grid's modules; it follows
+    // the view as it slides and fades.
+    Rectangle {
+        x: detailView.x - 4; y: detailView.y - 4
+        width: detailView.width + 8; height: detailView.height + 8
+        radius: 17
+        color: Theme.dark ? "#1affffff" : "#8cffffff"
+        border { width: 0.5; color: Theme.dark ? "#1affffff" : "#0f000000" }
+        opacity: detailView.opacity
+        visible: detailView.visible
+        transform: Translate { x: detailShift.x }
+    }
+
     // The detail view of one module, in the same panel.
     ColumnLayout {
         id: detailView
@@ -555,6 +571,7 @@ PanelWindow {
         visible: opacity > 0
         Behavior on opacity { NumberAnimation { duration: Prefs.reduceMotion ? 1 : 180; easing.type: Easing.OutCubic } }
         transform: Translate {
+            id: detailShift
             x: cc.detail || Prefs.reduceMotion ? 0 : 28
             Behavior on x { NumberAnimation { duration: 260; easing.type: Easing.OutCubic } }
         }

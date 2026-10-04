@@ -6,6 +6,12 @@ CONFIG="${XDG_CONFIG_HOME:-$HOME/.config}/golden-gate/desktop.json"
 
 command -v gg-hyprglass-sync >/dev/null 2>&1 && gg-hyprglass-sync >/dev/null 2>&1 || true
 
+# Flatpak apps (the App Store's) can't see ~/.config, so GTK ones drew GNOME's
+# stock title bar instead of Golden Gate's traffic lights: let them read the
+# GTK theme (read-only; the same as a user granting it in Flatseal).
+command -v flatpak >/dev/null 2>&1 &&
+  flatpak override --user --filesystem=xdg-config/gtk-4.0:ro --filesystem=xdg-config/gtk-3.0:ro >/dev/null 2>&1 || true
+
 [ -r "$CONFIG" ] || exit 0
 read -r NIGHT WARMTH BRIGHTNESS <<EOF
 $(python3 - "$CONFIG" <<'PY'

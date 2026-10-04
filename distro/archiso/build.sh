@@ -72,6 +72,7 @@ file_permissions+=(
   ["/usr/lib/golden-gate/hyprglass-sync.sh"]="0:0:755"
   ["/usr/lib/golden-gate/apply-preferences.sh"]="0:0:755"
   ["/usr/lib/golden-gate/hyprglass.so"]="0:0:755"
+  ["/usr/lib/golden-gate/hyprbars.so"]="0:0:755"
   ["/etc/sudoers.d/20-golden-wheel"]="0:0:440"
   ["/etc/sudoers.d/10-golden-live"]="0:0:440"
   ["/home/golden"]="1000:1000:750"
@@ -176,6 +177,19 @@ mkdir -p "$AIR/usr/lib/golden-gate"
 curl -fL --retry 3 --retry-delay 2   "https://github.com/hyprnux/hyprglass/releases/download/$HYPRGLASS_VERSION/hyprglass.so"   -o "$AIR/usr/lib/golden-gate/hyprglass.so"
 printf '%s  %s\n' "$HYPRGLASS_SHA256" "$AIR/usr/lib/golden-gate/hyprglass.so" | sha256sum -c -
 chmod 755 "$AIR/usr/lib/golden-gate/hyprglass.so"
+
+# ---------------------------------------------------------------- title bars
+# Apps that leave their title bar to the compositor (Qt and Electron apps from
+# the App Store) get one with traffic lights: hyprbars, built here against the
+# same Hyprland the image ships, so its headers come from the build machine.
+# An image without it still works; those apps just have no title bar.
+say "title bars (hyprbars) for Hyprland $HYPRLAND_VERSION"
+pacman -S --needed --noconfirm hyprland base-devel git pkgconf >/dev/null
+if bash "$REPO/scripts/build-hyprbars.sh" "$AIR/usr/lib/golden-gate/hyprbars.so"; then
+  chmod 755 "$AIR/usr/lib/golden-gate/hyprbars.so"
+else
+  echo "WARNING: hyprbars didn't build; apps that leave their title bar to the compositor will have none."
+fi
 
 # ---------------------------------------------------------------- live user + session
 cp -a "$HERE/overlay/." "$AIR/"
