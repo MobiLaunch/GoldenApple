@@ -92,15 +92,16 @@ kw plugin:hyprglass:default_preset default
 # Real GPUs render HyprGlass' specular/brightness path much more strongly than
 # llvmpipe/virtual GPUs. Preserve the existing VM profile, but use a restrained
 # optical profile on physical hardware so light glass stays translucent instead
-# of collapsing toward opaque white.
+# of collapsing toward opaque white. The shell draws its own (faint) light catch
+# and rim, so the compositor's specular and fresnel stay low in both profiles.
 VIRT="$(systemd-detect-virt --vm 2>/dev/null || true)"
 if [ -n "$VIRT" ] && [ "$VIRT" != none ]; then
   kw plugin:hyprglass:blur_strength 1.85
   kw plugin:hyprglass:blur_iterations 3
   kw plugin:hyprglass:refraction_strength 0.38
   kw plugin:hyprglass:chromatic_aberration 0.14
-  kw plugin:hyprglass:fresnel_strength 0.46
-  kw plugin:hyprglass:specular_strength 0.58
+  kw plugin:hyprglass:fresnel_strength 0.36
+  kw plugin:hyprglass:specular_strength 0.42
   kw plugin:hyprglass:edge_thickness 0.045
   kw plugin:hyprglass:lens_distortion 0.28
   kw plugin:hyprglass:dark:brightness 0.82
@@ -118,8 +119,8 @@ else
   kw plugin:hyprglass:blur_iterations 3
   kw plugin:hyprglass:refraction_strength 0.24
   kw plugin:hyprglass:chromatic_aberration 0.055
-  kw plugin:hyprglass:fresnel_strength 0.28
-  kw plugin:hyprglass:specular_strength 0.22
+  kw plugin:hyprglass:fresnel_strength 0.22
+  kw plugin:hyprglass:specular_strength 0.16
   kw plugin:hyprglass:edge_thickness 0.032
   kw plugin:hyprglass:lens_distortion 0.18
   kw plugin:hyprglass:dark:brightness 0.80
