@@ -1028,7 +1028,7 @@ Flickable {
                 Text {
                     width: parent.width
                     wrapMode: Text.Wrap
-                    text: "Use it by name anywhere a colour is chosen (the App tab of the colour picker). It changes with the appearance."
+                    text: "Use it by name anywhere a color is chosen (the App tab of the color picker). It changes with the appearance."
                     color: Theme.tertiaryLabel
                     font { family: Theme.fontUi; pixelSize: 10 }
                 }

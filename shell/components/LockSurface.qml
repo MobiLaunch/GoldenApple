@@ -27,8 +27,10 @@ Item {
     Rectangle {
         anchors.fill: parent
         gradient: Gradient {
-            GradientStop { position: 0.0; color: "#2e000a28" }
-            GradientStop { position: 0.4; color: "#00000a28" }
+            // Darker behind the date and clock, so white numerals read over a pale sky.
+            GradientStop { position: 0.0; color: "#4d000a28" }
+            GradientStop { position: 0.32; color: "#1f000a28" }
+            GradientStop { position: 0.55; color: "#00000a28" }
             GradientStop { position: 1.0; color: "#40000a28" }
         }
     }
@@ -45,6 +47,8 @@ Item {
             style: Text.Raised
             styleColor: "#33001e5a"
             font { family: Theme.fontUi; pixelSize: 24; weight: Font.DemiBold }
+            layer.enabled: GraphicsInfo.api !== GraphicsInfo.Software
+            layer.effect: MultiEffect { shadowEnabled: true; shadowColor: "#66001433"; shadowBlur: 0.5; shadowVerticalOffset: 1 }
         }
         // Glass numerals: translucent white with a brighter top.
         Text {
@@ -102,7 +106,7 @@ Item {
                 enabled: !root.busy
                 input.passwordCharacter: "●"
                 input.font.pixelSize: 13
-                input.font.letterSpacing: 2
+                input.font.letterSpacing: field.text ? 2 : 0     // the dots, not the placeholder
                 input.focus: true
                 input.Keys.onReturnPressed: { root.busy = true; root.submitted(field.text) }
                 input.Keys.onEnterPressed: { root.busy = true; root.submitted(field.text) }

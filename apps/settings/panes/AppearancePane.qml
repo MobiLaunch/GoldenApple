@@ -166,7 +166,6 @@ Pane {
                 menuParent: pane.nav.overlay
                 options: ["Automatically based on mouse or trackpad", "Always"]
                 current: pane.overlayScroll ? 0 : 1
-                width: 290
                 onPicked: (i) => { pane.overlayScroll = i === 0; pane.sys.run(["gsettings", "set", "org.gnome.desktop.interface", "overlay-scrolling", i === 0 ? "true" : "false"]) }
             }
         }

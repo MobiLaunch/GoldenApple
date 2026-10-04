@@ -7,13 +7,16 @@ Item {
     property string symbol: "info"
     property string title: ""
     property string text: ""
+    // An optional button under the message (Try Again), kept with it.
+    property string actionText: ""
+    signal action()
     implicitWidth: 360
     implicitHeight: col.implicitHeight
 
     Column {
         id: col
         anchors.centerIn: parent
-        width: Math.min(420, root.width - 32)
+        width: Math.min(460, root.width - 32)
         spacing: 8
 
         Symbol {
@@ -37,6 +40,14 @@ Item {
             text: root.text
             color: Theme.secondaryLabel
             font { family: Theme.fontUi; pixelSize: 13 }
+        }
+        Item { width: 1; height: 6; visible: root.actionText !== "" }
+        Button {
+            anchors.horizontalCenter: parent.horizontalCenter
+            visible: root.actionText !== ""
+            text: root.actionText
+            prominent: true
+            onClicked: root.action()
         }
     }
 }

@@ -281,12 +281,23 @@ ShellRoot {
                         px: 16; w: Font.DemiBold
                     }
                 }
-                Label {
+                // Offline: a glass card, so the message reads over any sky.
+                Glass {
                     anchors.centerIn: parent
                     visible: !app.f && !app.online
-                    text: "Weather isn't available right now.\nCheck your internet connection."
-                    horizontalAlignment: Text.AlignHCenter
-                    px: 15; w: Font.DemiBold
+                    role: "regular"
+                    width: 300; height: offline.implicitHeight + 40
+                    radius: 22
+                    EmptyState {
+                        id: offline
+                        anchors.centerIn: parent
+                        width: parent.width - 24
+                        symbol: "wifi"
+                        title: "Weather Unavailable"
+                        text: "Check your internet connection."
+                        actionText: "Try Again"
+                        onAction: app.refreshAll()
+                    }
                 }
 
                 // The card grid: 5 columns of 148 with 18 between (the Mac's sizes),

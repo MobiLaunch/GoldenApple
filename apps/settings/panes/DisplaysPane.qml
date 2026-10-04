@@ -68,7 +68,7 @@ Pane {
         title: "Night Shift"
         SetRow {
             title: "Night Shift"
-            subtitle: "Shifts the colours of the display to the warmer end of the spectrum."
+            subtitle: "Shifts the colors of the display to the warmer end of the spectrum."
             Switch {
                 checked: pane.nightShift
                 onToggled: (on) => {
@@ -80,7 +80,7 @@ Pane {
             }
         }
         SetRow {
-            title: "Colour temperature"
+            title: "Color temperature"
             Text { text: "Less Warm"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: 11 } }
             Slider {
                 width: 180

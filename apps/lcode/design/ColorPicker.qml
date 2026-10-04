@@ -101,7 +101,7 @@ Popover {
                 visible: !picker.doc || !(picker.doc.colors || []).length
                 width: parent.width
                 wrapMode: Text.Wrap
-                text: "Your app's own colours appear here. Add one in the outline's Colors section."
+                text: "Your app's own colors appear here. Add one in the outline's Colors section."
                 color: Theme.secondaryLabel
                 font { family: Theme.fontUi; pixelSize: 12 }
             }

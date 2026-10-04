@@ -80,6 +80,7 @@ PanelWindow {
                 Layout.alignment: Qt.AlignHCenter
                 Layout.bottomMargin: 2
                 name: "logo"; size: 56
+                tone: "auto"
             }
             Text {
                 Layout.fillWidth: true

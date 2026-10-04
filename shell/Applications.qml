@@ -171,7 +171,8 @@ PanelWindow {
             saturation: 0.1
             autoPaddingEnabled: false
         }
-        Rectangle { anchors.fill: parent; color: Theme.dark ? "#73000000" : "#40000000" }
+        // Dim enough that white labels read over the brightest wallpaper.
+        Rectangle { anchors.fill: parent; color: Theme.dark ? "#78000000" : "#6b000000" }
         MouseArea {
             anchors.fill: parent
             onClicked: apps.dismiss()
@@ -187,8 +188,8 @@ PanelWindow {
         id: searchBox
         anchors { horizontalCenter: parent.horizontalCenter; top: parent.top; topMargin: 64 }
         width: 236; height: 30; radius: 9
-        color: Qt.rgba(1, 1, 1, search.input.activeFocus ? 0.24 : 0.18)
-        border { width: 0.5; color: Qt.rgba(1, 1, 1, 0.28) }
+        color: Qt.rgba(1, 1, 1, search.input.activeFocus ? 0.28 : 0.22)
+        border { width: 0.5; color: Qt.rgba(1, 1, 1, 0.34) }
         opacity: backdrop.opacity
         TextField {
             id: search
@@ -197,7 +198,7 @@ PanelWindow {
             bare: true
             placeholder: "Search"
             foreground: "#ffffff"
-            placeholderColor: Qt.rgba(1, 1, 1, 0.62)
+            placeholderColor: Qt.rgba(1, 1, 1, 0.78)
             input.selectedTextColor: "#ffffff"
             input.font.pixelSize: 13
             onTextChanged: { pages.currentIndex = 0; pages.positionViewAtBeginning() }
@@ -299,7 +300,7 @@ PanelWindow {
                             text: cell.modelData.name
                             elide: Text.ElideRight
                             color: "#ffffff"
-                            style: Text.Raised; styleColor: "#59000000"
+                            style: Text.Raised; styleColor: "#8c000000"
                             font { family: Theme.fontUi; pixelSize: 13; weight: Font.Medium }
                         }
                         MouseArea {
@@ -369,7 +370,7 @@ PanelWindow {
             anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.top; bottomMargin: 18 }
             text: apps.folder ? apps.folder.name : ""
             color: "#ffffff"
-            style: Text.Raised; styleColor: "#59000000"
+            style: Text.Raised; styleColor: "#8c000000"
             font { family: Theme.fontDisplay; pixelSize: 30; weight: Font.DemiBold }
         }
         Flickable {
@@ -405,7 +406,7 @@ PanelWindow {
                             text: fcell.modelData.name
                             elide: Text.ElideRight
                             color: "#ffffff"
-                            style: Text.Raised; styleColor: "#59000000"
+                            style: Text.Raised; styleColor: "#8c000000"
                             font { family: Theme.fontUi; pixelSize: 12; weight: Font.Medium }
                         }
                         MouseArea {

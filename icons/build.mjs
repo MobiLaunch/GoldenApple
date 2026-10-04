@@ -38,6 +38,15 @@ function override(kind, table) {
   return { table: outTable, pngs };
 }
 const A = override("apps", baseApps), P = override("places", basePlaces), Y = override("symbols", baseSymbols);
+// The built-in app icons fill their canvas; macOS icons (and the custom pack)
+// sit on a grid, the squircle 824/1024 of it, centred. Put the built-in ones on
+// that grid too, so an app without a custom icon (AirDrop, LCode) isn't drawn
+// bigger than its neighbours in the Dock and Launchpad. Calendar is left alone:
+// the Dock draws today's date over its blank at fixed positions.
+const GRID = 1024 / 824, PAD = (100 * GRID - 100) / 2;
+const onGrid = (svg) => svg.replace(/viewBox="0 0 100 100"/, `viewBox="${-PAD} ${-PAD} ${100 * GRID} ${100 * GRID}"`);
+for (const key of Object.keys(A.table))
+  if (key !== "calendar" && A.table[key] != null && A.table[key] === baseApps[key]) A.table[key] = onGrid(A.table[key]);
 const apps = A.table, places = P.table, symbols = Y.table;
 if (process.argv.includes("--list")) {
   console.log("apps:    " + Object.keys(baseApps).join(", "));

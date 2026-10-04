@@ -126,7 +126,7 @@
 :root[data-theme="dark"] {
   --window-bg: #1e1e1e;
   --content-bg: #1a1a1a;
-  --sidebar-bg: rgba(46, 44, 52, 0.62);
+  --sidebar-bg: rgba(42, 40, 46, 0.77);
   --label: rgba(255, 255, 255, 0.92);
   --secondary-label: rgba(255, 255, 255, 0.55);
   --tertiary-label: rgba(255, 255, 255, 0.25);

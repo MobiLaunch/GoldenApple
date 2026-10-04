@@ -77,7 +77,7 @@ Item {
         const job = jobs.pair || jobs.forget
         if (!confirming || !job) return
         confirming = false
-        status = accepted ? "Finishing setup…" : "Cancelling…"
+        status = accepted ? "Finishing setup…" : "Canceling…"
         job.send(accepted ? "yes\n" : "no\n")
     }
     function forget() {

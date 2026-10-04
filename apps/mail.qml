@@ -329,7 +329,7 @@ ShellRoot {
 
                 Symbol {
                     anchors.horizontalCenter: parent.horizontalCenter
-                    name: "doc"
+                    name: "envelope"
                     size: 50
                     tone: "accent"
                 }
@@ -366,20 +366,23 @@ ShellRoot {
                 Row {
                     width: parent.width
                     spacing: 8
+                    // The server takes what the port and the SSL/TLS control leave.
                     TextField {
-                        width: parent.width * 0.64
+                        width: parent.width - imapPort.width - imapSecurity.width - 2 * parent.spacing
                         placeholder: "IMAP server"
                         text: mail.imapHost
                         onTextChanged: mail.imapHost = text
                     }
                     TextField {
-                        width: parent.width * 0.16
+                        id: imapPort
+                        width: 64
                         placeholder: "993"
                         text: mail.imapPort
                         onTextChanged: mail.imapPort = text.replace(/[^0-9]/g, "")
                     }
                     Segmented {
-                        width: parent.width * 0.18
+                        id: imapSecurity
+                        anchors.verticalCenter: parent.verticalCenter
                         options: ["SSL", "TLS"]
                         current: mail.imapSecurity
                         onPicked: (i) => mail.imapSecurity = i
@@ -389,20 +392,23 @@ ShellRoot {
                 Row {
                     width: parent.width
                     spacing: 8
+                    // The server takes what the port and the SSL/TLS control leave.
                     TextField {
-                        width: parent.width * 0.64
+                        width: parent.width - smtpPort.width - smtpSecurity.width - 2 * parent.spacing
                         placeholder: "SMTP server"
                         text: mail.smtpHost
                         onTextChanged: mail.smtpHost = text
                     }
                     TextField {
-                        width: parent.width * 0.16
+                        id: smtpPort
+                        width: 64
                         placeholder: "465"
                         text: mail.smtpPort
                         onTextChanged: mail.smtpPort = text.replace(/[^0-9]/g, "")
                     }
                     Segmented {
-                        width: parent.width * 0.18
+                        id: smtpSecurity
+                        anchors.verticalCenter: parent.verticalCenter
                         options: ["SSL", "TLS"]
                         current: mail.smtpSecurity
                         onPicked: (i) => mail.smtpSecurity = i

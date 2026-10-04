@@ -68,13 +68,13 @@ ShellRoot {
             property bool loading: false
             property bool saving: false
             property string error: ""
-            property string baseline: ""
+            property string savedText: ""   // what is on disk; "baseline" is a final Item property in Qt 6.11
             readonly property string fileName: path ? path.split("/").pop() : "Untitled"
 
             function newDocument() {
                 path = ""
                 body.text = ""
-                baseline = ""
+                savedText = ""
                 dirty = false
                 error = ""
                 pathField.text = ""
@@ -113,7 +113,7 @@ ShellRoot {
                             const r = JSON.parse(text)
                             if (r.ok) {
                                 body.text = r.text ?? ""
-                                editor.baseline = body.text
+                                editor.savedText = body.text
                                 editor.dirty = false
                             } else {
                                 editor.error = r.error ?? "The file could not be opened."
@@ -134,7 +134,7 @@ ShellRoot {
                         try {
                             const r = JSON.parse(text)
                             if (r.ok) {
-                                editor.baseline = body.text
+                                editor.savedText = body.text
                                 editor.dirty = false
                             } else {
                                 editor.error = r.error ?? "The document could not be saved."
@@ -183,7 +183,7 @@ ShellRoot {
                     font { family: Theme.fontUi; pixelSize: 15 }
                     onTextChanged: {
                         if (!editor.loading)
-                            editor.dirty = text !== editor.baseline
+                            editor.dirty = text !== editor.savedText
                     }
                     Keys.onPressed: (event) => {
                         if ((event.modifiers & Qt.ControlModifier) && event.key === Qt.Key_S) {

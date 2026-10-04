@@ -323,7 +323,7 @@ Item {
                             ToolbarButton {
                                 anchors.verticalCenter: parent.verticalCenter
                                 text: "⇄"
-                                Accessible.name: "Swap colours"
+                                Accessible.name: "Swap colors"
                                 onClicked: { const bg = (pe.icon.background || ["#5ea3e8", "#0a84ff"]).slice(); pe.setIcon({ background: [bg[1], bg[0]] }) }
                             }
                         }

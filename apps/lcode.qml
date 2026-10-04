@@ -262,7 +262,7 @@ ShellRoot {
                 if (e.gen !== taskGen) break
                 progress = -1
                 const noun = e.kind === "build" ? "Build" : e.kind === "test" ? "Test" : e.kind === "archive" ? "Archive" : "Clean"
-                status = e.cancelled ? noun + " Cancelled" : ok ? (e.kind === "clean" ? "Clean Finished" : noun + " Succeeded") : noun + " Failed"
+                status = e.cancelled ? noun + " Canceled" : ok ? (e.kind === "clean" ? "Clean Finished" : noun + " Succeeded") : noun + " Failed"
                 status += "  |  Today at " + timestamp()
                 // A successful Run build goes straight on to run.run.started.
                 if (!(ok && e.kind === "build" && pendingRunTitle)) busy = false

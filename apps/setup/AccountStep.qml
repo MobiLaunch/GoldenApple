@@ -58,7 +58,7 @@ StepFrame {
                 step.createdUsername = result.username
                 step.accountCreated(result.username)
             } else step.error = failure.text.includes("system setup helper") ? failure.text.trim()
-                    : (result.error || "Account creation was cancelled or failed. Check authorization and try again.")
+                    : (result.error || "Account creation was canceled or failed. Check authorization and try again.")
         }
     }
     Flickable {

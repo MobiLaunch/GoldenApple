@@ -86,7 +86,7 @@ Column {
                 height: 24
                 symbol: "plus"
                 symbolSize: 11
-                Accessible.name: "Add a colour stop"
+                Accessible.name: "Add a color stop"
                 onClicked: fe.patch({ colors: (fe.value.colors || []).concat(["white"]) })
             }
         }

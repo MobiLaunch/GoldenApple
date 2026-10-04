@@ -184,7 +184,7 @@ Pane {
         onExited: (code) => {
             if (code === 0) { pane.editingSource = false; pane.sourceError = ""; tokenField.text = ""; pane.readSource(); pane.checkNow() }
             else if (!pane.sourceError)
-                pane.sourceError = (code === 126 ? "Authorization was cancelled." : "Couldn't save the update source.")
+                pane.sourceError = (code === 126 ? "Authorization was canceled." : "Couldn't save the update source.")
                     + (stderrLine ? " (" + stderrLine + ")" : "")
         }
     }
@@ -251,7 +251,7 @@ Pane {
                 pane.phase = ""
                 pane.state = "error"
                 pane.error = code === 126 || code === 127
-                    ? "Administrator authorization was cancelled."
+                    ? "Administrator authorization was canceled."
                     : "Software Update stopped before it finished."
             } else if (code === 0 && pane.phase === "system" && pane.userAppCount > 0) {
                 // System done; now the user's apps, still without a terminal.

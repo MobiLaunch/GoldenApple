@@ -43,15 +43,16 @@ ShellRoot {
                 Column {
                     id: nav
                     width: parent.width
-                    SidebarRow { symbolTone: "auto"; selectedSymbolTone: "red"; selectedTextColor: "#fa2d48"; selectedFill: Theme.dark ? "#1ffa2d48" : "#14fa2d48"; symbol: "search"; text: "Search"; selected: app.page === "search"; onClicked: app.go("search") }
-                    SidebarRow { symbolTone: "auto"; selectedSymbolTone: "red"; selectedTextColor: "#fa2d48"; selectedFill: Theme.dark ? "#1ffa2d48" : "#14fa2d48"; symbol: "house"; text: "Home"; selected: app.page === "home"; onClicked: app.go("home") }
-                    SidebarRow { symbolTone: "auto"; selectedSymbolTone: "red"; selectedTextColor: "#fa2d48"; selectedFill: Theme.dark ? "#1ffa2d48" : "#14fa2d48"; symbol: "broadcast"; text: "Radio"; selected: app.page === "radio"; onClicked: app.go("radio") }
+                    // As in Music on the Mac: a neutral selection, the glyph in Music's red.
+                    SidebarRow { symbolTone: "auto"; selectedSymbolTone: "red"; selectedTextColor: Theme.label; selectedFill: Theme.selection; symbol: "search"; text: "Search"; selected: app.page === "search"; onClicked: app.go("search") }
+                    SidebarRow { symbolTone: "auto"; selectedSymbolTone: "red"; selectedTextColor: Theme.label; selectedFill: Theme.selection; symbol: "house"; text: "Home"; selected: app.page === "home"; onClicked: app.go("home") }
+                    SidebarRow { symbolTone: "auto"; selectedSymbolTone: "red"; selectedTextColor: Theme.label; selectedFill: Theme.selection; symbol: "broadcast"; text: "Radio"; selected: app.page === "radio"; onClicked: app.go("radio") }
                     component Heading: SidebarSection {}
                     Heading { text: "Library" }
-                    SidebarRow { symbolTone: "auto"; selectedSymbolTone: "red"; selectedTextColor: "#fa2d48"; selectedFill: Theme.dark ? "#1ffa2d48" : "#14fa2d48"; symbol: "clock"; text: "Recently Added"; selected: app.page === "recent"; onClicked: app.go("recent") }
-                    SidebarRow { symbolTone: "auto"; selectedSymbolTone: "red"; selectedTextColor: "#fa2d48"; selectedFill: Theme.dark ? "#1ffa2d48" : "#14fa2d48"; symbol: "mic"; text: "Artists"; selected: app.page === "artists"; onClicked: app.go("artists") }
-                    SidebarRow { symbolTone: "auto"; selectedSymbolTone: "red"; selectedTextColor: "#fa2d48"; selectedFill: Theme.dark ? "#1ffa2d48" : "#14fa2d48"; symbol: "gallery"; text: "Albums"; selected: app.page === "albums"; onClicked: app.go("albums") }
-                    SidebarRow { symbolTone: "auto"; selectedSymbolTone: "red"; selectedTextColor: "#fa2d48"; selectedFill: Theme.dark ? "#1ffa2d48" : "#14fa2d48"; symbol: "music"; text: "Songs"; selected: app.page === "songs"; onClicked: app.go("songs") }
+                    SidebarRow { symbolTone: "auto"; selectedSymbolTone: "red"; selectedTextColor: Theme.label; selectedFill: Theme.selection; symbol: "clock"; text: "Recently Added"; selected: app.page === "recent"; onClicked: app.go("recent") }
+                    SidebarRow { symbolTone: "auto"; selectedSymbolTone: "red"; selectedTextColor: Theme.label; selectedFill: Theme.selection; symbol: "mic"; text: "Artists"; selected: app.page === "artists"; onClicked: app.go("artists") }
+                    SidebarRow { symbolTone: "auto"; selectedSymbolTone: "red"; selectedTextColor: Theme.label; selectedFill: Theme.selection; symbol: "gallery"; text: "Albums"; selected: app.page === "albums"; onClicked: app.go("albums") }
+                    SidebarRow { symbolTone: "auto"; selectedSymbolTone: "red"; selectedTextColor: Theme.label; selectedFill: Theme.selection; symbol: "music"; text: "Songs"; selected: app.page === "songs"; onClicked: app.go("songs") }
                     Heading { text: "Playlists"; visible: musicLib.playlists.length > 0 }
                     Repeater {
                         model: musicLib.playlists
@@ -59,8 +60,8 @@ ShellRoot {
                             required property var modelData
                             symbolTone: "auto"
                             selectedSymbolTone: "red"
-                            selectedTextColor: "#fa2d48"
-                            selectedFill: Theme.dark ? "#1ffa2d48" : "#14fa2d48"
+                            selectedTextColor: Theme.label
+                            selectedFill: Theme.selection
                             symbol: "list"; text: modelData.name
                             selected: app.page === "playlist" && app.arg?.path === modelData.path
                             onClicked: app.go("playlist", modelData)

@@ -418,14 +418,8 @@ ShellRoot {
                         symbol: "wifi"
                         title: "App Store Unavailable"
                         text: store.loadError
-                    }
-
-                    Button {
-                        visible: !!store.loadError && !store.loading
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        text: "Try Again"
-                        prominent: true
-                        onClicked: store.reload(true)
+                        actionText: "Try Again"
+                        onAction: store.reload(true)
                     }
 
                     GridView {

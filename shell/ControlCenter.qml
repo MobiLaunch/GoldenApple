@@ -278,54 +278,58 @@ PanelWindow {
             color: Theme.label
             font { family: Theme.fontUi; pixelSize: 12; weight: Font.DemiBold }
         }
+        // Sound's button to its output list: a round glass-fill button, as on the Mac.
         Rectangle {
             visible: slider.expandable
-            anchors { right: parent.right; rightMargin: 9; top: parent.top; topMargin: 6 }
+            anchors { right: parent.right; rightMargin: 10; top: parent.top; topMargin: 7 }
             width: 22; height: 22; radius: 11
-            color: expandArea.pressed ? Theme.selection : expandArea.containsMouse ? Theme.fill : "transparent"
-            Symbol { anchors.centerIn: parent; name: "chevron-right"; size: 10; tone: "gray" }
+            color: expandArea.pressed ? Theme.selection : expandArea.containsMouse ? (Theme.dark ? "#33ffffff" : "#1f000000") : Theme.fill
+            Symbol { anchors.centerIn: parent; name: "chevron-right"; size: 9; tone: "auto"; opacity: 0.7 }
             MouseArea { id: expandArea; anchors.fill: parent; hoverEnabled: true; onClicked: slider.expand() }
+            Accessible.role: Accessible.Button
+            Accessible.name: slider.title + " Output"
         }
-        RowLayout {
-            anchors { left: parent.left; right: parent.right; bottom: parent.bottom; leftMargin: 13; rightMargin: 13; bottomMargin: 11 }
-            spacing: 8
-            Symbol { name: slider.lowIcon; size: 13; tone: "auto"; opacity: 0.6 }
-            Item {
-                id: track
-                Layout.fillWidth: true
-                height: 18
-                Rectangle {
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: parent.width; height: 7; radius: 3.5
-                    color: Theme.dark ? "#38ffffff" : "#2b000000"
-                }
-                // The filled part is white, as on the Mac; on light modules it
-                // carries a hairline so it doesn't vanish into the card.
-                Rectangle {
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: Math.max(height, parent.width * Math.max(0, Math.min(1, slider.value)))
-                    height: 7; radius: 3.5
-                    color: "#f2ffffff"
-                    border { width: Theme.dark ? 0 : 0.5; color: "#33000000" }
-                }
-                Rectangle {
-                    width: drag.pressed ? 18 : 15
-                    height: width; radius: width / 2
-                    x: Math.max(0, Math.min(parent.width - width, parent.width * slider.value - width / 2))
-                    anchors.verticalCenter: parent.verticalCenter
-                    color: "#ffffff"
-                    border { width: 0.5; color: "#26000000" }
-                    Behavior on width { NumberAnimation { duration: Prefs.reduceMotion ? 1 : 80 } }
-                }
-                MouseArea {
-                    id: drag
-                    anchors { fill: parent; topMargin: -7; bottomMargin: -7 }
-                    hoverEnabled: true
-                    onPressed: mouse => slider.setFromX(mouse.x)
-                    onPositionChanged: mouse => { if (pressed) slider.setFromX(mouse.x) }
-                }
+        // A thick capsule, filled white up to the value, with the low glyph
+        // inside the fill and the fill's end as the knob (macOS Control Center).
+        Item {
+            id: track
+            anchors { left: parent.left; right: parent.right; bottom: parent.bottom; leftMargin: 12; rightMargin: 12; bottomMargin: 12 }
+            height: 22
+            readonly property real level: Math.max(0, Math.min(1, slider.value))
+            Rectangle {
+                anchors.fill: parent
+                radius: height / 2
+                color: Theme.dark ? "#2effffff" : "#1f000000"
             }
-            Symbol { name: slider.highIcon; size: 15; tone: "auto"; opacity: 0.6 }
+            Rectangle {
+                id: fill
+                height: parent.height
+                width: Math.max(height, parent.width * track.level)
+                radius: height / 2
+                color: "#ffffff"
+                border { width: Theme.dark ? 0 : 0.5; color: "#1f000000" }
+                Behavior on width { enabled: !drag.pressed && !Prefs.reduceMotion; NumberAnimation { duration: 90; easing.type: Easing.OutCubic } }
+            }
+            // The knob: the fill's round end, lifted a little.
+            Rectangle {
+                width: parent.height; height: parent.height; radius: height / 2
+                x: fill.width - width
+                color: "#ffffff"
+                border { width: 0.5; color: "#33000000" }
+                scale: drag.pressed && !Prefs.reduceMotion ? 1.08 : 1
+                Behavior on scale { NumberAnimation { duration: 90 } }
+            }
+            Symbol {
+                anchors { left: parent.left; leftMargin: 6; verticalCenter: parent.verticalCenter }
+                name: slider.lowIcon; size: 12; tone: "dark"; opacity: 0.55
+            }
+            MouseArea {
+                id: drag
+                anchors { fill: parent; topMargin: -6; bottomMargin: -6 }
+                hoverEnabled: true
+                onPressed: mouse => slider.setFromX(mouse.x)
+                onPositionChanged: mouse => { if (pressed) slider.setFromX(mouse.x) }
+            }
         }
     }
 
@@ -727,7 +731,7 @@ PanelWindow {
                     }
                     Symbol {
                         visible: cc.detail === "wifi" && item.modelData.secure
-                        name: "lock"; size: 11; tone: "gray"
+                        name: "lock"; size: 11; tone: "auto"; opacity: 0.45
                     }
                 }
                 MouseArea {

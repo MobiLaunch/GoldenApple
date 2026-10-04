@@ -293,8 +293,9 @@ ShellRoot {
                 color: Theme.contentBg
             }
 
+            // The window draws under its toolbar: the weekdays start below it.
             Column {
-                anchors { fill: parent; leftMargin: 24; rightMargin: 24; topMargin: 16; bottomMargin: 18 }
+                anchors { fill: parent; leftMargin: 24; rightMargin: 24; topMargin: win.toolbarHeight + 4; bottomMargin: 18 }
                 spacing: 8
 
                 Row {
@@ -353,16 +354,22 @@ ShellRoot {
                                     : dayHover.hovered && dayCell.valid
                                         ? (Theme.dark ? "#0dffffff" : "#07000000")
                                         : "transparent"
-                                border {
-                                    width: dayCell.today ? 1.5 : 0.5
-                                    color: dayCell.today ? "#ff3b30" : Theme.separator
-                                }
+                                border { width: 0.5; color: Theme.separator }
 
+                                // Today: the date in a red circle, as in Calendar on the Mac.
+                                Rectangle {
+                                    x: 5; y: 4
+                                    width: 24; height: 24; radius: 12
+                                    color: "#ff3b30"
+                                    visible: dayCell.today
+                                }
                                 Text {
-                                    x: 10
-                                    y: 8
+                                    x: 5; y: 4
+                                    width: 24; height: 24
+                                    horizontalAlignment: Text.AlignHCenter
+                                    verticalAlignment: Text.AlignVCenter
                                     text: dayCell.valid ? dayCell.day : ""
-                                    color: dayCell.today ? "#ff3b30" : Theme.label
+                                    color: dayCell.today ? "#ffffff" : Theme.label
                                     font {
                                         family: Theme.fontUi
                                         pixelSize: 13

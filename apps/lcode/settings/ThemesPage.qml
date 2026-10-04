@@ -213,7 +213,7 @@ Item {
                 width: parent.width
                 wrapMode: Text.Wrap
                 text: (page.lightId === page.selected.id ? "In use for the Light appearance. " : page.darkId === page.selected.id ? "In use for the Dark appearance. " : "")
-                    + (page.selected.builtIn ? "Built-in themes stay as they are: duplicate one to change its colours." : "Click a colour to change it.")
+                    + (page.selected.builtIn ? "Built-in themes stay as they are: duplicate one to change its colors." : "Click a color to change it.")
                 color: Theme.secondaryLabel
                 font { family: Theme.fontUi; pixelSize: 12 }
             }
@@ -260,7 +260,7 @@ Item {
                             anchors.verticalCenter: parent.verticalCenter
                             Text { text: Syntax.THEME_TITLES[tokenRow.modelData]; color: Theme.label; font { family: Theme.fontUi; pixelSize: 12 } }
                             Text {
-                                text: page.selected[tokenRow.modelData] || "Accent colour"
+                                text: page.selected[tokenRow.modelData] || "Accent color"
                                 color: Theme.secondaryLabel
                                 font { family: "monospace"; pixelSize: 10 }
                             }

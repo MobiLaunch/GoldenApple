@@ -9,7 +9,7 @@ import ".."
 Pane {
     id: pane
     headerSymbol: "person"; headerTint: "#0a84ff"; headerTitle: "Accessibility"
-    headerText: "Personalise this computer to make it easier to see, hear and use."
+    headerText: "Personalize this computer to make it easier to see, hear and use."
     property real textScale: 1
     Component.onCompleted: sys.run(["gsettings", "get", "org.gnome.desktop.interface", "text-scaling-factor"], (o) => textScale = parseFloat(o) || 1)
     readonly property bool reduceMotion: sys.prefs.reduceMotion ?? false

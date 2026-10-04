@@ -113,7 +113,7 @@ ShellRoot {
             Text {
                 width: parent.width - 12
                 x: 8
-                text: "Favourites"
+                text: "Favorites"
                 color: Theme.secondaryLabel
                 font { family: Theme.fontUi; pixelSize: 11; weight: Font.DemiBold }
             },
@@ -376,8 +376,10 @@ ShellRoot {
             GridView {
                 id: grid
                 visible: files.view === "grid" && !files.loading && !files.error
-                anchors { fill: parent; margins: 18; topMargin: 16 }
-                clip: true
+                // The window draws under its toolbar; the grid starts below it and
+                // scrolls up under it (clipped at the window, not at the toolbar).
+                anchors { fill: parent; margins: 18; topMargin: 0 }
+                topMargin: win.toolbarHeight + 10
                 cellWidth: 118
                 cellHeight: 112
                 model: files.entries
@@ -459,8 +461,8 @@ ShellRoot {
             ListView {
                 id: list
                 visible: files.view === "list" && !files.loading && !files.error
-                anchors { fill: parent; margins: 16; topMargin: 12 }
-                clip: true
+                anchors { fill: parent; margins: 16; topMargin: 0 }
+                topMargin: win.toolbarHeight + 6
                 spacing: 1
                 model: files.entries
 

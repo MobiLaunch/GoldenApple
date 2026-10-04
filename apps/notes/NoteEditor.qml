@@ -8,6 +8,7 @@
 import Quickshell
 import Quickshell.Io
 import QtQuick
+import "../lib" as Shared
 import "../lib/theme"
 import "md.js" as Md
 
@@ -200,7 +201,7 @@ Item {
                 color: Theme.secondaryLabel
                 font { family: Theme.fontUi; pixelSize: 11; weight: Font.Medium }
             }
-            TextArea {
+            Shared.TextArea {
                 id: edit
                 width: parent.width
                 visible: !!ed.path

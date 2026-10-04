@@ -87,7 +87,7 @@ Popover {
             width: parent.width
             height: 28
             search: true
-            placeholder: lib.tab === 0 ? "Search " + (Completion.LANGUAGE_NAMES[lib.language] || "") + " snippets" : lib.tab === 1 ? "Search symbols" : "Search colours"
+            placeholder: lib.tab === 0 ? "Search " + (Completion.LANGUAGE_NAMES[lib.language] || "") + " snippets" : lib.tab === 1 ? "Search symbols" : "Search colors"
             onAccepted: {
                 if (lib.tab === 0 && lib.snippets.length) lib.insertSnippet(lib.snippets[0])
                 else if (lib.tab === 1 && lib.symbols.length) lib.insertSymbol(lib.symbols[0])
