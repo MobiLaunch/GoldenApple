@@ -11,7 +11,7 @@ import subprocess
 import sys
 from urllib.parse import urlsplit
 
-from PySide6.QtCore import QObject, Property, QStandardPaths, Signal, Slot
+from PySide6.QtCore import QCoreApplication, QObject, Property, QStandardPaths, Signal, Slot
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtWebEngineCore import QWebEngineUrlRequestInterceptor
 
@@ -201,6 +201,17 @@ class BrowserBackend(QObject):
     @Property(bool, constant=True)
     def privateMode(self):
         return self.private
+
+    @Property(bool, constant=True)
+    def safeGraphics(self):
+        return os.environ.get("GG_WEB_LIVE_SAFE") == "1" or os.environ.get("GG_WEB_SOFTWARE") == "1" or os.environ.get("LIBGL_ALWAYS_SOFTWARE") == "1"
+
+    @Slot()
+    def restartInSafeMode(self):
+        # browser.py saves tabs and releases the profile lock on orderly quit.
+        # launch.sh sees 79 and retries once with Mesa software GL.
+        if not self.safeGraphics:
+            QCoreApplication.exit(79)
 
     @Property(str, constant=True)
     def profileName(self):
