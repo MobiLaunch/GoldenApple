@@ -12,6 +12,8 @@ import http.server
 import json
 import os
 from pathlib import Path
+import shutil
+import signal
 import subprocess
 import sys
 import tempfile
@@ -26,16 +28,57 @@ BROWSER = ROOT / "apps/browser/browser.py"
 COOKIES_SEEN = []
 
 
+REQUESTS = []
+REPORTS = []
+
+# Pages for the navigation and password tests.
+PAGES = {
+    # Signs in by itself, as a person typing and pressing Sign In would.
+    "/signin": '<title>Sign In</title><form method="post" action="/session">'
+               '<input name="email" type="email"><input name="pass" type="password"><button>Sign In</button></form>'
+               '<script>setTimeout(() => { document.forms[0].email.value = "ada@example.com";'
+               'document.forms[0].pass.value = "correct horse"; document.querySelector("button").click() }, 600)</script>',
+    # Reports what Web filled in.
+    "/signin-again": '<title>Sign In</title><form><input name="email" type="email"><input name="pass" type="password"></form>'
+                     '<script>setTimeout(() => fetch("/report?u=" + encodeURIComponent(document.forms[0].email.value)'
+                     '+ "&p=" + encodeURIComponent(document.forms[0].pass.value)), 1200)</script>',
+    # A web app that changes its own address, as YouTube or Gmail do.
+    "/app": '<title>App</title><script>setTimeout(() => history.pushState({}, "", "/app/inbox"), 300);'
+            'setTimeout(() => history.pushState({}, "", "/app/settings"), 600)</script>',
+}
+
+
 class Fixture(http.server.BaseHTTPRequestHandler):
+    def do_POST(self):
+        self.rfile.read(int(self.headers.get("Content-Length") or 0))
+        REQUESTS.append(("POST", self.path))
+        self.send_response(303)
+        self.send_header("Location", "/welcome")
+        self.end_headers()
+
     def do_GET(self):
         COOKIES_SEEN.append((self.path, self.headers.get("Cookie") or ""))
+        REQUESTS.append(("GET", self.path))
+        if self.path.startswith("/report?"):
+            REPORTS.append(self.path)
+        if self.path == "/moved":
+            self.send_response(302)
+            self.send_header("Location", "/app")
+            self.end_headers()
+            return
+        if self.path in PAGES:
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.end_headers()
+            self.wfile.write(PAGES[self.path].encode())
+            return
         page = (
             f"<title>Fixture {self.path}</title>"
             '<article><h1>Reader Test</h1><p>CitronOS browser fixture content.</p></article>'
             '<a href="/second">Second page</a>'
         )
         self.send_response(200)
-        if self.path.startswith("/login"):
+        if self.path.startswith("/login"):  # /login-a, /login-term
             # A site's login: one cookie for the browser session only, one kept for a day.
             self.send_header("Set-Cookie", "session=signed-in; Path=/; HttpOnly")
             self.send_header("Set-Cookie", "remember=yes; Path=/; Max-Age=86400")
@@ -110,7 +153,8 @@ class NativeQmlBrowser(unittest.TestCase):
         # profile stayed in memory and no cookie ever reached the disk.
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            first = self.run_browser(root, BASE + "/login-a", exit_ms=2500, timeout=30)
+            # Long enough for a cold Chromium start to reach the page.
+            first = self.run_browser(root, BASE + "/login-a", exit_ms=4500, timeout=40)
             self.assertEqual(first.returncode, 0, first.stderr)
             again = self.run_browser(root, BASE + "/check-a", exit_ms=2500, timeout=30)
             self.assertEqual(again.returncode, 0, again.stderr)
@@ -119,6 +163,77 @@ class NativeQmlBrowser(unittest.TestCase):
             self.assertIn("session=signed-in", sent[0])
             self.assertIn("remember=yes", sent[0])
             self.assertTrue(list(root.rglob("Cookies")), "no cookie store on disk")
+
+    def test_pages_load_once(self):
+        # Each tab's view was bound to the address it reported: a redirect,
+        # a signed-in form's result or a web app changing its own address
+        # loaded the page again, and web apps reloaded themselves forever.
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            REQUESTS.clear()
+            for start in ("/moved", "/signin"):
+                result = self.run_browser(root, BASE + start, exit_ms=3500, timeout=40)
+                self.assertEqual(result.returncode, 0, result.stderr)
+            pages = [r for r in REQUESTS if r[1] != "/favicon.ico"]
+            self.assertEqual(pages.count(("GET", "/app")), 1, pages)
+            self.assertNotIn(("GET", "/app/inbox"), pages)
+            self.assertNotIn(("GET", "/app/settings"), pages)
+            self.assertEqual(pages.count(("POST", "/session")), 1, pages)
+            self.assertEqual(pages.count(("GET", "/welcome")), 1, pages)
+
+    @unittest.skipUnless(shutil.which("secret-tool") and shutil.which("gnome-keyring-daemon") and shutil.which("dbus-run-session"),
+                         "needs libsecret, gnome-keyring and dbus")
+    def test_passwords_are_saved_and_filled(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            # An open login keyring, as the live ISO and a signed-in session have.
+            rings = root / "data/keyrings"
+            rings.mkdir(parents=True)
+            (rings / "login.keyring").write_text("[keyring]\ndisplay-name=Login\nctime=0\nmtime=0\nlock-on-idle=false\nlock-after=false\n")
+            (rings / "default").write_text("login")
+
+            def run(url):
+                env = browser_env(root, 4000)
+                env["GG_WEB_TEST_ACCEPT_PASSWORDS"] = "1"
+                return subprocess.run(
+                    ["dbus-run-session", "--", "sh", "-c",
+                     'gnome-keyring-daemon --start --components=secrets >/dev/null 2>&1; exec "$0" "$@"',
+                     sys.executable, str(BROWSER), url],
+                    cwd=ROOT, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=60)
+
+            REPORTS.clear()
+            first = run(BASE + "/signin")
+            self.assertEqual(first.returncode, 0, first.stderr)
+            self.assertTrue(list(rings.glob("*.keyring")))
+            self.assertIn("org.goldengate.Web", "".join(p.read_text(errors="replace") for p in rings.glob("*.keyring")))
+            again = run(BASE + "/signin-again")
+            self.assertEqual(again.returncode, 0, again.stderr)
+            self.assertEqual(REPORTS, ["/report?u=ada%40example.com&p=correct%20horse"], REPORTS)
+
+    def test_quitting_by_signal_keeps_tabs_and_logins(self):
+        # Logging out or shutting down ends Web with SIGTERM.
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            env = browser_env(root, 0)
+            web = subprocess.Popen([sys.executable, str(BROWSER), BASE + "/login-term"], cwd=ROOT, env=env,
+                                   stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            try:
+                deadline = time.monotonic() + 20
+                while time.monotonic() < deadline and not any(p == "/login-term" for p, _ in COOKIES_SEEN):
+                    time.sleep(0.2)
+                time.sleep(1.0)
+                web.send_signal(signal.SIGTERM)
+                _, err = web.communicate(timeout=20)
+            finally:
+                if web.poll() is None:
+                    web.kill()
+            self.assertEqual(web.returncode, 0, err)
+            tabs = json.loads(state_files(root)[0].read_text())["tabs"]
+            self.assertIn(BASE + "/login-term", tabs)
+            again = self.run_browser(root, BASE + "/check-term", exit_ms=2500, timeout=30)
+            self.assertEqual(again.returncode, 0, again.stderr)
+            sent = [cookie for path, cookie in COOKIES_SEEN if path == "/check-term"]
+            self.assertTrue(sent and "session=signed-in" in sent[0], COOKIES_SEEN[-4:])
 
     def test_private_window_is_off_record(self):
         with tempfile.TemporaryDirectory() as directory:

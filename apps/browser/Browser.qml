@@ -39,6 +39,12 @@ Window {
     property string readerText: ""
     property var downloads: []
     property var pendingPermission: null
+    // Saved passwords: the "Save Password?" banner's sign-in, the Passwords
+    // sheet, and usernames typed on username-first pages, by site.
+    property var passwordPrompt: null       // { url, username, password, kind: "save" | "update" }
+    property bool passwordsOpen: false
+    property var savedLogins: []
+    property var typedUsernames: ({})
     property var startPageData: JSON.parse(BrowserBackend.startPageJson())
     property var browserSettings: JSON.parse(BrowserBackend.settingsJson)
     property var suggestionData: []
@@ -118,6 +124,7 @@ Window {
             { text: "Zoom Out", shortcut: "⌘−", enabled: page, action: () => root.zoomBy(-0.1) },
             { separator: true },
             { text: "Website Settings…", enabled: page, action: () => root.showWebsitePermissions(true) },
+            { text: "Passwords…", action: () => root.openPasswords() },
             { text: "Web Settings…", action: () => root.settingsOpen = true }
         ]
     }
@@ -173,7 +180,7 @@ Window {
         let record = tabsModel.get(index)
         BrowserBackend.rememberClosedTab(record.url, record.title)
         if (tabsModel.count === 1) {
-            tabsModel.setProperty(0, "url", "about:blank")
+            loadInTab(0, "about:blank")
             tabsModel.setProperty(0, "title", "Start Page")
             tabsModel.setProperty(0, "icon", "")
             currentIndex = 0
@@ -211,6 +218,58 @@ Window {
         navigateTo(url)
     }
 
+    // A message from Web's page script (passwords.js), via the console. Only
+    // messages carrying this run's token count: the page can't see it.
+    function pagePasswordMessage(url, message) {
+        const token = BrowserBackend.passwordToken
+        const site = BrowserBackend.displayAddress(url)
+        let body = null
+        try {
+            if (message.startsWith("\u0001gg-user:" + token + ":")) {
+                body = JSON.parse(message.slice(("\u0001gg-user:" + token + ":").length))
+                const names = Object.assign({}, typedUsernames)
+                names[site] = String(body.u || "")
+                typedUsernames = names
+                return true
+            }
+            if (!message.startsWith("\u0001gg-pw:" + token + ":")) return false
+            body = JSON.parse(message.slice(("\u0001gg-pw:" + token + ":").length))
+        } catch (e) {
+            return true
+        }
+        const username = String(body.u || "") || typedUsernames[site] || ""
+        const password = String(body.p || "")
+        const kind = BrowserBackend.passwordOffer(url, username, password)
+        if (kind) passwordPrompt = { url: url, site: site, username: username, password: password, kind: kind }
+        if (kind && BrowserBackend.testAcceptsPasswords) answerPasswordPrompt("save")
+        return true
+    }
+
+    function answerPasswordPrompt(choice) {
+        const prompt = passwordPrompt
+        passwordPrompt = null
+        if (!prompt) return
+        if (choice === "save" && BrowserBackend.savePassword(prompt.url, prompt.username, prompt.password))
+            BrowserBackend.notify(prompt.kind === "update" ? "Password updated" : "Password saved")
+        else if (choice === "never")
+            BrowserBackend.neverSavePasswordsFor(prompt.url)
+    }
+
+    function openPasswords() {
+        savedLogins = JSON.parse(BrowserBackend.savedLoginsJson())
+        passwordsOpen = true
+    }
+
+    // Sends a tab somewhere. The model's url follows the page (redirects,
+    // pages that change their own address) and is never bound back to the
+    // view: a binding reloaded every page whose address changed under it, so
+    // sign-ins were posted twice and web apps reloaded themselves in a loop.
+    function loadInTab(index, target) {
+        tabsModel.setProperty(index, "url", target)
+        const item = tabViews.itemAt(index)
+        if (item) item.go(target)
+    }
+
     function navigateTo(value) {
         let target = value
         if (!target || target === "about:blank") target = "about:blank"
@@ -220,7 +279,7 @@ Window {
         pageMenuOpen = false
         suggestionData = []
         if (tabsModel.count === 0) newTab(target, true)
-        else tabsModel.setProperty(currentIndex, "url", target)
+        else loadInTab(currentIndex, target)
         addressField.input.focus = false
         saveTabsSoon()
     }
@@ -445,11 +504,20 @@ Window {
         id: saveTimer
         interval: 350
         repeat: false
-        onTriggered: {
-            let values = []
-            for (let i = 0; i < tabsModel.count; i++) values.push(tabsModel.get(i).url)
-            BrowserBackend.saveTabs(JSON.stringify(values))
-        }
+        onTriggered: root.saveTabsNow()
+    }
+    function saveTabsNow() {
+        saveTimer.stop()
+        let values = []
+        for (let i = 0; i < tabsModel.count; i++) values.push(tabsModel.get(i).url)
+        BrowserBackend.saveTabs(JSON.stringify(values))
+    }
+    // Closing Web (or the system quitting it) saves the tabs at once rather
+    // than in 350 ms, when the process may already be gone.
+    onClosing: saveTabsNow()
+    Connections {
+        target: Qt.application
+        function onAboutToQuit() { root.saveTabsNow() }
     }
 
     ListModel { id: tabsModel }
@@ -1158,6 +1226,12 @@ Window {
                     property alias view: web
                     anchors.fill: parent
                     visible: index === root.currentIndex
+                    function go(target) {
+                        if (target === "about:blank") web.stop()
+                        web.url = target
+                    }
+                    // The address it opens with; after that the page leads.
+                    Component.onCompleted: if (url !== "about:blank") web.url = url
 
                     WebEngineView {
                         id: web
@@ -1165,7 +1239,6 @@ Window {
                         anchors.fill: parent
                         profile: root.profile
                         visible: webTab.visible && webTab.url !== "about:blank" && !root.readerOpen
-                        url: webTab.url
                         backgroundColor: Theme.dark ? "#1d1d20" : "#ffffff"
                         settings.fullScreenSupportEnabled: true
                         settings.scrollAnimatorEnabled: true
@@ -1191,11 +1264,16 @@ Window {
                             if (info.status === WebEngineView.LoadSucceededStatus && url.toString() !== "about:blank") {
                                 rendererRestarts = 0
                                 BrowserBackend.visit(url.toString(), title || BrowserBackend.displayAddress(url.toString()))
+                                // Notice sign-ins, and fill a saved login, out of the page's sight.
+                                runJavaScript(BrowserBackend.passwordScript(url.toString()), WebEngineScript.ApplicationWorld)
                             }
                             if (info.status === WebEngineView.LoadFailedStatus && webTab.index === root.currentIndex)
                                 BrowserBackend.notify(info.errorString || "This page could not be loaded.")
                         }
                         onLoadProgressChanged: tabsModel.setProperty(webTab.index, "progress", loadProgress)
+                        onJavaScriptConsoleMessage: function(level, message, lineNumber, sourceID) {
+                            root.pagePasswordMessage(url.toString(), message)
+                        }
                         onRecentlyAudibleChanged: tabsModel.setProperty(webTab.index, "audible", recentlyAudible)
                         onAudioMutedChanged: tabsModel.setProperty(webTab.index, "muted", audioMuted)
                     onFindTextFinished: function(result) {
@@ -2521,6 +2599,178 @@ Window {
         }
     }
 
+    // "Save Password?": a banner under the toolbar after a sign-in, as Safari
+    // asks. Not Now forgets it; Never stops asking on that site.
+    Rectangle {
+        id: passwordBanner
+        z: 69
+        visible: opacity > 0
+        opacity: root.passwordPrompt ? 1 : 0
+        Behavior on opacity { NumberAnimation { duration: 180 } }
+        parent: webArea       // over the page, under the toolbar
+        anchors { horizontalCenter: parent.horizontalCenter; top: parent.top; topMargin: 12 }
+        width: Math.min(520, webArea.width - 32)
+        height: bannerColumn.implicitHeight + 28
+        radius: 18
+        color: Theme.dark ? "#f2303034" : "#f7fbfbfd"
+        border { width: 0.5; color: Theme.separator }
+        Rectangle { z: -1; anchors { fill: parent; margins: -6 } radius: 22; color: "#40000000"; opacity: 0.07 }
+        Column {
+            id: bannerColumn
+            anchors { left: parent.left; right: parent.right; top: parent.top; margins: 14 }
+            spacing: 10
+            Row {
+                spacing: 12
+                width: parent.width
+                Rectangle {
+                    width: 34; height: 34; radius: 9
+                    color: Theme.accent
+                    Symbol { anchors.centerIn: parent; name: "lock"; tone: "white"; size: 16 }
+                }
+                Column {
+                    width: parent.width - 46
+                    spacing: 2
+                    Text {
+                        width: parent.width
+                        text: root.passwordPrompt
+                            ? (root.passwordPrompt.kind === "update" ? "Update the saved password for " : "Save password for ") + root.passwordPrompt.site + "?"
+                            : ""
+                        color: Theme.label
+                        elide: Text.ElideRight
+                        font { family: Theme.fontUi; pixelSize: 13; weight: Font.DemiBold }
+                    }
+                    Text {
+                        width: parent.width
+                        text: root.passwordPrompt && root.passwordPrompt.username
+                            ? root.passwordPrompt.username + " · saved in your keyring, filled in next time"
+                            : "Saved in your keyring and filled in next time."
+                        color: Theme.secondaryLabel
+                        elide: Text.ElideRight
+                        font { family: Theme.fontUi; pixelSize: 11 }
+                    }
+                }
+            }
+            Row {
+                anchors.right: parent.right
+                spacing: 8
+                Button {
+                    text: "Never for This Website"
+                    visible: root.passwordPrompt && root.passwordPrompt.kind === "save"
+                    onClicked: root.answerPasswordPrompt("never")
+                }
+                Button { text: "Not Now"; onClicked: root.answerPasswordPrompt("later") }
+                Button {
+                    text: root.passwordPrompt && root.passwordPrompt.kind === "update" ? "Update Password" : "Save Password"
+                    prominent: true
+                    onClicked: root.answerPasswordPrompt("save")
+                }
+            }
+        }
+    }
+
+    // Passwords: every login Web has saved in this profile.
+    Rectangle {
+        id: passwordsSheet
+        z: 67
+        visible: root.passwordsOpen
+        anchors.centerIn: parent
+        width: Math.min(570, root.width - 60)
+        height: Math.min(520, root.height - 80)
+        radius: 22
+        color: Theme.dark ? "#fc303034" : "#fff8f8fa"
+        border { width: 0.5; color: Theme.separator }
+        Rectangle { z: -1; anchors { fill: parent; margins: -14 } radius: 30; color: "#40000000"; opacity: 0.24 }
+        Column {
+            anchors { fill: parent; margins: 22 }
+            spacing: 14
+            Row {
+                width: parent.width
+                Text {
+                    width: parent.width - closePasswords.width
+                    text: "Passwords"
+                    color: Theme.label
+                    font { family: Theme.fontDisplay; pixelSize: 21; weight: Font.DemiBold }
+                }
+                BrowserButton {
+                    id: closePasswords
+                    symbol: "xmark"; tooltip: "Close"
+                    onClicked: root.passwordsOpen = false
+                }
+            }
+            Text {
+                width: parent.width
+                wrapMode: Text.WordWrap
+                text: "Web saves passwords in your keyring when you sign in to a website and fills them in when you come back. "
+                    + (BrowserBackend.privateMode ? "Private Browsing fills saved passwords but doesn't save new ones." : "")
+                color: Theme.secondaryLabel
+                font { family: Theme.fontUi; pixelSize: 12 }
+            }
+            Flickable {
+                width: parent.width
+                height: parent.height - 112
+                contentHeight: loginList.height
+                clip: true
+                boundsBehavior: Flickable.StopAtBounds
+                Column {
+                    id: loginList
+                    width: parent.width
+                    spacing: 4
+                    Text {
+                        visible: root.savedLogins.length === 0
+                        width: parent.width
+                        topPadding: 18
+                        text: "No saved passwords."
+                        color: Theme.secondaryLabel
+                        horizontalAlignment: Text.AlignHCenter
+                        font { family: Theme.fontUi; pixelSize: 12 }
+                    }
+                    Repeater {
+                        model: root.savedLogins
+                        delegate: Rectangle {
+                            required property var modelData
+                            width: loginList.width
+                            height: 52
+                            radius: 11
+                            color: Theme.dark ? "#0dffffff" : "#08000000"
+                            border { width: 0.5; color: Theme.separator }
+                            Column {
+                                anchors { left: parent.left; leftMargin: 14; right: loginActions.left; rightMargin: 10; verticalCenter: parent.verticalCenter }
+                                Text {
+                                    width: parent.width
+                                    text: BrowserBackend.displayAddress(modelData.origin)
+                                    color: Theme.label
+                                    elide: Text.ElideRight
+                                    font { family: Theme.fontUi; pixelSize: 13; weight: Font.DemiBold }
+                                }
+                                Text {
+                                    width: parent.width
+                                    text: modelData.username || "No username"
+                                    color: Theme.secondaryLabel
+                                    elide: Text.ElideRight
+                                    font { family: Theme.fontUi; pixelSize: 11 }
+                                }
+                            }
+                            Row {
+                                id: loginActions
+                                anchors { right: parent.right; rightMargin: 10; verticalCenter: parent.verticalCenter }
+                                spacing: 6
+                                Button { text: "Copy Password"; onClicked: BrowserBackend.copySavedPassword(modelData.origin, modelData.username) }
+                                Button {
+                                    text: "Remove"
+                                    destructive: true
+                                    onClicked: {
+                                        BrowserBackend.removeSavedPassword(modelData.origin, modelData.username)
+                                        root.savedLogins = JSON.parse(BrowserBackend.savedLoginsJson())
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     Rectangle {
         id: permissionSheet
         z: 70
@@ -2638,6 +2888,8 @@ Window {
             else if (root.findOpen) root.closeFind()
             else if (root.readerOpen) root.readerOpen = false
             else if (root.tabOverviewOpen) root.tabOverviewOpen = false
+            else if (root.passwordsOpen) root.passwordsOpen = false
+            else if (root.passwordPrompt) root.answerPasswordPrompt("later")
             else if (root.websitePermissionsOpen) root.websitePermissionsOpen = false
             else if (root.privacySheetOpen) root.privacySheetOpen = false
             else if (root.profileSheetOpen) root.profileSheetOpen = false

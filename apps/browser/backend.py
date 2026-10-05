@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import secrets
 from pathlib import Path
 import subprocess
 import sys
@@ -15,6 +16,7 @@ from PySide6.QtGui import QGuiApplication
 from PySide6.QtWebEngineCore import QWebEngineUrlRequestInterceptor
 
 from model import Store, address_url
+from passwords import Passwords, origin_of
 
 
 def profile_key(name):
@@ -146,6 +148,14 @@ class BrowserBackend(QObject):
 
         self._dark = self._is_dark()
         QGuiApplication.styleHints().colorSchemeChanged.connect(self._scheme_changed)
+
+        # Saved passwords, in the keyring, per profile. Which sites have any is
+        # read once so a page load only asks the keyring when there is
+        # something to fill. The token marks messages from Web's own page
+        # script, which runs where the page's scripts can't see it.
+        self.passwords = Passwords(profile_key(self.profile_name))
+        self._password_token = secrets.token_hex(12)
+        self._password_sites = None
 
     def _read_profiles(self):
         names = ["Personal"]
@@ -523,6 +533,105 @@ class BrowserBackend(QObject):
     @Slot(str)
     def notify(self, text):
         self.toastRequested.emit(text)
+
+    # ------------------------------------------------------------ passwords
+    passwordsChanged = Signal()
+
+    @Property(str, constant=True)
+    def passwordToken(self):
+        return self._password_token
+
+    # Tests only: answer "Save Password" by themselves.
+    @Property(bool, constant=True)
+    def testAcceptsPasswords(self):
+        return os.environ.get("GG_WEB_TEST_ACCEPT_PASSWORDS") == "1"
+
+    def _sites_with_passwords(self):
+        if self._password_sites is None:
+            self._password_sites = {login["origin"] for login in self.passwords.logins()}
+        return self._password_sites
+
+    def _never_save(self):
+        value = self.store.data["settings"].get("neverSavePasswords", [])
+        return value if isinstance(value, list) else []
+
+    @Slot(str, result=str)
+    def passwordScript(self, url):
+        """The page script for this page: it notices sign-ins, and fills a
+        saved login when there is one for the page's own site."""
+        if not hasattr(self, "_password_js"):
+            self._password_js = (Path(__file__).with_name("passwords.js").read_text(encoding="utf-8")
+                                 .replace("__TOKEN__", self._password_token))
+        return self._password_js.replace("__CREDENTIALS__", self.savedPasswordsFor(url))
+
+    @Slot(str, result=str)
+    def savedPasswordsFor(self, url):
+        """The logins to fill on this page, [{username, password}], as JSON.
+        Only for the page's exact origin, and only over HTTPS (or this
+        computer), so a password never goes to a page that could be faked."""
+        origin = origin_of(url)
+        host = (urlsplit(origin).hostname or "") if origin else ""
+        secure = origin.startswith("https://") or host in ("localhost", "127.0.0.1", "::1")
+        if not origin or not secure or origin not in self._sites_with_passwords():
+            return "[]"
+        return json.dumps(self.passwords.credentials(origin))
+
+    @Slot(str, str, str, result=str)
+    def passwordOffer(self, url, username, password):
+        """What to ask after a sign-in: "save", "update" or "" (nothing)."""
+        origin = origin_of(url)
+        if self.private or not origin or not password or origin in self._never_save():
+            return ""
+        if origin not in self._sites_with_passwords():
+            return "save"
+        saved = {c["username"]: c["password"] for c in self.passwords.credentials(origin)}
+        if username in saved:
+            return "" if saved[username] == password else "update"
+        return "save"
+
+    @Slot(str, str, str, result=bool)
+    def savePassword(self, url, username, password):
+        origin = origin_of(url)
+        if self.private or not origin:
+            return False
+        if not self.passwords.save(origin, username, password):
+            self.toastRequested.emit("The password couldn't be saved: " + (self.passwords.error or "the keyring is locked."))
+            return False
+        self._sites_with_passwords().add(origin)
+        self.passwordsChanged.emit()
+        return True
+
+    @Slot(str)
+    def neverSavePasswordsFor(self, url):
+        origin = origin_of(url)
+        if not origin or self.private:
+            return
+        sites = self._never_save()
+        if origin not in sites:
+            self.store.data["settings"]["neverSavePasswords"] = sites + [origin]
+            self._save()
+
+    @Slot(result=str)
+    def savedLoginsJson(self):
+        logins = self.passwords.logins()
+        self._password_sites = {login["origin"] for login in logins}
+        return json.dumps(logins)
+
+    @Slot(str, str, result=bool)
+    def removeSavedPassword(self, origin, username):
+        ok = self.passwords.remove(origin, username)
+        self._password_sites = None
+        self.passwordsChanged.emit()
+        return ok
+
+    @Slot(str, str)
+    def copySavedPassword(self, origin, username):
+        secret = self.passwords.password(origin, username)
+        if secret is None:
+            self.toastRequested.emit("That password couldn't be read from the keyring.")
+            return
+        QGuiApplication.clipboard().setText(secret)
+        self.toastRequested.emit("Password copied.")
 
     @Slot(str, result=bool)
     def createProfile(self, name):

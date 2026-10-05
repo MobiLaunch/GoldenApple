@@ -6,6 +6,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import signal
 import sys
 
 from PySide6.QtCore import QCoreApplication, QLockFile, QStandardPaths, QTimer, QUrl
@@ -162,7 +163,25 @@ def main():
         QTimer.singleShot(test_exit_ms, app.quit)
 
 
+    # Log out, shutdown and `kill` end Web with a signal. Python would stop
+    # on the spot, before the open tabs and the last cookies are written;
+    # quit through Qt instead, as closing the window does. The timer lets
+    # Python run its signal handlers while Qt's loop is waiting.
+    for sig in (signal.SIGTERM, signal.SIGHUP, signal.SIGINT):
+        signal.signal(sig, lambda *_: app.quit())
+    heartbeat = QTimer()
+    heartbeat.start(250)
+    heartbeat.timeout.connect(lambda: None)
+
     code = app.exec()
+    # Close the window and its pages, then the profile, while the application
+    # still exists: Chromium writes the cookie store and site data to disk as
+    # the profile goes. Left to Python's exit, the order is up to chance.
+    heartbeat.stop()
+    for window in engine.rootObjects():
+        window.close()
+    del engine
+    app.processEvents()
     if lock is not None:
         lock.unlock()
     return code
