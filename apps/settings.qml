@@ -207,6 +207,21 @@ ShellRoot {
                     shown = app.current
                 }
                 Component.onCompleted: load()
+                onStatusChanged: {
+                    if (status === Loader.Error)
+                        console.warn("CitronOS Settings: failed to load pane", app.current, source)
+                }
+            }
+            Text {
+                // A QML import or component failure must not produce a silent
+                // empty Settings window (particularly after an update).
+                anchors.centerIn: loader
+                width: parent.width - 48
+                visible: loader.status === Loader.Error
+                wrapMode: Text.Wrap
+                horizontalAlignment: Text.AlignHCenter
+                color: Theme.secondaryLabel
+                text: "The " + (app.page?.title ?? "selected") + " settings pane couldn't load. Close and reopen Settings, or check the Quickshell log."
             }
             Connections {
                 target: app
