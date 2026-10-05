@@ -156,6 +156,7 @@ Scope {
     IpcHandler {
         target: "screenshot"
         function toolbar(): void { root.open("toolbar", false) }
+        function record(): void { root.choice = "recordSelection"; root.open("toolbar", false) }
         function area(): void { root.open("area", false) }
         function areaToClipboard(): void { root.open("area", true) }
         function window(): void { root.open("window", false) }

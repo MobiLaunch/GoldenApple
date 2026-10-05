@@ -279,3 +279,7 @@ jobs:
         run: python tests/app-store.py
         env:
           QT_QPA_PLATFORM: offscreen
+      - name: Control Center draws the macOS 26 grid
+        run: python tests/control-center.py
+        env:
+          QT_QPA_PLATFORM: offscreen

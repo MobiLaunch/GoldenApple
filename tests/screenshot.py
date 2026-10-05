@@ -48,7 +48,7 @@ for key, call in [("$mod SHIFT, 3", "screen"), ("$mod SHIFT, 4", "area"), ("$mod
                   ("$mod CTRL SHIFT, 3", "screenToClipboard"), ("$mod CTRL SHIFT, 4", "areaToClipboard")]:
     check(f"bind = {key}, exec, $qs screenshot {call}" in conf, f"{key} → screenshot {call}")
 check("slurp" not in conf, "the old slurp bindings are gone")
-check("ipc call screenshot toolbar" in (ROOT / "shell/ControlCenter.qml").read_text(), "Control Center's Capture opens the toolbar")
+check('cc.ipc("screenshot toolbar")' in (ROOT / "shell/ControlCenter.qml").read_text(), "Control Center's Screenshot control opens the toolbar")
 menubar = (ROOT / "shell/MenuBar.qml").read_text()
 check("bar.screenshots?.recording" in menubar and "stopRecording()" in menubar, "the menu bar stops a recording")
 packages = (ROOT / "distro/archiso/packages.x86_64").read_text().split()

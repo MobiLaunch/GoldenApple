@@ -1,5 +1,6 @@
-// Big Sur-inspired Control Center: one readable translucent panel with grouped
-// connectivity, Focus/display controls, brightness/sound and media.
+// Control Center, as in macOS 26: separate glass controls on a four-column
+// grid (capsules, circles, Now Playing, the Display and Sound sliders), Edit
+// Controls to add more, and each module's detail view in the same place.
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
@@ -67,14 +68,14 @@ PanelWindow {
     // layer surface on every frame of that animation made the Wi-Fi and
     // Bluetooth views stutter. Only the panel takes input; HyprGlass draws the
     // glass from the panel's painted shape, not the surface's.
-    implicitHeight: Math.min(760, (screen ? screen.height : 800) - 16)
+    implicitHeight: (screen ? screen.height : 800) - 16
     mask: Region { item: panel }
     exclusionMode: ExclusionMode.Ignore
     color: "transparent"
     WlrLayershell.namespace: "gg-controlcenter"
     WlrLayershell.layer: WlrLayer.Overlay
 
-    onOpenChanged: if (!open) { closeTimer.restart(); detail = "" }
+    onOpenChanged: if (!open) { closeTimer.restart(); detail = ""; editing = false }
     Timer { id: closeTimer; interval: 180 }
     HyprlandFocusGrab { windows: [cc]; active: cc.open; onCleared: cc.open = false }
     PwObjectTracker { objects: [cc.sink] }
@@ -138,212 +139,235 @@ PanelWindow {
         }
     }
 
-    component GroupCard: Rectangle {
-        id: card
-        property bool pressed: false
-        // A module is a fill on the panel's glass, not glass on glass; its
-        // corners are concentric with the panel's (25 - 12 padding ≈ 17).
-        radius: 17
-        color: Theme.dark ? "#1affffff" : "#8cffffff"
-        border { width: 0.5; color: Theme.dark ? "#1affffff" : "#0f000000" }
-        scale: pressed && !Prefs.reduceMotion ? 0.985 : 1
-        Behavior on scale { NumberAnimation { duration: Prefs.reduceMotion ? 1 : 85; easing.type: Easing.OutCubic } }
+    // ---------------------------------------------------------- the grid
+    // As in macOS 26: no container, every control its own piece of glass on a
+    // four-column grid — capsules (Wi-Fi, Bluetooth, AirDrop, Focus), circles
+    // (one toggle each), a square for what's playing, wide tiles for the
+    // sliders — floating over the blurred desktop.
+    readonly property real unit: 68
+    readonly property real gap: 12
+    function span(n) { return n * unit + (n - 1) * gap }
+
+    // Optional controls, chosen with Edit Controls (desktop.json controlCenter.extras).
+    readonly property var extraCatalog: [
+        { id: "screenshot", name: "Screenshot", icon: "screenshot", run: () => cc.ipc("screenshot toolbar") },
+        { id: "record", name: "Screen Recording", icon: "record-screen", run: () => cc.ipc("screenshot record") },
+        { id: "calculator", name: "Calculator", icon: "calculator", run: () => cc.launch("org.goldengate.Calculator") },
+        { id: "timer", name: "Timer", icon: "timer", run: () => cc.launch("org.goldengate.Clock") },
+        { id: "notes", name: "Quick Note", icon: "compose", run: () => cc.launch("org.goldengate.Notes") },
+        { id: "lock", name: "Lock Screen", icon: "lock", run: () => { cc.open = false; cc.run("loginctl lock-session") } }
+    ]
+    readonly property var extras: (Array.isArray(Prefs.data.controlCenter?.extras) ? Prefs.data.controlCenter.extras : ["screenshot"])
+        .map((id) => extraCatalog.find((e) => e.id === id)).filter((e) => !!e)
+    property bool editing: false
+    function setExtras(ids) {
+        Prefs.data = Object.assign({}, Prefs.data, { controlCenter: Object.assign({}, Prefs.data.controlCenter ?? {}, { extras: ids }) })
+        Quickshell.execDetached(["gg-pref", "controlCenter.extras", JSON.stringify(ids)])
+    }
+    function toggleExtra(id) {
+        const ids = extras.map((e) => e.id)
+        setExtras(ids.includes(id) ? ids.filter((x) => x !== id) : ids.concat([id]))
+    }
+    function ipc(call) { cc.open = false; cc.run("qs -c golden-gate ipc call " + call) }
+    function launch(id) {
+        cc.open = false
+        const entry = DesktopEntries.byId(id)
+        if (entry) entry.execute()
     }
 
-    component RoundToggle: Rectangle {
-        id: toggle
+    // A piece of the grid: glass, round at the ends.
+    component Module: Glass {
+        radius: Math.min(width, height) / 2
+        tint: Theme.dark ? Qt.rgba(1, 1, 1, 0.11) : Qt.rgba(1, 1, 1, 0.6)
+    }
+
+    // The round icon at the start of a capsule: blue while it's on.
+    component IconDisc: Rectangle {
+        id: disc
         property string icon
         property bool on: false
-        signal activated()
-        width: 38; height: 38; radius: 19
-        color: on ? Theme.accent : (Theme.dark ? "#28ffffff" : "#16000000")
-        border { width: on ? 0 : 0.5; color: Theme.dark ? "#24ffffff" : "#13000000" }
-        scale: area.pressed && !Prefs.reduceMotion ? 0.91 : area.containsMouse && !Prefs.reduceMotion ? 1.035 : 1
-        Behavior on scale { NumberAnimation { duration: Prefs.reduceMotion ? 1 : 80; easing.type: Easing.OutCubic } }
-        Symbol { anchors.centerIn: parent; name: toggle.icon; size: 19; tone: toggle.on ? "white" : "auto" }
-        MouseArea { id: area; anchors.fill: parent; hoverEnabled: true; onClicked: toggle.activated() }
+        width: 42; height: 42; radius: 21
+        color: on ? Theme.accent : (Theme.dark ? "#2effffff" : "#17000000")
+        Behavior on color { ColorAnimation { duration: Prefs.reduceMotion ? 1 : 140 } }
+        Symbol { anchors.centerIn: parent; name: disc.icon; size: 19; tone: disc.on ? "white" : "auto" }
     }
 
-    component ConnectivityRow: Item {
-        id: row
+    // Wi-Fi, Bluetooth, AirDrop, Focus: its circle switches it; the rest of the
+    // capsule opens its detail (or does its one thing).
+    component Capsule: Module {
+        id: capsule
         property string icon
         property string title
         property string subtitle
         property bool on: false
         property var toggleAction: null
         signal activated()
-        implicitHeight: 48
-
-        RoundToggle {
-            id: connectivityToggle
-            anchors { left: parent.left; verticalCenter: parent.verticalCenter }
-            icon: row.icon
-            on: row.on
-            onActivated: {
-                if (row.toggleAction) row.toggleAction()
-                else row.activated()
-            }
-        }
+        width: cc.span(2); height: cc.unit
+        pressed: capTap.pressed
+        hovered: capTap.containsMouse
+        IconDisc { id: capDisc; x: 13; anchors.verticalCenter: parent.verticalCenter; icon: capsule.icon; on: capsule.on }
         Column {
-            anchors {
-                left: connectivityToggle.right; leftMargin: 10
-                right: chevron.left; rightMargin: 6
-                verticalCenter: parent.verticalCenter
-            }
-            spacing: 0
+            anchors { left: capDisc.right; leftMargin: 10; right: parent.right; rightMargin: 14; verticalCenter: parent.verticalCenter }
             Text {
                 width: parent.width
-                text: row.title
+                text: capsule.title
                 color: Theme.label
                 elide: Text.ElideRight
                 font { family: Theme.fontUi; pixelSize: 13; weight: Font.DemiBold }
             }
             Text {
                 width: parent.width
-                text: row.subtitle
+                visible: !!capsule.subtitle
+                text: capsule.subtitle
                 color: Theme.secondaryLabel
                 elide: Text.ElideRight
-                font { family: Theme.fontUi; pixelSize: 10 }
+                font { family: Theme.fontUi; pixelSize: 11 }
             }
         }
-        Symbol {
-            id: chevron
-            anchors { right: parent.right; verticalCenter: parent.verticalCenter }
-            name: "chevron-right"
-            size: 11
-            tone: "gray"
-        }
         MouseArea {
-            anchors { left: connectivityToggle.right; right: parent.right; top: parent.top; bottom: parent.bottom }
+            id: capTap
+            anchors.fill: parent
             hoverEnabled: true
-            onClicked: row.activated()
+            onClicked: (m) => {
+                const onDisc = m.x < capDisc.x + capDisc.width + 4
+                if (onDisc && capsule.toggleAction) capsule.toggleAction()
+                else capsule.activated()
+            }
         }
+        Accessible.role: Accessible.Button
+        Accessible.name: capsule.title
     }
 
-    component ActionTile: GroupCard {
-        id: tile
+    // One toggle, one circle: white while it's on (the accent in light mode),
+    // and its name above it while the pointer rests on it.
+    component Circle: Module {
+        id: circle
         property string icon
-        property string title
-        property string subtitle
+        property string name
         property bool on: false
+        property string badge: ""            // Edit Controls: "+" or "−"
         signal activated()
-        implicitHeight: 78
-        pressed: tap.pressed
-
-        RoundToggle {
-            anchors { left: parent.left; leftMargin: 11; top: parent.top; topMargin: 10 }
-            width: 30; height: 30; radius: 15
-            icon: tile.icon
-            on: tile.on
-            onActivated: tile.activated()
+        width: cc.unit; height: cc.unit
+        pressed: circleTap.pressed
+        hovered: circleTap.containsMouse
+        Rectangle {
+            anchors.fill: parent
+            radius: width / 2
+            color: Theme.dark ? "#ffffff" : Theme.accent
+            opacity: circle.on ? 1 : 0
+            Behavior on opacity { NumberAnimation { duration: Prefs.reduceMotion ? 1 : 140 } }
         }
-        Text {
-            anchors { left: parent.left; leftMargin: 11; right: parent.right; rightMargin: 8; bottom: subtitleText.visible ? subtitleText.top : parent.bottom; bottomMargin: subtitleText.visible ? 1 : 9 }
-            text: tile.title
-            color: Theme.label
-            elide: Text.ElideRight
-            font { family: Theme.fontUi; pixelSize: 12; weight: Font.DemiBold }
+        Symbol {
+            anchors.centerIn: parent
+            name: circle.icon; size: 22
+            tone: circle.on ? (Theme.dark ? "dark" : "white") : "auto"
         }
-        Text {
-            id: subtitleText
-            visible: tile.subtitle !== ""
-            anchors { left: parent.left; leftMargin: 11; right: parent.right; rightMargin: 8; bottom: parent.bottom; bottomMargin: 8 }
-            text: tile.subtitle
-            color: Theme.secondaryLabel
-            elide: Text.ElideRight
-            font { family: Theme.fontUi; pixelSize: 9 }
+        Rectangle {
+            visible: !!circle.badge
+            x: -2; y: -2
+            width: 22; height: 22; radius: 11
+            color: Theme.dark ? "#5a5a5e" : "#8e8e93"
+            border { width: 1.5; color: Theme.dark ? "#1c1c1e" : "#ffffff" }
+            Text { anchors.centerIn: parent; anchors.verticalCenterOffset: -1; text: circle.badge; color: "#ffffff"; font { family: Theme.fontUi; pixelSize: 15; weight: Font.Bold } }
         }
-        MouseArea { id: tap; anchors.fill: parent; hoverEnabled: true; onClicked: tile.activated() }
+        property bool showHint: false
+        MouseArea {
+            id: circleTap
+            anchors.fill: parent
+            hoverEnabled: true
+            onClicked: { circle.showHint = false; circle.activated() }
+            onContainsMouseChanged: { circle.showHint = false; if (containsMouse) hint.restart(); else hint.stop() }
+        }
+        Timer { id: hint; interval: 650; onTriggered: circle.showHint = true }
+        Rectangle {
+            visible: circle.showHint && !!circle.name && !cc.editing
+            anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.top; bottomMargin: 6 }
+            width: hintText.implicitWidth + 14; height: 22; radius: 11
+            color: Theme.dark ? "#e62c2c2e" : "#f2ffffff"
+            border { width: 0.5; color: Theme.separator }
+            z: 10
+            Text { id: hintText; anchors.centerIn: parent; text: circle.name; color: Theme.label; font { family: Theme.fontUi; pixelSize: 11 } }
+        }
+        Accessible.role: Accessible.Button
+        Accessible.name: circle.name
     }
 
-    component BigSurSlider: GroupCard {
-        id: slider
+    // Display and Sound: a wide tile, its name, and a thin slider between a
+    // small and a large glyph; the track thickens while you drag it.
+    component SliderTile: Module {
+        id: tile
         property string title
         property string lowIcon
         property string highIcon
         property real value: 0.5
-        property bool expandable: false     // a button to the module's detail view
+        property bool expandable: false      // Sound: its outputs, from the AirPlay button
         signal moved(real value)
         signal expand()
-        implicitHeight: 72
-
-        function setFromX(x) {
-            if (track.width <= 0) return
-            moved(Math.max(0, Math.min(1, x / track.width)))
-        }
-
+        width: cc.span(4); height: cc.unit + 6
+        radius: 30
+        function setFromX(x) { if (track.width > 0) moved(Math.max(0, Math.min(1, x / track.width))) }
         Text {
-            anchors { left: parent.left; leftMargin: 13; top: parent.top; topMargin: 9 }
-            text: slider.title
+            anchors { left: parent.left; leftMargin: 18; top: parent.top; topMargin: 11 }
+            text: tile.title
             color: Theme.label
-            font { family: Theme.fontUi; pixelSize: 12; weight: Font.DemiBold }
+            font { family: Theme.fontUi; pixelSize: 13; weight: Font.DemiBold }
         }
-        // Sound's button to its output list: a round glass-fill button, as on the Mac.
-        Rectangle {
-            visible: slider.expandable
-            anchors { right: parent.right; rightMargin: 10; top: parent.top; topMargin: 7 }
-            width: 22; height: 22; radius: 11
-            color: expandArea.pressed ? Theme.selection : expandArea.containsMouse ? (Theme.dark ? "#33ffffff" : "#1f000000") : Theme.fill
-            Symbol { anchors.centerIn: parent; name: "chevron-right"; size: 9; tone: "auto"; opacity: 0.7 }
-            MouseArea { id: expandArea; anchors.fill: parent; hoverEnabled: true; onClicked: slider.expand() }
-            Accessible.role: Accessible.Button
-            Accessible.name: slider.title + " Output"
+        Symbol {
+            id: low
+            anchors { left: parent.left; leftMargin: 16; verticalCenter: track.verticalCenter }
+            name: tile.lowIcon; size: 14; tone: "auto"
         }
-        // A thick capsule, filled white up to the value, with the low glyph
-        // inside the fill and the fill's end as the knob (macOS Control Center).
         Item {
             id: track
-            anchors { left: parent.left; right: parent.right; bottom: parent.bottom; leftMargin: 12; rightMargin: 12; bottomMargin: 12 }
-            height: 22
-            readonly property real level: Math.max(0, Math.min(1, slider.value))
+            anchors { left: low.right; leftMargin: 10; right: high.left; rightMargin: 10; bottom: parent.bottom; bottomMargin: 19 }
+            height: drag.pressed ? 10 : 6
+            Behavior on height { NumberAnimation { duration: Prefs.reduceMotion ? 1 : 120; easing.type: Easing.OutCubic } }
+            readonly property real level: Math.max(0, Math.min(1, tile.value))
+            Rectangle { anchors.fill: parent; radius: height / 2; color: Theme.dark ? "#3dffffff" : "#24000000" }
             Rectangle {
-                anchors.fill: parent
-                radius: height / 2
-                color: Theme.dark ? "#2effffff" : "#1f000000"
-            }
-            Rectangle {
-                id: fill
-                height: parent.height
-                width: Math.max(height, parent.width * track.level)
+                width: Math.max(parent.height, parent.width * track.level); height: parent.height
                 radius: height / 2
                 color: "#ffffff"
                 border { width: Theme.dark ? 0 : 0.5; color: "#1f000000" }
                 Behavior on width { enabled: !drag.pressed && !Prefs.reduceMotion; NumberAnimation { duration: 90; easing.type: Easing.OutCubic } }
             }
-            // The knob: the fill's round end, lifted a little.
-            Rectangle {
-                width: parent.height; height: parent.height; radius: height / 2
-                x: fill.width - width
-                color: "#ffffff"
-                border { width: 0.5; color: "#33000000" }
-                scale: drag.pressed && !Prefs.reduceMotion ? 1.08 : 1
-                Behavior on scale { NumberAnimation { duration: 90 } }
-            }
-            Symbol {
-                anchors { left: parent.left; leftMargin: 6; verticalCenter: parent.verticalCenter }
-                name: slider.lowIcon; size: 12; tone: "dark"; opacity: 0.55
-            }
             MouseArea {
                 id: drag
-                anchors { fill: parent; topMargin: -6; bottomMargin: -6 }
-                hoverEnabled: true
-                onPressed: mouse => slider.setFromX(mouse.x)
-                onPositionChanged: mouse => { if (pressed) slider.setFromX(mouse.x) }
+                anchors { fill: parent; topMargin: -14; bottomMargin: -14 }
+                onPressed: (m) => tile.setFromX(m.x)
+                onPositionChanged: (m) => { if (pressed) tile.setFromX(m.x) }
             }
+            Accessible.role: Accessible.Slider
+            Accessible.name: tile.title
+        }
+        Symbol {
+            id: high
+            anchors { right: outputs.visible ? outputs.left : parent.right; rightMargin: outputs.visible ? 10 : 16; verticalCenter: track.verticalCenter }
+            name: tile.highIcon; size: 17; tone: "auto"
+        }
+        Rectangle {
+            id: outputs
+            visible: tile.expandable
+            anchors { right: parent.right; rightMargin: 12; verticalCenter: track.verticalCenter }
+            width: 32; height: 32; radius: 16
+            color: outArea.pressed ? (Theme.dark ? "#4dffffff" : "#33000000") : (Theme.dark ? "#2effffff" : "#17000000")
+            Symbol { anchors.centerIn: parent; name: "airplay"; size: 15; tone: "auto" }
+            MouseArea { id: outArea; anchors.fill: parent; onClicked: tile.expand() }
+            Accessible.role: Accessible.Button
+            Accessible.name: tile.title + " Output"
         }
     }
 
-    // The Dock's glass: smoked and clear enough to show the blurred desktop,
-    // where the regular panel material read as frosted milk. Everything with
-    // text sits on a module card, so it stays legible over any wallpaper.
+    // A blur behind the controls, barely tinted: the controls are the glass.
     Glass {
         id: panel
-        role: "dock"
         anchors { top: parent.top; right: parent.right; topMargin: 24 }
-        width: 344
-        height: (cc.detail ? detailView.implicitHeight : content.implicitHeight) + 24
+        width: cc.span(4) + 28
+        height: (cc.detail ? detailView.implicitHeight : content.implicitHeight) + 28
         Behavior on height { enabled: !Prefs.reduceMotion; Spring { spring: Theme.snappy } }
-        radius: 25
+        radius: 36
+        tint: Theme.dark ? "#2e000000" : "#1affffff"
+        rim: "transparent"; rimLow: "transparent"; shine: "transparent"; edge: "transparent"; lens: 0
         opacity: cc.open ? 1 : 0
         scale: cc.open || Prefs.reduceMotion ? 1 : 0.965
         transformOrigin: Item.TopRight
@@ -351,9 +375,8 @@ PanelWindow {
         Behavior on scale { enabled: !Prefs.reduceMotion; NumberAnimation { duration: 170; easing.type: Easing.OutCubic } }
     }
 
-    // The module grid and a module's detail view share the panel: the grid
-    // slides out to the left as the detail slides in from the right, both
-    // clipped to the glass while its height follows.
+    // The grid and a module's detail view share the panel: the grid slides
+    // out to the left as the detail slides in from the right.
     Item {
     id: stage
     z: 2
@@ -362,10 +385,11 @@ PanelWindow {
     scale: panel.scale
     transformOrigin: Item.TopRight
 
-    ColumnLayout {
+    Column {
         id: content
-        anchors { top: parent.top; left: parent.left; right: parent.right; topMargin: 12; leftMargin: 12; rightMargin: 12 }
-        spacing: 9
+        x: 14; y: 14
+        width: cc.span(4)
+        spacing: cc.gap
         opacity: cc.detail ? 0 : panel.opacity
         visible: opacity > 0
         Behavior on opacity { NumberAnimation { duration: Prefs.reduceMotion ? 1 : 160; easing.type: Easing.OutCubic } }
@@ -374,166 +398,102 @@ PanelWindow {
             Behavior on x { NumberAnimation { duration: 260; easing.type: Easing.OutCubic } }
         }
 
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: 9
-
-            GroupCard {
-                Layout.fillWidth: true
-                Layout.minimumWidth: 160
-                Layout.preferredHeight: 164
-                Column {
-                    anchors { fill: parent; margins: 11 }
-                    spacing: 1
-                    ConnectivityRow {
-                        width: parent.width
-                        icon: "wifi"; title: "Wi-Fi"
-                        subtitle: cc.wifiOn ? (cc.ssid || "Not Connected") : "Off"
-                        on: cc.wifiOn
-                        toggleAction: () => {
-                            cc.wifiOn = !cc.wifiOn
-                            Quickshell.execDetached(["nmcli", "radio", "wifi", cc.wifiOn ? "on" : "off"])
-                        }
-                        onActivated: cc.showDetail("wifi")
+        // Wi-Fi and Bluetooth | what's playing
+        Row {
+            spacing: cc.gap
+            Column {
+                spacing: cc.gap
+                Capsule {
+                    icon: "wifi"; title: "Wi-Fi"
+                    subtitle: cc.wifiOn ? (cc.ssid || "Not Connected") : "Off"
+                    on: cc.wifiOn
+                    toggleAction: () => {
+                        cc.wifiOn = !cc.wifiOn
+                        Quickshell.execDetached(["nmcli", "radio", "wifi", cc.wifiOn ? "on" : "off"])
                     }
-                    Rectangle { width: parent.width - 48; x: 48; height: 0.5; color: Theme.separator }
-                    ConnectivityRow {
-                        width: parent.width
-                        icon: "bluetooth"; title: "Bluetooth"
-                        subtitle: Bluetooth.defaultAdapter?.enabled ? "On" : "Off"
-                        on: Bluetooth.defaultAdapter?.enabled ?? false
-                        toggleAction: () => {
-                            const enabled = !(Bluetooth.defaultAdapter?.enabled ?? false)
-                            Quickshell.execDetached(["bluetoothctl", "power", enabled ? "on" : "off"])
-                        }
-                        onActivated: cc.showDetail("bluetooth")
-                    }
-                    Rectangle { width: parent.width - 48; x: 48; height: 0.5; color: Theme.separator }
-                    // AirDrop: the circle turns receiving on and off; the row
-                    // opens the AirDrop window.
-                    ConnectivityRow {
-                        width: parent.width
-                        icon: "broadcast"; title: "AirDrop"
-                        subtitle: cc.airdropOn ? "Everyone" : "Receiving Off"
-                        on: cc.airdropOn
-                        toggleAction: () => {
-                            cc.airdropOn = !cc.airdropOn
-                            Quickshell.execDetached(["gg-airdrop", "--set", cc.airdropOn ? "everyone" : "off"])
-                        }
-                        onActivated: { cc.open = false; Quickshell.execDetached(["gg-airdrop"]) }
-                    }
+                    onActivated: cc.showDetail("wifi")
+                }
+                Capsule {
+                    icon: "bluetooth"; title: "Bluetooth"
+                    subtitle: Bluetooth.defaultAdapter?.enabled ? "On" : "Off"
+                    on: Bluetooth.defaultAdapter?.enabled ?? false
+                    toggleAction: () => Quickshell.execDetached(["bluetoothctl", "power", (Bluetooth.defaultAdapter?.enabled ?? false) ? "off" : "on"])
+                    onActivated: cc.showDetail("bluetooth")
                 }
             }
-
-            // A fixed column: nested layouts fill by default, and on some Qt
-            // versions that took all the width from the connectivity card.
-            ColumnLayout {
-                Layout.fillWidth: false
-                Layout.preferredWidth: 106
-                Layout.maximumWidth: 106
-                spacing: 8
-                ActionTile {
-                    Layout.fillWidth: true
-                    icon: "moon"; title: "Focus"; subtitle: cc.notifications?.dnd ? "On" : ""
-                    on: cc.notifications?.dnd ?? false
-                    onActivated: Quickshell.execDetached(["gg-pref", "focus.dnd", (cc.notifications?.dnd ?? false) ? "false" : "true"])
-                }
-                ActionTile {
-                    Layout.fillWidth: true
-                    icon: "mirror"; title: "Screen"; subtitle: cc.airplayOn ? "AirPlay On" : "Mirroring"; on: cc.airplayOn
-                    onActivated: cc.showDetail("mirroring")
-                }
-            }
-        }
-
-        BigSurSlider {
-            Layout.fillWidth: true
-            title: "Display"; lowIcon: "sun"; highIcon: "sun-max"; value: cc.brightness
-            onMoved: value => {
-                cc.brightness = value
-                cc.run("brightnessctl -q set " + Math.round(Math.max(0.02, value) * 100) + "%")
-                Quickshell.execDetached(["gg-pref", "display.brightness", String(value)])
-            }
-        }
-
-        BigSurSlider {
-            Layout.fillWidth: true
-            title: "Sound"; lowIcon: "speaker"; highIcon: "speaker-wave"
-            expandable: true
-            onExpand: cc.showDetail("sound")
-            value: cc.sink?.audio?.volume ?? 0
-            onMoved: value => { if (cc.sink?.audio) cc.sink.audio.volume = value }
-        }
-
-        GroupCard {
-            Layout.fillWidth: true
-            Layout.preferredHeight: 92
-            RowLayout {
-                anchors { fill: parent; margins: 11 }
-                spacing: 11
+            Module {
+                id: nowPlaying
+                width: cc.span(2); height: cc.span(2)
+                radius: 32
                 Rectangle {
-                    Layout.preferredWidth: 58; Layout.preferredHeight: 58
-                    radius: 12; clip: true
+                    id: art
+                    x: 16; y: 16
+                    width: 44; height: 44; radius: 9
+                    clip: true
                     color: "#7c7ce7"
-                    Image { anchors.fill: parent; source: cc.player?.trackArtUrl ?? ""; fillMode: Image.PreserveAspectCrop }
-                    Symbol { anchors.centerIn: parent; visible: !(cc.player?.trackArtUrl); name: "music"; size: 24; tone: "white" }
+                    Image { anchors.fill: parent; source: cc.player?.trackArtUrl ?? ""; fillMode: Image.PreserveAspectCrop; asynchronous: true }
+                    Symbol { anchors.centerIn: parent; visible: !(cc.player?.trackArtUrl); name: "music"; size: 22; tone: "white" }
                 }
-                ColumnLayout {
-                    Layout.fillWidth: true
-                    spacing: 1
+                Column {
+                    anchors { left: parent.left; right: parent.right; top: art.bottom; leftMargin: 16; rightMargin: 14; topMargin: 8 }
                     Text {
-                        Layout.fillWidth: true
+                        width: parent.width
                         text: cc.player?.trackTitle || "Not Playing"
                         color: Theme.label
                         elide: Text.ElideRight
                         font { family: Theme.fontUi; pixelSize: 13; weight: Font.DemiBold }
                     }
                     Text {
-                        Layout.fillWidth: true
-                        text: cc.player?.trackArtist || "Media"
+                        width: parent.width
+                        text: cc.player ? [cc.player.trackArtist, cc.player.trackAlbum].filter((x) => !!x).join(" – ") || cc.player.identity : "Music"
                         color: Theme.secondaryLabel
                         elide: Text.ElideRight
-                        font { family: Theme.fontUi; pixelSize: 10 }
+                        font { family: Theme.fontUi; pixelSize: 11 }
                     }
-                    Item { Layout.preferredHeight: 4 }
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: 4
-                        Repeater {
-                            model: [
-                                ["backward", () => cc.player?.previous()],
-                                [cc.player?.isPlaying ? "pause" : "play", () => cc.player?.togglePlaying()],
-                                ["forward", () => cc.player?.next()]
-                            ]
-                            delegate: Rectangle {
-                                required property var modelData
-                                Layout.preferredWidth: 32; Layout.preferredHeight: 28
-                                radius: 8
-                                color: mediaArea.containsMouse ? (Theme.dark ? "#18ffffff" : "#0e000000") : "transparent"
-                                Symbol { anchors.centerIn: parent; name: modelData[0]; size: 17; tone: "auto" }
-                                MouseArea { id: mediaArea; anchors.fill: parent; hoverEnabled: true; onClicked: modelData[1]() }
-                            }
+                }
+                Row {
+                    anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: 10 }
+                    spacing: 6
+                    Repeater {
+                        model: [
+                            ["backward", () => cc.player?.previous(), 20],
+                            [cc.player?.isPlaying ? "pause" : "play", () => cc.player ? cc.player.togglePlaying() : cc.launch("org.goldengate.Music"), 24],
+                            ["forward", () => cc.player?.next(), 20]
+                        ]
+                        delegate: Rectangle {
+                            required property var modelData
+                            width: 38; height: 34; radius: 17
+                            color: mediaArea.pressed ? (Theme.dark ? "#33ffffff" : "#1f000000") : mediaArea.containsMouse ? (Theme.dark ? "#1affffff" : "#0f000000") : "transparent"
+                            Symbol { anchors.centerIn: parent; name: modelData[0]; size: modelData[2]; tone: "auto" }
+                            MouseArea { id: mediaArea; anchors.fill: parent; hoverEnabled: true; onClicked: modelData[1]() }
                         }
                     }
                 }
             }
         }
 
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: 8
-            ActionTile {
-                Layout.fillWidth: true; Layout.preferredHeight: 78
-                icon: "sun"; title: "Night Shift"; subtitle: cc.nightShift ? "On" : ""; on: cc.nightShift
-                onActivated: {
-                    const enabled = !cc.nightShift
-                    Quickshell.execDetached(["gg-pref", "display.nightShift", enabled ? "true" : "false"])
-                    cc.run(enabled ? "hyprsunset -t " + Prefs.displayWarmth : "pkill -x hyprsunset")
+        // AirDrop | Mission Control | Screen Mirroring
+        Row {
+            spacing: cc.gap
+            Capsule {
+                icon: "broadcast"; title: "AirDrop"
+                subtitle: cc.airdropOn ? "Everyone" : "Receiving Off"
+                on: cc.airdropOn
+                toggleAction: () => {
+                    cc.airdropOn = !cc.airdropOn
+                    Quickshell.execDetached(["gg-airdrop", "--set", cc.airdropOn ? "everyone" : "off"])
                 }
+                onActivated: { cc.open = false; Quickshell.execDetached(["gg-airdrop"]) }
             }
-            ActionTile {
-                Layout.fillWidth: true; Layout.preferredHeight: 78
-                icon: "contrast"; title: "Appearance"; subtitle: Theme.dark ? "Dark" : "Light"; on: Theme.dark
+            Circle { icon: "stage"; name: "Mission Control"; onActivated: cc.ipc("missioncontrol toggle") }
+            Circle { icon: "mirror"; name: "Screen Mirroring"; on: cc.airplayOn; onActivated: cc.showDetail("mirroring") }
+        }
+
+        // Appearance | Night Shift | Focus
+        Row {
+            spacing: cc.gap
+            Circle {
+                icon: "contrast"; name: Theme.dark ? "Dark Mode" : "Light Mode"; on: Theme.dark
                 onActivated: {
                     Theme.dark = !Theme.dark
                     cc.run("gsettings set org.gnome.desktop.interface color-scheme " + (Theme.dark ? "prefer-dark" : "default"))
@@ -542,25 +502,101 @@ PanelWindow {
                         "sh", Theme.dark ? "dark" : "light"])
                 }
             }
-            ActionTile {
-                Layout.fillWidth: true; Layout.preferredHeight: 78
-                icon: "screenshot"; title: "Capture"; subtitle: ""
+            Circle {
+                icon: "sun"; name: "Night Shift"; on: cc.nightShift
                 onActivated: {
-                    cc.open = false
-                    cc.run("qs -c golden-gate ipc call screenshot toolbar")
+                    const enabled = !cc.nightShift
+                    Quickshell.execDetached(["gg-pref", "display.nightShift", enabled ? "true" : "false"])
+                    cc.run(enabled ? "hyprsunset -t " + Prefs.displayWarmth : "pkill -x hyprsunset")
                 }
+            }
+            Capsule {
+                icon: "moon"; title: "Focus"; subtitle: cc.notifications?.dnd ? "Do Not Disturb" : ""
+                on: cc.notifications?.dnd ?? false
+                onActivated: Quickshell.execDetached(["gg-pref", "focus.dnd", (cc.notifications?.dnd ?? false) ? "false" : "true"])
+            }
+        }
+
+        SliderTile {
+            title: "Display"; lowIcon: "sun"; highIcon: "sun-max"; value: cc.brightness
+            onMoved: (value) => {
+                cc.brightness = value
+                cc.run("brightnessctl -q set " + Math.round(Math.max(0.02, value) * 100) + "%")
+                Quickshell.execDetached(["gg-pref", "display.brightness", String(value)])
+            }
+        }
+        SliderTile {
+            title: "Sound"; lowIcon: "speaker"; highIcon: "speaker-wave"
+            expandable: true
+            onExpand: cc.showDetail("sound")
+            value: cc.sink?.audio?.volume ?? 0
+            onMoved: (value) => { if (cc.sink?.audio) cc.sink.audio.volume = value }
+        }
+
+        // The controls you've added (Edit Controls), four to a row.
+        Grid {
+            visible: cc.extras.length > 0
+            columns: 4
+            spacing: cc.gap
+            Repeater {
+                model: cc.extras
+                Circle {
+                    required property var modelData
+                    icon: modelData.icon; name: modelData.name
+                    badge: cc.editing ? "−" : ""
+                    onActivated: cc.editing ? cc.toggleExtra(modelData.id) : modelData.run()
+                }
+            }
+        }
+
+        // Edit Controls: the ones you can add, with a + each.
+        Column {
+            visible: cc.editing
+            width: parent.width
+            spacing: 8
+            Text { text: "Add Controls"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: 11; weight: Font.DemiBold } }
+            Grid {
+                columns: 4
+                spacing: cc.gap
+                Repeater {
+                    model: cc.extraCatalog.filter((e) => !cc.extras.some((x) => x.id === e.id))
+                    Column {
+                        required property var modelData
+                        spacing: 4
+                        Circle { icon: modelData.icon; name: modelData.name; badge: "+"; onActivated: cc.toggleExtra(modelData.id) }
+                        Text {
+                            width: cc.unit
+                            horizontalAlignment: Text.AlignHCenter
+                            text: modelData.name
+                            wrapMode: Text.WordWrap
+                            maximumLineCount: 2
+                            color: Theme.secondaryLabel
+                            font { family: Theme.fontUi; pixelSize: 10 }
+                        }
+                    }
+                }
+            }
+        }
+
+        Item {
+            width: parent.width; height: 32
+            Module {
+                anchors.centerIn: parent
+                width: editLabel.implicitWidth + 30; height: 30
+                pressed: editTap.pressed
+                hovered: editTap.containsMouse
+                Text { id: editLabel; anchors.centerIn: parent; text: cc.editing ? "Done" : "Edit Controls"; color: Theme.label; font { family: Theme.fontUi; pixelSize: 12; weight: Font.Medium } }
+                MouseArea { id: editTap; anchors.fill: parent; hoverEnabled: true; onClicked: cc.editing = !cc.editing }
             }
         }
     }
 
     // The detail view's card, the same fill as the grid's modules; it follows
     // the view as it slides and fades.
-    Rectangle {
-        x: detailView.x - 4; y: detailView.y - 4
-        width: detailView.width + 8; height: detailView.height + 8
-        radius: 17
-        color: Theme.dark ? "#1affffff" : "#8cffffff"
-        border { width: 0.5; color: Theme.dark ? "#1affffff" : "#0f000000" }
+    Module {
+        x: detailView.x - 8; y: detailView.y - 6
+        width: detailView.width + 16; height: detailView.height + 12
+        radius: 28
         opacity: detailView.opacity
         visible: detailView.visible
         transform: Translate { x: detailShift.x }
@@ -569,7 +605,7 @@ PanelWindow {
     // The detail view of one module, in the same panel.
     ColumnLayout {
         id: detailView
-        anchors { top: parent.top; left: parent.left; right: parent.right; topMargin: 12; leftMargin: 12; rightMargin: 12 }
+        anchors { top: parent.top; left: parent.left; right: parent.right; topMargin: 20; leftMargin: 22; rightMargin: 22 }
         spacing: 2
         opacity: cc.detail ? panel.opacity : 0
         visible: opacity > 0
