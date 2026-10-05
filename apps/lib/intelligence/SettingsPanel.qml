@@ -52,6 +52,9 @@ Column {
                 panel.enabledSetting = result.config.enabled
                 textModel.text = result.config.textModel
                 imageModel.text = result.config.imageModel
+                voiceModel.text = result.config.voiceModel || "gemini-3.8-live"
+                const voiceIndex = voiceChooser.options.indexOf(result.config.voiceName || "Aoede")
+                voiceChooser.current = voiceIndex >= 0 ? voiceIndex : 0
             }
             if (action === "status") {
                 panel.hasKey = result.hasKey
@@ -107,12 +110,41 @@ Column {
         options: panel.models.filter(m => m.includes("image"))
         onPicked: (i) => imageModel.text = options[i]
     }
+    Text {
+        width: parent.width
+        text: "Voice conversations"
+        color: Theme.label
+        font { family: Theme.fontUi; pixelSize: 15; weight: Font.DemiBold }
+    }
+    Text {
+        width: parent.width
+        wrapMode: Text.Wrap
+        text: "Summon the Liquid Glass voice bubble with ⇧⌘Space. The microphone is only active while the bubble is open and unmuted. Audio streams to Gemini Live; Citron does not save recordings."
+        color: Theme.secondaryLabel
+        font { family: Theme.fontUi; pixelSize: 12 }
+    }
+    Text { text: "Live voice model"; color: Theme.label; font { family: Theme.fontUi; pixelSize: 12 } }
+    TextField {
+        id: voiceModel
+        width: parent.width; height: 32
+        enabled: !panel.busy && panel.serviceAvailable
+        placeholder: "gemini-3.8-live"
+    }
+    Text { text: "Spoken voice"; color: Theme.label; font { family: Theme.fontUi; pixelSize: 12 } }
+    PopUpButton {
+        id: voiceChooser
+        width: Math.min(240, parent.width)
+        menuParent: panel.menuParent
+        enabled: !panel.busy && panel.serviceAvailable
+        options: ["Aoede", "Puck", "Kore", "Charon", "Fenrir"]
+    }
     Flow {
         width: parent.width; spacing: 8
         Button {
             text: "Save Settings"; prominent: true; enabled: !panel.busy && panel.serviceAvailable
             onClicked: panel.send({ action: "configure", enabled: panel.enabledSetting, apiKey: apiKey.text,
-                                      textModel: textModel.text.trim(), imageModel: imageModel.text.trim() })
+                                      textModel: textModel.text.trim(), imageModel: imageModel.text.trim(),
+                                      voiceModel: voiceModel.text.trim(), voiceName: voiceChooser.options[voiceChooser.current] })
         }
         Button { text: "Refresh Models"; enabled: !panel.busy && panel.serviceAvailable && panel.hasKey; onClicked: panel.send({ action: "models" }) }
         Button { text: "Remove Saved Key"; enabled: !panel.busy && panel.serviceAvailable && panel.hasKey; onClicked: { panel.enabledSetting = false; panel.send({ action: "forget" }) } }
