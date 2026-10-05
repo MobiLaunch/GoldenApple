@@ -32,6 +32,9 @@ with tempfile.TemporaryDirectory() as tmp:
         ("settings-intelligence-navigation", ["app", "apps/settings.qml",
                                               "--do", "settings.open:intelligence",
                                               "--require-object", "citronSettingsPanel"]),
+        ("intelligence-preferences", ["app", "apps/intelligence.qml",
+                                      "--env", "GG_INTELLIGENCE_MODE=settings",
+                                      "--require-object", "citronSettingsPanel"]),
     ]
     for name, args in targets:
         proc = subprocess.run([sys.executable, str(PREVIEW), *args, "--wait", "300", "-o", f"{tmp}/{name}.png"],
