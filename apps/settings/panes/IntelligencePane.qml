@@ -14,44 +14,65 @@ Pane {
     headerText: "Writing, ideas and images — with Google Gemini."
 
     Process { id: appLaunch; command: ["gg-intelligence"] }
+    property string panelError: ""
+    property var settingsComponent: null
+    function reloadPanel() {
+        controls.sourceComponent = null
+        const component = Qt.createComponent(
+            Qt.resolvedUrl("../../lib/intelligence/SettingsPanel.qml"),
+            Component.PreferSynchronous)
+        settingsComponent = component
+        if (component.status === Component.Error) {
+            panelError = component.errorString()
+            console.error("Citron Intelligence SettingsPanel:", panelError)
+            return
+        }
+        panelError = ""
+        controls.sourceComponent = component
+    }
+    Component.onCompleted: reloadPanel()
 
     Loader {
         id: controls
         objectName: "citronSettingsLoader"
         width: parent.width
         height: status === Loader.Ready && item ? item.implicitHeight : 0
-        source: Qt.resolvedUrl("../../lib/intelligence/SettingsPanel.qml")
+        // The explicit component lets us surface the actual Qt errorString.
         onLoaded: {
             if (item) item.menuParent = pane.nav ? pane.nav.overlay : null
         }
         onStatusChanged: {
             if (status === Loader.Error)
-                console.warn("Citron Intelligence: could not load SettingsPanel.qml")
+                {
+                    pane.panelError = pane.settingsComponent && pane.settingsComponent.errorString
+                        ? pane.settingsComponent.errorString()
+                        : "SettingsPanel was created but could not be instantiated."
+                    console.error("Citron Intelligence SettingsPanel:", pane.panelError)
+                }
         }
     }
     Column {
         width: parent.width
         spacing: 12
-        visible: controls.status === Loader.Error
+        visible: !!pane.panelError || controls.status === Loader.Error
         Text {
             width: parent.width
             wrapMode: Text.Wrap
             color: "#ff453a"
-            text: "Citron Intelligence settings couldn't load. This is a UI component error, not a Gemini API key error."
+            text: "Citron Intelligence settings couldn't load. The QML diagnostic is shown below."
         }
         Text {
             width: parent.width
             wrapMode: Text.Wrap
             color: Theme.secondaryLabel
-            text: "Open the app separately or retry loading this pane. If it continues, check the Settings/Quickshell log."
+            text: pane.panelError || "Open the app separately or retry this pane. Check the Quickshell log for details."
         }
         Row {
             spacing: 8
             Shared.Button {
                 text: "Retry"
                 onClicked: {
-                    controls.active = false
-                    controls.active = true
+                    pane.reloadPanel()
                 }
             }
             Shared.Button {
