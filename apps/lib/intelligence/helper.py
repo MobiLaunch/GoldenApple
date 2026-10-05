@@ -24,7 +24,9 @@ import urllib.parse
 import urllib.request
 
 API = "https://generativelanguage.googleapis.com/v1beta/"
-DEFAULTS = {"enabled": False, "textModel": "gemini-3.8-flash", "imageModel": "gemini-3.1-flash-image"}
+DEFAULTS = {"enabled": False, "textModel": "gemini-3.8-flash", "imageModel": "gemini-3.1-flash-image",
+            "voiceModel": "gemini-3.8-live", "voiceName": "Aoede"}
+VOICES = ("Aoede", "Puck", "Kore", "Charon", "Fenrir")
 CONFIG = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "golden-gate/intelligence.json"
 CACHE = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache")) / "golden-gate/intelligence"
 MAX_TEXT = 60000
@@ -73,7 +75,10 @@ def config() -> dict:
             raise ValueError()
         return {"enabled": value.get("enabled") is True,
                 "textModel": model_name(value.get("textModel", DEFAULTS["textModel"])),
-                "imageModel": model_name(value.get("imageModel", DEFAULTS["imageModel"]))}
+                "imageModel": model_name(value.get("imageModel", DEFAULTS["imageModel"])),
+                "voiceModel": model_name(value.get("voiceModel", DEFAULTS["voiceModel"])),
+                "voiceName": value.get("voiceName", DEFAULTS["voiceName"]) if
+                    value.get("voiceName", DEFAULTS["voiceName"]) in VOICES else DEFAULTS["voiceName"]}
     except (OSError, ValueError, IntelligenceError):
         return dict(DEFAULTS)
 
@@ -303,7 +308,11 @@ def dispatch(args: dict) -> dict:
     if action == "configure":
         new = {"enabled": args.get("enabled") is True,
                "textModel": model_name(args.get("textModel", cfg["textModel"])),
-               "imageModel": model_name(args.get("imageModel", cfg["imageModel"]))}
+               "imageModel": model_name(args.get("imageModel", cfg["imageModel"])),
+               "voiceModel": model_name(args.get("voiceModel", cfg["voiceModel"])),
+               "voiceName": args.get("voiceName", cfg["voiceName"])}
+        if new["voiceName"] not in VOICES:
+            raise IntelligenceError("Choose a supported assistant voice.", "invalid_voice")
         key = args.get("apiKey", "")
         if key:
             key = text(key, "an API key", 256).strip()
