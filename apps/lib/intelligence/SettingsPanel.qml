@@ -1,6 +1,6 @@
 import Quickshell
 import QtQuick
-import ".." as Shared
+import ".."
 import "../theme"
 
 Column {
@@ -75,11 +75,11 @@ Column {
     }
     Row {
         spacing: 12
-        Shared.Switch { checked: panel.enabledSetting; enabled: !panel.busy && panel.serviceAvailable; onToggled: (value) => panel.enabledSetting = value }
+        Switch { checked: panel.enabledSetting; enabled: !panel.busy && panel.serviceAvailable; onToggled: (value) => panel.enabledSetting = value }
         Text { text: "Enable Citron Intelligence"; color: Theme.label; font { family: Theme.fontUi; pixelSize: 14; weight: Font.DemiBold } }
     }
     Text { text: "Gemini API key"; color: Theme.label; font { family: Theme.fontUi; pixelSize: 12; weight: Font.DemiBold } }
-    Shared.TextField {
+    TextField {
         id: apiKey
         width: parent.width; height: 34; password: true
         enabled: !panel.busy && panel.serviceAvailable
@@ -92,16 +92,16 @@ Column {
         color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: 12 }
     }
     Text { text: "Text and questions model"; color: Theme.label; font { family: Theme.fontUi; pixelSize: 12; weight: Font.DemiBold } }
-    Shared.TextField { id: textModel; width: parent.width; height: 32; enabled: !panel.busy && panel.serviceAvailable; placeholder: "Gemini text model ID" }
-    Shared.PopUpButton {
+    TextField { id: textModel; width: parent.width; height: 32; enabled: !panel.busy && panel.serviceAvailable; placeholder: "Gemini text model ID" }
+    PopUpButton {
         visible: panel.models.length > 0
         width: parent.width; menuParent: panel.menuParent
         options: panel.models.filter(m => !m.includes("image") && !m.includes("tts") && !m.includes("audio") && !m.includes("live"))
         onPicked: (i) => textModel.text = options[i]
     }
     Text { text: "Image generation and editing model"; color: Theme.label; font { family: Theme.fontUi; pixelSize: 12; weight: Font.DemiBold } }
-    Shared.TextField { id: imageModel; width: parent.width; height: 32; enabled: !panel.busy && panel.serviceAvailable; placeholder: "Gemini image model ID" }
-    Shared.PopUpButton {
+    TextField { id: imageModel; width: parent.width; height: 32; enabled: !panel.busy && panel.serviceAvailable; placeholder: "Gemini image model ID" }
+    PopUpButton {
         visible: panel.models.length > 0
         width: parent.width; menuParent: panel.menuParent
         options: panel.models.filter(m => m.includes("image"))
@@ -109,13 +109,13 @@ Column {
     }
     Flow {
         width: parent.width; spacing: 8
-        Shared.Button {
+        Button {
             text: "Save Settings"; prominent: true; enabled: !panel.busy && panel.serviceAvailable
             onClicked: panel.send({ action: "configure", enabled: panel.enabledSetting, apiKey: apiKey.text,
                                       textModel: textModel.text.trim(), imageModel: imageModel.text.trim() })
         }
-        Shared.Button { text: "Refresh Models"; enabled: !panel.busy && panel.serviceAvailable && panel.hasKey; onClicked: panel.send({ action: "models" }) }
-        Shared.Button { text: "Remove Saved Key"; enabled: !panel.busy && panel.serviceAvailable && panel.hasKey; onClicked: { panel.enabledSetting = false; panel.send({ action: "forget" }) } }
+        Button { text: "Refresh Models"; enabled: !panel.busy && panel.serviceAvailable && panel.hasKey; onClicked: panel.send({ action: "models" }) }
+        Button { text: "Remove Saved Key"; enabled: !panel.busy && panel.serviceAvailable && panel.hasKey; onClicked: { panel.enabledSetting = false; panel.send({ action: "forget" }) } }
     }
     Text {
         width: parent.width; wrapMode: Text.Wrap
@@ -129,5 +129,5 @@ Column {
         text: "Gemini requires internet access. API usage may be billed by Google, and Google's data terms apply. Model availability depends on your project."
         color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: 12 }
     }
-    Shared.Button { text: "Get a Gemini API Key"; onClicked: Qt.openUrlExternally("https://aistudio.google.com/apikey") }
+    Button { text: "Get a Gemini API Key"; onClicked: Qt.openUrlExternally("https://aistudio.google.com/apikey") }
 }
