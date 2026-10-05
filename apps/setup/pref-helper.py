@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Atomically update one nested Golden Gate desktop preference."""
+"""Atomically update one nested CitronOS desktop preference."""
 from __future__ import annotations
 import json
 import os

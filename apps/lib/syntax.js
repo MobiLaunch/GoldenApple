@@ -87,7 +87,7 @@ var THEMES = [
     theme("solarized-dark", "Solarized (Dark)", true, { plain: "#93a1a1", keyword: "#859900", string: "#2aa198",
         comment: "#586e75", number: "#d33682", type: "#b58900", attribute: "#cb4b16", preprocessor: "#cb4b16",
         declaration: "#268bd2", background: "#002b36", currentLine: "#073642", selection: "#0f4b5a", cursor: "#93a1a1", lineNumber: "#586e75" }),
-    theme("golden-gate", "Golden Gate", true, { plain: "#f2ece4", keyword: "#ff7b54", string: "#ffc56b", comment: "#8a8f9c",
+    theme("golden-gate", "CitronOS", true, { plain: "#f2ece4", keyword: "#ff7b54", string: "#ffc56b", comment: "#8a8f9c",
         number: "#c7a6ff", type: "#7fd1ff", attribute: "#ff9f7a", preprocessor: "#ffb08a", declaration: "#6fe3c1",
         background: "#1b1d26", currentLine: "#252834", selection: "#5a3a33", cursor: "#ff7b54", lineNumber: "#5e6272" }),
 ];

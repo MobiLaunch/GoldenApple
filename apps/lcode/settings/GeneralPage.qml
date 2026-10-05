@@ -8,7 +8,7 @@ Page {
 
     FormRow {
         label: "Appearance"
-        detail: "System follows Golden Gate's Light or Dark setting. Each appearance has its own editor theme (Themes)."
+        detail: "System follows CitronOS's Light or Dark setting. Each appearance has its own editor theme (Themes)."
         Segmented {
             width: 260
             options: ["System", "Light", "Dark"]

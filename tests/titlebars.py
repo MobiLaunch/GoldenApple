@@ -2,8 +2,8 @@
 """Title bars with traffic lights for apps that leave theirs to the compositor.
 
 The hyprbars patcher (distro/hyprbars/patch.py) is run on a copy of the plugin
-source's shape: it must swap hyprbars' "every window" test for Golden Gate's
-(xdg-decoration clients and X11 windows only, never Golden Gate's own), keep
+source's shape: it must swap hyprbars' "every window" test for CitronOS's
+(xdg-decoration clients and X11 windows only, never CitronOS's own), keep
 one of each button, leave a patched file alone, and refuse when upstream moved
 its anchors. Then gg-hyprglass-sync runs against a stand-in hyprctl: it loads
 the plugin and sets the macOS look (left traffic lights in their colours,

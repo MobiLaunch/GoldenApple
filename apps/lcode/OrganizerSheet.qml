@@ -1,6 +1,6 @@
 // The Organizer, after Product ▸ Archive: the archived app, and the ways to
 // share it — install it on this computer (it appears in Applications), a
-// PKGBUILD for Arch and Golden Gate, a Flatpak, or a portable archive.
+// PKGBUILD for Arch and CitronOS, a Flatpak, or a portable archive.
 import Quickshell
 import QtQuick
 import "../lib"
@@ -39,7 +39,7 @@ Sheet {
         { id: "install", symbol: "download", title: "Install on This Computer",
           detail: "Adds the app to Applications for you, with its icon. Choose it again to update it." },
         { id: "pkgbuild", symbol: "shippingbox", title: "Arch Linux Package",
-          detail: "A PKGBUILD for Golden Gate and Arch. makepkg -si builds and installs it for everyone; share it on the AUR." },
+          detail: "A PKGBUILD for CitronOS and Arch. makepkg -si builds and installs it for everyone; share it on the AUR." },
         { id: "flatpak", symbol: "layers", title: "Flatpak",
           detail: "A manifest for flatpak-builder: your app in a sandbox with the capabilities you chose, for any Linux." },
         { id: "tarball", symbol: "archive", title: "Portable Archive",
@@ -111,7 +111,7 @@ Sheet {
                         width: parent.width
                         wrapMode: Text.Wrap
                         text: card.modelData.id === "flatpak" && sheet.info && !sheet.info.flatpak
-                            ? "Golden Gate apps run on Quickshell, which isn't a Flatpak runtime." : card.modelData.detail
+                            ? "CitronOS apps run on Quickshell, which isn't a Flatpak runtime." : card.modelData.detail
                         color: Theme.secondaryLabel
                         font { family: Theme.fontUi; pixelSize: 11 }
                     }

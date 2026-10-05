@@ -1,6 +1,6 @@
 // File ▸ New ▸ Project: choose a template, then options, then a location, as
 // in Xcode. Templates are grouped like Xcode's platform tabs, by what you are
-// making; each says which language it uses. The Golden Gate App is designed
+// making; each says which language it uses. The CitronOS App is designed
 // visually in the App Designer and needs no code; the others start from a
 // small, working GTK (libadwaita) or SwiftCrossUI app you can make your own.
 import QtQuick
@@ -26,7 +26,7 @@ Sheet {
     readonly property var categories: ["Application", "Command Line", "Library"]
     readonly property var templates: [
         { id: "gg-app", category: 0, title: "App", toolchain: "goldengate", symbol: "sparkles",
-          detail: "A Golden Gate app you design visually in the App Designer: drag in buttons, text, images and lists, style them, and make them work with actions. No code needed; it builds to QML you can extend." },
+          detail: "A CitronOS app you design visually in the App Designer: drag in buttons, text, images and lists, style them, and make them work with actions. No code needed; it builds to QML you can extend." },
         { id: "python-app", category: 0, title: "Python App", toolchain: "python", symbol: "python",
           detail: "A GTK 4 and libadwaita app in Python. Runs right away with no build step; style it with CSS." },
         { id: "rust-app", category: 0, title: "Rust App", toolchain: "cargo", symbol: "rust",

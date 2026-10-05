@@ -52,7 +52,7 @@ with tempfile.TemporaryDirectory() as tmp:
         check(c.red() > 220 and 120 < c.green() < 200 and c.blue() < 140, f"picture: expected the orange sky, got {c.name()}")
 
     # Text: the brief's lines, below the row of icons, where the folder is empty.
-    img = shot(tmp, "text", "Documents", "Golden Gate brief.md")
+    img = shot(tmp, "text", "Documents", "CitronOS brief.md")
     if not img.isNull():
         dark = sum(1 for x in range(360, 900, 3) for y in range(340, 460, 3) if img.pixelColor(x, y).lightness() < 90)
         check(dark > 40, f"text: expected the brief's text in the preview, found {dark} dark pixels")

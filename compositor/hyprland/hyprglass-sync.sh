@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Golden Gate → HyprGlass bridge.
+# CitronOS → HyprGlass bridge.
 # Loads the version-matched plugins if available (HyprGlass, and hyprbars for
 # title bars) and applies the current appearance/accessibility preferences.
 # Safe to run repeatedly; runs at login, on every config reload and when the
@@ -22,7 +22,7 @@ kw() { hyprctl keyword "$1" "$2" >/dev/null 2>&1 || true; }
 # ------------------------------------------------------------- title bars
 # Apps that leave their title bar to the compositor (Qt and Electron apps from
 # the App Store, X11 apps) get a macOS one: traffic lights on the left, the
-# title centred. GTK apps and Golden Gate's own draw theirs (hyprbars is built
+# title centred. GTK apps and CitronOS's own draw theirs (hyprbars is built
 # to leave them alone, see distro/hyprbars/patch.py). Loading it reloads the
 # config, which runs this script again (exec in hyprland.conf), so everything
 # set here survives reloads; the plugin keeps one of each button.

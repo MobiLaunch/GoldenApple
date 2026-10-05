@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Golden Gate Photos: lists the photos and videos in the given folders.
+# CitronOS Photos: lists the photos and videos in the given folders.
 #   scan.sh CACHE_DIR DIR...
 # Prints one line per item, oldest first:
 #   path <tab> mtime <tab> kind (image|video) <tab> seconds <tab> thumbnail

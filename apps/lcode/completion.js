@@ -78,7 +78,7 @@ var SNIPPETS = {
         { trigger: "function", title: "Function", body: "function <#name#>(<#parameters#>) {\n    <#body#>\n}" },
         { trigger: "connections", title: "Connections", body: "Connections {\n    target: <#object#>\n    function on<#Signal#>() { <#body#> }\n}" },
         { trigger: "timer", title: "Timer", body: "Timer {\n    interval: <#1000#>\n    running: true\n    repeat: <#true#>\n    onTriggered: <#action#>\n}" },
-        { trigger: "appwindow", title: "Golden Gate Window", body: "AppWindow {\n    title: <#\"My App\"#>\n    implicitWidth: <#900#>; implicitHeight: <#620#>\n    <#content#>\n}" },
+        { trigger: "appwindow", title: "CitronOS Window", body: "AppWindow {\n    title: <#\"My App\"#>\n    implicitWidth: <#900#>; implicitHeight: <#620#>\n    <#content#>\n}" },
         { trigger: "for", title: "For-Of Loop", body: "for (const <#item#> of <#items#>) {\n    <#body#>\n}" },
         { trigger: "if", title: "If Statement", body: "if (<#condition#>) {\n    <#body#>\n}" },
     ],

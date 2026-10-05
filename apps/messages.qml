@@ -1,5 +1,5 @@
 //@ pragma AppId org.goldengate.Messages
-// Golden Gate Messages: iMessage and SMS through your iPhone, as Messages on
+// CitronOS Messages: iMessage and SMS through your iPhone, as Messages on
 // the Mac shows them. The iPhone is connected over Bluetooth by BlueFerry
 // (github.com/erikwb/blueferry): messages come over MAP, contacts over PBAP,
 // and group details from the iPhone's notifications (ANCS). No Apple ID, Mac

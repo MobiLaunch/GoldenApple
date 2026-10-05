@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Builds hyprbars, the compositor-drawn title bar with traffic lights, for the
-# Hyprland installed on this machine, with Golden Gate's changes
+# Hyprland installed on this machine, with CitronOS's changes
 # (distro/hyprbars/patch.py: bars only for apps that leave their title bar to
 # the compositor, such as Qt and Electron apps from the App Store).
 #

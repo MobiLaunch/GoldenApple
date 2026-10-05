@@ -8,7 +8,7 @@ bold=$'\e[1m'; dim=$'\e[2m'; off=$'\e[0m'
 log="${XDG_CACHE_HOME:-$HOME/.cache}/golden-gate/darling-setup.log"
 mkdir -p "$(dirname "$log")"
 exec > >(tee "$log") 2>&1
-printf '%s\n\n' "${bold}Golden Gate · Mac app support${off}"
+printf '%s\n\n' "${bold}CitronOS · Mac app support${off}"
 if command -v darling >/dev/null 2>&1; then
   echo "Darling is already installed. Mac apps from the App Store open with it."
   read -rp "Press Return to close. " _

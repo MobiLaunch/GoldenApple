@@ -6,7 +6,7 @@
      run it without a password, so updating is one click; anyone else is
      asked for an administrator's password. -->
 <policyconfig>
-  <vendor>Golden Gate</vendor>
+  <vendor>CitronOS</vendor>
   <action id="org.goldengate.update">
     <description>Install software updates</description>
     <message>Software Update wants to install updates.</message>

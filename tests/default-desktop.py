@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Golden Gate default-desktop integrity checks.
+"""CitronOS default-desktop integrity checks.
 
 The Dock, desktop entries, MIME defaults and ISO package set should describe one
-coherent desktop rather than a mixture of Golden Gate and upstream GNOME apps.
+coherent desktop rather than a mixture of CitronOS and upstream GNOME apps.
 """
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ dock = (root / "shell/Dock.qml").read_text(encoding="utf-8")
 desktop_dir = root / "apps/desktop"
 desktop_ids = {p.stem for p in desktop_dir.glob("*.desktop")}
 
-# Every Golden Gate app pinned in the Dock must have a desktop entry. Ignore the
+# Every CitronOS app pinned in the Dock must have a desktop entry. Ignore the
 # live-only installer distinction; it is still a real entry.
 # The default set is Prefs.defaultDockPinned; the user's own list lives in desktop.json.
 prefs = (root / "shell/components/Prefs.qml").read_text(encoding="utf-8")
@@ -36,9 +36,9 @@ else:
 
 for app_id in sorted(set(pinned_ids)):
     if app_id not in desktop_ids:
-        errors.append(f"Dock app has no Golden Gate desktop entry: {app_id}")
+        errors.append(f"Dock app has no CitronOS desktop entry: {app_id}")
 
-# Core first-party apps must remain native Golden Gate identities.
+# Core first-party apps must remain native CitronOS identities.
 required_ids = {
     "org.goldengate.Calculator",
     "org.goldengate.Calendar",
@@ -59,7 +59,7 @@ required_ids = {
     "org.goldengate.Web",
 }
 for app_id in sorted(required_ids - desktop_ids):
-    errors.append(f"required Golden Gate desktop entry missing: {app_id}")
+    errors.append(f"required CitronOS desktop entry missing: {app_id}")
 
 packages = {
     line.strip()
@@ -98,7 +98,7 @@ for desktop_name in ("org.goldengate.Files.desktop", "org.goldengate.TextEdit.de
 
 terminal = (desktop_dir / "org.goldengate.Terminal.desktop").read_text(encoding="utf-8")
 if "StartupWMClass=com.mitchellh.ghostty" not in terminal:
-    errors.append("Golden Gate Terminal lost its Ghostty window-class bridge")
+    errors.append("CitronOS Terminal lost its Ghostty window-class bridge")
 
 install = (root / "scripts/install.sh").read_text(encoding="utf-8")
 for mime, app_id in {
@@ -146,4 +146,4 @@ if errors:
     print("\n".join(errors), file=sys.stderr)
     raise SystemExit(1)
 
-print("Default desktop: Golden Gate identities, MIME defaults and app discovery are coherent")
+print("Default desktop: CitronOS identities, MIME defaults and app discovery are coherent")

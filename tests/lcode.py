@@ -405,7 +405,7 @@ class OtherToolchains(unittest.TestCase):
 
 
 class Designer(unittest.TestCase):
-    """Golden Gate apps from the App Designer: checking, generating, loading."""
+    """CitronOS apps from the App Designer: checking, generating, loading."""
 
     def setUp(self):
         import lcode_design

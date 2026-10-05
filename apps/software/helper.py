@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Native Golden Gate App Store backend backed by Flatpak/Flathub."""
+"""Native CitronOS App Store backend backed by Flatpak/Flathub."""
 from __future__ import annotations
 
 import gzip

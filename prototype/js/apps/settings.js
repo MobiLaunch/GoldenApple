@@ -33,9 +33,9 @@ const seg = (key, labels) => {
 const heroCard = (icon, color, title, text) => h("div.form-group", h("div.hero-card", h("span.sq", { style: { "--c": color } }, sym(icon)), h("b", title), h("small", text)));
 
 const panes = {
-  general: () => [heroCard("logo", "linear-gradient(135deg,#ffcc66,#f5a524)", "Golden Gate 27", "A Linux distribution with a Liquid Glass desktop."),
+  general: () => [heroCard("logo", "linear-gradient(135deg,#ffcc66,#f5a524)", "CitronOS 27", "A Linux distribution with a Liquid Glass desktop."),
     group(row("Name", h("span", { style: { color: "var(--secondary-label)" } }, "golden-gate")), row("Kernel", h("span", { style: { color: "var(--secondary-label)" } }, "Linux 6.18 LTS")),
-      row("Compositor", h("span", { style: { color: "var(--secondary-label)" } }, "Hyprland")), row("Shell", h("span", { style: { color: "var(--secondary-label)" } }, "Quickshell · Golden Gate 0.1")),
+      row("Compositor", h("span", { style: { color: "var(--secondary-label)" } }, "Hyprland")), row("Shell", h("span", { style: { color: "var(--secondary-label)" } }, "Quickshell · CitronOS 0.1")),
       row("Graphics", h("span", { style: { color: "var(--secondary-label)" } }, "Mesa 25.2 · Vulkan"))),
     group(row("Software Update", h("button.btn", "Check Now")), row("Storage", h("span", { style: { color: "var(--secondary-label)" } }, "62.2 GB available of 512 GB")))],
   appearance: () => {
@@ -57,7 +57,7 @@ const panes = {
     row("Minimise windows using", h("div.seg", ["Genie", "Scale"].map((l, i) => h("button", { className: i === 0 ? "on" : "" }, l))))),
     group(row("Stage Manager", toggle("stage"), "Arrange your recent windows in a single strip for reduced clutter."), row("Click wallpaper to reveal desktop", h("div.seg", ["Always", "Only in Stage Manager"].map((l, i) => h("button", { className: i === 1 ? "on" : "" }, l)))))],
   wifi: () => [group(row(h("b", "Wi-Fi"), toggle("wifi"))), h("h2", "Known Network"), group(row("Home", sym("wifi"), "Connected")), h("h2", "Other Networks"),
-    group(...["Golden Gate Guest", "Presidio 5G", "Bay Bridge"].map((n) => row(n, h("span", { style: { display: "flex", gap: "8px", color: "var(--secondary-label)" } }, sym("lock"), sym("wifi")))))],
+    group(...["CitronOS Guest", "Presidio 5G", "Bay Bridge"].map((n) => row(n, h("span", { style: { display: "flex", gap: "8px", color: "var(--secondary-label)" } }, sym("lock"), sym("wifi")))))],
   bluetooth: () => [group(row(h("b", "Bluetooth"), toggle("bluetooth"), "This computer is discoverable as “golden-gate”.")), h("h2", "My Devices"),
     group(row("Studio Headphones", h("span", { style: { color: "var(--secondary-label)" } }, "Connected")), row("Magic Trackpad", h("span", { style: { color: "var(--secondary-label)" } }, "Connected")), row("Keyboard", h("span", { style: { color: "var(--secondary-label)" } }, "Not Connected")))],
   sound: () => [h("h2", "Output & Input"), group(row("Output volume", range("volume")), row("Alert sound", h("span", { style: { color: "var(--secondary-label)" } }, "Glass")), row("Play feedback when volume is changed", toggle("airdrop")))],

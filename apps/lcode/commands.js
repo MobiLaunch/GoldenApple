@@ -1,5 +1,5 @@
 // LCode's commands and their key bindings, rebindable in Settings ▸ Key
-// Bindings. Bindings are Qt key sequences; Golden Gate's keyd layer sends ⌘
+// Bindings. Bindings are Qt key sequences; CitronOS's keyd layer sends ⌘
 // as Ctrl, so "Ctrl+R" is shown and typed as ⌘R.
 .pragma library
 

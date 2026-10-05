@@ -2,7 +2,7 @@
 Type=Application
 Name=Web
 GenericName=Web Browser
-Comment=Browse the web with Golden Gate
+Comment=Browse the web with CitronOS
 Exec=sh "@APPS@/browser/launch.sh" %U
 Icon=web-browser
 Terminal=false

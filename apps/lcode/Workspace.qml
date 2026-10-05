@@ -522,7 +522,7 @@ AppWindow {
     }
 
     // ------------------------------------------------------------ shortcuts
-    // Apple's ⌘ shortcuts (Golden Gate's keyd layer turns ⌘ into Ctrl in
+    // Apple's ⌘ shortcuts (CitronOS's keyd layer turns ⌘ into Ctrl in
     // apps), rebindable in Settings ▸ Key Bindings.
     function perform(id) {
         const ed = editorArea.currentEditor

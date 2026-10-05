@@ -1,7 +1,7 @@
 # Your own icons
 
 Anything you put in this folder replaces the built-in artwork with the same name.
-Everything else keeps the default Golden Gate icons, so you can swap icons one at a
+Everything else keeps the default CitronOS icons, so you can swap icons one at a
 time.
 
 ```

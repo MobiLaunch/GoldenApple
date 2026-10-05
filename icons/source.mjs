@@ -1,4 +1,4 @@
-// Original icon artwork for the Golden Gate icon theme.
+// Original icon artwork for the CitronOS icon theme.
 // Symbols: 24×24, drawn with currentColor (stroke 1.75, round caps) in the spirit of a
 // system symbol font. App icons: 100×100 on a superellipse ("squircle") body.
 //
@@ -46,7 +46,7 @@ function tile(x, y, w, h) {
 }
 
 export const symbols = {
-  // A single suspension-bridge tower: the Golden Gate mark used where a platform logo goes.
+  // A single suspension-bridge tower: the CitronOS mark used where a platform logo goes.
   logo: S(`<path fill="currentColor" stroke="none" d="M7.6 21.5V5.4l.9-2.4h1.3l.6 2.4v16.1zM13.6 21.5V5.4l.6-2.4h1.3l.9 2.4v16.1z"/><path d="M10 7.6h4M10 11.4h4M10 15.2h4" stroke-width="1.5"/><path d="M1.8 17.6C4.4 13.4 6.4 9 8.2 4.4M22.2 17.6C19.6 13.4 17.6 9 15.8 4.4" stroke-width="1.2"/><path d="M1 18.6h22" stroke-width="1.7"/>`),
   wifi: S(`<path d="M3.2 9.4a12.6 12.6 0 0 1 17.6 0"/><path d="M6.3 12.6a8.2 8.2 0 0 1 11.4 0"/><path d="M9.4 15.7a3.8 3.8 0 0 1 5.2 0"/>${dot(12, 18.8, 1.5)}`, ' stroke-width="2.1"'),
   bluetooth: S(`<path d="M6.5 7.5l10.5 9-5 4.5V3l5 4.5-10.5 9"/>`, ' stroke-width="1.9"'),

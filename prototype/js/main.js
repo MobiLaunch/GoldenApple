@@ -200,6 +200,6 @@ addEventListener("keyup", (e) => { if (["Meta", "Control", "Alt"].includes(e.key
   const open = (params.get("open") ?? "files").split(",").filter(Boolean);
   for (const id of open) { launch(id); await wait(60); }
   if (params.get("cc")) cc.open(document.querySelector("#menubar .mb-item.icon:nth-child(4)"));
-  if (!params.has("quiet")) { await wait(1400); bus.emit("notify", { app: "settings", title: "Welcome to Golden Gate", body: "Press ⌘Space for Spotlight, or open Control Center from the menu bar." }); }
+  if (!params.has("quiet")) { await wait(1400); bus.emit("notify", { app: "settings", title: "Welcome to CitronOS", body: "Press ⌘Space for Spotlight, or open Control Center from the menu bar." }); }
 })();
 window.gg = { state, bus, launch, spotlight, cc };

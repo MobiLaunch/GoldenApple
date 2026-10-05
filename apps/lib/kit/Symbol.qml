@@ -1,4 +1,4 @@
-// A Golden Gate symbol, tinted (the accent colour unless you choose another).
+// A CitronOS symbol, tinted (the accent colour unless you choose another).
 import QtQuick
 import ".." as Lib
 

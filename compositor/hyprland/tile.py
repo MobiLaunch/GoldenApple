@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """gg-tile: move and resize the front window, as macOS Sequoia's Window ›
-Move & Resize does. Every Golden Gate window floats, so tiling is geometry:
+Move & Resize does. Every CitronOS window floats, so tiling is geometry:
 the screen's usable area (less the menu bar and the Dock, which Hyprland
 reports as reserved), with a gap around and between tiles.
 

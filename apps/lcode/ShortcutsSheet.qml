@@ -1,4 +1,4 @@
-// The keyboard shortcuts, Xcode's own: Golden Gate's keyd layer maps ⌘ to Ctrl
+// The keyboard shortcuts, Xcode's own: CitronOS's keyd layer maps ⌘ to Ctrl
 // inside apps, so the keys under your fingers are the ones you know.
 import QtQuick
 import "../lib"

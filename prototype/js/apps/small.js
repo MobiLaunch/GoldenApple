@@ -8,7 +8,7 @@ import * as fs from "../vfs.js";
 const FETCH = [
   ["      ▟▙   ▟▙      ", "golden@golden-gate"],
   ["   ───██───██───   ", "──────────────────"],
-  ["  ╱   ██▀▀▀██   ╲  ", "OS      Golden Gate 27 (x86_64)"],
+  ["  ╱   ██▀▀▀██   ╲  ", "OS      CitronOS 27 (x86_64)"],
   [" ╱    ██▀▀▀██    ╲ ", "Kernel  6.18.4-gg1"],
   ["╱     ██▀▀▀██     ╲", "WM      Hyprland 0.51"],
   ["══════██═════██════", "Shell   Quickshell · zsh 5.9"],
@@ -90,7 +90,7 @@ function openCalculator() {
 
 // ------------------------------------------------------------------ Notes
 const NOTES = [
-  { t: "Golden Gate roadmap", b: "Golden Gate roadmap\n\n• Liquid Glass compositor shader (refraction + specular)\n• Native Files app in GTK4\n• Quickshell Control Center parity\n• Genie minimise in Hyprland plugin\n• Installer (Calamares) theme" },
+  { t: "CitronOS roadmap", b: "CitronOS roadmap\n\n• Liquid Glass compositor shader (refraction + specular)\n• Native Files app in GTK4\n• Quickshell Control Center parity\n• Genie minimise in Hyprland plugin\n• Installer (Calamares) theme" },
   { t: "Motion notes", b: "Motion notes\n\nEverything uses springs described by response + damping.\nsmooth 0.50/1.00 — navigation\nsnappy 0.40/0.86 — controls\nbouncy 0.50/0.70 — playful moments\npopover 0.38/0.78 — menus and Control Center" },
   { t: "Groceries", b: "Groceries\n\n- Sourdough\n- Dungeness crab\n- Irish coffee supplies" },
 ];

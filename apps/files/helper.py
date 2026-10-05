@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Filesystem backend for Golden Gate Files."""
+"""Filesystem backend for CitronOS Files."""
 from __future__ import annotations
 
 import json

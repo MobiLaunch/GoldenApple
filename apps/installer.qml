@@ -8,7 +8,7 @@ import "lib/theme"
 ShellRoot {
     AppWindow {
         id: win
-        title: "Install Golden Gate"
+        title: "Install CitronOS"
         implicitWidth: 780
         implicitHeight: 590
         minimumSize: Qt.size(720, 540)
@@ -91,7 +91,7 @@ ShellRoot {
                         detail = event.detail ?? ""
                     } else if (event.event === "done") {
                         progress = 1
-                        status = event.message ?? "Golden Gate is installed."
+                        status = event.message ?? "CitronOS is installed."
                         detail = "You can restart into your new system."
                         installing = false
                         complete = true
@@ -140,9 +140,9 @@ ShellRoot {
                             stage.liveSession = !!r.live
                             stage.preflightReady = !!r.ok
                             if (!r.live)
-                                stage.error = "Installation is only available when booted from Golden Gate live media."
+                                stage.error = "Installation is only available when booted from CitronOS live media."
                             else if (!r.uefi)
-                                stage.error = "Golden Gate currently requires the computer to be booted in UEFI mode before installation."
+                                stage.error = "CitronOS currently requires the computer to be booted in UEFI mode before installation."
                             else if ((r.missing ?? []).length)
                                 stage.error = "The live image is missing installer tools: " + r.missing.join(", ")
                             else
@@ -234,11 +234,11 @@ ShellRoot {
                     font.family: Theme.fontUi
                     font.pixelSize: 25
                     font.weight: Font.DemiBold
-                    text: stage.step === 0 ? "Install Golden Gate"
+                    text: stage.step === 0 ? "Install CitronOS"
                         : stage.step === 1 ? "Choose a Destination"
                         : stage.step === 2 ? "Create Your Account"
                         : stage.step === 3 ? "Ready to Install"
-                        : stage.step === 4 ? "Installing Golden Gate"
+                        : stage.step === 4 ? "Installing CitronOS"
                         : "Installation Complete"
                 }
 
@@ -250,16 +250,16 @@ ShellRoot {
                     font.family: Theme.fontUi
                     font.pixelSize: 14
                     text: stage.step === 0
-                        ? "Install the same Golden Gate system you are using now onto this computer."
+                        ? "Install the same CitronOS system you are using now onto this computer."
                         : stage.step === 1
-                            ? "Choose the internal disk Golden Gate should use. The live USB is hidden automatically."
+                            ? "Choose the internal disk CitronOS should use. The live USB is hidden automatically."
                             : stage.step === 2
                                 ? "This administrator account will be ready the first time the installed system starts."
                                 : stage.step === 3
-                                    ? "Golden Gate will erase " + stage.selectedPath() + " and install a fresh system. This cannot be undone."
+                                    ? "CitronOS will erase " + stage.selectedPath() + " and install a fresh system. This cannot be undone."
                                     : stage.step === 4
                                         ? stage.status
-                                        : "Golden Gate was installed successfully."
+                                        : "CitronOS was installed successfully."
                 }
 
                 Item { width: 1; height: 4 }
@@ -404,7 +404,7 @@ ShellRoot {
                     Checkbox {
                         width: parent.width
                         checked: stage.eraseConfirmed
-                        text: "Erase this disk and install Golden Gate"
+                        text: "Erase this disk and install CitronOS"
                         detail: "All partitions and files currently on " + stage.selectedPath() + " will be removed."
                         onToggled: (on) => stage.eraseConfirmed = on
                     }

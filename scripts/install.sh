@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Install the Golden Gate desktop.
+# Install the CitronOS desktop.
 #
 #   scripts/install.sh                 into your home directory (existing Arch + Hyprland)
 #   scripts/install.sh --system ROOT   into a root filesystem: /etc/skel + /usr/share,
@@ -47,14 +47,14 @@ install_extras() {
   fi
 
   # Account creation happens before the new user has ever logged in. Install a
-  # root-owned shared runtime plus a Golden Gate /etc/skel so useradd produces a
+  # root-owned shared runtime plus a CitronOS /etc/skel so useradd produces a
   # usable desktop instead of a bare Hyprland account on existing Arch systems.
   # In --system mode the same files already exist; refreshing them is harmless.
-  say "shared Golden Gate runtime → $R/usr/share/golden-gate"
+  say "shared CitronOS runtime → $R/usr/share/golden-gate"
   local SHARE="$R/usr/share/golden-gate"
   local BIN="$R/usr/local/bin"
   mkdir -p "$SHARE" "$R/usr/share/applications" "$R/usr/share/icons" "$R/usr/share/backgrounds/golden-gate" "$BIN"
-  # One canonical UI component store. Every Golden Gate app imports lib/, but
+  # One canonical UI component store. Every CitronOS app imports lib/, but
   # lib is now a link to this shared copy rather than a per-app component fork.
   rm -rf "$SHARE/ui" "$SHARE/apps"
   cp -a "$REPO/apps/lib" "$SHARE/ui"
@@ -83,8 +83,8 @@ install_extras() {
   mkdir -p "$R/usr/share/wayland-sessions"
   cat > "$R/usr/share/wayland-sessions/golden-gate.desktop" <<'EOF'
 [Desktop Entry]
-Name=Golden Gate
-Comment=Golden Gate desktop
+Name=CitronOS
+Comment=CitronOS desktop
 Exec=gg-session
 Type=Application
 DesktopNames=Hyprland
@@ -103,7 +103,7 @@ EOF
 
   local SKEL="$R/etc/skel"
   if [[ ! -d "$SKEL/.config/quickshell/golden-gate" ]]; then
-    say "new-account Golden Gate desktop → $SKEL"
+    say "new-account CitronOS desktop → $SKEL"
     mkdir -p "$SKEL/.config/hypr/golden-gate" "$SKEL/.config/quickshell" \
              "$SKEL/.config/ghostty/themes" "$SKEL/.config/gtk-4.0" "$SKEL/.config/gtk-3.0" \
              "$SKEL/.config/fontconfig/conf.d"
@@ -171,7 +171,7 @@ EOF
   cp "$REPO/shell/components/LockSurface.qml" "$T/components/LockSurface.qml"
   cp "$REPO/shell/components/SystemClockProxy.qml" "$T/components/SystemClockProxy.qml"
   mkdir -p "$R/etc/sddm.conf.d"
-  # Golden Gate has no X server, and SDDM's greeter runs on X11 unless told
+  # CitronOS has no X server, and SDDM's greeter runs on X11 unless told
   # otherwise: left at that default, the installed system booted to a black
   # screen. The greeter runs on Wayland, full screen in Weston's kiosk shell.
   printf '[Theme]\nCurrent=golden-gate\n\n[General]\nDisplayServer=wayland\n\n[Wayland]\nCompositorCommand=weston --shell=kiosk --idle-time=0\n' > "$R/etc/sddm.conf.d/golden-gate.conf"
@@ -265,7 +265,7 @@ rm -rf "$CONF/quickshell/golden-gate"
 mkdir -p "$CONF/quickshell"
 cp -a "$REPO/shell" "$CONF/quickshell/golden-gate"
 
-# Golden Gate's own apps (Calculator, …): Quickshell configs with desktop entries.
+# CitronOS's own apps (Calculator, …): Quickshell configs with desktop entries.
 say "apps → $DATA/golden-gate/apps"
 rm -rf "$DATA/golden-gate/apps"
 mkdir -p "$DATA/golden-gate" "$DATA/applications"
@@ -378,8 +378,53 @@ for svg in "$REPO"/prototype/assets/wallpapers/*.svg; do
   fi
 done
 
+# What the system calls itself (os-release), from apps/lib/theme/Release.qml:
+# About This Computer, the boot menu and tools like fastfetch read it. pacman's
+# filesystem package owns /usr/lib/os-release, so a hook puts ours back
+# whenever that package is installed (the ISO build) or upgraded.
+install_identity() {
+  local R=$1
+  [[ -f "$REPO/apps/lib/theme/Release.qml" ]] || return 0
+  rel() { sed -n "s/.*property string $1: \"\(.*\)\".*/\1/p" "$REPO/apps/lib/theme/Release.qml"; }
+  local name release version
+  name=$(rel name); release=$(rel release); version=$(rel version)
+  say "system identity → $name $release $version"
+  mkdir -p "$R/usr/share/golden-gate" "$R/etc/pacman.d/hooks"
+  cat > "$R/usr/share/golden-gate/os-release" <<EOF
+NAME="$name"
+PRETTY_NAME="$name $release $version"
+ID=citronos
+ID_LIKE=arch
+VERSION="$version ($release)"
+VERSION_ID=$version
+VERSION_CODENAME=${release,,}
+BUILD_ID=$(date --date="@${SOURCE_DATE_EPOCH:-$(date +%s)}" +%Y.%m.%d)
+ANSI_COLOR="38;2;255;204;0"
+HOME_URL="https://github.com/mobilaunch/goldenapple"
+LOGO=archlinux-logo
+EOF
+  cat > "$R/etc/pacman.d/hooks/citronos-release.hook" <<'EOF'
+[Trigger]
+Type = Path
+Operation = Install
+Operation = Upgrade
+Target = usr/lib/os-release
+
+[Action]
+Description = Naming the system CitronOS...
+When = PostTransaction
+Exec = /usr/bin/install -m644 /usr/share/golden-gate/os-release /usr/lib/os-release
+EOF
+  # Already installed (an update, not the ISO build, which hasn't installed
+  # packages yet): rename it now.
+  if [[ -e "$R/usr/lib/os-release" ]]; then
+    install -m644 "$R/usr/share/golden-gate/os-release" "$R/usr/lib/os-release"
+  fi
+}
+
 if [[ $MODE == system ]]; then
   install_extras "$ROOT"
+  install_identity "$ROOT"
 else
   say "system pieces (keyd ⌘ layer, login screen, boot splash): sudo scripts/install.sh --extras"
 fi

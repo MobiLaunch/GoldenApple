@@ -1,4 +1,4 @@
-// Pick one of Golden Gate's symbols.
+// Pick one of CitronOS's symbols.
 import QtQuick
 import "../../lib"
 import "../../lib/theme"

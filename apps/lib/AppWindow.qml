@@ -1,4 +1,4 @@
-// A Golden Gate app window, drawn by the app as on the Mac: frameless, rounded,
+// A CitronOS app window, drawn by the app as on the Mac: frameless, rounded,
 // with traffic lights, a 52 px toolbar row to drag it by, edges to resize from,
 // and optionally a sidebar floating 8 px inside the window (and a trailing one,
 // for inspectors, on the right).

@@ -3,9 +3,9 @@
 // icons sit in a 7 × 5 grid (fewer columns on narrow screens) with page dots
 // below. Swipe, scroll, or press ← → to change pages; type to search; Return
 // opens the first result; Escape or a click on empty space closes. It zooms
-// in as it opens and back out as it closes. Golden Gate's own apps come first,
+// in as it opens and back out as it closes. CitronOS's own apps come first,
 // in the Dock's order, then everything else alphabetically. System apps
-// without a Golden Gate icon gather in an Other folder, as on the Mac, so the
+// without a CitronOS icon gather in an Other folder, as on the Mac, so the
 // grid stays in one style; a search still finds them.
 import Quickshell
 import Quickshell.Io
@@ -69,7 +69,7 @@ PanelWindow {
         "org.goldengate.TextEdit", "org.goldengate.LCode", "org.goldengate.AirDrop", "org.goldengate.Software", "org.goldengate.Settings",
         "org.goldengate.Terminal"
     ]
-    // Icon names the Golden Gate theme draws itself, and the desktop files of
+    // Icon names the CitronOS theme draws itself, and the desktop files of
     // apps you installed (Flatpak, or your own): both stay on the grid.
     property var customIcons: ({})
     property var userApps: ({})
@@ -120,7 +120,7 @@ PanelWindow {
             .filter((e) => { const k = String(e.name).toLowerCase(); if (seen[k]) return false; seen[k] = true; return true })
     }
     // The grid: a search lists every match; otherwise the Other folder sits
-    // after Golden Gate's own apps.
+    // after CitronOS's own apps.
     readonly property var entries: {
         if (search.text.trim()) return matches
         // An app that repeats an icon already on the grid (Foot Client and
@@ -337,7 +337,7 @@ PanelWindow {
         }
         Text {
             anchors.horizontalCenter: parent.horizontalCenter
-            text: search.text.trim() ? "Try another search." : "Run gg-diagnostics and check the Golden Gate shell section."
+            text: search.text.trim() ? "Try another search." : "Run gg-diagnostics and check the CitronOS shell section."
             color: Qt.rgba(1, 1, 1, 0.7)
             font { family: Theme.fontUi; pixelSize: 13 }
         }

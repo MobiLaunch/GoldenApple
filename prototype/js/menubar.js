@@ -60,7 +60,7 @@ export function initMenubar(el, { toggleCC, toggleWidgets, openSpotlight }) {
   statusMenu(sym("wifi"), () => [
     { label: "Wi-Fi", checked: state.wifi, action: () => (state.wifi = !state.wifi) }, "-", { header: "Known Network" },
     { label: "Home", icon: "wifi", checked: undefined }, "-", { header: "Other Networks" },
-    { label: "Golden Gate Guest", icon: "lock" }, { label: "Presidio 5G", icon: "lock" }, "-", { label: "Wi-Fi Settings…", action: () => launch("settings", "wifi") },
+    { label: "CitronOS Guest", icon: "lock" }, { label: "Presidio 5G", icon: "lock" }, "-", { label: "Wi-Fi Settings…", action: () => launch("settings", "wifi") },
   ]);
   const plain = (content, onClick, cls) => {
     const b = h("button.mb-item", { className: `mb-item icon ${cls ?? ""}`, on: { mousedown: (e) => { e.stopPropagation(); closeMenus(); onClick(b); } } }, content);

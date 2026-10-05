@@ -5,7 +5,7 @@ cleaned and run, and how its tools report problems.
     cargo        Cargo.toml               Rust (cargo)
     meson        meson.build              C / C++ (Meson + Ninja)
     python       pyproject.toml, main.py  Python (PyGObject for GTK apps)
-    goldengate   Interface.lcdesign       Golden Gate apps designed in LCode (QML)
+    goldengate   Interface.lcdesign       CitronOS apps designed in LCode (QML)
 
 A step is (argv, cwd, diagnostics_root): diagnostics_root is the folder the
 tool's relative paths start from (Ninja reports paths relative to build/).
@@ -28,9 +28,9 @@ HERE = pathlib.Path(__file__).resolve().parent
 TOOL = str(HERE / "lcode_tool.py")
 
 IDS = ("swift", "cargo", "meson", "python", "goldengate")
-NAMES = {"swift": "Swift", "cargo": "Rust", "meson": "C", "python": "Python", "goldengate": "Golden Gate"}
+NAMES = {"swift": "Swift", "cargo": "Rust", "meson": "C", "python": "Python", "goldengate": "CitronOS"}
 
-# Settings key, executable name, how to install it on Golden Gate (Arch).
+# Settings key, executable name, how to install it on CitronOS (Arch).
 EXECUTABLES = {
     "swift": ("swiftPath", "swift", "yay -S swift-bin  (or install swiftly)"),
     "cargo": ("cargoPath", "cargo", "sudo pacman -S rust"),

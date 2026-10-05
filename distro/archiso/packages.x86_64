@@ -1,4 +1,4 @@
-# Golden Gate additions on top of archiso's releng package list.
+# CitronOS additions on top of archiso's releng package list.
 # Official Arch repositories only; see packages.extra for the rest.
 
 # Compositor + session
@@ -17,11 +17,11 @@ weston
 qt6-declarative
 qt6-svg
 qt6-wayland
-# Golden Gate Music and Photos: playback (FFmpeg backend), tags, artwork, video frames
+# CitronOS Music and Photos: playback (FFmpeg backend), tags, artwork, video frames
 qt6-multimedia
 qt6-multimedia-ffmpeg
 ffmpeg
-# Golden Gate Photos: WebP, TIFF and other image formats
+# CitronOS Photos: WebP, TIFF and other image formats
 qt6-imageformats
 
 # Look
@@ -60,12 +60,12 @@ libnotify
 xdg-user-dirs
 
 # External apps retained only where they provide mature system/protocol backends.
-# Golden Gate owns Settings, App Store, Clock, TextEdit, Photos and other primary UI.
-# App Store backend: native Golden Gate frontend + Flatpak/Flathub metadata.
+# CitronOS owns Settings, App Store, Clock, TextEdit, Photos and other primary UI.
+# App Store backend: native CitronOS frontend + Flatpak/Flathub metadata.
 flatpak
 ca-certificates
 curl
-# Chromium engine and Python bindings for Golden Gate Web
+# Chromium engine and Python bindings for CitronOS Web
 qt6-webengine
 pyside6
 python
@@ -78,7 +78,7 @@ xdg-utils
 desktop-file-utils
 shared-mime-info
 
-# Golden Gate installer and in-pane Software Update backend.
+# CitronOS installer and in-pane Software Update backend.
 arch-install-scripts
 gptfdisk
 parted
@@ -91,7 +91,7 @@ pacman-contrib
 fakeroot
 
 
-# LCode (Golden Gate's IDE): Git for projects, and the Simulator's private
+# LCode (CitronOS's IDE): Git for projects, and the Simulator's private
 # display (Xvfb) and input injection (XTEST). Swift itself comes from the AUR
 # (swift-bin) or swiftly, so the image stays small.
 git

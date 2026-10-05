@@ -1,9 +1,13 @@
-# Golden Gate
+# CitronOS Sprite 3.5
 
 A Linux distribution with a Liquid Glass desktop: translucent glass materials,
-spring motion, a floating Control Center, a magnifying Dock, Spotlight, and
-Finder-style Files, modelled closely on the macOS "Golden Gate" design language
-and built entirely from original artwork.
+spring motion, a floating Control Center, a magnifying Dock, Spotlight, desktop
+widgets and Finder-style Files, modelled closely on macOS's Liquid Glass design
+language and built entirely from original artwork. Sprite is the release's
+name and 3.5 its version (both kept in `apps/lib/theme/Release.qml`); it was
+called Golden Gate before. Internal names (`org.goldengate.*` app IDs, `gg-*`
+commands, `~/.config/golden-gate`) are unchanged, so existing installs keep
+their settings.
 
 ![Files, light](docs/screenshots/files-light.jpg)
 
@@ -26,7 +30,7 @@ and built entirely from original artwork.
 **The live ISO**, booted in QEMU with plain VGA graphics and no 3D acceleration
 (from the automatic boot test that runs after every ISO build):
 
-![Golden Gate ISO booted in QEMU](docs/screenshots/iso-boot-qemu.jpg)
+![CitronOS ISO booted in QEMU](docs/screenshots/iso-boot-qemu.jpg)
 
 ## What's here
 
@@ -36,12 +40,12 @@ and built entirely from original artwork.
 | **Icons**: first-party app icons, file/place icons and shared symbols | `icons/` | Done. One generated freedesktop theme plus optional imported artwork; [bring your own](icons/custom/README.md) |
 | **Reference shell**: the desktop interaction/design reference, interactive in the browser | `prototype/` | Kept as a design reference; the live QML desktop is authoritative for native functionality |
 | **Linux shell**: menu bar, Control Center, Dock (drag to rearrange), Applications, Spotlight, desktop widgets, notifications, app switcher, lock screen | `shell/` | Quickshell (QML), tested on the live ISO and real Intel/i915 hardware as well as VM/headless sessions |
-| **Compositor**: blur, refraction, squircle corners, springs, key bindings | `compositor/` | Hyprland + HyprGlass; the ISO bundles a Hyprland-version-matched plugin and Golden Gate applies its presets per shell surface |
+| **Compositor**: blur, refraction, squircle corners, springs, key bindings | `compositor/` | Hyprland + HyprGlass; the ISO bundles a Hyprland-version-matched plugin and CitronOS applies its presets per shell surface |
 | **Shared UI**: AppWindow, Glass, buttons, fields, switches, sliders, progress, sidebars, motion and symbols | `apps/lib/` | One canonical QML component store, consumed by apps, shell adapters, Setup and SDDM; Web has a centralized Qt adapter around its isolated Chromium process |
-| **Golden Gate apps**: Files, Web, Mail, Messages, Maps, Photos, Music, Calendar, Notes, Weather, App Store, Settings, Clock, TextEdit, Calculator and Installer | `apps/` | First-party frontends use the shared component store; mature backends such as Qt WebEngine, Flatpak, IMAP/SMTP, BlueFerry (iMessage and SMS through a paired iPhone) and Ghostty remain isolated behind Golden Gate UI |
-| **LCode**: an Xcode-style IDE: Welcome window and template gallery, project navigator, tabbed editor with colour themes, code completion and snippets, minimap and inline issues, a visual App Designer for Golden Gate apps, the project editor (app info, icon, capabilities, scheme), Archive and the Organizer, Run/Stop and scheme ▸ destination pills, activity view, debug console, inspectors, Open Quickly, Find in Project, a Settings window, and a Simulator that runs the built app inside a device frame | `apps/lcode.qml`, `apps/lcode/` | Golden Gate apps, Swift packages, Rust crates, Meson (C) projects and Python programs build, test, run and package; no debugger yet |
+| **CitronOS apps**: Files, Web, Mail, Messages, Maps, Photos, Music, Calendar, Notes, Weather, App Store, Settings, Clock, TextEdit, Calculator and Installer | `apps/` | First-party frontends use the shared component store; mature backends such as Qt WebEngine, Flatpak, IMAP/SMTP, BlueFerry (iMessage and SMS through a paired iPhone) and Ghostty remain isolated behind CitronOS UI |
+| **LCode**: an Xcode-style IDE: Welcome window and template gallery, project navigator, tabbed editor with colour themes, code completion and snippets, minimap and inline issues, a visual App Designer for CitronOS apps, the project editor (app info, icon, capabilities, scheme), Archive and the Organizer, Run/Stop and scheme ▸ destination pills, activity view, debug console, inspectors, Open Quickly, Find in Project, a Settings window, and a Simulator that runs the built app inside a device frame | `apps/lcode.qml`, `apps/lcode/` | CitronOS apps, Swift packages, Rust crates, Meson (C) projects and Python programs build, test, run and package; no debugger yet |
 | **System Settings**: a near copy of macOS System Settings (glass sidebar with search suggestions, back and forward, grouped panes) that changes the real system: Wi-Fi, Bluetooth, Network, Battery, General (About, Software Update, Storage, Date & Time, Language & Region), Accessibility, Appearance (mode, accent, Liquid Glass clear or tinted), Desktop & Dock, Displays, Wallpaper, Focus, Sound, Privacy & Security, Users & Groups, Keyboard, Trackpad & Mouse | `apps/settings.qml`, `apps/settings/` | Done; `gg-settings [pane]` and `gnome-control-center [panel]` open it at a pane |
-| **Setup Assistant**: the first-login hello and shared Golden Gate controls over the HyprGlass desktop material, then local account creation, country or region, Wi-Fi, Data & Privacy, Location Services, time zone, crash and diagnostics sharing, and Choose Your Look | `apps/setup.qml`, `apps/setup/` | Done; runs once (`~/.config/golden-gate/setup-done`), `gg.nosetup` on the kernel command line skips it |
+| **Setup Assistant**: the first-login hello and shared CitronOS controls over the HyprGlass desktop material, then local account creation, country or region, Wi-Fi, Data & Privacy, Location Services, time zone, crash and diagnostics sharing, and Choose Your Look | `apps/setup.qml`, `apps/setup/` | Done; runs once (`~/.config/golden-gate/setup-done`), `gg.nosetup` on the kernel command line skips it |
 | **Theming**: fonts, ⌘ key layer, login screen, boot splash, terminal | `themes/` | Done: fontconfig, keyd, SDDM theme, Plymouth theme, Ghostty |
 | **Distro**: bootable live ISO + graphical installer | `distro/archiso/`, `apps/installer*` | Boots on real hardware; native installer performs UEFI preflight, disk erase/partitioning, filesystem copy, account provisioning, initramfs, systemd-boot and verification |
 
@@ -78,11 +82,11 @@ sudo scripts/install.sh --extras   # optional (needs keyd, sddm, plymouth): ⌘ 
 
 Then log into Hyprland. Local account creation also needs the system integration:
 `sudo scripts/install.sh --extras`. Besides the root-owned helper, this installs
-the shared Golden Gate runtime, a Golden Gate SDDM/Wayland session, and the
+the shared CitronOS runtime, a CitronOS SDDM/Wayland session, and the
 `/etc/skel` desktop used by accounts created in Hello. It is included
 automatically in ISO builds.
 
-**Web browser:** `gg-web` opens Golden Gate's native Chromium-powered browser
+**Web browser:** `gg-web` opens CitronOS's native Chromium-powered browser
 (Qt WebEngine, updated through Arch's `qt6-webengine` package). It has a
 Safari-inspired toolbar, traffic lights, tab sidebar, start page, bookmarks,
 history, downloads, and private windows. Ctrl+L focuses the address, Ctrl+T/W
@@ -93,7 +97,7 @@ Safari/iCloud services, extension management, or a password manager.
 
 If Web has graphics trouble in your VM, run `GG_WEB_SOFTWARE=1 gg-web`.
 The launcher keeps Chromium sandboxing enabled and must run as your desktop user.
-Golden Gate does not ship a second browser frontend: Web owns the browser experience
+CitronOS does not ship a second browser frontend: Web owns the browser experience
 while Qt WebEngine/Chromium remains isolated from the Quickshell desktop process.
 
 **Windows, Spotlight and Files.** Rest the pointer on a window's green button
@@ -129,7 +133,7 @@ opened on your computer, and Darling's output when it didn't. Apps built only fo
 Apple silicon are refused (Darling translates Intel code), and Mac App Store apps
 aren't offered (they're tied to an Apple ID and encrypted).
 
-**Developing apps: LCode.** `gg-lcode` (or LCode in Applications) is Golden Gate's
+**Developing apps: LCode.** `gg-lcode` (or LCode in Applications) is CitronOS's
 Xcode, made so that anyone can build good-looking Linux apps. It follows Xcode 26's
 layout and keyboard shortcuts, and with the ⌘ layer they are the same keys: ⌘R runs,
 ⌘B builds, ⌘U tests, ⌘. stops, ⇧⌘O is Open Quickly, ⇧⌘L the Library, ⌘0/⌥⌘0/⇧⌘Y
@@ -138,7 +142,7 @@ Like `xed`, `gg-lcode path/to/File.swift` opens the project that contains the fi
 and `gg-lcode .` opens the current folder.
 
 New Project offers apps, command-line tools and libraries in five toolchains:
-*Golden Gate apps* (designed in the App Designer, no code needed), *Swift* packages
+*CitronOS apps* (designed in the App Designer, no code needed), *Swift* packages
 (SwiftCrossUI), *Python* (GTK 4 + libadwaita), *Rust* (gtk4-rs + libadwaita) and
 *C* (Meson, GTK 4). Projects stay ordinary projects for their language (LCode keeps
 its own settings in `.lcode/`), so they also build with `swift build`, `cargo`,
@@ -151,11 +155,11 @@ its own settings in `.lcode/`), so they also build with `swift build`, `cargo`,
   corners, shadows, fonts, layout); give the app variables and named colours, and
   wire events to actions (set, toggle, add to a list, navigate, alert, open a link,
   run a command) without writing code. Live mode runs the design on the canvas.
-  Building turns it into a real Golden Gate app (Quickshell/QML) that saves its state.
+  Building turns it into a real CitronOS app (Quickshell/QML) that saves its state.
 - **Code editor**: themes, completion (keywords, your code's names, snippets whose
   `<#placeholders#>` Tab steps through), closing brackets and quotes, and tidying
   whitespace on save. The Library has snippets (make your own from a selection),
-  Golden Gate's symbols and the system colours.
+  CitronOS's symbols and the system colours.
 - **Project editor**: display name, version, bundle identifier, the app icon
   (colours, gradient, symbol or text, previewed light and dark), capabilities, and
   the scheme's arguments, environment and build configuration.
@@ -183,7 +187,7 @@ authorization on installed systems, and passes the password through standard inp
 Existing desktop users can keep their current account. Setup saves your choices
 for the new account and waits for successful writes before closing. On installed
 systems the Welcome page can sign out after saving so you can continue in the new
-account through the Golden Gate login session; choosing Get Started keeps the
+account through the CitronOS login session; choosing Get Started keeps the
 current session instead. On a live ISO, accounts and files remain temporary
 unless persistence is configured. You can sign in on another console (Ctrl+Alt+F2)
 and run `gg-session`; this does not install the system onto disk.
@@ -194,7 +198,7 @@ as the `golden-gate-iso` artifact. On an Arch host:
 
 ```sh
 sudo pacman -S archiso librsvg nodejs base-devel git
-sudo GG_BUILD_AUR=1 distro/archiso/build.sh   # → out/golden-gate-<date>-x86_64.iso
+sudo GG_BUILD_AUR=1 distro/archiso/build.sh   # → out/citronos-sprite-<date>-x86_64.iso
 ```
 
 `GG_BUILD_AUR=1` builds anything in `packages.extra` that isn't in the official
@@ -212,7 +216,7 @@ lighter effects (`compositor/hyprland/machine-conf.sh`). If the desktop can't
 start, the session drops to a shell that says why.
 
 **Updating an installed system.** Settings ▸ General ▸ Software Update's
-Update Now installs Arch updates and Golden Gate's newest commit from GitHub
+Update Now installs Arch updates and CitronOS's newest commit from GitHub
 together, no new ISO needed (`apps/settings/golden_update.py`). It follows the
 repository and branch the ISO was built from (recorded in
 `/usr/share/golden-gate/version.json`); Update Source changes them, and takes a
@@ -223,7 +227,7 @@ kept, with the new one beside it as `*.golden-gate-new`.
 Without GitHub, from a USB stick, either way keeps accounts and files:
 
 - **Boot the new ISO and update the disk:** open Terminal in the live session
-  and run `sudo gg-update-disk`. It finds the Golden Gate installed on the
+  and run `sudo gg-update-disk`. It finds the CitronOS installed on the
   computer, asks to confirm, and installs the ISO's own version onto it
   (the ISO carries its source as `/usr/share/golden-gate/source.tar.gz`).
 - **Carry an update bundle to the installed system:** make one with
@@ -267,7 +271,7 @@ and `GG_WEATHER_FIXTURE=DIR QML_XHR_ALLOW_FILE_READ=1 qs -p apps/weather.qml`
 runs from it. Music plays your own files (~/Music, scanned by `apps/music/scan.sh`
 with ffmpeg into ~/.cache/golden-gate/music), .m3u playlists from ~/Music/Playlists
 and internet radio from radio-browser.info; it has no Apple Music streaming.
-Liquid Glass optics are provided by HyprGlass at the compositor boundary. Golden Gate
+Liquid Glass optics are provided by HyprGlass at the compositor boundary. CitronOS
 does not maintain a second refraction shader for Setup or individual controls; apps use
 the shared QML material/chrome from `apps/lib`, installed once as
 `/usr/share/golden-gate/ui`. Crash reports: `gg-diagnostics` writes a report to
@@ -278,7 +282,7 @@ backend: ~/.config/golden-gate/desktop.json (wallpaper, Dock size and magnificat
 glass style, reduce motion and transparency), plus Hyprland fragments in
 ~/.config/hypr/golden-gate (input.conf, accessibility.conf, displays.conf) applied
 live with `hyprctl keyword`. Unknown legacy `gnome-control-center` panel names
-remain inside Golden Gate Settings instead of opening a second settings UI.
+remain inside CitronOS Settings instead of opening a second settings UI.
 Notes keeps each note as a Markdown file in ~/Documents/Notes/<folder>/, named
 after its first line. Photos shows ~/Pictures and ~/Videos, with the folders in
 ~/Pictures as albums. Maps uses OpenStreetMap throughout (CARTO tiles, Photon
@@ -321,7 +325,7 @@ Details and sizing guidance are in [icons/custom/README.md](icons/custom/README.
   `icons/import-icon-pack.sh` from a set exported from macOS 27). Apple licenses
   them for Apple platforms only, so this repository and its ISOs must stay
   private. For anything public, delete `icons/custom/apps*` and rebuild
-  (`node icons/build.mjs`): the original Golden Gate icons come back.
+  (`node icons/build.mjs`): the original CitronOS icons come back.
 - Everything else (symbols, folder icons, wallpapers) is original. SF Symbols and
   SF Pro are not used; the typeface is [Inter](https://rsms.me/inter/) (OFL).
 - Recreating a visual *style* is common practice, but Apple's names and logos are

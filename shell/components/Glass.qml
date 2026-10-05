@@ -1,4 +1,4 @@
-// Shell adapter for the canonical Golden Gate Glass component: shell glass sits
+// Shell adapter for the canonical CitronOS Glass component: shell glass sits
 // over the wallpaper, so its default role is clear.
 import QtQuick
 import "../ui" as Shared

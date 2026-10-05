@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Ensure every literal Golden Gate symbol reference exists in icons/source.mjs."""
+"""Ensure every literal CitronOS symbol reference exists in icons/source.mjs."""
 from pathlib import Path
 import re
 import sys

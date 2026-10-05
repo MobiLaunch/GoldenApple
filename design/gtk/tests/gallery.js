@@ -1,5 +1,5 @@
 // A window with every common GTK 4 / libadwaita control, for checking the
-// Golden Gate theme in one screenshot.
+// CitronOS theme in one screenshot.
 //
 //   gjs -m design/gtk/tests/gallery.js [main|menu|dialog|finder]
 //
@@ -64,7 +64,7 @@ function controls() {
   g1.add(row('Open folders in tabs', 'Instead of new windows', new Gtk.CheckButton({ active: true, valign: Gtk.Align.CENTER })));
   const combo = new Adw.ComboRow({ title: 'Sort by', model: Gtk.StringList.new(['Name', 'Date Modified', 'Size', 'Kind']) });
   g1.add(combo);
-  if (has(Adw, 'EntryRow')) g1.add(new Adw.EntryRow({ title: 'Computer Name', text: 'Golden Gate' }));
+  if (has(Adw, 'EntryRow')) g1.add(new Adw.EntryRow({ title: 'Computer Name', text: 'CitronOS' }));
   if (has(Adw, 'SpinRow')) g1.add(Adw.SpinRow.new_with_range(8, 72, 1));
   page.add(g1);
 
@@ -116,7 +116,7 @@ function finder() {
   const files = [
     ['Applications', '—', 'Folder', 'Today at 09:41'], ['Desktop', '—', 'Folder', 'Yesterday at 18:02'],
     ['Documents', '—', 'Folder', '12 Sept 2026 at 11:20'], ['Downloads', '—', 'Folder', 'Today at 08:15'],
-    ['Budget 2026.ods', '48 KB', 'Spreadsheet', '3 Sept 2026 at 16:44'], ['Golden Gate.png', '2.4 MB', 'PNG image', '1 Sept 2026 at 12:00'],
+    ['Budget 2026.ods', '48 KB', 'Spreadsheet', '3 Sept 2026 at 16:44'], ['CitronOS.png', '2.4 MB', 'PNG image', '1 Sept 2026 at 12:00'],
     ['Notes.txt', '1 KB', 'Plain Text', '28 Aug 2026 at 21:13'], ['Trip.mp4', '184.2 MB', 'MPEG-4 movie', '14 Aug 2026 at 10:05'],
   ];
   for (const f of files) store.append(Gtk.StringObject.new(f.join('\t')));

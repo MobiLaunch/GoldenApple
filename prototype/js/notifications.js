@@ -49,7 +49,7 @@ export function initNotifications() {
       ...Array.from({ length: days }, (_, i) => h("span", { className: i + 1 === today.getDate() ? "today" : i + 1 < today.getDate() ? "dim" : "" }, String(i + 1)))));
   const weather = h("div.widget.w-weather.glass-regular", h("div.city", "San Francisco"), h("div.temp", "64°"), h("div.cond", "Fog clearing by afternoon"), h("div", { style: { fontSize: "12px", opacity: ".85" } }, "H:68° L:55°"));
   const events = h("div.widget.wide.w-events.glass-regular", h("div.month", { style: { color: "var(--accent-red)", fontWeight: 700, fontSize: "11px", textTransform: "uppercase", letterSpacing: ".04em" } }, "Today"),
-    ...[["Design review · Liquid Glass", "10:00 – 11:00 AM", "#bf5af2"], ["Ship Golden Gate 0.1", "2:00 PM", "#ff9f0a"], ["Sunset walk, Crissy Field", "6:45 PM", "#30d158"]]
+    ...[["Design review · Liquid Glass", "10:00 – 11:00 AM", "#bf5af2"], ["Ship CitronOS 0.1", "2:00 PM", "#ff9f0a"], ["Sunset walk, Crissy Field", "6:45 PM", "#30d158"]]
       .map(([t, s, c]) => h("div.ev", { style: { "--c": c } }, h("div", t, h("small", s)))));
   const widgets = h("div#widgets", { hidden: true }, weather, cal, events);
   desk.append(widgets);

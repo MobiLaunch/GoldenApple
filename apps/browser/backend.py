@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""State and native services for Golden Gate Web's QML chrome."""
+"""State and native services for CitronOS Web's QML chrome."""
 from __future__ import annotations
 
 import json
@@ -23,7 +23,7 @@ def profile_key(name):
 
 
 class PrivacyInterceptor(QWebEngineUrlRequestInterceptor):
-    """Conservative third-party tracker blocking for Golden Gate Web.
+    """Conservative third-party tracker blocking for CitronOS Web.
 
     This is intentionally a small built-in domain set, not a claim of parity
     with Safari's Intelligent Tracking Prevention or a full ad blocker.

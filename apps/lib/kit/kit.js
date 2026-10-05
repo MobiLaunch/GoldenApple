@@ -1,4 +1,4 @@
-// Golden Gate Kit: the shared rules behind the components LCode's App Designer
+// CitronOS Kit: the shared rules behind the components LCode's App Designer
 // places and the QML it generates — colours, fonts, fills and text templates.
 // The designer's canvas and the built app both use these, so they agree.
 .pragma library
@@ -100,7 +100,7 @@ function material(name, env) {
 }
 
 // --------------------------------------------------------------------- type
-// Text styles: size and weight, on the desktop scale Golden Gate uses.
+// Text styles: size and weight, on the desktop scale CitronOS uses.
 var TEXT_STYLES = {
     largeTitle: { size: 26, weight: 700 },
     title:      { size: 22, weight: 700 },

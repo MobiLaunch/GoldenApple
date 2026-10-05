@@ -1,5 +1,5 @@
 //@ pragma AppId org.goldengate.Files
-// Golden Gate Files: Finder-style native filesystem browser.
+// CitronOS Files: Finder-style native filesystem browser.
 import Quickshell
 import Quickshell.Io
 import QtQuick

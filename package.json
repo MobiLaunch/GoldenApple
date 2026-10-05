@@ -1,7 +1,7 @@
 {
   "name": "golden-gate",
   "private": true,
-  "description": "Golden Gate: a Linux distribution with a Liquid Glass desktop.",
+  "description": "CitronOS: a Linux distribution with a Liquid Glass desktop.",
   "type": "module",
   "scripts": {
     "build": "node design/build.mjs && node icons/build.mjs",

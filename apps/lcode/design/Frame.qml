@@ -1,4 +1,4 @@
-// A Golden Gate app window on the designer's canvas: the same chrome the
+// A CitronOS app window on the designer's canvas: the same chrome the
 // built app gets from AppWindow (traffic lights, the floating glass sidebar
 // listing the screens, the toolbar row), drawn here in the frame's own
 // appearance so light and dark can sit side by side.

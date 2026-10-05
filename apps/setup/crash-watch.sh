@@ -20,7 +20,7 @@ while sleep 10; do
     case "$app" in quickshell|qs|Hyprland|.Hyprland-wrapp|nautilus|firefox|ghostty) ;; *)
       grep -q '"shareWithDevelopers": *true' "$conf" || continue ;;
     esac
-    ( action=$(notify-send -a "Golden Gate" -i dialog-warning -A report="Report…" -A ignore="Ignore" \
+    ( action=$(notify-send -a "CitronOS" -i dialog-warning -A report="Report…" -A ignore="Ignore" \
                  "$app quit unexpectedly" "Send a report to help fix it? You'll see it before anything is sent." 2>/dev/null)
       [ "$action" = report ] && bash "$here/diagnostics.sh" --crash "$app" --send ) &
   done

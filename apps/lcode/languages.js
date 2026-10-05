@@ -3,7 +3,7 @@
 
 // Toolchain id → name, manifest file, icon gradient and the symbol on it.
 var TOOLCHAINS = {
-    goldengate: { name: "Golden Gate", manifest: "Interface.lcdesign", colors: ["#ffd84d", "#ff8a00"], symbol: "sparkles" },
+    goldengate: { name: "CitronOS", manifest: "Interface.lcdesign", colors: ["#ffd84d", "#ff8a00"], symbol: "sparkles" },
     swift: { name: "Swift", manifest: "Package.swift", colors: ["#ff8f5e", "#e8382a"], symbol: "swift" },
     python: { name: "Python", manifest: "pyproject.toml", colors: ["#5ea3e8", "#2f5f99"], symbol: "python" },
     cargo: { name: "Rust", manifest: "Cargo.toml", colors: ["#f0a35e", "#a8461c"], symbol: "rust" },
@@ -29,7 +29,7 @@ function fileInfo(name) {
     if (n === "cargo.toml") return { type: "Cargo Manifest", symbol: "gear", color: "#a2845e" };
     if (n === "meson.build") return { type: "Meson Build File", symbol: "gear", color: "#a2845e" };
     if (n === "pyproject.toml") return { type: "Python Project", symbol: "gear", color: "#a2845e" };
-    if (ext === "lcdesign") return { type: "Golden Gate Interface", symbol: "sparkles", color: "#ff9f0a" };
+    if (ext === "lcdesign") return { type: "CitronOS Interface", symbol: "sparkles", color: "#ff9f0a" };
     const byExt = {
         swift: ["Swift Source", "code", "#f05138"],
         rs: ["Rust Source", "code", "#c06a2b"],

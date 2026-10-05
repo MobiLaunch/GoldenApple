@@ -1,4 +1,4 @@
-// Shared multiline editor for Golden Gate applications.
+// Shared multiline editor for CitronOS applications.
 // Inherits TextEdit so specialized editors keep the full cursor/Markdown API.
 import QtQuick
 import "theme"

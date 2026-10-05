@@ -170,7 +170,8 @@ function material(name, m) {
   for (const dir of [join(here, "..", "apps", "lib", "theme")]) {
     mkdirSync(dir, { recursive: true });
     writeFileSync(join(dir, "Theme.qml"), q.join("\n"));
-    writeFileSync(join(dir, "qmldir"), "singleton Theme 1.0 Theme.qml\n");
+    // Release.qml (the system's name and version) lives beside the theme.
+    writeFileSync(join(dir, "qmldir"), "singleton Theme 1.0 Theme.qml\nsingleton Release 1.0 Release.qml\n");
   }
 }
 

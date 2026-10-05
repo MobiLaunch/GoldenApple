@@ -1,4 +1,4 @@
-// Shared navigation row for Golden Gate sidebars.
+// Shared navigation row for CitronOS sidebars.
 import QtQuick
 import "theme"
 

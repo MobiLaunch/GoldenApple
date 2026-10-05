@@ -115,8 +115,8 @@ await scenario("windows: minimise, restore, mission control, tiling", "?quiet&op
   if (parseFloat(await p.$eval(".win.notes", (e) => e.style.left)) > 20) throw new Error("window did not snap to the left half");
 });
 await scenario("messages: send", "?quiet&open=messages", async (p) => {
-  await p.fill(".cm-field input", "Hello from Golden Gate"); await p.keyboard.press("Enter"); await wait(p, 400);
-  if (!(await p.textContent(".messages")).includes("Hello from Golden Gate")) throw new Error("message not sent");
+  await p.fill(".cm-field input", "Hello from CitronOS"); await p.keyboard.press("Enter"); await wait(p, 400);
+  if (!(await p.textContent(".messages")).includes("Hello from CitronOS")) throw new Error("message not sent");
 });
 await scenario("music: play album", "?quiet&open=music", async (p) => {
   await p.hover(".album >> nth=0"); await p.click(".play-over >> nth=0"); await wait(p, 600);

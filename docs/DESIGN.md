@@ -1,4 +1,4 @@
-# Design spec: Golden Gate
+# Design spec: CitronOS
 
 Values live in `design/tokens.json`; this document explains them.
 

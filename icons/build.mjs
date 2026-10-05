@@ -177,8 +177,8 @@ for (const [key, svg] of Object.entries(symbols)) {
   writeFileSync(file, out);
 }
 writeFileSync(join(root, "index.theme"), `[Icon Theme]
-Name=Golden Gate
-Comment=Original icon theme for the Golden Gate desktop
+Name=CitronOS
+Comment=Original icon theme for the CitronOS desktop
 Inherits=Adwaita,hicolor
 Directories=scalable/apps,scalable/places,scalable/mimetypes,scalable/devices,symbolic/actions${withPng ? ",512x512/apps,512x512/places,512x512/mimetypes,512x512/devices" : ""}
 
@@ -220,7 +220,7 @@ ${withPng ? ["apps", "places", "mimetypes", "devices"].map((c) => `\n[512x512/${
 
 // ---------------------------------------------------------------- Quickshell assets
 // White symbols for the shell (tinted at runtime with MultiEffect when needed).
-// The Golden Gate apps (apps/lib) use the same set.
+// The CitronOS apps (apps/lib) use the same set.
 for (const syms of [join(here, "..", "shell", "assets", "symbols"), join(here, "..", "apps", "lib", "assets", "symbols")]) {
   rmSync(syms, { recursive: true, force: true });
   mkdirSync(syms, { recursive: true });

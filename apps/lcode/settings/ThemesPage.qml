@@ -23,7 +23,7 @@ Item {
 
     readonly property string sample: "import Foundation\n\n/// Says hello to someone.\nstruct Greeter {\n    let name: String\n    var count = 3\n\n" +
         "    func greet() -> String {\n        // Hello, a few times over\n        return String(repeating: \"Hello, \\(name)! \", count: count)\n    }\n}\n\n" +
-        "@main\nenum App {\n    static func main() {\n        #if DEBUG\n        print(Greeter(name: \"Golden Gate\").greet())\n        #endif\n    }\n}\n"
+        "@main\nenum App {\n    static func main() {\n        #if DEBUG\n        print(Greeter(name: \"CitronOS\").greet())\n        #endif\n    }\n}\n"
 
     function use(theme) {
         app.saveSettings(theme.dark ? { editorThemeDark: theme.id } : { editorThemeLight: theme.id })

@@ -197,7 +197,7 @@ var CATALOG = /* CATALOG-JSON-BEGIN */ {
     },
     "Symbol": {
       "title": "Symbol", "symbol": "star", "container": false,
-      "detail": "One of Golden Gate's symbols, in any colour.",
+      "detail": "One of CitronOS's symbols, in any colour.",
       "defaults": { "name": "star", "size": 28 },
       "fields": [
         { "key": "name", "label": "Symbol", "kind": "symbol" },

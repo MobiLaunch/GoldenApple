@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Software Update installs Golden Gate from GitHub.
+"""Software Update installs CitronOS from GitHub.
 
 A stand-in GitHub API serves this checkout as the newest commit of a private
 repository; the update is installed into a staging root with the real
@@ -197,7 +197,7 @@ class GoldenUpdate(unittest.TestCase):
 
 class FromUsb(unittest.TestCase):
     """The command line, as from the live ISO: an update bundle installed onto
-    a Golden Gate system mounted somewhere else, whose accounts are its own."""
+    a CitronOS system mounted somewhere else, whose accounts are its own."""
     def test_bundle_onto_a_mounted_system(self):
         work = Path(tempfile.mkdtemp(prefix="gg-usb-"))
         try:

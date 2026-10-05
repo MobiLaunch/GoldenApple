@@ -31,7 +31,7 @@ class Fixture(http.server.BaseHTTPRequestHandler):
         COOKIES_SEEN.append((self.path, self.headers.get("Cookie") or ""))
         page = (
             f"<title>Fixture {self.path}</title>"
-            '<article><h1>Reader Test</h1><p>Golden Gate browser fixture content.</p></article>'
+            '<article><h1>Reader Test</h1><p>CitronOS browser fixture content.</p></article>'
             '<a href="/second">Second page</a>'
         )
         self.send_response(200)

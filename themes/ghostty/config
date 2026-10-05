@@ -1,4 +1,4 @@
-# Golden Gate: Ghostty set up like Terminal on the Mac.
+# CitronOS: Ghostty set up like Terminal on the Mac.
 # Installed to ~/.config/ghostty/config by scripts/install.sh.
 
 # Draw our own title bar (traffic lights, glass toolbar) instead of asking the
@@ -8,7 +8,7 @@ gtk-titlebar = true
 gtk-tabs-location = top
 
 # Terminal's "Basic" profile, following the system appearance.
-theme = light:Golden Gate Light,dark:Golden Gate Dark
+theme = light:CitronOS Light,dark:CitronOS Dark
 font-family = JetBrains Mono
 font-size = 11
 window-padding-x = 6

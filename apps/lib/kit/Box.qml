@@ -1,4 +1,4 @@
-// The base of every Golden Gate Kit component: a cell its container lays out,
+// The base of every CitronOS Kit component: a cell its container lays out,
 // and inside it the box you see, with the modifiers the App Designer offers —
 // frame, alignment, padding, fill, corners, border, shadow, offset, hover and
 // tap, and an animated show/hide.

@@ -2191,7 +2191,7 @@ Window {
             Text {
                 width: parent.width
                 wrapMode: Text.WordWrap
-                text: "Golden Gate Privacy Protection uses a conservative built-in tracker list. It is not Safari Intelligent Tracking Prevention."
+                text: "CitronOS Privacy Protection uses a conservative built-in tracker list. It is not Safari Intelligent Tracking Prevention."
                 color: Theme.tertiaryLabel
                 font { family: Theme.fontUi; pixelSize: 10 }
             }

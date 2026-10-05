@@ -5,13 +5,13 @@ import { createWindow, pill, tb, div } from "../wm.js";
 import { registerApp } from "../apps.js";
 
 const TODAY = new Date(2026, 8, 26);
-const CALS = { home: ["Home", "#0a84ff"], work: ["Work", "#bf5af2"], family: ["Family", "#30d158"], gg: ["Golden Gate", "#ff9f0a"] };
+const CALS = { home: ["Home", "#0a84ff"], work: ["Work", "#bf5af2"], family: ["Family", "#30d158"], gg: ["CitronOS", "#ff9f0a"] };
 const EV = [
   [2026, 8, 1, 10, 1, "Sprint planning", "work"], [2026, 8, 3, 18.5, 2, "Climbing", "home"], [2026, 8, 7, 0, 24, "Labor Day", "family"],
   [2026, 8, 9, 14, 1, "Icon review", "gg"], [2026, 8, 11, 9, 1.5, "Motion workshop", "gg"], [2026, 8, 14, 12, 1, "Lunch with Rosa", "home"],
   [2026, 8, 16, 16, 1, "Dentist", "home"], [2026, 8, 18, 19, 2, "Jonah's birthday", "family"], [2026, 8, 21, 10, 1, "1:1 Maya", "work"],
   [2026, 8, 22, 15, 1.5, "Hyprland plugin sync", "gg"], [2026, 8, 24, 9, 1, "Standup", "work"], [2026, 8, 25, 13, 1, "Quickshell pairing", "gg"],
-  [2026, 8, 26, 10, 1, "Design review · Liquid Glass", "work"], [2026, 8, 26, 14, 0.75, "Ship Golden Gate 0.1", "gg"], [2026, 8, 26, 18.75, 1.5, "Sunset walk, Crissy Field", "home"],
+  [2026, 8, 26, 10, 1, "Design review · Liquid Glass", "work"], [2026, 8, 26, 14, 0.75, "Ship CitronOS 0.1", "gg"], [2026, 8, 26, 18.75, 1.5, "Sunset walk, Crissy Field", "home"],
   [2026, 8, 28, 11, 1, "ISO smoke test", "gg"], [2026, 8, 29, 17, 1, "Yoga", "home"], [2026, 8, 30, 9, 2, "Quarterly review", "work"],
   [2026, 9, 2, 20, 2, "Movie night", "family"], [2026, 9, 5, 10, 1, "Accessibility audit", "gg"], [2026, 7, 28, 10, 1, "Offsite", "work"],
 ].map(([y, m, d, start, len, title, cal]) => ({ date: new Date(y, m, d), start, len, title, cal }));

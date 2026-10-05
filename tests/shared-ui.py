@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Keep Golden Gate application controls centralized in apps/lib."""
+"""Keep CitronOS application controls centralized in apps/lib."""
 from pathlib import Path
 import re
 import sys
@@ -42,16 +42,16 @@ foreign_primary = {
 for package in sorted(foreign_primary & packages):
     errors.append(f"foreign primary UI package returned to default image: {package}")
 
-# Golden Gate desktop entries may use mature engines internally (for example
+# CitronOS desktop entries may use mature engines internally (for example
 # Terminal -> ghostty), but must not directly launch the foreign primary apps
-# that have native Golden Gate replacements.
+# that have native CitronOS replacements.
 foreign_exec = ("nautilus", "gnome-software", "gnome-control-center", "gnome-calendar",
                 "geary", "fractal", "firefox", "gnome-text-editor", "gnome-clocks", "loupe")
 for desktop in sorted((root / "apps/desktop").glob("*.desktop")):
     text = desktop.read_text(encoding="utf-8").lower()
     for command in foreign_exec:
         if f"exec={command}" in text or f"exec=sh -c '{command}" in text:
-            errors.append(f"Golden Gate desktop entry launches foreign primary UI: {desktop.name} -> {command}")
+            errors.append(f"CitronOS desktop entry launches foreign primary UI: {desktop.name} -> {command}")
 
 # The Dock's default apps are kept with the other desktop preferences.
 dock = (root / "shell/Dock.qml").read_text(encoding="utf-8") + (root / "shell/components/Prefs.qml").read_text(encoding="utf-8")

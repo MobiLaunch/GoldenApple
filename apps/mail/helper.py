@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Golden Gate Mail backend: manual IMAP/SMTP account with keyring credentials."""
+"""CitronOS Mail backend: manual IMAP/SMTP account with keyring credentials."""
 from __future__ import annotations
 
 import email
@@ -66,7 +66,7 @@ def secret_store(account: str, password: str) -> None:
     p = subprocess.run(
         [
             "secret-tool", "store",
-            "--label=Golden Gate Mail",
+            "--label=CitronOS Mail",
             "service", "golden-gate-mail",
             "account", account,
         ],

@@ -1,6 +1,6 @@
-"""Golden Gate updates from GitHub, for Software Update.
+"""CitronOS updates from GitHub, for Software Update.
 
-Golden Gate itself (the shell, the apps, the themes) comes from its GitHub
+CitronOS itself (the shell, the apps, the themes) comes from its GitHub
 repository rather than from Arch packages. This module asks GitHub for the
 newest commit on the branch the system was built from, says what changed
 since the installed one, and installs it:
@@ -10,7 +10,7 @@ since the installed one, and installs it:
   3. run its scripts/install.sh --system / , with the previous runtime kept
      aside and put back if the install fails
   4. bring every account's own copies up to date: the shell (always: it is
-     Golden Gate's, not the user's) and the Hyprland, GTK, Ghostty and font
+     CitronOS's, not the user's) and the Hyprland, GTK, Ghostty and font
      files, but only those the user hasn't changed; an edited file is left
      alone and the new one is written next to it as NAME.golden-gate-new
   5. the installed-system parts of the ISO overlay (polkit, user services),
@@ -18,7 +18,7 @@ since the installed one, and installs it:
   6. record the new version in /usr/share/golden-gate/version.json
 
 Where updates come from: /etc/golden-gate/update.json {"repo", "branch"},
-else the repository and branch recorded at build time, else Golden Gate's
+else the repository and branch recorded at build time, else CitronOS's
 development branch of MobiLaunch/GoldenApple. A private repository needs a read-only
 access token in /etc/golden-gate/update-token (root:wheel 0640), set from
 Settings ▸ Software Update ▸ Update Source.
@@ -33,7 +33,7 @@ Without GitHub, from a USB stick:
       tar xzf golden-gate-update.tar.gz
       sudo python3 golden-gate/apps/settings/golden_update.py install-local
 
-  from the live ISO, onto the Golden Gate installed on this computer's disk
+  from the live ISO, onto the CitronOS installed on this computer's disk
   (the ISO carries its own source as /usr/share/golden-gate/source.tar.gz):
       sudo gg-update-disk
 
@@ -66,7 +66,7 @@ DEFAULT_BRANCH = "claude/linux-macos-golden-gate-ui-pckc7s"
 REPO_RE = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
 BRANCH_RE = re.compile(r"^(?!.*\.\.)[A-Za-z0-9_./-]{1,200}$")
 
-# Files every account gets from /etc/skel/.config that Golden Gate keeps current.
+# Files every account gets from /etc/skel/.config that CitronOS keeps current.
 MANAGED = [
     "hypr/hyprland.conf", "hypr/hypridle.conf", "hypr/golden-gate/motion.conf",
     "hypr/golden-gate/report-config-errors.sh", "hypr/golden-gate/machine-conf.sh",
@@ -80,7 +80,7 @@ LIVE_ONLY = (
     "etc/systemd/system/gg-live-home.service",
 )
 
-# What the live ISO (archiso's releng profile plus Golden Gate's overlay) leaves
+# What the live ISO (archiso's releng profile plus CitronOS's overlay) leaves
 # on a system the installer copies from it, and an installed system must not
 # keep. archiso.conf matters most: mkinitcpio reads conf.d after
 # mkinitcpio.conf, so it swapped the installed boot image's hooks for the live
@@ -254,7 +254,7 @@ def refusal(e: GitHubError, src: dict) -> tuple[str, bool]:
     repo, branch, token = src["repo"], src["branch"], src["token"]
     help_ = TOKEN_HELP.format(name=repo.split("/")[-1])
     if e.status == 0:
-        return "Couldn't reach GitHub to check for Golden Gate updates.", False
+        return "Couldn't reach GitHub to check for CitronOS updates.", False
     if e.rate_limited:
         return "GitHub's limit on checks was reached for now. Try again in an hour" + \
             ("." if token else ", or add an access token in Update Source."), False
@@ -289,7 +289,7 @@ def verify_source(repo: str, branch: str, token: str) -> tuple[str, bool] | None
 
 
 def check() -> dict:
-    """What Software Update shows for Golden Gate."""
+    """What Software Update shows for CitronOS."""
     src = source()
     now = installed()
     out = {"repo": src["repo"], "branch": src["branch"], "current": now.get("commit", ""),
@@ -298,7 +298,7 @@ def check() -> dict:
     token_file = path("/etc/golden-gate/update-token")
     if not src["token"] and token_file.exists():
         out["error"] = ("A token is saved, but this account can't read it. "
-                        "Only administrators can check for Golden Gate updates.")
+                        "Only administrators can check for CitronOS updates.")
         return out
     try:
         head = api(f"/repos/{src['repo']}/commits/{src['branch']}", src["token"])
@@ -363,7 +363,7 @@ def unpack(archive: Path, dest: Path) -> Path:
             tar.extractall(dest, members=members)
     tops = [p for p in dest.iterdir() if p.is_dir()]
     if len(tops) != 1 or not (tops[0] / "scripts/install.sh").exists():
-        raise GitHubError(0, "The update doesn't contain Golden Gate.")
+        raise GitHubError(0, "The update doesn't contain CitronOS.")
     return tops[0]
 
 
@@ -554,7 +554,7 @@ def enable_services(tree: Path):
 
 
 def apply(emit: Emit) -> bool:
-    """As root: install the newest Golden Gate. False when nothing was done."""
+    """As root: install the newest CitronOS. False when nothing was done."""
     status = check()
     if not status["available"]:
         if status["error"]:
@@ -563,7 +563,7 @@ def apply(emit: Emit) -> bool:
     src = source()
     work = Path(tempfile.mkdtemp(prefix="gg-golden-update-", dir=path("/var/tmp") if path("/var/tmp").is_dir() else None))
     try:
-        emit("progress", progress=0.86, message="Downloading Golden Gate…", remaining=-1)
+        emit("progress", progress=0.86, message="Downloading CitronOS…", remaining=-1)
         tree = download(src, status["latest"], work)
         version = {"repo": src["repo"], "branch": src["branch"], "commit": status["latest"],
                    "date": status.get("latestDate", ""), "subject": status.get("latestSubject", "")}
@@ -574,13 +574,13 @@ def apply(emit: Emit) -> bool:
 
 
 def install_tree(tree: Path, version: dict, emit: Emit, work: Path) -> bool:
-    """Install Golden Gate from an unpacked tree (see apply's steps)."""
+    """Install CitronOS from an unpacked tree (see apply's steps)."""
     backup = work / "previous"
     runtime = path("/usr/share/golden-gate")
     skel_shell = path("/etc/skel/.config/quickshell/golden-gate")
     try:
         skipped = install_packages(tree, emit)
-        emit("progress", progress=0.92, message="Installing Golden Gate…", remaining=-1)
+        emit("progress", progress=0.92, message="Installing CitronOS…", remaining=-1)
         old_skel = _snapshot_skel(work)
         for p, name in ((runtime, "runtime"), (skel_shell, "skel-shell")):
             if p.exists():
@@ -593,7 +593,7 @@ def install_tree(tree: Path, version: dict, emit: Emit, work: Path) -> bool:
                     shutil.rmtree(p, ignore_errors=True)
                     shutil.copytree(backup / name, p, symlinks=True)
             tail = (proc.stdout + proc.stderr).strip().splitlines()[-1:] or ["unknown error"]
-            emit("error", message="Golden Gate's update didn't install, and the previous version was kept: " + tail[0][:200])
+            emit("error", message="CitronOS's update didn't install, and the previous version was kept: " + tail[0][:200])
             return False
         emit("progress", progress=0.96, message="Updating your settings…", remaining=-1)
         kept = refresh_accounts(old_skel)
@@ -639,7 +639,7 @@ def _say(event, **kw):
 
 
 def _tree_version(tree: Path) -> dict:
-    """Which Golden Gate a tree is: git when it's a checkout, else the record
+    """Which CitronOS a tree is: git when it's a checkout, else the record
     an update bundle (or the ISO's source) carries."""
     git = lambda *a: _run(["git", "-C", str(tree), *a]).stdout.strip()
     if git("rev-parse", "--is-inside-work-tree") == "true":
@@ -660,16 +660,16 @@ def _tree_version(tree: Path) -> dict:
 
 
 def install_local(source: str | None = None, root: str | None = None) -> int:
-    """As root: install Golden Gate from a tree or bundle, onto this system or
+    """As root: install CitronOS from a tree or bundle, onto this system or
     onto one mounted at `root`."""
     global ROOT
     if os.geteuid() != 0 and not root:
-        print("Run this with sudo: it installs Golden Gate for the whole system.")
+        print("Run this with sudo: it installs CitronOS for the whole system.")
         return 77
     if root:
         target = Path(root).resolve()
         if not (target / "usr/share/golden-gate").is_dir() or not (target / "etc/passwd").is_file():
-            print(f"! {target} doesn't look like an installed Golden Gate system.")
+            print(f"! {target} doesn't look like an installed CitronOS system.")
             return 2
         ROOT = target
     work = Path(tempfile.mkdtemp(prefix="gg-golden-update-"))
@@ -681,16 +681,16 @@ def install_local(source: str | None = None, root: str | None = None) -> int:
             elif Path("/usr/share/golden-gate/source.tar.gz").exists():
                 source = "/usr/share/golden-gate/source.tar.gz"
             else:
-                print("! No Golden Gate source here: pass --from an update bundle or a checkout.")
+                print("! No CitronOS source here: pass --from an update bundle or a checkout.")
                 return 2
         src = Path(source)
         tree = unpack(src, work / "src") if src.is_file() else src
         if not (tree / "scripts/install.sh").exists():
-            print(f"! {src} doesn't contain Golden Gate.")
+            print(f"! {src} doesn't contain CitronOS.")
             return 2
         version = _tree_version(tree)
         where = f"onto {ROOT}" if ROOT != Path("/") else "on this computer"
-        print(f"› Installing Golden Gate {str(version.get('commit', ''))[:7] or '(unknown version)'} {where}…", flush=True)
+        print(f"› Installing CitronOS {str(version.get('commit', ''))[:7] or '(unknown version)'} {where}…", flush=True)
         ok = install_tree(tree, version, _say, work)
     except (GitHubError, tarfile.TarError, OSError) as e:
         print(f"! {e}")
@@ -698,14 +698,14 @@ def install_local(source: str | None = None, root: str | None = None) -> int:
     finally:
         shutil.rmtree(work, ignore_errors=True)
     if ok:
-        print(f"› Done. Golden Gate {str(version.get('commit', ''))[:7]} is installed {where}.")
+        print(f"› Done. CitronOS {str(version.get('commit', ''))[:7]} is installed {where}.")
         print("› Settings ▸ Software Update finds later updates on GitHub."
               + (" Restart into the installed system." if ROOT != Path("/") else " Log out and back in to finish."))
     return 0 if ok else 1
 
 
 def _candidates():
-    """Linux partitions holding an installed Golden Gate, mounting the ones
+    """Linux partitions holding an installed CitronOS, mounting the ones
     that aren't yet. Yields (device, mountpoint, mounted_by_us)."""
     out = _run(["lsblk", "-rpno", "PATH,FSTYPE,MOUNTPOINT", "-e", "7,11"]).stdout
     for line in out.splitlines():
@@ -729,17 +729,17 @@ def _candidates():
 
 
 def update_disk() -> int:
-    """From the live ISO: update the Golden Gate installed on this computer."""
+    """From the live ISO: update the CitronOS installed on this computer."""
     if os.geteuid() != 0:
         print("Run this with sudo: sudo gg-update-disk")
         return 77
     if not Path("/usr/share/golden-gate/source.tar.gz").exists():
-        print("! This Golden Gate doesn't carry its source; update from a bundle with install-local --from.")
+        print("! This CitronOS doesn't carry its source; update from a bundle with install-local --from.")
         return 2
     found = list(_candidates())
     try:
         if not found:
-            print("! No installed Golden Gate found on this computer's disks.")
+            print("! No installed CitronOS found on this computer's disks.")
             return 1
         for i, (dev, mnt, _) in enumerate(found, 1):
             host = (Path(mnt, "etc/hostname").read_text().strip() if Path(mnt, "etc/hostname").exists() else "?")
@@ -747,7 +747,7 @@ def update_disk() -> int:
                 ver = json.loads(Path(mnt, "usr/share/golden-gate/version.json").read_text()).get("commit", "")[:7]
             except (OSError, ValueError):
                 ver = ""
-            print(f"  {i}. {dev}  {host}  Golden Gate {ver or '(version unknown)'}")
+            print(f"  {i}. {dev}  {host}  CitronOS {ver or '(version unknown)'}")
         new = _tree_version_from_bundle()
         pick = 1
         if len(found) > 1:
@@ -757,7 +757,7 @@ def update_disk() -> int:
                 return 1
             pick = int(answer)
         dev, mnt, _ = found[pick - 1]
-        if input(f"Update {dev} to Golden Gate {new}? Accounts and files are kept. [y/N] ").strip().lower() not in ("y", "yes"):
+        if input(f"Update {dev} to CitronOS {new}? Accounts and files are kept. [y/N] ").strip().lower() not in ("y", "yes"):
             print("Nothing changed.")
             return 1
         return install_local("/usr/share/golden-gate/source.tar.gz", mnt)
@@ -784,11 +784,11 @@ def _tree_version_from_bundle() -> str:
 
 if __name__ == "__main__":
     import argparse
-    parser = argparse.ArgumentParser(description="Install Golden Gate updates without GitHub.")
+    parser = argparse.ArgumentParser(description="Install CitronOS updates without GitHub.")
     sub = parser.add_subparsers(dest="command", required=True)
     local = sub.add_parser("install-local", help="install from a checkout or update bundle")
     local.add_argument("--from", dest="source", help="a checkout or golden-gate-update.tar.gz")
-    local.add_argument("--root", help="a mounted Golden Gate system to update instead of this one")
-    sub.add_parser("update-disk", help="from the live ISO: update the Golden Gate on this computer's disk")
+    local.add_argument("--root", help="a mounted CitronOS system to update instead of this one")
+    sub.add_parser("update-disk", help="from the live ISO: update the CitronOS on this computer's disk")
     args = parser.parse_args()
     raise SystemExit(install_local(args.source, args.root) if args.command == "install-local" else update_disk())

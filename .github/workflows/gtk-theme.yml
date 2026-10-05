@@ -1,6 +1,6 @@
 name: GTK theme
 
-# Runs the ISO's GTK apps with the Golden Gate theme in an Arch container (the
+# Runs the ISO's GTK apps with the CitronOS theme in an Arch container (the
 # same GTK and libadwaita as the image) and screenshots each, light and dark.
 # Fails on any GTK CSS parser error. The screenshots are in the gtk-shots
 # artifact, and in the job log as base64 JPEGs ("--- shot <name> ---").

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""AirDrop for Golden Gate: share files with devices nearby.
+"""AirDrop for CitronOS: share files with devices nearby.
 
 Speaks the LocalSend protocol (v2, https://github.com/localsend/protocol), so
 it works with the LocalSend app on iPhone, iPad, Android, Windows, macOS and
-Linux as well as with other Golden Gate computers:
+Linux as well as with other CitronOS computers:
 
   discovery  UDP multicast 224.0.0.167:53317 announcements, answered with an
              HTTP register call; plus a sweep of the local /24 when asked,
@@ -99,7 +99,7 @@ def computer_name() -> str:
         except (OSError, subprocess.SubprocessError):
             pass
     host = socket.gethostname().split(".")[0]
-    return host if host and host not in ("localhost", "archiso") else "Golden Gate"
+    return host if host and host not in ("localhost", "archiso") else "CitronOS"
 
 
 def safe_relative(name: str) -> Path | None:
@@ -312,7 +312,7 @@ class AirDrop:
                 os.chmod(folder, 0o700)
                 subprocess.run(["openssl", "req", "-x509", "-newkey", "rsa:2048", "-nodes", "-sha256",
                                 "-keyout", str(key), "-out", str(cert), "-days", "3650",
-                                "-subj", "/CN=Golden Gate AirDrop"],
+                                "-subj", "/CN=CitronOS AirDrop"],
                                capture_output=True, timeout=60)
             if cert.exists() and key.exists():
                 os.chmod(key, 0o600)
@@ -330,7 +330,7 @@ class AirDrop:
                     self.protocol = "http"
 
     def info(self, *, announce=None) -> dict:
-        data = {"alias": self.alias, "version": VERSION, "deviceModel": "Golden Gate",
+        data = {"alias": self.alias, "version": VERSION, "deviceModel": "CitronOS",
                 "deviceType": "desktop", "fingerprint": self.fingerprint, "port": PORT,
                 "protocol": self.protocol, "download": False}
         if announce is not None:

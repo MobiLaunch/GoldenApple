@@ -1,5 +1,5 @@
 // Setup Assistant's backdrop: deep blue with slow, soft light drifting through
-// it in the Golden Gate colours. It is what the Liquid Glass bends, so it has
+// it in the CitronOS colours. It is what the Liquid Glass bends, so it has
 // colour everywhere and no hard edges. Painted as large radial gradients;
 // the drift stops under the software renderer (VMs), where it would cost.
 import QtQuick

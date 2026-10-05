@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Golden Gate's changes to hyprbars (hyprland-plugins), applied by anchor so
+"""CitronOS's changes to hyprbars (hyprland-plugins), applied by anchor so
 they carry across plugin versions; exits non-zero if an anchor is gone, rather
 than building bars for every window.
 
 1. A bar only for windows that leave their title bar to the compositor:
-   Wayland apps that draw their own (GTK, libadwaita, Golden Gate's apps) never
+   Wayland apps that draw their own (GTK, libadwaita, CitronOS's apps) never
    ask for one through xdg-decoration; Qt, Electron and the like do, and
    Hyprland answers "server side" and draws nothing. X11 windows keep
    hyprbars' own rule (a bar unless they ask for no border).
@@ -17,7 +17,7 @@ import re
 import sys
 
 ACCESS = '''
-// Golden Gate: a bar only for windows that leave their title bar to the
+// CitronOS: a bar only for windows that leave their title bar to the
 // compositor (see distro/hyprbars/patch.py). The protocol keeps its
 // decorations private, so reach the table through an explicit template
 // instantiation, which may name a private member.
@@ -32,7 +32,7 @@ template struct SGGDecorationsAccess<&CXDGDecorationProtocol::m_decorations>;
 GGDecorationMap& ggDecorations(CXDGDecorationProtocol& protocol);
 
 static bool ggWantsBar(PHLWINDOW window) {
-    // Golden Gate's own windows draw their traffic lights themselves.
+    // CitronOS's own windows draw their traffic lights themselves.
     for (const auto& cls : {window->m_initialClass, window->m_class}) {
         if (cls.starts_with("org.goldengate.") || cls.starts_with("org.quickshell"))
             return false;
@@ -54,7 +54,7 @@ static bool ggWantsBar(PHLWINDOW window) {
 
 '''
 
-DEDUPE = '''    // Golden Gate sets its buttons again after every config reload: keep one of each.
+DEDUPE = '''    // CitronOS sets its buttons again after every config reload: keep one of each.
     if (std::ranges::any_of(g_pGlobalState->buttons, [&](const auto& b) { return b.cmd == vars[3] && b.icon == vars[2] && b.size == size; }))
         return result;
 

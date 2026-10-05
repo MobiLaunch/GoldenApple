@@ -21,7 +21,7 @@ Item {
     readonly property string userDisplay: users.currentItem?.displayName || userLogin
     readonly property string userIcon: users.currentItem?.iconPath || ""
 
-    // Prefer the dedicated Golden Gate session when it is installed. SDDM's
+    // Prefer the dedicated CitronOS session when it is installed. SDDM's
     // session model is also a QAbstractListModel, so discover it through delegate
     // roles rather than assuming a private role number.
     Repeater {
@@ -31,7 +31,7 @@ Item {
             required property string name
             visible: false
             Component.onCompleted: {
-                if (name === "Golden Gate")
+                if (name === "CitronOS" || name === "Golden Gate")   // the session's name before the rename
                     root.goldenSessionIndex = index
             }
         }

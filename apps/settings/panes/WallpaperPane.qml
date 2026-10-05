@@ -1,4 +1,4 @@
-// Wallpaper: the current one, and the Golden Gate collection and your own
+// Wallpaper: the current one, and the CitronOS collection and your own
 // (~/Pictures/Wallpapers) to choose from. The shell picks it up at once.
 import Quickshell
 import QtQuick

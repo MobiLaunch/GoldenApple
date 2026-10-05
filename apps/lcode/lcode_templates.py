@@ -19,7 +19,7 @@ HOST = "host"
 
 # id: (toolchain, product kind, title)
 TEMPLATE_INFO = {
-    "gg-app": ("goldengate", "app", "Golden Gate App"),
+    "gg-app": ("goldengate", "app", "CitronOS App"),
     "app": ("swift", "app", "Swift App"),
     "python-app": ("python", "app", "Python App"),
     "rust-app": ("cargo", "app", "Rust App"),

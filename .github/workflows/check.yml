@@ -218,7 +218,7 @@ jobs:
         run: python tests/airdrop.py
       - name: Recognise nearby headphones and iPhones for the pairing card
         run: python tests/nearby.py
-      - name: Install Golden Gate from GitHub as a Software Update (staged root)
+      - name: Install CitronOS from GitHub as a Software Update (staged root)
         run: python tests/golden-update.py
       - name: Software Update repairs an out-of-date pacman keyring
         run: python tests/update-keyring.py

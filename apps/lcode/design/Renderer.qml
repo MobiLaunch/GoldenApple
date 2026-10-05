@@ -1,4 +1,4 @@
-// Draws one screen of a design with real Golden Gate Kit components, the way
+// Draws one screen of a design with real CitronOS Kit components, the way
 // the built app will: every node becomes a Kit item, {templates} and bindings
 // follow the runtime's variables, and actions run in its sandbox.
 //

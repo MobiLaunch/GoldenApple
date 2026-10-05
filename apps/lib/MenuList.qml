@@ -1,4 +1,4 @@
-// The Golden Gate menu: one look for every menu in the system (the menu bar's
+// The CitronOS menu: one look for every menu in the system (the menu bar's
 // menus, context menus, pop-up buttons, the Dock's menus), drawn to the macOS
 // menu metrics. PopupMenu shows it inside a window; the shell's MenuPopup
 // shows it in its own surface. Items:

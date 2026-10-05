@@ -1,4 +1,4 @@
-# Golden Gate Kit: the components of LCode's App Designer and the apps it builds.
+# CitronOS Kit: the components of LCode's App Designer and the apps it builds.
 Box 1.0 Box.qml
 Stack 1.0 Stack.qml
 VStack 1.0 VStack.qml

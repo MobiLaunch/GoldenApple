@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
-"""Golden Gate apps made in LCode's App Designer: starter designs, checking a
+"""CitronOS apps made in LCode's App Designer: starter designs, checking a
 design, and building it into a Quickshell app.
 
     lcode_design.py build ROOT [--release] [--check]   generate .build/app (QML) from Interface.lcdesign
     lcode_design.py show ROOT SCREEN                    print a screen's generated QML
 
 A design (Interface.lcdesign, JSON) holds the app's settings, its variables,
-named colours and screens of Golden Gate Kit components (apps/lib/kit). The
+named colours and screens of CitronOS Kit components (apps/lib/kit). The
 build writes ordinary QML that uses the same Kit components, so the app looks
 exactly like the designer's canvas:
 
     .build/app/App.qml          the window, sidebar, state and saved variables
     .build/app/screens/*.qml    one file per screen
-    .build/app/ui               Golden Gate's shared components (linked; copied for an archive)
+    .build/app/ui               CitronOS's shared components (linked; copied for an archive)
     .build/app/Assets, Logic.js the project's images and code
 """
 from __future__ import annotations
@@ -64,7 +64,7 @@ class Ids:
 
 
 def starter_design(name: str, style: str = "sidebar", accent: str = "#0a84ff") -> dict:
-    """The design a new Golden Gate App starts from: a home screen with a
+    """The design a new CitronOS App starts from: a home screen with a
     counter, and (as a sidebar app) a to-do list and settings."""
     ids = Ids()
     n = ids.node

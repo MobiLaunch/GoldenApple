@@ -1,10 +1,10 @@
-// Native Golden Gate Software Update. One button does it all: Update Now
+// Native CitronOS Software Update. One button does it all: Update Now
 // checks for updates and installs them, the system's packages first (as root,
 // through the org.goldengate.update polkit action, which an administrator at
 // the computer runs without a password) and then the user's Flatpak apps.
 // Progress stays inside Settings; nothing opens a terminal.
 //
-// Golden Gate itself updates from its GitHub repository (golden_update.py):
+// CitronOS itself updates from its GitHub repository (golden_update.py):
 // the check lists what changed since the installed commit, and Update Now
 // installs it with the system packages. Update Source sets the repository,
 // branch and, for a private repository, a read-only access token.
@@ -20,7 +20,7 @@ Pane {
     headerSymbol: "arrow-clockwise"
     headerTint: "#8e8e93"
     headerTitle: "Software Update"
-    headerText: "Golden Gate keeps the system and installed packages current in the background."
+    headerText: "CitronOS keeps the system and installed packages current in the background."
 
     readonly property string helper: Qt.resolvedUrl("../update-helper.py").toString().replace("file://", "")
     property string last: ""
@@ -41,10 +41,10 @@ Pane {
     property int systemCount: 0         // pacman packages and system Flatpaks
     property int userAppCount: 0        // the user's own Flatpak apps
     property bool installAfterCheck: false
-    property var golden: ({})           // Golden Gate's check: available, notes, needsToken…
+    property var golden: ({})           // CitronOS's check: available, notes, needsToken…
     property var source: ({})           // repo, branch, hasToken, commit, date, subject
     property bool editingSource: false
-    property bool relogin: false        // Golden Gate was updated: log out to finish
+    property bool relogin: false        // CitronOS was updated: log out to finish
     property string notice: ""
 
     function consume(line) {
@@ -65,7 +65,7 @@ Pane {
                 state = updateCount > 0 ? "available" : "current"
                 message = updateCount > 0
                     ? updateCount + (updateCount === 1 ? " update is available." : " updates are available.")
-                    : "Golden Gate is up to date."
+                    : "CitronOS is up to date."
                 progress = updateCount > 0 ? 0 : 1
                 error = event.stale ? (event.message ?? "") : ""
             } else if (event.event === "progress") {
@@ -82,7 +82,7 @@ Pane {
                 progress = 1
                 remaining = 0
                 updateCount = 0
-                message = event.message ?? "Golden Gate is up to date."
+                message = event.message ?? "CitronOS is up to date."
                 last = "Just now"
                 error = ""
             } else if (event.event === "notice") {
@@ -269,7 +269,7 @@ Pane {
     Group {
         SetRow {
             title: pane.state === "current"
-                ? "Golden Gate is up to date"
+                ? "CitronOS is up to date"
                 : pane.state === "available"
                     ? "Updates Available"
                     : pane.state === "updating"
@@ -279,7 +279,7 @@ Pane {
                             : "Checking for Updates"
             subtitle: pane.last
                 ? "Last successful system update: " + pane.last.replace("T", " at ")
-                : "Updates include Golden Gate, Arch Linux and installed applications."
+                : "Updates include CitronOS, Arch Linux and installed applications."
 
             // One click: checks for updates and installs whatever it finds.
             Button {
@@ -311,12 +311,12 @@ Pane {
         }
     }
 
-    // Golden Gate: the installed version, what an update brings, and where
+    // CitronOS: the installed version, what an update brings, and where
     // updates come from.
     Group {
-        title: "Golden Gate"
+        title: "CitronOS"
         SetRow {
-            title: pane.source.commit ? "Golden Gate " + pane.source.commit.slice(0, 7) : "Golden Gate"
+            title: pane.source.commit ? "CitronOS " + pane.source.commit.slice(0, 7) : "CitronOS"
             subtitle: pane.source.commit
                 ? (pane.source.subject || "") + (pane.source.date ? "  •  " + String(pane.source.date).slice(0, 10) : "")
                 : "Installed from an image without a version record; the next update adds one."
@@ -341,7 +341,7 @@ Pane {
         }
         SetRow {
             visible: pane.relogin
-            title: "Golden Gate was updated"
+            title: "CitronOS was updated"
             subtitle: "Log out and back in to start using the new version everywhere."
             Button {
                 text: "Log Out…"
@@ -385,15 +385,15 @@ Pane {
         }
     }
 
-    // Why the Golden Gate check failed, whatever the reason: no token, a token
+    // Why the CitronOS check failed, whatever the reason: no token, a token
     // GitHub refused or that can't see the repository, a missing branch, no network.
     Group {
         visible: (!!pane.golden.needsToken || !!pane.golden.error) && !pane.editingSource
-        title: "Golden Gate Updates"
+        title: "CitronOS Updates"
         SetRow {
-            title: !pane.golden.needsToken ? "Couldn't check for Golden Gate updates"
-                : pane.source.hasToken ? "The access token didn't work" : "Golden Gate's repository needs access"
-            subtitle: pane.golden.error || "Add a read-only access token to get Golden Gate updates."
+            title: !pane.golden.needsToken ? "Couldn't check for CitronOS updates"
+                : pane.source.hasToken ? "The access token didn't work" : "CitronOS's repository needs access"
+            subtitle: pane.golden.error || "Add a read-only access token to get CitronOS updates."
             Button {
                 text: pane.golden.needsToken ? (pane.source.hasToken ? "Change Token…" : "Add Token…") : "Update Source…"
                 onClicked: pane.editingSource = true

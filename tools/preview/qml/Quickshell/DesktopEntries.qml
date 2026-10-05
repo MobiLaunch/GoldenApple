@@ -1,6 +1,6 @@
 pragma Singleton
 import QtQuick
-// The installed apps: Golden Gate's desktop files (from preview.py).
+// The installed apps: CitronOS's desktop files (from preview.py).
 QtObject {
     readonly property QtObject applications: QtObject {
         readonly property var values: __preview.desktopEntries.map((e) => entry.createObject(null, e))

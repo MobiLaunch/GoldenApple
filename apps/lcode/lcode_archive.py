@@ -10,7 +10,7 @@
 
 The staged app (.build/archive/<slug>) is a prefix tree:
     bin/<slug>                                   the program, or a launcher for it
-    share/<slug>/…                               its files (Python sources, a Golden Gate app)
+    share/<slug>/…                               its files (Python sources, a CitronOS app)
     share/applications/<id>.desktop
     share/icons/hicolor/scalable/apps/<id>.svg
     share/metainfo/<id>.metainfo.xml
@@ -338,8 +338,8 @@ package() {{
 def flatpak(root: str, out=print) -> dict:
     info = Info(root)
     if info.toolchain == "goldengate":
-        raise RuntimeError("Golden Gate apps run on Quickshell, which isn't available as a Flatpak runtime. "
-                           "Install the app on this computer, or export a PKGBUILD for Golden Gate and Arch.")
+        raise RuntimeError("CitronOS apps run on Quickshell, which isn't available as a Flatpak runtime. "
+                           "Install the app on this computer, or export a PKGBUILD for CitronOS and Arch.")
     caps = info.meta.get("capabilities")
     if caps is None:
         caps = ["network"] if info.kind == "app" else []

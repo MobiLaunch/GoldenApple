@@ -1,4 +1,4 @@
-// Setup compatibility wrapper around the shared Golden Gate Glass component.
+// Setup compatibility wrapper around the shared CitronOS Glass component.
 // Optical blur/refraction now belongs to HyprGlass at the compositor boundary;
 // QML only paints the shared material/chrome.
 import QtQuick

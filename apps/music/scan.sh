@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Golden Gate Music: scans a music folder into a tab-separated library file.
+# CitronOS Music: scans a music folder into a tab-separated library file.
 #
 #   scan.sh MUSIC_DIR CACHE_DIR
 #

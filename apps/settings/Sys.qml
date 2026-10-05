@@ -1,5 +1,5 @@
 // What the Settings panes use to reach the system: run a command and get its
-// output, and read and update the Golden Gate preference files.
+// output, and read and update the CitronOS preference files.
 //   sys.run(["nmcli", "-t", ...], (out, code) => …)
 //   sys.prefs.dock.size            (desktop.json, watched by the shell)
 //   sys.setPref(["dock", "size"], 60)

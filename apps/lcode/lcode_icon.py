@@ -1,5 +1,5 @@
-"""App icons designed in LCode's project editor, drawn the Golden Gate way:
-a squircle with a gradient, a glyph (a Golden Gate symbol, a few letters or
+"""App icons designed in LCode's project editor, drawn the CitronOS way:
+a squircle with a gradient, a glyph (a CitronOS symbol, a few letters or
 an emoji, or an image), the Liquid Glass rim and sheen, and a dark variant
 (graphite body, glyph in the icon's colour) like the system's own icons.
 
@@ -93,7 +93,7 @@ def render(icon: dict | None, dark: bool = False, root: pathlib.Path | None = No
     glyph = icon.get("glyph") or {}
     gcolor = safe_color(glyph.get("color"), "#ffffff")
     if dark:
-        # Golden Gate's dark icons: a graphite body with the glyph in the icon's colour.
+        # CitronOS's dark icons: a graphite body with the glyph in the icon's colour.
         gcolor = gcolor if glyph.get("kind") == "image" else (c2 if gcolor.lower() in ("#fff", "#ffffff") else gcolor)
         c1, c2 = "#3a3a3e", "#161618"
     angle = float(icon.get("angle", 160)) % 360

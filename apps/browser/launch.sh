@@ -1,5 +1,5 @@
 #!/bin/sh
-# Golden Gate Web normally uses Chromium's hardware renderer. The live ISO has
+# CitronOS Web normally uses Chromium's hardware renderer. The live ISO has
 # to boot across unknown GPUs/firmware combinations; Qt WebEngine's renderer can
 # terminate on some real machines even while the QML shell itself remains fine.
 # Keep the installed system accelerated, but make live media deterministic.

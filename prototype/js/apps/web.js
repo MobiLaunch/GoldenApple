@@ -5,7 +5,7 @@ import { createWindow, pill, tb, div } from "../wm.js";
 import { registerApp, launch } from "../apps.js";
 
 const FAVS = [
-  ["Golden Gate", "golden-gate.dev", "#f5a524", "#e0620b"], ["Arch Wiki", "wiki.archlinux.org", "#35a7e8", "#1263b0"],
+  ["CitronOS", "golden-gate.dev", "#f5a524", "#e0620b"], ["Arch Wiki", "wiki.archlinux.org", "#35a7e8", "#1263b0"],
   ["Hyprland", "hyprland.org", "#58e1ff", "#2e7df6"], ["Flathub", "flathub.org", "#6aa2e8", "#3b5fb8"],
   ["Wikipedia", "wikipedia.org", "#8e8e93", "#3a3a3c"], ["GitHub", "github.com", "#48484a", "#1c1c1e"],
   ["Quickshell", "quickshell.org", "#bf5af2", "#5e5ce6"], ["Inter", "rsms.me/inter", "#30d158", "#0b8f3a"],
@@ -87,7 +87,7 @@ function openWeb() {
     return h("div.landing",
       h("header.hero",
         h("div.hero-inner",
-          h("span.eyebrow", "Golden Gate 27"),
+          h("span.eyebrow", "CitronOS 27"),
           h("h1", "Liquid Glass.", h("br"), "Now on Linux."),
           h("p", "A desktop that refracts, springs and glows, built on Arch, Hyprland and Quickshell."),
           h("div.cta", h("button.btn.primary", { on: { click: () => launch("store") } }, "Download the ISO"), h("button.link", "Learn more ›")))),

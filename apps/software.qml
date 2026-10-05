@@ -1,5 +1,5 @@
 //@ pragma AppId org.goldengate.Software
-// Golden Gate App Store, laid out like the Mac's: Discover with an editorial
+// CitronOS App Store, laid out like the Mac's: Discover with an editorial
 // card and shelves, Create / Work / Play / Develop, a page for each app, and
 // Updates and Installed. Two sources:
 //   Linux apps  Flathub, installed into your account (software/helper.py)

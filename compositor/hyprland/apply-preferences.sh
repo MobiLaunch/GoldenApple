@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Applies persistent Golden Gate preferences that are not owned by a daemon.
+# Applies persistent CitronOS preferences that are not owned by a daemon.
 set -u
 
 CONFIG="${XDG_CONFIG_HOME:-$HOME/.config}/golden-gate/desktop.json"
@@ -7,7 +7,7 @@ CONFIG="${XDG_CONFIG_HOME:-$HOME/.config}/golden-gate/desktop.json"
 command -v gg-hyprglass-sync >/dev/null 2>&1 && gg-hyprglass-sync >/dev/null 2>&1 || true
 
 # Flatpak apps (the App Store's) can't see ~/.config, so GTK ones drew GNOME's
-# stock title bar instead of Golden Gate's traffic lights: let them read the
+# stock title bar instead of CitronOS's traffic lights: let them read the
 # GTK theme (read-only; the same as a user granting it in Flatseal).
 command -v flatpak >/dev/null 2>&1 &&
   flatpak override --user --filesystem=xdg-config/gtk-4.0:ro --filesystem=xdg-config/gtk-3.0:ro >/dev/null 2>&1 || true

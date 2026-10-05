@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
-"""Golden Gate Software Update backend: one button checks and installs
-everything, the system's Arch packages, Golden Gate itself (from its GitHub
+"""CitronOS Software Update backend: one button checks and installs
+everything, the system's Arch packages, CitronOS itself (from its GitHub
 repository, see golden_update.py) and the Flatpak apps from the App Store,
 with progress shown in Settings and no terminal.
 
     check        unprivileged: how many updates there are, and which
     apply        as root (pkexec, see org.goldengate.update.policy): the
                  system packages (pacman -Syu), system-wide Flatpaks, then
-                 Golden Gate
+                 CitronOS
     apply-user   unprivileged: the user's own Flatpak apps
-    source       unprivileged: where Golden Gate updates come from
+    source       unprivileged: where CitronOS updates come from
     set-source   as root: save {"repo", "branch", "token"} read from stdin
                  (token null keeps the saved one, "" removes it)
 
@@ -83,16 +83,16 @@ def check() -> int:
         apps_user = flatpak_updates("--user")
     except (OSError, subprocess.SubprocessError):
         apps_system, apps_user = [], []
-    emit("checking", progress=0.8, message="Checking for Golden Gate updates…")
+    emit("checking", progress=0.8, message="Checking for CitronOS updates…")
     try:
         golden = golden_update.check()
     except Exception as exc:                      # never let it hide the other updates
-        golden = {"available": False, "error": f"Couldn't check Golden Gate: {exc}"}
+        golden = {"available": False, "error": f"Couldn't check CitronOS: {exc}"}
     packages = [p.split()[0] + " " + p.split()[-1] if len(p.split()) >= 4 else p for p in system]
     packages += [a + " (app)" for a in apps_system + apps_user]
     if golden.get("available"):
         n = golden.get("ahead") or len(golden.get("notes") or [])
-        packages.insert(0, "Golden Gate" + (f" ({n} change{'s' if n != 1 else ''})" if n else ""))
+        packages.insert(0, "CitronOS" + (f" ({n} change{'s' if n != 1 else ''})" if n else ""))
     emit("result", count=len(packages), system=len(system) + (1 if golden.get("available") else 0),
          apps=len(apps_system) + len(apps_user),
          userApps=len(apps_user), packages=packages[:40], stale=not fresh, golden=golden,
@@ -217,29 +217,29 @@ def apply() -> int:
     failed = (explain_pacman(errors) or f"pacman exited with status {code}.") if code != 0 else ""
     if shutil.which("flatpak"):
         stream(["flatpak", "--system", "update", "-y", "--noninteractive"], 0.8, 0.05, "Apps")
-    # Golden Gate still updates when the system packages couldn't: its fixes
+    # CitronOS still updates when the system packages couldn't: its fixes
     # (including ones for updating itself) shouldn't wait on them.
     updated = golden_update.apply(emit)
     if failed:
         if not updated:
             emit("error", message=failed)
             return code
-        emit("notice", message="Golden Gate was updated, but the system packages weren't: " + failed)
+        emit("notice", message="CitronOS was updated, but the system packages weren't: " + failed)
     emit("done", progress=1.0, completed=datetime.now().isoformat(), restart=updated,
-         message="Golden Gate is up to date." + (" Log out and back in to finish." if updated else ""))
+         message="CitronOS is up to date." + (" Log out and back in to finish." if updated else ""))
     return 0
 
 
 def apply_user() -> int:
     if not shutil.which("flatpak"):
-        emit("done", progress=1.0, message="Golden Gate is up to date.")
+        emit("done", progress=1.0, message="CitronOS is up to date.")
         return 0
     emit("progress", progress=0.05, message="Updating apps…", remaining=-1)
     code, errors = stream(["flatpak", "--user", "update", "-y", "--noninteractive"], 0.05, 0.9, "Apps")
     if code != 0:
         emit("error", message=(errors.splitlines() or [""])[-1] or f"Flatpak exited with status {code}.")
         return code
-    emit("done", progress=1.0, message="Golden Gate is up to date.", completed=datetime.now().isoformat())
+    emit("done", progress=1.0, message="CitronOS is up to date.", completed=datetime.now().isoformat())
     return 0
 
 

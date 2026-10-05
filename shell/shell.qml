@@ -1,4 +1,4 @@
-// Golden Gate shell for Quickshell (https://quickshell.org).
+// CitronOS shell for Quickshell (https://quickshell.org).
 // Run with:  qs -p shell/        (or install to ~/.config/quickshell/golden-gate
 //                                  and run `qs -c golden-gate`)
 import Quickshell

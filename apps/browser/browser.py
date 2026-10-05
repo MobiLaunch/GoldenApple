@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Golden Gate Web: Safari-inspired Qt Quick chrome over Chromium."""
+"""CitronOS Web: Safari-inspired Qt Quick chrome over Chromium."""
 from __future__ import annotations
 
 import hashlib
@@ -59,6 +59,7 @@ def main():
     if os.geteuid() == 0:
         sys.exit("Run Web as your desktop user, not root. Chromium sandboxing remains enabled.")
 
+    # Keeps its old name: Qt files the profile (history, logins) under it.
     QCoreApplication.setOrganizationName("Golden Gate")
     QCoreApplication.setApplicationName("GoldenGateWeb")
     QCoreApplication.setApplicationVersion("0.2")
@@ -94,7 +95,7 @@ def main():
         if not lock.tryLock(0):
             if handoff_to_existing(launch_values, profile_name, backend.dataDir):
                 return 0
-            sys.stderr.write("This Golden Gate Web profile is already running but could not receive this request.\n")
+            sys.stderr.write("This CitronOS Web profile is already running but could not receive this request.\n")
             return 1
     # Listen as soon as this process owns the profile, before the slow QML and
     # Chromium start-up: a second launch in that window would otherwise find
@@ -147,7 +148,7 @@ def main():
     qml = Path(__file__).with_name("Browser.qml")
     engine.load(QUrl.fromLocalFile(str(qml)))
     if not engine.rootObjects():
-        sys.stderr.write("Golden Gate Web could not load its QML interface.\n")
+        sys.stderr.write("CitronOS Web could not load its QML interface.\n")
         return 2
 
     # CI/test-only timed exit. Production never sets this environment variable.

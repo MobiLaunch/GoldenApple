@@ -32,7 +32,7 @@ PanelWindow {
     property rect to: Qt.rect(0, 0, 0, 0)
     property string state_: "idle"           // idle | opening | handing-over | cancelling
     // Last window size per app, so the card aims for the right frame next time.
-    // Golden Gate's own apps start out known: their windows have a fixed size.
+    // CitronOS's own apps start out known: their windows have a fixed size.
     property var sizes: ({ "org.goldengate.Web": { w: 1160, h: 760 }, "org.goldengate.Calculator": { w: 229, h: 405 }, "org.goldengate.Weather": { w: 1100, h: 860 }, "org.goldengate.Music": { w: 1180, h: 760 }, "org.goldengate.Notes": { w: 1120, h: 720 }, "org.goldengate.Photos": { w: 1180, h: 780 }, "org.goldengate.Maps": { w: 1280, h: 800 }, "org.goldengate.Settings": { w: 780, h: 700 } })
     // Apps whose window isn't the usual window colour (Calculator is always dark).
     readonly property var windowColors: ({ "org.goldengate.Calculator": "#24292d", "org.goldengate.Weather": "#a4bcd2" })

@@ -1,7 +1,7 @@
 [Desktop Entry]
 Type=Application
-Name=Install Golden Gate
-Comment=Install Golden Gate on this Mac or PC
+Name=Install CitronOS
+Comment=Install CitronOS on this Mac or PC
 Icon=drive-harddisk
 Exec=gg-install
 Categories=System;

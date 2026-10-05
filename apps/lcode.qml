@@ -1,8 +1,8 @@
 //@ pragma AppId org.goldengate.LCode
-// LCode, Golden Gate's IDE, laid out like Xcode on macOS 27: navigators in a
+// LCode, CitronOS's IDE, laid out like Xcode on macOS 27: navigators in a
 // floating glass sidebar, the editor with tabs and a jump bar, the debug
 // area underneath, inspectors in a trailing sidebar, and Run, the scheme and
-// the activity view in the toolbar. Projects are Golden Gate apps made in the
+// the activity view in the toolbar. Projects are CitronOS apps made in the
 // App Designer, Swift packages, Rust crates, Meson (C) projects or Python
 // programs; apps run on "My Linux PC" or in the Simulator.
 //
@@ -179,7 +179,7 @@ ShellRoot {
             if (!project) return
             if (!project.toolchain) {
                 alertRequested("Nothing to Build",
-                    "LCode builds Golden Gate apps, Swift packages, Rust crates, Meson projects and Python programs. Add a Package.swift, Cargo.toml, meson.build or main.py to this folder, or create a new project.")
+                    "LCode builds CitronOS apps, Swift packages, Rust crates, Meson projects and Python programs. Add a Package.swift, Cargo.toml, meson.build or main.py to this folder, or create a new project.")
                 return
             }
             const tc = projectToolchain
@@ -196,7 +196,7 @@ ShellRoot {
         function run() {
             if (!scheme) { build(); return }
             if (project && project.toolchain === "goldengate" && !(toolchains.goldengate && toolchains.goldengate.path)) {
-                alertRequested("Quickshell Not Found", "Golden Gate apps run with Quickshell (qs), which Golden Gate includes. Install it with:\n\nsudo pacman -S quickshell")
+                alertRequested("Quickshell Not Found", "CitronOS apps run with Quickshell (qs), which CitronOS includes. Install it with:\n\nsudo pacman -S quickshell")
                 return
             }
             prepare(() => {

@@ -16,7 +16,7 @@ Pane {
         model: pane.disks
         delegate: Group {
             required property var modelData
-            title: modelData.mount === "/" ? "Golden Gate HD" : modelData.mount
+            title: modelData.mount === "/" ? "CitronOS HD" : modelData.mount
             SetRow {
                 title: pane.gb(modelData.used) + " of " + pane.gb(modelData.size) + " used"
                 subtitle: pane.gb(modelData.avail) + " available"

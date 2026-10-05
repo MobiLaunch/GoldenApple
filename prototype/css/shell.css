@@ -1,4 +1,4 @@
-/* Golden Gate shell: materials, menu bar, Control Center, Dock, menus, Spotlight. */
+/* CitronOS shell: materials, menu bar, Control Center, Dock, menus, Spotlight. */
 
 *, *::before, *::after { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; overflow: hidden; background: #0b1f4f; }

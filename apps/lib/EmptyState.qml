@@ -1,4 +1,4 @@
-// Shared empty/error state for Golden Gate applications.
+// Shared empty/error state for CitronOS applications.
 import QtQuick
 import "theme"
 

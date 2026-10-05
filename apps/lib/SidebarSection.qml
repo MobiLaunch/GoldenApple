@@ -1,4 +1,4 @@
-// Shared section label used in first-party Golden Gate sidebars.
+// Shared section label used in first-party CitronOS sidebars.
 import QtQuick
 import "theme"
 

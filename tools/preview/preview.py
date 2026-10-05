@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Golden Gate UI preview: renders the shell, or an app, to a PNG without
+"""CitronOS UI preview: renders the shell, or an app, to a PNG without
 Quickshell or Hyprland, for design review and before/after comparisons.
 
 Quickshell's modules are stood in for by tools/preview/qml (and the Wayland
@@ -399,7 +399,7 @@ PHOTOS = [
 ]
 
 
-BRIEF = """# Golden Gate: design brief
+BRIEF = """# CitronOS: design brief
 
 A desktop that feels like home on a Mac, on hardware you already own.
 
@@ -438,7 +438,7 @@ def populate_home(home: Path) -> None:
         f = home / rel
         f.parent.mkdir(parents=True, exist_ok=True)
         f.write_bytes(b"\0" * size)
-    (home / "Documents/Golden Gate brief.md").write_text(BRIEF)
+    (home / "Documents/CitronOS brief.md").write_text(BRIEF)
     # Two things in the Trash, with where they came from.
     for name, origin in (("Old draft.md", "Documents/Old draft.md"), ("IMG_0412.png", "Desktop/IMG_0412.png")):
         (home / ".local/share/Trash/files").mkdir(parents=True, exist_ok=True)
@@ -488,7 +488,7 @@ def main() -> int:
         k, _, v = kv.partition("=")
         env[k] = v
     os.environ["QML_XHR_ALLOW_FILE_READ"] = "1"
-    # Golden Gate's font rules (SF Pro → Inter, SF Mono → JetBrains Mono), as installed.
+    # CitronOS's font rules (SF Pro → Inter, SF Mono → JetBrains Mono), as installed.
     fonts_conf = HERE / "cache/fonts.conf"
     fonts_conf.write_text('<?xml version="1.0"?>\n<!DOCTYPE fontconfig SYSTEM "fonts.dtd">\n<fontconfig>\n'
                           '  <include ignore_missing="yes">/etc/fonts/fonts.conf</include>\n'

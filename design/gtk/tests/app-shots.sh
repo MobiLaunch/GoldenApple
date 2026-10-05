@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Screenshot GTK apps with the Golden Gate theme, light and dark, in a headless
+# Screenshot GTK apps with the CitronOS theme, light and dark, in a headless
 # Sway session. No GPU needed.
 #
 #   design/gtk/tests/app-shots.sh OUTDIR [shot...]
@@ -103,13 +103,13 @@ mkdir -p "$HOME"/{Desktop,Documents,Downloads,Music,Pictures,Videos}
 for d in DESKTOP:Desktop DOCUMENTS:Documents DOWNLOAD:Downloads MUSIC:Music PICTURES:Pictures VIDEOS:Videos; do
   echo "XDG_${d%%:*}_DIR=\"\$HOME/${d#*:}\""
 done > "$XDG_CONFIG_HOME/user-dirs.dirs"
-printf 'Golden Gate\n\nA Linux desktop with Liquid Glass.\n' > "$HOME/Documents/Notes.txt"
+printf 'CitronOS\n\nA Linux desktop with Liquid Glass.\n' > "$HOME/Documents/Notes.txt"
 for f in "Budget 2026.ods" "Trip itinerary.pdf" "Presentation.odp"; do : > "$HOME/Documents/$f"; done
 mkdir -p "$HOME/.firefox-shot"
 cat > "$HOME/Documents/Welcome.html" <<'HTML'
-<!doctype html><meta charset="utf-8"><title>Welcome to Golden Gate</title>
+<!doctype html><meta charset="utf-8"><title>Welcome to CitronOS</title>
 <style>:root{color-scheme:light dark}body{font:15px "Inter Variable",sans-serif;max-width:640px;margin:80px auto;padding:0 24px}h1{font-size:34px;letter-spacing:-.5px}</style>
-<h1>Welcome to Golden Gate</h1><p>A Linux desktop with Liquid Glass. This page is local, so the shot needs no network.</p>
+<h1>Welcome to CitronOS</h1><p>A Linux desktop with Liquid Glass. This page is local, so the shot needs no network.</p>
 HTML
 rsvg-convert -w 1600 "$REPO/prototype/assets/wallpapers/tide.svg" -o "$HOME/Pictures/Tide.png"
 

@@ -15,7 +15,7 @@ const APPS = [
   ["Tidepool", "Relaxing puzzle game", "drop", "#64d2ff", "#30d158", "Play"],
 ];
 const HERO = [
-  ["NEW RELEASE", "Golden Gate 27", "Liquid Glass comes to Linux.", "hero-a"],
+  ["NEW RELEASE", "CitronOS 27", "Liquid Glass comes to Linux.", "hero-a"],
   ["BEHIND THE DESIGN", "One set of springs", "How every animation shares the same physics.", "hero-b"],
   ["THE BASICS", "Make it yours", "Custom icons, accent colours and wallpapers.", "hero-c"],
 ];

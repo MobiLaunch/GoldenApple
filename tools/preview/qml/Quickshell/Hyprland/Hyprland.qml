@@ -20,7 +20,7 @@ QtObject {
     }
     readonly property var __sample: __windows && !__empty ? [
         __win(1, "org.goldengate.Files", "Home", 1, 90, 80, 880, 560),
-        __win(2, "org.goldengate.Notes", "Golden Gate brief", 1, 640, 170, 700, 520),
+        __win(2, "org.goldengate.Notes", "CitronOS brief", 1, 640, 170, 700, 520),
         __win(3, "org.goldengate.Music", "Music", 1, 220, 400, 780, 430),
         __win(4, "org.goldengate.Weather", "San Francisco", 1, 1010, 60, 400, 330),
         __win(5, "org.goldengate.Web", "Start Page", 2, 120, 60, 1200, 760),

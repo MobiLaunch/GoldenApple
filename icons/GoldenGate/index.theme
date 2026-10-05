@@ -1,6 +1,6 @@
 [Icon Theme]
-Name=Golden Gate
-Comment=Original icon theme for the Golden Gate desktop
+Name=CitronOS
+Comment=Original icon theme for the CitronOS desktop
 Inherits=Adwaita,hicolor
 Directories=scalable/apps,scalable/places,scalable/mimetypes,scalable/devices,symbolic/actions,512x512/apps,512x512/places,512x512/mimetypes,512x512/devices
 

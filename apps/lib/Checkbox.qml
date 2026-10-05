@@ -1,4 +1,4 @@
-// Shared Golden Gate checkbox. Used by apps, Settings and Setup Assistant.
+// Shared CitronOS checkbox. Used by apps, Settings and Setup Assistant.
 import QtQuick
 import "theme"
 

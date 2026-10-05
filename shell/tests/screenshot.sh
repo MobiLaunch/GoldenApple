@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Run the Golden Gate shell for real inside a headless Sway session and capture
+# Run the CitronOS shell for real inside a headless Sway session and capture
 # screenshots of the desktop, Control Center and Spotlight.
 #
 #   shell/tests/screenshot.sh [out-dir]

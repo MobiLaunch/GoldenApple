@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Functional smoke tests for Golden Gate native app backends.
+"""Functional smoke tests for CitronOS native app backends.
 
 These run without Quickshell, network access, or touching the real user profile.
 """
@@ -56,7 +56,7 @@ with tempfile.TemporaryDirectory() as raw:
 
     # TextEdit: real atomic file write/read.
     doc = tmp / "Documents" / "hello.txt"
-    body = "Golden Gate\nshared controls\n"
+    body = "CitronOS\nshared controls\n"
     code, out = run("apps/textedit/helper.py", "write", str(doc), env=env, stdin=body)
     assert code == 0 and json.loads(out)["ok"] and doc.read_text() == body
     code, out = run("apps/textedit/helper.py", "read", str(doc), env=env)
@@ -139,7 +139,7 @@ esac
     (fakebin / "fakeroot").chmod(0o755)
     update_env = env.copy()
     update_env["PATH"] = str(fakebin) + os.pathsep + update_env.get("PATH", "")
-    # Golden Gate's own check, offline: GitHub out of reach must not count as
+    # CitronOS's own check, offline: GitHub out of reach must not count as
     # an update or hide the other results.
     update_root = Path(tempfile.mkdtemp())
     (update_root / "usr/share/golden-gate").mkdir(parents=True)

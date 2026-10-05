@@ -4,7 +4,7 @@ import { createWindow, windowsOf, activeWindow } from "./wm.js";
 
 export const APPS = {
   files:      { name: "Files",           linux: "Nautilus (themed) → native Files app on the roadmap" },
-  browser:    { name: "Web",             linux: "Firefox with the Golden Gate userChrome" },
+  browser:    { name: "Web",             linux: "Firefox with the CitronOS userChrome" },
   mail:       { name: "Mail",            linux: "Thunderbird / Geary" },
   messages:   { name: "Messages",        linux: "Matrix client (Fractal)" },
   music:      { name: "Music",           linux: "Amberol / Elisa" },
@@ -15,7 +15,7 @@ export const APPS = {
   weather:    { name: "Weather",         linux: "GNOME Weather" },
   store:      { name: "Software",        linux: "GNOME Software + Flathub" },
   settings:   { name: "System Settings", linux: "Native settings app (shell/settings)" },
-  terminal:   { name: "Terminal",        linux: "Ghostty with the Golden Gate theme" },
+  terminal:   { name: "Terminal",        linux: "Ghostty with the CitronOS theme" },
   calculator: { name: "Calculator",      linux: "GNOME Calculator" },
   launcher:   { name: "Apps",            linux: "Shell launcher (Spotlight in Apps mode)" },
 };

@@ -21,7 +21,7 @@ case "${1:-}" in
   multitasking|ubuntu) pane=dock ;;
   -*) pane= ;;
   *)
-    # Keep the user inside Golden Gate. Unknown legacy panel names land on
+    # Keep the user inside CitronOS. Unknown legacy panel names land on
     # General until a native pane is implemented instead of switching desktops.
     pane=general ;;
 esac

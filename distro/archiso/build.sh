@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
-# Build the Golden Gate live ISO.
+# Build the CitronOS live ISO.
 #
 # Requirements: an Arch Linux host (or the archlinux container, see
 # .github/workflows/iso.yml), root, and: pacman -S archiso librsvg nodejs
 #
-#   sudo distro/archiso/build.sh            → out/golden-gate-YYYY.MM.DD-x86_64.iso
+#   sudo distro/archiso/build.sh            → out/citronos-sprite-YYYY.MM.DD-x86_64.iso
 #   sudo GG_BUILD_AUR=1 distro/archiso/build.sh
 #                                           also builds packages.extra entries that
 #                                           exist only in the AUR (CI does this)
 #
-# Starts from archiso's `releng` profile and layers the Golden Gate desktop on top,
+# Starts from archiso's `releng` profile and layers the CitronOS desktop on top,
 # so bootloader and hardware support stay in sync with upstream Arch.
 set -euo pipefail
 
@@ -29,7 +29,7 @@ say "profile: releng + golden-gate"
 mkdir -p "$WORK"
 
 # A failed/interrupted mkarchiso run leaves stage markers in the work directory.
-# Never reuse them for a new Golden Gate build. Refuse to clean while anything
+# Never reuse them for a new CitronOS build. Refuse to clean while anything
 # is still mounted below the old tree, because deleting through a bind mount can
 # damage files outside the repository.
 if [[ -d "$WORK/build" ]]; then
@@ -48,10 +48,10 @@ AIR="$PROFILE/airootfs"
 
 # ---------------------------------------------------------------- identity
 sed -i \
-  -e 's/^iso_name=.*/iso_name="golden-gate"/' \
-  -e 's/^iso_label=.*/iso_label="GOLDENGATE_$(date --date="@${SOURCE_DATE_EPOCH:-$(date +%s)}" +%Y%m)"/' \
-  -e 's/^iso_publisher=.*/iso_publisher="Golden Gate <https:\/\/github.com\/mobilaunch\/goldenapple>"/' \
-  -e 's/^iso_application=.*/iso_application="Golden Gate Live"/' \
+  -e 's/^iso_name=.*/iso_name="citronos-sprite"/' \
+  -e 's/^iso_label=.*/iso_label="CITRONOS_$(date --date="@${SOURCE_DATE_EPOCH:-$(date +%s)}" +%Y%m)"/' \
+  -e 's/^iso_publisher=.*/iso_publisher="CitronOS <https:\/\/github.com\/mobilaunch\/goldenapple>"/' \
+  -e 's/^iso_application=.*/iso_application="CitronOS Live"/' \
   "$PROFILE/profiledef.sh"
 cat >> "$PROFILE/profiledef.sh" <<'EOF'
 file_permissions+=(
@@ -207,7 +207,7 @@ fi
 
 # ---------------------------------------------------------------- live user + session
 cp -a "$HERE/overlay/." "$AIR/"
-grep -q '^golden:' "$AIR/etc/passwd"  || echo 'golden:x:1000:1000:Golden Gate:/home/golden:/bin/bash' >> "$AIR/etc/passwd"
+grep -q '^golden:' "$AIR/etc/passwd"  || echo 'golden:x:1000:1000:CitronOS:/home/golden:/bin/bash' >> "$AIR/etc/passwd"
 grep -q '^golden:' "$AIR/etc/shadow"  || echo 'golden::14871::::::' >> "$AIR/etc/shadow"
 grep -q '^golden:' "$AIR/etc/group"   || echo 'golden:x:1000:' >> "$AIR/etc/group"
 grep -q '^golden:' "$AIR/etc/gshadow" || echo 'golden:!::' >> "$AIR/etc/gshadow"
@@ -229,12 +229,12 @@ ln -sf /usr/lib/systemd/user/gnome-keyring-daemon.socket "$AIR/etc/systemd/user/
 ln -sf /etc/systemd/system/gg-live-home.service "$WANTS/gg-live-home.service"
 
 # ---------------------------------------------------------------- desktop
-say "installing the Golden Gate desktop into the image"
+say "installing the CitronOS desktop into the image"
 bash "$REPO/scripts/install.sh" --system "$AIR"
 
-# Which Golden Gate this is, for Software Update (the repository and branch on
+# Which CitronOS this is, for Software Update (the repository and branch on
 # GitHub it checks for newer commits), and its own source, so the live ISO can
-# update a Golden Gate already installed on the disk: sudo gg-update-disk.
+# update a CitronOS already installed on the disk: sudo gg-update-disk.
 bash "$REPO/scripts/make-update-bundle.sh" "$AIR/usr/share/golden-gate/source.tar.gz" \
   "$AIR/usr/share/golden-gate/version.json"
 printf '#!/bin/sh\nexec sudo python3 /usr/share/golden-gate/apps/settings/golden_update.py update-disk "$@"\n' \
@@ -243,7 +243,7 @@ chmod 755 "$AIR/usr/local/bin/gg-update-disk"
 
 # Optional locally supplied Apple typography/symbol assets. These directories are
 # ignored by git so proprietary files are never committed or redistributed by
-# Golden Gate. A local ISO build may overlay files the builder is licensed to use.
+# CitronOS. A local ISO build may overlay files the builder is licensed to use.
 LOCAL_FONTS="$REPO/local-assets/fonts"
 if [[ -d "$LOCAL_FONTS" ]] && find "$LOCAL_FONTS" -maxdepth 1 -type f \( -iname '*.otf' -o -iname '*.ttf' -o -iname '*.ttc' \) -print -quit | grep -q .; then
   say "installing locally supplied SF Pro/SF Mono fonts"
@@ -325,7 +325,7 @@ if ! grep -qx 'gsettings-desktop-schemas' "$PROFILE/packages.x86_64"; then
   exit 1
 fi
 if [[ ! -f "$AIR/usr/share/glib-2.0/schemas/90_golden-gate.gschema.override" ]]; then
-  echo "Golden Gate GSettings override was not staged into the image"
+  echo "CitronOS GSettings override was not staged into the image"
   exit 1
 fi
 if grep -q 'org.gnome.nautilus' "$AIR/usr/share/glib-2.0/schemas/90_golden-gate.gschema.override"; then

@@ -1,4 +1,4 @@
-// The App Designer: LCode's Interface Builder for Golden Gate apps. The outline
+// The App Designer: LCode's Interface Builder for CitronOS apps. The outline
 // on the left, the canvas in the middle (light, dark or both; Select or Live),
 // the inspectors in the window's trailing sidebar (DesignInspector), and the
 // Library (⇧⌘L) to add things from.

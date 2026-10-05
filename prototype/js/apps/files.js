@@ -14,7 +14,7 @@ const SIDEBAR = [
   { title: "Tags", rows: [["Red", null, "@tag", "#ff453a"], ["Orange", null, "@tag", "#ff9f0a"], ["Blue", null, "@tag", "#0a84ff"], ["Green", null, "@tag", "#30d158"]] },
 ];
 const QL_TEXT = [
-  "Golden Gate brings Liquid Glass to Linux: translucent materials with a specular rim, spring motion everywhere, and a shell that feels at home on a laptop.",
+  "CitronOS brings Liquid Glass to Linux: translucent materials with a specular rim, spring motion everywhere, and a shell that feels at home on a laptop.",
   "This document is a preview rendered by Quick Look. Press Space again or Escape to close it, or use the arrow keys to preview the next item.",
   "Materials, motion and type come from one set of design tokens, so the shell, the apps and the compositor always agree.",
 ];

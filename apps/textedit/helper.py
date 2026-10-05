@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Small UTF-8 file backend for Golden Gate TextEdit."""
+"""Small UTF-8 file backend for CitronOS TextEdit."""
 from __future__ import annotations
 import json
 import pathlib

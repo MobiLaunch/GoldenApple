@@ -1,4 +1,4 @@
-// Shared Golden Gate progress bar.
+// Shared CitronOS progress bar.
 import QtQuick
 import "theme"
 

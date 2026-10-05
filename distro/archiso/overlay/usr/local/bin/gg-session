@@ -1,5 +1,5 @@
 #!/bin/sh
-# Start the Golden Gate desktop on the first virtual terminal.
+# Start the CitronOS desktop on the first virtual terminal.
 export XDG_CURRENT_DESKTOP=Hyprland
 export XDG_SESSION_TYPE=wayland
 export XDG_SESSION_DESKTOP=golden-gate

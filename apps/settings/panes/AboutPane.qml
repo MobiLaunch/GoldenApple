@@ -26,13 +26,13 @@ Pane {
         }
         Text {
             anchors.horizontalCenter: parent.horizontalCenter
-            text: "Golden Gate"
+            text: Release.fullName
             color: Theme.label
             font { family: Theme.fontUi; pixelSize: 22; weight: Font.Bold }
         }
         Text {
             anchors.horizontalCenter: parent.horizontalCenter
-            text: pane.facts.build ? "Version " + pane.facts.build : ""
+            text: "Version " + Release.version + (pane.facts.build && pane.facts.build !== Release.version ? " (" + pane.facts.build + ")" : "")
             color: Theme.secondaryLabel
             font { family: Theme.fontUi; pixelSize: 12 }
         }

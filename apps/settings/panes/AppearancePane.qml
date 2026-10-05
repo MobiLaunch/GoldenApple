@@ -1,6 +1,6 @@
 // Appearance, as on macOS 27: Auto / Light / Dark as little desktops, Liquid
 // Glass Clear or Tinted, the accent colour (for GTK apps, the shell and the
-// Golden Gate apps alike), and scroll bars.
+// CitronOS apps alike), and scroll bars.
 import Quickshell
 import QtQuick
 import "../../lib"

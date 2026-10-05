@@ -75,7 +75,7 @@ export function initControlCenter() {
   // circles on right-click or a long press.
   const DETAILS = {
     wifi: () => {
-      const nets = ["Home", "Golden Gate Guest", "Presidio 5G", "Bay Bridge", "Crissy Field"].map((n, i) =>
+      const nets = ["Home", "CitronOS Guest", "Presidio 5G", "Bay Bridge", "Crissy Field"].map((n, i) =>
         h("div.net", { className: `net ${i === 0 ? "on" : ""}` }, h("span.ico", sym("wifi")), n, i ? h("span.lock", sym("lock")) : null));
       return ["Wi-Fi", "wifi", [section("Known Network"), nets[0], section("Other Networks"), ...nets.slice(1)], ["Wi-Fi Settings…", "wifi"]];
     },

@@ -1,4 +1,4 @@
-# Golden Gate boot screen, drawn as the web preview draws it (prototype/css/shell.css
+# CitronOS boot screen, drawn as the web preview draws it (prototype/css/shell.css
 # #boot, prototype/js/lock.js boot()): the bridge mark (92 px) over a 180 x 5 px
 # progress bar 56 px below it, the pair centred on black; the bar's track is white
 # at 22% and the fill runs white with an eased motion. Twice the size on HiDPI

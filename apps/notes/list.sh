@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Golden Gate Notes: lists the notes under ROOT for the app.
+# CitronOS Notes: lists the notes under ROOT for the app.
 #   list.sh ROOT
 # Folders (one level of subfolders of ROOT) print as
 #   F <tab> name <tab> path

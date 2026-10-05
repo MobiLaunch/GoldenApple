@@ -45,7 +45,7 @@ PanelWindow {
         const q = query.toLowerCase()
         if (!q) return []
         return DesktopEntries.applications.values
-            // GNOME Settings opens Golden Gate's own (gnome-control-center wrapper): list it once.
+            // GNOME Settings opens CitronOS's own (gnome-control-center wrapper): list it once.
             .filter((e) => !e.noDisplay && e.id !== "org.gnome.Settings" && (e.name.toLowerCase().includes(q) || (e.genericName ?? "").toLowerCase().includes(q) || (e.keywords ?? []).some((k) => k.toLowerCase().startsWith(q))))
             .sort((a, b) => { const at = (e) => { const i = e.name.toLowerCase().indexOf(q); return i < 0 ? 99 : i }; return at(a) - at(b) })
             .slice(0, 6)

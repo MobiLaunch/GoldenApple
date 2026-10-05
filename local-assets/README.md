@@ -1,6 +1,6 @@
 # Local typography and symbol overrides
 
-Golden Gate prefers **SF Pro Text**, **SF Pro Display**, and **SF Mono** when those fonts are installed, but the repository does not redistribute Apple font binaries or SF Symbols artwork.
+CitronOS prefers **SF Pro Text**, **SF Pro Display**, and **SF Mono** when those fonts are installed, but the repository does not redistribute Apple font binaries or SF Symbols artwork.
 
 For a local ISO build, place font files you are licensed to use in:
 
@@ -10,7 +10,7 @@ local-assets/fonts/
 
 Supported extensions are `.otf`, `.ttf`, and `.ttc`.
 
-To override Golden Gate's built-in monochrome UI symbols, place SVG files in:
+To override CitronOS's built-in monochrome UI symbols, place SVG files in:
 
 ```
 local-assets/symbols/

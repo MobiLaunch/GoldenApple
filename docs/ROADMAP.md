@@ -54,6 +54,6 @@
 - [ ] Files: GTK4 app matching the prototype (floating sidebar, glass toolbar,
       icon/list/column/gallery views)
 - [ ] Settings: native app with the prototype's pane structure
-- [ ] Installer: Calamares with a Golden Gate theme
+- [ ] Installer: Calamares with a CitronOS theme
 - [ ] Branding package (`golden-gate-branding`: os-release)
 - [ ] Choose a public product name

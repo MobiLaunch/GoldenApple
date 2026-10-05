@@ -3,7 +3,7 @@
 against a stand-in for SDDM's theme API (sddm, userModel, sessionModel,
 config): it loads without QML errors, starts awake with the password field
 showing under the user's name, draws the clock and the power buttons, sends
-the typed password for the right user and the Golden Gate session on Return,
+the typed password for the right user and the CitronOS session on Return,
 and clears the field when SDDM says the login failed."""
 from __future__ import annotations
 
@@ -101,7 +101,7 @@ with tempfile.TemporaryDirectory() as tmp:
     sddm = Sddm()
     users = Model(["name", "realName", "icon", "homeDir", "needsPassword"],
                   [{"name": "jordan", "realName": "Jordan Avery", "icon": "/nonexistent/jordan.face.icon"}], 0, "jordan")
-    sessions = Model(["name", "file", "comment"], [{"name": "Plasma"}, {"name": "Golden Gate"}], 0)
+    sessions = Model(["name", "file", "comment"], [{"name": "Plasma"}, {"name": "CitronOS"}], 0)
     view = QQuickView()
     errors: list[str] = []
     view.engine().warnings.connect(lambda ws: errors.extend(w.toString() for w in ws))
@@ -141,13 +141,13 @@ with tempfile.TemporaryDirectory() as tmp:
 
     root = view.rootObject()
     check(root.property("userDisplay") == "Jordan Avery", f"the user's full name, got {root.property('userDisplay')!r}")
-    check(root.property("sessionIndex") == 1, "the Golden Gate session is chosen")
+    check(root.property("sessionIndex") == 1, "the CitronOS session is chosen")
     for ch in "hunter2":
         app.sendEvent(view, QKeyEvent(QKeyEvent.KeyPress, 0, Qt.NoModifier, ch))
         app.sendEvent(view, QKeyEvent(QKeyEvent.KeyRelease, 0, Qt.NoModifier, ch))
     app.sendEvent(view, QKeyEvent(QKeyEvent.KeyPress, Qt.Key_Return, Qt.NoModifier))
     wait(100)
-    check(sddm.logins == [("jordan", "hunter2", 1)], f"Return logs in as jordan to Golden Gate, got {sddm.logins}")
+    check(sddm.logins == [("jordan", "hunter2", 1)], f"Return logs in as jordan to CitronOS, got {sddm.logins}")
     sddm.loginFailed.emit()
     wait(700)
     field_text = [o for o in root.findChildren(QObject) if o.metaObject().className().startswith("QQuickTextInput")]

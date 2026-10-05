@@ -1,6 +1,6 @@
 # UI preview
 
-Renders the Golden Gate shell, or any app, to a PNG without Quickshell or
+Renders the CitronOS shell, or any app, to a PNG without Quickshell or
 Hyprland, for design review and before/after comparisons.
 
 ```sh
@@ -38,7 +38,7 @@ How it works:
   real, in a sample home folder (`cache/home`: notes, documents, photos), with
   stand-ins for `nmcli`, `getent`, `gsettings` and the like first on `PATH`.
   Anything that could change the system is never run.
-- Golden Gate's fontconfig rules apply, so SF Pro falls back to Inter as on the
+- CitronOS's fontconfig rules apply, so SF Pro falls back to Inter as on the
   real system.
 
 Limits: window rounding and shadows are Hyprland's, and in software GL a layer

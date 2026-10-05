@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Import a folder of 1024 px app-icon PNGs (such as github.com/zagnut531/macos-27-icons,
-# one folder per beta) as the Golden Gate app icons.
+# one folder per beta) as the CitronOS app icons.
 #
 #   icons/import-icon-pack.sh PACK_DIR
 #   node icons/build.mjs

@@ -1,4 +1,4 @@
-// Shared local-account identity row for Golden Gate sidebars.
+// Shared local-account identity row for CitronOS sidebars.
 import QtQuick
 import "theme"
 

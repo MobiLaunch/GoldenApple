@@ -1,11 +1,11 @@
 //@ pragma AppId org.goldengate.AirDrop
-// Golden Gate AirDrop: share files with people nearby, as AirDrop on the Mac.
+// CitronOS AirDrop: share files with people nearby, as AirDrop on the Mac.
 // Devices on the same network appear as round pictures; drop files on one, or
 // click it and choose files, and it shows how the transfer goes. When someone
 // shares with you, you Accept or Decline and the files land in Downloads.
 //
 // AirDrop speaks the open LocalSend protocol (apps/airdrop/airdropd.py), so
-// the other side can be another Golden Gate computer or the LocalSend app on
+// the other side can be another CitronOS computer or the LocalSend app on
 // an iPhone, iPad, Android phone, Windows PC or Mac. Apple's own AirDrop isn't
 // open to other systems, so an iPhone needs LocalSend installed.
 import Quickshell
@@ -233,7 +233,7 @@ ShellRoot {
                     width: Math.min(420, app.width - 60)
                     horizontalAlignment: Text.AlignHCenter
                     wrapMode: Text.WordWrap
-                    text: "Devices on the same Wi-Fi appear here: Golden Gate computers, and iPhones, iPads, Android phones and PCs with the free LocalSend app open."
+                    text: "Devices on the same Wi-Fi appear here: CitronOS computers, and iPhones, iPads, Android phones and PCs with the free LocalSend app open."
                     color: Theme.tertiaryLabel
                     font { family: Theme.fontUi; pixelSize: 12 }
                 }

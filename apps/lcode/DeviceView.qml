@@ -118,7 +118,7 @@ Item {
 
             Rectangle { anchors.fill: parent; color: "#000000" }
 
-            // Boot: the Golden Gate mark on black.
+            // Boot: the CitronOS mark on black.
             Symbol {
                 anchors.centerIn: parent
                 visible: view.screenMode === "boot"

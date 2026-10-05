@@ -4,7 +4,7 @@
 // A hello over the HyprGlass desktop material, then: Country or Region
 // (keyboard and time zone), Wi-Fi, Data & Privacy, Location Services,
 // Time Zone, Analytics (crash and diagnostics sharing), Choose Your Look, and
-// Welcome. Controls come from the same shared Golden Gate component store as
+// Welcome. Controls come from the same shared CitronOS component store as
 // the rest of the desktop.
 //
 // It runs once: finishing writes ~/.config/golden-gate/setup-done, and
@@ -139,7 +139,7 @@ ShellRoot {
                         const sid = Quickshell.env("XDG_SESSION_ID") || ""
                         if (!sid) {
                             stage.finishing = false
-                            stage.finishError = "Golden Gate could not identify this login session. Use the system menu to sign out, then choose " + stage.createdUsername + " at the login screen."
+                            stage.finishError = "CitronOS could not identify this login session. Use the system menu to sign out, then choose " + stage.createdUsername + " at the login screen."
                             return
                         }
                         switchSession.command = ["loginctl", "terminate-session", sid]
@@ -158,7 +158,7 @@ ShellRoot {
                     if (code === 0) Qt.quit()
                     else {
                         stage.finishing = false
-                        stage.finishError = "The account is ready, but Golden Gate could not sign out automatically. Use the system menu to sign out, then choose " + stage.createdUsername + "."
+                        stage.finishError = "The account is ready, but CitronOS could not sign out automatically. Use the system menu to sign out, then choose " + stage.createdUsername + "."
                     }
                 }
             }
@@ -356,17 +356,17 @@ ShellRoot {
                 StepFrame {
                     symbol: "shield"
                     title: "Data & Privacy"
-                    text: "This icon appears when Golden Gate asks to use your personal information."
+                    text: "This icon appears when CitronOS asks to use your personal information."
                     onBack: stage.back(); onNext: stage.next()
                     Column {
                         width: parent.width
                         spacing: 14
                         Repeater {
                             model: [
-                                "Golden Gate is designed to protect your information and let you choose what you share.",
+                                "CitronOS is designed to protect your information and let you choose what you share.",
                                 "Nothing leaves this computer unless you decide it should. There is no online account to create, no advertising identifier and no background telemetry.",
                                 "Your files, notes, photos and music stay in your home folder, in ordinary formats any app can open.",
-                                "On the next screens you can choose whether apps may use your location, and whether to share crash reports with the people who make Golden Gate.",
+                                "On the next screens you can choose whether apps may use your location, and whether to share crash reports with the people who make CitronOS.",
                             ]
                             delegate: Text {
                                 required property string modelData
@@ -415,20 +415,20 @@ ShellRoot {
                 StepFrame {
                     symbol: "gauge"
                     title: "Analytics"
-                    text: "Help make Golden Gate better by sharing what went wrong when something goes wrong."
+                    text: "Help make CitronOS better by sharing what went wrong when something goes wrong."
                     onBack: stage.back(); onNext: stage.next()
                     Column {
                         width: parent.width
                         spacing: 20
                         Checkbox {
-                            text: "Share crash and diagnostics logs with the Golden Gate developers"
+                            text: "Share crash and diagnostics logs with the CitronOS developers"
                             detail: "When an app or the desktop quits unexpectedly, you'll be offered a report of what happened: the crash, recent errors and this computer's hardware and versions. Nothing is sent until you've seen it and chosen to send it."
                             checked: stage.shareDiagnostics
                             onCheckedChanged: stage.shareDiagnostics = checked
                         }
                         Checkbox {
                             text: "Share crash data with app developers"
-                            detail: "Include apps that aren't part of Golden Gate, so their developers can be told about crashes too."
+                            detail: "Include apps that aren't part of CitronOS, so their developers can be told about crashes too."
                             checked: stage.shareWithDevelopers
                             onCheckedChanged: stage.shareWithDevelopers = checked
                         }
@@ -456,7 +456,7 @@ ShellRoot {
                 StepFrame {
                     symbol: "logo"
                     symbolColor: "#ff9f0a"
-                    title: "Welcome to Golden Gate"
+                    title: "Welcome to CitronOS"
                     text: "Everything's set up. Your apps are in the Dock, Spotlight is ⌘ Space, and Control Center is at the top right of the menu bar."
                     continueText: stage.finishing ? "Saving…" : "Get Started"
                     canContinue: !stage.finishing
@@ -467,7 +467,7 @@ ShellRoot {
                         text: stage.finishError || (stage.createdUsername
                             ? (stage.liveSession
                                 ? "Account created: " + stage.createdUsername + ". This is a live session, so the account is temporary; you can sign in to it from another console while the live system is running."
-                                : "Account created: " + stage.createdUsername + ". Choose Get Started to stay signed in as " + Quickshell.env("USER") + ", or sign out now and continue in your new Golden Gate account.")
+                                : "Account created: " + stage.createdUsername + ". Choose Get Started to stay signed in as " + Quickshell.env("USER") + ", or sign out now and continue in your new CitronOS account.")
                             : "")
                         color: stage.finishError ? "#d8483e" : Theme.secondaryLabel
                         font.pixelSize: 13

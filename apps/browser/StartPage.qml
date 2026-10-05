@@ -50,7 +50,7 @@ Flickable {
             }
             Text {
                 text: root.data.private
-                    ? "Pages in this window aren't added to Golden Gate Web history."
+                    ? "Pages in this window aren't added to CitronOS Web history."
                     : "Start where you left off, or head somewhere new."
                 color: Theme.secondaryLabel
                 font { family: Theme.fontUi; pixelSize: 13 }

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Persistent local event store for Golden Gate Calendar."""
+"""Persistent local event store for CitronOS Calendar."""
 from __future__ import annotations
 import json
 import os

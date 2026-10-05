@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Package this checkout as a Golden Gate update bundle, for systems that update
+# Package this checkout as a CitronOS update bundle, for systems that update
 # from a USB stick instead of GitHub:
 #
 #   scripts/make-update-bundle.sh [OUT.tar.gz] [VERSION.json]
@@ -46,4 +46,4 @@ PY
 mkdir -p "$(dirname "$OUT")"
 [[ -z $VERSION_OUT ]] || { mkdir -p "$(dirname "$VERSION_OUT")"; cp "$work/golden-gate/golden-gate-version.json" "$VERSION_OUT"; }
 tar -C "$work" -czf "$OUT" golden-gate
-echo "› $OUT: Golden Gate ${commit:0:7} ($repo, $branch)"
+echo "› $OUT: CitronOS ${commit:0:7} ($repo, $branch)"

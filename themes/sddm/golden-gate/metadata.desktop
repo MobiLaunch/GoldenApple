@@ -1,7 +1,7 @@
 [SddmGreeterTheme]
-Name=Golden Gate
-Description=Liquid Glass login screen for the Golden Gate desktop
-Author=Golden Gate
+Name=CitronOS
+Description=Liquid Glass login screen for the CitronOS desktop
+Author=CitronOS
 Type=sddm-theme
 Version=0.1
 Website=https://github.com/mobilaunch/goldenapple

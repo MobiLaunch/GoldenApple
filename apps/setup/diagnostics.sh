@@ -6,7 +6,7 @@
 # The report (this computer's hardware and versions, recent crashes, errors
 # logged this boot, and the end of the desktop's logs; never the contents of
 # your files) is saved in ~/Documents/Diagnostics and opened for you to read.
-# --send also opens a new bug report for the Golden Gate developers with the
+# --send also opens a new bug report for the CitronOS developers with the
 # report's summary filled in; nothing is sent until you submit it there.
 set -u
 # Percent-encodes a string byte by byte (no jq or Python needed).
@@ -25,11 +25,11 @@ while [ $# -gt 0 ]; do
 done
 dir="$(xdg-user-dir DOCUMENTS 2>/dev/null || echo "$HOME/Documents")/Diagnostics"
 mkdir -p "$dir"
-report="$dir/Golden Gate Report $(date '+%Y-%m-%d at %H.%M.%S').txt"
+report="$dir/CitronOS Report $(date '+%Y-%m-%d at %H.%M.%S').txt"
 runtime=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}
 
 {
-  echo "Golden Gate diagnostics report"
+  echo "CitronOS diagnostics report"
   echo "Written $(date -R)${crash:+ after $crash quit unexpectedly}"
   echo
   echo "== System"
@@ -71,7 +71,7 @@ runtime=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}
   storelog="$HOME/.local/state/golden-gate/app-store.log"
   [ -f "$storelog" ] && tail -n 40 "$storelog" | cut -c1-240
   echo
-  echo "== Golden Gate shell"
+  echo "== CitronOS shell"
   pgrep -a qs 2>/dev/null || true
   shelllog="$HOME/.local/state/golden-gate-shell.log"
   [ -f "$shelllog" ] && tail -n 80 "$shelllog" | cut -c1-240

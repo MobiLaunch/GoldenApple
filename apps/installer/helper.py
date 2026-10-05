@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Golden Gate graphical installer backend.
+"""CitronOS graphical installer backend.
 
 Disk discovery is always read-only. The destructive install operation is only
 accepted in the ArchISO live session, as root, with an exact confirmation token.
-It clones the tested live Golden Gate root filesystem to a fresh GPT/UEFI target,
+It clones the tested live CitronOS root filesystem to a fresh GPT/UEFI target,
 then removes live-only state and provisions the installed account.
 """
 from __future__ import annotations
@@ -109,7 +109,7 @@ def preflight() -> int:
 
 def validate_payload(data: dict[str, Any]) -> tuple[str, str, str]:
     if not pathlib.Path("/run/archiso").is_dir():
-        raise RuntimeError("Golden Gate can only install itself from the live environment.")
+        raise RuntimeError("CitronOS can only install itself from the live environment.")
     if os.geteuid() != 0:
         raise RuntimeError("The installer backend must run with administrator privileges.")
 
@@ -132,7 +132,7 @@ def validate_payload(data: dict[str, Any]) -> tuple[str, str, str]:
         raise RuntimeError("The selected destination is read-only.")
     try:
         if int(fields[2]) < 32 * 1024**3:
-            raise RuntimeError("Golden Gate requires a destination of at least 32 GB.")
+            raise RuntimeError("CitronOS requires a destination of at least 32 GB.")
     except ValueError:
         raise RuntimeError("The selected disk size could not be verified.")
     if data.get("confirm") != "ERASE:" + device:
@@ -214,21 +214,21 @@ def install() -> int:
         stage(0.07, "Erasing destination", device)
         run(["wipefs", "-a", device])
         run(["sgdisk", "--zap-all", device])
-        run(["sgdisk", "-n", "1:1MiB:+1GiB", "-t", "1:ef00", "-c", "1:Golden Gate EFI", device])
-        run(["sgdisk", "-n", "2:0:0", "-t", "2:8304", "-c", "2:Golden Gate", device])
+        run(["sgdisk", "-n", "1:1MiB:+1GiB", "-t", "1:ef00", "-c", "1:CitronOS EFI", device])
+        run(["sgdisk", "-n", "2:0:0", "-t", "2:8304", "-c", "2:CitronOS", device])
         run(["partprobe", device], check=False)
         run(["udevadm", "settle"])
         wait_for_partitions(boot, root)
 
         stage(0.12, "Creating filesystems", "Formatting the EFI and system volumes…")
-        run(["mkfs.fat", "-F", "32", "-n", "GOLDENGATE", boot])
+        run(["mkfs.fat", "-F", "32", "-n", "CITRONOS", boot])
         run(["mkfs.ext4", "-F", "-L", "GoldenGate", root])
 
         run(["mount", root, str(TARGET)])
         (TARGET / "boot").mkdir(parents=True, exist_ok=True)
         run(["mount", boot, str(TARGET / "boot")])
 
-        stage(0.20, "Copying Golden Gate", "Installing the live system onto the destination…")
+        stage(0.20, "Copying CitronOS", "Installing the live system onto the destination…")
         excludes = [
             "/dev/*", "/proc/*", "/sys/*", "/tmp/*", "/run/*", "/mnt/*", "/media/*",
             "/boot/*", "/lost+found", "/root/*", "/home/golden/*", "/var/log/*",
@@ -267,7 +267,7 @@ def install() -> int:
                     last_percent = percent
                     stage(
                         0.20 + 0.37 * (percent / 100.0),
-                        "Copying Golden Gate",
+                        "Copying CitronOS",
                         f"{percent}% of system files copied",
                     )
         if copy.wait() != 0:
@@ -380,7 +380,7 @@ def install() -> int:
         (loader / "entries").mkdir(parents=True, exist_ok=True)
         (loader / "loader.conf").write_text("default golden-gate.conf\ntimeout 3\nconsole-mode max\n", encoding="utf-8")
         (loader / "entries/golden-gate.conf").write_text(
-            "title Golden Gate\n"
+            "title CitronOS\n"
             "linux /vmlinuz-linux\n"
             "initrd /initramfs-linux.img\n"
             f"options root=PARTUUID={partuuid} rw quiet splash\n",
@@ -436,7 +436,7 @@ def install() -> int:
         stage(0.99, "Syncing data", "Making sure everything is safely written to disk…")
         os.sync()
 
-        emit("done", progress=1.0, message="Golden Gate is installed.", device=device)
+        emit("done", progress=1.0, message="CitronOS is installed.", device=device)
         return 0
 
     except Exception as exc:

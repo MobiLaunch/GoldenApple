@@ -24,7 +24,7 @@ Page {
             anchors { fill: parent; margins: 1 }
             readOnly: true
             language: "python"
-            text: "def greet(name: str, times: int = 3) -> str:\n    \"\"\"Hello, a few times over.\"\"\"\n    return \" \".join([f\"Hello, {name}!\"] * times)\n\n\nif __name__ == \"__main__\":\n    print(greet(\"Golden Gate\"))\n"
+            text: "def greet(name: str, times: int = 3) -> str:\n    \"\"\"Hello, a few times over.\"\"\"\n    return \" \".join([f\"Hello, {name}!\"] * times)\n\n\nif __name__ == \"__main__\":\n    print(greet(\"CitronOS\"))\n"
             colors: page.app.editorColors
             fontFamily: page.app.settings.fontFamily || "monospace"
             fontSize: page.app.settings.fontSize || 13
@@ -75,7 +75,7 @@ Page {
     }
     FormRow {
         label: "Tab Width"
-        detail: "Python, Rust and Swift style guides use 4; Golden Gate's QML uses 4 too."
+        detail: "Python, Rust and Swift style guides use 4; CitronOS's QML uses 4 too."
         PopUpButton {
             options: ["2 spaces", "3 spaces", "4 spaces", "8 spaces"]
             current: Math.max(0, [2, 3, 4, 8].indexOf(page.app.settings.tabWidth || 4))

@@ -1,5 +1,5 @@
 // The Library for code (⇧⌘L, or + while editing): snippets — built in and
-// your own — Golden Gate's symbols and the system colours, to drop in at the
+// your own — CitronOS's symbols and the system colours, to drop in at the
 // cursor. Make a snippet from the selection with “New Snippet”.
 import QtQuick
 import "../lib"

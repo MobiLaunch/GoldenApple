@@ -854,7 +854,7 @@ Flickable {
                 title: "Look"
                 FieldRow {
                     label: "Accent"
-                    ColorValue { value: insp.doc ? insp.doc.app.accent || "" : ""; customOnly: true; placeholder: "Golden Gate"; onCommit: (v) => insp.designer.setApp({ accent: v || null }) }
+                    ColorValue { value: insp.doc ? insp.doc.app.accent || "" : ""; customOnly: true; placeholder: "CitronOS"; onCommit: (v) => insp.designer.setApp({ accent: v || null }) }
                 }
                 FieldRow {
                     label: "Appearance"

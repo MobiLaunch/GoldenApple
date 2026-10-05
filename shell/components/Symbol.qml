@@ -1,4 +1,4 @@
-// Shell adapter for the canonical Golden Gate Symbol.
+// Shell adapter for the canonical CitronOS Symbol.
 import "../ui" as Shared
 
 Shared.Symbol {
