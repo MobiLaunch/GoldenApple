@@ -60,16 +60,6 @@ if [ -r "$BARS" ]; then
   fi
 fi
 
-# ------------------------------------------------------------- HyprGlass
-[ -r "$PLUGIN" ] || exit 0
-
-if ! hyprctl plugin list 2>/dev/null | grep -qi 'hyprglass'; then
-  if ! hyprctl plugin load "$PLUGIN" >/dev/null 2>&1; then
-    logger -t gg-hyprglass "could not load $PLUGIN"
-    exit 0
-  fi
-fi
-
 read -r GLASS REDUCE <<EOF
 $(python3 - "$CONFIG" <<'PY'
 import json, sys
@@ -82,6 +72,51 @@ print(d.get("glass", "clear"), "1" if d.get("reduceTransparency", False) else "0
 PY
 )
 EOF
+
+# ------------------------------------------------------------- windows
+# The specular rim (a 1 px border lit from the top left) and how see-through
+# windows are: the Liquid Glass look, a little more solid with the Tinted
+# glass style, and fully solid with Reduce Transparency.
+if [ "$THEME" = dark ]; then
+  kw general:col.active_border "rgba(ffffff66) rgba(ffffff11) 45deg"
+  kw general:col.inactive_border "rgba(ffffff22) rgba(00000011) 45deg"
+else
+  # Over light glass a white rim alone disappears: its far side darkens.
+  kw general:col.active_border "rgba(ffffffb3) rgba(0000001f) 45deg"
+  kw general:col.inactive_border "rgba(ffffff59) rgba(00000014) 45deg"
+fi
+OPAQUE_FLAG="${XDG_RUNTIME_DIR:-/tmp}/gg-glass-opaque-$(id -u)"
+if [ "$REDUCE" = 1 ]; then
+  kw decoration:active_opacity 1.0
+  kw decoration:inactive_opacity 1.0
+  # The per-app opacity rules in hyprland.conf set theirs outright: this one
+  # makes every window solid over them.
+  kw windowrule "match:class .*, opaque on"
+  touch "$OPAQUE_FLAG"
+elif [ -e "$OPAQUE_FLAG" ]; then
+  # Reduce Transparency was just turned off: a rule added at run time stays
+  # until the config is loaded again. Reloading runs this script once more.
+  rm -f "$OPAQUE_FLAG"
+  hyprctl reload >/dev/null 2>&1 || true
+  exit 0
+elif [ "$GLASS" = tinted ]; then
+  kw decoration:active_opacity 0.95
+  kw decoration:inactive_opacity 0.90
+else
+  kw decoration:active_opacity 0.88
+  kw decoration:inactive_opacity 0.78
+fi
+
+# ------------------------------------------------------------- HyprGlass
+[ -r "$PLUGIN" ] || exit 0
+
+if ! hyprctl plugin list 2>/dev/null | grep -qi 'hyprglass'; then
+  if ! hyprctl plugin load "$PLUGIN" >/dev/null 2>&1; then
+    logger -t gg-hyprglass "could not load $PLUGIN"
+    exit 0
+  fi
+fi
+
 
 # HyprGlass owns backdrop blur/refraction. QML only paints the material/tint and
 # control chrome, so there is one compositor optical pipeline rather than two.
@@ -115,10 +150,13 @@ if [ -n "$VIRT" ] && [ "$VIRT" != none ]; then
   kw plugin:hyprglass:light:vibrancy 0.12
   kw plugin:hyprglass:light:adaptive_boost 0.28
 else
-  kw plugin:hyprglass:blur_strength 1.42
+  # The Liquid Glass physics (docs/LIQUID-GLASS.md): a soft blur, edge
+  # refraction you notice only as the glass moves over something, and a
+  # trace of dispersion at the rim.
+  kw plugin:hyprglass:blur_strength 1.2
   kw plugin:hyprglass:blur_iterations 3
-  kw plugin:hyprglass:refraction_strength 0.24
-  kw plugin:hyprglass:chromatic_aberration 0.055
+  kw plugin:hyprglass:refraction_strength 0.08
+  kw plugin:hyprglass:chromatic_aberration 0.03
   kw plugin:hyprglass:fresnel_strength 0.22
   kw plugin:hyprglass:specular_strength 0.16
   kw plugin:hyprglass:edge_thickness 0.032
@@ -135,10 +173,18 @@ else
   kw plugin:hyprglass:light:adaptive_boost 0.03
 fi
 
+# Vibrancy lifts colour through the glass but holds back in the darks.
+kw plugin:hyprglass:dark:vibrancy_darkness 0.15
+kw plugin:hyprglass:light:vibrancy_darkness 0.15
+# No glass under a window nothing shows through (saves the GPU), and layer
+# glass where the surface asks for blur, else where it draws.
+kw plugin:hyprglass:skip_opaque_windows 1
+kw plugin:hyprglass:layers:mask_mode auto
+
 if [ "$REDUCE" = 1 ]; then
   kw plugin:hyprglass:glass_opacity 0.96
-  kw plugin:hyprglass:refraction_strength 0.16
-  kw plugin:hyprglass:chromatic_aberration 0.04
+  kw plugin:hyprglass:refraction_strength 0.04
+  kw plugin:hyprglass:chromatic_aberration 0.0
 elif [ "$GLASS" = tinted ]; then
   if [ -n "$VIRT" ] && [ "$VIRT" != none ]; then
     kw plugin:hyprglass:glass_opacity 0.90
@@ -157,11 +203,13 @@ else
   fi
 fi
 
-# Only the shell surfaces that are intentionally made of glass are included.
-# The menu bar and wallpaper stay optically clean.
+# ------------------------------------------------------------- shell glass
+# Every shell surface made of glass, and for each the opacity above which its
+# pixels become glass: above its shadow (and, for the screenshot overlay, its
+# 40% dim), below its tint. The menu bar is a faint film (8%), so all of it is.
 kw plugin:hyprglass:layers:enabled 1
-kw plugin:hyprglass:layers:namespaces "gg-dock,gg-controlcenter,gg-spotlight,gg-applications,gg-notifications,gg-nearby,gg-widgets,gg-widget-gallery"
-kw plugin:hyprglass:layers:namespace_mask_thresholds "gg-dock=0.08,gg-controlcenter=0.08,gg-spotlight=0.08,gg-applications=0.06,gg-notifications=0.08,gg-nearby=0.08,gg-widgets=0.2,gg-widget-gallery=0.2"
+kw plugin:hyprglass:layers:namespaces "gg-menubar,gg-dock,gg-controlcenter,gg-spotlight,gg-applications,gg-notifications,gg-notification-center,gg-nearby,gg-widgets,gg-widget-gallery,gg-osd,gg-alert,gg-switcher,gg-screenshot,gg-screenshot-thumbnail"
+kw plugin:hyprglass:layers:namespace_mask_thresholds "gg-menubar=0.05,gg-dock=0.08,gg-controlcenter=0.08,gg-spotlight=0.08,gg-applications=0.06,gg-notifications=0.08,gg-notification-center=0.3,gg-nearby=0.08,gg-widgets=0.2,gg-widget-gallery=0.2,gg-osd=0.3,gg-alert=0.3,gg-switcher=0.3,gg-screenshot=0.5,gg-screenshot-thumbnail=0.3"
 kw plugin:hyprglass:layers:live_resample 1
 kw plugin:hyprglass:layers:live_resample_fps 30
 kw plugin:hyprglass:layers:manage_blur 1

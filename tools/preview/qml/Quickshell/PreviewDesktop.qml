@@ -8,7 +8,10 @@ QtObject {
     // [background, bottom, windows, top, overlay], set by the harness.
     property var layers: []
     property Item backdrop: null              // what glass blurs: the background layer
-    property var glass: ["gg-dock", "gg-controlcenter", "gg-spotlight", "gg-applications", "gg-notifications", "gg-nearby", "gg-widgets", "gg-widget-gallery"]
+    // The same list as compositor/hyprland/hyprglass-sync.sh (tests/liquid-glass.py checks).
+    property var glass: ["gg-menubar", "gg-dock", "gg-controlcenter", "gg-spotlight", "gg-applications", "gg-notifications",
+                         "gg-notification-center", "gg-nearby", "gg-widgets", "gg-widget-gallery", "gg-osd", "gg-alert",
+                         "gg-switcher", "gg-screenshot", "gg-screenshot-thumbnail"]
     property var panels: []
     function register(p) { panels = panels.concat([p]) }
     function unregister(p) { panels = panels.filter((x) => x !== p) }

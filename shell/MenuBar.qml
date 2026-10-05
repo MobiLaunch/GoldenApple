@@ -54,8 +54,21 @@ PanelWindow {
     WlrLayershell.namespace: "gg-menubar"
     WlrLayershell.layer: WlrLayer.Top
 
-    // The bar has no material, so each half picks white or dark text from the
-    // brightness of the wallpaper behind it (sampled once per wallpaper).
+    // Liquid Glass (docs/LIQUID-GLASS.md): a faint white film that HyprGlass
+    // turns into blurred glass, with a lit hairline along the bottom. Reduce
+    // Transparency makes it solid.
+    Rectangle {
+        anchors.fill: parent
+        color: Prefs.reduceTransparency ? (Theme.dark ? "#f21e1e20" : "#f2f4f4f6") : "#14ffffff"
+        Rectangle {
+            anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
+            height: 1
+            color: Prefs.reduceTransparency ? Theme.separator : "#2effffff"
+        }
+    }
+
+    // The film is so faint the wallpaper still decides the text: each half
+    // picks white or dark text from its brightness (sampled once per wallpaper).
     property string wallpaper: Prefs.wallpaper
     property bool darkLeft: false
     property bool darkRight: false
