@@ -124,6 +124,9 @@ ShellRoot {
     }
 
     Spotlight { id: spotlightPanel; launchers: root.launchers }
+    // Voice is an isolated component so missing Live/audio support can never
+    // prevent the desktop from reaching the dock, menus or window switcher.
+    LazyLoader { active: true; source: "VoiceAssistant.qml" }
     // For tests: launch an app as if from the middle of the Dock, and stand in for
     // Hyprland's "window opened" where there is no Hyprland (qs ipc call launch …).
     IpcHandler {
