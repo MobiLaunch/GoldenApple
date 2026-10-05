@@ -46,6 +46,12 @@ elif [ "${GG_WEB_SOFTWARE:-0}" = 1 ] || [ "${LIBGL_ALWAYS_SOFTWARE:-0}" = 1 ] ||
      [ -f "$state/web-safe-mode" ]; then
     safe_graphics
 fi
+# A Qt/Wayland-specific crash can survive the Mesa software fallback. Use
+# XWayland only when the compositor already provides a DISPLAY endpoint.
+if [ -f "$state/web-xcb-mode" ] && [ -n "${DISPLAY:-}" ]; then
+    export QT_QPA_PLATFORM=xcb
+    safe_graphics
+fi
 
 run_web() {
     python3 "$here/browser.py" "$@" >> "$log" 2>&1 &
@@ -79,6 +85,24 @@ case "$status" in
                 status=$?
                 printf 'Software-rendered retry exited with status %s\n' "$status" >> "$log"
             fi
+            # Qt Wayland platform crashes can persist with Chromium's GPU
+            # disabled. Try XWayland once, never on systems without DISPLAY.
+            case "$status" in
+                132|133|134|135|136|137|138|139)
+                    if [ -n "${WAYLAND_DISPLAY:-}" ] && [ -n "${DISPLAY:-}" ] &&
+                       [ "${QT_QPA_PLATFORM:-}" != xcb ]; then
+                        printf 'Attempting XWayland-compatible browser startup.\n' >> "$log"
+                        export QT_QPA_PLATFORM=xcb
+                        if run_web "$@"; then
+                            touch "$state/web-safe-mode" "$state/web-xcb-mode" 2>/dev/null || :
+                            exit 0
+                        else
+                            status=$?
+                            printf 'XWayland retry exited with status %s\n' "$status" >> "$log"
+                        fi
+                    fi
+                    ;;
+            esac
         fi
         ;;
 esac
