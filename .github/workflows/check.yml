@@ -269,6 +269,8 @@ jobs:
           QT_QUICK_BACKEND: software
       - name: Test account failures, preferences, and browser state
         run: python tests/setup-browser.py
+      - name: Test Web startup crash recovery and safe graphics fallback
+        run: python tests/browser-recovery.py
       - name: Exercise native Chromium navigation, tabs, private browsing, and shortcuts
         run: xvfb-run -a python tests/native-browser.py
         env:
