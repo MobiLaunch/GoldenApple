@@ -24,6 +24,15 @@ ERRORS = re.compile(r"is not a type|Type \w+ unavailable|Cannot override FINAL|C
 failures = []
 with tempfile.TemporaryDirectory() as tmp:
     targets = [("shell", ["shell"])] + [(app, ["app", f"apps/{app}.qml"]) for app in APPS]
+    # The default Appearance pane used to pass even when Intelligence was
+    # unresolvable: Loader errors only happen on the selected pane.
+    targets += [
+        ("settings/intelligence-start", ["app", "apps/settings.qml", "--env",
+                                         "GG_SETTINGS_PANE=intelligence", "--require-object", "citronSettingsPanel"]),
+        ("settings/intelligence-navigation", ["app", "apps/settings.qml",
+                                              "--do", "settings.open:intelligence",
+                                              "--require-object", "citronSettingsPanel"]),
+    ]
     for name, args in targets:
         proc = subprocess.run([sys.executable, str(PREVIEW), *args, "--wait", "300", "-o", f"{tmp}/{name}.png"],
                               capture_output=True, text=True, timeout=180, cwd=ROOT)
