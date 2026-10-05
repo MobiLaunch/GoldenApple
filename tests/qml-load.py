@@ -27,6 +27,10 @@ with tempfile.TemporaryDirectory() as tmp:
     # The default Appearance pane used to pass even when Intelligence was
     # unresolvable: Loader errors only happen on the selected pane.
     targets += [
+        # Summoning the floating Citron orb must compile independently of
+        # the full assistant and without contacting Gemini in preview.
+        ("citron-voice-bubble", ["shell", "--do", "citron.toggle",
+                                 "--require-object", "citronVoiceBubble"]),
         ("settings-intelligence-start", ["app", "apps/settings.qml", "--env",
                                          "GG_SETTINGS_PANE=intelligence", "--require-object", "citronSettingsPanel"]),
         ("settings-intelligence-navigation", ["app", "apps/settings.qml",
