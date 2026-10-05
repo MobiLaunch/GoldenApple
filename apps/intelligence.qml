@@ -121,9 +121,18 @@ ShellRoot {
                     active: app.page === "settings"
                     source: Qt.resolvedUrl("lib/intelligence/SettingsPanel.qml")
                     onLoaded: { if (item) item.menuParent = win.overlay }
+                    property string details: ""
                     onStatusChanged: {
-                        if (status === Loader.Error)
-                            console.warn("Citron Intelligence: settings panel could not load")
+                        if (status === Loader.Error) {
+                            const component = Qt.createComponent(
+                                Qt.resolvedUrl("lib/intelligence/SettingsPanel.qml"),
+                                Component.PreferSynchronous)
+                            details = component.status === Component.Error
+                                ? component.errorString() : "Settings panel could not initialize."
+                            console.error("Citron Intelligence settings:", details)
+                        } else if (status === Loader.Ready) {
+                            details = ""
+                        }
                     }
                 }
                 Column {
@@ -133,7 +142,7 @@ ShellRoot {
                     Text {
                         width: parent.width
                         wrapMode: Text.Wrap
-                        text: "Intelligence preferences couldn't load. Check the Quickshell log, then retry."
+                        text: "Intelligence preferences couldn't load: " + settingsLoader.details
                         color: Theme.secondaryLabel
                     }
                     Button {
