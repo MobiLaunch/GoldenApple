@@ -112,9 +112,38 @@ ShellRoot {
             Flickable {
                 visible: app.page === "settings"
                 anchors { fill: parent; margins: 28 }
-                contentWidth: width; contentHeight: settings.height
+                contentWidth: width; contentHeight: settingsLoader.height + 30
                 clip: true; boundsBehavior: Flickable.StopAtBounds
-                AI.SettingsPanel { id: settings; width: parent.width; menuParent: win.overlay }
+                Loader {
+                    id: settingsLoader
+                    width: parent.width
+                    height: status === Loader.Ready && item ? item.implicitHeight : 0
+                    active: app.page === "settings"
+                    source: Qt.resolvedUrl("lib/intelligence/SettingsPanel.qml")
+                    onLoaded: { if (item) item.menuParent = win.overlay }
+                    onStatusChanged: {
+                        if (status === Loader.Error)
+                            console.warn("Citron Intelligence: settings panel could not load")
+                    }
+                }
+                Column {
+                    width: parent.width
+                    spacing: 12
+                    visible: settingsLoader.status === Loader.Error
+                    Text {
+                        width: parent.width
+                        wrapMode: Text.Wrap
+                        text: "Intelligence preferences couldn't load. Check the Quickshell log, then retry."
+                        color: Theme.secondaryLabel
+                    }
+                    Button {
+                        text: "Retry"
+                        onClicked: {
+                            settingsLoader.active = false
+                            settingsLoader.active = true
+                        }
+                    }
+                }
             }
             Flickable {
                 visible: app.page !== "settings"
