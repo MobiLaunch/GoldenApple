@@ -420,6 +420,24 @@ EOF
   if [[ -e "$R/usr/lib/os-release" ]]; then
     install -m644 "$R/usr/share/golden-gate/os-release" "$R/usr/lib/os-release"
   fi
+
+  # pacman.conf ready for installing software ([multilib] on, no build-only
+  # repository); see apps/setup/pacman-config.sh. The hook keeps it so when
+  # pacman installs or upgrades the file; on an installed system it's fixed now.
+  install -Dm755 "$REPO/apps/setup/pacman-config.sh" "$R/usr/lib/golden-gate/pacman-config.sh"
+  cat > "$R/etc/pacman.d/hooks/citronos-pacman.hook" <<'EOF'
+[Trigger]
+Type = Path
+Operation = Install
+Operation = Upgrade
+Target = etc/pacman.conf
+
+[Action]
+Description = Setting up the package repositories for CitronOS...
+When = PostTransaction
+Exec = /bin/sh /usr/lib/golden-gate/pacman-config.sh
+EOF
+  sh "$REPO/apps/setup/pacman-config.sh" "$R"
 }
 
 if [[ $MODE == system ]]; then

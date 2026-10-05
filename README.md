@@ -126,7 +126,12 @@ downloads (the Homebrew Cask catalog, about 7,000 of them): Get downloads one fr
 its developer, checks it against the published checksum where there is one, and
 installs it in `~/Applications` with its icon in Launchpad. Mac apps open with
 [Darling](https://www.darlinghq.org), the macOS translation layer; **Set Up…**
-builds Darling from the AUR in a Terminal window (about an hour). Be aware that
+installs Darling's official prebuilt release (`darling-bin` from the AUR) in a
+Terminal window, after refreshing pacman's signing keys and updating the system.
+The source packages (`darling-git`, `darling`) don't install on Arch: they need
+an AUR-only build helper, 32-bit compilers and a library Arch dropped. CitronOS
+also turns on Arch's `[multilib]` repository, which 32-bit software such as
+Wine and Steam needs. Be aware that
 Darling runs command-line programs well but its support for apps with windows is
 experimental, so many Mac apps don't open yet: each app's page says whether it
 opened on your computer, and Darling's output when it didn't. Apps built only for

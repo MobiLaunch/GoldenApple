@@ -638,7 +638,7 @@ ShellRoot {
                                         font { family: Theme.fontUi; pixelSize: 12 }
                                         text: (store.darling
                                             ? "Mac apps open with Darling, the macOS translation layer."
-                                            : "Mac apps open with Darling, the macOS translation layer. Setting it up builds it on this computer: about an hour and 10 GB of space, in a Terminal window.")
+                                            : "Mac apps open with Darling, the macOS translation layer. Setting it up installs Darling's official release in a Terminal window: a 120 MB download, a few minutes.")
                                             + " Darling runs Intel Mac apps, and its support for apps with windows is still experimental: many don't open yet. Each app's page says how it went."
                                     }
                                 }

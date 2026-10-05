@@ -230,6 +230,8 @@ jobs:
         run: python tests/files-helper.py
       - name: "Mac apps: catalog, download, checksum, install, open with Darling, remove"
         run: python tests/mac-apps.py
+      - name: Mac app support installs Darling's release after readying pacman
+        run: python tests/darling-setup.py
       - name: Exercise native control keyboard and pointer behavior
         run: python tests/native-controls.py
         env:
