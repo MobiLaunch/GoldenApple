@@ -149,8 +149,10 @@ class VoiceSession:
                         if self.muted or not self.running:
                             break
                         raise RuntimeError("Microphone disconnected. Check input permissions and PipeWire.")
-                    # Server-side VAD handles pauses and barge-in, no button
-                    # needed for each utterance.
+                    # Do not emit even a final buffered chunk after Mute.
+                    if self.muted or not self.running:
+                        break
+                    # Server-side VAD handles pauses and barge-in.
                     await self.ws.send(json.dumps(audio_packet(chunk)))
                     emit("level", value=pcm_level(chunk))
             finally:
