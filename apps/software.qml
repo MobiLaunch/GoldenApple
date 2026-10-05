@@ -102,20 +102,19 @@ ShellRoot {
             property string page: Quickshell.env("GG_STORE_PAGE") || "discover"
             property string query: ""
             property var detail: null
-            // GG_STORE_APP=token (or a Flathub id) opens that app's page once it's
-            // in the catalog: for screenshots, and for links from elsewhere.
             property string pendingDetail: Quickshell.env("GG_STORE_APP") || ""
+            property bool installerSheetVisible: false
+            property var installerApp: null
+            property bool installerSucceeded: false
             function openPending() {
                 if (!pendingDetail) return
                 const app = macApps.concat(linuxApps).find((a) => a.id === pendingDetail)
                 if (app) { detail = app; pendingDetail = "" }
             }
 
-            // Linux apps (Flathub)
             property var catalog: []
             property bool loading: true
             property string loadError: ""
-            // Mac apps (developers' downloads, through Darling)
             property var mac: []
             property var macFeatured: []
             property var macInstalled: ({})
@@ -123,7 +122,6 @@ ShellRoot {
             property bool macLoading: true
             property string macError: ""
 
-            // The one transaction at a time: install, update, remove, open.
             property bool busy: false
             property string activeId: ""
             property string activeAction: ""
@@ -132,23 +130,22 @@ ShellRoot {
             property string error: ""
             property string errorDetails: ""
             property bool askDarling: false
-            property var queue: []                 // Update All: the apps still to update
+            property var queue: []
 
-            // ---------------------------------------------------- the apps
             readonly property var linuxApps: catalog.map((a) => Object.assign({ source: "linux" }, a))
             function macEntry(c) {
                 const r = macInstalled[c.token]
+                const iconValue = r?.icon || c.icon || ""
                 return {
-                    source: "mac", id: c.token, name: c.name, summary: c.desc, icon: r?.icon ?? "",
+                    source: "mac", id: c.token, name: c.name, summary: c.desc, icon: iconValue,
                     installed: !!r, update: !!r && !!c.version && r.catalogVersion !== c.version,
                     homepage: c.homepage, version: r?.version ?? c.version, minMacOS: c.minMacOS ?? "", checksum: !!c.checksum,
                     opened: r?.opened ?? null, lastError: r?.lastError ?? "", arch: r?.arch ?? []
                 }
             }
             readonly property var macApps: mac.map((c) => macEntry(c))
-            // Installed Mac apps the catalog no longer lists still show up.
             readonly property var macOrphans: Object.keys(macInstalled).filter((t) => !mac.some((c) => c.token === t))
-                .map((t) => Object.assign(macEntry({ token: t, name: macInstalled[t].name, desc: "", version: "" }), { update: false }))
+                .map((t) => Object.assign(macEntry({ token: t, name: macInstalled[t].name, desc: "", version: "", icon: macInstalled[t].icon || "" }), { update: false }))
             readonly property var featuredMac: macFeatured.map((t) => macApps.find((a) => a.id === t)).filter((a) => !!a)
 
             function hasCategory(app, names) {
@@ -174,13 +171,11 @@ ShellRoot {
                 return { linux: linuxApps.filter((a) => matches(a, q)).slice(0, 60), mac: macApps.filter((a) => matches(a, q)).slice(0, 60) }
             }
             function live(app) {
-                // The current state of an app (after an install, its record changed).
                 if (!app) return null
                 const list = app.source === "mac" ? macApps.concat(macOrphans) : linuxApps
                 return list.find((a) => a.id === app.id) ?? app
             }
 
-            // ---------------------------------------------------- loading
             function reload(refresh) {
                 if (catalogLoad.running || busy) return
                 loading = true
@@ -231,7 +226,6 @@ ShellRoot {
                 }
                 onExited: store.macLoading = false
             }
-            // While Mac app support is being set up (in Terminal), notice when it's ready.
             Process {
                 id: darlingCheck
                 command: ["python3", store.macHelper, "status"]
@@ -245,7 +239,12 @@ ShellRoot {
                 Quickshell.execDetached(["ghostty", "-e", darlingSetup])
             }
 
-            // ---------------------------------------------------- transactions
+            function showInstaller(app) {
+                store.installerApp = app
+                store.installerSheetVisible = true
+                store.installerSucceeded = false
+            }
+
             function transact(action, app) {
                 if (busy || !app) return
                 busy = true
@@ -269,7 +268,16 @@ ShellRoot {
                 else if (app.installed) {
                     if (app.source === "mac" && !darling) askDarling = true
                     else transact("launch", app)
-                } else transact("install", app)
+                } else {
+                    const current = live(app)
+                    const isMac = current && current.source === "mac"
+                    if (isMac) {
+                        showInstaller(current)
+                        Qt.callLater(() => transact("install", current))
+                    } else {
+                        transact("install", current)
+                    }
+                }
             }
             function consume(line) {
                 if (!line || !line.trim()) return
@@ -293,31 +301,28 @@ ShellRoot {
                     store.activeAction = ""
                     if (code !== 0 && !store.error && !store.askDarling) store.error = store.message || "That didn't complete."
                     if (code === 0 && store.queue.length) {
-                        // Update All: the next one, then reload once at the end.
                         const next = store.queue[0]
                         store.queue = store.queue.slice(1)
                         Qt.callLater(() => store.transact("update", next))
                         return
                     }
                     store.queue = []
-                    // Installs and removals change both lists; opening a Mac app
-                    // changes its record (whether it opened).
+                    if (code === 0 && store.installerSheetVisible && store.installerApp) {
+                        store.installerSucceeded = true
+                        Qt.callLater(() => { store.installerSheetVisible = false; store.installerApp = null })
+                    }
                     if (action !== "launch") Qt.callLater(() => store.reload(false))
                     else if (wasMac) store.reloadMac(false)
                 }
             }
 
-            // ---------------------------------------------------- pieces
-            // An app's icon: its own, or a monogram on a colour of its own.
             component AppIcon: Item {
                 id: icon
                 property var app
                 property real size: 56
                 width: size; height: size
-                readonly property string path: app?.icon ? "file://" + app.icon
-                    : app?.source === "linux" ? Quickshell.iconPath(app.id, true) : ""
-                readonly property var hues: [["#5e9cf8", "#2f5fd6"], ["#ff9f5a", "#e8613c"], ["#7bd88f", "#2f9e57"], ["#c88cf5", "#7c4bd8"],
-                                             ["#ff7d9b", "#d93d6a"], ["#5ad1d6", "#1f8fa6"], ["#f7c948", "#d9922b"], ["#9aa5b8", "#5d6880"]]
+                readonly property string path: app?.icon ? "file://" + app.icon : (app?.source === "linux" ? Quickshell.iconPath(app.id, true) : "")
+                readonly property var hues: [["#5e9cf8", "#2f5fd6"], ["#ff9f5a", "#e8613c"], ["#7bd88f", "#2f9e57"], ["#c88cf5", "#7c4bd8"], ["#ff7d9b", "#d93d6a"], ["#5ad1d6", "#1f8fa6"], ["#f7c948", "#d9922b"], ["#9aa5b8", "#5d6880"]]
                 readonly property var hue: hues[Array.from(app?.name ?? "?").reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7) % hues.length]
                 Image {
                     anchors.fill: parent
@@ -345,8 +350,6 @@ ShellRoot {
                 }
             }
 
-            // GET / OPEN / UPDATE, as on the Mac: a grey capsule with the accent's
-            // bold label; while working, a ring that fills with the progress.
             component GetButton: Item {
                 id: get
                 property var app
@@ -373,7 +376,6 @@ ShellRoot {
                         font { family: Theme.fontUi; pixelSize: get.large ? 14 : 13; weight: Font.Bold; letterSpacing: 0.3 }
                     }
                 }
-                // The progress ring, with a stop square in it.
                 Shape {
                     anchors.fill: parent
                     visible: get.working
@@ -393,7 +395,6 @@ ShellRoot {
                 Accessible.name: get.label + " " + (app?.name ?? "")
             }
 
-            // A row in a shelf: icon, name and what it does, and its button.
             component Lockup: Item {
                 id: lockup
                 property var app
@@ -424,7 +425,7 @@ ShellRoot {
                             width: macText.implicitWidth + 8; height: 15; radius: 4
                             color: "transparent"
                             border { width: 1; color: Theme.tertiaryLabel }
-                            Text { id: macText; anchors.centerIn: parent; text: "MAC"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: 9; weight: Font.Bold; letterSpacing: 0.5 } }
+                            Text { id: macText; anchors.centerIn: parent; text: "MAC"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: 9; weight: Font.Bold; letterSpacing: 0.2 } }
                         }
                     }
                     Text {
@@ -445,7 +446,6 @@ ShellRoot {
                 TapHandler { onTapped: store.detail = lockup.app }
             }
 
-            // A titled shelf: rows of lockups, three across on a wide window.
             component Shelf: Column {
                 id: shelf
                 property string title
@@ -495,7 +495,6 @@ ShellRoot {
                 font { family: Theme.fontDisplay; pixelSize: 30; weight: Font.Bold }
             }
 
-            // ---------------------------------------------------- the pages
             Rectangle { anchors.fill: parent; color: Theme.contentBg }
 
             Flickable {
@@ -514,7 +513,6 @@ ShellRoot {
                     width: scroll.width
                     spacing: 28
 
-                    // ---------------- search
                     Column {
                         visible: !!store.query.trim()
                         width: parent.width
@@ -530,14 +528,12 @@ ShellRoot {
                         }
                     }
 
-                    // ---------------- Discover
                     Column {
                         visible: !store.query.trim() && store.page === "discover"
                         width: parent.width
                         spacing: 30
                         PageTitle { text: "Discover" }
 
-                        // The editorial card: Mac apps.
                         Rectangle {
                             width: parent.width
                             height: 270
@@ -563,7 +559,7 @@ ShellRoot {
                                 }
                                 Text {
                                     width: parent.width
-                                    text: "Get apps made for the Mac straight from their developers. They open with Darling, the macOS translation layer — still experimental, so not every app runs yet."
+                                    text: "Get apps made for the Mac straight from their developers. They install cleanly with Darling, open in your Applications folder, and show their native Mac-style icon once downloaded."
                                     wrapMode: Text.WordWrap
                                     color: "#e6ffffff"
                                     font { family: Theme.fontUi; pixelSize: 13 }
@@ -572,7 +568,6 @@ ShellRoot {
                                 Item { width: 1; height: 4 }
                                 Button { text: "Explore Mac Apps"; onClicked: store.page = "mac" }
                             }
-                            // A fan of Mac apps.
                             Repeater {
                                 model: store.featuredMac.slice(0, 5)
                                 AppIcon {
@@ -591,7 +586,7 @@ ShellRoot {
                         Shelf {
                             width: parent.width
                             title: "Popular Mac Apps"
-                            subtitle: "Downloaded from each developer, and checked against its published checksum where there is one."
+                            subtitle: "Downloaded from each developer, checked against the published checksum where available."
                             apps: store.featuredMac
                             seeAll: "mac"
                         }
@@ -601,13 +596,11 @@ ShellRoot {
                         Shelf { width: parent.width; title: "Essentials"; apps: store.linuxApps.filter((a) => !a.installed); rows: 2 }
                     }
 
-                    // ---------------- Mac Apps
                     Column {
                         visible: !store.query.trim() && store.page === "mac"
                         width: parent.width
                         spacing: 26
                         PageTitle { text: "Mac Apps" }
-                        // Whether Mac apps can open here, said plainly.
                         Rectangle {
                             width: parent.width
                             height: darlingCard.implicitHeight + 36
@@ -638,8 +631,7 @@ ShellRoot {
                                         font { family: Theme.fontUi; pixelSize: 12 }
                                         text: (store.darling
                                             ? "Mac apps open with Darling, the macOS translation layer."
-                                            : "Mac apps open with Darling, the macOS translation layer. Setting it up installs Darling's official release in a Terminal window: a 120 MB download, a few minutes.")
-                                            + " Darling runs Intel Mac apps, and its support for apps with windows is still experimental: many don't open yet. Each app's page says how it went."
+                                            : "Mac apps open with Darling, the macOS translation layer. Setting it up installs Darling's official release in a Terminal window. Darling runs Intel Mac apps; many apps with windows still need manual testing and you can see the result per app.")
                                     }
                                 }
                                 Button {
@@ -667,7 +659,6 @@ ShellRoot {
                         }
                     }
 
-                    // ---------------- categories
                     Column {
                         visible: !store.query.trim() && ["create", "work", "play", "develop"].includes(store.page)
                         width: parent.width
@@ -685,7 +676,6 @@ ShellRoot {
                         }
                     }
 
-                    // ---------------- Updates and Installed
                     Column {
                         visible: !store.query.trim() && (store.page === "updates" || store.page === "installed")
                         width: parent.width
@@ -718,7 +708,6 @@ ShellRoot {
                 }
             }
 
-            // ---------------------------------------------------- an app's page
             Flickable {
                 id: page
                 visible: !!store.detail
@@ -775,7 +764,6 @@ ShellRoot {
 
                     Rectangle { width: parent.width; height: 1; color: Theme.separator }
 
-                    // The facts, in columns, as on the Mac.
                     Row {
                         id: facts
                         width: parent.width
@@ -800,9 +788,9 @@ ShellRoot {
                                 Column {
                                     anchors { horizontalCenter: parent.horizontalCenter; top: parent.top; topMargin: 8 }
                                     spacing: 3
-                                    Text { anchors.horizontalCenter: parent.horizontalCenter; text: modelData[0]; color: Theme.tertiaryLabel; font { family: Theme.fontUi; pixelSize: 10; weight: Font.DemiBold; letterSpacing: 0.6 } }
-                                    Text { anchors.horizontalCenter: parent.horizontalCenter; text: modelData[1]; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: 17; weight: Font.Bold } }
-                                    Text { anchors.horizontalCenter: parent.horizontalCenter; visible: !!modelData[2]; text: modelData[2]; color: Theme.tertiaryLabel; font { family: Theme.fontUi; pixelSize: 11 } }
+                                    Text { anchors.horizontalCenter: parent.horizontalCenter; text: modelData[0]; color: Theme.tertiaryLabel; font { family: Theme.fontUi; pixelSize: 10; weight: Font.Bold } }
+                                    Text { anchors.horizontalCenter: parent.horizontalCenter; text: modelData[1]; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: 17; weight: Font.DemiBold } }
+                                    Text { anchors.horizontalCenter: parent.horizontalCenter; visible: !!modelData[2]; text: modelData[2]; color: Theme.tertiaryLabel; font { family: Theme.fontUi; pixelSize: 10 } }
                                 }
                             }
                         }
@@ -810,7 +798,6 @@ ShellRoot {
 
                     Rectangle { width: parent.width; height: 1; color: Theme.separator }
 
-                    // Mac apps: what to expect, and what happened last time.
                     Rectangle {
                         visible: page.app?.source === "mac"
                         width: parent.width
@@ -826,18 +813,14 @@ ShellRoot {
                                 wrapMode: Text.WordWrap
                                 color: Theme.label
                                 font { family: Theme.fontUi; pixelSize: 13; weight: Font.DemiBold }
-                                text: page.app?.opened === false ? "This app didn't open under Darling last time."
-                                    : page.app?.opened === true ? "This app opened under Darling on this computer."
-                                    : "A Mac app, run with Darling"
+                                text: page.app?.opened === false ? "This app didn't open under Darling last time." : page.app?.opened === true ? "This app opened under Darling on this computer." : "A Mac app, run with Darling"
                             }
                             Text {
                                 width: parent.width
                                 wrapMode: Text.WordWrap
                                 color: Theme.secondaryLabel
                                 font { family: Theme.fontUi; pixelSize: 12 }
-                                text: "It's downloaded from " + (page.app?.homepage ? page.app.homepage.replace(/^https?:\/\//, "").replace(/\/.*$/, "") : "its developer")
-                                    + (page.app?.checksum ? ", checked against its published checksum," : " (its developer doesn't publish a checksum for it),")
-                                    + " and installed in Applications in your home folder. Darling runs Intel Mac apps; apps built only for Apple silicon are refused before anything is installed. Support for apps with windows is experimental, so many don't open yet."
+                                text: "It's downloaded from " + (page.app?.homepage ? page.app.homepage.replace(/^https?:\/\//, "").replace(/\/.*$/, "") : "its developer") + (page.app?.checksum ? ", checked against its published checksum," : " (its developer doesn't publish a checksum for it),") + " and installed in Applications in your home folder. Darling runs Intel Mac apps; apps built only for Apple silicon are refused before anything is installed."
                             }
                             Text {
                                 visible: !!page.app?.lastError
@@ -860,8 +843,6 @@ ShellRoot {
                 }
             }
 
-            // ---------------------------------------------------- sheets and notices
-            // Opening a Mac app before Darling is set up.
             Rectangle {
                 anchors.fill: parent
                 visible: store.askDarling
@@ -879,7 +860,7 @@ ShellRoot {
                         anchors { left: parent.left; right: parent.right; top: parent.top; margins: 20 }
                         spacing: 10
                         Symbol { anchors.horizontalCenter: parent.horizontalCenter; name: "window"; size: 36; tone: "accent" }
-                        Text { width: parent.width; horizontalAlignment: Text.AlignHCenter; text: "Mac app support isn't set up"; color: Theme.label; font { family: Theme.fontUi; pixelSize: 15; weight: Font.Bold } }
+                        Text { width: parent.width; horizontalAlignment: Text.AlignHCenter; text: "Mac app support isn't set up"; color: Theme.label; font { family: Theme.fontUi; pixelSize: 15; weight: Font.DemiBold } }
                         Text {
                             width: parent.width; horizontalAlignment: Text.AlignHCenter; wrapMode: Text.WordWrap
                             text: "Mac apps open with Darling. Setting it up builds it on this computer, which takes about an hour, in a Terminal window."
@@ -896,7 +877,6 @@ ShellRoot {
                 }
             }
 
-            // What's happening, and what went wrong.
             Glass {
                 visible: store.busy || !!store.error
                 anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: 18 }
@@ -933,6 +913,95 @@ ShellRoot {
                         font { family: "SF Mono"; pixelSize: 10 }
                     }
                     ProgressBar { visible: store.busy; Layout.fillWidth: true; value: store.progress; indeterminate: store.progress < 0.05 }
+                }
+            }
+
+            Glass {
+                visible: store.installerSheetVisible
+                anchors.centerIn: parent
+                width: 430
+                height: installerColumn.implicitHeight + 36
+                radius: 22
+                tint: Theme.glassRegular.tint
+                z: 35
+                Column {
+                    id: installerColumn
+                    anchors { left: parent.left; right: parent.right; top: parent.top; margins: 22 }
+                    spacing: 12
+                    Row {
+                        width: parent.width
+                        spacing: 14
+                        AppIcon { app: store.installerApp; size: 64 }
+                        Column {
+                            width: parent.width - 78
+                            spacing: 3
+                            Text {
+                                text: store.installerSucceeded ? "Installed" : "Download complete"
+                                color: Theme.label
+                                font { family: Theme.fontUi; pixelSize: 18; weight: Font.DemiBold }
+                            }
+                            Text {
+                                width: parent.width
+                                text: store.installerSucceeded ? (store.installerApp?.name ?? "App") + " is ready in Applications." : "We’ve downloaded the package and are unpacking it into your Applications folder."
+                                wrapMode: Text.WordWrap
+                                color: Theme.secondaryLabel
+                                font { family: Theme.fontUi; pixelSize: 12 }
+                            }
+                        }
+                    }
+                    Rectangle {
+                        width: parent.width
+                        height: 106
+                        radius: 18
+                        color: Theme.dark ? "#14151a" : "#f2f2f5"
+                        border { width: 0.5; color: Theme.separator }
+                        Row {
+                            anchors.centerIn: parent
+                            spacing: 22
+                            Column {
+                                width: 98
+                                height: 86
+                                spacing: 8
+                                Rectangle {
+                                    width: 74; height: 74; anchors.horizontalCenter: parent.horizontalCenter; radius: 18
+                                    color: Theme.dark ? "#1f2430" : "#eef1f5"
+                                    border { width: 1; color: Theme.separator }
+                                    AppIcon { app: store.installerApp; anchors.centerIn: parent; size: 52 }
+                                }
+                                Text { anchors.horizontalCenter: parent.horizontalCenter; text: "Apps"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: 11 } }
+                            }
+                            Rectangle {
+                                width: 52; height: 52; radius: 26; color: Theme.accent; opacity: 0.9
+                                anchors.verticalCenter: parent.verticalCenter
+                                Text { anchors.centerIn: parent; text: "→"; color: "#fff"; font { family: Theme.fontUi; pixelSize: 22; weight: Font.Bold } }
+                            }
+                            Column {
+                                width: 98
+                                height: 86
+                                spacing: 8
+                                Rectangle {
+                                    width: 74; height: 74; anchors.horizontalCenter: parent.horizontalCenter; radius: 18
+                                    color: Theme.dark ? "#1f2430" : "#eef1f5"
+                                    border { width: 1; color: Theme.separator }
+                                    Symbol { anchors.centerIn: parent; name: "folder"; size: 28; tone: Theme.accent }
+                                }
+                                Text { anchors.horizontalCenter: parent.horizontalCenter; text: "Applications"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: 11 } }
+                            }
+                        }
+                    }
+                    Text {
+                        width: parent.width
+                        text: "Drag the app to Applications to finish installation."
+                        color: Theme.secondaryLabel
+                        horizontalAlignment: Text.AlignHCenter
+                        font { family: Theme.fontUi; pixelSize: 12 }
+                    }
+                    Row {
+                        anchors.right: parent.right
+                        spacing: 8
+                        Button { text: "Open Folder"; onClicked: { if (store.installerApp) Quickshell.execDetached(["xdg-open", Quickshell.env("HOME") + "/Applications"]) ; store.installerSheetVisible = false } }
+                        Button { text: "Done"; prominent: true; onClicked: store.installerSheetVisible = false }
+                    }
                 }
             }
         }
