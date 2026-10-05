@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 import faulthandler
+# Enable tracing before importing Qt's native modules: import-time segfaults
+# happen before main(), where enabling it would be too late.
+faulthandler.enable(all_threads=True)
 import hashlib
 import json
 import os
@@ -58,8 +61,6 @@ def handoff_to_existing(values, profile, data_dir):
 
 
 def main():
-    # The launcher captures stderr in a private log even on a native abort.
-    faulthandler.enable(all_threads=True)
     if os.geteuid() == 0:
         sys.exit("Run Web as your desktop user, not root. Chromium sandboxing remains enabled.")
 
