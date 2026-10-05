@@ -4,6 +4,7 @@
 # one native crash without changing or deleting the user's browser profile.
 set -u
 here=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+umask 077
 state="${XDG_STATE_HOME:-$HOME/.local/state}/golden-gate"
 mkdir -p "$state" 2>/dev/null || state="${TMPDIR:-/tmp}"
 log="$state/web.log"
@@ -65,10 +66,10 @@ printf 'Web exited with status %s\n' "$status" >> "$log"
 # Do not mask missing Python modules, QML errors (exit 2), or an existing
 # profile lock (exit 1). Native aborts/segfaults are frequently GPU failures.
 case "$status" in
-    132|133|134|135|136|137|138|139)
+    79|132|133|134|135|136|137|138|139)
         if [ "${GG_WEB_LIVE_SAFE:-0}" != 1 ] && [ "${LIBGL_ALWAYS_SOFTWARE:-0}" != 1 ]; then
-            printf 'Native crash detected; retrying once with safe graphics.\n' >> "$log"
-            logger -t gg-web "browser native crash $status; retrying with Mesa software rendering" 2>/dev/null || :
+            printf 'Renderer failed or requested a safe restart; retrying once with safe graphics.\n' >> "$log"
+            logger -t gg-web "browser exit $status; retrying with Mesa software rendering" 2>/dev/null || :
             safe_graphics
             if run_web "$@"; then
                 # A successful session keeps the safe setting for next time.
