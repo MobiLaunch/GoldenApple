@@ -1313,7 +1313,13 @@ Window {
                                     BrowserBackend.notify("Web restarted this tab after a renderer failure.")
                                 rendererRetry.restart()
                             } else if (webTab.index === root.currentIndex) {
-                                BrowserBackend.notify("This tab's renderer stopped again. Web is using the safest live-boot graphics path.")
+                                if (!BrowserBackend.safeGraphics) {
+                                    BrowserBackend.notify("Web is restarting with compatible graphics settings.")
+                                    root.saveTabsNow()
+                                    BrowserBackend.restartInSafeMode()
+                                } else {
+                                    BrowserBackend.notify("This tab's renderer stopped again. Try another page or review the Web crash log.")
+                                }
                             }
                         }
                     }
