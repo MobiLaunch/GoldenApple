@@ -69,6 +69,7 @@ curl
 qt6-webengine
 pyside6
 python
+python-websockets
 ghostty
 sudo
 
