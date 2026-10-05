@@ -198,11 +198,11 @@ PanelWindow {
             }
         }
 
-        readonly property string prompt: citron.phase === "connecting" ? "Connecting to Gemini Live…"
-            : citron.phase === "listening" ? "I'm listening"
+        readonly property string prompt: citron.phase === "error" ? "Couldn't start voice"
+            : citron.phase === "connecting" ? "Connecting to Gemini Live…"
             : citron.phase === "speaking" ? "Citron is speaking"
-            : citron.phase === "muted" ? "Microphone muted"
-            : citron.phase === "error" ? "Couldn't start voice"
+            : citron.micMuted ? "Microphone muted"
+            : citron.phase === "listening" ? "I'm listening"
             : "Ready to talk"
         Text {
             id: status
