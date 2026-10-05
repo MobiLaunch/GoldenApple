@@ -33,7 +33,7 @@ const seg = (key, labels) => {
 const heroCard = (icon, color, title, text) => h("div.form-group", h("div.hero-card", h("span.sq", { style: { "--c": color } }, sym(icon)), h("b", title), h("small", text)));
 
 const panes = {
-  general: () => [heroCard("logo", "linear-gradient(135deg,#ffcc66,#f5a524)", "CitronOS 27", "A Linux distribution with a Liquid Glass desktop."),
+  general: () => [heroCard("logo", "linear-gradient(135deg,#ffcc66,#f5a524)", "CitronOS Sprite 3.5", "A Linux distribution with a Liquid Glass desktop."),
     group(row("Name", h("span", { style: { color: "var(--secondary-label)" } }, "golden-gate")), row("Kernel", h("span", { style: { color: "var(--secondary-label)" } }, "Linux 6.18 LTS")),
       row("Compositor", h("span", { style: { color: "var(--secondary-label)" } }, "Hyprland")), row("Shell", h("span", { style: { color: "var(--secondary-label)" } }, "Quickshell · CitronOS 0.1")),
       row("Graphics", h("span", { style: { color: "var(--secondary-label)" } }, "Mesa 25.2 · Vulkan"))),

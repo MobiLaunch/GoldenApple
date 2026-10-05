@@ -46,8 +46,8 @@ function tile(x, y, w, h) {
 }
 
 export const symbols = {
-  // A single suspension-bridge tower: the CitronOS mark used where a platform logo goes.
-  logo: S(`<path fill="currentColor" stroke="none" d="M7.6 21.5V5.4l.9-2.4h1.3l.6 2.4v16.1zM13.6 21.5V5.4l.6-2.4h1.3l.9 2.4v16.1z"/><path d="M10 7.6h4M10 11.4h4M10 15.2h4" stroke-width="1.5"/><path d="M1.8 17.6C4.4 13.4 6.4 9 8.2 4.4M22.2 17.6C19.6 13.4 17.6 9 15.8 4.4" stroke-width="1.2"/><path d="M1 18.6h22" stroke-width="1.7"/>`),
+  // A lemon with its leaf, solid: the CitronOS mark used where a platform logo goes.
+  logo: S(`<path fill="currentColor" stroke="none" d="M2.97 20.14C2.79 19.84 2.77 19.44 3.06 18.96C3.50 18.34 3.91 17.67 3.99 16.67C3.60 13.97 5.08 11.63 7.97 9.83C10.85 8.03 13.61 7.72 15.86 9.26C16.80 9.62 17.58 9.54 18.33 9.43C18.89 9.37 19.24 9.56 19.43 9.86C19.61 10.16 19.63 10.56 19.34 11.04C18.90 11.66 18.49 12.33 18.41 13.33C18.80 16.03 17.32 18.37 14.43 20.17C11.55 21.97 8.79 22.28 6.54 20.74C5.60 20.38 4.82 20.46 4.07 20.57C3.51 20.63 3.16 20.44 2.97 20.14Z"/><path fill="currentColor" stroke="none" d="M18.6 8.1C18.4 4.6 16.1 2.4 12.6 2C12.8 5.6 15.1 7.8 18.6 8.1Z"/>`),
   wifi: S(`<path d="M3.2 9.4a12.6 12.6 0 0 1 17.6 0"/><path d="M6.3 12.6a8.2 8.2 0 0 1 11.4 0"/><path d="M9.4 15.7a3.8 3.8 0 0 1 5.2 0"/>${dot(12, 18.8, 1.5)}`, ' stroke-width="2.1"'),
   bluetooth: S(`<path d="M6.5 7.5l10.5 9-5 4.5V3l5 4.5-10.5 9"/>`, ' stroke-width="1.9"'),
   broadcast: S(`${dot(12, 12.5, 2)}<path d="M8.6 16a5 5 0 1 1 6.8 0"/><path d="M5.8 19a9 9 0 1 1 12.4 0"/>`, ' stroke-width="1.9"'),

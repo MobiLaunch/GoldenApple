@@ -1,4 +1,4 @@
-// Boot splash and lock screen. Boot: the bridge mark over a progress hairline on
+// Boot splash and lock screen. Boot: the lemon mark over a progress hairline on
 // black. Lock: large clock over the wallpaper, glass password capsule; unlocking
 // zooms the wallpaper back and springs the desktop in.
 import { h, sym, animate, wait, bus } from "./util.js";

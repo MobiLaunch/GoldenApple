@@ -329,7 +329,7 @@ Details and sizing guidance are in [icons/custom/README.md](icons/custom/README.
 - Everything else (symbols, folder icons, wallpapers) is original. SF Symbols and
   SF Pro are not used; the typeface is [Inter](https://rsms.me/inter/) (OFL).
 - Recreating a visual *style* is common practice, but Apple's names and logos are
-  trademarks. The UI avoids Apple's logo (the menu-bar mark is a bridge tower) and
+  trademarks. The UI avoids Apple's logo (the menu-bar mark is a lemon with its leaf) and
   uses generic app names (Files, Photos, Web). A few feature names used for
   familiarity, such as *Spotlight* and *Control Center*, and the repository name
   "GoldenApple" should be renamed before any public release.
