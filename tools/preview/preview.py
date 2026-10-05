@@ -528,10 +528,15 @@ def main() -> int:
         steps.insert(0, "@notify")
 
     def finish():
-        if a.require_object and not window.findChild(QObject, a.require_object):
-            print("preview: required component did not render: " + a.require_object, file=sys.stderr)
-            app.exit(3)
-            return
+        if a.require_object:
+            obj = window.findChild(QObject, a.require_object)
+            height = obj.property("height") if obj else None
+            visible = obj.property("visible") if obj else False
+            if obj is None or visible is False or height is None or float(height) < 100:
+                print("preview: required component did not render with visible content: "
+                      + a.require_object, file=sys.stderr)
+                app.exit(3)
+                return
         img: QImage = window.grabWindow()
         if a.crop:
             x, y, cw, ch = (int(v) for v in a.crop.split(","))
