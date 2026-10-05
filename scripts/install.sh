@@ -148,7 +148,7 @@ EOF
     ln -s "/usr/share/golden-gate/ui" "$SKEL/.config/quickshell/golden-gate/ui"
     mkdir -p "$SKEL/.config/hypr"
     sed -e 's#__GG_WALLPAPER__#/usr/share/backgrounds/golden-gate/tide.png#' \
-        -e 's#__GG_APPS__#/usr/share/golden-gate/apps#' \\
+        -e 's#__GG_APPS__#/usr/share/golden-gate/apps#' \
         "$REPO/compositor/hyprland/hyprland.conf" > "$SKEL/.config/hypr/hyprland.conf"
   fi
   say "GNOME defaults (fonts and icons) → $R/usr/share/glib-2.0/schemas"
