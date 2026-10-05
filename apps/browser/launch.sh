@@ -74,36 +74,37 @@ printf 'Web exited with status %s\n' "$status" >> "$log"
 case "$status" in
     79|132|133|134|135|136|137|138|139)
         if [ "${GG_WEB_LIVE_SAFE:-0}" != 1 ] && [ "${LIBGL_ALWAYS_SOFTWARE:-0}" != 1 ]; then
-            printf 'Renderer failed or requested a safe restart; retrying once with safe graphics.\n' >> "$log"
+            printf 'Renderer failed or requested safe restart; trying Mesa software rendering.\n' >> "$log"
             logger -t gg-web "browser exit $status; retrying with Mesa software rendering" 2>/dev/null || :
             safe_graphics
             if run_web "$@"; then
-                # A successful session keeps the safe setting for next time.
                 touch "$state/web-safe-mode" 2>/dev/null || :
                 exit 0
             else
                 status=$?
                 printf 'Software-rendered retry exited with status %s\n' "$status" >> "$log"
             fi
-            # Qt Wayland platform crashes can persist with Chromium's GPU
-            # disabled. Try XWayland once, never on systems without DISPLAY.
-            case "$status" in
-                132|133|134|135|136|137|138|139)
-                    if [ -n "${WAYLAND_DISPLAY:-}" ] && [ -n "${DISPLAY:-}" ] &&
-                       [ "${QT_QPA_PLATFORM:-}" != xcb ]; then
-                        printf 'Attempting XWayland-compatible browser startup.\n' >> "$log"
-                        export QT_QPA_PLATFORM=xcb
-                        if run_web "$@"; then
-                            touch "$state/web-safe-mode" "$state/web-xcb-mode" 2>/dev/null || :
-                            exit 0
-                        else
-                            status=$?
-                            printf 'XWayland retry exited with status %s\n' "$status" >> "$log"
-                        fi
-                    fi
-                    ;;
-            esac
         fi
+        # An explicit safe-mode boot can also fail. Only retry a genuine
+        # native crash on XWayland when the desktop provides it, not QML or
+        # Python errors, and never more than once per platform.
+        case "$status" in
+            132|133|134|135|136|137|138|139)
+                if [ -n "${WAYLAND_DISPLAY:-}" ] && [ -n "${DISPLAY:-}" ] &&
+                   [ "${QT_QPA_PLATFORM:-}" != xcb ]; then
+                    printf 'Attempting XWayland-compatible browser startup.\n' >> "$log"
+                    safe_graphics
+                    export QT_QPA_PLATFORM=xcb
+                    if run_web "$@"; then
+                        touch "$state/web-safe-mode" "$state/web-xcb-mode" 2>/dev/null || :
+                        exit 0
+                    else
+                        status=$?
+                        printf 'XWayland retry exited with status %s\n' "$status" >> "$log"
+                    fi
+                fi
+                ;;
+        esac
         ;;
 esac
 logger -t gg-web "Web failed (exit $status); see $log" 2>/dev/null || :
