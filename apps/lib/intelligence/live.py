@@ -142,6 +142,10 @@ class VoiceSession:
                     try:
                         chunk = await self.mic_proc.stdout.readexactly(CHUNK_BYTES)
                     except asyncio.IncompleteReadError:
+                        # Muting intentionally terminates the capture process;
+                        # that EOF is expected, not a microphone failure.
+                        if self.muted or not self.running:
+                            break
                         raise RuntimeError("Microphone disconnected. Check input permissions and PipeWire.")
                     # Server-side VAD handles pauses and barge-in, no button
                     # needed for each utterance.
