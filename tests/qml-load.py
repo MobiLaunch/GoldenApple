@@ -27,9 +27,9 @@ with tempfile.TemporaryDirectory() as tmp:
     # The default Appearance pane used to pass even when Intelligence was
     # unresolvable: Loader errors only happen on the selected pane.
     targets += [
-        ("settings/intelligence-start", ["app", "apps/settings.qml", "--env",
+        ("settings-intelligence-start", ["app", "apps/settings.qml", "--env",
                                          "GG_SETTINGS_PANE=intelligence", "--require-object", "citronSettingsPanel"]),
-        ("settings/intelligence-navigation", ["app", "apps/settings.qml",
+        ("settings-intelligence-navigation", ["app", "apps/settings.qml",
                                               "--do", "settings.open:intelligence",
                                               "--require-object", "citronSettingsPanel"]),
     ]
