@@ -13,6 +13,7 @@ import base64
 from array import array
 import json
 import os
+import signal
 import shutil
 import sys
 from urllib.parse import quote
@@ -249,9 +250,20 @@ class VoiceSession:
                     await self.ws.send(json.dumps({"realtimeInput": {"text": txt}}))
                     emit("transcript", role="user", text=txt)
 
+    async def shutdown(self):
+        self.running = False
+        self.mic_allowed.set()
+        if self.ws:
+            await self.ws.close()
+
     async def run(self) -> None:
         from websockets.asyncio.client import connect
 
+        # Quickshell stops the helper on Close. Intercept TERM so mic/speaker
+        # subprocesses are torn down rather than left capturing audio.
+        loop = asyncio.get_running_loop()
+        for sig in (signal.SIGTERM, signal.SIGINT):
+            loop.add_signal_handler(sig, lambda: asyncio.create_task(self.shutdown()))
         self.status("connecting")
         uri = "wss://" + HOST + PATH + "?key=" + quote(self.key, safe="")
         try:
