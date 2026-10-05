@@ -5,7 +5,7 @@
 # switches to the pane; otherwise a new one opens there.
 here=$(cd "$(dirname "$0")/.." && pwd)
 case "${1:-}" in
-  ""|wifi|bluetooth|network|battery|general|accessibility|appearance|dock|displays|wallpaper|focus|sound|privacy|users|keyboard|trackpad|about|update|storage|datetime|language) pane=${1:-} ;;
+  ""|wifi|bluetooth|network|battery|general|intelligence|accessibility|appearance|dock|displays|wallpaper|focus|sound|privacy|users|keyboard|trackpad|about|update|storage|datetime|language) pane=${1:-} ;;
   wwan|vpn) pane=network ;;
   power) pane=battery ;;
   system|info-overview|info|about-page) pane=about ;;
