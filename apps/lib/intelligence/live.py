@@ -80,11 +80,20 @@ class VoiceSession:
         self.mic_allowed.set()
         self.mic_proc = None
         self.out_proc = None
-        self.play_queue = asyncio.Queue(maxsize=18)
+        # Backpressure instead of silently discarding spoken audio.
+        self.play_queue = asyncio.Queue(maxsize=48)
         self.play_lock = asyncio.Lock()
         self.last_status = ""
         self.ws = None
-        self.turn_ended = False
+        self.audio_epoch = 0
+        self.turn_has_audio = False
+        self.speaker_active = False
+        # If PipeWire/WebRTC AEC is unavailable, protect speaker users with
+        # half-duplex capture. Never send our own playback back to Gemini.
+        self.half_duplex = True
+        self.echo_module = None
+        self.mic_target = ""
+        self.play_target = ""
 
     def status(self, mode: str) -> None:
         if mode != self.last_status:
@@ -109,10 +118,57 @@ class VoiceSession:
                 proc.kill()
                 await proc.wait()
 
+    async def setup_echo_cancel(self) -> None:
+        """Use a private PipeWire WebRTC echo-cancel source/sink when supported.
+
+        The module is scoped to this voice session and unloaded on shutdown.
+        Both pw-record and pw-play MUST use the matched virtual devices, since
+        echo cancellation needs a reference of precisely the played audio.
+        """
+        if not shutil.which("pactl"):
+            emit("notice", text="Speaker-safe mode: wait until Citron finishes before talking.")
+            return
+        suffix = str(os.getpid())
+        mic = "citron_aec_mic_" + suffix
+        speaker = "citron_aec_speaker_" + suffix
+        proc = await self.process(
+            "pactl", "load-module", "module-echo-cancel",
+            "source_name=" + mic, "sink_name=" + speaker,
+            "aec_method=webrtc", stdout=asyncio.subprocess.PIPE,
+        )
+        try:
+            out, _ = await asyncio.wait_for(proc.communicate(), timeout=4)
+        except asyncio.TimeoutError:
+            await self.stop_proc(proc)
+            emit("notice", text="Speaker-safe mode: wait until Citron finishes before talking.")
+            return
+        number = out.decode("ascii", errors="ignore").strip()
+        if proc.returncode == 0 and number.isdecimal():
+            self.echo_module = number
+            self.mic_target = mic
+            self.play_target = speaker
+            self.half_duplex = False
+            # Let WirePlumber register the new devices before opening streams.
+            await asyncio.sleep(0.2)
+        else:
+            emit("notice", text="Speaker-safe mode: wait until Citron finishes before talking.")
+
+    async def remove_echo_cancel(self) -> None:
+        if not self.echo_module:
+            return
+        module, self.echo_module = self.echo_module, None
+        try:
+            proc = await self.process("pactl", "unload-module", module)
+            await asyncio.wait_for(proc.wait(), timeout=4)
+        except (OSError, asyncio.TimeoutError):
+            if "proc" in locals():
+                await self.stop_proc(proc)
+
     async def open_player(self) -> None:
+        target = ["--target", self.play_target] if self.play_target else []
         self.out_proc = await self.process(
             "pw-play", "--raw", "--format", "s16",
-            "--rate", str(OUTPUT_RATE), "--channels", "1", "-",
+            "--rate", str(OUTPUT_RATE), "--channels", "1", *target, "-",
             stdin=asyncio.subprocess.PIPE,
         )
         await asyncio.sleep(0)
@@ -120,39 +176,43 @@ class VoiceSession:
             raise RuntimeError("Audio playback couldn't start. Check the PipeWire service.")
 
     async def reset_audio(self) -> None:
+        # A genuine interruption discards only the superseded response.
+        # The epoch also prevents an already-dequeued stale chunk replaying.
+        self.audio_epoch += 1
         async with self.play_lock:
             while not self.play_queue.empty():
                 self.play_queue.get_nowait()
                 self.play_queue.task_done()
             await self.stop_proc(self.out_proc)
             self.out_proc = None
-            self.turn_ended = False
-            await self.open_player()
+        self.turn_has_audio = False
+        self.speaker_active = False
+        if not self.muted:
+            self.mic_allowed.set()
 
     async def listen(self) -> None:
         while self.running:
             await self.mic_allowed.wait()
             if not self.running:
                 break
+            target = ["--target", self.mic_target] if self.mic_target else []
             self.mic_proc = await self.process(
                 "pw-record", "--raw", "--format", "s16",
-                "--rate", str(INPUT_RATE), "--channels", "1", "-",
+                "--rate", str(INPUT_RATE), "--channels", "1", *target, "-",
                 stdout=asyncio.subprocess.PIPE,
             )
             try:
-                while self.running and not self.muted:
+                while self.running and not self.muted and self.mic_allowed.is_set():
                     try:
                         chunk = await self.mic_proc.stdout.readexactly(CHUNK_BYTES)
                     except asyncio.IncompleteReadError:
-                        # Muting intentionally terminates the capture process;
-                        # that EOF is expected, not a microphone failure.
-                        if self.muted or not self.running:
+                        # Pausing capture for playback or user mute closes the
+                        # subprocess intentionally, not a hardware failure.
+                        if self.muted or not self.running or not self.mic_allowed.is_set():
                             break
                         raise RuntimeError("Microphone disconnected. Check input permissions and PipeWire.")
-                    # Do not emit even a final buffered chunk after Mute.
-                    if self.muted or not self.running:
+                    if self.muted or not self.running or not self.mic_allowed.is_set():
                         break
-                    # Server-side VAD handles pauses and barge-in.
                     await self.ws.send(json.dumps(audio_packet(chunk)))
                     emit("level", value=pcm_level(chunk))
             finally:
@@ -160,11 +220,38 @@ class VoiceSession:
                 self.mic_proc = None
 
     async def playback(self) -> None:
-        await self.open_player()
+        # A None item marks the end of a turn. Closing pw-play's stdin and
+        # waiting for exit ensures the speaker, not just Python's queue, has
+        # finished before a half-duplex microphone is enabled again.
         while self.running:
-            chunk = await self.play_queue.get()
+            epoch, chunk = await self.play_queue.get()
             try:
+                if epoch != self.audio_epoch:
+                    continue
+                if chunk is None:
+                    async with self.play_lock:
+                        if epoch != self.audio_epoch:
+                            continue
+                        if self.out_proc is not None:
+                            try:
+                                self.out_proc.stdin.write_eof()
+                                await asyncio.wait_for(self.out_proc.wait(), timeout=30)
+                            except asyncio.TimeoutError:
+                                await self.stop_proc(self.out_proc)
+                            finally:
+                                self.out_proc = None
+                    # Allow the room's acoustic echo/reverb to decay.
+                    if self.half_duplex:
+                        await asyncio.sleep(0.35)
+                    if epoch == self.audio_epoch:
+                        self.speaker_active = False
+                        if self.half_duplex and not self.muted:
+                            self.mic_allowed.set()
+                        self.status("muted" if self.muted else "listening")
+                    continue
                 async with self.play_lock:
+                    if epoch != self.audio_epoch:
+                        continue
                     if self.out_proc is None or self.out_proc.returncode is not None:
                         await self.open_player()
                     self.out_proc.stdin.write(chunk)
@@ -173,8 +260,6 @@ class VoiceSession:
                 raise RuntimeError("Audio output disconnected. Check the selected speaker.")
             finally:
                 self.play_queue.task_done()
-            if self.turn_ended and self.play_queue.empty():
-                self.status("listening")
 
     async def receive(self) -> None:
         async for raw in self.ws:
@@ -186,32 +271,36 @@ class VoiceSession:
             sc = msg.get("serverContent") or {}
             if sc.get("interrupted"):
                 await self.reset_audio()
-                self.status("listening")
+                self.status("muted" if self.muted else "listening")
             if sc.get("inputTranscription", {}).get("text"):
                 emit("transcript", role="user", text=sc["inputTranscription"]["text"][:1200])
             if sc.get("outputTranscription", {}).get("text"):
                 emit("transcript", role="assistant", text=sc["outputTranscription"]["text"][:1200])
             for part in (sc.get("modelTurn") or {}).get("parts", []):
                 inline = part.get("inlineData") or {}
-                if not inline.get("data"):
-                    continue
-                if "audio" not in inline.get("mimeType", "audio/pcm"):
+                if not inline.get("data") or "audio" not in inline.get("mimeType", "audio/pcm"):
                     continue
                 try:
                     data = base64.b64decode(inline["data"], validate=True)
                 except (ValueError, TypeError):
                     continue
-                if self.play_queue.full():
-                    # Avoid unbounded memory and audible delay on slow devices.
-                    self.play_queue.get_nowait()
-                    self.play_queue.task_done()
-                self.play_queue.put_nowait(data)
-                self.turn_ended = False
+                if self.half_duplex and not self.speaker_active:
+                    # Pause before emitting any output so the mic can't feed
+                    # Citron's speaker audio back to server-side VAD.
+                    self.mic_allowed.clear()
+                    await self.stop_proc(self.mic_proc)
+                    emit("level", value=0)
+                self.speaker_active = True
+                self.turn_has_audio = True
+                # Backpressure preserves *all* chunks instead of truncating.
+                await self.play_queue.put((self.audio_epoch, data))
                 self.status("speaking")
             if sc.get("turnComplete"):
-                self.turn_ended = True
-                if self.play_queue.empty():
-                    self.status("listening")
+                if self.turn_has_audio:
+                    await self.play_queue.put((self.audio_epoch, None))
+                    self.turn_has_audio = False
+                elif not self.speaker_active:
+                    self.status("muted" if self.muted else "listening")
         if self.running:
             raise RuntimeError("Gemini closed the Live connection. Open voice mode again.")
 
@@ -245,8 +334,9 @@ class VoiceSession:
                     emit("level", value=0)
                     self.status("muted")
                 else:
-                    self.mic_allowed.set()
-                    self.status("listening")
+                    if not self.half_duplex or not self.speaker_active:
+                        self.mic_allowed.set()
+                    self.status("speaking" if self.speaker_active else "listening")
             if action == "text" and isinstance(msg.get("text"), str):
                 txt = msg["text"].strip()[:3000]
                 if txt:
@@ -276,6 +366,7 @@ class VoiceSession:
                 raw = await asyncio.wait_for(ws.recv(), timeout=20)
                 if "setupComplete" not in json.loads(raw):
                     raise RuntimeError("Gemini rejected voice setup. Verify the voice model and API access.")
+                await self.setup_echo_cancel()
                 self.status("listening")
                 tasks = [
                     asyncio.create_task(self.controls()),
@@ -295,6 +386,7 @@ class VoiceSession:
             self.mic_allowed.set()
             await self.stop_proc(self.mic_proc)
             await self.stop_proc(self.out_proc)
+            await self.remove_echo_cancel()
             self.key = ""
             self.ws = None
 
