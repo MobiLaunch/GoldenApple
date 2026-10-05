@@ -187,6 +187,9 @@ class GoldenUpdate(unittest.TestCase):
         if USER:
             conf = STAGE / USER.pw_dir.lstrip("/") / ".config"
             self.assertTrue((conf / "quickshell/golden-gate/shell.qml").exists())
+            self.assertTrue((conf / "quickshell/golden-gate/VoiceAssistant.qml").exists())
+            self.assertIn("gg-intelligence --voice",
+                          (STAGE / "etc/skel/.config/hypr/hyprland.conf").read_text())
             self.assertFalse((conf / "quickshell/golden-gate/old.qml").exists())
             self.assertEqual((conf / "gtk-4.0/gtk.css").read_text(),
                              (STAGE / "etc/skel/.config/gtk-4.0/gtk.css").read_text())
