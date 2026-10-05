@@ -323,12 +323,13 @@ PanelWindow {
             height: drag.pressed ? 10 : 6
             Behavior on height { NumberAnimation { duration: Prefs.reduceMotion ? 1 : 120; easing.type: Easing.OutCubic } }
             readonly property real level: Math.max(0, Math.min(1, tile.value))
-            Rectangle { anchors.fill: parent; radius: height / 2; color: Theme.dark ? "#3dffffff" : "#24000000" }
+            Rectangle { anchors.fill: parent; radius: height / 2; color: Theme.dark ? "#3dffffff" : "#1f000000" }
+            // White over dark glass; in light mode a dark fill, since white
+            // disappears against the light glass.
             Rectangle {
                 width: Math.max(parent.height, parent.width * track.level); height: parent.height
                 radius: height / 2
-                color: "#ffffff"
-                border { width: Theme.dark ? 0 : 0.5; color: "#1f000000" }
+                color: Theme.dark ? "#ffffff" : "#d93a3a3c"
                 Behavior on width { enabled: !drag.pressed && !Prefs.reduceMotion; NumberAnimation { duration: 90; easing.type: Easing.OutCubic } }
             }
             MouseArea {
@@ -358,21 +359,34 @@ PanelWindow {
         }
     }
 
-    // A blur behind the controls, barely tinted: the controls are the glass.
-    Glass {
+    // No card behind the controls: the controls are the glass. HyprGlass makes
+    // glass of anything on this surface more than 8% opaque
+    // (namespace_mask_thresholds in hyprglass-sync.sh), so the panel itself
+    // is only geometry, and what's behind the controls is a soft shadow kept
+    // under that line: a slight darkening, never a card.
+    Item {
         id: panel
         anchors { top: parent.top; right: parent.right; topMargin: 24 }
         width: cc.span(4) + 28
         height: (cc.detail ? detailView.implicitHeight : content.implicitHeight) + 28
         Behavior on height { enabled: !Prefs.reduceMotion; Spring { spring: Theme.snappy } }
-        radius: 36
-        tint: Theme.dark ? "#2e000000" : "#1affffff"
-        rim: "transparent"; rimLow: "transparent"; shine: "transparent"; edge: "transparent"; lens: 0
         opacity: cc.open ? 1 : 0
         scale: cc.open || Prefs.reduceMotion ? 1 : 0.965
         transformOrigin: Item.TopRight
         Behavior on opacity { NumberAnimation { duration: Prefs.reduceMotion ? 1 : 130; easing.type: Easing.OutCubic } }
         Behavior on scale { enabled: !Prefs.reduceMotion; NumberAnimation { duration: 170; easing.type: Easing.OutCubic } }
+        // The shadow: darkest in the middle, fading out past the edges, and
+        // never above 6%.
+        Repeater {
+            model: 6
+            Rectangle {
+                required property int index
+                anchors { fill: parent; margins: 18 - index * 6 }
+                radius: 40 + index * 6
+                color: "#000000"
+                opacity: Theme.dark ? 0.012 : 0.007
+            }
+        }
     }
 
     // The grid and a module's detail view share the panel: the grid slides
