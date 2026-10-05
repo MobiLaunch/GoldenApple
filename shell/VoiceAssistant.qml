@@ -39,6 +39,12 @@ PanelWindow {
         open = false
         voiceProc.running = false
         soundLevel = 0
+        youSaid = ""
+        citronSaid = ""
+        errorText = ""
+        micMuted = false
+        everReady = false
+        phase = "stopped"
         textEntry.text = ""
     }
     function toggle() { if (open) dismiss(); else present() }
@@ -309,7 +315,7 @@ PanelWindow {
                     citron.phase = "connecting"
                     citron.errorText = ""
                     citron.everReady = false
-                    voiceProc.running = true
+                    Qt.callLater(() => { if (citron.open) voiceProc.running = true })
                 }
             }
         }
