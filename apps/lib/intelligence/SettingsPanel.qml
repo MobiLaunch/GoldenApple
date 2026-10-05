@@ -5,6 +5,7 @@ import "../theme"
 
 Column {
     id: panel
+    objectName: "citronSettingsPanel"
     property Item menuParent: null
     property bool enabledSetting: false
     property bool hasKey: false
