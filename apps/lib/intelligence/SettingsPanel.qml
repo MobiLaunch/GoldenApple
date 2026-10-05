@@ -13,11 +13,40 @@ Column {
     property string status: "Loading settings…"
     property var models: []
     spacing: 14
-    function reload() { service.send({ action: "status" }) }
-    Component.onCompleted: reload()
-    Service {
-        id: service
-        onCompleted: (action, result) => {
+    // The settings UI must remain usable even if the process adapter fails to
+    // compile/load. Loading Service as a QML file isolates that failure.
+    readonly property bool serviceAvailable: serviceLoader.status === Loader.Ready && !!serviceLoader.item
+    readonly property bool busy: serviceAvailable && serviceLoader.item.busy
+    readonly property string transportError: serviceAvailable ? serviceLoader.item.error : ""
+    property string serviceError: ""
+    function send(request) {
+        if (!serviceAvailable) {
+            status = serviceError || "The Citron Intelligence helper did not load."
+            return false
+        }
+        return serviceLoader.item.send(request)
+    }
+    function reload() { send({ action: "status" }) }
+    Loader {
+        id: serviceLoader
+        width: 0
+        height: 0
+        source: Qt.resolvedUrl("Service.qml")
+        onLoaded: { panel.serviceError = ""; panel.reload() }
+        onStatusChanged: {
+            if (status === Loader.Error) {
+                const probe = Qt.createComponent(Qt.resolvedUrl("Service.qml"), Component.PreferSynchronous)
+                panel.serviceError = probe.status === Component.Error ? probe.errorString()
+                    : "Citron Intelligence's process adapter failed to initialize."
+                console.error("Citron Intelligence Service QML:", panel.serviceError)
+                panel.status = panel.serviceError
+            }
+        }
+    }
+    Connections {
+        target: serviceLoader.item
+        ignoreUnknownSignals: true
+        function onCompleted(action, result) {
             if (!result.ok) { panel.status = result.error; return }
             if (result.config) {
                 panel.enabledSetting = result.config.enabled
@@ -46,14 +75,14 @@ Column {
     }
     Row {
         spacing: 12
-        Shared.Switch { checked: panel.enabledSetting; enabled: !service.busy; onToggled: (value) => panel.enabledSetting = value }
+        Shared.Switch { checked: panel.enabledSetting; enabled: !panel.busy && panel.serviceAvailable; onToggled: (value) => panel.enabledSetting = value }
         Text { text: "Enable Citron Intelligence"; color: Theme.label; font { family: Theme.fontUi; pixelSize: 14; weight: Font.DemiBold } }
     }
     Text { text: "Gemini API key"; color: Theme.label; font { family: Theme.fontUi; pixelSize: 12; weight: Font.DemiBold } }
     Shared.TextField {
         id: apiKey
         width: parent.width; height: 34; password: true
-        enabled: !service.busy
+        enabled: !panel.busy && panel.serviceAvailable
         placeholder: panel.hasKey ? "Key saved — leave blank to keep it" : "Paste your Gemini API key"
     }
     Text {
@@ -63,7 +92,7 @@ Column {
         color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: 12 }
     }
     Text { text: "Text and questions model"; color: Theme.label; font { family: Theme.fontUi; pixelSize: 12; weight: Font.DemiBold } }
-    Shared.TextField { id: textModel; width: parent.width; height: 32; enabled: !service.busy; placeholder: "Gemini text model ID" }
+    Shared.TextField { id: textModel; width: parent.width; height: 32; enabled: !panel.busy && panel.serviceAvailable; placeholder: "Gemini text model ID" }
     Shared.PopUpButton {
         visible: panel.models.length > 0
         width: parent.width; menuParent: panel.menuParent
@@ -71,7 +100,7 @@ Column {
         onPicked: (i) => textModel.text = options[i]
     }
     Text { text: "Image generation and editing model"; color: Theme.label; font { family: Theme.fontUi; pixelSize: 12; weight: Font.DemiBold } }
-    Shared.TextField { id: imageModel; width: parent.width; height: 32; enabled: !service.busy; placeholder: "Gemini image model ID" }
+    Shared.TextField { id: imageModel; width: parent.width; height: 32; enabled: !panel.busy && panel.serviceAvailable; placeholder: "Gemini image model ID" }
     Shared.PopUpButton {
         visible: panel.models.length > 0
         width: parent.width; menuParent: panel.menuParent
@@ -81,17 +110,17 @@ Column {
     Flow {
         width: parent.width; spacing: 8
         Shared.Button {
-            text: "Save Settings"; prominent: true; enabled: !service.busy
-            onClicked: service.send({ action: "configure", enabled: panel.enabledSetting, apiKey: apiKey.text,
+            text: "Save Settings"; prominent: true; enabled: !panel.busy && panel.serviceAvailable
+            onClicked: panel.send({ action: "configure", enabled: panel.enabledSetting, apiKey: apiKey.text,
                                       textModel: textModel.text.trim(), imageModel: imageModel.text.trim() })
         }
-        Shared.Button { text: "Refresh Models"; enabled: !service.busy && panel.hasKey; onClicked: service.send({ action: "models" }) }
-        Shared.Button { text: "Remove Saved Key"; enabled: !service.busy && panel.hasKey; onClicked: { panel.enabledSetting = false; service.send({ action: "forget" }) } }
+        Shared.Button { text: "Refresh Models"; enabled: !panel.busy && panel.serviceAvailable && panel.hasKey; onClicked: panel.send({ action: "models" }) }
+        Shared.Button { text: "Remove Saved Key"; enabled: !panel.busy && panel.serviceAvailable && panel.hasKey; onClicked: { panel.enabledSetting = false; panel.send({ action: "forget" }) } }
     }
     Text {
         width: parent.width; wrapMode: Text.Wrap
-        text: service.busy ? "Working…" : service.error || panel.status
-        color: service.error ? "#ff453a" : Theme.secondaryLabel
+        text: panel.serviceError || (panel.busy ? "Working…" : panel.transportError || panel.status)
+        color: panel.serviceError || panel.transportError ? "#ff453a" : Theme.secondaryLabel
         font { family: Theme.fontUi; pixelSize: 12 }
         Accessible.role: Accessible.StaticText
     }
