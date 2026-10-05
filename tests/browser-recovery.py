@@ -20,6 +20,7 @@ printf '%s|%s|%s\\n' "${LIBGL_ALWAYS_SOFTWARE:-0}" "${QTWEBENGINE_CHROMIUM_FLAGS
 case "$WEB_TEST_MODE" in
   abort-once) test "$(wc -l < "$WEB_TEST_CALLS")" -eq 1 && exit 139 ;;
   renderer-once) test "$(wc -l < "$WEB_TEST_CALLS")" -eq 1 && exit 79 ;;
+  xcb-rescue) test "${QT_QPA_PLATFORM:-}" = xcb || exit 139 ;;
   qml-error) exit 2 ;;
   abort-always) exit 139 ;;
 esac
@@ -82,6 +83,24 @@ class BrowserRecovery(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(len(self.lines()), 2)
         self.assertIn("--disable-gpu", self.lines()[1])
+
+    def test_wayland_crash_tries_xwayland_after_software_gl(self):
+        self.env["WAYLAND_DISPLAY"] = "wayland-1"
+        self.env["DISPLAY"] = ":0"
+        result = self.launch("xcb-rescue")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(len(self.lines()), 3, self.lines())
+        state = self.home / "state/golden-gate"
+        self.assertTrue((state / "web-xcb-mode").exists())
+        self.assertTrue((state / "web-safe-mode").exists())
+
+    def test_existing_safe_mode_can_switch_to_xwayland(self):
+        self.env["WAYLAND_DISPLAY"] = "wayland-1"
+        self.env["DISPLAY"] = ":0"
+        self.env["GG_WEB_SOFTWARE"] = "1"
+        result = self.launch("xcb-rescue")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(len(self.lines()), 2)
 
     def test_qml_failure_does_not_relaunch(self):
         result = self.launch("qml-error")
