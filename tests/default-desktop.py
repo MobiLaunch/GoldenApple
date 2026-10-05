@@ -19,10 +19,11 @@ desktop_ids = {p.stem for p in desktop_dir.glob("*.desktop")}
 
 # Every Golden Gate app pinned in the Dock must have a desktop entry. Ignore the
 # live-only installer distinction; it is still a real entry.
-# The default set is `defaultPinned`; the user's own list lives in desktop.json.
+# The default set is Prefs.defaultDockPinned; the user's own list lives in desktop.json.
+prefs = (root / "shell/components/Prefs.qml").read_text(encoding="utf-8")
 pinned_match = re.search(
-    r"property var defaultPinned:\s*\[(.*?)\]",
-    dock,
+    r"property var defaultDockPinned:\s*\[(.*?)\]",
+    prefs,
     flags=re.S,
 )
 if not pinned_match:

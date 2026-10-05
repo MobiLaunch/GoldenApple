@@ -104,7 +104,9 @@ class MacApps(unittest.TestCase):
              "version": "2.1", "url": f"{base}/arm/Notepad.zip", "sha256": "0" * 64, "artifacts": app("Notepad"),
              "depends_on": {"macos": {">=": ["12"]}},
              # The Intel build, as Homebrew lists it: a variation without arm64_.
-             "variations": {"sequoia": {"url": f"{base}/Notepad.zip", "sha256": sha("Notepad.zip")}}},
+             # Homebrew now lists Linux builds too; those aren't Mac apps.
+             "variations": {"x86_64_linux": {"url": f"{base}/notepad.tar.gz", "sha256": "1" * 64},
+                            "sequoia": {"url": f"{base}/Notepad.zip", "sha256": sha("Notepad.zip")}}},
             {"token": "silicon", "name": ["Silicon"], "version": "1", "url": f"{base}/Silicon.zip",
              "sha256": sha("Silicon.zip"), "artifacts": app("Silicon")},
             {"token": "bad", "name": ["Bad"], "version": "1", "url": f"{base}/Bad.zip", "sha256": "f" * 64, "artifacts": app("Bad")},
@@ -199,6 +201,9 @@ class MacApps(unittest.TestCase):
         code, events = self.run_helper("install", "bad")
         self.assertEqual(code, 1)
         self.assertIn("checksum", events[-1]["message"])
+        # Every failure says why, with the log's last lines and where the log is.
+        self.assertIn("full log:", events[-1]["details"])
+        self.assertTrue((self.home / ".cache/golden-gate/mac-logs/install-bad.log").exists())
         self.assertFalse((self.home / "Applications/Bad.app").exists())
 
     def test_apple_silicon_only_is_refused(self):
@@ -233,9 +238,13 @@ class MacApps(unittest.TestCase):
         src = self.home / "volume"
         with zipfile.ZipFile(io.BytesIO(bundle_zip("Disk", macho(0x01000007)))) as z:
             z.extractall(src / "Disk 3")
-        self.tool("7z", f'for a; do case $a in -o*) out=${{a#-o}};; esac; done\ncp -a "{src}/." "$out/"\n')
+        # As real 7-Zip does with the image's "Applications" link to
+        # /Applications: the app comes out whole, and it exits 2 anyway.
+        self.tool("7z", f'for a; do case $a in -o*) out=${{a#-o}};; esac; done\ncp -a "{src}/." "$out/"\n'
+                        'echo "ERROR: Dangerous link path was ignored : Disk 3/Applications : /Applications"\nexit 2\n')
         code, events = self.run_helper("install", "disk")
         self.assertEqual(code, 0, events)
+        self.assertTrue(os.access(self.home / "Applications/Disk.app/Contents/MacOS/Disk", os.X_OK))
         self.assertTrue((self.home / "Applications/Disk.app/Contents/Info.plist").exists())
 
 

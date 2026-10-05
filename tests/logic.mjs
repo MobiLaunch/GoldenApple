@@ -492,3 +492,48 @@ test('Screen recording: wf-recorder records the selection or the screen to a nam
   assert.deepEqual(Array.from(recorder.command), ['wf-recorder', '-y', '-f', '/home/j/Documents/Screen Recording 2026-10-04 at 9.41.12 PM.mp4', '-g', '0,30 800x600']);
   assert.equal(recorder.running, true);
 });
+
+test('Dock: dragging an icon reorders, removes or adds it', () => {
+  const { orderAfter } = context('shell/Dock.qml', ['orderAfter'], {});
+  const ids = ['files', 'web', 'mail', 'notes'];
+  assert.deepEqual(Array.from(orderAfter(ids, 'files', 2)), ['web', 'mail', 'files', 'notes'], 'moved right');
+  assert.deepEqual(Array.from(orderAfter(ids, 'notes', 0)), ['notes', 'files', 'web', 'mail'], 'moved to the front');
+  assert.deepEqual(Array.from(orderAfter(ids, 'web', -1)), ['files', 'mail', 'notes'], 'dragged off: removed');
+  assert.deepEqual(Array.from(orderAfter(ids, 'music', 1)), ['files', 'music', 'web', 'mail', 'notes'], 'a running app kept');
+  assert.deepEqual(Array.from(orderAfter(ids, 'mail', 99)), ['files', 'web', 'notes', 'mail'], 'past the end: last');
+  assert.deepEqual(Array.from(orderAfter(ids, '', -1)), ids, 'nothing dragged');
+});
+
+test('Desktop widgets: snap to free cells, never overlap, fill down the left first', () => {
+  const L = library('shell/widgets/layout.js');
+  const plain = (r) => JSON.parse(JSON.stringify(r));
+  const g = L.grid(1440, 900);
+  assert.deepEqual(plain(g), { cols: 7, rows: 4 });
+  const items = plain(L.defaults());
+  // The defaults: calendar and clock side by side, the weather under them.
+  assert.ok(items.every((a) => items.every((b) => a === b || !L.overlaps(a, b))));
+  // A new small widget goes under the weather, a medium one too.
+  assert.deepEqual(plain(L.firstFree(items, 'small', g)), { col: 0, row: 2 });
+  assert.deepEqual(plain(L.firstFree(items, 'large', g)), { col: 0, row: 2 });
+  // Dropped onto the clock, the calendar lands in the nearest free cell instead.
+  const cal = items[0];
+  assert.equal(L.fits(items, cal, 1, 0, g), false);
+  const at = plain(L.nearest(items, cal, 1, 0, g));
+  assert.ok(L.fits(items, cal, at.col, at.row, g));
+  assert.equal(Math.abs(at.col - 1) + Math.abs(at.row - 0), 1);
+  // Its own cell is free for itself; off the grid is not.
+  assert.equal(L.fits(items, cal, 0, 0, g), true);
+  assert.equal(L.fits(items, cal, -1, 0, g), false);
+  assert.equal(L.fits(items, { id: 'x', size: 'medium' }, 6, 3, g), false);
+  // Dragging snaps to the closest cell.
+  assert.deepEqual(plain(L.cellAt(L.x(2) + 60, L.y(1) - 70)), { col: 2, row: 1 });
+  // Growing the calendar to medium would cover the clock: it moves to fit.
+  const big = plain(L.resized(items, cal, 'medium', g));
+  assert.equal(big.size, 'medium');
+  assert.ok(L.fits(items, big, big.col, big.row, g));
+  assert.deepEqual(plain(L.pixels('medium')), { width: 344, height: 164 });
+  // A full desktop has no room.
+  const full = [];
+  for (let c = 0; c < g.cols; c++) for (let r = 0; r < g.rows; r++) full.push({ id: c + ':' + r, size: 'small', col: c, row: r });
+  assert.equal(L.firstFree(full, 'small', g), null);
+});

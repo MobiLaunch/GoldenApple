@@ -3,6 +3,7 @@ pragma Singleton
 // (watched, so changes apply at once):
 //   { "wallpaper": "/path.png",
 //     "dock": { "size": 54, "indicators": true, "animateLaunch": true, "pinned": ["org.goldengate.Files", …] },
+//     "widgets": [{ "id": "clock-1", "kind": "clock", "size": "small", "col": 1, "row": 0 }, …],
 //     "glass": "clear" | "tinted", "reduceMotion": false, "reduceTransparency": false }
 import Quickshell
 import Quickshell.Io
@@ -18,6 +19,24 @@ Singleton {
     readonly property bool dockIndicators: data.dock?.indicators ?? true
     readonly property bool animateLaunch: (data.dock?.animateLaunch ?? true) && !reduceMotion
     readonly property var dockPinned: Array.isArray(data.dock?.pinned) ? data.dock.pinned : null   // null: the default set
+    // The apps kept in the Dock, in order, and the set a new account starts with.
+    readonly property var defaultDockPinned: [
+        "org.goldengate.Files", "org.goldengate.Web", "org.goldengate.Mail", "org.goldengate.Messages", "org.goldengate.Maps",
+        "org.goldengate.Photos", "org.goldengate.Music", "org.goldengate.Calendar", "org.goldengate.Notes",
+        "org.goldengate.Weather", "org.goldengate.Software", "org.goldengate.Settings", "org.goldengate.Terminal"
+    ]
+    readonly property var keptInDock: dockPinned ?? defaultDockPinned
+    // Changes the Dock at once, and saves it (gg-pref writes desktop.json).
+    function setDockPinned(ids) {
+        data = Object.assign({}, data, { dock: Object.assign({}, data.dock ?? {}, { pinned: ids }) })
+        Quickshell.execDetached(["gg-pref", "dock.pinned", JSON.stringify(ids)])
+    }
+    // Desktop widgets, [{ id, kind, size, col, row }]; null: the default set.
+    readonly property var widgets: Array.isArray(data.widgets) ? data.widgets : null
+    function setWidgets(list) {
+        data = Object.assign({}, data, { widgets: list })
+        Quickshell.execDetached(["gg-pref", "widgets", JSON.stringify(list)])
+    }
     readonly property string glass: data.glass ?? "clear"
     readonly property bool reduceMotion: data.reduceMotion ?? false
     readonly property bool reduceTransparency: data.reduceTransparency ?? false

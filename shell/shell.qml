@@ -138,6 +138,7 @@ ShellRoot {
     Notifications { id: notificationCenter; controlCenterOpen: root.controlCenters.some((c) => c.open) }
     SessionDialog { id: sessionDialog }
     Osd {}
+    DesktopWidgets { id: desktopWidgets }
     Nearby {}
     Switcher {}
     // Loaded separately so a Quickshell built without PAM still runs the shell.
@@ -150,8 +151,7 @@ ShellRoot {
             id: perScreen
             required property var modelData
 
-            Wallpaper { screen: perScreen.modelData }
-            LazyLoader { active: Quickshell.env("GG_WIDGETS") === "1"; source: "DesktopWidgets.qml" }
+            Wallpaper { screen: perScreen.modelData; onEditWidgets: desktopWidgets.editing = true }
             // Persistent per-screen Applications surface. Keeping the object alive
             // removes the lazy-loader race that made the Dock button appear dead.
             Applications {

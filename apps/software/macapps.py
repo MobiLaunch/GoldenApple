@@ -37,6 +37,7 @@ import sys
 import tempfile
 import time
 import urllib.parse
+import urllib.error
 import urllib.request
 import zipfile
 
@@ -62,10 +63,25 @@ def emit(event: str, **payload: object) -> None:
 
 
 # ---------------------------------------------------------------- catalog
-def fetch(url: str, dest: pathlib.Path, progress=None) -> None:
-    """Download url to dest (atomically), calling progress(done, total)."""
+def fetch(url: str, dest: pathlib.Path, progress=None, tries: int = 2) -> None:
+    """Download url to dest (atomically), calling progress(done, total). A
+    dropped connection is tried once more; a server's refusal says what it
+    was (403, 404…), not just that it failed."""
+    for attempt in range(tries):
+        try:
+            return _fetch(url, dest, progress)
+        except urllib.error.HTTPError as exc:
+            raise OSError(f"the server answered {exc.code} {exc.reason} for {urllib.parse.urlparse(url).netloc}") from exc
+        except (urllib.error.URLError, TimeoutError, ConnectionError) as exc:
+            if attempt == tries - 1:
+                reason = getattr(exc, "reason", exc)
+                raise OSError(f"couldn't reach {urllib.parse.urlparse(url).netloc} ({reason})") from exc
+            time.sleep(2)
+
+
+def _fetch(url: str, dest: pathlib.Path, progress=None) -> None:
     dest.parent.mkdir(parents=True, exist_ok=True)
-    req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+    req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT, "Accept": "*/*"})
     tmp = dest.with_name(dest.name + ".part")
     with urllib.request.urlopen(req, timeout=60) as resp, open(tmp, "wb") as out:
         total = int(resp.headers.get("Content-Length") or 0)
@@ -84,9 +100,10 @@ def fetch(url: str, dest: pathlib.Path, progress=None) -> None:
 def download_url(cask: dict) -> str:
     """The Intel (x86_64) download where the cask has one: Darling translates
     Intel Mac code, not Apple silicon's. Homebrew's variations name Intel
-    builds without the arm64_ prefix."""
+    builds without the arm64_ prefix (and its Linux builds, *_linux, aren't
+    Mac apps at all)."""
     for key, var in (cask.get("variations") or {}).items():
-        if not key.startswith("arm64") and isinstance(var, dict) and var.get("url"):
+        if not key.startswith("arm64") and "linux" not in key and isinstance(var, dict) and var.get("url"):
             return var["url"]
     return cask.get("url") or ""
 
@@ -221,14 +238,17 @@ def extract_zip(archive: pathlib.Path, dest: pathlib.Path) -> None:
                 target.chmod(0o755)
 
 
-def extract_dmg(image: pathlib.Path, dest: pathlib.Path) -> None:
-    """A disk image, opened with 7-Zip (HFS+ and APFS)."""
+def extract_dmg(image: pathlib.Path, dest: pathlib.Path) -> str:
+    """A disk image, opened with 7-Zip (HFS+ and APFS). Its exit code isn't
+    the verdict: nearly every Mac disk image carries an "Applications" link to
+    /Applications, which 7-Zip refuses as dangerous and reports as an error
+    although the app came out whole. Whether the app is there decides
+    (install() looks); 7-Zip's output is returned for the log."""
     tool = shutil.which("7zz") or shutil.which("7z")
     if not tool:
-        raise RuntimeError("Opening .dmg disk images needs 7-Zip (the 7zip package).")
+        raise RuntimeError("Opening .dmg disk images needs 7-Zip. Install it with: sudo pacman -S 7zip")
     p = subprocess.run([tool, "x", "-y", f"-o{dest}", str(image)], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
-    if p.returncode not in (0, 1):            # 1: warnings (resource forks, the image's own symlinks)
-        raise RuntimeError("The disk image couldn't be opened: " + (p.stdout.strip().splitlines() or ["7-Zip failed"])[-1])
+    return f"7-Zip exited {p.returncode}\n{p.stdout}"
 
 
 def find_app(root: pathlib.Path, name: str) -> pathlib.Path | None:
@@ -321,13 +341,38 @@ def write_launcher(token: str, name: str, desc: str, icon: str) -> None:
 
 # ---------------------------------------------------------------- install
 def install(token: str) -> int:
+    """Download, verify, unpack and install; every step goes in a log
+    (~/.cache/golden-gate/mac-logs/install-TOKEN.log), and a failure says why
+    with the log's last lines, so it's never just "it failed"."""
+    LOGS.mkdir(parents=True, exist_ok=True)
+    log_path = LOGS / f"install-{token}.log"
+    log: list[str] = [time.strftime("%Y-%m-%d %H:%M:%S") + f" installing {token}"]
+
+    def fail(message: str) -> int:
+        log.append("FAILED: " + message)
+        log_path.write_text("\n".join(log) + "\n")
+        tail = "\n".join(l for l in log[-8:] if l.strip())
+        emit("error", id=token, message=message, details=tail + f"\n(full log: {log_path})", log=str(log_path))
+        return 1
+
+    try:
+        return _install(token, log, fail)
+    except Exception as exc:                       # never fail silently
+        import traceback
+        log.append(traceback.format_exc())
+        return fail(f"Installing stopped unexpectedly ({type(exc).__name__}: {exc}).")
+    finally:
+        if log_path.parent.exists():
+            log_path.write_text("\n".join(log) + "\n")
+
+
+def _install(token: str, log: list[str], fail) -> int:
     try:
         cask = find(token)
     except RuntimeError as exc:
-        emit("error", id=token, message=str(exc))
-        return 1
+        return fail(str(exc))
+    log.append(f"catalog: {cask['name']} {cask['version']} from {cask['url']} ({cask['kind']}, sha256 {cask['sha256'] or 'none'})")
     downloads = CACHE / "mac-downloads"
-    archive = downloads / f"{token}-{cask['version'] or 'latest'}.{cask['kind']}"
     emit("progress", id=token, progress=0.02, message=f"Downloading {cask['name']}…")
     last = [0.0]
 
@@ -339,48 +384,78 @@ def install(token: str) -> int:
             emit("progress", id=token, progress=0.02 + 0.68 * frac,
                  message=f"Downloading {cask['name']}… {mb:.1f} MB" + (f" of {total / 1e6:.1f} MB" if total else ""))
 
-    try:
-        fetch(cask["url"], archive, progress)
-    except OSError as exc:
-        emit("error", id=token, message=f"The download didn't finish ({exc}).")
-        return 1
-    # The developer's checksum, when Homebrew has one ("no_check" casks change
-    # with every release).
-    if cask["sha256"] and cask["sha256"] != "no_check":
-        emit("progress", id=token, progress=0.72, message="Verifying…")
+    def download(c: dict) -> pathlib.Path | None:
+        archive = downloads / f"{token}-{c['version'] or 'latest'}.{c['kind']}"
+        try:
+            fetch(c["url"], archive, progress)
+        except OSError as exc:
+            fail(f"The download didn't finish: {exc}.")
+            return None
+        log.append(f"downloaded {archive.stat().st_size} bytes")
+        return archive
+
+    def matches(archive: pathlib.Path, c: dict) -> bool:
+        if not c["sha256"] or c["sha256"] == "no_check":
+            log.append("no published checksum to check")
+            return True
         h = hashlib.sha256()
         with open(archive, "rb") as f:
             for block in iter(lambda: f.read(1 << 20), b""):
                 h.update(block)
-        if h.hexdigest() != cask["sha256"]:
-            archive.unlink(missing_ok=True)
-            emit("error", id=token, message="The download doesn't match its published checksum, so it wasn't installed.")
+        log.append(f"sha256 {h.hexdigest()} (expected {c['sha256']})")
+        return h.hexdigest() == c["sha256"]
+
+    archive = download(cask)
+    if not archive:
+        return 1
+    emit("progress", id=token, progress=0.72, message="Verifying…")
+    if not matches(archive, cask):
+        # Usually the catalog was a day old and the developer has shipped a
+        # new version since: refresh it and try once more.
+        archive.unlink(missing_ok=True)
+        log.append("checksum differs; refreshing the catalog and trying again")
+        try:
+            cask = next(c for c in load_catalog(refresh=True) if c["token"] == token)
+        except (RuntimeError, StopIteration):
+            return fail("The download doesn't match its published checksum, so it wasn't installed.")
+        archive = download(cask)
+        if not archive:
             return 1
+        if not matches(archive, cask):
+            archive.unlink(missing_ok=True)
+            return fail("The download doesn't match its published checksum, so it wasn't installed.")
 
     emit("progress", id=token, progress=0.78, message="Opening the download…")
     with tempfile.TemporaryDirectory(prefix="gg-mac-") as tmp:
         root = pathlib.Path(tmp)
         try:
-            (extract_dmg if cask["kind"] == "dmg" else extract_zip)(archive, root)
+            if cask["kind"] == "dmg":
+                log.append(extract_dmg(archive, root)[-3000:])
+            else:
+                extract_zip(archive, root)
         except (OSError, RuntimeError, zipfile.BadZipFile) as exc:
-            emit("error", id=token, message=str(exc))
-            return 1
+            return fail(str(exc))
         app = find_app(root, cask["app"])
         if not app:
-            emit("error", id=token, message=f"{cask['app']} wasn't in the download.")
-            return 1
+            found = sorted(str(p.relative_to(root)) for p in root.rglob("*.app"))[:10]
+            log.append("apps in the download: " + (", ".join(found) or "none"))
+            return fail(f"{cask['app']} wasn't in the download.")
         plist = info_plist(app)
         exe = app / "Contents/MacOS" / str(plist.get("CFBundleExecutable") or app.stem)
         arches = architectures(exe)
+        log.append(f"{app.name}: executable {exe.name}, built for {', '.join(sorted(arches)) or 'unknown'}")
         if arches and "x86_64" not in arches:
-            emit("error", id=token, message=f"{cask['name']} is built only for Apple silicon; Darling runs Intel Mac apps, so it wasn't installed.")
-            return 1
+            return fail(f"{cask['name']} is built only for Apple silicon; Darling runs Intel Mac apps, so it wasn't installed.")
         emit("progress", id=token, progress=0.9, message="Installing in Applications…")
         APPLICATIONS.mkdir(parents=True, exist_ok=True)
         target = APPLICATIONS / app.name
         if target.exists() or target.is_symlink():
             shutil.rmtree(target) if target.is_dir() and not target.is_symlink() else target.unlink()
         shutil.move(str(app), str(target))
+    # The app's own programs must be executable, whatever the archive kept.
+    for f in (target / "Contents/MacOS").glob("*"):
+        if f.is_file() and not f.is_symlink():
+            f.chmod(f.stat().st_mode | 0o755)
 
     plist = info_plist(target)
     icon = ICONS / f"{token}.png"
@@ -396,6 +471,7 @@ def install(token: str) -> int:
     }
     save_records(data)
     archive.unlink(missing_ok=True)
+    log.append(f"installed in {target}")
     emit("done", id=token, progress=1.0, path=str(target), arch=sorted(arches))
     return 0
 

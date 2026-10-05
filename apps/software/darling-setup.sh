@@ -4,6 +4,10 @@
 # a Terminal window, since it takes a while and asks for your password.
 set -euo pipefail
 bold=$'\e[1m'; dim=$'\e[2m'; off=$'\e[0m'
+# Everything also goes to a log, so a failed build can be read (and sent) later.
+log="${XDG_CACHE_HOME:-$HOME/.cache}/golden-gate/darling-setup.log"
+mkdir -p "$(dirname "$log")"
+exec > >(tee "$log") 2>&1
 printf '%s\n\n' "${bold}Golden Gate · Mac app support${off}"
 if command -v darling >/dev/null 2>&1; then
   echo "Darling is already installed. Mac apps from the App Store open with it."
@@ -39,7 +43,8 @@ for pkg in darling-git darling; do
   fi
 done
 if [ -z "${built:-}" ]; then
-  echo "${bold}Darling couldn't be built.${off} The output above says why."
+  echo "${bold}Darling couldn't be built.${off} The output above says why; it's also in"
+  echo "  $log"
   read -rp "Press Return to close. " _
   exit 1
 fi

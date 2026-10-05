@@ -8,7 +8,7 @@ QtObject {
     // [background, bottom, windows, top, overlay], set by the harness.
     property var layers: []
     property Item backdrop: null              // what glass blurs: the background layer
-    property var glass: ["gg-dock", "gg-controlcenter", "gg-spotlight", "gg-applications", "gg-notifications", "gg-nearby"]
+    property var glass: ["gg-dock", "gg-controlcenter", "gg-spotlight", "gg-applications", "gg-notifications", "gg-nearby", "gg-widgets", "gg-widget-gallery"]
     property var panels: []
     function register(p) { panels = panels.concat([p]) }
     function unregister(p) { panels = panels.filter((x) => x !== p) }

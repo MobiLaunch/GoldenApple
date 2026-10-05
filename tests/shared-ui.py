@@ -53,7 +53,8 @@ for desktop in sorted((root / "apps/desktop").glob("*.desktop")):
         if f"exec={command}" in text or f"exec=sh -c '{command}" in text:
             errors.append(f"Golden Gate desktop entry launches foreign primary UI: {desktop.name} -> {command}")
 
-dock = (root / "shell/Dock.qml").read_text(encoding="utf-8")
+# The Dock's default apps are kept with the other desktop preferences.
+dock = (root / "shell/Dock.qml").read_text(encoding="utf-8") + (root / "shell/components/Prefs.qml").read_text(encoding="utf-8")
 for app_id in [
     "org.goldengate.Files", "org.goldengate.Web", "org.goldengate.Mail",
     "org.goldengate.Messages", "org.goldengate.Calendar", "org.goldengate.Software",

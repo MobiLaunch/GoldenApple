@@ -283,3 +283,7 @@ jobs:
         run: python tests/control-center.py
         env:
           QT_QPA_PLATFORM: offscreen
+      - name: Desktop widgets draw, edit and add
+        run: python tests/desktop-widgets.py
+        env:
+          QT_QPA_PLATFORM: offscreen

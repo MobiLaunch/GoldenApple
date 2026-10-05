@@ -14,20 +14,63 @@ import "components"
 PanelWindow {
     id: dock
     property bool liveSession: false
-    readonly property var defaultPinned: [
-        "org.goldengate.Files", "org.goldengate.Web", "org.goldengate.Mail", "org.goldengate.Messages", "org.goldengate.Maps",
-        "org.goldengate.Photos", "org.goldengate.Music", "org.goldengate.Calendar", "org.goldengate.Notes",
-        "org.goldengate.Weather", "org.goldengate.Software", "org.goldengate.Settings", "org.goldengate.Terminal"
-    ]
-    // Keep in Dock / Remove from Dock edit the list in desktop.json (dock.pinned).
-    readonly property var keptIds: Prefs.dockPinned ?? defaultPinned
+    // Keep in Dock / Remove from Dock, dragging and Launchpad's Add to Dock all
+    // edit the one list in desktop.json (dock.pinned), through Prefs.
+    readonly property var keptIds: Prefs.keptInDock
     property var pinned: (liveSession ? ["org.goldengate.Installer"] : []).concat(keptIds.filter((id) => id !== "org.goldengate.Installer"))
     property var notifications: null    // Notification Center, for the red badges
     function keep(entry, on) {
         const ids = keptIds.filter((id) => id !== entry.id)
         if (on) ids.push(entry.id)
-        Quickshell.execDetached(["gg-pref", "dock.pinned", JSON.stringify(ids)])
+        Prefs.setDockPinned(ids)
     }
+
+    // ---------------------------------------------------------- rearranging
+    // As on the Mac: drag an icon along the Dock and the others make room;
+    // drag a kept app up off the Dock and "Remove" shows, and it goes in a
+    // puff; drag a running app in among the kept ones to keep it there.
+    property string dragId: ""
+    property bool dragKept: false
+    property real dragDX: 0
+    property real dragDY: 0
+    property int dropSlot: -1           // where it lands among the kept apps; -1: nowhere
+    readonly property bool dragging: dragId !== ""
+    readonly property bool removing: dragging && dragKept && dragDY < -(baseSize * 1.15)
+    readonly property real step: baseSize + 6
+    // The kept apps in the order they'd be in if the icon were let go now.
+    readonly property var previewOrder: orderAfter(entries.map((e) => e.id), dragId, removing ? -1 : dropSlot)
+    // ids with id taken out and put back at slot (among the others); slot -1
+    // leaves it out (dragged off, or a running app dragged nowhere).
+    function orderAfter(ids, id, slot) {
+        const out = ids.filter((x) => x !== id)
+        if (id && slot >= 0) out.splice(Math.min(slot, out.length), 0, id)
+        return out
+    }
+    function slotX(id) { return Math.max(0, previewOrder.indexOf(id)) * step }
+    function dragMoved(tile, area, mouse) {
+        const p = area.mapToItem(keptBox, mouse.x, mouse.y)
+        const others = entries.filter((e) => e.id !== dragId).length
+        const near = p.x < keptBox.width + baseSize && p.y > -baseSize * 1.15 && p.y < baseSize * 1.6
+        // The live session's Installer stays first.
+        const first = liveSession ? 1 : 0
+        dropSlot = near ? Math.max(first, Math.min(others, Math.round((p.x - baseSize / 2) / step))) : -1
+    }
+    function dragEnded() {
+        const id = dragId
+        if (removing) {
+            const p = keptBox.mapToItem(null, 0, 0)
+            poof.play(p.x + slotXAtPress + dragDX + baseSize / 2, p.y + dragDY + baseSize / 2)
+            Prefs.setDockPinned(keptIds.filter((k) => k !== id))
+        } else if (dropSlot >= 0) {
+            const order = previewOrder.filter((k) => k !== "org.goldengate.Installer")
+            if (JSON.stringify(order) !== JSON.stringify(keptIds)) Prefs.setDockPinned(order)
+        }
+        dragId = ""
+        dropSlot = -1
+        dragDX = 0
+        dragDY = 0
+    }
+    property real slotXAtPress: 0
     // Size from Settings › Desktop & Dock. Keep every icon on one stable grid.
     readonly property int tileCount: entries.length + running.length + places.length
     readonly property real restingWidth: tileCount * (baseSize + 6) + 28
@@ -111,7 +154,7 @@ PanelWindow {
 
     anchors { bottom: true; left: true; right: true }
     // Include the label, its gap, bounce and spring overshoot inside the layer surface.
-    implicitHeight: baseSize + 70
+    implicitHeight: baseSize + (dragging ? 230 : 70)
     exclusiveZone: baseSize + 22
     color: "transparent"
     WlrLayershell.namespace: "gg-dock"
@@ -202,9 +245,16 @@ PanelWindow {
         id: tile
         required property var modelData
         required property int index
+        property bool kept: false
         readonly property var wins: dock.windowsFor(modelData)
+        readonly property bool lifted: dock.dragId === (modelData.id ?? "") && dock.dragKept === kept
         width: dock.baseSize
         height: row.height
+        z: lifted ? 100 : 0
+        // While dragged, it follows the pointer; a running app that won't land
+        // anywhere stays in its place.
+        transform: Translate { x: tile.lifted ? dock.dragDX : 0; y: tile.lifted ? dock.dragDY : 0 }
+        opacity: tile.lifted && !tile.kept && dock.dropSlot < 0 ? 0.6 : 1
 
         // Calendar apps show today's date, drawn over a date-less icon.
         readonly property bool calendar: /calendar/i.test(modelData.icon ?? "") && calBlank.loaded
@@ -281,7 +331,7 @@ PanelWindow {
         }
         Glass {
             id: tip
-            readonly property bool shown: tipArea.containsMouse && !tipArea.pressed
+            readonly property bool shown: (tipArea.containsMouse && !tipArea.pressed) || (tile.lifted && dock.removing)
             visible: opacity > 0
             opacity: shown ? 1 : 0
             scale: shown ? 1 : 0.9
@@ -292,14 +342,35 @@ PanelWindow {
             x: Math.max(8 - (shelf.x + row.x + tile.x), Math.min((parent.width - width) / 2, dock.width - 8 - (shelf.x + row.x + tile.x) - width))
             width: Math.min(dock.width - 16, tipText.implicitWidth + 24); height: 26; radius: 13
             role: "menu"
-            Text { id: tipText; anchors.centerIn: parent; width: Math.min(implicitWidth, parent.width - 24); elide: Text.ElideRight; textFormat: Text.PlainText; text: tile.modelData.name; color: Theme.label; font { family: Theme.fontUi; pixelSize: 13; weight: Font.Medium } }
+            Text { id: tipText; anchors.centerIn: parent; width: Math.min(implicitWidth, parent.width - 24); elide: Text.ElideRight; textFormat: Text.PlainText; text: tile.lifted && dock.removing ? "Remove" : tile.modelData.name; color: Theme.label; font { family: Theme.fontUi; pixelSize: 13; weight: Font.Medium } }
         }
         MouseArea {
             id: tipArea
             anchors.fill: parent
             hoverEnabled: true
             acceptedButtons: Qt.LeftButton | Qt.RightButton
+            property point start
+            property bool moved: false
+            readonly property bool movable: tile.modelData.id !== "org.goldengate.Installer"
+            onPressed: mouse => { start = Qt.point(mouse.x, mouse.y); moved = false }
+            onPositionChanged: mouse => {
+                if (!pressed || !(pressedButtons & Qt.LeftButton) || !movable) return
+                const dx = mouse.x - start.x, dy = mouse.y - start.y
+                if (!moved && Math.hypot(dx, dy) < 8) return
+                if (!moved) {
+                    moved = true
+                    dock.slotXAtPress = tile.kept ? dock.slotX(tile.modelData.id) : 0
+                    dock.dragKept = tile.kept
+                    dock.dragId = tile.modelData.id
+                }
+                dock.dragDX = dx
+                dock.dragDY = dy
+                dock.dragMoved(tile, tipArea, mouse)
+            }
+            onReleased: { if (moved) dock.dragEnded() }
+            onCanceled: { if (moved) dock.dragEnded() }
             onClicked: mouse => {
+                if (moved) return
                 if (mouse.button === Qt.RightButton) {
                     dock.showEntryMenu(tile.modelData, tile, mouse.x, mouse.y)
                     return
@@ -331,9 +402,24 @@ PanelWindow {
             anchors { left: parent.left; leftMargin: 9; bottom: parent.bottom; bottomMargin: 9 }
             spacing: 6
             height: dock.baseSize
-            Repeater {
-                model: dock.entries
-                delegate: AppTile {}
+            Item {
+                id: keptBox
+                width: Math.max(0, dock.previewOrder.length * dock.step - 6)
+                height: dock.baseSize
+                anchors.bottom: parent.bottom
+                Behavior on width { enabled: !Prefs.reduceMotion; NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+                Repeater {
+                    model: dock.entries
+                    delegate: AppTile {
+                        id: keptTile
+                        kept: true
+                        anchors.bottom: parent.bottom
+                        // In its slot; the one being dragged stays where it was
+                        // picked up (it follows the pointer from there).
+                        x: lifted ? dock.slotXAtPress : dock.slotX(modelData.id)
+                        Behavior on x { enabled: !keptTile.lifted && !Prefs.reduceMotion; NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+                    }
+                }
             }
             // Apps running that aren't kept in the Dock, after a divider, as on the Mac.
             Item {
@@ -344,7 +430,7 @@ PanelWindow {
             }
             Repeater {
                 model: dock.running
-                delegate: AppTile {}
+                delegate: AppTile { anchors.bottom: parent.bottom; opacity: dock.dragging && dock.dragId === modelData.id && dock.dropSlot >= 0 ? 0 : 1 }
             }
             Item {
                 width: 11; height: dock.baseSize
@@ -367,8 +453,10 @@ PanelWindow {
                         x: 0
                         y: place.height - height
                         z: Math.round(width * 10)
+                        // Applications is an app icon like its neighbours: the theme's
+                        // squircle (icons/custom/apps/launcher.png, as view-app-grid).
                         source: place.modelData.action === "applications"
-                            ? Qt.resolvedUrl("assets/symbols/apps@accent.svg")
+                            ? (Quickshell.iconPath("view-app-grid", true) || Quickshell.iconPath("start-here", true) || Qt.resolvedUrl("assets/symbols/apps@accent.svg"))
                             : Quickshell.iconPath(place.modelData.icon, "folder")
                         sourceSize: Qt.size(dock.baseSize * 2, dock.baseSize * 2)
                         smooth: true; mipmap: true
@@ -414,6 +502,44 @@ PanelWindow {
             }
         }
     }
+    // The puff an icon leaves when it's dragged off the Dock.
+    Item {
+        id: poof
+        z: 1000
+        width: 1; height: 1
+        function play(px, py) {
+            const p = mapFromItem(null, px, py)
+            cloud.x = p.x; cloud.y = p.y
+            puff.restart()
+        }
+        Item {
+            id: cloud
+            opacity: 0
+            Repeater {
+                model: 7
+                Rectangle {
+                    required property int index
+                    readonly property real angle: index / 7 * Math.PI * 2
+                    width: 22; height: 22; radius: 11
+                    x: Math.cos(angle) * cloud.spread - 11
+                    y: Math.sin(angle) * cloud.spread - 11
+                    color: Theme.dark ? "#d9e5e5ea" : "#e6ffffff"
+                    border { width: 0.5; color: "#26000000" }
+                    scale: 0.5 + cloud.spread / 40
+                }
+            }
+            property real spread: 4
+        }
+        ParallelAnimation {
+            id: puff
+            NumberAnimation { target: cloud; property: "spread"; from: 4; to: 30; duration: 360; easing.type: Easing.OutCubic }
+            SequentialAnimation {
+                NumberAnimation { target: cloud; property: "opacity"; from: 0; to: 1; duration: 60 }
+                NumberAnimation { target: cloud; property: "opacity"; to: 0; duration: 300; easing.type: Easing.InQuad }
+            }
+        }
+    }
+
     MenuPopup {
         id: dockMenu
         growFrom: Item.BottomLeft

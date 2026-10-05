@@ -27,7 +27,11 @@ PanelWindow {
         const point = item.mapToItem(backdrop, localX, localY)
         contextItems = [
             { label: "Open", action: () => { entry.execute(); apps.dismiss() } },
-            { label: "Open New Window", action: () => entry.execute() }
+            { label: "Open New Window", action: () => entry.execute() },
+            "-",
+            Prefs.keptInDock.includes(entry.id)
+                ? { label: "Remove from Dock", action: () => Prefs.setDockPinned(Prefs.keptInDock.filter((id) => id !== entry.id)) }
+                : { label: "Add to Dock", action: () => Prefs.setDockPinned(Prefs.keptInDock.concat([entry.id])) }
         ]
         contextX = point.x
         contextY = point.y
