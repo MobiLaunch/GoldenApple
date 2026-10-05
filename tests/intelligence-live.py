@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 import sys
 import unittest
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "apps/lib/intelligence"))
@@ -61,6 +62,83 @@ class LiveProtocol(unittest.TestCase):
         self.assertIn("source: \"VoiceAssistant.qml\"", shell)
         self.assertIn("ipc call citron toggle", opener)
         self.assertIn("gg-intelligence --voice", bindings)
+
+
+
+class LiveAudioHandling(unittest.IsolatedAsyncioTestCase):
+    """No microphone, API key or PipeWire server is needed for these tests."""
+
+    class Feed:
+        def __init__(self, chunks):
+            self.chunks = chunks
+
+        async def __aiter__(self):
+            for chunk in self.chunks:
+                yield json.dumps({"serverContent": chunk})
+
+    @staticmethod
+    def packet(data):
+        return {"modelTurn": {"parts": [{
+            "inlineData": {"mimeType": "audio/pcm", "data": base64.b64encode(data).decode()}
+        }]}}
+
+    async def test_speaker_mode_pauses_microphone_before_output(self):
+        session = voice.VoiceSession("gemini-test", "Aoede", "not-a-key")
+        self.assertTrue(session.half_duplex)
+        session.ws = self.Feed([self.packet(b"\\0\\0" * 100), {"turnComplete": True}])
+        # Skip the normal disconnect exception; we're injecting a finite feed.
+        session.running = False
+        await session.receive()
+        self.assertFalse(session.mic_allowed.is_set())
+        self.assertTrue(session.speaker_active)
+        queued = [session.play_queue.get_nowait()[1] for _ in range(2)]
+        self.assertEqual(queued, [b"\\0\\0" * 100, None])
+
+    async def test_echo_cancellation_keeps_mic_open_for_barge_in(self):
+        session = voice.VoiceSession("gemini-test", "Aoede", "not-a-key")
+        session.half_duplex = False
+        session.ws = self.Feed([self.packet(b"\\0\\0" * 100), {"turnComplete": True}])
+        session.running = False
+        await session.receive()
+        self.assertTrue(session.mic_allowed.is_set())
+
+    async def test_queue_backpressure_preserves_every_audio_chunk(self):
+        session = voice.VoiceSession("gemini-test", "Aoede", "not-a-key")
+        session.half_duplex = False
+        chunks = [bytes([i]) * 64 for i in range(70)]
+        session.ws = self.Feed([self.packet(c) for c in chunks] + [{"turnComplete": True}])
+        session.running = False
+        received = []
+
+        async def consume():
+            while True:
+                _, chunk = await session.play_queue.get()
+                session.play_queue.task_done()
+                if chunk is None:
+                    return
+                received.append(chunk)
+
+        consumer = __import__("asyncio").create_task(consume())
+        await __import__("asyncio").wait_for(session.receive(), timeout=3)
+        await __import__("asyncio").wait_for(consumer, timeout=3)
+        self.assertEqual(received, chunks)
+
+    async def test_missing_aec_uses_safe_half_duplex(self):
+        session = voice.VoiceSession("gemini-test", "Aoede", "not-a-key")
+        with patch.object(voice.shutil, "which", return_value=None):
+            await session.setup_echo_cancel()
+        self.assertTrue(session.half_duplex)
+        self.assertIsNone(session.echo_module)
+
+    async def test_interruption_discards_old_turn(self):
+        session = voice.VoiceSession("gemini-test", "Aoede", "not-a-key")
+        session.speaker_active = True
+        session.mic_allowed.clear()
+        await session.play_queue.put((session.audio_epoch, b"old audio"))
+        await session.reset_audio()
+        self.assertEqual(session.play_queue.qsize(), 0)
+        self.assertFalse(session.speaker_active)
+        self.assertTrue(session.mic_allowed.is_set())
 
 
 if __name__ == "__main__":
