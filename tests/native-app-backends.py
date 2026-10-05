@@ -61,6 +61,18 @@ with tempfile.TemporaryDirectory() as raw:
     assert code == 0 and json.loads(out)["ok"] and doc.read_text() == body
     code, out = run("apps/textedit/helper.py", "read", str(doc), env=env)
     assert code == 0 and json.loads(out)["text"] == body
+    # A save keeps private permissions, follows a symlink without replacing it,
+    # and does not silently turn invalid UTF-8 into replacement characters.
+    doc.chmod(0o600)
+    link = doc.with_name("linked.txt")
+    link.symlink_to(doc)
+    code, out = run("apps/textedit/helper.py", "write", str(link), env=env, stdin="Updated")
+    assert code == 0 and link.is_symlink() and doc.read_text() == "Updated"
+    assert doc.stat().st_mode & 0o777 == 0o600
+    bad = doc.with_name("binary.txt")
+    bad.write_bytes(b"\xff\xfe")
+    code, out = run("apps/textedit/helper.py", "read", str(bad), env=env)
+    assert code != 0 and not json.loads(out)["ok"] and bad.read_bytes() == b"\xff\xfe"
 
     # Files: list/mkdir/rename on a temporary real filesystem.
     folder = tmp / "files"

@@ -64,6 +64,7 @@ file_permissions+=(
   ["/usr/local/bin/gg-install"]="0:0:755"
   ["/usr/local/bin/gg-software"]="0:0:755"
   ["/usr/local/bin/gg-files"]="0:0:755"
+  ["/usr/local/bin/gg-intelligence"]="0:0:755"
   ["/usr/local/bin/gg-pref"]="0:0:755"
   ["/usr/local/bin/gg-hyprglass-sync"]="0:0:755"
   ["/usr/local/bin/gg-apply-preferences"]="0:0:755"
@@ -355,4 +356,3 @@ if ! grep -RqsF 'archisosearchuuid=%ARCHISO_UUID%' "$PROFILE/syslinux" "$PROFILE
 fi
 mkarchiso -v -w "$WORK/build" -o "$OUT" "$PROFILE"
 say "done: $(ls -1 "$OUT"/*.iso | tail -1)"
-

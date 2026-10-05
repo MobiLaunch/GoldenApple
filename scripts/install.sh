@@ -74,6 +74,8 @@ install_extras() {
   printf '#!/bin/sh\nexec sh /usr/share/golden-gate/apps/files/open.sh "$@"\n' > "$BIN/gg-files"
   printf '#!/bin/sh\nexec sh /usr/share/golden-gate/apps/lcode/open.sh "$@"\n' > "$BIN/gg-lcode"
   printf '#!/bin/sh\nexec sh /usr/share/golden-gate/apps/airdrop/share.sh "$@"\n' > "$BIN/gg-airdrop"
+  printf '#!/bin/sh\nexec sh /usr/share/golden-gate/apps/intelligence/open.sh "$@"\n' > "$BIN/gg-intelligence"
+  chmod 755 "$BIN/gg-intelligence"
   printf '#!/bin/sh\nexec python3 /usr/lib/golden-gate/pref-helper.py "$@"\n' > "$BIN/gg-pref"
   printf '#!/bin/sh\nexec /usr/lib/golden-gate/hyprglass-sync.sh "$@"\n' > "$BIN/gg-hyprglass-sync"
   printf '#!/bin/sh\nexec /usr/lib/golden-gate/apply-preferences.sh "$@"\n' > "$BIN/gg-apply-preferences"
@@ -300,6 +302,8 @@ printf '#!/bin/sh\nexec sh "%s/software/mac-open.sh" "$@"\n' "$APPS_RUN" > "$BIN
 printf '#!/bin/sh\nexec sh "%s/files/open.sh" "$@"\n' "$APPS_RUN" > "$BIN/gg-files"
 printf '#!/bin/sh\nexec sh "%s/lcode/open.sh" "$@"\n' "$APPS_RUN" > "$BIN/gg-lcode"
 printf '#!/bin/sh\nexec sh "%s/airdrop/share.sh" "$@"\n' "$APPS_RUN" > "$BIN/gg-airdrop"
+printf '#!/bin/sh\nexec sh "%s/intelligence/open.sh" "$@"\n' "$APPS_RUN" > "$BIN/gg-intelligence"
+chmod +x "$BIN/gg-intelligence"
 RUNTIME="$DATA/golden-gate/runtime"
 mkdir -p "$RUNTIME"
 cp "$REPO/apps/setup/pref-helper.py" "$RUNTIME/pref-helper.py"
@@ -448,4 +452,3 @@ else
 fi
 
 say "done. Log into a Hyprland session (or run: hyprctl reload && qs -c golden-gate)."
-

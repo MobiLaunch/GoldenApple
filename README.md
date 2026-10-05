@@ -1,13 +1,19 @@
 # CitronOS Sprite 3.5
 
 A Linux distribution with a Liquid Glass desktop: translucent glass materials,
-spring motion, a floating Control Center, a magnifying Dock, Spotlight, desktop
+spring motion, a floating Control Center, an iPad-style Dock, Spotlight, desktop
 widgets and Finder-style Files, modelled closely on macOS's Liquid Glass design
 language and built entirely from original artwork. Sprite is the release's
 name and 3.5 its version (both kept in `apps/lib/theme/Release.qml`); it was
 called Golden Gate before. Internal names (`org.goldengate.*` app IDs, `gg-*`
 commands, `~/.config/golden-gate`) are unchanged, so existing installs keep
 their settings.
+
+**Citron Intelligence** adds Gemini-powered questions, Writing Tools, image
+generation and photo editing. Open it with **Super+Shift+Space** or the menu
+bar's wand. Add your own Gemini key in **Settings → Citron Intelligence**.
+In supported editors, right-click → **Writing Tools…** or press
+**Ctrl+Shift+W** to review and replace a selection. [Setup, privacy and limits](docs/CITRON-INTELLIGENCE.md).
 
 ![Files, light](docs/screenshots/files-light.jpg)
 
@@ -342,4 +348,3 @@ Details and sizing guidance are in [icons/custom/README.md](icons/custom/README.
 ## Roadmap
 
 See [docs/ROADMAP.md](docs/ROADMAP.md).
-

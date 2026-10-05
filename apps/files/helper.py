@@ -169,7 +169,15 @@ def empty_trash() -> int:
             except OSError as exc:
                 return result(False, error=str(exc))
     # The Trash on other disks too, where gio can reach it.
-    subprocess.run(["gio", "trash", "--empty"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    try:
+        emptied = subprocess.run(["gio", "trash", "--empty"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=15)
+        if emptied.returncode:
+            return result(True, warning="Home Trash emptied. Trash on other disks could not be emptied.")
+    except FileNotFoundError:
+        # Home Trash was emptied above; gio is only needed for other mounts.
+        return result(True, warning="Home Trash emptied. Other disks require gio to empty their Trash.")
+    except (OSError, subprocess.TimeoutExpired):
+        return result(False, error="Home Trash was emptied, but Trash on other disks could not be reached.")
     return result(True)
 
 

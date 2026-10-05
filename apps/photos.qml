@@ -65,6 +65,11 @@ ShellRoot {
                     visible: app.viewing >= 0
                     ToolbarButton { symbol: "info"; checked: viewer.infoOpen; onClicked: viewer.infoOpen = !viewer.infoOpen }
                     ToolbarButton {
+                        symbol: "wand"
+                        enabled: !!app.focusItem && app.focusItem.kind !== "video"
+                        onClicked: Quickshell.execDetached(["gg-intelligence", "--photo", app.focusItem.path])
+                    }
+                    ToolbarButton {
                         symbol: "heart"; tone: app.isFavorite(app.shown[app.viewing]?.path) ? "red" : "auto"
                         onClicked: app.toggleFavorite(app.shown[app.viewing]?.path)
                     }
@@ -76,6 +81,8 @@ ShellRoot {
                         { text: "Open With Default App", action: () => Qt.openUrlExternally(Paths.fileUrl(app.focusItem.path)) },
                         { text: "Show in Files", action: () => Quickshell.execDetached(["gg-files", "--select", app.focusItem.path]) },
                         { text: "Copy Path", action: () => Quickshell.clipboardText = app.focusItem.path },
+                        { text: "Edit with Citron Intelligence…", enabled: app.focusItem.kind !== "video",
+                          action: () => Quickshell.execDetached(["gg-intelligence", "--photo", app.focusItem.path]) },
                         { separator: true },
                         { text: "Delete " + (app.focusItem.kind === "video" ? "Video" : "Photo"), action: () => app.trash(app.focusItem) },
                     ] : [
@@ -383,4 +390,3 @@ ShellRoot {
         PopupMenu { id: menu; parent: win.overlay }
     }
 }
-

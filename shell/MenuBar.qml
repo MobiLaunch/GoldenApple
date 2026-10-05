@@ -11,6 +11,7 @@ import QtQuick.Layouts
 import QtQuick.Effects
 import "ui/theme"
 import "components"
+import "ui" as Shared
 
 PanelWindow {
     id: bar
@@ -215,6 +216,11 @@ PanelWindow {
             }
         }
         BarItem { Symbol { name: "search"; size: 15; tone: bar.darkRight ? "dark" : "white" } onClicked: bar.spotlight.toggle() }
+        BarItem {
+            Accessible.name: "Citron Intelligence"
+            Shared.Symbol { name: "wand"; size: 15; tone: bar.darkRight ? "dark" : "white" }
+            onClicked: Quickshell.execDetached(["gg-intelligence"])
+        }
         BarItem {
             highlighted: bar.controlCenter.open
             onClicked: bar.controlCenter.toggle()

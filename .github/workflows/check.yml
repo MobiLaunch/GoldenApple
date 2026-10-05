@@ -21,7 +21,7 @@ jobs:
         run: find scripts distro apps themes compositor -type f -name "*.sh" -print0 | xargs -0 -n1 bash -n
       - name: Guard the login and glass paths
         run: |
-          grep -q 'Applications { id: applicationsPanel' shell/shell.qml
+          grep -q 'id: applicationsPanel' shell/shell.qml
           grep -q 'DesktopEntries.applications.values' shell/Applications.qml
           ! grep -q 'Quickshell.Services.DesktopEntries' shell/Applications.qml
           ! grep -q 'applicationsOpenRetry' shell/Dock.qml
@@ -30,7 +30,7 @@ jobs:
           ! grep -q 'dockMagnifiedSize' shell/Dock.qml
           ! grep -q 'pointerTargetX' shell/Dock.qml
           grep -q 'iPad-style glass shelf' shell/Dock.qml
-          grep -q 'GG_WIDGETS' shell/shell.qml
+          grep -q 'DesktopWidgets { id: desktopWidgets' shell/shell.qml
           grep -q 'golden-gate-shell.log' distro/archiso/overlay/usr/local/bin/gg-session
           ! grep -q 'qs -c' distro/archiso/overlay/usr/local/bin/gg-session
           grep -q 'qs -c golden-gate' compositor/hyprland/hyprland.conf
@@ -43,8 +43,9 @@ jobs:
           grep -q 'Qt.RightButton' shell/Applications.qml
           grep -q 'onContextMenuRequested' apps/browser/Browser.qml
           grep -q 'menu.popup' apps/files.qml
-          grep -q 'Big Sur-inspired Control Center' shell/ControlCenter.qml
-          grep -q 'tint: Theme.dark ? "#7021262e" : "#5f343941"' shell/Dock.qml
+          grep -q 'id: nowPlaying' shell/ControlCenter.qml
+          grep -q 'role: "dock"' shell/Dock.qml
+          grep -q 'dark ? "#7021262e" : "#5f343941"' apps/lib/theme/Theme.qml
           grep -q 'GG_WEB_LIVE_SAFE=1' apps/browser/launch.sh
           grep -q -- '--disable-gpu' apps/browser/launch.sh
           grep -q 'rendererRestarts' apps/browser/Browser.qml
@@ -61,12 +62,12 @@ jobs:
           grep -q 'listAllPermissions' apps/browser/Browser.qml
           grep -q 'id: tabOverview' apps/browser/Browser.qml
           grep -q 'DragHandler' apps/browser/Browser.qml
-          grep -q 'label: "Find on Page…"' apps/browser/Browser.qml
+          grep -q 'text: "Find on Page…"' apps/browser/Browser.qml
           grep -q 'currentView.findText' apps/browser/Browser.qml
           grep -q 'id: tabGroupsManager' apps/browser/Browser.qml
           grep -q 'Save Tabs as Group' apps/browser/Browser.qml
           grep -q 'WebEngineProfile' apps/browser/Browser.qml
-          grep -q 'BrowserBackend.attachProfile(profile)' apps/browser/Browser.qml
+          grep -q 'BrowserBackend.attachProfile(root.profile)' apps/browser/Browser.qml
           grep -q 'text: "Privacy Report"' apps/browser/Browser.qml
           grep -q 'privacyProtection' apps/browser/model.py
           grep -q 'QWebEngineUrlRequestInterceptor' apps/browser/backend.py
@@ -83,7 +84,7 @@ jobs:
           grep -q 'HyprGlass owns blur/refraction' compositor/hyprland/hyprland.conf
           ! grep -Rqs 'ShaderEffect' apps/setup
           test ! -d apps/setup/shaders
-          grep -q 'org.goldengate.Software' shell/Dock.qml
+          grep -q 'org.goldengate.Software' shell/components/Prefs.qml
           bash -n distro/archiso/overlay/usr/local/bin/gg-session
           bash -n apps/software/open.sh
           ! grep -q 'ghostty' apps/settings/panes/UpdatePane.qml
@@ -93,10 +94,10 @@ jobs:
           ! grep -q 'archinstall' apps/installer.qml
           ! grep -qxE 'nautilus|gnome-software|gnome-control-center|gnome-clocks|gnome-text-editor|gnome-calendar|loupe|geary|fractal' distro/archiso/packages.x86_64
           ! grep -Rqs 'TextInput {' apps --exclude-dir=lib --exclude-dir=browser
-          grep -q 'org.goldengate.Mail' shell/Dock.qml
-          grep -q 'org.goldengate.Messages' shell/Dock.qml
-          grep -q 'org.goldengate.Calendar' shell/Dock.qml
-          grep -q 'org.goldengate.Files' shell/Dock.qml
+          grep -q 'org.goldengate.Mail' shell/components/Prefs.qml
+          grep -q 'org.goldengate.Messages' shell/components/Prefs.qml
+          grep -q 'org.goldengate.Calendar' shell/components/Prefs.qml
+          grep -q 'org.goldengate.Files' shell/components/Prefs.qml
           grep -q 'compgen -G "$schema_dir/\*.gschema.xml"' scripts/install.sh
           ! grep -q 'org.gnome.nautilus' themes/gsettings/90_golden-gate.gschema.override
       - name: Stage extras and new-account desktop
@@ -108,6 +109,9 @@ jobs:
           test -x "$root/usr/local/bin/gg-install"
           test -x "$root/usr/local/bin/gg-software"
           test -x "$root/usr/local/bin/gg-files"
+          test -x "$root/usr/local/bin/gg-intelligence"
+          test -f "$root/usr/share/golden-gate/ui/intelligence/helper.py"
+          test -f "$root/usr/share/applications/org.goldengate.Intelligence.desktop"
           test -x "$root/usr/local/bin/gg-lcode"
           test -x "$root/usr/local/bin/gg-pref"
           test -x "$root/usr/local/bin/gg-hyprglass-sync"
@@ -214,6 +218,8 @@ jobs:
         run: python tests/symbol-integrity.py
       - name: Smoke-test native app backends
         run: python tests/native-app-backends.py
+      - name: Citron Intelligence API contracts and file safety (no API key needed)
+        run: python tests/intelligence.py
       - name: Share files between two AirDrop services (LocalSend protocol)
         run: python tests/airdrop.py
       - name: Recognise nearby headphones and iPhones for the pairing card
@@ -256,6 +262,11 @@ jobs:
           python-version: '3.12'
       - run: sudo apt-get update && sudo apt-get install -y xvfb libegl1 libopengl0 libnss3 libxtst6 libxkbfile1 libasound2t64 libxcb-cursor0 libxkbcommon-x11-0 libxcb-icccm4 libxcb-keysyms1 libxcb-shape0 libxcb-xinerama0 libsecret-tools gnome-keyring dbus
       - run: python -m pip install PySide6==6.11.2
+      - name: Writing Tools selection, undo and TextEdit save regressions
+        run: python tests/intelligence-ui.py
+        env:
+          QT_QPA_PLATFORM: offscreen
+          QT_QUICK_BACKEND: software
       - name: Test account failures, preferences, and browser state
         run: python tests/setup-browser.py
       - name: Exercise native Chromium navigation, tabs, private browsing, and shortcuts

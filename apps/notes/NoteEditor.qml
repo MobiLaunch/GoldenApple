@@ -37,6 +37,7 @@ Item {
     }
 
     function markdown() { return edit.getFormattedText(0, edit.length) }
+    function writingTools() { edit.openWritingTools() }
     function flush() { return !dirty || !loadedPath || save() }
     function startNew(p) { fresh = true }
 
@@ -160,6 +161,8 @@ Item {
         const style = Md.styleOf(markdown(), block())
         const mark = (s) => style === s
         menuRequested([
+            { text: "Writing Tools…", action: () => writingTools() },
+            { separator: true },
             { text: "Title", checked: mark("title"), action: () => setStyle("title") },
             { text: "Heading", checked: mark("heading"), action: () => setStyle("heading") },
             { text: "Subheading", checked: mark("subheading"), action: () => setStyle("subheading") },
@@ -206,6 +209,7 @@ Item {
                 width: parent.width
                 visible: !!ed.path
                 textFormat: TextEdit.MarkdownText
+                writingContext: ed.loadedPath
                 wrapMode: TextEdit.Wrap
                 selectByMouse: true
                 persistentSelection: true
@@ -287,4 +291,3 @@ Item {
         }
     }
 }
-

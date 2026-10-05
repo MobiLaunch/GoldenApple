@@ -113,7 +113,7 @@ FloatingWindow {
     // The Mac's window keys. keyd turns ⌘Q and ⌘W into Ctrl+Q and Ctrl+W, and
     // ⌘[ ⌘] into Alt+Left and Alt+Right.
     function closeWindow() { if (closeAction) closeAction(); else Qt.quit() }
-    Shortcut { sequence: "Ctrl+Q"; onActivated: Qt.quit() }
+    Shortcut { sequence: "Ctrl+Q"; onActivated: win.closeWindow() }
     Shortcut { sequence: "Ctrl+W"; onActivated: win.closeWindow() }
     Shortcut { sequence: "Alt+Left"; onActivated: win.backRequested() }
     Shortcut { sequence: "Alt+Right"; onActivated: win.forwardRequested() }
@@ -292,4 +292,3 @@ FloatingWindow {
         }
     }
 }
-

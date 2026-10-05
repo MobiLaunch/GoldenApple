@@ -162,6 +162,9 @@ qmlRegisterType(ScriptModel, "Quickshell", 1, 0, "ScriptModel")
 # (pattern over the command line, stdout, exit code). First match wins;
 # "hang" never exits, like `gsettings monitor`.
 FIXTURES: list[tuple[str, str, object]] = [
+    (r"intelligence/helper\.py", json.dumps({"ok": True, "config": {"enabled": False,
+        "textModel": "gemini-3.8-flash", "imageModel": "gemini-3.1-flash-image"},
+        "hasKey": False, "environmentKey": False, "warning": ""}), 0),
     # The App Store's Flathub catalog (a sample, offline; its Mac catalog comes
     # from fixtures/casks.json through GG_MAC_CATALOG_URL).
     (r"software/helper\.py (catalog|refresh)", (HERE / "fixtures/flathub.json").read_text(), 0),

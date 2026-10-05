@@ -128,6 +128,7 @@ ShellRoot {
                 [1, "network", "Network", "globe", "#0a84ff", "NetworkPane", "ethernet ip address vpn"],
                 [1, "battery", "Battery", "power", "#34c759", "BatteryPane", "energy power charge low power mode"],
                 [2, "general", "General", "gear", "#8e8e93", "GeneralPane", "about software update storage date time language region"],
+                [2, "intelligence", "Citron Intelligence", "wand", "#9564e8", "IntelligencePane", "ai assistant gemini api key writing tools images photos"],
                 [2, "accessibility", "Accessibility", "person", "#0a84ff", "AccessibilityPane", "reduce motion transparency text size"],
                 [2, "appearance", "Appearance", "contrast", "#1d1d1f", "AppearancePane", "dark mode light auto accent colour color liquid glass scroll bars"],
                 [2, "dock", "Desktop & Dock", "apps", "#1d1d1f", "DockPane", "dock size magnification indicators"],

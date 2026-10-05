@@ -630,6 +630,7 @@ ShellRoot {
                 Row {
                     anchors.right: parent.right
                     spacing: 8
+                    Button { text: "Writing Tools…"; enabled: !mail.sending && composeEditor.length > 0; onClicked: composeEditor.openWritingTools() }
                     Button { text: "Cancel"; enabled: !mail.sending; onClicked: mail.composing = false }
                     Button {
                         text: mail.sending ? "Sending…" : "Send"
