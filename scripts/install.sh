@@ -136,6 +136,21 @@ EOF
     cp "$REPO/themes/fontconfig/60-golden-gate.conf" "$SKEL/.config/fontconfig/conf.d/60-golden-gate.conf"
     printf '[Default Applications]\nx-scheme-handler/http=org.goldengate.Web.desktop\nx-scheme-handler/https=org.goldengate.Web.desktop\ntext/html=org.goldengate.Web.desktop\ninode/directory=org.goldengate.Files.desktop\ntext/plain=org.goldengate.TextEdit.desktop\ntext/markdown=org.goldengate.TextEdit.desktop\napplication/json=org.goldengate.TextEdit.desktop\nimage/jpeg=org.goldengate.Photos.desktop\nimage/png=org.goldengate.Photos.desktop\nimage/webp=org.goldengate.Photos.desktop\nimage/gif=org.goldengate.Photos.desktop\nimage/tiff=org.goldengate.Photos.desktop\nvideo/mp4=org.goldengate.Photos.desktop\nvideo/quicktime=org.goldengate.Photos.desktop\nvideo/webm=org.goldengate.Photos.desktop\naudio/mpeg=org.goldengate.Music.desktop\naudio/mp4=org.goldengate.Music.desktop\naudio/flac=org.goldengate.Music.desktop\naudio/ogg=org.goldengate.Music.desktop\naudio/opus=org.goldengate.Music.desktop\naudio/x-wav=org.goldengate.Music.desktop\n' > "$SKEL/.config/mimeapps.list"
   fi
+  # Existing installed systems already have /etc/skel: OTA updates must still
+  # refresh the canonical default shell + Hyprland bindings. golden_update.py
+  # snapshots the previous defaults first and updates each user's pristine
+  # managed files, preserving customized files as .golden-gate-new.
+  if [[ -d "$SKEL/.config/quickshell/golden-gate" ]]; then
+    say "refreshing CitronOS shell and keyboard shortcut defaults → $SKEL"
+    rm -rf "$SKEL/.config/quickshell/golden-gate"
+    cp -a "$REPO/shell" "$SKEL/.config/quickshell/golden-gate"
+    rm -rf "$SKEL/.config/quickshell/golden-gate/ui"
+    ln -s "/usr/share/golden-gate/ui" "$SKEL/.config/quickshell/golden-gate/ui"
+    mkdir -p "$SKEL/.config/hypr"
+    sed -e 's#__GG_WALLPAPER__#/usr/share/backgrounds/golden-gate/tide.png#' \
+        -e 's#__GG_APPS__#/usr/share/golden-gate/apps#' \\
+        "$REPO/compositor/hyprland/hyprland.conf" > "$SKEL/.config/hypr/hyprland.conf"
+  fi
   say "GNOME defaults (fonts and icons) → $R/usr/share/glib-2.0/schemas"
   local schema_dir="$R/usr/share/glib-2.0/schemas"
   mkdir -p "$schema_dir"
