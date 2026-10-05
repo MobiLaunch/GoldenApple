@@ -2,6 +2,7 @@
 """CitronOS Web: Safari-inspired Qt Quick chrome over Chromium."""
 from __future__ import annotations
 
+import faulthandler
 import hashlib
 import json
 import os
@@ -57,6 +58,8 @@ def handoff_to_existing(values, profile, data_dir):
 
 
 def main():
+    # The launcher captures stderr in a private log even on a native abort.
+    faulthandler.enable(all_threads=True)
     if os.geteuid() == 0:
         sys.exit("Run Web as your desktop user, not root. Chromium sandboxing remains enabled.")
 
@@ -144,6 +147,9 @@ def main():
             server.newConnection.connect(connected)
 
     engine = QQmlApplicationEngine()
+    engine.warnings.connect(
+        lambda warnings: [sys.stderr.write("Web QML: " + w.toString() + "\n") for w in warnings]
+    )
     engine.rootContext().setContextProperty("BrowserBackend", backend)
 
     qml = Path(__file__).with_name("Browser.qml")
