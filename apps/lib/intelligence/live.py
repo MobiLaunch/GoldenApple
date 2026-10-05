@@ -66,7 +66,8 @@ def pcm_level(chunk: bytes) -> float:
     samples.frombytes(chunk[: len(chunk) & ~1])
     if not samples:
         return 0.0
-    energy = sum(int(s) * int(s) for s in samples[::32]) / len(samples[::32])
+    sparse = samples[::31]
+    energy = sum(int(s) * int(s) for s in sparse) / len(sparse)
     return round(min(1.0, (energy ** .5) / 7500), 3)
 
 
