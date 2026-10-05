@@ -119,7 +119,7 @@ ShellRoot {
                          : e.key === Qt.Key_PageUp ? scroller.contentY - page
                          : e.key === Qt.Key_Home ? 0 : e.key === Qt.Key_End ? max : NaN
                 if ((e.modifiers & Qt.ControlModifier) && e.key === Qt.Key_F) {   // ⌘F: search
-                    app.sidebarOpen = true; search.forceActiveFocus(); e.accepted = true; return
+                    app.sidebarOpen = true; search.input.forceActiveFocus(); e.accepted = true; return
                 }
                 if ((e.modifiers & Qt.ControlModifier) && (e.modifiers & Qt.MetaModifier) && e.key === Qt.Key_S) {   // ⌃⌘S: sidebar
                     app.sidebarOpen = !app.sidebarOpen; e.accepted = true; return

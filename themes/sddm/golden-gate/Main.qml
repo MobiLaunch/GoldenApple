@@ -19,6 +19,7 @@ Item {
     // its theme API. Read documented name/realName roles from the delegate.
     readonly property string userLogin: users.currentItem?.loginName || userModel.lastUser || ""
     readonly property string userDisplay: users.currentItem?.displayName || userLogin
+    readonly property string userIcon: users.currentItem?.iconPath || ""
 
     // Prefer the dedicated Golden Gate session when it is installed. SDDM's
     // session model is also a QAbstractListModel, so discover it through delegate
@@ -39,32 +40,54 @@ Item {
     LockSurface {
         id: surface
         anchors.fill: parent
+        login: true
         wallpaper: config.background ? "file://" + config.background : ""
         userName: root.userDisplay || "Golden User"
+        avatars: root.userIcon ? ["file://" + root.userIcon] : []
         onSubmitted: (password) => sddm.login(root.userLogin, password, root.sessionIndex)
         Component.onCompleted: reset()
     }
     Connections {
         target: sddm
         function onLoginFailed() { surface.fail() }
+        function onLoginSucceeded() { surface.unlock() }
     }
 
-    // Power buttons, bottom right.
+    // Sleep, Restart and Shut Down, bottom right, rising in after the user.
     // Children of Glass land in its content item, so refer to the button by id.
-    component PowerButton: Glass {
+    component PowerButton: Item {
         id: pb
         property string icon
         property string label
         signal activated()
-        width: 44; height: 44; radius: 22
-        tint: "#33ffffff"
-        Symbol { anchors.centerIn: parent; name: pb.icon; size: 18 }
-        MouseArea { anchors.fill: parent; onClicked: pb.activated() }
-        Text { anchors { top: parent.bottom; topMargin: 6; horizontalCenter: parent.horizontalCenter } text: pb.label; color: "#d0ffffff"; font { family: Theme.fontUi; pixelSize: 11 } }
+        width: 64; height: 64
+        Glass {
+            id: disc
+            anchors.horizontalCenter: parent.horizontalCenter
+            width: 40; height: 40; radius: 20
+            role: "clear"
+            tint: "#4d1c2333"
+            hovered: tap.containsMouse
+            pressed: tap.pressed
+            Symbol { anchors.centerIn: parent; name: pb.icon; size: 17 }
+        }
+        Text {
+            anchors { top: disc.bottom; topMargin: 6; horizontalCenter: parent.horizontalCenter }
+            text: pb.label
+            color: "white"
+            opacity: tap.containsMouse ? 1 : 0.78
+            Behavior on opacity { NumberAnimation { duration: 150 } }
+            font { family: Theme.fontUi; pixelSize: 11; weight: Font.Medium }
+        }
+        MouseArea { id: tap; anchors.fill: parent; hoverEnabled: true; onClicked: pb.activated() }
     }
     Row {
-        anchors { right: parent.right; bottom: parent.bottom; margins: 36 }
-        spacing: 22
+        id: power
+        anchors { right: parent.right; bottom: parent.bottom; margins: 28 }
+        spacing: 10
+        opacity: 0
+        Component.onCompleted: rise.start()
+        NumberAnimation on opacity { id: rise; running: false; from: 0; to: 1; duration: 600; easing.type: Easing.OutCubic }
         PowerButton { icon: "moon"; label: "Sleep"; visible: sddm.canSuspend; onActivated: sddm.suspend() }
         PowerButton { icon: "arrow-clockwise"; label: "Restart"; visible: sddm.canReboot; onActivated: sddm.reboot() }
         PowerButton { icon: "power"; label: "Shut Down"; visible: sddm.canPowerOff; onActivated: sddm.powerOff() }
@@ -93,11 +116,14 @@ Item {
             required property int index
             required property string name
             required property string realName
+            required property string icon
             readonly property string loginName: name
             readonly property string displayName: realName || name
+            readonly property string iconPath: icon
             width: 40; height: 40; radius: 20
             color: index === users.currentIndex ? "#66ffffff" : "#26ffffff"
-            border.width: 1; border.color: "#59ffffff"
+            border.width: index === users.currentIndex ? 2 : 1; border.color: index === users.currentIndex ? "white" : "#59ffffff"
+            Behavior on color { ColorAnimation { duration: 160 } }
             Text { anchors.centerIn: parent; text: parent.displayName.slice(0, 1).toUpperCase(); color: "white"; font { family: Theme.fontUi; pixelSize: 15; weight: Font.DemiBold } }
             MouseArea {
                 anchors.fill: parent

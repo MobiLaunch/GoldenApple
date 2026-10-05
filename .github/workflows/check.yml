@@ -287,3 +287,11 @@ jobs:
         run: python tests/desktop-widgets.py
         env:
           QT_QPA_PLATFORM: offscreen
+      - name: The lock screen sleeps, wakes and unlocks
+        run: python tests/lock-screen.py
+        env:
+          QT_QPA_PLATFORM: offscreen
+      - name: The SDDM login window logs in
+        run: python tests/sddm-theme.py
+        env:
+          QT_QPA_PLATFORM: offscreen

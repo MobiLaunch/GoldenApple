@@ -113,6 +113,15 @@ if re.search(r"^\s*WebEngineProfile\s*\{", browser, re.M) or "WebEngineProfilePr
 if re.search(r"property\s+WebEngineProfile\s+profile:\s*profilePrototype\.instance", browser):
     errors.append("apps/browser/Browser.qml: ask the profile prototype for its instance in Component.onCompleted")
 
+# The shared TextField is a Rectangle around a TextInput, not a FocusScope:
+# focusing the field itself takes the keyboard away from the text (the lock
+# screen's password field once ignored every key). Focus `<id>.input`.
+for qml in sorted([*(root / "shell").rglob("*.qml"), *(root / "apps").rglob("*.qml"), *(root / "themes").rglob("*.qml")]):
+    text = qml.read_text(encoding="utf-8")
+    for field_id in set(re.findall(r"\bTextField\s*\{\s*id:\s*(\w+)", text)):
+        if re.search(r"(?<![\w.])" + field_id + r"\.forceActiveFocus\(\)", text):
+            errors.append(f"{qml.relative_to(root)}: focus {field_id}.input, not the TextField around it")
+
 if errors:
     print("\n".join(errors), file=sys.stderr)
     raise SystemExit(1)

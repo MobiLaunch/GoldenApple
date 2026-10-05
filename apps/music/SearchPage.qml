@@ -10,7 +10,7 @@ Flickable {
     property string query: ""
     signal openAlbum(var album)
     signal songMenu(var track, var list, Item from, real x, real y)
-    function focusField() { field.forceActiveFocus() }
+    function focusField() { field.input.forceActiveFocus() }
 
     readonly property string q: query.trim().toLowerCase()
     readonly property var songs: q ? lib.tracks.filter((t) => (t.title + " " + t.artist + " " + t.album).toLowerCase().includes(q)).slice(0, 30) : []

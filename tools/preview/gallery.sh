@@ -33,6 +33,10 @@ shot launchpad        shell --do launchpad.toggle
 shot volume           shell --do osd.volume
 shot logout           shell --do session.ask:logout
 shot lock             shell --env GG_LOCK_PREVIEW=1
+shot lock-awake       shell --env GG_LOCK_PREVIEW=1 --do lockpreview.type:password
+shot login            shell --env GG_LOCK_PREVIEW=login
+shot widgets          shell
+shot widgets-edit     shell --do widgets.edit
 for app in settings files notes music photos weather calculator textedit messages maps calendar software airdrop lcode mail clock; do
   shot "app-$app" app "apps/$app.qml"
 done
