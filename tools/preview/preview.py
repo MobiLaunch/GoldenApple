@@ -473,6 +473,8 @@ def main() -> int:
     ap.add_argument("--size", default="1440x900")
     ap.add_argument("--wait", type=int, default=900, help="ms to settle before each step")
     ap.add_argument("--crop", default="", help="x,y,w,h of the screenshot to keep")
+    ap.add_argument("--require-object", default="",
+                    help="fail when a required loaded QML objectName is absent (catches empty Loader panes)")
     ap.add_argument("-v", "--verbose", action="store_true")
     a = ap.parse_args()
 
@@ -526,6 +528,10 @@ def main() -> int:
         steps.insert(0, "@notify")
 
     def finish():
+        if a.require_object and not window.findChild(QObject, a.require_object):
+            print("preview: required component did not render: " + a.require_object, file=sys.stderr)
+            app.exit(3)
+            return
         img: QImage = window.grabWindow()
         if a.crop:
             x, y, cw, ch = (int(v) for v in a.crop.split(","))
