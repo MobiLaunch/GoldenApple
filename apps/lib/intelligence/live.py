@@ -109,8 +109,11 @@ class VoiceSession:
     async def stop_proc(self, proc) -> None:
         if proc is None:
             return
-        if proc.returncode is None:
-            proc.terminate()
+        try:
+            if proc.returncode is None:
+                proc.terminate()
+        except ProcessLookupError:
+            pass
         try:
             await asyncio.wait_for(proc.wait(), timeout=0.6)
         except (asyncio.TimeoutError, ProcessLookupError):
@@ -234,7 +237,7 @@ class VoiceSession:
                             continue
                         if self.out_proc is not None:
                             try:
-                                self.out_proc.stdin.write_eof()
+                                self.out_proc.stdin.close()
                                 await asyncio.wait_for(self.out_proc.wait(), timeout=30)
                             except asyncio.TimeoutError:
                                 await self.stop_proc(self.out_proc)
