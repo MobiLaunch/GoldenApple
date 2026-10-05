@@ -1,9 +1,16 @@
 //@ pragma AppId org.goldengate.Software
-// Golden Gate App Store: native QML storefront backed directly by Flatpak/Flathub.
+// Golden Gate App Store, laid out like the Mac's: Discover with an editorial
+// card and shelves, Create / Work / Play / Develop, a page for each app, and
+// Updates and Installed. Two sources:
+//   Linux apps  Flathub, installed into your account (software/helper.py)
+//   Mac apps    downloaded from their developers and opened with Darling, the
+//               macOS translation layer (software/macapps.py; experimental:
+//               many Mac apps with windows don't open yet, and the store says so)
 import Quickshell
 import Quickshell.Io
 import QtQuick
 import QtQuick.Layouts
+import QtQuick.Shapes
 import "lib"
 import "lib/theme"
 
@@ -11,29 +18,25 @@ ShellRoot {
     AppWindow {
         id: win
         title: "App Store"
-        implicitWidth: Math.min(1120, (Quickshell.screens[0]?.width ?? 1280) - 80)
-        implicitHeight: Math.min(760, (Quickshell.screens[0]?.height ?? 900) - 120)
-        minimumSize: Qt.size(820, 540)
+        implicitWidth: Math.min(1180, (Quickshell.screens[0]?.width ?? 1280) - 80)
+        implicitHeight: Math.min(800, (Quickshell.screens[0]?.height ?? 900) - 110)
+        minimumSize: Qt.size(860, 560)
         sidebarWidth: 220
         background: Theme.contentBg
+        fullSizeContent: true
 
         toolbarItems: [
             Row {
-                x: win.contentX + 18
+                x: win.contentX + 14
                 anchors.verticalCenter: parent.verticalCenter
-                spacing: 10
-
-                Text {
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: store.pageTitle
-                    color: Theme.label
-                    font { family: Theme.fontUi; pixelSize: 15; weight: Font.Bold }
+                visible: !!store.detail
+                ToolbarPill {
+                    ToolbarButton { symbol: "chevron-left"; onClicked: store.detail = null }
                 }
             },
             Row {
                 anchors { right: parent.right; rightMargin: 12; verticalCenter: parent.verticalCenter }
                 spacing: 8
-
                 ToolbarButton {
                     round: true
                     symbol: "arrow-clockwise"
@@ -50,93 +53,39 @@ ShellRoot {
                 height: 30
                 search: true
                 placeholder: "Search"
-                onTextChanged: store.query = text
+                onTextChanged: { store.query = text; if (text) store.detail = null }
                 input.Keys.onEscapePressed: { text = ""; store.query = "" }
             },
-            Flickable {
+            Column {
                 y: 42
                 width: parent.width
-                height: parent.height - 42
-                contentHeight: nav.height + 20
-                clip: true
-                boundsBehavior: Flickable.StopAtBounds
-
-                Column {
-                    id: nav
-                    width: parent.width
-                    spacing: 2
-
-                    SidebarRow {
+                spacing: 2
+                Repeater {
+                    model: [
+                        { page: "discover", text: "Discover", symbol: "sparkles" },
+                        { page: "mac", text: "Mac Apps", symbol: "window" },
+                        { page: "create", text: "Create", symbol: "brush" },
+                        { page: "work", text: "Work", symbol: "briefcase" },
+                        { page: "play", text: "Play", symbol: "game" },
+                        { page: "develop", text: "Develop", symbol: "hammer" },
+                        { gap: true },
+                        { page: "updates", text: "Updates", symbol: "download" },
+                        { page: "installed", text: "Installed", symbol: "checkmark" }
+                    ]
+                    delegate: Item {
+                        required property var modelData
                         width: parent.width
-                        text: "Discover"
-                        symbol: "sparkles"
-                        selected: store.page === "discover"
-                        onClicked: store.page = "discover"
-                    }
-                    SidebarRow {
-                        width: parent.width
-                        text: "Productivity"
-                        symbol: "briefcase"
-                        selected: store.page === "productivity"
-                        onClicked: store.page = "productivity"
-                    }
-                    SidebarRow {
-                        width: parent.width
-                        text: "Developer"
-                        symbol: "code"
-                        selected: store.page === "developer"
-                        onClicked: store.page = "developer"
-                    }
-                    SidebarRow {
-                        width: parent.width
-                        text: "Graphics & Design"
-                        symbol: "photo"
-                        selected: store.page === "graphics"
-                        onClicked: store.page = "graphics"
-                    }
-                    SidebarRow {
-                        width: parent.width
-                        text: "Music & Video"
-                        symbol: "music"
-                        selected: store.page === "media"
-                        onClicked: store.page = "media"
-                    }
-                    SidebarRow {
-                        width: parent.width
-                        text: "Games"
-                        symbol: "game"
-                        selected: store.page === "games"
-                        onClicked: store.page = "games"
-                    }
-
-                    Item { width: 1; height: 10 }
-
-                    SidebarRow {
-                        width: parent.width
-                        text: "Updates"
-                        symbol: "download"
-                        selected: store.page === "updates"
-                        badge: store.updateCount > 0 ? String(store.updateCount) : ""
-                        onClicked: store.page = "updates"
-                    }
-                    SidebarRow {
-                        width: parent.width
-                        text: "Installed"
-                        symbol: "checkmark"
-                        selected: store.page === "installed"
-                        onClicked: store.page = "installed"
-                    }
-
-                    Item { width: 1; height: 12 }
-
-                    Text {
-                        width: parent.width - 20
-                        x: 10
-                        visible: !!store.warning
-                        text: store.warning
-                        wrapMode: Text.WordWrap
-                        color: Theme.secondaryLabel
-                        font { family: Theme.fontUi; pixelSize: 10 }
+                        height: modelData.gap ? 12 : row.height
+                        SidebarRow {
+                            id: row
+                            visible: !parent.modelData.gap
+                            width: parent.width
+                            text: parent.modelData.text ?? ""
+                            symbol: parent.modelData.symbol ?? ""
+                            selected: store.page === parent.modelData.page && !store.query.trim()
+                            badge: parent.modelData.page === "updates" && store.updates.length ? String(store.updates.length) : ""
+                            onClicked: { store.page = parent.modelData.page; store.detail = null; search.text = "" }
+                        }
                     }
                 }
             }
@@ -147,434 +96,843 @@ ShellRoot {
             anchors.fill: parent
 
             readonly property string helper: Qt.resolvedUrl("software/helper.py").toString().replace("file://", "")
-            property var catalog: []
-            property string page: "discover"
+            readonly property string macHelper: Qt.resolvedUrl("software/macapps.py").toString().replace("file://", "")
+            readonly property string darlingSetup: Qt.resolvedUrl("software/darling-setup.sh").toString().replace("file://", "")
+
+            property string page: Quickshell.env("GG_STORE_PAGE") || "discover"
             property string query: ""
+            property var detail: null
+            // GG_STORE_APP=token (or a Flathub id) opens that app's page once it's
+            // in the catalog: for screenshots, and for links from elsewhere.
+            property string pendingDetail: Quickshell.env("GG_STORE_APP") || ""
+            function openPending() {
+                if (!pendingDetail) return
+                const app = macApps.concat(linuxApps).find((a) => a.id === pendingDetail)
+                if (app) { detail = app; pendingDetail = "" }
+            }
+
+            // Linux apps (Flathub)
+            property var catalog: []
             property bool loading: true
             property string loadError: ""
-            property string warning: ""
+            // Mac apps (developers' downloads, through Darling)
+            property var mac: []
+            property var macFeatured: []
+            property var macInstalled: ({})
+            property bool darling: false
+            property bool macLoading: true
+            property string macError: ""
+
+            // The one transaction at a time: install, update, remove, open.
             property bool busy: false
             property string activeId: ""
             property string activeAction: ""
-            property real operationProgress: 0
-            property string operationMessage: ""
-            property string operationError: ""
+            property real progress: 0
+            property string message: ""
+            property string error: ""
+            property string errorDetails: ""
+            property bool askDarling: false
+            property var queue: []                 // Update All: the apps still to update
 
-            readonly property int updateCount: catalog.filter((a) => a.update).length
-            readonly property string pageTitle: query.trim()
-                ? "Search"
-                : page === "discover" ? "Discover"
-                : page === "productivity" ? "Productivity"
-                : page === "developer" ? "Developer"
-                : page === "graphics" ? "Graphics & Design"
-                : page === "media" ? "Music & Video"
-                : page === "games" ? "Games"
-                : page === "updates" ? "Updates"
-                : "Installed"
+            // ---------------------------------------------------- the apps
+            readonly property var linuxApps: catalog.map((a) => Object.assign({ source: "linux" }, a))
+            function macEntry(c) {
+                const r = macInstalled[c.token]
+                return {
+                    source: "mac", id: c.token, name: c.name, summary: c.desc, icon: r?.icon ?? "",
+                    installed: !!r, update: !!r && !!c.version && r.catalogVersion !== c.version,
+                    homepage: c.homepage, version: r?.version ?? c.version, minMacOS: c.minMacOS ?? "", checksum: !!c.checksum,
+                    opened: r?.opened ?? null, lastError: r?.lastError ?? "", arch: r?.arch ?? []
+                }
+            }
+            readonly property var macApps: mac.map((c) => macEntry(c))
+            // Installed Mac apps the catalog no longer lists still show up.
+            readonly property var macOrphans: Object.keys(macInstalled).filter((t) => !mac.some((c) => c.token === t))
+                .map((t) => Object.assign(macEntry({ token: t, name: macInstalled[t].name, desc: "", version: "" }), { update: false }))
+            readonly property var featuredMac: macFeatured.map((t) => macApps.find((a) => a.id === t)).filter((a) => !!a)
 
-            function containsCategory(app, names) {
+            function hasCategory(app, names) {
                 const cats = (app.categories ?? []).map((x) => String(x).toLowerCase())
                 return names.some((n) => cats.some((c) => c.includes(n)))
             }
+            readonly property var categoryNames: ({
+                create: ["graphics", "photography", "audiovideo", "audio", "video", "music"],
+                work: ["office", "productivity", "finance", "viewer"],
+                play: ["game"],
+                develop: ["development", "ide", "texteditor"]
+            })
+            function inCategory(page) { return linuxApps.filter((a) => hasCategory(a, categoryNames[page] ?? [])) }
 
-            function pageMatches(app) {
-                if (query.trim()) {
-                    const q = query.trim().toLowerCase()
-                    const hay = [
-                        app.name ?? "", app.summary ?? "", app.id ?? "",
-                        ...(app.keywords ?? []), ...(app.categories ?? [])
-                    ].join(" ").toLowerCase()
-                    return hay.includes(q)
-                }
-
-                if (page === "installed") return app.installed
-                if (page === "updates") return app.update
-                if (page === "productivity")
-                    return containsCategory(app, ["office", "productivity", "utility"])
-                if (page === "developer")
-                    return containsCategory(app, ["development", "developer"])
-                if (page === "graphics")
-                    return containsCategory(app, ["graphics", "photography"])
-                if (page === "media")
-                    return containsCategory(app, ["audio", "video", "music"])
-                if (page === "games")
-                    return containsCategory(app, ["game"])
-                return true
+            readonly property var updates: linuxApps.filter((a) => a.update).concat(macApps.filter((a) => a.update))
+            readonly property var installed: linuxApps.filter((a) => a.installed).concat(macApps.filter((a) => a.installed), macOrphans)
+            function matches(app, q) {
+                return [app.name ?? "", app.summary ?? "", app.id ?? "", ...(app.keywords ?? [])].join(" ").toLowerCase().includes(q)
+            }
+            readonly property var results: {
+                const q = query.trim().toLowerCase()
+                if (!q) return ({ linux: [], mac: [] })
+                return { linux: linuxApps.filter((a) => matches(a, q)).slice(0, 60), mac: macApps.filter((a) => matches(a, q)).slice(0, 60) }
+            }
+            function live(app) {
+                // The current state of an app (after an install, its record changed).
+                if (!app) return null
+                const list = app.source === "mac" ? macApps.concat(macOrphans) : linuxApps
+                return list.find((a) => a.id === app.id) ?? app
             }
 
-            readonly property var shownApps: {
-                page
-                query
-                catalog
-                let list = catalog.filter((app) => pageMatches(app))
-                if (page === "discover" && !query.trim()) {
-                    const installedFirst = list.filter((a) => a.installed).slice(0, 6)
-                    const rest = list.filter((a) => !a.installed)
-                    list = installedFirst.concat(rest)
-                }
-                return list.slice(0, 240)
-            }
-
-            function patch(id, changes) {
-                catalog = catalog.map((app) => {
-                    if (app.id !== id)
-                        return app
-                    const copy = Object.assign({}, app)
-                    Object.keys(changes).forEach((key) => copy[key] = changes[key])
-                    return copy
-                })
-            }
-
-            function reload(forceRefresh) {
-                if (busy || catalogLoad.running)
-                    return
+            // ---------------------------------------------------- loading
+            function reload(refresh) {
+                if (catalogLoad.running || busy) return
                 loading = true
                 loadError = ""
-                catalogLoad.command = ["python3", helper, forceRefresh ? "refresh" : "catalog"]
+                catalogLoad.command = ["python3", helper, refresh ? "refresh" : "catalog"]
                 catalogLoad.running = true
+                reloadMac(refresh)
             }
-
-            function transact(action, appId) {
-                if (busy || !appId)
-                    return
-                busy = true
-                activeId = appId
-                activeAction = action
-                operationProgress = 0.04
-                operationError = ""
-                operationMessage = action === "install" ? "Preparing installation…"
-                    : action === "update" ? "Preparing update…"
-                    : action === "remove" ? "Preparing removal…"
-                    : "Opening…"
-                transaction.command = ["python3", helper, action, appId]
-                transaction.running = true
+            function reloadMac(refresh) {
+                if (macLoad.running) return
+                macLoading = true
+                macLoad.command = ["python3", macHelper, "all"].concat(refresh ? ["--refresh"] : [])
+                macLoad.running = true
             }
-
-            function consumeTransaction(line) {
-                if (!line || !line.trim())
-                    return
-                try {
-                    const event = JSON.parse(line)
-                    if (event.event === "progress") {
-                        operationProgress = event.progress ?? operationProgress
-                        operationMessage = event.message ?? operationMessage
-                    } else if (event.event === "done") {
-                        operationProgress = 1
-                        if (activeAction === "install")
-                            patch(activeId, { installed: true })
-                        else if (activeAction === "update")
-                            patch(activeId, { update: false, installed: true })
-                        else if (activeAction === "remove")
-                            patch(activeId, { installed: false, update: false })
-                        operationMessage = "Done"
-                    } else if (event.event === "error") {
-                        operationError = event.message ?? "The App Store operation failed."
-                        operationMessage = operationError
-                    }
-                } catch (e) {}
-            }
-
             Component.onCompleted: reload(false)
 
             Process {
                 id: catalogLoad
-                command: ["python3", store.helper, "catalog"]
                 stdout: StdioCollector {
                     onStreamFinished: {
                         try {
-                            const event = JSON.parse(text)
-                            if (event.event === "catalog") {
-                                store.catalog = event.apps ?? []
-                                store.warning = event.warning ?? ""
-                                store.loadError = ""
-                            } else if (event.event === "error") {
-                                store.loadError = event.message ?? "The App Store catalog could not be loaded."
-                            }
-                        } catch (e) {
-                            store.loadError = "The App Store catalog returned an unreadable response."
-                        }
+                            const e = JSON.parse(text)
+                            if (e.event === "catalog") { store.catalog = e.apps ?? []; store.loadError = ""; store.openPending() }
+                            else if (e.event === "error") store.loadError = e.message ?? "The catalog couldn't be loaded."
+                        } catch (err) { store.loadError = "Flathub's catalog couldn't be read." }
                     }
                 }
                 onExited: (code) => {
                     store.loading = false
-                    if (code !== 0 && !store.loadError)
-                        store.loadError = "The App Store could not connect to Flathub. Cached applications will appear when available."
+                    if (code !== 0 && !store.loadError) store.loadError = "Flathub couldn't be reached. Apps appear once it can."
                 }
             }
+            Process {
+                id: macLoad
+                stdout: StdioCollector {
+                    onStreamFinished: {
+                        try {
+                            const e = JSON.parse(text.trim().split("\n").pop())
+                            if (e.event !== "mac-all") return
+                            store.mac = e.apps ?? []
+                            store.macFeatured = e.featured ?? []
+                            store.macInstalled = e.installed ?? {}
+                            store.darling = !!e.darling
+                            store.macError = e.error ?? ""
+                            store.openPending()
+                        } catch (err) { store.macError = "The Mac app catalog couldn't be read." }
+                    }
+                }
+                onExited: store.macLoading = false
+            }
+            // While Mac app support is being set up (in Terminal), notice when it's ready.
+            Process {
+                id: darlingCheck
+                command: ["python3", store.macHelper, "status"]
+                stdout: StdioCollector {
+                    onStreamFinished: { try { store.darling = !!JSON.parse(text).darling } catch (err) {} }
+                }
+            }
+            Timer { interval: 15000; repeat: true; running: !store.darling && store.page === "mac"; onTriggered: darlingCheck.running = true }
+            function setUpDarling() {
+                askDarling = false
+                Quickshell.execDetached(["ghostty", "-e", darlingSetup])
+            }
 
+            // ---------------------------------------------------- transactions
+            function transact(action, app) {
+                if (busy || !app) return
+                busy = true
+                activeId = app.id
+                activeAction = action
+                progress = 0.03
+                error = ""
+                errorDetails = ""
+                message = action === "launch" ? "Opening " + app.name + "…" : "Preparing…"
+                if (app.source === "mac") {
+                    const verb = action === "launch" ? "open" : action === "update" ? "install" : action
+                    transaction.command = ["python3", macHelper, verb, app.id]
+                } else {
+                    transaction.command = ["python3", helper, action, app.id]
+                }
+                transaction.running = true
+            }
+            function act(app) {
+                app = live(app)
+                if (app.update) transact("update", app)
+                else if (app.installed) {
+                    if (app.source === "mac" && !darling) askDarling = true
+                    else transact("launch", app)
+                } else transact("install", app)
+            }
+            function consume(line) {
+                if (!line || !line.trim()) return
+                try {
+                    const e = JSON.parse(line)
+                    if (e.event === "progress") { progress = e.progress ?? progress; message = e.message ?? message }
+                    else if (e.event === "done") progress = 1
+                    else if (e.event === "error") {
+                        if (e.code === "no-darling") askDarling = true
+                        else { error = e.message ?? "That didn't work."; errorDetails = e.details ?? "" }
+                    }
+                } catch (err) {}
+            }
             Process {
                 id: transaction
-                stdout: SplitParser { onRead: (line) => store.consumeTransaction(line) }
+                stdout: SplitParser { onRead: (line) => store.consume(line) }
                 onExited: (code) => {
-                    const action = store.activeAction
-                    const id = store.activeId
+                    const id = store.activeId, action = store.activeAction, wasMac = transaction.command[1] === store.macHelper
                     store.busy = false
                     store.activeId = ""
                     store.activeAction = ""
-                    if (code === 0 && action !== "launch")
-                        Qt.callLater(() => store.reload(false))
-                    else if (code !== 0 && !store.operationError)
-                        store.operationError = store.operationMessage && store.operationMessage !== "Done"
-                            ? store.operationMessage
-                            : "The App Store operation did not complete."
+                    if (code !== 0 && !store.error && !store.askDarling) store.error = store.message || "That didn't complete."
+                    if (code === 0 && store.queue.length) {
+                        // Update All: the next one, then reload once at the end.
+                        const next = store.queue[0]
+                        store.queue = store.queue.slice(1)
+                        Qt.callLater(() => store.transact("update", next))
+                        return
+                    }
+                    store.queue = []
+                    // Installs and removals change both lists; opening a Mac app
+                    // changes its record (whether it opened).
+                    if (action !== "launch") Qt.callLater(() => store.reload(false))
+                    else if (wasMac) store.reloadMac(false)
                 }
             }
 
-            Rectangle {
-                anchors.fill: parent
-                color: Theme.contentBg
+            // ---------------------------------------------------- pieces
+            // An app's icon: its own, or a monogram on a colour of its own.
+            component AppIcon: Item {
+                id: icon
+                property var app
+                property real size: 56
+                width: size; height: size
+                readonly property string path: app?.icon ? "file://" + app.icon
+                    : app?.source === "linux" ? Quickshell.iconPath(app.id, true) : ""
+                readonly property var hues: [["#5e9cf8", "#2f5fd6"], ["#ff9f5a", "#e8613c"], ["#7bd88f", "#2f9e57"], ["#c88cf5", "#7c4bd8"],
+                                             ["#ff7d9b", "#d93d6a"], ["#5ad1d6", "#1f8fa6"], ["#f7c948", "#d9922b"], ["#9aa5b8", "#5d6880"]]
+                readonly property var hue: hues[Array.from(app?.name ?? "?").reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7) % hues.length]
+                Image {
+                    anchors.fill: parent
+                    visible: !!icon.path && status === Image.Ready
+                    source: icon.path
+                    sourceSize: Qt.size(icon.size * 2, icon.size * 2)
+                    smooth: true; mipmap: true
+                    asynchronous: true
+                }
+                Rectangle {
+                    anchors { fill: parent; margins: icon.size * 0.06 }
+                    visible: !icon.path
+                    radius: width * 0.225
+                    gradient: Gradient {
+                        GradientStop { position: 0; color: icon.hue[0] }
+                        GradientStop { position: 1; color: icon.hue[1] }
+                    }
+                    border { width: 0.5; color: "#26000000" }
+                    Text {
+                        anchors.centerIn: parent
+                        text: (icon.app?.name ?? "?").replace(/^the /i, "").charAt(0).toUpperCase()
+                        color: "#ffffff"
+                        font { family: Theme.fontDisplay; pixelSize: icon.size * 0.46; weight: Font.Bold }
+                    }
+                }
             }
+
+            // GET / OPEN / UPDATE, as on the Mac: a grey capsule with the accent's
+            // bold label; while working, a ring that fills with the progress.
+            component GetButton: Item {
+                id: get
+                property var app
+                property bool large: false
+                readonly property var current: store.live(app)
+                readonly property bool working: store.busy && store.activeId === app?.id
+                readonly property string label: current?.update ? "UPDATE" : current?.installed ? "OPEN" : "GET"
+                signal pressed()
+                implicitWidth: working ? implicitHeight : Math.max(large ? 84 : 66, text.implicitWidth + 28)
+                implicitHeight: large ? 32 : 28
+                width: implicitWidth; height: implicitHeight
+                Behavior on implicitWidth { NumberAnimation { duration: Theme.reduceMotion ? 1 : 180; easing.type: Easing.OutCubic } }
+                Rectangle {
+                    anchors.fill: parent
+                    radius: height / 2
+                    visible: !get.working
+                    color: get.large ? Theme.accent : tap.pressed ? (Theme.dark ? "#4a4a4e" : "#dcdce0") : (Theme.dark ? "#3a3a3c" : "#e9e9ec")
+                    opacity: store.busy && !get.working ? 0.55 : 1
+                    Text {
+                        id: text
+                        anchors.centerIn: parent
+                        text: get.label
+                        color: get.large ? "#ffffff" : Theme.accent
+                        font { family: Theme.fontUi; pixelSize: get.large ? 14 : 13; weight: Font.Bold; letterSpacing: 0.3 }
+                    }
+                }
+                // The progress ring, with a stop square in it.
+                Shape {
+                    anchors.fill: parent
+                    visible: get.working
+                    preferredRendererType: Shape.CurveRenderer
+                    ShapePath {
+                        strokeColor: Theme.dark ? "#3a3a3c" : "#e3e3e6"; strokeWidth: 2.5; fillColor: "transparent"
+                        PathAngleArc { centerX: get.width / 2; centerY: get.height / 2; radiusX: get.height / 2 - 2; radiusY: radiusX; startAngle: 0; sweepAngle: 360 }
+                    }
+                    ShapePath {
+                        strokeColor: Theme.accent; strokeWidth: 2.5; fillColor: "transparent"; capStyle: ShapePath.RoundCap
+                        PathAngleArc { centerX: get.width / 2; centerY: get.height / 2; radiusX: get.height / 2 - 2; radiusY: radiusX; startAngle: -90; sweepAngle: 360 * Math.max(0.03, store.progress) }
+                    }
+                }
+                Rectangle { anchors.centerIn: parent; visible: get.working; width: 8; height: 8; radius: 1.5; color: Theme.accent }
+                TapHandler { id: tap; enabled: !store.busy; onTapped: get.pressed() }
+                Accessible.role: Accessible.Button
+                Accessible.name: get.label + " " + (app?.name ?? "")
+            }
+
+            // A row in a shelf: icon, name and what it does, and its button.
+            component Lockup: Item {
+                id: lockup
+                property var app
+                implicitHeight: 76
+                Rectangle {
+                    anchors { fill: parent; margins: 2 }
+                    radius: 12
+                    color: lockHover.hovered ? (Theme.dark ? "#0dffffff" : "#08000000") : "transparent"
+                }
+                AppIcon { id: lockIcon; x: 6; anchors.verticalCenter: parent.verticalCenter; app: lockup.app; size: 58 }
+                Column {
+                    anchors { left: lockIcon.right; leftMargin: 12; right: lockGet.left; rightMargin: 10; verticalCenter: parent.verticalCenter }
+                    spacing: 2
+                    Row {
+                        spacing: 6
+                        width: parent.width
+                        Text {
+                            width: Math.min(implicitWidth, parent.width - (macTag.visible ? macTag.width + 6 : 0))
+                            text: lockup.app?.name ?? ""
+                            elide: Text.ElideRight
+                            color: Theme.label
+                            font { family: Theme.fontUi; pixelSize: 13; weight: Font.DemiBold }
+                        }
+                        Rectangle {
+                            id: macTag
+                            visible: lockup.app?.source === "mac"
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: macText.implicitWidth + 8; height: 15; radius: 4
+                            color: "transparent"
+                            border { width: 1; color: Theme.tertiaryLabel }
+                            Text { id: macText; anchors.centerIn: parent; text: "MAC"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: 9; weight: Font.Bold; letterSpacing: 0.5 } }
+                        }
+                    }
+                    Text {
+                        width: parent.width
+                        text: lockup.app?.summary || ""
+                        maximumLineCount: 2
+                        wrapMode: Text.Wrap
+                        elide: Text.ElideRight
+                        color: Theme.secondaryLabel
+                        font { family: Theme.fontUi; pixelSize: 12 }
+                    }
+                }
+                GetButton { id: lockGet; anchors { right: parent.right; rightMargin: 8; verticalCenter: parent.verticalCenter }
+                    app: lockup.app; onPressed: store.act(lockup.app) }
+                Rectangle { anchors { left: lockIcon.right; leftMargin: 12; right: parent.right; bottom: parent.bottom }
+                    height: 1; color: Theme.separator; opacity: 0.6 }
+                HoverHandler { id: lockHover }
+                TapHandler { onTapped: store.detail = lockup.app }
+            }
+
+            // A titled shelf: rows of lockups, three across on a wide window.
+            component Shelf: Column {
+                id: shelf
+                property string title
+                property string subtitle
+                property var apps: []
+                property int rows: 2
+                property string seeAll: ""
+                readonly property int columns: Math.max(1, Math.floor(width / 320))
+                visible: apps.length > 0
+                spacing: 6
+                Item {
+                    width: parent.width; height: 30
+                    Column {
+                        anchors.bottom: parent.bottom
+                        Text { text: shelf.title; color: Theme.label; font { family: Theme.fontUi; pixelSize: 20; weight: Font.Bold } }
+                    }
+                    Text {
+                        anchors { right: parent.right; bottom: parent.bottom; bottomMargin: 3 }
+                        visible: !!shelf.seeAll
+                        text: "See All"
+                        color: Theme.accent
+                        font { family: Theme.fontUi; pixelSize: 13 }
+                        TapHandler { onTapped: { store.page = shelf.seeAll; scroll.contentY = 0 } }
+                    }
+                }
+                Text {
+                    visible: !!shelf.subtitle
+                    width: parent.width
+                    text: shelf.subtitle
+                    wrapMode: Text.WordWrap
+                    color: Theme.secondaryLabel
+                    font { family: Theme.fontUi; pixelSize: 13 }
+                }
+                Grid {
+                    width: parent.width
+                    columns: shelf.columns
+                    columnSpacing: 18
+                    Repeater {
+                        model: shelf.apps.slice(0, shelf.rows > 0 ? shelf.columns * shelf.rows : shelf.apps.length)
+                        Lockup { required property var modelData; app: modelData; width: (shelf.width - 18 * (shelf.columns - 1)) / shelf.columns }
+                    }
+                }
+            }
+
+            component PageTitle: Text {
+                color: Theme.label
+                font { family: Theme.fontDisplay; pixelSize: 30; weight: Font.Bold }
+            }
+
+            // ---------------------------------------------------- the pages
+            Rectangle { anchors.fill: parent; color: Theme.contentBg }
 
             Flickable {
                 id: scroll
-                anchors { fill: parent; leftMargin: 24; rightMargin: 14; topMargin: 12; bottomMargin: 12 }
+                visible: !store.detail
+                anchors { fill: parent; leftMargin: 28; rightMargin: 24 }
+                topMargin: win.toolbarHeight + 4
+                bottomMargin: 30
                 contentWidth: width
-                contentHeight: content.implicitHeight + 32
+                contentHeight: pages.implicitHeight
                 clip: true
                 boundsBehavior: Flickable.StopAtBounds
 
                 Column {
-                    id: content
+                    id: pages
                     width: scroll.width
-                    spacing: 18
+                    spacing: 28
 
-                    Rectangle {
-                        visible: store.page === "discover" && !store.query.trim() && !store.loading && !store.loadError
+                    // ---------------- search
+                    Column {
+                        visible: !!store.query.trim()
                         width: parent.width
-                        height: visible ? 190 : 0
-                        radius: 24
-                        clip: true
-
-                        gradient: Gradient {
-                            orientation: Gradient.Horizontal
-                            GradientStop { position: 0; color: Theme.dark ? "#244c8f" : "#75aaf5" }
-                            GradientStop { position: 1; color: Theme.dark ? "#6d3f7f" : "#d48ad2" }
-                        }
-
-                        Column {
-                            anchors { left: parent.left; leftMargin: 28; verticalCenter: parent.verticalCenter }
-                            width: parent.width * 0.58
-                            spacing: 7
-
-                            Text {
-                                text: "DISCOVER"
-                                color: "#d9ffffff"
-                                font { family: Theme.fontUi; pixelSize: 11; weight: Font.DemiBold; letterSpacing: 1.2 }
-                            }
-                            Text {
-                                text: "Apps that feel at home on Golden Gate."
-                                width: parent.width
-                                wrapMode: Text.WordWrap
-                                color: "#ffffff"
-                                font { family: Theme.fontUi; pixelSize: 28; weight: Font.Bold }
-                            }
-                            Text {
-                                text: "Open-source software from Flathub, installed into your account."
-                                width: parent.width
-                                wrapMode: Text.WordWrap
-                                color: "#e8ffffff"
-                                font { family: Theme.fontUi; pixelSize: 13 }
-                            }
-                        }
-
-                        Symbol {
-                            anchors { right: parent.right; rightMargin: 44; verticalCenter: parent.verticalCenter }
-                            name: "apps"
-                            size: 88
-                            tone: "white"
-                            opacity: 0.86
+                        spacing: 22
+                        PageTitle { text: "Results for “" + store.query.trim() + "”" }
+                        Shelf { width: parent.width; title: "Linux Apps"; apps: store.results.linux; rows: 0 }
+                        Shelf { width: parent.width; title: "Mac Apps"; apps: store.results.mac; rows: 0 }
+                        EmptyState {
+                            visible: !store.results.linux.length && !store.results.mac.length
+                            width: parent.width; height: 240
+                            symbol: "search"; title: "No Results"
+                            text: "Nothing in the App Store matches “" + store.query.trim() + "”."
                         }
                     }
 
-                    Text {
-                        visible: !store.loading && !store.loadError
-                        text: store.query.trim() ? "Results"
-                            : store.page === "discover" ? "Apps"
-                            : store.pageTitle
-                        color: Theme.label
-                        font { family: Theme.fontUi; pixelSize: 21; weight: Font.Bold }
-                    }
-
-                    EmptyState {
-                        visible: store.loading
+                    // ---------------- Discover
+                    Column {
+                        visible: !store.query.trim() && store.page === "discover"
                         width: parent.width
-                        height: 260
-                        symbol: "arrow-clockwise"
-                        title: "Loading the App Store"
-                        text: "Refreshing Flathub metadata and your installed applications."
-                    }
+                        spacing: 30
+                        PageTitle { text: "Discover" }
 
-                    ProgressBar {
-                        visible: store.loading
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        width: 260
-                        indeterminate: true
-                    }
-
-                    EmptyState {
-                        visible: !!store.loadError && !store.loading
-                        width: parent.width
-                        height: 300
-                        symbol: "wifi"
-                        title: "App Store Unavailable"
-                        text: store.loadError
-                        actionText: "Try Again"
-                        onAction: store.reload(true)
-                    }
-
-                    GridView {
-                        id: grid
-                        visible: !store.loading && !store.loadError
-                        width: parent.width
-                        height: visible ? Math.ceil(store.shownApps.length / Math.max(1, Math.floor(width / 330))) * 116 : 0
-                        interactive: false
-                        clip: false
-                        cellWidth: Math.max(300, width / Math.max(1, Math.floor(width / 330)))
-                        cellHeight: 116
-                        model: store.shownApps
-
-                        delegate: Item {
-                            id: card
-                            required property var modelData
-                            width: grid.cellWidth
-                            height: grid.cellHeight
-
-                            Rectangle {
-                                anchors { fill: parent; margins: 5 }
-                                radius: 16
-                                color: cardHover.hovered
-                                    ? (Theme.dark ? "#14ffffff" : "#09000000")
-                                    : (Theme.dark ? "#0bffffff" : "#05000000")
-                                border { width: 0.5; color: Theme.separator }
-                                Behavior on color { ColorAnimation { duration: Theme.reduceMotion ? 1 : 100 } }
-
-                                Image {
-                                    id: appIcon
-                                    x: 14
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    width: 66
-                                    height: 66
-                                    source: card.modelData.icon
-                                        ? "file://" + card.modelData.icon
-                                        : Quickshell.iconPath(card.modelData.id, "application-x-executable")
-                                    sourceSize: Qt.size(132, 132)
-                                    smooth: true
-                                    mipmap: true
+                        // The editorial card: Mac apps.
+                        Rectangle {
+                            width: parent.width
+                            height: 270
+                            radius: 22
+                            clip: true
+                            gradient: Gradient {
+                                orientation: Gradient.Horizontal
+                                GradientStop { position: 0; color: "#1b2a6b" }
+                                GradientStop { position: 0.55; color: "#3b3fb4" }
+                                GradientStop { position: 1; color: "#8b5cf6" }
+                            }
+                            Column {
+                                anchors { left: parent.left; leftMargin: 32; verticalCenter: parent.verticalCenter }
+                                width: Math.min(440, parent.width * 0.52)
+                                spacing: 10
+                                Text { text: "NEW ON GOLDEN GATE"; color: "#b3ffffff"; font { family: Theme.fontUi; pixelSize: 11; weight: Font.Bold; letterSpacing: 1.2 } }
+                                Text {
+                                    width: parent.width
+                                    text: "Mac apps, right here."
+                                    wrapMode: Text.WordWrap
+                                    color: "#ffffff"
+                                    font { family: Theme.fontDisplay; pixelSize: 30; weight: Font.Bold }
                                 }
+                                Text {
+                                    width: parent.width
+                                    text: "Get apps made for the Mac straight from their developers. They open with Darling, the macOS translation layer — still experimental, so not every app runs yet."
+                                    wrapMode: Text.WordWrap
+                                    color: "#e6ffffff"
+                                    font { family: Theme.fontUi; pixelSize: 13 }
+                                    lineHeight: 1.1
+                                }
+                                Item { width: 1; height: 4 }
+                                Button { text: "Explore Mac Apps"; onClicked: store.page = "mac" }
+                            }
+                            // A fan of Mac apps.
+                            Repeater {
+                                model: store.featuredMac.slice(0, 5)
+                                AppIcon {
+                                    required property var modelData
+                                    required property int index
+                                    app: modelData
+                                    size: 92
+                                    x: parent.width - 150 - index * 70 + (index % 2) * 10
+                                    y: 40 + (index % 2) * 96
+                                    rotation: [-8, 6, -4, 9, -6][index]
+                                    visible: parent.width > 720 || index < 2
+                                }
+                            }
+                        }
 
-                                Column {
-                                    x: 94
-                                    y: 17
-                                    width: parent.width - x - 100
-                                    spacing: 4
+                        Shelf {
+                            width: parent.width
+                            title: "Popular Mac Apps"
+                            subtitle: "Downloaded from each developer, and checked against its published checksum where there is one."
+                            apps: store.featuredMac
+                            seeAll: "mac"
+                        }
+                        Shelf { width: parent.width; title: "Create"; apps: store.inCategory("create"); seeAll: "create" }
+                        Shelf { width: parent.width; title: "Work"; apps: store.inCategory("work"); seeAll: "work" }
+                        Shelf { width: parent.width; title: "Play"; apps: store.inCategory("play"); seeAll: "play"; rows: 1 }
+                        Shelf { width: parent.width; title: "Essentials"; apps: store.linuxApps.filter((a) => !a.installed); rows: 2 }
+                    }
 
+                    // ---------------- Mac Apps
+                    Column {
+                        visible: !store.query.trim() && store.page === "mac"
+                        width: parent.width
+                        spacing: 26
+                        PageTitle { text: "Mac Apps" }
+                        // Whether Mac apps can open here, said plainly.
+                        Rectangle {
+                            width: parent.width
+                            height: darlingCard.implicitHeight + 36
+                            radius: 18
+                            color: Theme.dark ? "#14ffffff" : "#08000000"
+                            border { width: 0.5; color: Theme.separator }
+                            RowLayout {
+                                id: darlingCard
+                                anchors { left: parent.left; right: parent.right; verticalCenter: parent.verticalCenter; leftMargin: 20; rightMargin: 20 }
+                                spacing: 16
+                                Rectangle {
+                                    Layout.preferredWidth: 46; Layout.preferredHeight: 46; radius: 23
+                                    color: store.darling ? "#2f9e57" : Theme.accent
+                                    Symbol { anchors.centerIn: parent; name: store.darling ? "checkmark" : "window"; size: 22; tone: "white" }
+                                }
+                                ColumnLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 3
                                     Text {
-                                        width: parent.width
-                                        text: card.modelData.name
-                                        elide: Text.ElideRight
+                                        text: store.darling ? "Mac app support is ready" : "Set up Mac app support"
                                         color: Theme.label
-                                        font { family: Theme.fontUi; pixelSize: 14; weight: Font.DemiBold }
+                                        font { family: Theme.fontUi; pixelSize: 15; weight: Font.DemiBold }
                                     }
-
                                     Text {
-                                        width: parent.width
-                                        text: card.modelData.summary || card.modelData.id
-                                        maximumLineCount: 2
-                                        elide: Text.ElideRight
-                                        wrapMode: Text.Wrap
+                                        Layout.fillWidth: true
+                                        wrapMode: Text.WordWrap
                                         color: Theme.secondaryLabel
-                                        font { family: Theme.fontUi; pixelSize: 11 }
-                                    }
-
-                                    Text {
-                                        visible: card.modelData.update
-                                        text: "Update available"
-                                        color: Theme.accent
-                                        font { family: Theme.fontUi; pixelSize: 10; weight: Font.DemiBold }
+                                        font { family: Theme.fontUi; pixelSize: 12 }
+                                        text: (store.darling
+                                            ? "Mac apps open with Darling, the macOS translation layer."
+                                            : "Mac apps open with Darling, the macOS translation layer. Setting it up builds it on this computer: about an hour and 10 GB of space, in a Terminal window.")
+                                            + " Darling runs Intel Mac apps, and its support for apps with windows is still experimental: many don't open yet. Each app's page says how it went."
                                     }
                                 }
-
                                 Button {
-                                    anchors { right: parent.right; rightMargin: 14; verticalCenter: parent.verticalCenter }
-                                    width: 72
-                                    enabled: !store.busy || store.activeId === card.modelData.id
-                                    text: card.modelData.update ? "Update"
-                                        : card.modelData.installed ? "Open"
-                                        : "Get"
-                                    prominent: !card.modelData.installed || card.modelData.update
-                                    onClicked: {
-                                        if (card.modelData.update)
-                                            store.transact("update", card.modelData.id)
-                                        else if (card.modelData.installed)
-                                            store.transact("launch", card.modelData.id)
-                                        else
-                                            store.transact("install", card.modelData.id)
-                                    }
+                                    visible: !store.darling
+                                    text: "Set Up…"
+                                    prominent: true
+                                    onClicked: store.setUpDarling()
                                 }
                             }
+                        }
+                        EmptyState {
+                            visible: !!store.macError && !store.mac.length
+                            width: parent.width; height: 220
+                            symbol: "wifi"; title: "Mac Apps Unavailable"; text: store.macError
+                            actionText: "Try Again"
+                            onAction: store.reloadMac(true)
+                        }
+                        Shelf { width: parent.width; title: "Popular on the Mac"; apps: store.featuredMac; rows: 3 }
+                        Shelf {
+                            width: parent.width
+                            title: "All Mac Apps"
+                            subtitle: store.mac.length > 90 ? store.mac.length.toLocaleString(Qt.locale(), "f", 0) + " apps. Search to find any of them." : ""
+                            apps: store.macApps
+                            rows: 30
+                        }
+                    }
 
-                            HoverHandler { id: cardHover }
+                    // ---------------- categories
+                    Column {
+                        visible: !store.query.trim() && ["create", "work", "play", "develop"].includes(store.page)
+                        width: parent.width
+                        spacing: 22
+                        PageTitle { text: ({ create: "Create", work: "Work", play: "Play", develop: "Develop" })[store.page] ?? "" }
+                        Shelf { width: parent.width; title: ""; apps: store.inCategory(store.page); rows: 0 }
+                        EmptyState {
+                            visible: !store.loading && !store.inCategory(store.page).length
+                            width: parent.width; height: 240
+                            symbol: store.loadError ? "wifi" : "apps"
+                            title: store.loadError ? "Flathub Unavailable" : "Nothing Here Yet"
+                            text: store.loadError || "No apps in this section yet."
+                            actionText: store.loadError ? "Try Again" : ""
+                            onAction: store.reload(true)
+                        }
+                    }
+
+                    // ---------------- Updates and Installed
+                    Column {
+                        visible: !store.query.trim() && (store.page === "updates" || store.page === "installed")
+                        width: parent.width
+                        spacing: 22
+                        RowLayout {
+                            width: parent.width
+                            PageTitle { text: store.page === "updates" ? "Updates" : "Installed"; Layout.fillWidth: true }
+                            Button {
+                                visible: store.page === "updates" && store.updates.length > 1
+                                text: "Update All"
+                                enabled: !store.busy
+                                onClicked: { store.queue = store.updates.slice(1); store.transact("update", store.updates[0]) }
+                            }
+                        }
+                        Shelf { width: parent.width; title: ""; apps: store.page === "updates" ? store.updates : store.installed; rows: 0 }
+                        EmptyState {
+                            visible: !(store.page === "updates" ? store.updates : store.installed).length
+                            width: parent.width; height: 240
+                            symbol: store.page === "updates" ? "checkmark" : "apps"
+                            title: store.page === "updates" ? "You're Up to Date" : "Nothing Installed Yet"
+                            text: store.page === "updates" ? "Updates to your apps show up here." : "Apps you get from the App Store show up here."
                         }
                     }
 
                     EmptyState {
-                        visible: !store.loading && !store.loadError && store.shownApps.length === 0
-                        width: parent.width
-                        height: 260
-                        symbol: "search"
-                        title: store.query.trim() ? "No Results" : "Nothing Here Yet"
-                        text: store.query.trim()
-                            ? "No Flathub applications match “" + store.query.trim() + "”."
-                            : "There are no applications in this section."
+                        visible: store.loading && store.macLoading
+                        width: parent.width; height: 220
+                        symbol: "arrow-clockwise"; title: "Loading the App Store"; text: "Getting the latest apps…"
                     }
                 }
             }
 
-            Glass {
-                visible: store.busy || !!store.operationError
-                anchors {
-                    left: parent.left; right: parent.right; bottom: parent.bottom
-                    leftMargin: 24; rightMargin: 24; bottomMargin: 18
-                }
-                height: 64
-                radius: 18
-                tint: Theme.glassRegular.tint
-                z: 20
+            // ---------------------------------------------------- an app's page
+            Flickable {
+                id: page
+                visible: !!store.detail
+                readonly property var app: store.live(store.detail)
+                anchors { fill: parent; leftMargin: 36; rightMargin: 32 }
+                topMargin: win.toolbarHeight + 18
+                bottomMargin: 30
+                contentWidth: width
+                contentHeight: detailColumn.implicitHeight
+                clip: true
+                boundsBehavior: Flickable.StopAtBounds
+                onAppChanged: contentY = -topMargin
 
                 Column {
-                    anchors { left: parent.left; right: parent.right; leftMargin: 18; rightMargin: 18; verticalCenter: parent.verticalCenter }
-                    spacing: 7
-
-                    Row {
+                    id: detailColumn
+                    width: page.width
+                    spacing: 22
+                    RowLayout {
                         width: parent.width
+                        spacing: 24
+                        AppIcon { app: page.app; size: 128; Layout.alignment: Qt.AlignTop }
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 6
+                            Text {
+                                Layout.fillWidth: true
+                                text: page.app?.name ?? ""
+                                wrapMode: Text.WordWrap
+                                color: Theme.label
+                                font { family: Theme.fontDisplay; pixelSize: 28; weight: Font.Bold }
+                            }
+                            Text {
+                                Layout.fillWidth: true
+                                text: page.app?.summary ?? ""
+                                wrapMode: Text.WordWrap
+                                color: Theme.secondaryLabel
+                                font { family: Theme.fontUi; pixelSize: 15 }
+                            }
+                            Item { Layout.preferredHeight: 8; Layout.preferredWidth: 1 }
+                            Row {
+                                spacing: 14
+                                GetButton { app: page.app; large: true; onPressed: store.act(page.app) }
+                                Text {
+                                    visible: !!page.app?.installed && !store.busy
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: "Remove"
+                                    color: Theme.accentRed
+                                    font { family: Theme.fontUi; pixelSize: 13 }
+                                    TapHandler { onTapped: store.transact("remove", page.app) }
+                                }
+                            }
+                        }
+                    }
+
+                    Rectangle { width: parent.width; height: 1; color: Theme.separator }
+
+                    // The facts, in columns, as on the Mac.
+                    Row {
+                        id: facts
+                        width: parent.width
+                        readonly property var items: !page.app ? [] : page.app.source === "mac" ? [
+                            ["SOURCE", "Developer", "download"],
+                            ["VERSION", page.app.version || "—", ""],
+                            ["REQUIRES", page.app.minMacOS ? "macOS " + page.app.minMacOS + "+" : "Intel Mac app", "on the Mac"],
+                            ["RUNS WITH", "Darling", store.darling ? "ready" : "not set up"],
+                            ["ON THIS COMPUTER", page.app.opened === true ? "Opens" : page.app.opened === false ? "Didn't open" : page.app.installed ? "Not opened yet" : "Not tried", ""]
+                        ] : [
+                            ["SOURCE", "Flathub", "Linux app"],
+                            ["CATEGORY", (page.app.categories ?? [])[0] ?? "App", ""],
+                            ["STATUS", page.app.update ? "Update" : page.app.installed ? "Installed" : "Not installed", ""]
+                        ]
+                        Repeater {
+                            model: facts.items
+                            Item {
+                                required property var modelData
+                                required property int index
+                                width: facts.width / Math.max(1, facts.items.length); height: 64
+                                Rectangle { visible: index > 0; width: 1; height: 40; anchors.verticalCenter: parent.verticalCenter; color: Theme.separator }
+                                Column {
+                                    anchors { horizontalCenter: parent.horizontalCenter; top: parent.top; topMargin: 8 }
+                                    spacing: 3
+                                    Text { anchors.horizontalCenter: parent.horizontalCenter; text: modelData[0]; color: Theme.tertiaryLabel; font { family: Theme.fontUi; pixelSize: 10; weight: Font.DemiBold; letterSpacing: 0.6 } }
+                                    Text { anchors.horizontalCenter: parent.horizontalCenter; text: modelData[1]; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: 17; weight: Font.Bold } }
+                                    Text { anchors.horizontalCenter: parent.horizontalCenter; visible: !!modelData[2]; text: modelData[2]; color: Theme.tertiaryLabel; font { family: Theme.fontUi; pixelSize: 11 } }
+                                }
+                            }
+                        }
+                    }
+
+                    Rectangle { width: parent.width; height: 1; color: Theme.separator }
+
+                    // Mac apps: what to expect, and what happened last time.
+                    Rectangle {
+                        visible: page.app?.source === "mac"
+                        width: parent.width
+                        height: macNote.implicitHeight + 32
+                        radius: 14
+                        color: page.app?.opened === false ? (Theme.dark ? "#33ff9f0a" : "#1aff9f0a") : (Theme.dark ? "#0fffffff" : "#07000000")
+                        Column {
+                            id: macNote
+                            anchors { left: parent.left; right: parent.right; top: parent.top; margins: 16 }
+                            spacing: 8
+                            Text {
+                                width: parent.width
+                                wrapMode: Text.WordWrap
+                                color: Theme.label
+                                font { family: Theme.fontUi; pixelSize: 13; weight: Font.DemiBold }
+                                text: page.app?.opened === false ? "This app didn't open under Darling last time."
+                                    : page.app?.opened === true ? "This app opened under Darling on this computer."
+                                    : "A Mac app, run with Darling"
+                            }
+                            Text {
+                                width: parent.width
+                                wrapMode: Text.WordWrap
+                                color: Theme.secondaryLabel
+                                font { family: Theme.fontUi; pixelSize: 12 }
+                                text: "It's downloaded from " + (page.app?.homepage ? page.app.homepage.replace(/^https?:\/\//, "").replace(/\/.*$/, "") : "its developer")
+                                    + (page.app?.checksum ? ", checked against its published checksum," : " (its developer doesn't publish a checksum for it),")
+                                    + " and installed in Applications in your home folder. Darling runs Intel Mac apps; apps built only for Apple silicon are refused before anything is installed. Support for apps with windows is experimental, so many don't open yet."
+                            }
+                            Text {
+                                visible: !!page.app?.lastError
+                                width: parent.width
+                                wrapMode: Text.WrapAnywhere
+                                text: page.app?.lastError ?? ""
+                                color: Theme.secondaryLabel
+                                font { family: "SF Mono"; pixelSize: 11 }
+                            }
+                        }
+                    }
+
+                    Text {
+                        visible: !!page.app?.homepage
+                        text: "Developer Website"
+                        color: Theme.accent
+                        font { family: Theme.fontUi; pixelSize: 13 }
+                        TapHandler { onTapped: Quickshell.execDetached(["xdg-open", page.app.homepage]) }
+                    }
+                }
+            }
+
+            // ---------------------------------------------------- sheets and notices
+            // Opening a Mac app before Darling is set up.
+            Rectangle {
+                anchors.fill: parent
+                visible: store.askDarling
+                color: "#40000000"
+                z: 30
+                MouseArea { anchors.fill: parent; onClicked: store.askDarling = false }
+                Glass {
+                    anchors.centerIn: parent
+                    width: 380; height: sheet.implicitHeight + 40
+                    radius: 22
+                    tint: Theme.glassRegular.tint
+                    MouseArea { anchors.fill: parent }
+                    Column {
+                        id: sheet
+                        anchors { left: parent.left; right: parent.right; top: parent.top; margins: 20 }
+                        spacing: 10
+                        Symbol { anchors.horizontalCenter: parent.horizontalCenter; name: "window"; size: 36; tone: "accent" }
+                        Text { width: parent.width; horizontalAlignment: Text.AlignHCenter; text: "Mac app support isn't set up"; color: Theme.label; font { family: Theme.fontUi; pixelSize: 15; weight: Font.Bold } }
                         Text {
-                            width: parent.width - progressText.width - closeError.width
-                            text: store.operationError || store.operationMessage
+                            width: parent.width; horizontalAlignment: Text.AlignHCenter; wrapMode: Text.WordWrap
+                            text: "Mac apps open with Darling. Setting it up builds it on this computer, which takes about an hour, in a Terminal window."
+                            color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: 12 }
+                        }
+                        Item { width: 1; height: 4 }
+                        Row {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            spacing: 8
+                            Button { width: 150; text: "Not Now"; onClicked: store.askDarling = false }
+                            Button { width: 150; text: "Set Up…"; prominent: true; onClicked: store.setUpDarling() }
+                        }
+                    }
+                }
+            }
+
+            // What's happening, and what went wrong.
+            Glass {
+                visible: store.busy || !!store.error
+                anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: 18 }
+                width: Math.min(parent.width - 48, 560)
+                height: notice.implicitHeight + 24
+                radius: 16
+                tint: Theme.glassRegular.tint
+                z: 20
+                ColumnLayout {
+                    id: notice
+                    anchors { left: parent.left; right: parent.right; verticalCenter: parent.verticalCenter; leftMargin: 16; rightMargin: 12 }
+                    spacing: 6
+                    RowLayout {
+                        Layout.fillWidth: true
+                        Text {
+                            Layout.fillWidth: true
+                            text: store.error || store.message
+                            wrapMode: Text.WordWrap
+                            maximumLineCount: 3
                             elide: Text.ElideRight
                             color: Theme.label
                             font { family: Theme.fontUi; pixelSize: 12; weight: Font.Medium }
                         }
-                        Text {
-                            id: progressText
-                            visible: store.busy
-                            text: Math.round(store.operationProgress * 100) + "%"
-                            color: Theme.secondaryLabel
-                            font { family: Theme.fontUi; pixelSize: 11 }
-                        }
-                        Button {
-                            id: closeError
-                            visible: !!store.operationError && !store.busy
-                            text: "Dismiss"
-                            onClicked: store.operationError = ""
-                        }
+                        Button { visible: !!store.error && !store.busy; text: "OK"; onClicked: { store.error = ""; store.errorDetails = "" } }
                     }
-
-                    ProgressBar {
-                        visible: store.busy
-                        width: parent.width
-                        value: store.operationProgress
-                        indeterminate: store.operationProgress < 0.1
+                    Text {
+                        Layout.fillWidth: true
+                        visible: !!store.errorDetails
+                        text: store.errorDetails
+                        wrapMode: Text.WrapAnywhere
+                        maximumLineCount: 4
+                        elide: Text.ElideRight
+                        color: Theme.secondaryLabel
+                        font { family: "SF Mono"; pixelSize: 10 }
                     }
+                    ProgressBar { visible: store.busy; Layout.fillWidth: true; value: store.progress; indeterminate: store.progress < 0.05 }
                 }
             }
         }

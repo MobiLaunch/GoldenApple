@@ -115,6 +115,20 @@ screen, ⇧⌘4 a part of it (Space for a window), ⌃ added for the clipboard, 
 the toolbar, which also records the screen or a selection (stop it from the menu
 bar) and keeps your choice of where to save, a timer and the floating thumbnail.
 
+**App Store, and Mac apps.** The App Store is laid out like the Mac's (Discover,
+Create, Work, Play, Develop, a page for each app, Updates) and installs Linux apps
+from Flathub. Its **Mac Apps** section offers the Mac apps developers ship as
+downloads (the Homebrew Cask catalog, about 7,000 of them): Get downloads one from
+its developer, checks it against the published checksum where there is one, and
+installs it in `~/Applications` with its icon in Launchpad. Mac apps open with
+[Darling](https://www.darlinghq.org), the macOS translation layer; **Set Up…**
+builds Darling from the AUR in a Terminal window (about an hour). Be aware that
+Darling runs command-line programs well but its support for apps with windows is
+experimental, so many Mac apps don't open yet: each app's page says whether it
+opened on your computer, and Darling's output when it didn't. Apps built only for
+Apple silicon are refused (Darling translates Intel code), and Mac App Store apps
+aren't offered (they're tied to an Apple ID and encrypted).
+
 **Developing apps: LCode.** `gg-lcode` (or LCode in Applications) is Golden Gate's
 Xcode, made so that anyone can build good-looking Linux apps. It follows Xcode 26's
 layout and keyboard shortcuts, and with the ⌘ layer they are the same keys: ⌘R runs,
