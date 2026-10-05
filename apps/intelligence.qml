@@ -1,5 +1,6 @@
 //@ pragma AppId org.goldengate.Intelligence
 import Quickshell
+import Quickshell.Io
 import QtQuick
 import QtQuick.Dialogs
 import "lib"
@@ -21,7 +22,10 @@ ShellRoot {
             text: "Citron Intelligence"; color: Theme.label
             font { family: Theme.fontUi; pixelSize: 14; weight: Font.DemiBold }
         }
-        toolbarRight: [ToolbarButton { symbol: "gear"; round: true; enabled: !service.busy; onClicked: app.page = "settings" }]
+        toolbarRight: [
+            ToolbarButton { symbol: "mic"; round: true; onClicked: voiceLaunch.startDetached() },
+            ToolbarButton { symbol: "gear"; round: true; enabled: !service.busy; onClicked: app.page = "settings" }
+        ]
         sidebar: [
             Column {
                 width: parent.width; spacing: 6
@@ -36,6 +40,12 @@ ShellRoot {
                         onClicked: app.switchPage(modelData[0])
                     }
                 }
+                SidebarRow {
+                    width: parent.width
+                    text: "Talk to Citron"
+                    symbol: "mic"
+                    onClicked: voiceLaunch.startDetached()
+                }
                 SidebarSection { text: "PREFERENCES"; topSpacing: 22 }
                 SidebarRow { width: parent.width; text: "Settings"; symbol: "gear"; selected: app.page === "settings"; enabled: !service.busy; onClicked: app.page = "settings" }
                 Text {
@@ -45,6 +55,7 @@ ShellRoot {
                 }
             }
         ]
+        Process { id: voiceLaunch; command: ["gg-intelligence", "--voice"] }
         Item {
             id: app
             anchors.fill: parent
