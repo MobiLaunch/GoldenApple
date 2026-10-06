@@ -1,13 +1,18 @@
 // Citron Live: summoned by ⇧⌘Space or Citron Intelligence → Talk.
-// A focused, dismissible Liquid Glass surface, never a background hot mic.
-// The Python helper owns ephemeral mic/speaker streams; the QML side only
-// receives level/status/transcription, not raw audio or API credentials.
+// As Siri on the Mac: a glow traces the screen's edges, Citron's orb floats
+// over a slim glass capsule (mic, a field to type into, send, close), and
+// live captions sit between them. Focused and dismissible, never a
+// background hot mic. The Python helper owns ephemeral mic/speaker streams;
+// the QML side only receives level/status/transcription, not raw audio or
+// API credentials.
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
 import QtQuick
+import QtQuick.Effects
 import "ui/theme"
 import "components"
+import "ui" as Shared
 
 PanelWindow {
     id: citron
@@ -21,6 +26,9 @@ PanelWindow {
     property real soundLevel: 0
     readonly property string helper: decodeURIComponent(
         Qt.resolvedUrl("ui/intelligence/live.py").toString().replace("file://", ""))
+    // What the orb does: it listens, thinks while connecting, speaks.
+    readonly property string orbMode: phase === "error" ? "error" : micMuted ? "muted"
+        : phase === "connecting" ? "thinking" : phase === "speaking" ? "speaking" : "listening"
 
     function present() {
         if (open) { textEntry.forceActiveFocus(); return }
@@ -48,6 +56,13 @@ PanelWindow {
         textEntry.text = ""
     }
     function toggle() { if (open) dismiss(); else present() }
+    function retry() {
+        voiceProc.running = false
+        phase = "connecting"
+        errorText = ""
+        everReady = false
+        Qt.callLater(() => { if (citron.open) voiceProc.running = true })
+    }
     function sendText() {
         const text = textEntry.text.trim()
         if (!text || !voiceProc.running || !everReady) return
@@ -55,6 +70,7 @@ PanelWindow {
         textEntry.text = ""
     }
     function toggleMic() {
+        if (phase === "error") { retry(); return }
         if (!voiceProc.running || !everReady) return
         micMuted = !micMuted
         voiceProc.write(JSON.stringify({action: "mute", enabled: micMuted}) + "\n")
@@ -69,7 +85,7 @@ PanelWindow {
         } else if (msg.event === "level") {
             soundLevel = micMuted ? 0 : Math.max(0, Math.min(1, Number(msg.value) || 0))
         } else if (msg.event === "transcript") {
-            if (msg.role === "user") youSaid = msg.text
+            if (msg.role === "user") { youSaid = msg.text; citronSaid = "" }
             if (msg.role === "assistant") citronSaid = msg.text
         } else if (msg.event === "notice") {
             citronSaid = msg.text
@@ -79,16 +95,19 @@ PanelWindow {
         }
     }
 
-    visible: open
+    // Stays mapped while it fades out.
+    property real shown: open ? 1 : 0
+    Behavior on shown { NumberAnimation { duration: Theme.reduceMotion ? 1 : (citron.open ? 420 : 240); easing.type: Easing.OutCubic } }
+    visible: open || shown > 0.01
     anchors { top: true; bottom: true; left: true; right: true }
     exclusionMode: ExclusionMode.Ignore
     color: "transparent"
-    WlrLayershell.namespace: "citron-intelligence-voice"
+    WlrLayershell.namespace: "gg-citron"
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: open ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
     // Transparent everywhere else: do not swallow clicks on underlying apps.
     Item { id: emptyMask; width: 0; height: 0; visible: false }
-    mask: Region { item: citron.open ? bubble : emptyMask }
+    mask: Region { item: citron.open ? stage : emptyMask }
 
     IpcHandler {
         target: "citron"
@@ -113,210 +132,200 @@ PanelWindow {
         }
     }
 
-    Rectangle {
-        id: bubble
+    // The edge glow: Citron's colours flowing round the screen's edges,
+    // brighter as you speak. Kept faint (HyprGlass leaves it clear).
+    property real flow: 0
+    FrameAnimation {
+        running: citron.visible && !Theme.reduceMotion
+        onTriggered: citron.flow = (citron.flow + frameTime * (citron.phase === "speaking" ? 0.22 : 0.12)) % 1
+    }
+    Item {
+        id: glow
+        anchors.fill: parent
+        opacity: citron.shown * (citron.orbMode === "muted" ? 0.35 : 0.75 + orb.energy * 0.25)
+        visible: opacity > 0.01
+        layer.enabled: GraphicsInfo.api !== GraphicsInfo.Software
+        layer.effect: MultiEffect { blurEnabled: true; blur: 1.0; blurMax: 32 }
+        readonly property var hues: orb.hues
+        readonly property real band: 10 + orb.energy * 8
+        // One edge: a band twice its length, repeating the colours once,
+        // sliding along it, so the flow never jumps.
+        component Edge: Item {
+            property bool across: true
+            property real offset: 0
+            clip: true
+            opacity: 0.42
+            Rectangle {
+                width: parent.across ? parent.width * 2 : parent.width
+                height: parent.across ? parent.height : parent.height * 2
+                x: parent.across ? -parent.offset * parent.width : 0
+                y: parent.across ? 0 : -parent.offset * parent.height
+                gradient: Gradient {
+                    orientation: parent.parent.across ? Gradient.Horizontal : Gradient.Vertical
+                    GradientStop { position: 0.0; color: glow.hues[0] }
+                    GradientStop { position: 0.125; color: glow.hues[1] }
+                    GradientStop { position: 0.25; color: glow.hues[2] }
+                    GradientStop { position: 0.375; color: glow.hues[3] }
+                    GradientStop { position: 0.5; color: glow.hues[0] }
+                    GradientStop { position: 0.625; color: glow.hues[1] }
+                    GradientStop { position: 0.75; color: glow.hues[2] }
+                    GradientStop { position: 0.875; color: glow.hues[3] }
+                    GradientStop { position: 1.0; color: glow.hues[0] }
+                }
+            }
+        }
+        Edge { anchors { left: parent.left; right: parent.right; top: parent.top } height: glow.band; across: true; offset: citron.flow }
+        Edge { anchors { left: parent.left; right: parent.right; bottom: parent.bottom } height: glow.band; across: true; offset: 1 - citron.flow }
+        Edge { anchors { top: parent.top; bottom: parent.bottom; left: parent.left } width: glow.band; across: false; offset: 1 - citron.flow }
+        Edge { anchors { top: parent.top; bottom: parent.bottom; right: parent.right } width: glow.band; across: false; offset: citron.flow }
+    }
+
+    // The orb, the captions and the capsule, above the Dock.
+    Item {
+        id: stage
         objectName: "citronVoiceBubble"
-        anchors { bottom: parent.bottom; horizontalCenter: parent.horizontalCenter; bottomMargin: 88 }
-        width: Math.min(530, citron.width - 28)
-        height: 218
-        radius: 35
-        color: "transparent"
+        anchors { bottom: parent.bottom; horizontalCenter: parent.horizontalCenter; bottomMargin: 96 }
+        width: Math.min(560, citron.width - 28)
+        height: orb.height + captions.height + capsule.height + 24
+        opacity: citron.shown
+        transform: Translate { y: (1 - citron.shown) * 18 }
         focus: citron.open
         Keys.onEscapePressed: citron.dismiss()
 
-        Glass {
-            anchors.fill: parent
-            role: "regular"
-            radius: bubble.radius
-            tint: Theme.dark ? "#d2242537" : "#e4e8e8fa"
-            shadow: "#68000000"
-        }
-        Rectangle {
-            anchors.fill: parent
-            anchors.margins: 1
-            radius: bubble.radius - 1
-            color: "transparent"
-            border { width: 1; color: Theme.dark ? "#60c7c3f9" : "#c2ffffff" }
-        }
-
-        // Responsive, refractive-looking Siri-style light bloom.
-        Item {
+        Shared.CitronOrb {
             id: orb
             objectName: "citronVoiceOrb"
-            width: 104 + citron.soundLevel * 14
-            height: width
-            anchors { top: parent.top; horizontalCenter: parent.horizontalCenter; topMargin: 10 }
-            scale: citron.phase === "speaking" ? 1.05 : 1
-            Behavior on width { NumberAnimation { duration: 95; easing.type: Easing.OutCubic } }
-            Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
-            Rectangle {
-                anchors.centerIn: parent
-                width: parent.width + 12
-                height: width
-                radius: width / 2
-                color: "transparent"
-                border { width: 1.5; color: "#4ec4bdfc" }
-                opacity: citron.phase === "connecting" ? 0.4 : 0.3 + citron.soundLevel * 0.65
+            anchors { top: parent.top; horizontalCenter: parent.horizontalCenter }
+            width: 136; height: 136
+            mode: citron.orbMode
+            level: citron.soundLevel
+            running: citron.visible
+            scale: 0.6 + 0.4 * citron.shown
+        }
+
+        // Live captions: what Citron says, else what you said, else the state.
+        Column {
+            id: captions
+            anchors { top: orb.bottom; topMargin: 6; horizontalCenter: parent.horizontalCenter }
+            width: parent.width - 40
+            spacing: 2
+            Text {
+                width: parent.width
+                horizontalAlignment: Text.AlignHCenter
+                text: citron.phase === "error" ? "Couldn't start voice"
+                    : citron.phase === "connecting" ? "Connecting…"
+                    : citron.phase === "speaking" ? "" : citron.micMuted ? "Microphone off" : "Listening…"
+                visible: text !== ""
+                color: "white"
+                font { family: Theme.fontUi; pixelSize: 13; weight: Font.DemiBold }
+                layer.enabled: GraphicsInfo.api !== GraphicsInfo.Software
+                layer.effect: MultiEffect { shadowEnabled: true; shadowColor: "#90000000"; shadowBlur: 0.6; shadowVerticalOffset: 1 }
             }
-            Rectangle {
+            Text {
+                id: caption
+                width: parent.width
+                horizontalAlignment: Text.AlignHCenter
+                wrapMode: Text.WordWrap
+                maximumLineCount: 2
+                elide: Text.ElideRight
+                text: citron.errorText || citron.citronSaid || (citron.youSaid ? "“" + citron.youSaid + "”" : "")
+                visible: text !== ""
+                color: citron.phase === "error" ? "#ffb3b5" : "white"
+                font { family: Theme.fontUi; pixelSize: citron.citronSaid ? 16 : 14; weight: citron.citronSaid ? Font.Medium : Font.Normal }
+                layer.enabled: GraphicsInfo.api !== GraphicsInfo.Software
+                layer.effect: MultiEffect { shadowEnabled: true; shadowColor: "#a0000000"; shadowBlur: 0.7; shadowVerticalOffset: 1 }
+            }
+        }
+
+        // The capsule: mic, a field to type into, send, close.
+        Item {
+            id: capsule
+            anchors { bottom: parent.bottom; horizontalCenter: parent.horizontalCenter }
+            width: parent.width
+            height: 50
+            Glass {
                 anchors.fill: parent
-                radius: width / 2
-                gradient: Gradient {
-                    GradientStop { position: 0.00; color: citron.phase === "muted" ? "#8d92a0" : "#c9f7ff" }
-                    GradientStop { position: 0.30; color: citron.phase === "muted" ? "#626878" : "#68a5ff" }
-                    GradientStop { position: 0.66; color: citron.phase === "muted" ? "#535d70" : "#b182f1" }
-                    GradientStop { position: 1.00; color: citron.phase === "error" ? "#e76b76" : "#553e9a" }
-                }
+                role: "regular"
+                radius: height / 2
+                tint: Theme.dark ? "#c8202230" : "#d8f2f2fa"
+                shadow: "#50000000"
             }
-            Rectangle {
-                id: shine
-                width: orb.width * 0.73
-                height: orb.height * 0.43
-                anchors { horizontalCenter: parent.horizontalCenter; top: parent.top; topMargin: 4 }
-                radius: width / 2
-                rotation: -18
-                color: "#aaffffff"
-                opacity: 0.24
-            }
-            Rectangle {
-                width: orb.width * 0.65
-                height: orb.height * 0.27
-                anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: 7 }
-                radius: width / 2
-                rotation: 14
-                color: "#d14968fa"
-                opacity: 0.45
-            }
-            Rectangle {
-                anchors.centerIn: parent
-                width: orb.width * 0.64
-                height: width
-                radius: width / 2
-                color: "#30ffffff"
-                opacity: citron.phase === "speaking" ? .75 : .3
-                SequentialAnimation on opacity {
-                    running: citron.open && !Theme.reduceMotion &&
-                        (citron.phase === "listening" || citron.phase === "speaking")
-                    loops: Animation.Infinite
-                    NumberAnimation { to: 0.12; duration: 850; easing.type: Easing.InOutSine }
-                    NumberAnimation { to: 0.72; duration: 1000; easing.type: Easing.InOutSine }
-                }
-            }
-        }
 
-        readonly property string prompt: citron.phase === "error" ? "Couldn't start voice"
-            : citron.phase === "connecting" ? "Connecting to Gemini Live…"
-            : citron.phase === "speaking" ? "Citron is speaking"
-            : citron.micMuted ? "Microphone muted"
-            : citron.phase === "listening" ? "I'm listening"
-            : "Ready to talk"
-        Text {
-            id: status
-            anchors { top: orb.bottom; horizontalCenter: parent.horizontalCenter; topMargin: 4 }
-            text: bubble.prompt
-            color: Theme.label
-            font { family: Theme.fontUi; pixelSize: 15; weight: Font.DemiBold }
-        }
-        Text {
-            id: transcript
-            anchors { top: status.bottom; horizontalCenter: parent.horizontalCenter; topMargin: 4 }
-            width: parent.width - 52
-            horizontalAlignment: Text.AlignHCenter
-            maximumLineCount: 1
-            elide: Text.ElideRight
-            text: citron.errorText || citron.citronSaid || citron.youSaid ||
-                "Talk naturally, ask follow-ups, or interrupt at any time"
-            color: citron.phase === "error" ? "#ff666a" : Theme.secondaryLabel
-            font { family: Theme.fontUi; pixelSize: 12 }
-        }
-        Rectangle {
-            id: controls
-            anchors { left: parent.left; right: parent.right; bottom: parent.bottom; margins: 11 }
-            height: 36
-            radius: 17
-            color: Theme.dark ? "#1cffffff" : "#48ffffff"
-            border { width: 0.5; color: Theme.separator }
+            component RoundButton: Rectangle {
+                id: rb
+                property string symbol
+                property color fill: Theme.dark ? "#26ffffff" : "#14000000"
+                property string tone: "auto"
+                signal clicked()
+                width: 36; height: 36; radius: 18
+                color: fill
+                scale: rbTap.pressed && !Theme.reduceMotion ? 0.92 : 1
+                Behavior on scale { NumberAnimation { duration: 90 } }
+                Behavior on color { ColorAnimation { duration: 160 } }
+                Shared.Symbol { anchors.centerIn: parent; name: rb.symbol; size: 16; tone: rb.tone }
+                MouseArea { id: rbTap; anchors.fill: parent; onClicked: rb.clicked() }
+            }
 
-            Rectangle {
-                id: micToggle
-                width: 76
-                height: 30
-                radius: 15
-                x: 3; y: 3
-                color: citron.micMuted ? "#32ff453a" : (Theme.dark ? "#25ffffff" : "#30e0e0ef")
-                Text {
+            RoundButton {
+                id: micButton
+                anchors { left: parent.left; leftMargin: 7; verticalCenter: parent.verticalCenter }
+                symbol: citron.phase === "error" ? "arrow-clockwise" : "mic"
+                fill: citron.phase === "error" ? (Theme.dark ? "#26ffffff" : "#14000000")
+                    : citron.micMuted ? "#ff453a" : Theme.accent
+                tone: "white"
+                Accessible.name: citron.phase === "error" ? "Retry" : citron.micMuted ? "Unmute" : "Mute"
+                onClicked: citron.toggleMic()
+                // A slash while muted.
+                Rectangle {
+                    visible: citron.micMuted && citron.phase !== "error"
                     anchors.centerIn: parent
-                    text: citron.micMuted ? "Unmute" : "Mute"
-                    color: Theme.label
-                    font { family: Theme.fontUi; pixelSize: 12; weight: Font.DemiBold }
+                    width: 2; height: 22; radius: 1
+                    rotation: -45
+                    color: "white"
                 }
-                MouseArea { anchors.fill: parent; onClicked: citron.toggleMic() }
             }
 
             TextInput {
                 id: textEntry
                 objectName: "citronVoiceText"
-                anchors { left: micToggle.right; right: send.left; verticalCenter: parent.verticalCenter; leftMargin: 12; rightMargin: 8 }
+                anchors { left: micButton.right; right: send.left; verticalCenter: parent.verticalCenter; leftMargin: 12; rightMargin: 8 }
                 clip: true
                 color: Theme.label
                 selectionColor: "#55a992ff"
-                font { family: Theme.fontUi; pixelSize: 13 }
+                font { family: Theme.fontUi; pixelSize: 14 }
                 enabled: citron.everReady && citron.phase !== "error"
+                focus: citron.open
                 onAccepted: citron.sendText()
                 Keys.onEscapePressed: citron.dismiss()
                 Text {
-                    visible: !textEntry.text && !textEntry.activeFocus
-                    text: "Or type your question…"
+                    visible: !textEntry.text
+                    text: "Ask Citron anything"
                     color: Theme.tertiaryLabel
                     font: textEntry.font
                 }
             }
 
-            Rectangle {
+            RoundButton {
                 id: send
-                anchors { right: endButton.left; rightMargin: 6; verticalCenter: parent.verticalCenter }
-                width: 42
-                height: 28; radius: 14
-                color: Theme.dark ? "#4f8f64df" : "#548474d6"
-                Text {
-                    anchors.centerIn: parent
-                    text: "↑"
-                    color: "white"
-                    font { family: Theme.fontUi; pixelSize: 17; weight: Font.DemiBold }
-                }
-                MouseArea { anchors.fill: parent; onClicked: citron.sendText() }
+                anchors { right: close.left; rightMargin: 6; verticalCenter: parent.verticalCenter }
+                symbol: "arrow-up"
+                fill: Theme.accent
+                tone: "white"
+                width: textEntry.text.trim() ? 36 : 0
+                opacity: textEntry.text.trim() ? 1 : 0
+                visible: width > 1
+                Behavior on width { NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
+                Behavior on opacity { NumberAnimation { duration: 160 } }
+                Accessible.name: "Send"
+                onClicked: citron.sendText()
             }
 
-            Rectangle {
-                id: endButton
-                anchors { right: parent.right; rightMargin: 3; verticalCenter: parent.verticalCenter }
-                width: 58; height: 29; radius: 14
-                color: Theme.dark ? "#5bff453a" : "#e6ffdfdd"
-                Text {
-                    anchors.centerIn: parent
-                    text: "End"
-                    color: Theme.dark ? "#fff" : "#991d1d"
-                    font { family: Theme.fontUi; pixelSize: 12; weight: Font.DemiBold }
-                }
-                MouseArea { anchors.fill: parent; onClicked: citron.dismiss() }
-            }
-        }
-
-        Rectangle {
-            visible: citron.phase === "error"
-            anchors { right: parent.right; top: parent.top; margins: 16 }
-            width: 55; height: 28; radius: 14
-            color: Theme.dark ? "#36ffffff" : "#7cffffff"
-            Text { anchors.centerIn: parent; text: "Retry"; color: Theme.label; font.pixelSize: 12 }
-            MouseArea {
-                anchors.fill: parent
-                onClicked: {
-                    voiceProc.running = false
-                    citron.phase = "connecting"
-                    citron.errorText = ""
-                    citron.everReady = false
-                    Qt.callLater(() => { if (citron.open) voiceProc.running = true })
-                }
+            RoundButton {
+                id: close
+                anchors { right: parent.right; rightMargin: 7; verticalCenter: parent.verticalCenter }
+                symbol: "xmark"
+                Accessible.name: "End"
+                onClicked: citron.dismiss()
             }
         }
     }

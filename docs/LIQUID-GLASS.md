@@ -38,6 +38,7 @@ HyprGlass options that exist. Every value below is checked by
 | `gg-switcher` | ⌘Tab | 0.3 |
 | `gg-screenshot` | ⇧⌘5 toolbar (its 40% dim stays clear) | 0.5 |
 | `gg-screenshot-thumbnail` | the floating thumbnail | 0.3 |
+| `gg-citron` | Citron's voice capsule (its edge glow stays under the line, clear) | 0.5 |
 
 A pixel more opaque than the threshold becomes glass, so a threshold sits
 above the surface's shadow (or dim) and below its tint.

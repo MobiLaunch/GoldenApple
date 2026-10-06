@@ -29,7 +29,8 @@ to refresh/select a model; the app does not silently retry another billed model.
 
 | Tool | Behavior |
 | --- | --- |
-| Ask Anything | Questions and follow-up chat, with optional user-selected image input. The latest 10 complete exchanges are sent as context. |
+| Ask Anything | A chat: type below and press Return (Shift+Return for a new line), attach a photo, start over with the compose button. The latest 10 complete exchanges are sent as context. |
+| Talk to Citron | ⇧⌘Space: Citron's orb over a glass capsule, live captions and a glow round the screen's edges. Speak, type, or interrupt; the mic is on only while it's open and unmuted. |
 | Writing Tools | Proofread, rewrite, friendly, professional, concise, summary, key points, table and custom instructions (including translation). |
 | Create Image | Native Gemini image generation. Preview outputs and save selected images as copies. |
 | Edit Photo | Choose a photo and describe a change, such as removing a background object or changing lighting. Toggle between original and result. |
@@ -89,7 +90,7 @@ The helper has a 120-second network timeout, and the UI stops a request after
 it cannot recall data already received by Google or undo incurred API usage.
 Offline, invalid-key, unavailable-model and quota errors leave input intact.
 
-This release has no live web grounding, voice assistant, background personal
+This release has no live web grounding, background personal
 index, autonomous OS actions, notification summaries or cross-device continuity.
 Answers cannot claim to have inspected files or performed actions outside the
 explicit request. Image generation requires a compatible model and entitlement.

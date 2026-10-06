@@ -25,6 +25,7 @@ ShellRoot {
             font { family: Theme.fontUi; pixelSize: 14; weight: Font.DemiBold }
         }
         toolbarRight: [
+            ToolbarButton { symbol: "compose"; round: true; visible: app.page === "ask"; enabled: !service.busy && (app.history.length > 0 || !!app.photoPath); onClicked: app.newConversation() },
             ToolbarButton { symbol: "mic"; round: true; onClicked: voiceLaunch.startDetached() },
             ToolbarButton { symbol: "gear"; round: true; enabled: !service.busy; onClicked: app.page = "settings" }
         ]
@@ -43,15 +44,10 @@ ShellRoot {
                     Row {
                         anchors.centerIn: parent
                         spacing: 10
-                        Rectangle {
-                            width: 28; height: 28; radius: 9
-                            color: Theme.accent
-                            Text {
-                                anchors.centerIn: parent
-                                text: "C"
-                                color: "#fff"
-                                font { family: Theme.fontDisplay; pixelSize: 15; weight: Font.Bold }
-                            }
+                        CitronOrb {
+                            width: 30; height: 30
+                            anchors.verticalCenter: parent.verticalCenter
+                            mode: service.busy ? "thinking" : "idle"
                         }
                         Text {
                             text: "Citron"
@@ -148,6 +144,18 @@ ShellRoot {
                 edit: "Edit an image with prompt-based refinements while preserving your original."
             })[page] ?? "Create and refine content quickly."
 
+            function newConversation() {
+                history = []
+                photoPath = ""
+                message = ""
+                service.error = ""
+                composer.text = ""
+            }
+            function ask(text) {
+                composer.text = text
+                send()
+            }
+
             function switchPage(p) {
                 page = p
                 message = ""
@@ -157,11 +165,11 @@ ShellRoot {
 
             function send() {
                 message = ""
-                requestPrompt = prompt.text
+                requestPrompt = page === "ask" ? composer.text.trim() : prompt.text
                 requestTask = page
                 requestPhoto = photoPath
                 if (page === "writing") output.text = ""
-                const req = { task: page, prompt: prompt.text }
+                const req = { task: page, prompt: requestPrompt }
                 if (page === "ask") {
                     req.history = history.slice(-20)
                     if (photoPath) req.imagePath = photoPath
@@ -178,9 +186,10 @@ ShellRoot {
                     if (action === "export") { app.message = "Saved a copy to " + reply.savedPath; return }
                     if (action !== "generate") return
                     if (app.requestTask === "ask") {
-                        app.history = app.history.concat([{ role: "user", text: app.requestPrompt }, { role: "model", text: reply.text }]).slice(-40)
-                        conversation.text = app.history.map(t => (t.role === "user" ? "You" : "Citron Intelligence") + "\n" + t.text).join("\n\n")
-                        prompt.text = ""
+                        app.history = app.history.concat([{ role: "user", text: app.requestPrompt, image: app.requestPhoto },
+                                                          { role: "model", text: reply.text }]).slice(-40)
+                        composer.text = ""
+                        app.photoPath = ""
                     } else if (app.requestTask === "writing") output.text = reply.text
                     else {
                         if (app.images.length) cleanup.send({ action: "discard", images: app.images })
@@ -246,7 +255,7 @@ ShellRoot {
             }
 
             Flickable {
-                visible: app.page !== "settings"
+                visible: app.page !== "settings" && app.page !== "ask"
                 anchors.fill: parent
                 contentWidth: width
                 contentHeight: workColumn.height + 36
@@ -260,105 +269,31 @@ ShellRoot {
                     width: parent.width - 52
                     spacing: 18
 
-                    Rectangle {
+                    Row {
                         width: parent.width
-                        height: 166
-                        radius: 24
-                        gradient: Gradient {
-                            orientation: Gradient.Horizontal
-                            GradientStop { position: 0; color: "#3d5ce6" }
-                            GradientStop { position: 0.45; color: "#6047d8" }
-                            GradientStop { position: 1; color: "#7a3ec7" }
+                        spacing: 16
+                        CitronOrb {
+                            width: 58; height: 58
+                            anchors.verticalCenter: parent.verticalCenter
+                            mode: service.busy ? "thinking" : "idle"
                         }
-                        border { width: 1; color: "#9c7bff" }
-
-                        Row {
-                            anchors { fill: parent; margins: 24 }
-                            spacing: 18
-                            Column {
-                                width: parent.width * 0.64
-                                spacing: 8
-                                Text {
-                                    width: parent.width
-                                    text: app.heading
-                                    wrapMode: Text.WordWrap
-                                    color: "#fff"
-                                    font { family: Theme.fontDisplay; pixelSize: 32; weight: Font.Bold }
-                                }
-                                Text {
-                                    width: parent.width
-                                    text: app.description
-                                    wrapMode: Text.WordWrap
-                                    color: "#eef2ff"
-                                    font { family: Theme.fontUi; pixelSize: 13 }
-                                }
-                                Row {
-                                    spacing: 8
-                                    Repeater {
-                                        model: [
-                                            { name: "Ask", page: "ask" },
-                                            { name: "Write", page: "writing" },
-                                            { name: "Image", page: "image" }
-                                        ]
-                                        delegate: Rectangle {
-                                            required property var modelData
-                                            width: 100
-                                            height: 28
-                                            radius: 14
-                                            color: app.page === modelData.page ? "#26ffffff" : "#14ffffff"
-                                            border { width: 1; color: "#36ffffff" }
-                                            Text {
-                                                anchors.centerIn: parent
-                                                text: modelData.name
-                                                color: "#fff"
-                                                font { family: Theme.fontUi; pixelSize: 11; weight: Font.DemiBold }
-                                            }
-                                            TapHandler { onTapped: app.switchPage(modelData.page) }
-                                        }
-                                    }
-                                }
+                        Column {
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: parent.width - 74
+                            spacing: 4
+                            Text {
+                                width: parent.width
+                                text: app.heading
+                                wrapMode: Text.WordWrap
+                                color: Theme.label
+                                font { family: Theme.fontDisplay; pixelSize: 26; weight: Font.Bold }
                             }
-                            Column {
-                                width: parent.width * 0.36 - parent.spacing
-                                spacing: 8
-                                Rectangle {
-                                    width: parent.width
-                                    height: 70
-                                    radius: 18
-                                    color: "#12ffffff"
-                                    border { width: 1; color: "#24ffffff" }
-                                    Column {
-                                        anchors { horizontalCenter: parent.horizontalCenter; verticalCenter: parent.verticalCenter }
-                                        spacing: 6
-                                        Text {
-                                            text: "Context"
-                                            color: "#dfe5ff"
-                                            font { family: Theme.fontUi; pixelSize: 10; weight: Font.Bold; letterSpacing: 1.2 }
-                                        }
-                                        Text {
-                                            text: app.page === "ask" ? "Questions & analysis" : app.page === "writing" ? "Editing & polishing" : app.page === "image" ? "Image generation" : "Photo refinement"
-                                            color: "#fff"
-                                            font { family: Theme.fontUi; pixelSize: 16; weight: Font.DemiBold }
-                                        }
-                                    }
-                                }
-                                Rectangle {
-                                    width: parent.width
-                                    height: 40
-                                    radius: 14
-                                    color: "#12ffffff"
-                                    border { width: 1; color: "#24ffffff" }
-                                    Row {
-                                        anchors.centerIn: parent
-                                        spacing: 10
-                                        Symbol { name: "sparkles"; size: 16; tone: "white" }
-                                        Text {
-                                            text: "Gemini ready"
-                                            color: "#fff"
-                                            font { family: Theme.fontUi; pixelSize: 12; weight: Font.DemiBold }
-                                        }
-                                    }
-                                }
+                            Text {
+                                width: parent.width
+                                text: app.description
+                                wrapMode: Text.WordWrap
+                                color: Theme.secondaryLabel
+                                font { family: Theme.fontUi; pixelSize: 13 }
                             }
                         }
                     }
@@ -366,14 +301,13 @@ ShellRoot {
                     Row {
                         width: parent.width
                         spacing: 12
-                        visible: app.page === "ask" || app.page === "edit"
+                        visible: app.page === "edit"
                         Button { text: app.photoPath ? "Change Photo…" : "Choose Photo…"; enabled: !service.busy; onClicked: photoDialog.open() }
                         Button { text: "Remove"; visible: !!app.photoPath; enabled: !service.busy; onClicked: app.photoPath = "" }
-                        Button { text: "New Conversation"; visible: app.page === "ask"; enabled: !service.busy; onClicked: { app.history = []; conversation.text = ""; app.photoPath = ""; app.message = "" } }
                     }
 
                     Text {
-                        visible: !!app.photoPath && (app.page === "ask" || app.page === "edit")
+                        visible: !!app.photoPath && app.page === "edit"
                         width: parent.width
                         elide: Text.ElideMiddle
                         text: app.photoPath
@@ -399,17 +333,24 @@ ShellRoot {
                                 options: ["Proofread", "Rewrite", "Friendly", "Professional", "Concise", "Summary", "Key Points", "Table", "Describe Your Change"]
                             }
                             Button { text: "Paste Text"; enabled: !service.busy; onClicked: source.text = Quickshell.clipboardText }
+                            Button {
+                                text: service.busy ? "Working…" : "Send"
+                                prominent: true
+                                enabled: sendButton.enabled
+                                onClicked: app.send()
+                            }
                         }
                     }
 
                     Row {
                         width: parent.width
                         spacing: 10
-                        visible: app.page === "writing" || app.page === "image" || app.page === "edit"
-                        height: app.page === "writing" ? 52 : 56
+                        // Writing sends from its toolbar; this row is its custom instruction.
+                        visible: app.page === "image" || app.page === "edit" || (app.page === "writing" && writingMode.current === 8)
+                        height: app.page === "writing" ? 52 : 86
                         AI.EditorBox {
                             id: prompt
-                            width: parent.width - sendButton.width - 14
+                            width: app.page === "writing" ? parent.width : parent.width - sendButton.width - 14
                             height: app.page === "writing" ? 50 : 86
                             visible: app.page !== "writing" || writingMode.current === 8
                             placeholder: app.page === "edit" ? "For example: remove the person in the background" : app.page === "image" ? "Describe your image…" : app.page === "writing" ? "Describe your change…" : "Ask anything…"
@@ -423,6 +364,7 @@ ShellRoot {
                         }
                         Button {
                             id: sendButton
+                            visible: app.page !== "writing"
                             width: 130
                             text: service.busy ? "Working…" : app.imageTask ? "Generate" : "Send"
                             prominent: true
@@ -446,40 +388,15 @@ ShellRoot {
 
                     Rectangle {
                         width: parent.width
-                        height: app.page === "ask" ? 280 : app.page === "writing" ? 260 : 320
+                        height: app.page === "writing" ? 260 : 320
                         radius: 22
                         color: Theme.dark ? "#13171d" : "#f5f5f8"
                         border { width: 1; color: Theme.separator }
-                        visible: app.page === "ask" || app.page === "writing" || app.page === "image" || app.page === "edit"
+                        visible: app.page === "writing" || app.page === "image" || app.page === "edit"
 
                         Column {
                             anchors { fill: parent; margins: 14 }
                             spacing: 8
-
-                            Row {
-                                width: parent.width
-                                visible: app.page === "ask"
-                                Text {
-                                    text: "Conversation"
-                                    color: Theme.label
-                                    font { family: Theme.fontUi; pixelSize: 13; weight: Font.DemiBold }
-                                }
-                                Item { width: 10; height: 1 }
-                                Text {
-                                    text: app.history.length ? (app.history.length + " exchanges") : "No messages yet"
-                                    color: Theme.secondaryLabel
-                                    font { family: Theme.fontUi; pixelSize: 11 }
-                                }
-                            }
-
-                            AI.EditorBox {
-                                id: conversation
-                                width: parent.width
-                                height: app.page === "ask" ? parent.height - 20 : 0
-                                visible: app.page === "ask"
-                                readOnly: true
-                                placeholder: "Your conversation appears here. Ctrl+Enter sends a request."
-                            }
 
                             AI.EditorBox {
                                 id: output
@@ -564,6 +481,197 @@ ShellRoot {
                         color: service.error ? "#ff453a" : Theme.secondaryLabel
                         font { family: Theme.fontUi; pixelSize: 11 }
                     }
+                }
+            }
+
+            // Ask Anything: a conversation, with a composer at the bottom.
+            Item {
+                id: chat
+                anchors.fill: parent
+                visible: app.page === "ask"
+
+                ListView {
+                    id: messages
+                    objectName: "citronChat"
+                    anchors { left: parent.left; right: parent.right; top: parent.top; bottom: composerBar.top; margins: 26; bottomMargin: 12 }
+                    clip: true
+                    spacing: 12
+                    model: app.history
+                    boundsBehavior: Flickable.StopAtBounds
+                    onCountChanged: Qt.callLater(() => messages.positionViewAtEnd())
+                    footer: Item {
+                        width: messages.width
+                        height: service.busy ? 58 : 0
+                        // Citron thinking: your question, then the orb at work.
+                        Row {
+                            visible: service.busy
+                            y: 12
+                            spacing: 10
+                            CitronOrb { width: 34; height: 34; mode: "thinking" }
+                            Text {
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: "Thinking…"
+                                color: Theme.secondaryLabel
+                                font { family: Theme.fontUi; pixelSize: 13 }
+                            }
+                        }
+                    }
+                    delegate: Item {
+                        id: turn
+                        required property var modelData
+                        readonly property bool mine: modelData.role === "user"
+                        width: messages.width
+                        height: bubble.height + (turn.mine && modelData.image ? 0 : 0)
+                        Rectangle {
+                            id: bubble
+                            anchors { right: turn.mine ? parent.right : undefined; left: turn.mine ? undefined : parent.left }
+                            width: Math.min(messages.width * (turn.mine ? 0.7 : 0.86), body.implicitWidth + 28)
+                            height: body.implicitHeight + 20
+                            radius: 18
+                            color: turn.mine ? Theme.accent : (Theme.dark ? "#2a2b30" : "#efeff3")
+                            TextArea {
+                                id: body
+                                writingToolsEnabled: false
+                                x: 14; y: 10
+                                width: Math.min(messages.width * (turn.mine ? 0.7 : 0.86) - 28, implicitWidth)
+                                text: turn.modelData.text + (turn.modelData.image ? "\n📎 " + turn.modelData.image.split("/").pop() : "")
+                                readOnly: true
+                                selectByMouse: true
+                                wrapMode: TextEdit.Wrap
+                                textFormat: TextEdit.PlainText
+                                color: turn.mine ? "#ffffff" : Theme.label
+                                selectionColor: turn.mine ? "#66ffffff" : Theme.accent
+                                font { family: Theme.fontUi; pixelSize: 14 }
+                            }
+                        }
+                    }
+                }
+
+                // Nothing asked yet: the orb, a welcome, and a few ideas.
+                Column {
+                    visible: !app.history.length && !service.busy
+                    anchors { centerIn: messages; verticalCenterOffset: -20 }
+                    width: Math.min(660, messages.width)
+                    spacing: 12
+                    CitronOrb { anchors.horizontalCenter: parent.horizontalCenter; width: 112; height: 112; mode: "idle" }
+                    Text {
+                        width: parent.width
+                        horizontalAlignment: Text.AlignHCenter
+                        text: "A little help. A lot of possibilities."
+                        color: Theme.label
+                        font { family: Theme.fontDisplay; pixelSize: 24; weight: Font.Bold }
+                    }
+                    Text {
+                        width: parent.width
+                        horizontalAlignment: Text.AlignHCenter
+                        wrapMode: Text.WordWrap
+                        text: "Ask a question, explore an idea, or attach a photo to understand it."
+                        color: Theme.secondaryLabel
+                        font { family: Theme.fontUi; pixelSize: 13 }
+                    }
+                    Flow {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        width: Math.min(parent.width, ideas.contentWidth)
+                        spacing: 8
+                        topPadding: 6
+                        // The chips' total width, to centre them when they fit on a line.
+                        QtObject { id: ideas; property real contentWidth: 640 }
+                        Repeater {
+                            model: ["Explain something simply", "Plan my week", "Help me write an email", "Ideas for dinner tonight"]
+                            delegate: Rectangle {
+                                required property string modelData
+                                width: idea.implicitWidth + 26; height: 32; radius: 16
+                                color: ideaTap.containsMouse ? (Theme.dark ? "#33ffffff" : "#14000000") : (Theme.dark ? "#1fffffff" : "#0a000000")
+                                border { width: 1; color: Theme.separator }
+                                Text { id: idea; anchors.centerIn: parent; text: parent.modelData; color: Theme.label; font { family: Theme.fontUi; pixelSize: 12 } }
+                                MouseArea { id: ideaTap; anchors.fill: parent; hoverEnabled: true; enabled: !service.busy; onClicked: app.ask(parent.modelData) }
+                            }
+                        }
+                    }
+                }
+
+                // The composer: attach a photo, type, send. Return sends;
+                // Shift+Return starts a new line.
+                Rectangle {
+                    id: composerBar
+                    anchors { left: parent.left; right: parent.right; bottom: chatStatus.top; leftMargin: 26; rightMargin: 26; bottomMargin: 6 }
+                    height: Math.min(150, Math.max(48, composer.contentHeight + 26)) + (app.photoPath ? 30 : 0)
+                    radius: 24
+                    color: Theme.dark ? "#1c1d21" : "#ffffff"
+                    border { width: 1; color: composer.activeFocus ? Theme.accent : Theme.separator }
+                    Behavior on height { NumberAnimation { duration: 120; easing.type: Easing.OutCubic } }
+
+                    // The attached photo, as a chip with a remove button.
+                    Rectangle {
+                        visible: !!app.photoPath
+                        x: 48; y: 8
+                        width: Math.min(parent.width - 100, chipText.implicitWidth + 40); height: 24; radius: 12
+                        color: Theme.dark ? "#2c2d33" : "#eef0f4"
+                        Text {
+                            id: chipText
+                            anchors { left: parent.left; leftMargin: 10; right: chipX.left; verticalCenter: parent.verticalCenter }
+                            elide: Text.ElideMiddle
+                            text: "📎 " + app.photoPath.split("/").pop()
+                            color: Theme.label
+                            font { family: Theme.fontUi; pixelSize: 11 }
+                        }
+                        Symbol { id: chipX; anchors { right: parent.right; rightMargin: 8; verticalCenter: parent.verticalCenter } name: "xmark"; size: 10
+                            MouseArea { anchors { fill: parent; margins: -6 } onClicked: app.photoPath = "" } }
+                    }
+                    Rectangle {
+                        id: attach
+                        anchors { left: parent.left; leftMargin: 8; bottom: parent.bottom; bottomMargin: 8 }
+                        width: 32; height: 32; radius: 16
+                        color: attachTap.containsMouse ? (Theme.dark ? "#2cffffff" : "#10000000") : "transparent"
+                        Symbol { anchors.centerIn: parent; name: "photo"; size: 16 }
+                        MouseArea { id: attachTap; anchors.fill: parent; hoverEnabled: true; enabled: !service.busy; onClicked: photoDialog.open() }
+                        Accessible.name: "Attach a photo"
+                    }
+                    Flickable {
+                        id: composerScroll
+                        anchors { left: attach.right; right: sendRound.left; bottom: parent.bottom; top: parent.top; leftMargin: 8; rightMargin: 8; topMargin: app.photoPath ? 40 : 13; bottomMargin: 13 }
+                        contentWidth: width
+                        contentHeight: composer.contentHeight
+                        clip: true
+                        boundsBehavior: Flickable.StopAtBounds
+                        TextArea {
+                            id: composer
+                            objectName: "citronComposer"
+                            width: composerScroll.width
+                            textFormat: TextEdit.PlainText
+                            writingToolsEnabled: false
+                            placeholder: "Ask Citron anything"
+                            readOnly: service.busy
+                            Keys.onReturnPressed: (event) => {
+                                if (event.modifiers & Qt.ShiftModifier) { event.accepted = false; return }
+                                if (sendRound.ready) app.send()
+                            }
+                            Keys.onEnterPressed: (event) => { if (sendRound.ready) app.send() }
+                        }
+                    }
+                    Rectangle {
+                        id: sendRound
+                        readonly property bool ready: !service.busy && composer.text.trim().length > 0
+                        anchors { right: parent.right; rightMargin: 8; bottom: parent.bottom; bottomMargin: 8 }
+                        width: 32; height: 32; radius: 16
+                        color: ready ? Theme.accent : (Theme.dark ? "#3a3b40" : "#d9dadf")
+                        Behavior on color { ColorAnimation { duration: 150 } }
+                        Symbol { anchors.centerIn: parent; name: service.busy ? "stop" : "arrow-up"; size: 15; tone: "white" }
+                        MouseArea {
+                            anchors.fill: parent
+                            onClicked: service.busy ? service.cancel() : (sendRound.ready ? app.send() : null)
+                        }
+                        Accessible.name: service.busy ? "Stop" : "Send"
+                    }
+                }
+                Text {
+                    id: chatStatus
+                    anchors { left: parent.left; right: parent.right; bottom: parent.bottom; leftMargin: 30; rightMargin: 30; bottomMargin: 12 }
+                    horizontalAlignment: Text.AlignHCenter
+                    elide: Text.ElideRight
+                    text: service.error || app.message || "Citron uses Google Gemini. Check important information."
+                    color: service.error ? "#ff453a" : Theme.tertiaryLabel
+                    font { family: Theme.fontUi; pixelSize: 11 }
                 }
             }
 

@@ -11,7 +11,7 @@ QtObject {
     // The same list as compositor/hyprland/hyprglass-sync.sh (tests/liquid-glass.py checks).
     property var glass: ["gg-menubar", "gg-dock", "gg-controlcenter", "gg-spotlight", "gg-applications", "gg-notifications",
                          "gg-notification-center", "gg-nearby", "gg-widgets", "gg-widget-gallery", "gg-osd", "gg-alert",
-                         "gg-switcher", "gg-screenshot", "gg-screenshot-thumbnail"]
+                         "gg-switcher", "gg-screenshot", "gg-screenshot-thumbnail", "gg-citron"]
     property var panels: []
     function register(p) { panels = panels.concat([p]) }
     function unregister(p) { panels = panels.filter((x) => x !== p) }
