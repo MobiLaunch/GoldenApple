@@ -32,12 +32,12 @@ Item {
         x: 12; y: 9
         width: parent.width - 90
         elide: Text.ElideRight; wrapMode: Text.NoWrap
-        text: card.place?.home ? "My Location" : card.place?.name ?? ""
+        text: card.place?.current || card.place?.home ? "My Location" : card.place?.name ?? ""
         px: 17; w: Font.Bold
     }
     Label {
         x: 12; y: 31
-        text: card.place?.home ? card.place.name
+        text: card.place?.current || card.place?.home ? card.place.name
             : card.f ? Api.clockText(Api.placeNow(card.f.utc_offset_seconds), card.h12) : ""
         px: 12; w: Font.DemiBold
     }

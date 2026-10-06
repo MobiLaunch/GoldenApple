@@ -1,13 +1,20 @@
 // The sky behind Weather: a gradient for the condition and time of day, soft
-// clouds in proportion to the cover, and stars on clear nights. Painted once per
-// change (a Canvas), so it costs nothing while the window just sits there.
+// clouds in proportion to the cover, and stars on clear nights. The clouds are
+// painted once per change (a Canvas). In the window itself (animated), as on
+// the Mac, they drift, rain and snow fall, and storms flash; Reduce Motion
+// keeps it still. The sidebar's small skies don't move.
 import QtQuick
+import "../lib/theme"
 
 Item {
     id: sky
     property string kind: "cloudy"      // clear | partly | cloudy | fog | rain | snow | storm, + "-night"
     property real radius: 0
     property int seed: 7
+    property bool animated: false
+    readonly property bool moving: animated && !Theme.reduceMotion && visible
+    readonly property bool raining: kind.startsWith("rain") || kind.startsWith("storm")
+    readonly property bool snowing: kind.startsWith("snow")
 
     readonly property var palettes: ({
         "clear":        ["#2a78cf", "#7db8ea", 0.0],
@@ -41,21 +48,26 @@ Item {
         }
     }
 
+    Item {
+        anchors.fill: parent
+        clip: true
     Canvas {
         id: clouds
-        anchors.fill: parent
+        width: parent.width * 2; height: parent.height
+        NumberAnimation on x {
+            running: sky.moving
+            from: 0; to: -sky.width
+            duration: 240000
+            loops: Animation.Infinite
+        }
         onWidthChanged: requestPaint()
         onHeightChanged: requestPaint()
         Connections { target: sky; function onKindChanged() { clouds.requestPaint() } }
         onPaint: {
             const ctx = getContext("2d")
             ctx.reset()
-            const w = width, h = height, r = sky.radius
+            const w = sky.width, h = height, r = sky.radius
             if (w <= 0 || h <= 0) return
-            // Stay inside the window's rounded corners.
-            ctx.beginPath()
-            ctx.roundedRect(0, 0, w, h, r, r)
-            ctx.clip()
             let s = sky.seed
             const rand = () => { s = (s * 16807) % 2147483647; return s / 2147483647 }
             if (sky.night && sky.palette[2] < 0.5) {
@@ -63,7 +75,9 @@ Item {
                     const a = 0.25 + rand() * 0.6
                     ctx.fillStyle = Qt.rgba(1, 1, 1, a)
                     const d = rand() < 0.1 ? 1.6 : 1
-                    ctx.fillRect(rand() * w, rand() * h * 0.8, d, d)
+                    const sx = rand() * w, sy = rand() * h * 0.8
+                    ctx.fillRect(sx, sy, d, d)
+                    ctx.fillRect(sx + w, sy, d, d)
                 }
             }
             const cover = sky.palette[2]
@@ -88,8 +102,81 @@ Item {
                     g.addColorStop(1, Qt.rgba(grey, grey, grey, 0))
                     ctx.fillStyle = g
                     ctx.fillRect(bx - br, by - br, br * 2, br * 2)
+                    // The same blob a sky's width along, for a seamless loop.
+                    const g2 = ctx.createRadialGradient(bx + w, by, 0, bx + w, by, br)
+                    g2.addColorStop(0, Qt.rgba(grey, grey, grey * 1.02, a))
+                    g2.addColorStop(0.6, Qt.rgba(grey, grey, grey * 1.02, a * 0.45))
+                    g2.addColorStop(1, Qt.rgba(grey, grey, grey, 0))
+                    ctx.fillStyle = g2
+                    ctx.fillRect(bx + w - br, by - br, br * 2, br * 2)
                 }
             }
         }
+    }
+    }
+
+    // Rain and snow, falling.
+    Item {
+        anchors.fill: parent
+        clip: true
+        visible: sky.moving && (sky.raining || sky.snowing)
+        Repeater {
+            model: sky.moving ? (sky.raining ? 110 : sky.snowing ? 70 : 0) : 0
+            Rectangle {
+                id: drop
+                required property int index
+                // A fixed scatter per drop, from its index.
+                readonly property real r1: ((index * 7919) % 1000) / 1000
+                readonly property real r2: ((index * 104729) % 1000) / 1000
+                readonly property real r3: ((index * 1299709) % 1000) / 1000
+                x: r1 * sky.width
+                width: sky.snowing ? 3 + r2 * 3 : 1.2
+                height: sky.snowing ? width : 12 + r2 * 10
+                radius: sky.snowing ? width / 2 : 0.6
+                rotation: sky.snowing ? 0 : 12
+                color: "#ffffff"
+                opacity: sky.snowing ? 0.55 + r3 * 0.35 : 0.18 + r3 * 0.2
+                // Each drop starts part-way down its fall, so the sky is full at once.
+                property real fall: 0
+                y: ((fall + r3) % 1) * (sky.height + 60) - 40
+                NumberAnimation on fall {
+                    running: sky.moving
+                    from: 0; to: 1
+                    duration: sky.snowing ? 7000 + drop.r2 * 6000 : 600 + drop.r2 * 500
+                    loops: Animation.Infinite
+                }
+                // Snow sways as it falls.
+                transform: Translate { id: sway }
+                SequentialAnimation {
+                    running: sky.moving && sky.snowing
+                    loops: Animation.Infinite
+                    NumberAnimation { target: sway; property: "x"; from: -8; to: 8; duration: 1800 + drop.r1 * 1400; easing.type: Easing.InOutSine }
+                    NumberAnimation { target: sway; property: "x"; from: 8; to: -8; duration: 1800 + drop.r1 * 1400; easing.type: Easing.InOutSine }
+                }
+            }
+        }
+    }
+
+    // A storm's lightning: the sky flashes now and then.
+    Rectangle {
+        id: flash
+        anchors.fill: parent
+        radius: sky.radius
+        color: "#ffffff"
+        opacity: 0
+        visible: opacity > 0
+    }
+    Timer {
+        running: sky.moving && sky.kind.startsWith("storm")
+        interval: 4000 + Math.random() * 6000
+        repeat: true
+        onTriggered: { interval = 4000 + Math.random() * 6000; strike.restart() }
+    }
+    SequentialAnimation {
+        id: strike
+        NumberAnimation { target: flash; property: "opacity"; to: 0.35; duration: 60 }
+        NumberAnimation { target: flash; property: "opacity"; to: 0.05; duration: 90 }
+        NumberAnimation { target: flash; property: "opacity"; to: 0.25; duration: 50 }
+        NumberAnimation { target: flash; property: "opacity"; to: 0; duration: 400; easing.type: Easing.OutCubic }
     }
 }

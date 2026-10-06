@@ -5,8 +5,9 @@
 //
 // Forecasts come from Open-Meteo (no key needed), the map from CARTO/OSM with
 // RainViewer radar. Units follow the locale (°F, mph, inHg and miles in the US).
-// Places are kept in ~/.config/golden-gate/weather.json; the first is the one for
-// your time zone. GG_WEATHER_FIXTURE=<dir> reads forecast.json, air.json and
+// Places are kept in ~/.config/golden-gate/weather.json. My Location comes
+// first, from lib/location/locate.py (Location Services on); without it, the
+// city of your time zone. °C or °F follows the locale until you choose. GG_WEATHER_FIXTURE=<dir> reads forecast.json, air.json and
 // geocode.json from a folder instead of the network (tests, screenshots).
 import Quickshell
 import Quickshell.Io
@@ -36,13 +37,24 @@ ShellRoot {
                 onClicked: app.sidebarOpen = !app.sidebarOpen
             }
         ]
+        toolbarRight: [
+            ToolbarButton {
+                objectName: "weatherUnits"
+                text: app.imperial ? "°F" : "°C"
+                tone: "white"
+                glassColor: "#2effffff"
+                Accessible.name: "Temperature unit"
+                onClicked: { app.unitChoice = app.imperial ? "metric" : "imperial"; app.save() }
+            }
+        ]
 
         backdrop: [
             Sky {
                 id: sky
                 anchors.fill: parent
                 radius: Theme.radiusWindow
-                kind: app.cur ? Api.sky(app.cur.weather_code, app.cur.is_day) : "cloudy"
+                animated: true
+                kind: Quickshell.env("GG_WEATHER_SKY") || (app.cur ? Api.sky(app.cur.weather_code, app.cur.is_day) : "cloudy")
             }
         ]
 
@@ -143,7 +155,9 @@ ShellRoot {
 
             readonly property string fixture: Quickshell.env("GG_WEATHER_FIXTURE") ?? ""
             readonly property string units: Quickshell.env("GG_WEATHER_UNITS") ?? ""
-            readonly property bool imperial: units ? units === "imperial" : Qt.locale().measurementSystem !== Locale.MetricSystem
+            property string unitChoice: ""             // "metric" | "imperial" once chosen
+            readonly property bool imperial: units ? units === "imperial"
+                : unitChoice ? unitChoice === "imperial" : Qt.locale().measurementSystem !== Locale.MetricSystem
             readonly property bool h12: /a|AP/i.test(Qt.locale().timeFormat(Locale.ShortFormat))
             readonly property string configDir: (Quickshell.env("XDG_CONFIG_HOME") || Quickshell.env("HOME") + "/.config") + "/golden-gate"
 
@@ -212,7 +226,36 @@ ShellRoot {
             }
             function save() {
                 Quickshell.execDetached(["mkdir", "-p", configDir])
-                store.setText(JSON.stringify({ places: places }, null, 1))
+                store.setText(JSON.stringify({ places: places.filter((q) => !q.current), units: unitChoice }, null, 1))
+            }
+            // My Location: found again each time Weather opens; it leads the list.
+            property string locateError: ""
+            function locate() { locator.running = true }
+            function located(r) {
+                if (!r || !r.ok) {
+                    locateError = r?.error ?? ""
+                    if (!places.length) firstRun()
+                    return
+                }
+                const here = { name: r.name || "My Location", admin1: r.admin1 ?? "", country: r.country ?? "",
+                               lat: r.lat, lon: r.lon, current: true }
+                const was = places[selected]
+                const rest = places.filter((q) => !q.current && !q.home)
+                places = [here].concat(rest)
+                selected = was && !was.current && !was.home ? Math.max(0, places.findIndex((q) => key(q) === key(was))) : 0
+                refresh(here)
+                save()
+            }
+            Process {
+                id: locator
+                command: ["python3", decodeURIComponent(Qt.resolvedUrl("lib/location/locate.py").toString().replace("file://", "")), "--app", "Weather"]
+                stdout: StdioCollector {
+                    onStreamFinished: {
+                        let r = null
+                        try { r = JSON.parse(text) } catch (e) { r = null }
+                        app.located(r)
+                    }
+                }
             }
             // First run: the city of this machine's time zone, else San Francisco.
             function firstRun() {
@@ -222,14 +265,18 @@ ShellRoot {
 
             FileView {
                 id: store
+                objectName: "weatherStore"
                 path: app.configDir + "/weather.json"
                 printErrors: false
                 onLoaded: {
-                    let ps = []
-                    try { ps = JSON.parse(text()).places ?? [] } catch (e) { ps = [] }
-                    if (ps.length) { app.places = ps; app.refreshAll() } else app.firstRun()
+                    let saved = {}
+                    try { saved = JSON.parse(text()) } catch (e) { saved = {} }
+                    app.unitChoice = saved.units ?? ""
+                    const ps = saved.places ?? []
+                    if (ps.length) { app.places = ps; app.refreshAll() }
+                    app.locate()
                 }
-                onLoadFailed: app.firstRun()
+                onLoadFailed: app.locate()
             }
             Process {
                 id: zoneProc
@@ -258,29 +305,6 @@ ShellRoot {
                 boundsBehavior: Flickable.StopAtBounds
                 clip: true
 
-                Column {
-                    id: header
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    y: 58
-                    spacing: 0
-                    Row {
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        visible: !!app.place?.home
-                        spacing: 3
-                        Symbol { anchors.verticalCenter: parent.verticalCenter; name: "location"; tone: "white"; size: 9 }
-                        Label { text: "HOME"; px: 10; w: Font.Bold }
-                    }
-                    Label {
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        text: app.place?.name ?? ""
-                        px: 30; w: Font.Normal
-                    }
-                    Label {
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        text: app.cur ? Api.temp(app.cur.temperature_2m, app.imperial) + "  |  " + Api.conditionName(app.cur.weather_code) : ""
-                        px: 16; w: Font.DemiBold
-                    }
-                }
                 // Offline: a glass card, so the message reads over any sky.
                 Glass {
                     anchors.centerIn: parent
@@ -312,7 +336,7 @@ ShellRoot {
                     function ry(r) { return r === 0 ? 0 : 124 + g + (r - 1) * (u + g) }
                     function rh(r, n) { return ry(r + n - 1) + (r + n - 1 === 0 ? 124 : u) - ry(r) }
                     width: full; height: ry(5) + u
-                    y: 160
+                    y: 58 + header.openHeight + 22
                     x: (parent.width - width * scale) / 2
                     scale: Math.min(1, (scroller.width - 40) / full)
                     transformOrigin: Item.TopLeft
@@ -477,7 +501,8 @@ ShellRoot {
             // Scroll edge: content fades into the sky under the toolbar, as on macOS 27.
             Rectangle {
                 id: edgeFade
-                width: parent.width; height: win.toolbarHeight + 16
+                // Deeper once the header has folded, so cards fade out beneath it.
+                width: parent.width; height: win.toolbarHeight + 16 + (header.height - 30) * header.fold
                 radius: win.contentX > 0 ? 0 : Theme.radiusWindow
                 opacity: Math.min(1, scroller.contentY / 40)
                 readonly property color edge: Qt.darker(sky.palette[0], 1.0)
@@ -485,6 +510,64 @@ ShellRoot {
                     GradientStop { position: 0; color: Qt.rgba(edgeFade.edge.r, edgeFade.edge.g, edgeFade.edge.b, 1) }
                     GradientStop { position: 0.55; color: Qt.rgba(edgeFade.edge.r, edgeFade.edge.g, edgeFade.edge.b, 0.8) }
                     GradientStop { position: 1; color: Qt.rgba(edgeFade.edge.r, edgeFade.edge.g, edgeFade.edge.b, 0) }
+                }
+            }
+            // The place and its weather, pinned: as the cards scroll up under it,
+            // the large temperature folds away into one line, as on the Mac.
+            Column {
+                id: header
+                anchors.horizontalCenter: parent.horizontalCenter
+                y: 58
+                z: 4
+                spacing: 0
+                // Its height unfolded, where the cards start.
+                readonly property real openHeight: locRow.implicitHeight + placeName.implicitHeight + bigTemp.implicitHeight
+                                                   + condition.implicitHeight + highLow.implicitHeight
+                // 0 at the top, 1 once scrolled past the large temperature.
+                readonly property real fold: Math.max(0, Math.min(1, scroller.contentY / 90))
+                Row {
+                    id: locRow
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    visible: !!(app.place?.current || app.place?.home)
+                    spacing: 3
+                    Symbol { anchors.verticalCenter: parent.verticalCenter; name: "location"; tone: "white"; size: 9 }
+                    Label { text: app.place?.current ? "MY LOCATION" : "HOME"; px: 10; w: Font.Bold }
+                }
+                Label {
+                    id: placeName
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    text: app.place?.name ?? ""
+                    px: 32; w: Font.Normal
+                }
+                Item {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    width: bigTemp.width; height: bigTemp.height * (1 - header.fold)
+                    clip: true
+                    Label {
+                        id: bigTemp
+                        objectName: "weatherTemp"
+                        text: app.cur ? Api.temp(app.cur.temperature_2m, app.imperial) : ""
+                        px: 96; w: Font.Thin
+                        opacity: 1 - header.fold
+                        // The degree sign hangs past the centre, as on the Mac.
+                        leftPadding: 28
+                    }
+                }
+                Label {
+                    id: condition
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    text: app.cur ? (header.fold > 0.5 ? Api.temp(app.cur.temperature_2m, app.imperial) + "  |  " : "")
+                                    + Api.conditionName(app.cur.weather_code) : ""
+                    px: 20; w: Font.DemiBold
+                }
+                Label {
+                    id: highLow
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    visible: !!app.f
+                    opacity: 1 - header.fold
+                    text: app.f ? "H:" + Api.temp(app.f.daily.temperature_2m_max[app.today], app.imperial)
+                                 + "  L:" + Api.temp(app.f.daily.temperature_2m_min[app.today], app.imperial) : ""
+                    px: 20; w: Font.DemiBold
                 }
             }
         }

@@ -14,8 +14,8 @@ indicators and Control Center:
 - A camera opened directly, without PipeWire, and screen recorders
   (wf-recorder and the like) are found in /proc.
 - Location: CitronOS's location helper leaves a file under
-  $XDG_RUNTIME_DIR/citron-location while it locates, and GeoClue says
-  whether any other app is being given a location.
+  $XDG_RUNTIME_DIR/citron-location while it locates and for a few seconds
+  after, and GeoClue says whether any other app is being given a location.
 """
 from __future__ import annotations
 
@@ -157,7 +157,8 @@ def location_usage(geoclue: bool) -> set[str]:
     for f in run.glob("*.json") if run.is_dir() else []:
         try:
             data = json.loads(f.read_text())
-            os.kill(int(data["pid"]), 0)
+            if time.time() > float(data.get("until") or 0):
+                os.kill(int(data["pid"]), 0)          # still locating, or gone (raises)
             use.add(str(data.get("app") or "An app"))
         except (OSError, ValueError, KeyError, TypeError):
             try:
