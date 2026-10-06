@@ -118,6 +118,18 @@ def browser_env(root: Path, exit_ms=1700):
     return env
 
 
+def children(pid: int) -> list[int]:
+    found = []
+    for task in Path(f"/proc/{pid}/task").glob("*"):
+        try:
+            kids = [int(k) for k in (task / "children").read_text().split()]
+        except OSError:
+            continue
+        for kid in kids:
+            found += [kid, *children(kid)]
+    return found
+
+
 def state_files(root: Path):
     return list(root.rglob("state.json"))
 
@@ -134,6 +146,34 @@ class NativeQmlBrowser(unittest.TestCase):
             text=True,
             timeout=timeout,
         )
+
+    def run_until(self, cmd, env, done, wait=40):
+        """Run Web until `done()` holds, then quit it as logging out does.
+
+        A fixed exit timer raced Chromium's cold start: on a slow machine Web
+        quit before the page had signed in, and the test failed at random.
+        """
+        web = subprocess.Popen(cmd, cwd=ROOT, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        try:
+            deadline = time.monotonic() + wait
+            while time.monotonic() < deadline and not done():
+                time.sleep(0.2)
+            reached = done()
+            time.sleep(0.8)  # let the page settle, as a person would before quitting
+            # SIGTERM reaches Web itself, also under dbus-run-session.
+            for pid in [web.pid, *children(web.pid)]:
+                try:
+                    argv = Path(f"/proc/{pid}/cmdline").read_text(errors="replace").split("\0")
+                except OSError:
+                    continue
+                if len(argv) > 1 and argv[1] == str(BROWSER):
+                    os.kill(pid, signal.SIGTERM)
+            out, err = web.communicate(timeout=30)
+        finally:
+            if web.poll() is None:
+                web.kill()
+        self.assertTrue(reached, "Web never got there")
+        return subprocess.CompletedProcess(cmd, web.returncode, out, err)
 
     def test_qml_chromium_starts_and_persists_session(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -154,9 +194,11 @@ class NativeQmlBrowser(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             # Long enough for a cold Chromium start to reach the page.
-            first = self.run_browser(root, BASE + "/login-a", exit_ms=4500, timeout=40)
+            first = self.run_until([sys.executable, str(BROWSER), BASE + "/login-a"], browser_env(root, 0),
+                                   lambda: any(p == "/login-a" for p, _ in COOKIES_SEEN))
             self.assertEqual(first.returncode, 0, first.stderr)
-            again = self.run_browser(root, BASE + "/check-a", exit_ms=2500, timeout=30)
+            again = self.run_until([sys.executable, str(BROWSER), BASE + "/check-a"], browser_env(root, 0),
+                                   lambda: any(p == "/check-a" for p, _ in COOKIES_SEEN))
             self.assertEqual(again.returncode, 0, again.stderr)
             sent = [cookie for path, cookie in COOKIES_SEEN if path == "/check-a"]
             self.assertTrue(sent, COOKIES_SEEN)
@@ -192,21 +234,22 @@ class NativeQmlBrowser(unittest.TestCase):
             (rings / "login.keyring").write_text("[keyring]\ndisplay-name=Login\nctime=0\nmtime=0\nlock-on-idle=false\nlock-after=false\n")
             (rings / "default").write_text("login")
 
-            def run(url):
-                env = browser_env(root, 4000)
+            def saved():
+                return "org.goldengate.Web" in "".join(p.read_text(errors="replace") for p in rings.glob("*.keyring"))
+
+            def run(url, done):
+                env = browser_env(root, 0)
                 env["GG_WEB_TEST_ACCEPT_PASSWORDS"] = "1"
-                return subprocess.run(
+                return self.run_until(
                     ["dbus-run-session", "--", "sh", "-c",
                      'gnome-keyring-daemon --start --components=secrets >/dev/null 2>&1; exec "$0" "$@"',
-                     sys.executable, str(BROWSER), url],
-                    cwd=ROOT, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=60)
+                     sys.executable, str(BROWSER), url], env, done)
 
             REPORTS.clear()
-            first = run(BASE + "/signin")
+            first = run(BASE + "/signin", saved)
             self.assertEqual(first.returncode, 0, first.stderr)
-            self.assertTrue(list(rings.glob("*.keyring")))
-            self.assertIn("org.goldengate.Web", "".join(p.read_text(errors="replace") for p in rings.glob("*.keyring")))
-            again = run(BASE + "/signin-again")
+            self.assertTrue(saved(), "the password never reached the keyring")
+            again = run(BASE + "/signin-again", lambda: bool(REPORTS))
             self.assertEqual(again.returncode, 0, again.stderr)
             self.assertEqual(REPORTS, ["/report?u=ada%40example.com&p=correct%20horse"], REPORTS)
 
@@ -265,48 +308,29 @@ class NativeQmlBrowser(unittest.TestCase):
     def test_second_launch_hands_url_to_existing_window(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            env = browser_env(root, 3200)
-            first = subprocess.Popen(
-                [sys.executable, str(BROWSER), BASE + "/first"],
-                cwd=ROOT,
-                env=env,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-            )
-            try:
-                # WebEngine can be slow on a cold CI worker. Poll the handoff
-                # path instead of assuming an exact startup delay.
-                second = None
-                deadline = time.monotonic() + 7
-                while time.monotonic() < deadline:
-                    second = subprocess.run(
-                        [sys.executable, str(BROWSER), BASE + "/second"],
-                        cwd=ROOT,
-                        env=env,
-                        stdout=subprocess.PIPE,
-                        stderr=subprocess.PIPE,
-                        text=True,
-                        timeout=5,
-                    )
-                    if second.returncode == 0:
-                        break
-                    time.sleep(0.2)
-                self.assertIsNotNone(second)
-                self.assertEqual(second.returncode, 0, second.stderr)
+            env = browser_env(root, 0)
+            seconds = []
 
-                out, err = first.communicate(timeout=10)
-                self.assertEqual(first.returncode, 0, err)
-            finally:
-                if first.poll() is None:
-                    first.terminate()
-                    first.wait(timeout=5)
+            def handed_over():
+                # Once the first window shows its page it is listening for
+                # other launches (it listens before loading). A second launch
+                # before then would become a browser of its own.
+                if not any(p == "/handoff-first" for p, _ in COOKIES_SEEN):
+                    return False
+                if not seconds:
+                    seconds.append(subprocess.run([sys.executable, str(BROWSER), BASE + "/handoff-second"], cwd=ROOT, env=env,
+                                                  stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=30))
+                return any(p == "/handoff-second" for p, _ in COOKIES_SEEN)
+
+            first = self.run_until([sys.executable, str(BROWSER), BASE + "/handoff-first"], env, handed_over)
+            self.assertEqual(seconds[0].returncode, 0, seconds[0].stderr)
+            self.assertEqual(first.returncode, 0, first.stderr)
 
             files = state_files(root)
             self.assertEqual(len(files), 1, [str(p) for p in files])
             tabs = json.loads(files[0].read_text())["tabs"]
-            self.assertIn(BASE + "/first", tabs)
-            self.assertIn(BASE + "/second", tabs)
+            self.assertIn(BASE + "/handoff-first", tabs)
+            self.assertIn(BASE + "/handoff-second", tabs)
 
     def test_production_path_is_qml_not_qtwidgets(self):
         launcher = (ROOT / "apps/browser/browser.py").read_text()
