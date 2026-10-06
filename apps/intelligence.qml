@@ -145,8 +145,8 @@ ShellRoot {
                 ask: "Ask a question, explore an idea, or attach an image to understand it.",
                 writing: "Proofread, rewrite, summarize, or polish your own text with a single pass.",
                 image: "Generate a new image from a prompt, then save the result in a click.",
-                edit: "Edit an image with prompt-based refinements while preserving your original.")
-            [page] ?? "Create and refine content quickly."
+                edit: "Edit an image with prompt-based refinements while preserving your original."
+            })[page] ?? "Create and refine content quickly."
 
             function switchPage(p) {
                 page = p
@@ -305,8 +305,8 @@ ShellRoot {
                                             width: 100
                                             height: 28
                                             radius: 14
-                                            color: app.page === modelData.page ? "#ffffff26" : "#ffffff14"
-                                            border { width: 1; color: "#ffffff36" }
+                                            color: app.page === modelData.page ? "#26ffffff" : "#14ffffff"
+                                            border { width: 1; color: "#36ffffff" }
                                             Text {
                                                 anchors.centerIn: parent
                                                 text: modelData.name
@@ -319,14 +319,14 @@ ShellRoot {
                                 }
                             }
                             Column {
-                                width: parent.width * 0.36
-                                spacing: 10
+                                width: parent.width * 0.36 - parent.spacing
+                                spacing: 8
                                 Rectangle {
                                     width: parent.width
-                                    height: 92
+                                    height: 70
                                     radius: 18
-                                    color: "#ffffff12"
-                                    border { width: 1; color: "#ffffff24" }
+                                    color: "#12ffffff"
+                                    border { width: 1; color: "#24ffffff" }
                                     Column {
                                         anchors { horizontalCenter: parent.horizontalCenter; verticalCenter: parent.verticalCenter }
                                         spacing: 6
@@ -344,17 +344,17 @@ ShellRoot {
                                 }
                                 Rectangle {
                                     width: parent.width
-                                    height: 44
+                                    height: 40
                                     radius: 14
-                                    color: "#ffffff12"
-                                    border { width: 1; color: "#ffffff24" }
+                                    color: "#12ffffff"
+                                    border { width: 1; color: "#24ffffff" }
                                     Row {
                                         anchors.centerIn: parent
                                         spacing: 10
                                         Symbol { name: "sparkles"; size: 16; tone: "white" }
                                         Text {
                                             text: "Gemini ready"
-                                            color: Theme.label
+                                            color: "#fff"
                                             font { family: Theme.fontUi; pixelSize: 12; weight: Font.DemiBold }
                                         }
                                     }

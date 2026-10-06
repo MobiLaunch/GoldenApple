@@ -102,26 +102,42 @@ class LiveAudioHandling(unittest.IsolatedAsyncioTestCase):
         await session.receive()
         self.assertTrue(session.mic_allowed.is_set())
 
-    async def test_queue_backpressure_preserves_every_audio_chunk(self):
+    async def test_reading_never_waits_for_playback(self):
+        # A long reply arrives far faster than it plays. The WebSocket must be
+        # read throughout (keepalive pongs, "interrupted"): with nothing
+        # playing, the whole reply is still read at once and every chunk kept.
         session = voice.VoiceSession("gemini-test", "Aoede", "not-a-key")
         session.half_duplex = False
-        chunks = [bytes([i]) * 64 for i in range(70)]
+        chunks = [bytes([i % 256]) * 64 for i in range(600)]
         session.ws = self.Feed([self.packet(c) for c in chunks] + [{"turnComplete": True}])
         session.running = False
-        received = []
+        await __import__("asyncio").wait_for(session.receive(), timeout=2)
+        queued = [session.play_queue.get_nowait()[1] for _ in range(session.play_queue.qsize())]
+        self.assertEqual(queued, chunks + [None])
 
-        async def consume():
-            while True:
-                _, chunk = await session.play_queue.get()
-                session.play_queue.task_done()
-                if chunk is None:
-                    return
-                received.append(chunk)
+    async def test_stale_echo_cancellers_are_unloaded(self):
+        # A session killed outright leaves its module loaded (and the real
+        # microphone open); the next session removes it, and only it.
+        session = voice.VoiceSession("gemini-test", "Aoede", "not-a-key")
+        listing = ("7\tmodule-echo-cancel\tsource_name=citron_aec_mic_999999 sink_name=citron_aec_speaker_999999 aec_method=webrtc\t\n"
+                   "8\tmodule-echo-cancel\tsource_name=citron_aec_mic_%d sink_name=x aec_method=webrtc\t\n"
+                   "9\tmodule-echo-cancel\tsource_name=someone_elses\t\n" % __import__("os").getpid())
+        calls = []
 
-        consumer = __import__("asyncio").create_task(consume())
-        await __import__("asyncio").wait_for(session.receive(), timeout=3)
-        await __import__("asyncio").wait_for(consumer, timeout=3)
-        self.assertEqual(received, chunks)
+        class Proc:
+            returncode = 0
+            def __init__(self, args): self.args = args
+            async def communicate(self): return listing.encode(), b""
+            async def wait(self): return 0
+
+        async def process(*args, **kw):
+            calls.append(args)
+            return Proc(args)
+
+        session.process = process
+        with patch.object(voice, "alive", side_effect=lambda pid: pid != 999999):
+            await session.remove_stale_echo_cancel()
+        self.assertEqual([c for c in calls if c[1] == "unload-module"], [("pactl", "unload-module", "7")])
 
     async def test_missing_aec_uses_safe_half_duplex(self):
         session = voice.VoiceSession("gemini-test", "Aoede", "not-a-key")

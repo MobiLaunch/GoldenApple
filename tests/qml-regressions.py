@@ -121,6 +121,13 @@ for qml in sorted([*(root / "shell").rglob("*.qml"), *(root / "apps").rglob("*.q
     for field_id in set(re.findall(r"\bTextField\s*\{\s*id:\s*(\w+)", text)):
         if re.search(r"(?<![\w.])" + field_id + r"\.forceActiveFocus\(\)", text):
             errors.append(f"{qml.relative_to(root)}: focus {field_id}.input, not the TextField around it")
+    # Qt reads 8-digit colours as #AARRGGBB, not CSS's #RRGGBBAA: a "white at
+    # 15%" written "#ffffff26" draws solid yellow (Citron's header once did).
+    for line_no, line in enumerate(text.splitlines(), 1):
+        for colour in re.findall(r'"#ffffff([0-9a-fA-F]{2})"', line):
+            if colour.lower() != "ff":
+                errors.append(f"{qml.relative_to(root)}:{line_no}: \"#ffffff{colour}\" is opaque yellow in Qt; "
+                              f"white at that alpha is \"#{colour}ffffff\"")
 
 if errors:
     print("\n".join(errors), file=sys.stderr)

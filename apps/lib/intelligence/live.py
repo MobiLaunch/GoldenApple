@@ -11,11 +11,13 @@ from __future__ import annotations
 import asyncio
 import base64
 from array import array
+import ctypes
 import json
 import os
 import signal
 import shutil
 import sys
+from pathlib import Path
 from urllib.parse import quote
 
 from helper import IntelligenceError, api_key, config
@@ -26,6 +28,17 @@ CHUNK_BYTES = 3200  # 100 ms; signed 16-bit little-endian mono
 HOST = "generativelanguage.googleapis.com"
 PATH = "/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent"
 MAX_MESSAGE = 24 * 1024 * 1024
+PR_SET_PDEATHSIG = 1
+
+
+def die_with_parent() -> None:
+    # Runs in each pw-record / pw-play child before exec: if this helper is
+    # killed outright (SIGKILL, or the shell reloading), the kernel stops the
+    # child too, so the microphone is never left recording on its own.
+    try:
+        ctypes.CDLL(None, use_errno=True).prctl(PR_SET_PDEATHSIG, signal.SIGTERM)
+    except (OSError, AttributeError):
+        pass
 
 
 def emit(event: str, **values) -> None:
@@ -71,6 +84,14 @@ def pcm_level(chunk: bytes) -> float:
     return round(min(1.0, (energy ** .5) / 7500), 3)
 
 
+def alive(pid: int) -> bool:
+    try:
+        cmdline = Path(f"/proc/{pid}/cmdline").read_bytes()
+    except OSError:
+        return False
+    return b"live.py" in cmdline
+
+
 class VoiceSession:
     def __init__(self, model: str, voice: str, key: str):
         self.model, self.voice, self.key = model, voice, key
@@ -80,8 +101,12 @@ class VoiceSession:
         self.mic_allowed.set()
         self.mic_proc = None
         self.out_proc = None
-        # Backpressure instead of silently discarding spoken audio.
-        self.play_queue = asyncio.Queue(maxsize=48)
+        # Unbounded: the reply arrives faster than it plays, and the WebSocket
+        # must keep being read meanwhile. Blocking the reader on a full queue
+        # stalled keepalive pongs (Gemini dropped the call during long replies)
+        # and held back "interrupted", so barge-in only took effect once the
+        # backlog had played. A reply is at most a few MB of PCM.
+        self.play_queue = asyncio.Queue()
         self.play_lock = asyncio.Lock()
         self.last_status = ""
         self.ws = None
@@ -103,7 +128,7 @@ class VoiceSession:
     async def process(self, cmd: str, *options, stdin=None, stdout=None):
         return await asyncio.create_subprocess_exec(
             cmd, *options, stdin=stdin, stdout=stdout,
-            stderr=asyncio.subprocess.DEVNULL,
+            stderr=asyncio.subprocess.DEVNULL, preexec_fn=die_with_parent,
         )
 
     async def stop_proc(self, proc) -> None:
@@ -131,6 +156,7 @@ class VoiceSession:
         if not shutil.which("pactl"):
             emit("notice", text="Speaker-safe mode: wait until Citron finishes before talking.")
             return
+        await self.remove_stale_echo_cancel()
         suffix = str(os.getpid())
         mic = "citron_aec_mic_" + suffix
         speaker = "citron_aec_speaker_" + suffix
@@ -155,6 +181,30 @@ class VoiceSession:
             await asyncio.sleep(0.2)
         else:
             emit("notice", text="Speaker-safe mode: wait until Citron finishes before talking.")
+
+    async def remove_stale_echo_cancel(self) -> None:
+        """Unload echo cancellers left by sessions that were killed outright.
+
+        A helper stopped with SIGKILL (the shell reloading, a crash) can't
+        unload its module, which then keeps the real microphone open and
+        piles up virtual devices session after session.
+        """
+        try:
+            proc = await self.process("pactl", "list", "short", "modules", stdout=asyncio.subprocess.PIPE)
+            out, _ = await asyncio.wait_for(proc.communicate(), timeout=4)
+        except (OSError, asyncio.TimeoutError):
+            return
+        for line in out.decode("utf-8", errors="ignore").splitlines():
+            fields = line.split("\t")
+            if len(fields) < 3 or fields[1] != "module-echo-cancel" or "citron_aec_mic_" not in fields[2]:
+                continue
+            owner = fields[2].split("citron_aec_mic_", 1)[1].split()[0]
+            if owner.isdecimal() and not alive(int(owner)):
+                try:
+                    proc = await self.process("pactl", "unload-module", fields[0])
+                    await asyncio.wait_for(proc.wait(), timeout=4)
+                except (OSError, asyncio.TimeoutError):
+                    pass
 
     async def remove_echo_cancel(self) -> None:
         if not self.echo_module:
@@ -295,12 +345,12 @@ class VoiceSession:
                     emit("level", value=0)
                 self.speaker_active = True
                 self.turn_has_audio = True
-                # Backpressure preserves *all* chunks instead of truncating.
-                await self.play_queue.put((self.audio_epoch, data))
+                # Every chunk is kept (none dropped), without ever pausing the reader.
+                self.play_queue.put_nowait((self.audio_epoch, data))
                 self.status("speaking")
             if sc.get("turnComplete"):
                 if self.turn_has_audio:
-                    await self.play_queue.put((self.audio_epoch, None))
+                    self.play_queue.put_nowait((self.audio_epoch, None))
                     self.turn_has_audio = False
                 elif not self.speaker_active:
                     self.status("muted" if self.muted else "listening")
@@ -358,7 +408,7 @@ class VoiceSession:
         # Quickshell stops the helper on Close. Intercept TERM so mic/speaker
         # subprocesses are torn down rather than left capturing audio.
         loop = asyncio.get_running_loop()
-        for sig in (signal.SIGTERM, signal.SIGINT):
+        for sig in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP):
             loop.add_signal_handler(sig, lambda: asyncio.create_task(self.shutdown()))
         self.status("connecting")
         uri = "wss://" + HOST + PATH + "?key=" + quote(self.key, safe="")
