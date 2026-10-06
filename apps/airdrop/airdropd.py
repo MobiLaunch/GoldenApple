@@ -200,16 +200,32 @@ def respond(writer, status: int, payload=None):
     writer.write(head.encode() + b"\r\n" + body)
 
 
+_client_ssl: tuple | None = None  # (CLIENT_CERT it was made with, context)
+
+
+def client_ssl() -> ssl.SSLContext:
+    """One TLS context for every outgoing request, made once.
+
+    LocalSend devices use self-signed certificates, so none are verified and
+    the system's CA bundle isn't needed. Loading it per request (as
+    create_default_context does) blocked the event loop for seconds during a
+    network sweep, so probes, transfers and the UI all stalled.
+    """
+    global _client_ssl
+    if _client_ssl is None or _client_ssl[0] != CLIENT_CERT:
+        ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+        if CLIENT_CERT:
+            ctx.load_cert_chain(*CLIENT_CERT)
+        _client_ssl = (CLIENT_CERT, ctx)
+    return _client_ssl[1]
+
+
 async def http_call(peer: dict, method: str, path: str, payload=None, *, body_path: Path | None = None,
                     progress=None, timeout: float = 15.0):
     """One request to another device. Returns (status, json-or-None)."""
-    ctx = None
-    if peer.get("protocol", "https") == "https":
-        ctx = ssl.create_default_context()
-        ctx.check_hostname = False
-        ctx.verify_mode = ssl.CERT_NONE       # LocalSend devices use self-signed certificates
-        if CLIENT_CERT:
-            ctx.load_cert_chain(*CLIENT_CERT)
+    ctx = client_ssl() if peer.get("protocol", "https") == "https" else None
     reader, writer = await asyncio.wait_for(
         asyncio.open_connection(peer["ip"], int(peer.get("port", PORT)), ssl=ctx), timeout=min(timeout, 6))
     try:
@@ -443,12 +459,17 @@ class AirDrop:
         """Announce, and sweep the local network for devices that miss it."""
         self.multicast(self.info(announce=True))
         extra = [h for h in os.environ.get("GG_AIRDROP_PEERS", "").split(",") if h]
+        # Devices already known (or named) first: a silent address costs up
+        # to two timeouts, so behind a full sweep of the network they'd
+        # reappear only after every other address had been tried.
         targets = []
-        for net, mine in self.local_networks():
-            targets += [(str(h), PORT) for h in net.hosts() if str(h) != mine]
         for h in extra:
             host, _, port = h.rpartition(":")
             targets.append((host, int(port)))
+        targets += [(p["ip"], p["port"]) for p in self.peers.values()]
+        for net, mine in self.local_networks():
+            targets += [(str(h), PORT) for h in net.hosts() if str(h) != mine]
+        targets = list(dict.fromkeys(targets))
         sem = asyncio.Semaphore(64)
 
         async def probe(ip, port):
