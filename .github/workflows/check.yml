@@ -267,6 +267,11 @@ jobs:
         env:
           QT_QPA_PLATFORM: offscreen
           QT_QUICK_BACKEND: software
+      - name: Calculator: Basic, Scientific, Programmer and Convert
+        run: python tests/calculator.py
+        env:
+          QT_QPA_PLATFORM: offscreen
+          QT_QUICK_BACKEND: software
       - name: Validate Citron voice WebSocket contracts without microphone or network
         run: python tests/intelligence-live.py
       - name: Test account failures, preferences, and browser state

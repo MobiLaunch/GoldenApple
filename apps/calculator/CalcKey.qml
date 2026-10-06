@@ -11,13 +11,16 @@ Item {
     property bool selected: false
     property bool deleteGlyph: false
     property bool wide: false
+    property bool compact: false        // Scientific and Programmer's smaller labels
+    property bool lit: false            // a switch that's on (2nd, Rad)
     signal pressed()
 
-    width: 47; height: 47
+    width: wide ? 100 : 47; height: 47
+    opacity: enabled ? 1 : 0.35
 
     readonly property color base: kind === "operator" ? (selected ? "#ffffff" : "#ff9500")
-                                : kind === "function" ? "#717577" : "#464a4c"
-    readonly property color ink: kind === "operator" && selected ? "#ff9500" : "#ffffff"
+                                : lit ? "#c9cbcd" : kind === "function" ? "#717577" : "#464a4c"
+    readonly property color ink: (kind === "operator" && selected) ? "#ff9500" : lit ? "#1c1c1e" : "#ffffff"
 
     Rectangle {
         id: face
@@ -53,7 +56,8 @@ Item {
         color: key.ink
         font {
             family: Theme.fontUi
-            pixelSize: key.kind === "operator" ? 33 : key.kind === "function" ? (key.label.length > 1 ? 20 : 24) : key.label.length > 1 ? 18 : 25
+            pixelSize: key.compact ? (key.label.length > 4 ? 12 : 15)
+                     : key.kind === "operator" ? 33 : key.kind === "function" ? (key.label.length > 1 ? 20 : 24) : key.label.length > 1 ? 18 : 25
             weight: key.kind === "function" ? Font.Medium : Font.Light
         }
     }
@@ -70,6 +74,7 @@ Item {
         }
     }
     TapHandler {
+        enabled: key.enabled
         onTapped: { key.pressed(); flashAnim.restart() }
     }
     SequentialAnimation {

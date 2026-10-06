@@ -537,3 +537,75 @@ test('Desktop widgets: snap to free cells, never overlap, fill down the left fir
   for (let c = 0; c < g.cols; c++) for (let r = 0; r < g.rows; r++) full.push({ id: c + ':' + r, size: 'small', col: c, row: r });
   assert.equal(L.firstFree(full, 'small', g), null);
 });
+
+// Calculator (apps/calculator/engine.js): precedence and parentheses,
+// scientific functions, 64-bit Programmer arithmetic without BigInt, and
+// unit conversion.
+function calculator() {
+  const src = readFileSync(new URL('../apps/calculator/engine.js', import.meta.url), 'utf8').replace('.pragma library', '');
+  const c = vm.createContext({ BigInt: undefined }); vm.runInContext(src, c);   // as in Qt: no BigInt
+  return c;
+}
+
+test('calculator evaluates with precedence, parentheses and powers', () => {
+  const c = calculator();
+  assert.equal(c.evaluate([2, '+', 3, '*', 4]), 14);
+  assert.equal(c.evaluate(['(', 2, '+', 3, ')', '*', 4]), 20);
+  assert.equal(c.evaluate([2, '^', 3, '^', 2]), 512, 'powers associate to the right');
+  assert.equal(c.evaluate([27, 'root', 3]), 3);
+  assert.equal(c.evaluate([1.5, 'EE', 3]), 1500);
+  assert.equal(c.evaluate([2, 'rpow', 3]), 9, 'yˣ: y to the power of x');
+  assert.equal(c.evaluate([2, '+', 3, '*']), 5, 'a trailing operator is dropped');
+  assert.equal(c.evaluate(['(', 2, '+', 3, '*', 2]), 8, 'open parentheses close themselves');
+  assert.ok(Number.isNaN(c.evaluate([1, '/', 0])));
+  assert.equal(c.format(1 / 3), '0.333333333');
+  assert.equal(c.format(1234567), '1,234,567');
+  assert.equal(c.format(1e10), '1e10');
+  assert.equal(c.format(Math.PI, 12), '3.14159265359');
+});
+
+test('calculator scientific functions, in degrees or radians', () => {
+  const c = calculator();
+  assert.equal(c.unary('sin', 30, false).toFixed(12), '0.500000000000');
+  assert.equal(c.unary('sin', 180, false), 0, 'no 1.2e-16');
+  assert.equal(c.unary('cos', 90, false), 0);
+  assert.ok(Number.isNaN(c.unary('tan', 90, false)));
+  assert.equal(c.unary('sin', Math.PI / 2, true), 1);
+  assert.equal(c.unary('asin', 1, false), 90);
+  assert.equal(c.unary('fact', 5), 120);
+  assert.ok(Number.isNaN(c.unary('fact', 2.5)));
+  assert.equal(c.unary('log10', 1000), 3);
+  assert.equal(c.unary('cbrt', -8), -2);
+  assert.ok(Number.isNaN(c.unary('ln', 0)));
+});
+
+test('calculator programmer mode: exact 64-bit arithmetic without BigInt', () => {
+  const c = calculator();
+  const max = c.parseInt64('FFFFFFFFFFFFFFFF', 16);
+  assert.equal(c.toBase(max, 10), '18,446,744,073,709,551,615');
+  assert.equal(c.toBase(c.add(max, c.u64(1)), 16), '0', 'wraps at 64 bits');
+  const f = c.parseInt64('FFFFFFFF', 16);
+  assert.equal(c.toBase(c.mul(f, f), 16), 'FFFF FFFE 0000 0001');
+  const [q, r] = c.divmod(c.u64(100), c.u64(7));
+  assert.equal(c.toBase(q, 10), '14'); assert.equal(c.toBase(r, 10), '2');
+  assert.equal(c.divmod(c.u64(1), c.u64(0)), null);
+  assert.equal(c.toBase(c.punary('twos', c.u64(1)), 16), 'FFFF FFFF FFFF FFFF');
+  assert.equal(c.toBase(c.punary('rol', c.parseInt64('8000000000000000', 16)), 16), '1');
+  assert.equal(c.toBase(c.punary('flipb', c.parseInt64('1234', 16)), 16), '3412');
+  assert.equal(c.toBase(c.pevaluate([c.u64(2), '+', c.u64(3), '*', c.u64(4)]), 10), '14');
+  assert.equal(c.toBase(c.pevaluate([c.u64(1), 'shl', c.u64(4), 'or', c.u64(1)]), 10), '17');
+  assert.equal(c.toBase(c.parseInt64('777', 8), 10), '511');
+  assert.equal(c.toBase(c.u64(10), 2), '1010');
+  assert.equal(c.bit(c.u64(5), 2), 1);
+  assert.equal(c.toBase(c.toggleBit(c.u64(0), 63), 16), '8000 0000 0000 0000');
+});
+
+test('calculator converts units', () => {
+  const c = calculator();
+  assert.equal(c.convert(100, 'Temperature', 'Celsius', 'Fahrenheit'), 212);
+  assert.equal(Math.round(c.convert(32, 'Temperature', 'Fahrenheit', 'Kelvin') * 100) / 100, 273.15);
+  assert.equal(c.convert(1, 'Length', 'Miles', 'Kilometers'), 1.609344);
+  assert.equal(c.convert(1, 'Data', 'Gibibytes', 'Bytes'), 1073741824);
+  assert.ok(c.categories().includes('Pressure'));
+  assert.ok(Number.isNaN(c.convert(1, 'Length', 'Miles', 'Kilograms')));
+});
