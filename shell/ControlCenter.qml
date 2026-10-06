@@ -412,6 +412,44 @@ PanelWindow {
             Behavior on x { NumberAnimation { duration: 260; easing.type: Easing.OutCubic } }
         }
 
+        // In use: which apps have the microphone, camera, screen or location,
+        // each with its indicator's colour, as at the top of the Mac's.
+        Module {
+            visible: Privacy.any
+            width: cc.span(4)
+            height: inUse.implicitHeight + 22
+            radius: 22
+            Column {
+                id: inUse
+                anchors { left: parent.left; right: parent.right; verticalCenter: parent.verticalCenter; leftMargin: 16; rightMargin: 14 }
+                spacing: 6
+                Repeater {
+                    model: ["mic", "camera", "screen", "location"].filter((k) => Privacy[k].length)
+                    delegate: Row {
+                        required property string modelData
+                        spacing: 8
+                        Rectangle {
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: 8; height: 8; radius: 4
+                            color: Privacy.colors[parent.modelData]
+                        }
+                        Text {
+                            text: Privacy.names[parent.modelData]
+                            color: Theme.label
+                            font { family: Theme.fontUi; pixelSize: 12; weight: Font.DemiBold }
+                        }
+                        Text {
+                            text: Privacy[parent.modelData].join(", ")
+                            color: Theme.secondaryLabel
+                            elide: Text.ElideRight
+                            width: Math.min(implicitWidth, cc.span(4) - 150)
+                            font { family: Theme.fontUi; pixelSize: 12 }
+                        }
+                    }
+                }
+            }
+        }
+
         // Wi-Fi and Bluetooth | what's playing
         Row {
             spacing: cc.gap

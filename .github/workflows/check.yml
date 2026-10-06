@@ -318,3 +318,7 @@ jobs:
         run: python tests/menu-bar.py
         env:
           QT_QPA_PLATFORM: offscreen
+      - name: Privacy indicators show who uses the microphone, camera, screen and location
+        run: python tests/privacy.py
+        env:
+          QT_QPA_PLATFORM: offscreen

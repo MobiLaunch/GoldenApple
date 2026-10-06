@@ -249,9 +249,11 @@ class VoiceSession:
             if not self.running:
                 break
             target = ["--target", self.mic_target] if self.mic_target else []
+            # Named, so the menu bar's microphone indicator says who's listening.
             self.mic_proc = await self.process(
                 "pw-record", "--raw", "--format", "s16",
-                "--rate", str(INPUT_RATE), "--channels", "1", *target, "-",
+                "--rate", str(INPUT_RATE), "--channels", "1", *target,
+                "-P", '{ application.name = "Citron" media.role = "Communication" }', "-",
                 stdout=asyncio.subprocess.PIPE,
             )
             try:

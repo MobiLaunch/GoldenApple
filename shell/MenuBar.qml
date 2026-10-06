@@ -230,6 +230,52 @@ PanelWindow {
             Shared.Symbol { name: "wand"; size: 15; tone: bar.darkRight ? "dark" : "white" }
             onClicked: Quickshell.execDetached(["gg-intelligence"])
         }
+        // Privacy: a dot while an app uses the microphone (yellow), camera
+        // (green) or screen (purple), an arrow while one is given your location
+        // (blue). Each grows in and out; Control Center names the apps.
+        BarItem {
+            visible: privacyRow.width > 0.5
+            onClicked: bar.controlCenter.toggle()
+            Row {
+                id: privacyRow
+                spacing: 0
+                Repeater {
+                    model: ["location", "screen", "camera", "mic"]
+                    delegate: Item {
+                        required property string modelData
+                        readonly property bool on: Privacy[modelData].length > 0
+                        width: on ? (modelData === "location" ? 15 : 12) : 0
+                        height: 16
+                        clip: true
+                        Behavior on width { enabled: !Prefs.reduceMotion; NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+                        Accessible.name: Privacy.names[modelData] + " in use"
+                        // Location: the Mac's filled arrow.
+                        Canvas {
+                            visible: parent.modelData === "location"
+                            anchors.centerIn: parent
+                            width: 11; height: 11
+                            scale: parent.on ? 1 : 0.4
+                            Behavior on scale { enabled: !Prefs.reduceMotion; NumberAnimation { duration: 260; easing.type: Easing.OutBack } }
+                            onPaint: {
+                                const c = getContext("2d")
+                                c.reset()
+                                c.fillStyle = Privacy.colors.location
+                                c.beginPath(); c.moveTo(10.5, 0.5); c.lineTo(0.5, 4.8); c.lineTo(5.2, 5.8); c.lineTo(6.2, 10.5); c.closePath(); c.fill()
+                            }
+                        }
+                        Rectangle {
+                            visible: parent.modelData !== "location"
+                            anchors.centerIn: parent
+                            width: 7; height: 7; radius: 3.5
+                            color: Privacy.colors[parent.modelData]
+                            border { width: 0.5; color: Qt.rgba(0, 0, 0, 0.18) }
+                            scale: parent.on ? 1 : 0.2
+                            Behavior on scale { enabled: !Prefs.reduceMotion; NumberAnimation { duration: 260; easing.type: Easing.OutBack } }
+                        }
+                    }
+                }
+            }
+        }
         BarItem {
             highlighted: bar.controlCenter.open
             onClicked: bar.controlCenter.toggle()
