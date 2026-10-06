@@ -1,6 +1,7 @@
-// Transparent menu bar: system menu, the focused app's name, status items, clock.
+// The menu bar: system menu, the app in front and its menus, status items, clock.
 // Global application menus need the appmenu D-Bus bridge (see docs/ROADMAP.md);
-// until then the bar shows the app name without its menus.
+// until then an app gets Window and Help. With no app in front the desktop is
+// Files', and the bar has Files' menus, as the Mac's desktop has Finder's.
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
@@ -55,24 +56,29 @@ PanelWindow {
     WlrLayershell.namespace: "gg-menubar"
     WlrLayershell.layer: WlrLayer.Top
 
-    // Liquid Glass (docs/LIQUID-GLASS.md): a faint white film that HyprGlass
-    // turns into blurred glass, with a lit hairline along the bottom. Reduce
-    // Transparency makes it solid.
+    // Liquid Glass (docs/LIQUID-GLASS.md). With its background on (the
+    // default), a frosted band in the appearance's colours, as the Mac's menu
+    // bar has been; off, a faint film over the wallpaper, as macOS 26 can
+    // show it. HyprGlass turns either into blurred glass. Reduce Transparency
+    // makes it solid.
+    readonly property bool band: Prefs.menuBarBackground || Prefs.reduceTransparency
     Rectangle {
         anchors.fill: parent
-        color: Prefs.reduceTransparency ? (Theme.dark ? "#f21e1e20" : "#f2f4f4f6") : "#14ffffff"
+        color: Prefs.reduceTransparency ? (Theme.dark ? "#f21e1e20" : "#f2f4f4f6")
+             : Prefs.menuBarBackground ? (Theme.dark ? "#8c1c1c20" : "#b8f2f2f5") : "#14ffffff"
+        Behavior on color { ColorAnimation { duration: Theme.reduceMotion ? 0 : 200 } }
         Rectangle {
             anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
             height: 1
-            color: Prefs.reduceTransparency ? Theme.separator : "#2effffff"
+            color: bar.band ? Theme.separator : "#2effffff"
         }
     }
 
     // The film is so faint the wallpaper still decides the text: each half
     // picks white or dark text from its brightness (sampled once per wallpaper).
     property string wallpaper: Prefs.wallpaper
-    property bool darkLeft: false
-    property bool darkRight: false
+    readonly property bool darkLeft: band ? !Theme.dark : wallpaperDarkLeft
+    readonly property bool darkRight: band ? !Theme.dark : wallpaperDarkRight
     Canvas {
         id: sampler
         visible: false
@@ -89,10 +95,12 @@ PanelWindow {
                 for (let i = 0; i < d.length; i += 4) t += (0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2]) / 255;
                 return t / (d.length / 4);
             };
-            bar.darkLeft = lum(0, width * 0.45) > 0.66;
-            bar.darkRight = lum(width * 0.55, width) > 0.66;
+            bar.wallpaperDarkLeft = lum(0, width * 0.45) > 0.66;
+            bar.wallpaperDarkRight = lum(width * 0.55, width) > 0.66;
         }
     }
+    property bool wallpaperDarkLeft: false
+    property bool wallpaperDarkRight: false
 
     readonly property var active: ToplevelManager.activeToplevel
     readonly property string appName: {
@@ -139,30 +147,31 @@ PanelWindow {
     }
 
     RowLayout {
+        id: titlesRow
         anchors { left: parent.left; leftMargin: 8; verticalCenter: parent.verticalCenter }
         spacing: 1
         BarItem {
             id: logo
             highlighted: systemMenu.open
-            onClicked: { appMenu.open = false; windowMenu.open = false; systemMenu.open = !systemMenu.open }
+            onClicked: bar.openMenu("system")
             Symbol { name: "logo"; size: 18; tone: bar.darkLeft ? "dark" : "white" }
         }
         BarItem {
             id: appItem
             highlighted: appMenu.open
-            onClicked: { systemMenu.open = false; windowMenu.open = false; appMenu.open = !appMenu.open }
+            onClicked: bar.openMenu("app")
             BarText { text: bar.appName; font.weight: Font.Bold; dark: bar.darkLeft }
         }
-        BarItem {
-            id: windowItem
-            visible: !!bar.active
-            highlighted: windowMenu.open
-            onClicked: {
-                systemMenu.open = false; appMenu.open = false
-                if (!windowMenu.open) bar.tileTarget = bar.activeAddress()
-                windowMenu.open = !windowMenu.open
+        Repeater {
+            model: bar.titles
+            delegate: BarItem {
+                id: titleItem
+                required property string modelData
+                highlighted: modelData === "Window" ? windowMenu.open : barMenu.open && bar.openTitle === modelData
+                onClicked: bar.openMenu(modelData)
+                Component.onCompleted: if (modelData === "Window") bar.windowItem = titleItem
+                BarText { text: titleItem.modelData; dark: bar.darkLeft }
             }
-            BarText { text: "Window"; dark: bar.darkLeft }
         }
     }
 
@@ -229,8 +238,8 @@ PanelWindow {
         BarItem {
             highlighted: bar.notifications?.centerOpen ?? false
             onClicked: if (bar.notifications) bar.notifications.centerOpen = !bar.notifications.centerOpen
-            SystemClock { id: clock; precision: SystemClock.Minutes }
-            BarText { text: Qt.formatDateTime(clock.date, "ddd MMM d   h:mm AP"); dark: bar.darkRight }
+            SystemClock { id: clock; precision: Prefs.clockSeconds ? SystemClock.Seconds : SystemClock.Minutes }
+            BarText { text: Qt.formatDateTime(clock.date, bar.clockFormat); dark: bar.darkRight }
         }
     }
 
@@ -276,9 +285,14 @@ PanelWindow {
             "-",
             { label: "Quit " + bar.appName, shortcut: "⌘Q", action: () => bar.appWindows.forEach((w) => w.close()) }
         ] : [
-            { label: "New Files Window", shortcut: "⌘N", action: () => Hyprland.dispatch("exec gg-files") },
+            { label: "About Files", action: () => Hyprland.dispatch("exec gg-settings about") },
             "-",
-            { label: "Open Launchpad", action: () => Hyprland.dispatch("exec qs -c golden-gate ipc call launchpad toggle") }
+            { label: "Settings…", shortcut: "⌘,", action: () => Hyprland.dispatch("exec gg-settings dock") },
+            "-",
+            { label: "Empty Trash…", action: () => bar.emptyTrash() },
+            "-",
+            { label: "Hide Others", enabled: false },
+            { label: "Show All", enabled: false }
         ]
     }
     HyprlandFocusGrab {
@@ -291,11 +305,25 @@ PanelWindow {
     // in front. gg-tile is told its address, since this menu holds the focus
     // while it's open.
     property string tileTarget: ""
+    property Item windowItem
+    // A second click on an open menu's title closes it, as on the Mac.
     function openMenu(name) {
-        systemMenu.open = name === "system"
-        appMenu.open = name === "app"
-        if (name === "window" && !windowMenu.open) tileTarget = activeAddress()
-        windowMenu.open = name === "window" && !!active
+        const key = name === "window" ? "Window" : name
+        const wasOpen = key === "system" ? systemMenu.open : key === "app" ? appMenu.open
+            : key === "Window" ? windowMenu.open : barMenu.open && openTitle === key
+        systemMenu.open = !wasOpen && key === "system"
+        appMenu.open = !wasOpen && key === "app"
+        if (key === "Window" && !wasOpen) tileTarget = activeAddress()
+        windowMenu.open = !wasOpen && key === "Window"
+        const item = titleItems().find((i) => i.modelData === key)
+        if (!wasOpen && item && key !== "Window") {
+            openTitle = key
+            barMenuX = item.x + titlesRow.x
+        }
+        barMenu.open = !wasOpen && !!item && key !== "Window"
+    }
+    function titleItems() {
+        return Array.from(titlesRow.children).filter((c) => c.modelData !== undefined)
     }
     function activeAddress() {
         const a = Hyprland.activeToplevel?.address ?? ""
@@ -312,9 +340,15 @@ PanelWindow {
         id: windowMenu
         instant: true
         anchor.window: bar
-        anchor.rect.x: windowItem.x + 8
+        anchor.rect.x: (bar.windowItem ? bar.windowItem.x + titlesRow.x : 0)
         anchor.rect.y: bar.height + 5
-        items: [
+        items: !bar.active ? [
+            { label: "Minimize", shortcut: "⌘M", enabled: false },
+            { label: "Zoom", enabled: false },
+            "-",
+            { label: "Mission Control", action: () => bar.shell("missioncontrol toggle") },
+            { label: "Bring All to Front", enabled: false }
+        ] : [
             { label: "Minimize", shortcut: "⌘M", action: () => bar.minimize() },
             { label: "Zoom", shortcut: "⌥⌘F", action: () => bar.fullscreen(1) },
             "-",
@@ -341,5 +375,79 @@ PanelWindow {
         windows: [windowMenu]
         active: windowMenu.open
         onCleared: windowMenu.open = false
+    }
+
+    // Menus after the app's name. An app's own menus need the appmenu bridge.
+    readonly property var titles: active ? ["Window", "Help"] : ["File", "Edit", "View", "Go", "Window", "Help"]
+    property string openTitle: ""
+    property real barMenuX: 0
+    readonly property string home: Quickshell.env("HOME")
+    // Settings → Menu Bar → Clock.
+    readonly property string clockFormat: [Prefs.clockShowDay ? "ddd" : "", Prefs.clockShowDate ? "MMM d" : ""].filter((x) => x).join(" ")
+        + "   " + (Prefs.clock24 ? "HH:mm" : "h:mm") + (Prefs.clockSeconds ? ":ss" : "") + (Prefs.clock24 ? "" : " AP")
+    function shell(call) { Hyprland.dispatch("exec qs -c golden-gate ipc call " + call) }
+    function files(path) { Quickshell.execDetached(["gg-files", path]) }
+    function emptyTrash() {
+        Quickshell.execDetached(["sh", "-c", "gio trash --empty 2>/dev/null || rm -rf \"${XDG_DATA_HOME:-$HOME/.local/share}/Trash/files/\"* \"${XDG_DATA_HOME:-$HOME/.local/share}/Trash/info/\"*"])
+    }
+    function menuItems(title) {
+        if (title === "File") return [
+            { label: "New Files Window", shortcut: "⌘N", action: () => bar.files(bar.home) },
+            { label: "New Folder on Desktop", action: () => Quickshell.execDetached(["sh", "-c",
+                'd="$HOME/Desktop/untitled folder"; n=2; while [ -e "$d" ]; do d="$HOME/Desktop/untitled folder $n"; n=$((n+1)); done; mkdir -p "$d" && exec gg-files --select "$d"']) },
+            "-",
+            { label: "Open Recents", action: () => bar.files("recents:") },
+            "-",
+            { label: "Find…", shortcut: "⌘Space", action: () => bar.spotlight.toggle() }
+        ]
+        if (title === "Edit") return [
+            { label: "Undo", shortcut: "⌘Z", enabled: false },
+            { label: "Redo", shortcut: "⇧⌘Z", enabled: false },
+            "-",
+            { label: "Cut", shortcut: "⌘X", enabled: false },
+            { label: "Copy", shortcut: "⌘C", enabled: false },
+            { label: "Paste", shortcut: "⌘V", enabled: false },
+            { label: "Select All", shortcut: "⌘A", enabled: false }
+        ]
+        if (title === "View") return [
+            { label: "Edit Widgets…", action: () => bar.shell("widgets edit") },
+            "-",
+            { label: "Show Launchpad", action: () => bar.shell("launchpad toggle") },
+            { label: "Mission Control", action: () => bar.shell("missioncontrol toggle") },
+            "-",
+            { label: "Show Notification Center", action: () => { if (bar.notifications) bar.notifications.centerOpen = true } }
+        ]
+        if (title === "Go") return [
+            { label: "Recents", symbol: "clock", action: () => bar.files("recents:") },
+            { label: "Documents", symbol: "doc", action: () => bar.files(bar.home + "/Documents") },
+            { label: "Desktop", symbol: "wallpaper", action: () => bar.files(bar.home + "/Desktop") },
+            { label: "Downloads", symbol: "download", action: () => bar.files(bar.home + "/Downloads") },
+            { label: "Home", symbol: "house", action: () => bar.files(bar.home) },
+            "-",
+            { label: "AirDrop", symbol: "broadcast", action: () => Quickshell.execDetached(["gg-airdrop"]) },
+            { label: "Applications", symbol: "apps", action: () => bar.shell("launchpad toggle") },
+            "-",
+            { label: "Trash", symbol: "trash", action: () => bar.files("trash:") }
+        ]
+        if (title === "Help") return [
+            { label: "Search", action: () => bar.spotlight.toggle() },
+            "-",
+            { label: "Keyboard Shortcuts", action: () => Hyprland.dispatch("exec gg-settings keyboard") },
+            { label: "Ask Citron…", action: () => Quickshell.execDetached(["gg-intelligence"]) }
+        ]
+        return []
+    }
+    MenuPopup {
+        id: barMenu
+        instant: true
+        anchor.window: bar
+        anchor.rect.x: bar.barMenuX + 8
+        anchor.rect.y: bar.height + 5
+        items: bar.menuItems(bar.openTitle)
+    }
+    HyprlandFocusGrab {
+        windows: [barMenu]
+        active: barMenu.open
+        onCleared: barMenu.open = false
     }
 }

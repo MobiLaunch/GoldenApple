@@ -314,3 +314,7 @@ jobs:
         run: python tests/sddm-theme.py
         env:
           QT_QPA_PLATFORM: offscreen
+      - name: The menu bar has a background and Files' menus on the desktop
+        run: python tests/menu-bar.py
+        env:
+          QT_QPA_PLATFORM: offscreen

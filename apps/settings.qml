@@ -132,6 +132,7 @@ ShellRoot {
                 [2, "accessibility", "Accessibility", "person", "#0a84ff", "AccessibilityPane", "reduce motion transparency text size"],
                 [2, "appearance", "Appearance", "contrast", "#1d1d1f", "AppearancePane", "dark mode light auto accent colour color liquid glass scroll bars"],
                 [2, "dock", "Desktop & Dock", "apps", "#1d1d1f", "DockPane", "dock size magnification indicators"],
+                [2, "menubar", "Menu Bar", "panel-bottom", "#1d1d1f", "MenuBarPane", "menu bar background clock date seconds 24 hour"],
                 [2, "displays", "Displays", "sun-max", "#0a84ff", "DisplaysPane", "resolution scale brightness night shift monitor"],
                 [2, "wallpaper", "Wallpaper", "wallpaper", "#30b0c7", "WallpaperPane", "background desktop picture"],
                 [3, "focus", "Focus", "moon", "#5e5ce6", "FocusPane", "do not disturb notifications"],
