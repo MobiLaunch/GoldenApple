@@ -336,6 +336,9 @@ class Tasks:
         self.kind = ""
         self.cancelled = False
         self.in_simulator = False
+        # Typed while a program is starting, before it's ours to write to:
+        # handed over as soon as it is, not dropped.
+        self.early_input: list[str] = []
 
     def stop(self) -> None:
         with self.lock:
@@ -350,6 +353,7 @@ class Tasks:
         with self.lock:
             self.gen += 1
             self.kind, self.cancelled, self.in_simulator, self.proc = kind, False, False, None
+            self.early_input = []
             gen = self.gen
         emit({"event": "task.started", "gen": gen, "kind": kind, "title": title})
         return gen
@@ -493,6 +497,12 @@ class Tasks:
             current = self.gen == gen
             if current and not self.cancelled:
                 self.proc = proc if destination == proj.HOST else None
+                # A fast program can print and ask before it was recorded here
+                # (its output comes from another thread): what was typed meanwhile.
+                early, self.early_input = self.early_input, []
+                if self.proc:
+                    for text in early:
+                        self.proc.write(text)
                 return
         # Stopped (or replaced) while the program was starting. A replacing
         # Simulator run swaps the app itself, so only a host program is ours to end.
@@ -511,6 +521,9 @@ class Tasks:
     def stdin(self, text: str) -> None:
         with self.lock:
             proc = self.proc
+            if not proc and self.kind == "run" and not self.in_simulator and not self.cancelled:
+                self.early_input.append(text)       # still starting: see launch()
+                return
         if proc and self.kind == "run":
             proc.write(text)
         elif self.in_simulator and self.sim.app:

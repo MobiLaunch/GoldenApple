@@ -389,6 +389,17 @@ class OtherToolchains(unittest.TestCase):
     def test_python_script(self):
         self.build_test_run("python-tool")
 
+    def test_input_typed_as_the_program_starts_isnt_lost(self):
+        # Typed the moment it starts, before the program is the helper's to
+        # write to: it used to be dropped, and the program waited for good.
+        p = self.project("python-tool", "Quick")
+        done, issues = self.task("build", product=p["products"][0])
+        self.assertEqual(done["code"], 0, issues)
+        self.s.call("run", product=p["products"][0], destination="host", device={})
+        self.s.wait(lambda m: m.get("event") == "run.started", 60)
+        self.s.call("stdin", text="Ada\n")
+        self.s.wait(lambda m: m.get("event") == "run.output" and "Hello, Ada!" in m["text"])
+
     def test_python_errors_at_build_and_run_time(self):
         p = self.project("python-tool", "Broken")
         main = pathlib.Path(p["root"]) / "main.py"

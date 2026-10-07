@@ -247,6 +247,8 @@ def udisks_error(text: str) -> str:
         return "Disk changes need the udisks2 service. Install udisks2 with Software Update."
     if "DeviceBusy" in text or "target is busy" in text:
         return "The disk is in use. Quit the apps using it and try again."
+    if "Error looking up object for device" in text or "No such file or directory" in text and "/dev/" in text:
+        return "That disk is no longer connected."
     if "UnknownMethod" in text or "No such interface" in text:
         return "This disk doesn't support that."
     m = re.search(r"GDBus\.Error:[\w.]+:\s*(.+)", text)
@@ -363,6 +365,10 @@ def largest(path: str, limit: int = 12) -> dict:
 def main(argv: list[str]) -> int:
     cmd, args = (argv[1] if len(argv) > 1 else ""), argv[2:]
     try:
+        # Sample disks (tests, screenshots) are only to look at: never send a
+        # change for a device that may not be what the sample says it is.
+        if os.environ.get("GG_DISKS_FIXTURE") and cmd in ("mount", "unmount", "eject", "check", "repair", "erase"):
+            raise RuntimeError("These are sample disks (GG_DISKS_FIXTURE), so nothing was changed.")
         if cmd == "snapshot":
             out = snapshot()
         elif cmd == "usage" and len(args) == 1:

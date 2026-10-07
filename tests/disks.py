@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 from pathlib import Path
 import subprocess
 import unittest
@@ -169,6 +170,7 @@ class Changing(unittest.TestCase):
                          "You weren't allowed to change this disk.")
         self.assertIn("in use", disks.udisks_error("GDBus.Error:org.freedesktop.UDisks2.Error.DeviceBusy: target is busy"))
         self.assertIn("udisks2", disks.udisks_error("GDBus.Error:org.freedesktop.DBus.Error.ServiceUnknown: The name was not provided by any .service files"))
+        self.assertEqual(disks.udisks_error("Error looking up object for device /dev/sdz1"), "That disk is no longer connected.")
 
 
 class Command(unittest.TestCase):
@@ -177,6 +179,9 @@ class Command(unittest.TestCase):
         data = json.loads(out.stdout)
         self.assertTrue(data["ok"])
         self.assertGreater(data["size"], 0)
+        sample = subprocess.run(["python3", str(ROOT / "apps/lib/disks/disks.py"), "mount", "/dev/sda1"], capture_output=True, text=True,
+                                env=dict(os.environ, GG_DISKS_FIXTURE=str(ROOT / "tools/preview/fixtures/disks.json")))
+        self.assertIn("sample disks", json.loads(sample.stdout)["error"], "sample disks are never changed")
         bad = subprocess.run(["python3", str(ROOT / "apps/lib/disks/disks.py"), "erase"], capture_output=True, text=True)
         self.assertFalse(json.loads(bad.stdout)["ok"])
         tmp = Path(__import__("tempfile").mkdtemp())

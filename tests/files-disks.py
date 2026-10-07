@@ -125,9 +125,10 @@ class FilesDisks(unittest.TestCase):
     def test_opening_an_unmounted_volume_mounts_it(self):
         windows = next(v for v in self.value("volumes") if v["name"] == "Windows")
         self.call("openVolume", windows)
-        # The preview has no udisks: the attempt is made, and why it failed is said in the path bar.
+        # The disks are a sample: the mount is asked for, refused (nothing is sent
+        # for a device that may not exist), and why is said in the path bar.
         self.assertTrue(self.wait_for(lambda: self.value("notice") != ""), "a mount was attempted")
-        self.assertIn("udisks2", self.value("notice"))
+        self.assertIn("sample disks", self.value("notice"))
 
 
 if __name__ == "__main__":

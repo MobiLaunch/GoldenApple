@@ -27,8 +27,7 @@ class DiskUtility(unittest.TestCase):
     def setUp(self):
         self.home = Path(tempfile.mkdtemp())
         env = {"HOME": str(self.home), "USER": "you", "XDG_CONFIG_HOME": str(self.home / ".config"),
-               "XDG_RUNTIME_DIR": str(self.home), "GG_DISKS_FIXTURE": str(ROOT / "tools/preview/fixtures/disks.json"),
-               "PATH": "/nonexistent"}   # no udisksctl: changes are attempted and say why they failed
+               "XDG_RUNTIME_DIR": str(self.home), "GG_DISKS_FIXTURE": str(ROOT / "tools/preview/fixtures/disks.json")}
         self.view = QQuickView()
         self.fake = preview.Preview(env, str(ROOT / "apps"), "'default'")
         self.view.engine().addImportPath(str(ROOT / "tools/preview/qml"))
@@ -111,10 +110,10 @@ class DiskUtility(unittest.TestCase):
         self.assertEqual(self.obj("duEraseFormat").property("current"), 0, "ExFAT, as it was")
         self.obj("duEraseConfirm").clicked.emit()
         self.assertFalse(self.obj("duEraseSheet").property("visible"))
-        # Without udisks here, the erase is attempted and says what's missing.
+        # The disks are a sample: the erase is asked for, refused, and says why.
         self.assertTrue(self.wait_for(lambda: not self.value("busy") and self.value("message")))
         self.assertTrue(self.value("messageBad"))
-        self.assertIn("udisks2", self.value("message"))
+        self.assertIn("sample disks", self.value("message"))
 
     def test_whats_using_space(self):
         tmp = Path(tempfile.mkdtemp())
