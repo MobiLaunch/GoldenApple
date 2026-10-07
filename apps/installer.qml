@@ -13,6 +13,16 @@ ShellRoot {
         implicitHeight: 590
         minimumSize: Qt.size(720, 540)
         resizable: false
+        // Nothing closes the installer while it's erasing and copying: the
+        // install would carry on without a window to say how it ended.
+        closeAction: () => {
+            if (stage.installing) {
+                stage.closeRefused = true
+                closeNotice.restart()
+            } else {
+                Qt.quit()
+            }
+        }
 
         Item {
             id: stage
@@ -36,6 +46,12 @@ ShellRoot {
             property real progress: 0
             property bool installing: false
             property bool complete: false
+            property bool closeRefused: false
+            // Set once the helper has started erasing: after that a failure is a
+            // partial install, not a problem to fix on the confirmation page.
+            property bool erased: false
+            property string failedStage: ""
+            property string log: ""
 
             function selectedModel() {
                 return disk && disk.model ? disk.model : "Storage Device"
@@ -81,6 +97,22 @@ ShellRoot {
                     beginInstall()
             }
 
+            // After a partial install: choose and confirm the disk again, from
+            // a fresh list (it may have changed).
+            function startOver() {
+                error = ""
+                erased = false
+                failedStage = ""
+                eraseConfirmed = false
+                disk = null
+                disks = []
+                scan.running = true
+                progress = 0
+                step = 1
+            }
+
+            Timer { id: closeNotice; interval: 4000; onTriggered: stage.closeRefused = false }
+
             function back() {
                 if (step > 0 && step < 4 && !installing) {
                     error = ""
@@ -104,10 +136,16 @@ ShellRoot {
                         installing = false
                         complete = true
                         step = 5
+                    } else if (event.event === "erasing") {
+                        erased = true
                     } else if (event.event === "error") {
                         error = event.message ?? "Installation could not complete."
+                        erased = erased || !!event.erased
+                        failedStage = event.stage ?? ""
+                        log = event.log ?? ""
                         installing = false
-                        step = 3
+                        eraseConfirmed = false
+                        step = erased ? 6 : 3
                     }
                 } catch (e) {
                     // Only structured helper events drive the UI.
@@ -119,6 +157,8 @@ ShellRoot {
                     return
                 installing = true
                 complete = false
+                erased = false
+                failedStage = ""
                 error = ""
                 progress = 0.01
                 status = "Starting installation…"
@@ -127,10 +167,13 @@ ShellRoot {
                 // Live media normally grants the installer passwordless sudo.
                 // If that policy is missing or changed, fall back to the desktop
                 // Polkit agent instead of failing silently after the confirmation step.
+                // systemd-inhibit holds off shutdown, restart and sleep until it ends.
                 install.command = [
                     "sh", "-c",
-                    "if command -v sudo >/dev/null 2>&1 && sudo -n true >/dev/null 2>&1; then exec sudo -n python3 \"$1\" install; "
-                    + "elif command -v pkexec >/dev/null 2>&1; then exec pkexec python3 \"$1\" install; "
+                    "inh=''; if command -v systemd-inhibit >/dev/null 2>&1; then "
+                    + "inh='systemd-inhibit --what=shutdown:sleep:idle:handle-power-key:handle-suspend-key:handle-lid-switch --who=CitronOS-Installer --why=Installing --mode=block'; fi; "
+                    + "if command -v sudo >/dev/null 2>&1 && sudo -n true >/dev/null 2>&1; then exec sudo -n $inh python3 \"$1\" install; "
+                    + "elif command -v pkexec >/dev/null 2>&1; then exec pkexec $inh python3 \"$1\" install; "
                     + "else printf '%s\\n' 'No administrator authorization method is available.' >&2; exit 127; fi",
                     "sh", helper
                 ]
@@ -212,6 +255,7 @@ ShellRoot {
                         device: stage.selectedPath(),
                         username: stage.username,
                         password: stage.password,
+                        identity: stage.disk ? stage.disk.identity ?? "" : "",
                         hostname: "golden-gate",
                         confirm: "ERASE:" + stage.selectedPath()
                     }
@@ -223,9 +267,12 @@ ShellRoot {
                     stdinEnabled = true
                     if (code !== 0 && stage.installing) {
                         stage.installing = false
-                        stage.step = 3
+                        stage.eraseConfirmed = false
+                        stage.step = stage.erased ? 6 : 3
                         if (!stage.error)
-                            stage.error = "Installation stopped before it finished. The destination may need to be erased before retrying."
+                            stage.error = stage.erased
+                                ? "The installer stopped before it finished."
+                                : "Installation couldn't start: administrator authorization was refused or isn't available."
                     }
                 }
             }
@@ -248,9 +295,10 @@ ShellRoot {
                         : stage.step === 2 ? "person"
                         : stage.step === 3 ? "info"
                         : stage.step === 4 ? "arrow-clockwise"
+                        : stage.step === 6 ? "warning"
                         : "checkmark"
                     size: 58
-                    tone: stage.step === 3 ? "red" : stage.step === 5 ? "accent" : "auto"
+                    tone: stage.step === 3 || stage.step === 6 ? "red" : stage.step === 5 ? "accent" : "auto"
                 }
 
                 Text {
@@ -266,6 +314,7 @@ ShellRoot {
                         : stage.step === 2 ? "Create Your Account"
                         : stage.step === 3 ? "Ready to Install"
                         : stage.step === 4 ? "Installing CitronOS"
+                        : stage.step === 6 ? "Installation Didn't Finish"
                         : "Installation Complete"
                 }
 
@@ -286,7 +335,9 @@ ShellRoot {
                                     ? "CitronOS will erase " + stage.selectedPath() + " and install a fresh system. This cannot be undone."
                                     : stage.step === 4
                                         ? stage.status
-                                        : "CitronOS was installed successfully."
+                                        : stage.step === 6
+                                            ? stage.selectedPath() + " was erased, but CitronOS wasn't fully installed on it, so it won't start this computer. Its old contents can't be recovered from here."
+                                            : "CitronOS was installed successfully."
                 }
 
                 Item { width: 1; height: 4 }
@@ -478,6 +529,58 @@ ShellRoot {
                 }
 
                 Column {
+                    objectName: "installerFailure"
+                    visible: stage.step === 6
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    width: Math.min(540, parent.width)
+                    spacing: 8
+
+                    Rectangle {
+                        width: parent.width
+                        height: failureFacts.implicitHeight + 28
+                        radius: 14
+                        color: Theme.dark ? "#14ffffff" : "#09000000"
+                        border { width: 0.5; color: Theme.separator }
+                        Column {
+                            id: failureFacts
+                            anchors { left: parent.left; right: parent.right; top: parent.top; margins: 14 }
+                            spacing: 5
+                            Text {
+                                width: parent.width
+                                visible: !!stage.failedStage
+                                text: "Stopped while: " + stage.failedStage
+                                color: Theme.label
+                                wrapMode: Text.WordWrap
+                                font { family: Theme.fontUi; pixelSize: 13; weight: Font.DemiBold }
+                            }
+                            Text {
+                                width: parent.width
+                                text: stage.error
+                                color: Theme.secondaryLabel
+                                wrapMode: Text.WordWrap
+                                font { family: Theme.fontUi; pixelSize: 12 }
+                            }
+                            Text {
+                                width: parent.width
+                                visible: !!stage.log
+                                text: "The full log is in " + stage.log + " until you restart."
+                                color: Theme.tertiaryLabel
+                                wrapMode: Text.WordWrap
+                                font { family: Theme.fontUi; pixelSize: 11 }
+                            }
+                        }
+                    }
+                    Text {
+                        width: parent.width
+                        text: "To try again, choose the destination and confirm erasing it again."
+                        color: Theme.secondaryLabel
+                        horizontalAlignment: Text.AlignHCenter
+                        wrapMode: Text.WordWrap
+                        font { family: Theme.fontUi; pixelSize: 12 }
+                    }
+                }
+
+                Column {
                     visible: stage.step === 5
                     anchors.horizontalCenter: parent.horizontalCenter
                     width: Math.min(520, parent.width)
@@ -494,7 +597,18 @@ ShellRoot {
                 }
 
                 Text {
-                    visible: !!stage.error
+                    objectName: "installerCloseRefused"
+                    visible: stage.closeRefused
+                    width: parent.width
+                    text: "The installer can't be closed while CitronOS is installing."
+                    color: Theme.secondaryLabel
+                    horizontalAlignment: Text.AlignHCenter
+                    wrapMode: Text.WordWrap
+                    font { family: Theme.fontUi; pixelSize: 12; weight: Font.Medium }
+                }
+
+                Text {
+                    visible: !!stage.error && stage.step !== 6
                     width: parent.width
                     text: stage.error
                     color: "#ff453a"
@@ -526,6 +640,20 @@ ShellRoot {
                     destructive: stage.step === 3
                     enabled: stage.canContinue()
                     onClicked: stage.next()
+                }
+
+                Button {
+                    visible: stage.step === 6 && !!stage.log
+                    text: "Show Log"
+                    onClicked: Quickshell.execDetached(["xdg-open", stage.log])
+                }
+
+                Button {
+                    objectName: "installerStartOver"
+                    visible: stage.step === 6
+                    text: "Start Over"
+                    prominent: true
+                    onClicked: stage.startOver()
                 }
 
                 Button {

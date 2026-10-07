@@ -15,20 +15,28 @@ StepFrame {
     property string currentUser: Quickshell.env("USER") || ""
     signal accountCreated(string username)
     signal advance()
-    symbol: "person"
-    title: createdUsername ? "Your Account Is Ready" : "Create Your Local Account"
-    text: createdUsername ? "Sign in as " + createdUsername + " from the login screen. Your choices on the next screens will be saved for this account."
-                         : "Your name, your files, your own password. No online account is needed."
-    continueText: busy ? "Creating…" : createdUsername ? "Continue" : "Create Account"
+    // Running from the USB: no account is made here. Try goes on as the live
+    // session; Install opens the installer, where your account is made once.
+    readonly property bool tryOrInstall: liveSession && !createdUsername
+    symbol: tryOrInstall ? "logo" : "person"
+    title: tryOrInstall ? "Try or Install CitronOS" : createdUsername ? "Your Account Is Ready" : "Create Your Local Account"
+    text: tryOrInstall ? "Try CitronOS from this drive without changing your computer, or install it. You'll create your account when you install, and sign in with it when your computer restarts."
+        : createdUsername ? "Sign in as " + createdUsername + " from the login screen. Your choices on the next screens will be saved for this account."
+        : "Your name, your files, your own password. No online account is needed."
+    continueText: tryOrInstall ? "Try CitronOS" : busy ? "Creating…" : createdUsername ? "Continue" : "Create Account"
     canGoBack: !busy
-    canContinue: !busy && (!!createdUsername || (fullName.text.trim().length > 0 && /^[a-z_][a-z0-9_-]{0,30}$/.test(username.text)
-                       && password.text.length >= 8 && password.text === confirm.text))
-    secondaryText: liveChecked && !liveSession && !busy && !createdUsername ? "Use Existing Account" : ""
-    onSecondary: advance()
+    canContinue: tryOrInstall || (!busy && (!!createdUsername || (fullName.text.trim().length > 0 && /^[a-z_][a-z0-9_-]{0,30}$/.test(username.text)
+                       && password.text.length >= 8 && password.text === confirm.text)))
+    secondaryText: tryOrInstall ? "Install CitronOS…"
+        : liveChecked && !liveSession && !busy && !createdUsername ? "Use Existing Account" : ""
+    onSecondary: {
+        if (tryOrInstall) Quickshell.execDetached(["gg-install"])
+        advance()
+    }
     onNext: submit()
 
     function submit() {
-        if (createdUsername) { advance(); return }
+        if (createdUsername || tryOrInstall) { advance(); return }
         if (!canContinue) return
         error = ""
         createAccount.running = true
@@ -70,6 +78,7 @@ StepFrame {
             id: fields
             width: parent.width
             spacing: 10
+            visible: !step.tryOrInstall
             Text { visible: !step.createdUsername; text: "Full Name"; color: Theme.label; font.pixelSize: 12 }
             TextField { id: fullName; visible: !step.createdUsername; width: parent.width; height: 32; placeholder: "Your full name"; enabled: !step.busy; input.maximumLength: 80 }
             TextField { id: username; visible: !step.createdUsername; width: parent.width; height: 32; placeholder: "Account name (lowercase, no spaces)"; enabled: !step.busy; input.maximumLength: 31 }

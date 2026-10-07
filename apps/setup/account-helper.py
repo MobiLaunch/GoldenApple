@@ -69,10 +69,67 @@ def finish(data):
     # preference writes into root file writes. No inherited PYTHONPATH or HOME.
     result = subprocess.run(['/usr/bin/runuser', '-u', name, '--', '/usr/bin/env', '-i',
         'HOME=' + user.pw_dir, 'PATH=/usr/bin:/bin', '/usr/bin/python3', '-I',
-        '/usr/lib/golden-gate/save-preferences.py'], input=json.dumps(preferences), text=True, capture_output=True)
+        '/usr/lib/golden-gate/save-preferences.py', '--done'], input=json.dumps(preferences), text=True, capture_output=True)
     if result.returncode:
         raise ValueError('The account exists, but its settings could not be saved. Free disk space and retry.')
     return {'ok': True, 'username': name}
+
+
+ZONEINFO = '/usr/share/zoneinfo'
+
+
+def system(data):
+    """The system-wide choices from Hello: the time zone, and the region's
+    formats locale generated so dates and numbers can follow it. Each is
+    reported on its own, so Hello can say which failed."""
+    out = {'ok': True, 'zone': None, 'formats': None}
+    zone = data.get('zone')
+    if zone is not None:
+        real = os.path.realpath(os.path.join(ZONEINFO, zone)) if isinstance(zone, str) else ''
+        if not isinstance(zone, str) or not re.fullmatch(r'[A-Za-z_]+(/[A-Za-z0-9_+-]+){0,2}', zone) \
+                or not real.startswith(ZONEINFO + '/') or not os.path.isfile(real):
+            out['zone'] = 'That time zone isn\'t known to this system.'
+        else:
+            r = subprocess.run(['/usr/bin/timedatectl', 'set-timezone', zone], capture_output=True, text=True)
+            if r.returncode:
+                out['zone'] = 'The time zone couldn\'t be set (timedatectl failed).'
+    formats = data.get('formats')
+    if formats is not None:
+        if not isinstance(formats, str) or not re.fullmatch(r'[a-z]{2,3}_[A-Z]{2}', formats):
+            out['formats'] = 'Those region formats aren\'t known.'
+        else:
+            out['formats'] = generate_locale(formats)
+    out['ok'] = not out['zone'] and not out['formats']
+    return out
+
+
+def generate_locale(name):
+    """"" once name.UTF-8 is available to programs, or why it isn't."""
+    have = subprocess.run(['/usr/bin/locale', '-a'], capture_output=True, text=True).stdout.split()
+    if name + '.utf8' in have or name + '.UTF-8' in have:
+        return ''
+    entry = name + '.UTF-8 UTF-8'
+    try:
+        with open('/usr/share/i18n/SUPPORTED', encoding='utf-8') as f:
+            if entry not in (line.strip() for line in f):
+                return 'Formats for this region aren\'t available on this system.'
+        try:
+            with open('/etc/locale.gen', encoding='utf-8') as f:
+                current = f.read()
+        except FileNotFoundError:
+            current = ''
+        if entry not in (line.strip() for line in current.splitlines()):
+            tmp = '/etc/locale.gen.gg-tmp'
+            with open(tmp, 'w', encoding='utf-8') as f:
+                f.write(current + ('' if current.endswith('\n') or not current else '\n') + entry + '\n')
+                f.flush()
+                os.fsync(f.fileno())
+            os.chmod(tmp, 0o644)
+            os.replace(tmp, '/etc/locale.gen')
+    except OSError:
+        return 'The region formats couldn\'t be prepared.'
+    r = subprocess.run(['/usr/bin/locale-gen'], capture_output=True, text=True)
+    return '' if r.returncode == 0 else 'The region formats couldn\'t be prepared (locale-gen failed).'
 
 
 def main():
@@ -91,6 +148,8 @@ def main():
             result = create(data)
         elif data.get('operation') == 'finish':
             result = finish(data)
+        elif data.get('operation') == 'system':
+            result = system(data)
         else:
             raise ValueError('Unknown setup operation.')
     print(json.dumps(result))

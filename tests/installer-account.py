@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """The installer's account checks (apps/installer/helper.py with
 apps/setup/account_rules.py, which Hello shares): a name the installed system
-already has (root, or any account or group in the image being copied) or a
+already has (root, or a system account or group in the image being copied;
+not the live session's own people, who aren't carried over) or a
 password that's short or holds a line break is refused on the account page
 and again by the install itself, before the disk is touched. Every command
 is mocked; nothing here can erase anything."""
@@ -28,6 +29,7 @@ def module(name, path):
 
 
 installer = module("installer_helper", "apps/installer/helper.py")
+installer.LOG = Path(tempfile.mkdtemp()) / "install.log"
 account = module("account_helper", "apps/setup/account-helper.py")
 
 
@@ -37,7 +39,7 @@ class Rules(unittest.TestCase):
         self.image = Path(self.tmp.name)
         (self.image / "etc").mkdir()
         (self.image / "etc/passwd").write_text("root:x:0:0::/root:/bin/bash\ngolden:x:1000:1000::/home/golden:/bin/bash\n"
-                                               "ada:x:1001:1001::/home/ada:/bin/bash\n")
+                                               "ada:x:1001:1001::/home/ada:/bin/bash\npostgres:x:968:968::/var/lib/postgres:/usr/bin/nologin\n")
         (self.image / "etc/group").write_text("root:x:0:\nwheel:x:998:golden\nlpadmin:x:997:\n")
 
     def tearDown(self):
@@ -49,7 +51,8 @@ class Rules(unittest.TestCase):
     def test_names(self):
         self.assertEqual(self.problem("grace"), "")
         self.assertEqual(self.problem("golden"), "", "the live account is removed before yours is made")
-        for name in ("root", "ada", "wheel", "lpadmin", "nobody", "sddm"):
+        self.assertEqual(self.problem("ada"), "", "so is an account made in the live session")
+        for name in ("root", "postgres", "wheel", "lpadmin", "nobody", "sddm"):
             self.assertIn("already used", self.problem(name), name)
         for name in ("Grace", "1grace", "", "a" * 32, "grace smith"):
             self.assertIn("lowercase", self.problem(name), name)

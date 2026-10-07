@@ -67,9 +67,12 @@ ShellRoot {
             property bool switchAfterFinish: false
             property string createdUsername: ""
             property string finishError: ""
+            property bool accountReady: false
             property var preferences: ({})
 
             function go(n) {
+                // The installer made this account: Hello has no account to make.
+                if (accountReady && steps[n] === "account") n += n > step ? 1 : -1
                 if (pageSwap.running || finishing || n < 0 || n >= steps.length || n === step) return
                 if (Theme.reduceMotion) { step = n; return }
                 pageSwap.forward = n > step
@@ -98,17 +101,66 @@ ShellRoot {
                 Theme.dark = dark
                 run(["gsettings", "set", "org.gnome.desktop.interface", "color-scheme", dark ? "prefer-dark" : "default"])
             }
-            // Everything chosen, saved; then the desktop.
+            // Everything chosen, saved; then the desktop. Each step is waited
+            // for: the account's settings, your choices, the time zone and
+            // region formats (one authorization), Location Services, and only
+            // then the mark that Setup is done. A step that fails stops here
+            // with the reason, to retry or to put off (listed for later).
+            property var chain: []
+            property var deferred: []
+            property var deferrable: []        // what the failed step would put off
             function finish(switchUser) {
                 if (finishing) return
                 finishing = true
                 switchAfterFinish = switchUser === true
                 finishError = ""
+                deferrable = []
                 const l = Regions.layout(region.keyboard)
                 preferences = {layout: l.layout, variant: l.variant, look: look, location: location,
-                    shareDiagnostics: shareDiagnostics, shareWithDevelopers: shareWithDevelopers}
-                if (createdUsername) accountFinish.running = true
-                else saveSettings.running = true
+                    shareDiagnostics: shareDiagnostics, shareWithDevelopers: shareWithDevelopers,
+                    zone: zone, formats: region.locale, region: region.name}
+                if (!chain.length)
+                    chain = (createdUsername ? ["account"] : []).concat(["save", "system", "location", "done"])
+                step_()
+            }
+            function step_() {
+                switch (chain[0]) {
+                case "account": accountFinish.running = true; break
+                case "save": saveSettings.done = false; saveSettings.running = true; break
+                case "system": systemSettings.running = true; break
+                case "location": locationSetting.running = true; break
+                case "done": saveSettings.done = true; saveSettings.running = true; break
+                default: finished()
+                }
+            }
+            function stepDone() { chain = chain.slice(1); step_() }
+            function stepFailed(message, canDefer) {
+                finishing = false
+                deferrable = canDefer || []
+                finishError = message + (deferrable.length ? " Choose Get Started to try again, or Set Up Later to finish without it." : " Choose Get Started to try again.")
+            }
+            // Put off what failed (listed in setup-deferred.json) and go on.
+            function deferAndContinue() {
+                deferred = deferred.concat(deferrable.filter((d) => !deferred.includes(d)))
+                deferrable = []
+                finishError = ""
+                finishing = true
+                stepDone()
+            }
+            function finished() {
+                if (shareDiagnostics) run(["bash", root.here + "/setup/crash-watch.sh"])
+                if (switchAfterFinish && createdUsername && !liveSession) {
+                    const sid = Quickshell.env("XDG_SESSION_ID") || ""
+                    if (!sid) {
+                        finishing = false
+                        finishError = "CitronOS could not identify this login session. Use the system menu to sign out, then choose " + createdUsername + " at the login screen."
+                        return
+                    }
+                    switchSession.command = ["loginctl", "terminate-session", sid]
+                    switchSession.running = true
+                } else {
+                    outro.start()
+                }
             }
             Process {
                 id: accountFinish
@@ -120,33 +172,48 @@ ShellRoot {
                 }
                 onExited: (code) => {
                     stdinEnabled = true
-                    if (code === 0) saveSettings.running = true
-                    else { stage.finishing = false; stage.finishError = "Your account exists, but its settings could not be saved. Authorize the request and try again." }
+                    if (code === 0) stage.stepDone()
+                    else stage.stepFailed("Your account exists, but its settings could not be saved. Authorize the request and try again.")
                 }
             }
             Process {
                 id: saveSettings
-                command: ["python3", root.here + "/setup/save-preferences.py"]
+                property bool done: false
+                command: ["python3", root.here + "/setup/save-preferences.py"].concat(done ? ["--done"] : [])
                 stdinEnabled: true
-                onStarted: { write(JSON.stringify(stage.preferences)); stdinEnabled = false }
+                onStarted: { write(JSON.stringify(Object.assign({deferred: stage.deferred}, stage.preferences))); stdinEnabled = false }
                 onExited: (code) => {
                     stdinEnabled = true
-                    if (code !== 0) { stage.finishing = false; stage.finishError = "Settings could not be saved. Check free disk space and try again."; return }
-                    stage.run(["timedatectl", "set-timezone", stage.zone])
-                    stage.run(["gsettings", "set", "org.gnome.system.location", "enabled", String(stage.location)])
-                    if (stage.shareDiagnostics) stage.run(["bash", root.here + "/setup/crash-watch.sh"])
-                    if (stage.switchAfterFinish && stage.createdUsername && !stage.liveSession) {
-                        const sid = Quickshell.env("XDG_SESSION_ID") || ""
-                        if (!sid) {
-                            stage.finishing = false
-                            stage.finishError = "CitronOS could not identify this login session. Use the system menu to sign out, then choose " + stage.createdUsername + " at the login screen."
-                            return
-                        }
-                        switchSession.command = ["loginctl", "terminate-session", sid]
-                        switchSession.running = true
-                    } else {
-                        outro.start()
-                    }
+                    if (code === 0) stage.stepDone()
+                    else stage.stepFailed("Settings could not be saved. Check free disk space and try again.")
+                }
+            }
+            Process {
+                id: systemSettings
+                command: ["sh", root.here + "/setup/account-call.sh"]
+                stdinEnabled: true
+                onStarted: {
+                    write(JSON.stringify({operation: "system", zone: stage.zone, formats: stage.region.locale}))
+                    stdinEnabled = false
+                }
+                stdout: StdioCollector { id: systemReply }
+                onExited: (code) => {
+                    stdinEnabled = true
+                    let r = {}
+                    try { r = JSON.parse(systemReply.text) } catch (e) {}
+                    if (r.ok) { stage.stepDone(); return }
+                    const off = []
+                    if (r.zone || !("zone" in r)) off.push("timezone")
+                    if (r.formats || !("formats" in r)) off.push("formats")
+                    stage.stepFailed(r.zone || r.formats || "The time zone and region formats couldn't be set: authorization was refused or isn't available.", off)
+                }
+            }
+            Process {
+                id: locationSetting
+                command: ["gsettings", "set", "org.gnome.system.location", "enabled", String(stage.location)]
+                onExited: (code) => {
+                    if (code === 0) stage.stepDone()
+                    else stage.stepFailed("Location Services couldn't be turned " + (stage.location ? "on" : "off") + ".", ["location"])
                 }
             }
             Process {
@@ -166,6 +233,11 @@ ShellRoot {
                 running: true
                 command: ["sh", "-c", "test -d /run/archiso"]
                 onExited: (code) => stage.liveSession = code === 0
+            }
+            Process {
+                running: true
+                command: ["test", "-e", root.configDir + "/golden-gate/account-ready"]
+                onExited: (code) => stage.accountReady = code === 0
             }
 
             // Guess the region from the time zone and language.
@@ -304,6 +376,9 @@ ShellRoot {
                 StepFrame {
                     symbol: "globe"
                     title: "Select Your Country or Region"
+                    // Region sets the keyboard, the time zone and formats; the
+                    // apps themselves are in English, and Hello says so.
+                    text: "Your keyboard, time zone, and date, number and currency formats will follow " + stage.region.name + ". CitronOS's apps are in English."
                     canGoBack: true
                     onBack: stage.back()
                     onNext: { stage.setKeyboard(stage.region.keyboard); stage.next() }
@@ -461,7 +536,8 @@ ShellRoot {
                     continueText: stage.finishing ? "Saving…" : "Get Started"
                     canContinue: !stage.finishing
                     canGoBack: !stage.finishing
-                    secondaryText: stage.createdUsername && !stage.liveSession && !stage.finishing ? "Sign Out & Switch User" : ""
+                    secondaryText: stage.deferrable.length && !stage.finishing ? "Set Up Later"
+                        : stage.createdUsername && !stage.liveSession && !stage.finishing ? "Sign Out & Switch User" : ""
                     Text {
                         width: parent.width; wrapMode: Text.WordWrap; textFormat: Text.PlainText
                         text: stage.finishError || (stage.createdUsername
@@ -473,7 +549,7 @@ ShellRoot {
                         font.pixelSize: 13
                     }
                     onBack: stage.back()
-                    onSecondary: stage.finish(true)
+                    onSecondary: stage.deferrable.length ? stage.deferAndContinue() : stage.finish(true)
                     onNext: stage.finish(false)
                 }
             }

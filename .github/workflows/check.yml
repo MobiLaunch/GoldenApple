@@ -241,6 +241,8 @@ jobs:
         run: python tests/calendar-store.py
       - name: Installer and Hello refuse taken account names and unsafe passwords before anything is erased
         run: python tests/installer-account.py
+      - name: Installer refuses a swapped disk, reports a partial install, and isn't stopped by closing
+        run: python tests/installer-failure.py
       - name: Web's saved passwords come back without secret-tool's line break
         run: python tests/browser-passwords.py
       - name: "Mac apps: catalog, download, checksum, install, open with Darling, remove"
@@ -342,6 +344,14 @@ jobs:
           QT_QPA_PLATFORM: offscreen
       - name: A prominent destructive button is red, not the accent
         run: python tests/button-destructive.py
+        env:
+          QT_QPA_PLATFORM: offscreen
+      - name: Installer window shows a partial install apart from a refusal, and won't close mid-install
+        run: python tests/installer-window.py
+        env:
+          QT_QPA_PLATFORM: offscreen
+      - name: "Hello: Try or Install on the USB, waits for each finishing step, setup-done last"
+        run: python tests/setup-finish.py
         env:
           QT_QPA_PLATFORM: offscreen
       - name: "Liquid Glass drawn with OpenGL: see-through, its shadow outside it"

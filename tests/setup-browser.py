@@ -58,17 +58,44 @@ class Setup(unittest.TestCase):
     def test_save_marker_written_after_preferences(self):
         with tempfile.TemporaryDirectory() as tmp:
             config = Path(tmp)
-            prefs.save({'layout':'us', 'variant':'', 'look':'dark', 'location':False}, config)
+            choices = {'layout':'us', 'variant':'', 'look':'dark', 'location':False,
+                       'zone':'Europe/Berlin', 'formats':'de_DE', 'region':'Germany'}
+            prefs.save(choices, config)
             self.assertEqual(json.loads((config/'golden-gate/appearance.json').read_text())['mode'], 'dark')
-            self.assertTrue((config/'golden-gate/setup-done').exists())
+            self.assertFalse((config/'golden-gate/setup-done').exists(), 'not until the system choices are applied')
             self.assertFalse(json.loads((config/'golden-gate/privacy.json').read_text())['location'])
+            self.assertEqual(json.loads((config/'golden-gate/region.json').read_text())['zone'], 'Europe/Berlin')
+            self.assertIn('LC_TIME=de_DE.UTF-8', (config/'environment.d/90-golden-formats.conf').read_text())
+            prefs.save(dict(choices, deferred=['timezone']), config, done=True)
+            self.assertTrue((config/'golden-gate/setup-done').exists())
+            self.assertEqual(json.loads((config/'golden-gate/setup-deferred.json').read_text()), ['timezone'])
+            prefs.save(choices, config, done=True)
+            self.assertFalse((config/'golden-gate/setup-deferred.json').exists(), 'nothing left for later')
+
+    def test_region_choices_are_checked(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            for bad in ({'zone': '../../etc/passwd'}, {'formats': 'de_DE.UTF-8\nLD_PRELOAD=x'}, {'deferred': ['everything']}):
+                with self.assertRaises(ValueError):
+                    prefs.save(bad, Path(tmp), done=True)
+            self.assertFalse((Path(tmp)/'golden-gate/setup-done').exists())
+
+    def test_system_choices(self):
+        with patch.object(account.subprocess, 'run') as run:
+            run.return_value = subprocess.CompletedProcess([], 0, 'C\nC.utf8\nde_DE.utf8\n', '')
+            r = account.system({'zone': '../../../etc/shadow', 'formats': 'de_DE'})
+            self.assertFalse(r['ok'])
+            self.assertIn('time zone', r['zone'])
+            self.assertEqual(r['formats'], '', 'already generated: nothing to do')
+            self.assertNotIn(['/usr/bin/timedatectl', 'set-timezone', '../../../etc/shadow'], [c.args[0] for c in run.call_args_list])
+            r = account.system({'formats': 'de_DE; rm -rf /'})
+            self.assertIn("aren't known", r['formats'])
 
     def test_failed_save_never_marks_setup_complete(self):
         with tempfile.TemporaryDirectory() as tmp:
             config = Path(tmp)
             (config/'hypr').write_text('not a directory')
             with self.assertRaises(OSError):
-                prefs.save({}, config)
+                prefs.save({}, config, done=True)
             self.assertFalse((config/'golden-gate/setup-done').exists())
 
     def test_keyboard_injection_rejected(self):
