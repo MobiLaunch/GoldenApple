@@ -281,7 +281,7 @@ function qmlColor(c) {
     "        brightness = 1.1",
     "        noise = 0.015",
     "        popups = true",
-    "        popups_ignorealpha = 0.2",
+    "        popups_ignorealpha = 0.3",
     "    }",
     "    shadow {",
     "        enabled = true",

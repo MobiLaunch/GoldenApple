@@ -44,10 +44,14 @@ with tempfile.TemporaryDirectory() as tmp:
         check(fill > 30, f"the Display tile's slider is filled white, found {fill}")
 
 # No card behind the controls: HyprGlass turns anything on the surface more
-# than 8% opaque into glass, so the panel is bare geometry and its shadow's
-# stacked layers stay under that line.
+# opaque than its threshold into glass, so the panel is bare geometry and
+# its shadow's stacked layers, like each control's own shadow, stay under it.
 import re
 qml = (ROOT / "shell/ControlCenter.qml").read_text()
+threshold = re.search(r"gg-controlcenter=([\d.]+)", (ROOT / "compositor/hyprland/hyprglass-sync.sh").read_text())
+check(threshold is not None, "HyprGlass has a Control Center threshold")
+line = float(threshold.group(1)) if threshold else 0.0
+check(0.2 <= line <= 0.3, f"the threshold sits above the controls' shadows and below their glass, got {line}")
 check(re.search(r"Item \{\s*id: panel", qml) is not None, "the panel is geometry, not glass (no card behind the controls)")
 m = re.search(r"model: (\d+)\s*Rectangle \{.{0,400}?opacity: Theme\.dark \? ([\d.]+) : ([\d.]+)", qml, re.S)
 check(m is not None, "the shadow behind the controls is found")
@@ -55,9 +59,7 @@ if m:
     layers = int(m.group(1))
     for a in (float(m.group(2)), float(m.group(3))):
         total = 1 - (1 - a) ** layers
-        check(total < 0.08, f"the shadow stays under HyprGlass's 8% glass threshold (reaches {total:.3f})")
-threshold = re.search(r"gg-controlcenter=([\d.]+)", (ROOT / "compositor/hyprland/hyprglass-sync.sh").read_text())
-check(threshold is not None and float(threshold.group(1)) == 0.08, "HyprGlass's Control Center threshold is still 8%")
+        check(total < line, f"the shadow stays under HyprGlass's glass threshold (reaches {total:.3f})")
 
 if failures:
     print("\n".join("FAIL " + f for f in failures), file=sys.stderr)

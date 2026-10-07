@@ -21,6 +21,7 @@ QtObject {
     // Set by the window types.
     property int __layer: 2
     property bool __glass: false
+    property real __threshold: 0.07
     property bool __shadow: false
     property real __x: 0
     property real __y: 0
@@ -76,13 +77,16 @@ QtObject {
                 anchors.fill: parent
                 visible: win.__glass
                 source: backdropSource
+                // No padding: the mask is laid over the effect's whole area, so a
+                // padded effect stretched it and blurred beside the glass.
+                autoPaddingEnabled: false
                 blurEnabled: true
                 blur: 1.0
                 blurMax: 48
                 saturation: 0.15
                 maskEnabled: true
                 maskSource: contentSource
-                maskThresholdMin: 0.07
+                maskThresholdMin: win.__threshold
                 maskSpreadAtMin: 0.02
             }
             Rectangle { anchors.fill: parent; color: win.color }

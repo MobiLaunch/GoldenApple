@@ -22,6 +22,7 @@ Surface {
     __y: anchors.top ? margins.top + __top : anchors.bottom ? __sh - height - margins.bottom - __bottom : (__sh - height) / 2
     __layer: [0, 1, 3, 4][WlrLayershell.layer] ?? 3
     __glass: PreviewDesktop.glass.includes(WlrLayershell.namespace)
+    __threshold: PreviewDesktop.thresholds[WlrLayershell.namespace] ?? 0.07
 
     Component.onCompleted: { PreviewDesktop.register(panel); if (__preview.env["GG_PREVIEW_DEBUG"]) console.log("panel", WlrLayershell.namespace, width, height, __sw, margins.left, __top, __bottom, implicitHeight, __x, __y) }
     Component.onDestruction: PreviewDesktop.unregister(panel)

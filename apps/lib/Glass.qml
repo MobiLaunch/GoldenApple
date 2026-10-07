@@ -58,10 +58,14 @@ Item {
     Behavior on pressScale { Spring { spring: root.pressed ? Theme.snappy : Theme.bouncy } }
     transform: Scale { origin.x: root.width / 2; origin.y: root.height / 2; xScale: root.pressScale; yScale: root.pressScale }
 
-    Rectangle { id: shadowShape; anchors.fill: parent; radius: root.r; color: "#ffffff"; visible: false }
+    // The shadow falls only outside the glass. MultiEffect draws its source
+    // too, so the shape is masked back out: without that, on a GPU, a solid
+    // white panel sat under every pane of glass.
+    Rectangle { id: shadowShape; anchors.fill: parent; radius: root.r; color: "#ffffff"; visible: false; layer.enabled: true }
     MultiEffect {
         anchors.fill: shadowShape; source: shadowShape; autoPaddingEnabled: true
         visible: root.material.shadowOpacity > 0
+        maskEnabled: true; maskSource: shadowShape; maskInverted: true
         shadowEnabled: true
         shadowColor: root.shadow.a > 0 ? root.shadow : "#000000"
         shadowOpacity: root.material.shadowOpacity + (root.pressed ? -0.06 : root.hovered ? 0.05 : 0)
