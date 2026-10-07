@@ -523,9 +523,7 @@ PanelWindow {
         + "   " + (Prefs.clock24 ? "HH:mm" : "h:mm") + (Prefs.clockSeconds ? ":ss" : "") + (Prefs.clock24 ? "" : " AP")
     function shell(call) { Hyprland.dispatch("exec qs -c golden-gate ipc call " + call) }
     function files(path) { Quickshell.execDetached(["gg-files", path]) }
-    function emptyTrash() {
-        Quickshell.execDetached(["sh", "-c", "gio trash --empty 2>/dev/null || rm -rf \"${XDG_DATA_HOME:-$HOME/.local/share}/Trash/files/\"* \"${XDG_DATA_HOME:-$HOME/.local/share}/Trash/info/\"*"])
-    }
+    function emptyTrash() { Trash.empty() }
     function menuItems(title) {
         if (title === "File") return [
             { label: "New Files Window", shortcut: "⌘N", action: () => bar.files(bar.home) },

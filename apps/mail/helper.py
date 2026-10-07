@@ -52,29 +52,41 @@ def load_config() -> dict[str, object]:
         return {}
 
 
+# A locked keyring asks to be unlocked; give that time, but not forever.
+KEYRING_WAIT = 30
+
+
 def secret_lookup(account: str) -> str:
-    p = subprocess.run(
-        ["secret-tool", "lookup", "service", "golden-gate-mail", "account", account],
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-    )
+    try:
+        p = subprocess.run(
+            ["secret-tool", "lookup", "service", "golden-gate-mail", "account", account],
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=KEYRING_WAIT,
+        )
+    except subprocess.TimeoutExpired:
+        raise RuntimeError("The keyring didn't answer. It may be waiting to be unlocked.") from None
     return p.stdout.rstrip("\n") if p.returncode == 0 else ""
 
 
 def secret_store(account: str, password: str) -> None:
-    p = subprocess.run(
-        [
-            "secret-tool", "store",
-            "--label=CitronOS Mail",
-            "service", "golden-gate-mail",
-            "account", account,
-        ],
-        input=password,
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-    )
+    try:
+        p = subprocess.run(
+            [
+                "secret-tool", "store",
+                "--label=CitronOS Mail",
+                "service", "golden-gate-mail",
+                "account", account,
+            ],
+            input=password,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=KEYRING_WAIT,
+        )
+    except subprocess.TimeoutExpired:
+        raise RuntimeError("The keyring didn't answer, so the password wasn't saved. It may be waiting to be unlocked.") from None
     if p.returncode != 0:
         raise RuntimeError(p.stderr.strip() or "The password could not be saved to the keyring.")
 
@@ -200,7 +212,10 @@ def cmd_setup() -> int:
 def cmd_status() -> int:
     cfg = load_config()
     email_addr = str(cfg.get("email") or "")
-    return emit(True, configured=bool(email_addr and secret_lookup(email_addr)), account=email_addr)
+    try:
+        return emit(True, configured=bool(email_addr and secret_lookup(email_addr)), account=email_addr)
+    except RuntimeError as exc:           # a keyring that never answered
+        return emit(False, error=str(exc), account=email_addr)
 
 
 def cmd_list() -> int:

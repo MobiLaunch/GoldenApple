@@ -70,7 +70,13 @@ PanelWindow {
         stdout: SplitParser {
             onRead: (line) => { try { nearby.offer(JSON.parse(line)) } catch (e) {} }
         }
+        // If the scanner stops while Bluetooth is on, start it again: soon at
+        // first, then less often if it keeps stopping.
+        onExited: if (nearby.adapterOn) { rescan.interval = Math.min(rescan.interval * 2, 60000); rescan.start() }
+        onRunningChanged: if (running) steady.restart()
     }
+    Timer { id: rescan; interval: 2500; onTriggered: if (nearby.adapterOn) scanner.running = true }
+    Timer { id: steady; interval: 120000; onTriggered: rescan.interval = 2500 }   // running fine: forget the back-off
     // Quiet while Bluetooth audio plays, or while a card is up.
     readonly property bool quiet: audioConnected || shown
     onQuietChanged: if (scanner.running) scanner.write(quiet ? "pause\n" : "resume\n")

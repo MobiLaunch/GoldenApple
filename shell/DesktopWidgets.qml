@@ -94,7 +94,7 @@ Scope {
     onItemsChanged: sync()
     Component.onCompleted: sync()
 
-    Feeds { id: shared }
+    Feeds { id: shared; wantNotes: root.editing || root.items.some((w) => w.kind === "notes") }
 
     IpcHandler {
         target: "widgets"

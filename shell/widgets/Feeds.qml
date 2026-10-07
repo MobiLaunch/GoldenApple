@@ -101,9 +101,12 @@ Scope {
     // ----------------------------------------------------------------- notes
     // { title, body, path, modified } for the note changed last.
     property var note: null
+    // Only looked for while a Notes widget is out (or the gallery shows one).
+    property bool wantNotes: true
+    onWantNotesChanged: if (wantNotes) notes.running = true
     Process {
         id: notes
-        running: true
+        running: feeds.wantNotes
         command: ["sh", "-c", "f=$(find \"$HOME/Documents/Notes\" -name '*.md' -printf '%T@\\t%p\\n' 2>/dev/null | sort -rn | head -n1); "
             + "[ -n \"$f\" ] || exit 0; printf '%s\\n' \"$f\"; head -c 600 \"${f#*\t}\""]
         stdout: StdioCollector {
@@ -116,5 +119,5 @@ Scope {
             }
         }
     }
-    Timer { interval: 60 * 1000; running: true; repeat: true; onTriggered: notes.running = true }
+    Timer { interval: 60 * 1000; running: feeds.wantNotes; repeat: true; onTriggered: notes.running = true }
 }

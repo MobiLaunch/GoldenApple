@@ -73,8 +73,8 @@ def main() -> int:
     os.replace(tmp, path)
     # hypridle reads its settings once: start it again with the new ones.
     if shutil.which("hypridle") and subprocess.run(["pgrep", "-x", "-u", str(os.getuid()), "hypridle"],
-                                                   capture_output=True).returncode == 0:
-        subprocess.run(["pkill", "-x", "-u", str(os.getuid()), "hypridle"], capture_output=True)
+                                                   capture_output=True, timeout=5).returncode == 0:
+        subprocess.run(["pkill", "-x", "-u", str(os.getuid()), "hypridle"], capture_output=True, timeout=5)
         subprocess.Popen(["hypridle"], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
                          stderr=subprocess.DEVNULL, start_new_session=True)
     return 0

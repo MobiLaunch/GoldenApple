@@ -86,11 +86,14 @@ ShellRoot {
         Quickshell.execDetached(["gg-hyprglass-sync", Theme.dark ? "dark" : "light"])
     }
     Process {
+        id: schemeWatch
         running: true
         command: ["gsettings", "monitor", "org.gnome.desktop.interface", "color-scheme"]
         stdout: SplitParser { onRead: (line) => followScheme(line) }
+        onExited: settingsRewatch.start()
     }
     Process {
+        id: schemeNow
         running: true
         command: ["gsettings", "get", "org.gnome.desktop.interface", "color-scheme"]
         stdout: SplitParser { onRead: (line) => followScheme(line) }
@@ -98,14 +101,28 @@ ShellRoot {
     // The accent colour (Settings › Appearance › Color), for everything the shell draws.
     function followAccent(line) { const m = /'(\w+)'/.exec(line); if (m) Theme.accentName = m[1] }
     Process {
+        id: accentWatch
         running: true
         command: ["gsettings", "monitor", "org.gnome.desktop.interface", "accent-color"]
         stdout: SplitParser { onRead: (line) => followAccent(line) }
+        onExited: settingsRewatch.start()
     }
     Process {
+        id: accentNow
         running: true
         command: ["gsettings", "get", "org.gnome.desktop.interface", "accent-color"]
         stdout: SplitParser { onRead: (line) => followAccent(line) }
+    }
+    // A monitor that stops (dconf restarted) is started again, and what it
+    // missed meanwhile is read afresh.
+    Timer {
+        id: settingsRewatch
+        interval: 3000
+        onTriggered: {
+            interval = Math.min(interval * 2, 60000)    // and less often if it keeps stopping
+            schemeWatch.running = true; accentWatch.running = true
+            schemeNow.running = true; accentNow.running = true
+        }
     }
 
     // Appearance "Auto" (chosen in Setup Assistant): light by day, dark from 7 pm.

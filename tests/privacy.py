@@ -76,6 +76,31 @@ with tempfile.TemporaryDirectory() as t:
     check(monitor.location_usage(False) == {"Weather"}, "location: the live helper counts")
     check(not (run / "gone.json").exists(), "location: a gone helper's file is removed")
 
+# A camera opened without PipeWire is looked for only when the kernel says a
+# /dev/video device was opened or closed (inotify), not on a timer.
+with tempfile.TemporaryDirectory() as t:
+    dev = Path(t)
+    (dev / "video0").write_text("")
+    w = monitor.CameraWatch(str(dev))
+    check(w.fd >= 0 and len(w.devices) == 1, "the camera watch follows /dev/video0 with inotify")
+    check(w.due(0) and not w.due(0), "cameras: looked at once at the start, then not again without cause")
+    open(dev / "video0").close()
+    w.drain()
+    check(w.due(0), "cameras: opening or closing one is noticed")
+    (dev / "video1").write_text("")
+    w.drain()
+    check(len(w.devices) == 2 and w.due(0), "cameras: one plugged in is watched too")
+    (dev / "unrelated").write_text("")
+    w.drain()
+    check(not w.due(0), "cameras: other files in /dev don't count")
+# The graph is worked out again only after it changes.
+g2 = monitor.Graph()
+g2.apply([node(1, "Audio/Source"), node(2, "Stream/Input/Audio", **{"application.name": "Rec"}), link(3, 1, 2)])
+first = g2.usage()
+check(g2.usage() is first and first["mic"] == {"Rec"}, "the graph's answer is kept while it doesn't change")
+g2.apply([{"id": 2, "info": None}])
+check(not g2.usage()["mic"], "a change is seen at once")
+
 # The menu bar's dots, in their colours, only while in use.
 def shot(name, state):
     out = Path(tempfile.gettempdir()) / f"privacy-{name}.png"

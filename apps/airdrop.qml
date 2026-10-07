@@ -124,7 +124,20 @@ ShellRoot {
                     }
                 }
             }
-            Timer { running: true; repeat: true; interval: 1200; triggeredOnStart: true; onTriggered: pendingProbe.running = true }
+            // Files shared while the window is open (gg-airdrop FILE… writes
+            // them, then finds this window open): `gio monitor` says when the
+            // file lands, so nothing polls. Without gio, look every 5 seconds.
+            Component.onCompleted: pendingProbe.running = true
+            Process {
+                id: pendingWatch
+                running: true
+                command: ["sh", "-c", 'd="${XDG_RUNTIME_DIR:-/tmp}"; command -v gio >/dev/null || exit 3; '
+                    + 'stdbuf -oL gio monitor -d "$d" | grep --line-buffered -F gg-airdrop-pending']
+                stdout: SplitParser { onRead: pendingSettle.restart() }
+                onExited: pendingPoll.running = true
+            }
+            Timer { id: pendingSettle; interval: 200; onTriggered: pendingProbe.running = true }
+            Timer { id: pendingPoll; repeat: true; interval: 5000; onTriggered: pendingProbe.running = true }
 
             // ------------------------------------------------------- radar
             // Faint rings spread from the AirDrop icon at the bottom, as the

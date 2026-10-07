@@ -677,7 +677,10 @@ class Server:
         return {"path": str(target)}
 
     def c_trash(self, req: dict) -> dict:
-        p = subprocess.run(["gio", "trash", req["path"]], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        try:
+            p = subprocess.run(["gio", "trash", req["path"]], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, timeout=120)
+        except subprocess.TimeoutExpired:
+            raise OSError("Moving the item to the Trash took too long. The disk may not be answering.") from None
         if p.returncode:
             raise OSError(p.stdout.strip() or "Couldn't move the item to the Trash.")
         return {}

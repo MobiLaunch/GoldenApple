@@ -12,18 +12,24 @@ indicators and Control Center:
   Meters (stream.monitor) and passive helpers don't count; a stream
   recording what's playing (a sink's monitor) isn't the microphone.
 - A camera opened directly, without PipeWire, and screen recorders
-  (wf-recorder and the like) are found in /proc.
+  (wf-recorder and the like) are found in /proc. The camera's users are only
+  looked for when the kernel says a /dev/video device was opened or closed
+  (inotify), not every few seconds: reading every process's open files costs
+  a busy desktop (browsers hold thousands) a good part of a core.
 - Location: CitronOS's location helper leaves a file under
   $XDG_RUNTIME_DIR/citron-location while it locates and for a few seconds
   after, and GeoClue says whether any other app is being given a location.
 """
 from __future__ import annotations
 
+import ctypes
+import ctypes.util
 import json
 import os
 from pathlib import Path
 import select
 import shutil
+import struct
 import subprocess
 import sys
 import time
@@ -44,8 +50,15 @@ def merge(old: dict, new: dict) -> dict:
 class Graph:
     def __init__(self) -> None:
         self.objects: dict[int, dict] = {}
+        self._usage: dict[str, set[str]] | None = None
+        self._inputs: dict[int, list[int]] = {}
+
+    def clear(self) -> None:
+        self.objects.clear()
+        self._usage = None
 
     def apply(self, items: list) -> None:
+        self._usage = None                # worked out again on the next usage()
         for o in items:
             if not isinstance(o, dict) or "id" not in o:
                 continue
@@ -64,16 +77,22 @@ class Graph:
                 yield o
 
     def sources_of(self, node_id: int) -> list[dict]:
-        found = []
-        for o in self.objects.values():
-            if o.get("type") != "PipeWire:Interface:Link":
-                continue
-            info = o.get("info") or {}
-            if info.get("input-node-id") == node_id and info.get("output-node-id") in self.objects:
-                found.append(self.objects[info["output-node-id"]])
-        return found
+        return [self.objects[o] for o in self._inputs.get(node_id, ()) if o in self.objects]
 
     def usage(self) -> dict[str, set[str]]:
+        """Who records what. Kept until the graph changes: the loop asks
+        every pass, the graph changes far less often."""
+        if self._usage is None:
+            self._usage = self._work_out()
+        return self._usage
+
+    def _work_out(self) -> dict[str, set[str]]:
+        # Which nodes feed each node, from the links, in one pass.
+        self._inputs = {}
+        for o in self.objects.values():
+            if o.get("type") == "PipeWire:Interface:Link":
+                info = o.get("info") or {}
+                self._inputs.setdefault(info.get("input-node-id"), []).append(info.get("output-node-id"))
         use = {"mic": set(), "camera": set(), "screen": set()}
         for node in self.nodes():
             p = self.props(node)
@@ -122,10 +141,9 @@ def pretty(name: str) -> str:
     return known.get(name, name[:1].upper() + name[1:])
 
 
-def proc_usage() -> dict[str, set[str]]:
-    """Cameras opened without PipeWire, and screen recorders."""
-    use = {"camera": set(), "screen": set()}
-    cams = os.path.exists("/dev/video0") or any(Path("/dev").glob("video*"))
+def recorders() -> set[str]:
+    """Screen recorders running, by name: cheap (one small read a process)."""
+    found = set()
     for d in Path("/proc").iterdir():
         if not d.name.isdecimal():
             continue
@@ -134,21 +152,94 @@ def proc_usage() -> dict[str, set[str]]:
         except OSError:
             continue
         if comm in RECORDERS:
-            use["screen"].add(RECORDERS[comm])
-        if not cams or comm in SKIP_PROCS:
+            found.add(RECORDERS[comm])
+    return found
+
+
+def camera_users() -> set[str]:
+    """Apps with a /dev/video device open, from their open files. Costly on
+    a busy desktop, so only run when a camera was opened or closed."""
+    use = set()
+    uid = os.getuid()
+    for d in Path("/proc").iterdir():
+        if not d.name.isdecimal():
+            continue
+        try:
+            if d.stat().st_uid != uid and uid != 0:
+                continue                  # another user's: their files can't be read
+            comm = (d / "comm").read_text().strip()
+        except OSError:
+            continue
+        if comm in SKIP_PROCS:
             continue
         try:
             fds = list((d / "fd").iterdir())
         except OSError:
-            continue                  # another user's process
+            continue
         for fd in fds:
             try:
                 if os.readlink(fd).startswith("/dev/video"):
-                    use["camera"].add(pretty(comm))
+                    use.add(pretty(comm))
                     break
             except OSError:
                 pass
     return use
+
+
+class CameraWatch:
+    """inotify on /dev/video*: readable when a camera is opened or closed.
+    Without inotify (or cameras), `due()` falls back to every 10 seconds."""
+    IN_OPEN, IN_CLOSE_WRITE, IN_CLOSE_NOWRITE, IN_CREATE, IN_DELETE = 0x20, 0x08, 0x10, 0x100, 0x200
+
+    def __init__(self, dev: str = "/dev") -> None:
+        self.dev = Path(dev)
+        self.fd = -1
+        self.devices: set[str] = set()
+        self.next_poll = 0.0
+        self.changed = True               # look once at the start
+        try:
+            self.libc = ctypes.CDLL(ctypes.util.find_library("c") or "libc.so.6", use_errno=True)
+            self.fd = self.libc.inotify_init1(os.O_NONBLOCK | os.O_CLOEXEC)
+        except (OSError, AttributeError):
+            self.fd = -1
+        if self.fd >= 0:
+            # New cameras (plugged in) appear in /dev.
+            self.libc.inotify_add_watch(self.fd, bytes(self.dev), self.IN_CREATE | self.IN_DELETE)
+            self.rewatch()
+
+    def rewatch(self) -> None:
+        for dev in sorted(str(p) for p in self.dev.glob("video*")):
+            if dev not in self.devices and self.libc.inotify_add_watch(
+                    self.fd, dev.encode(), self.IN_OPEN | self.IN_CLOSE_WRITE | self.IN_CLOSE_NOWRITE) >= 0:
+                self.devices.add(dev)
+
+    def drain(self) -> None:
+        """Read what inotify said; any open, close or new device is a change."""
+        try:
+            data = os.read(self.fd, 65536)
+        except (BlockingIOError, OSError):
+            return
+        i = 0
+        while i + 16 <= len(data):
+            _, mask, _, length = struct.unpack_from("iIII", data, i)
+            name = data[i + 16:i + 16 + length].rstrip(b"\0")
+            i += 16 + length
+            if mask & (self.IN_CREATE | self.IN_DELETE):
+                if name.startswith(b"video"):
+                    self.devices.discard(str(self.dev / name.decode(errors="replace")))
+                    self.rewatch()
+                    self.changed = True
+            else:
+                self.changed = True
+
+    def due(self, now: float) -> bool:
+        if self.fd < 0 and now >= self.next_poll:
+            self.next_poll = now + 10.0
+            return True
+        if self.changed:
+            self.changed = False
+            return True
+        return False
 
 
 def location_usage(geoclue: bool) -> set[str]:
@@ -189,7 +280,7 @@ class Dump:
     def start(self, graph: Graph) -> None:
         if self.proc or time.monotonic() < self.retry or not shutil.which("pw-dump"):
             return
-        graph.objects.clear()
+        graph.clear()
         self.buf = ""
         self.proc = subprocess.Popen(["pw-dump", "--monitor", "--no-colors"], stdout=subprocess.PIPE,
                                      stderr=subprocess.DEVNULL)
@@ -204,7 +295,7 @@ class Dump:
             self.proc.wait()
             self.proc = None
             self.retry = time.monotonic() + 3
-            graph.objects.clear()
+            graph.clear()
             return
         self.buf += chunk.decode("utf-8", errors="replace")
         while True:
@@ -226,24 +317,32 @@ def main() -> int:
     graph = Graph()
     dump = Dump()
     geoclue = bool(shutil.which("busctl")) and Path("/usr/share/dbus-1/system-services/org.freedesktop.GeoClue2.service").exists()
+    cameras = CameraWatch()
     last = None
     next_scan = 0.0
-    scanned = {"camera": set(), "screen": set()}
+    camera: set[str] = set()
+    screen: set[str] = set()
     located: set[str] = set()
     while True:
         dump.start(graph)
         fds = [dump.proc.stdout] if dump.proc else []
+        if cameras.fd >= 0:
+            fds.append(cameras.fd)
         ready, _, _ = select.select(fds, [], [], 1.0)
-        if ready:
+        if dump.proc and dump.proc.stdout in ready:
             dump.read(graph)
+        if cameras.fd in ready:
+            cameras.drain()
         now = time.monotonic()
+        if cameras.due(now):
+            camera = camera_users()
         if now >= next_scan:
-            scanned = proc_usage()
+            screen = recorders()
             located = location_usage(geoclue)
             next_scan = now + 2.0
         use = graph.usage()
-        state = {"mic": sorted(use["mic"]), "camera": sorted(use["camera"] | scanned["camera"]),
-                 "screen": sorted(use["screen"] | scanned["screen"]), "location": sorted(located)}
+        state = {"mic": sorted(use["mic"]), "camera": sorted(use["camera"] | camera),
+                 "screen": sorted(use["screen"] | screen), "location": sorted(located)}
         if state != last:
             last = state
             try:

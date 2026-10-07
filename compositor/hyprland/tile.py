@@ -30,7 +30,11 @@ LAYOUTS = {
 
 
 def hyprctl(*args: str) -> str:
-    return subprocess.run(["hyprctl", *args], capture_output=True, text=True).stdout
+    # A compositor that doesn't answer shouldn't hang the key that tiles.
+    try:
+        return subprocess.run(["hyprctl", *args], capture_output=True, text=True, timeout=3).stdout
+    except subprocess.TimeoutExpired:
+        return ""
 
 
 def state_file() -> Path:

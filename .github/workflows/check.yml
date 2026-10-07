@@ -284,6 +284,10 @@ jobs:
           QT_QUICK_BACKEND: software
       - name: "Settings: Lock Screen timers, Spotlight finds every pane, the shell reads each choice"
         run: python tests/system-settings.py
+      - name: "Helpers give up on commands that never answer (keyring, compositor)"
+        run: python tests/helper-timeouts.py
+      - name: "The shell starts on a new account, is restarted, and its log is kept small"
+        run: python tests/shell-supervisor.py
       - name: "Notifications follow Settings: allow, banners, badges, the list of apps"
         run: python tests/notification-settings.py
         env:

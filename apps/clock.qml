@@ -96,9 +96,11 @@ ShellRoot {
                 notice = "Alarm set for " + minutes + (minutes === 1 ? " minute from now." : " minutes from now.")
             }
 
+            // Only while the stopwatch or a timer runs (20 times a second, for
+            // the stopwatch's hundredths).
             Timer {
                 interval: 50
-                running: true
+                running: clock.stopwatchRunning || clock.timerRunning
                 repeat: true
                 onTriggered: {
                     if (clock.stopwatchRunning)

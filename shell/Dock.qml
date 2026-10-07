@@ -141,11 +141,7 @@ PanelWindow {
         dockMenu.open = true
     }
 
-    // Empty Trash, as Files does it (gio knows the trash on every mount).
-    function emptyTrash() {
-        Quickshell.execDetached(["sh", "-c", "gio trash --empty 2>/dev/null || rm -rf \"${XDG_DATA_HOME:-$HOME/.local/share}/Trash/files/\"* \"${XDG_DATA_HOME:-$HOME/.local/share}/Trash/info/\"*"])
-        trashFull = false
-    }
+    function emptyTrash() { Trash.empty() }
 
     function openApplications() {
         if (applications)
@@ -177,14 +173,7 @@ PanelWindow {
     }
 
     // Right of the separator: Downloads and the Trash (full or empty).
-    property bool trashFull: false
-    Process {
-        id: trashCheck
-        running: true
-        command: ["sh", "-c", "ls -A \"${XDG_DATA_HOME:-$HOME/.local/share}/Trash/files\" 2>/dev/null | head -1"]
-        stdout: StdioCollector { onStreamFinished: dock.trashFull = text.trim().length > 0 }
-    }
-    Timer { interval: 5000; running: true; repeat: true; onTriggered: trashCheck.running = true }
+    readonly property bool trashFull: Trash.full     // components/Trash.qml watches it
     readonly property var places: [
         { name: "Applications", icon: "apps", action: "applications" },
         { name: "Downloads", icon: "folder", exec: ["gg-files", Quickshell.env("HOME") + "/Downloads"] },

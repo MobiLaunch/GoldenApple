@@ -7,6 +7,7 @@ import mimetypes
 import os
 import pathlib
 import shutil
+import stat
 import subprocess
 import sys
 import time
@@ -20,8 +21,8 @@ def result(ok: bool = True, **payload: object) -> int:
     return 0 if ok else 1
 
 
-def icon_for(path: pathlib.Path, mime: str) -> str:
-    if path.is_dir():
+def icon_for(path: pathlib.Path, mime: str, folder: bool | None = None) -> str:
+    if path.is_dir() if folder is None else folder:
         return "folder"
     if mime.startswith("image/"):
         return "image-x-generic"
@@ -39,19 +40,21 @@ def icon_for(path: pathlib.Path, mime: str) -> str:
 
 
 def describe(path: pathlib.Path) -> dict[str, object]:
+    # One stat a file (a broken link: the link itself), not one per question.
     try:
         st = path.stat()
     except OSError:
         st = path.lstat()
-    mime = "inode/directory" if path.is_dir() else (mimetypes.guess_type(path.name)[0] or "application/octet-stream")
+    folder = stat.S_ISDIR(st.st_mode)
+    mime = "inode/directory" if folder else (mimetypes.guess_type(path.name)[0] or "application/octet-stream")
     return {
         "name": path.name or str(path),
         "path": str(path),
-        "folder": path.is_dir(),
-        "size": 0 if path.is_dir() else int(st.st_size),
+        "folder": folder,
+        "size": 0 if folder else int(st.st_size),
         "modified": int(st.st_mtime),
         "mime": mime,
-        "icon": icon_for(path, mime),
+        "icon": icon_for(path, mime, folder),
         "hidden": path.name.startswith("."),
     }
 
@@ -122,7 +125,11 @@ def trash(*raws: str) -> int:
         except OSError:
             same = False
         if not same:
-            p = subprocess.run(["gio", "trash", str(path)], text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+            try:
+                p = subprocess.run(["gio", "trash", str(path)], text=True, stdout=subprocess.PIPE,
+                                   stderr=subprocess.STDOUT, timeout=120)
+            except subprocess.TimeoutExpired:
+                return result(False, error=f"Moving “{path.name}” to the Trash took too long. The disk may not be answering.")
             if p.returncode:
                 return result(False, error=p.stdout.strip() or f"“{path.name}” couldn't be moved to the Trash.")
             continue

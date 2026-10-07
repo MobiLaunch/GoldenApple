@@ -143,7 +143,10 @@ def main() -> int:
             scanning = not scanning
             say("scan on" if scanning else "scan off")
             next_switch = now + (SCAN_ON if scanning else SCAN_OFF)
-        ready, _, _ = select.select([ctl.stdout, sys.stdin], [], [], 0.5)
+        # Asleep until bluetoothctl or the shell says something, or the next
+        # switch of scanning on or off; paused, until then only.
+        wait = None if paused else max(0.05, next_switch - time.time())
+        ready, _, _ = select.select([ctl.stdout, sys.stdin], [], [], wait)
         if sys.stdin in ready:
             cmd = sys.stdin.readline().strip()
             if not cmd:
