@@ -884,9 +884,27 @@ def set_discoverable(value: str) -> int:
     return 0
 
 
+def running() -> bool:
+    """Whether a daemon already answers on the control socket."""
+    s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    s.settimeout(2)
+    try:
+        s.connect(str(socket_path()))
+        return True
+    except OSError:
+        return False
+    finally:
+        s.close()
+
+
 def main(argv):
     mode = argv[1] if len(argv) > 1 else "serve"
     if mode == "serve":
+        # One daemon at a time: a second one used to take the control socket
+        # from the first and share the port with it, each with half the state.
+        if running():
+            print("AirDrop is already running.", flush=True)
+            return 0
         try:
             asyncio.run(AirDrop().serve())
         except OSError as e:

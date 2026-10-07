@@ -156,5 +156,24 @@ class FileNames(unittest.TestCase):
         self.assertEqual(str(airdropd.safe_relative("Trip\\day 1/a.txt")), "Trip/day 1/a.txt")
 
 
+class OneDaemon(unittest.TestCase):
+    def test_second_daemon_steps_aside(self):
+        # One already answers on the control socket: a second one (the window
+        # starts one if it can't connect) mustn't take the socket and port.
+        with tempfile.TemporaryDirectory() as t:
+            sock = Path(t) / "ctl.sock"
+            listener = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            listener.bind(str(sock))
+            listener.listen(1)
+            try:
+                p = subprocess.run([sys.executable, str(SERVICE), "serve"], capture_output=True, text=True, timeout=20,
+                                   env=dict(os.environ, GG_AIRDROP_SOCKET=str(sock), HOME=t, XDG_CONFIG_HOME=t, XDG_RUNTIME_DIR=t))
+            finally:
+                listener.close()
+            self.assertEqual(p.returncode, 0, p.stderr)
+            self.assertIn("already running", p.stdout)
+            self.assertTrue(sock.exists(), "the running daemon keeps its socket")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
