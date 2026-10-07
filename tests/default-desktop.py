@@ -43,6 +43,7 @@ required_ids = {
     "org.goldengate.Calculator",
     "org.goldengate.Calendar",
     "org.goldengate.Clock",
+    "org.goldengate.DiskUtility",
     "org.goldengate.Files",
     "org.goldengate.Installer",
     "org.goldengate.Mail",

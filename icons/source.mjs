@@ -365,6 +365,21 @@ export const apps = {
      <circle cx="50" cy="51" r="27" fill="none" stroke="#fff" stroke-opacity=".55" stroke-width="1.4"/>
      <ellipse cx="41" cy="33" rx="10" ry="4.5" fill="#fff" fill-opacity=".5" transform="rotate(-20 41 33)"/></g>`),
 
+  // Disk Utility: a drive and a stethoscope, as the Mac's.
+  diskutility: app("diskutility", "#8e8e93", lin("diskutility-bg", "#f4f5f8", "#c6cbd3")
+      + lin("diskutility-drive", "#fbfbfd", "#a7aeb8") + lin("diskutility-face", "#e9ecf0", "#c3c8d0"),
+    `<rect class="bg" fill="url(#diskutility-bg)" width="100" height="100"/>
+     <rect x="16" y="50" width="68" height="30" rx="7" fill="url(#diskutility-drive)" stroke="#8a919b" stroke-width="1"/>
+     <rect x="21" y="55" width="58" height="9" rx="3" fill="url(#diskutility-face)"/>
+     <path d="M26 71h28" stroke="#6b7280" stroke-width="2.4" stroke-linecap="round"/>
+     <circle cx="73" cy="71" r="2.8" fill="#34c759"/>
+     <g fill="none" stroke="#2f343b" stroke-width="3.4" stroke-linecap="round">
+       <path d="M36 16v9a14 14 0 0 0 28 0v-9"/>
+       <path d="M50 39c0 9 4 14 14 14"/>
+     </g>
+     <circle cx="36" cy="15" r="3" fill="#2f343b"/><circle cx="64" cy="15" r="3" fill="#2f343b"/>
+     <circle class="tint" cx="68" cy="53" r="7.5" fill="#b6bcc5" stroke="#2f343b" stroke-width="2.6"/>`),
+
   weather: app("weather", "#64d2ff", lin("weather-bg", "#3aa0f5", "#1a5fd0") + lin("weather-sun", "#ffe36b", "#ffb300"),
     `<rect class="bg" fill="url(#weather-bg)" width="100" height="100"/>
      <circle cx="40" cy="40" r="15" fill="url(#weather-sun)"/>

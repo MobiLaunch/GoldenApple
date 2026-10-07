@@ -67,7 +67,7 @@ PanelWindow {
         "org.goldengate.Maps", "org.goldengate.Photos", "org.goldengate.Music", "org.goldengate.Calendar",
         "org.goldengate.Notes", "org.goldengate.Weather", "org.goldengate.Clock", "org.goldengate.Calculator",
         "org.goldengate.TextEdit", "org.goldengate.LCode", "org.goldengate.AirDrop", "org.goldengate.Software", "org.goldengate.Settings",
-        "org.goldengate.Terminal"
+        "org.goldengate.Terminal", "org.goldengate.DiskUtility"
     ]
     // Icon names the CitronOS theme draws itself, and the desktop files of
     // apps you installed (Flatpak, or your own): both stay on the grid.

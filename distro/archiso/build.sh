@@ -65,6 +65,7 @@ file_permissions+=(
   ["/usr/local/bin/gg-software"]="0:0:755"
   ["/usr/local/bin/gg-files"]="0:0:755"
   ["/usr/local/bin/gg-intelligence"]="0:0:755"
+  ["/usr/local/bin/gg-disk-utility"]="0:0:755"
   ["/usr/local/bin/gg-pref"]="0:0:755"
   ["/usr/local/bin/gg-hyprglass-sync"]="0:0:755"
   ["/usr/local/bin/gg-apply-preferences"]="0:0:755"

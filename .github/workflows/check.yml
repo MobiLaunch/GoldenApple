@@ -321,6 +321,10 @@ jobs:
         run: python tests/files-disks.py
         env:
           QT_QPA_PLATFORM: offscreen
+      - name: "Disk Utility: the system left alone, erase, First Aid, what's using space"
+        run: python tests/disk-utility.py
+        env:
+          QT_QPA_PLATFORM: offscreen
       - name: "Symbols replace their glyph as SF Symbols do"
         run: python tests/symbol-motion.py
         env:

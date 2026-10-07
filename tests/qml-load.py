@@ -17,7 +17,7 @@ import tempfile
 ROOT = Path(__file__).resolve().parents[1]
 PREVIEW = ROOT / "tools/preview/preview.py"
 APPS = ["settings", "files", "notes", "music", "photos", "weather", "calculator", "textedit", "messages",
-        "maps", "calendar", "software", "airdrop", "lcode", "mail", "clock", "intelligence"]
+        "maps", "calendar", "software", "airdrop", "lcode", "mail", "clock", "intelligence", "diskutility"]
 ERRORS = re.compile(r"is not a type|Type \w+ unavailable|Cannot override FINAL|Cannot assign to non-existent property|"
                     r"module \"[^\"]+\" is not installed|Syntax error|failed to load component|could not create")
 

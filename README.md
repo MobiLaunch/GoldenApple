@@ -120,7 +120,13 @@ is Quick Look, the arrows move, Return renames, ⌘O/⌘↓ opens, ⌘↑ goes u
 moves to the Trash. Drag items onto a folder or a sidebar place to move them
 (another disk, or a file from another app, is copied), onto the Trash to throw
 them away, or out to another app. Recents lists what you've opened and changed
-lately, and the Trash has Put Back and Empty Trash. Screenshots work as on a Mac: ⇧⌘3 the
+lately, and the Trash has Put Back and Empty Trash. Locations in the sidebar lists
+the disks: CitronOS, other volumes (mounted when you open them) and external drives
+with an eject button; ⇧⌘C shows them all with their free space, the path bar
+runs from the disk down to the folder, and ⇧⌘. shows hidden files. **Disk
+Utility** shows each disk and volume, how full it is and what's using the space,
+and mounts, ejects, checks (First Aid) and erases them through udisks; the volumes
+that hold the running system are left alone. Screenshots work as on a Mac: ⇧⌘3 the
 screen, ⇧⌘4 a part of it (Space for a window), ⌃ added for the clipboard, and ⇧⌘5
 the toolbar, which also records the screen or a selection (stop it from the menu
 bar) and keeps your choice of where to save, a timer and the floating thumbnail.
