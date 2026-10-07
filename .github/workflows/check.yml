@@ -306,6 +306,8 @@ jobs:
         run: python tests/setup-browser.py
       - name: Test Web startup crash recovery and safe graphics fallback
         run: python tests/browser-recovery.py
+      - name: "Web moves: sheets grow in, tabs slide, loading glides, pages fade in"
+        run: python tests/browser-motion.py
       - name: Exercise native Chromium navigation, tabs, private browsing, and shortcuts
         run: xvfb-run -a python tests/native-browser.py
         env:

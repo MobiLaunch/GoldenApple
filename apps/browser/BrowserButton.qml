@@ -12,6 +12,7 @@ Item {
     implicitWidth: 32
     implicitHeight: 32
     opacity: enabled ? 1 : 0.35
+    Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 140 } }
     activeFocusOnTab: true
     Accessible.role: Accessible.Button
     Accessible.name: tooltip
@@ -27,13 +28,22 @@ Item {
         Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 90 } }
     }
 
+    // A little hop to say something happened (a favorite added, a download begun).
+    function bump() { if (!Theme.reduceMotion) hop.restart() }
+    property real hopScale: 1
+    SequentialAnimation {
+        id: hop
+        NumberAnimation { target: root; property: "hopScale"; to: 1.3; duration: 130; easing.type: Easing.OutQuad }
+        NumberAnimation { target: root; property: "hopScale"; to: 1; duration: 420; easing.type: Easing.OutBack; easing.overshoot: 2.4 }
+    }
+
     Symbol {
         anchors.centerIn: parent
         name: root.symbol
         size: 16
         tone: "auto"
-        scale: area.pressed && !Theme.reduceMotion ? 0.90 : 1
-        Behavior on scale { NumberAnimation { duration: Theme.reduceMotion ? 1 : 80; easing.type: Easing.OutCubic } }
+        scale: (area.pressed && !Theme.reduceMotion ? 0.90 : 1) * root.hopScale
+        Behavior on scale { enabled: !hop.running; NumberAnimation { duration: Theme.reduceMotion ? 1 : 80; easing.type: Easing.OutCubic } }
     }
 
     MouseArea {
@@ -49,7 +59,7 @@ Item {
     Keys.onEnterPressed: if (enabled) clicked()
 
     Rectangle {
-        visible: tip.visible
+        visible: opacity > 0.01
         z: 10
         anchors.horizontalCenter: parent.horizontalCenter
         y: parent.height + 7
@@ -59,6 +69,7 @@ Item {
         color: Theme.dark ? "#ee303034" : "#eef4f4f6"
         border { width: 0.5; color: Theme.separator }
         opacity: tip.visible ? 1 : 0
+        Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 120 } }
 
         Text {
             id: tipLabel

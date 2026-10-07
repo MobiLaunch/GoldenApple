@@ -84,8 +84,26 @@ Flickable {
                 Repeater {
                     model: root.data.favorites
                     delegate: Item {
+                        id: favorite
                         required property var modelData
+                        required property int index
                         width: 102; height: 100
+                        // The Start Page's favorites come up one after another as it appears.
+                        property real enter: 1
+                        opacity: enter
+                        transform: Translate { y: (1 - favorite.enter) * 14 }
+                        function appear() {
+                            if (Theme.reduceMotion) return
+                            enter = 0
+                            favoriteIn.restart()
+                        }
+                        Component.onCompleted: if (root.visible) appear()
+                        Connections { target: root; function onVisibleChanged() { if (root.visible) favorite.appear() } }
+                        SequentialAnimation {
+                            id: favoriteIn
+                            PauseAnimation { duration: 40 + Math.min(favorite.index, 10) * 30 }
+                            NumberAnimation { target: favorite; property: "enter"; to: 1; duration: 380; easing.type: Easing.OutCubic }
+                        }
                         Rectangle {
                             id: favIcon
                             anchors.horizontalCenter: parent.horizontalCenter
@@ -100,8 +118,8 @@ Flickable {
                                 color: "#ffffff"
                                 font { family: Theme.fontDisplay; pixelSize: 25; weight: Font.DemiBold }
                             }
-                            scale: favArea.pressed ? 0.95 : favArea.containsMouse ? 1.035 : 1
-                            Behavior on scale { NumberAnimation { duration: 100; easing.type: Easing.OutCubic } }
+                            scale: favArea.pressed ? 0.95 : favArea.containsMouse ? 1.06 : 1
+                            Behavior on scale { NumberAnimation { duration: Theme.reduceMotion ? 1 : 140; easing.type: Easing.OutBack; easing.overshoot: 1.6 } }
                         }
                         Text {
                             anchors { top: favIcon.bottom; topMargin: 9; horizontalCenter: parent.horizontalCenter }

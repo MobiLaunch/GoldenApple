@@ -381,6 +381,7 @@ Window {
         download.downloadDirectory = BrowserBackend.downloadDir
         download.downloadFileName = download.suggestedFileName
         downloads = [download].concat(downloads)
+        downloadsButton.bump()
         download.accept()
         downloadsOpen = true
     }
@@ -751,18 +752,34 @@ Window {
                         onClicked: root.reloadOrStop()
                     }
 
+                    // Loading: the bar runs along the field; done, it runs to the end and fades.
                     Rectangle {
-                        visible: root.currentView && root.currentView.loading
-                        anchors { bottom: parent.bottom; left: parent.left; right: parent.right }
+                        objectName: "loadProgress"
+                        readonly property bool loading: !!root.currentView && root.currentView.loading
+                        visible: opacity > 0.01
+                        opacity: loading ? 1 : 0
+                        Behavior on opacity {
+                            SequentialAnimation {
+                                PauseAnimation { duration: Theme.reduceMotion ? 0 : 160 }
+                                NumberAnimation { duration: Theme.reduceMotion ? 1 : 260; easing.type: Easing.OutCubic }
+                            }
+                        }
+                        anchors { bottom: parent.bottom; left: parent.left; right: parent.right; leftMargin: 10; rightMargin: 10 }
                         height: 2
                         radius: 1
                         color: "transparent"
                         Rectangle {
+                            id: progressFill
                             height: parent.height
-                            width: parent.width * ((root.currentView ? root.currentView.loadProgress : 0) / 100)
                             radius: 1
                             color: Theme.accent
-                            Behavior on width { NumberAnimation { duration: 90 } }
+                            readonly property real goal: parent.width * (parent.loading ? Math.max(0.06, (root.currentView ? root.currentView.loadProgress : 0) / 100) : 1)
+                            // Forward it glides; a new page starts it over at once.
+                            onGoalChanged: {
+                                if (goal < width || Theme.reduceMotion) { glide.stop(); width = goal }
+                                else { glide.to = goal; glide.restart() }
+                            }
+                            NumberAnimation { id: glide; target: progressFill; property: "width"; duration: 240; easing.type: Easing.OutCubic }
                         }
                     }
                 }
@@ -826,12 +843,15 @@ Window {
             }
 
             BrowserButton {
+                id: bookmarkButton
                 symbol: "bookmark"
                 tooltip: "Add Favorite  ⌘D"
                 enabled: root.currentUrl !== "about:blank"
-                onClicked: BrowserBackend.addBookmark(root.currentUrl, root.currentTitle)
+                onClicked: { BrowserBackend.addBookmark(root.currentUrl, root.currentTitle); bookmarkButton.bump() }
             }
             BrowserButton {
+                id: downloadsButton
+                objectName: "downloadsButton"
                 symbol: "download"
                 tooltip: "Downloads"
                 selected: root.downloadsOpen
@@ -881,12 +901,40 @@ Window {
             clip: true
             boundsBehavior: Flickable.StopAtBounds
 
+            // The open tab's highlight springs from tab to tab, as Safari's.
+            Rectangle {
+                id: activeTabHighlight
+                objectName: "activeTabHighlight"
+                readonly property Item tab: { root.currentIndex; tabsModel.count; tabRow.width; return tabRepeater.itemAt(root.currentIndex) }
+                visible: !!tab
+                x: tab ? tab.x + (tab.dragOffset || 0) : 0
+                y: 3
+                width: tab ? tab.width : 0
+                height: tabRow.height - 6 - 2
+                radius: 9
+                color: Theme.dark ? "#993b3b40" : "#deffffff"
+                border { width: 0.5; color: Theme.separator }
+                Behavior on x { enabled: !Theme.reduceMotion && !(activeTabHighlight.tab && activeTabHighlight.tab.dragging); Spring { spring: Theme.snappy } }
+                Behavior on width { enabled: !Theme.reduceMotion; Spring { spring: Theme.snappy } }
+            }
+
             Row {
                 id: tabRow
                 height: parent.height
                 spacing: 2
+                // A new tab grows in; the others slide to make room, and close up after one closes.
+                add: Transition {
+                    enabled: !Theme.reduceMotion
+                    NumberAnimation { property: "opacity"; from: 0; to: 1; duration: 200; easing.type: Easing.OutCubic }
+                    NumberAnimation { property: "scale"; from: 0.8; to: 1; duration: Theme.snappy.duration; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.snappy.curve }
+                }
+                move: Transition {
+                    enabled: !Theme.reduceMotion
+                    NumberAnimation { property: "x"; duration: Theme.snappy.duration; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.snappy.curve }
+                }
 
                 Repeater {
+                    id: tabRepeater
                     model: tabsModel
                     delegate: Item {
                         id: tab
@@ -898,18 +946,24 @@ Window {
                         required property bool muted
                         readonly property bool active: index === root.currentIndex
                         property real dragOffset: 0
+                        readonly property bool dragging: tabDrag.active
+                        readonly property bool closeShown: active || tabHover.hovered
                         width: Math.max(132, Math.min(220, (tabScroller.width - 10) / Math.max(1, Math.min(6, tabsModel.count))))
+                        Behavior on width { enabled: !Theme.reduceMotion; Spring { spring: Theme.snappy } }
                         height: 37
                         z: tabDrag.active ? 10 : 0
                         transform: Translate { x: tab.dragOffset }
+                        // Picked up, a tab lifts a little.
+                        scale: tabDrag.active && !Theme.reduceMotion ? 1.04 : 1
+                        Behavior on scale { NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
 
+                        // The open tab's background is activeTabHighlight; the others light up under the pointer.
                         Rectangle {
                             anchors { fill: parent; topMargin: 3; bottomMargin: 3 }
                             radius: 9
-                            color: tab.active
-                                ? (Theme.dark ? "#993b3b40" : "#deffffff")
+                            color: tab.active ? "transparent"
                                 : tabHover.hovered ? (Theme.dark ? "#10ffffff" : "#0d000000") : "transparent"
-                            border { width: tab.active ? 0.5 : 0; color: Theme.separator }
+                            Behavior on color { ColorAnimation { duration: Theme.reduceMotion ? 1 : 120 } }
                         }
 
                         Row {
@@ -962,7 +1016,7 @@ Window {
                             }
 
                             BrowserButton {
-                                visible: tab.audible && !closeButton.visible
+                                visible: tab.audible && !tab.closeShown
                                 anchors.verticalCenter: parent.verticalCenter
                                 width: 23; height: 23
                                 symbol: tab.muted ? "speaker" : "speaker-wave"
@@ -972,7 +1026,10 @@ Window {
 
                             BrowserButton {
                                 id: closeButton
-                                visible: tab.active || tabHover.hovered
+                                // Fades in under the pointer rather than popping in.
+                                opacity: tab.closeShown ? 1 : 0
+                                visible: opacity > 0.01
+                                Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 120 } }
                                 anchors.verticalCenter: parent.verticalCenter
                                 width: 23; height: 23
                                 symbol: "xmark"
@@ -1226,6 +1283,10 @@ Window {
                     property alias view: web
                     anchors.fill: parent
                     visible: index === root.currentIndex
+                    // Switching tabs, the page fades in rather than cutting.
+                    opacity: 1
+                    onVisibleChanged: if (visible && !Theme.reduceMotion) pageIn.restart()
+                    NumberAnimation { id: pageIn; target: webTab; property: "opacity"; from: 0.35; to: 1; duration: 180; easing.type: Easing.OutCubic }
                     function go(target) {
                         if (target === "about:blank") web.stop()
                         web.url = target
@@ -1337,7 +1398,9 @@ Window {
 
             ReaderOverlay {
                 anchors.fill: parent
-                visible: root.readerOpen
+                visible: opacity > 0.01
+                opacity: root.readerOpen ? 1 : 0
+                Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 220; easing.type: Easing.OutCubic } }
                 z: 12
                 articleTitle: root.readerTitle
                 articleText: root.readerText
@@ -1462,7 +1525,14 @@ Window {
     Rectangle {
         id: tabOverview
         z: 42
-        visible: root.tabOverviewOpen
+        // Grows in and fades, rather than appearing at once.
+        readonly property bool reveal: root.tabOverviewOpen
+        visible: reveal || opacity > 0.01
+        opacity: reveal ? 1 : 0
+        scale: reveal || Theme.reduceMotion ? 1 : 1.03
+        transformOrigin: Item.Center
+        Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 170; easing.type: Easing.OutCubic } }
+        Behavior on scale { enabled: !Theme.reduceMotion; Spring { spring: Theme.popover } }
         anchors.fill: body
         color: Theme.dark ? "#f31b1b20" : "#f5f2f3f6"
 
@@ -1526,6 +1596,24 @@ Window {
                             }
                             scale: overviewArea.pressed && !Theme.reduceMotion ? 0.985 : 1
                             Behavior on scale { NumberAnimation { duration: Theme.reduceMotion ? 1 : 80; easing.type: Easing.OutCubic } }
+                            // Opening the overview, the cards come up into place one after another.
+                            property real enter: 1
+                            opacity: enter
+                            transform: Translate { y: (1 - overviewCard.enter) * 22 }
+                            Connections {
+                                target: tabOverview
+                                function onRevealChanged() {
+                                    if (!tabOverview.reveal || Theme.reduceMotion) return
+                                    overviewCard.enter = 0
+                                    cardIn.restart()
+                                }
+                            }
+                            SequentialAnimation {
+                                id: cardIn
+                                PauseAnimation { duration: 50 + Math.min(overviewCard.index, 8) * 35 }
+                                NumberAnimation { target: overviewCard; property: "enter"; to: 1; duration: Theme.snappy.duration
+                                    easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.snappy.curve }
+                            }
 
                             Rectangle {
                                 anchors { left: parent.left; right: parent.right; top: parent.top }
@@ -1618,7 +1706,14 @@ Window {
     Rectangle {
         id: searchPopover
         z: 50
-        visible: addressField.input.activeFocus && root.suggestionData.length > 0
+        // Grows in and fades, rather than appearing at once.
+        readonly property bool reveal: addressField.input.activeFocus && root.suggestionData.length > 0
+        visible: reveal || opacity > 0.01
+        opacity: reveal ? 1 : 0
+        scale: reveal || Theme.reduceMotion ? 1 : 0.97
+        transformOrigin: Item.Top
+        Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 170; easing.type: Easing.OutCubic } }
+        Behavior on scale { enabled: !Theme.reduceMotion; Spring { spring: Theme.popover } }
         x: {
             let p = smartField.mapToItem(root.contentItem, 0, smartField.height + 5)
             return Math.max(10, Math.min(root.width - width - 10, p.x))
@@ -1697,7 +1792,14 @@ Window {
 
     Glass {
         id: findBar
-        visible: root.findOpen
+        // Grows in and fades, rather than appearing at once.
+        readonly property bool reveal: root.findOpen
+        visible: reveal || opacity > 0.01
+        opacity: reveal ? 1 : 0
+        scale: reveal || Theme.reduceMotion ? 1 : 0.94
+        transformOrigin: Item.TopRight
+        Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 170; easing.type: Easing.OutCubic } }
+        Behavior on scale { enabled: !Theme.reduceMotion; Spring { spring: Theme.popover } }
         z: 52
         // webArea sits inside the content row, so place the bar by mapping.
         x: { webArea.x; root.width; return webArea.mapToItem(root.contentItem, webArea.width, 0).x - width - 16 }
@@ -1742,7 +1844,14 @@ Window {
     Rectangle {
         id: downloadsPopover
         z: 48
-        visible: root.downloadsOpen
+        // Grows in and fades, rather than appearing at once.
+        readonly property bool reveal: root.downloadsOpen
+        visible: reveal || opacity > 0.01
+        opacity: reveal ? 1 : 0
+        scale: reveal || Theme.reduceMotion ? 1 : 0.92
+        transformOrigin: Item.TopRight
+        Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 170; easing.type: Easing.OutCubic } }
+        Behavior on scale { enabled: !Theme.reduceMotion; Spring { spring: Theme.popover } }
         x: root.width - width - 16
         y: toolbar.height + 5
         width: 360
@@ -1834,7 +1943,14 @@ Window {
     Rectangle {
         id: settingsSheet
         z: 60
-        visible: root.settingsOpen
+        // Grows in and fades, rather than appearing at once.
+        readonly property bool reveal: root.settingsOpen
+        visible: reveal || opacity > 0.01
+        opacity: reveal ? 1 : 0
+        scale: reveal || Theme.reduceMotion ? 1 : 0.94
+        transformOrigin: Item.Center
+        Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 170; easing.type: Easing.OutCubic } }
+        Behavior on scale { enabled: !Theme.reduceMotion; Spring { spring: Theme.popover } }
         anchors.centerIn: parent
         width: Math.min(560, root.width - 60)
         height: Math.min(560, root.height - 80)
@@ -2036,7 +2152,14 @@ Window {
     Rectangle {
         id: websitePermissionsSheet
         z: 67
-        visible: root.websitePermissionsOpen
+        // Grows in and fades, rather than appearing at once.
+        readonly property bool reveal: root.websitePermissionsOpen
+        visible: reveal || opacity > 0.01
+        opacity: reveal ? 1 : 0
+        scale: reveal || Theme.reduceMotion ? 1 : 0.94
+        transformOrigin: Item.Center
+        Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 170; easing.type: Easing.OutCubic } }
+        Behavior on scale { enabled: !Theme.reduceMotion; Spring { spring: Theme.popover } }
         anchors.centerIn: parent
         width: Math.min(570, root.width - 60)
         height: Math.min(520, root.height - 80)
@@ -2166,7 +2289,14 @@ Window {
     Rectangle {
         id: privacySheet
         z: 67
-        visible: root.privacySheetOpen
+        // Grows in and fades, rather than appearing at once.
+        readonly property bool reveal: root.privacySheetOpen
+        visible: reveal || opacity > 0.01
+        opacity: reveal ? 1 : 0
+        scale: reveal || Theme.reduceMotion ? 1 : 0.94
+        transformOrigin: Item.Center
+        Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 170; easing.type: Easing.OutCubic } }
+        Behavior on scale { enabled: !Theme.reduceMotion; Spring { spring: Theme.popover } }
         anchors.centerIn: parent
         width: Math.min(500, root.width - 70)
         height: Math.min(480, Math.max(260, privacyContent.implicitHeight + 44))
@@ -2285,7 +2415,14 @@ Window {
     Rectangle {
         id: profileSheet
         z: 66
-        visible: root.profileSheetOpen
+        // Grows in and fades, rather than appearing at once.
+        readonly property bool reveal: root.profileSheetOpen
+        visible: reveal || opacity > 0.01
+        opacity: reveal ? 1 : 0
+        scale: reveal || Theme.reduceMotion ? 1 : 0.94
+        transformOrigin: Item.Center
+        Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 170; easing.type: Easing.OutCubic } }
+        Behavior on scale { enabled: !Theme.reduceMotion; Spring { spring: Theme.popover } }
         anchors.centerIn: parent
         width: 470
         height: Math.min(460, root.height - 90)
@@ -2413,7 +2550,14 @@ Window {
     Rectangle {
         id: tabGroupsManager
         z: 65
-        visible: root.tabGroupsSheetOpen
+        // Grows in and fades, rather than appearing at once.
+        readonly property bool reveal: root.tabGroupsSheetOpen
+        visible: reveal || opacity > 0.01
+        opacity: reveal ? 1 : 0
+        scale: reveal || Theme.reduceMotion ? 1 : 0.94
+        transformOrigin: Item.Center
+        Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 170; easing.type: Easing.OutCubic } }
+        Behavior on scale { enabled: !Theme.reduceMotion; Spring { spring: Theme.popover } }
         anchors.centerIn: parent
         width: 500
         height: Math.min(480, root.height - 90)
@@ -2549,7 +2693,14 @@ Window {
     Rectangle {
         id: tabGroupSheet
         z: 65
-        visible: root.tabGroupEditorOpen
+        // Grows in and fades, rather than appearing at once.
+        readonly property bool reveal: root.tabGroupEditorOpen
+        visible: reveal || opacity > 0.01
+        opacity: reveal ? 1 : 0
+        scale: reveal || Theme.reduceMotion ? 1 : 0.94
+        transformOrigin: Item.Center
+        Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 170; easing.type: Easing.OutCubic } }
+        Behavior on scale { enabled: !Theme.reduceMotion; Spring { spring: Theme.popover } }
         anchors.centerIn: parent
         width: 430
         height: 206
@@ -2678,7 +2829,14 @@ Window {
     Rectangle {
         id: passwordsSheet
         z: 67
-        visible: root.passwordsOpen
+        // Grows in and fades, rather than appearing at once.
+        readonly property bool reveal: root.passwordsOpen
+        visible: reveal || opacity > 0.01
+        opacity: reveal ? 1 : 0
+        scale: reveal || Theme.reduceMotion ? 1 : 0.94
+        transformOrigin: Item.Center
+        Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 170; easing.type: Easing.OutCubic } }
+        Behavior on scale { enabled: !Theme.reduceMotion; Spring { spring: Theme.popover } }
         anchors.centerIn: parent
         width: Math.min(570, root.width - 60)
         height: Math.min(520, root.height - 80)
@@ -2780,7 +2938,14 @@ Window {
     Rectangle {
         id: permissionSheet
         z: 70
-        visible: root.pendingPermission !== null
+        // Grows in and fades, rather than appearing at once.
+        readonly property bool reveal: root.pendingPermission !== null
+        visible: reveal
+        opacity: reveal ? 1 : 0
+        scale: reveal || Theme.reduceMotion ? 1 : 0.94
+        transformOrigin: Item.Center
+        Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 170; easing.type: Easing.OutCubic } }
+        Behavior on scale { enabled: !Theme.reduceMotion; Spring { spring: Theme.popover } }
         anchors.centerIn: parent
         width: 420
         height: 190
