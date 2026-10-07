@@ -110,6 +110,21 @@ Scope {
         centerOpen = false
     }
     function dropBanner(n) { banners = banners.filter((b) => b !== n) }
+    // The banners as a model, so each one keeps its card while others come and
+    // go: a new one slides in, a leaving one slides out, the rest move along.
+    ListModel { id: bannerModel }
+    onBannersChanged: {
+        const ids = banners.map((b) => b.id)
+        for (let i = bannerModel.count - 1; i >= 0; i--)
+            if (!ids.includes(bannerModel.get(i).nid)) bannerModel.remove(i)
+        ids.forEach((id, i) => {
+            let at = -1
+            for (let j = 0; j < bannerModel.count; j++) if (bannerModel.get(j).nid === id) { at = j; break }
+            if (at < 0) bannerModel.insert(i, { nid: id })
+            else if (at !== i) bannerModel.move(at, i, 1)
+        })
+    }
+    function bannerFor(id) { return banners.find((b) => b.id === id) ?? null }
 
     Timer { interval: 30000; running: true; repeat: true; onTriggered: root.now = Date.now() }
 
@@ -145,13 +160,29 @@ Scope {
     component Card: Glass {
         id: card
         required property var n
+        // What it shows, kept once the notification itself is gone, so a card
+        // sliding away doesn't empty and shrink as it goes.
+        readonly property bool live: !!n
+        property string title
+        property string bodyText
+        property string stamp
+        property string icon
+        property var actionList: []
+        Binding on title { when: card.live; restoreMode: Binding.RestoreNone
+            value: !card.live ? "" : Prefs.notifyPreviews === "never" ? root.appLabel(card.n) : card.n.summary || root.appLabel(card.n) }
+        Binding on bodyText { when: card.live; restoreMode: Binding.RestoreNone
+            value: !card.live ? "" : Prefs.notifyPreviews === "never" ? "Notification" : card.n.body }
+        Binding on stamp { when: card.live; restoreMode: Binding.RestoreNone; value: card.live ? root.timeLabel(card.n) : "" }
+        Binding on icon { when: card.live; restoreMode: Binding.RestoreNone; value: card.live ? root.iconFor(card.n) : "" }
+        Binding on actionList { when: card.live; restoreMode: Binding.RestoreNone
+            value: card.live ? card.n.actions.filter((a) => a.identifier !== "default") : [] }
         role: "regular"
         radius: 22
         implicitHeight: content.implicitHeight + 24
         pressed: tap.pressed
         hovered: hover.hovered
         HoverHandler { id: hover }
-        TapHandler { id: tap; onTapped: root.open(card.n) }
+        TapHandler { id: tap; onTapped: if (card.live) root.open(card.n) }
 
         RowLayout {
             id: content
@@ -160,7 +191,7 @@ Scope {
             Item {
                 Layout.alignment: Qt.AlignTop
                 Layout.preferredWidth: 36; Layout.preferredHeight: 36
-                readonly property string resolved: root.iconFor(card.n)
+                readonly property string resolved: card.icon
                 Image { anchors.fill: parent; sourceSize: Qt.size(72, 72); source: parent.resolved; visible: parent.resolved !== "" }
                 Rectangle {
                     anchors.fill: parent; radius: 9
@@ -176,13 +207,13 @@ Scope {
                     Text {
                         Layout.fillWidth: true
                         // Previews off: the app's name and no more, as on the Mac.
-                        text: Prefs.notifyPreviews === "never" ? root.appLabel(card.n) : card.n.summary || root.appLabel(card.n)
+                        text: card.title
                         textFormat: Text.PlainText; elide: Text.ElideRight
                         color: Theme.label
                         font { family: Theme.fontUi; pixelSize: 13; weight: Font.DemiBold }
                     }
                     Text {
-                        text: root.timeLabel(card.n)
+                        text: card.stamp
                         color: Theme.secondaryLabel
                         font { family: Theme.fontUi; pixelSize: 12 }
                     }
@@ -190,24 +221,24 @@ Scope {
                 Text {
                     Layout.fillWidth: true
                     visible: text !== ""
-                    text: Prefs.notifyPreviews === "never" ? "Notification" : card.n.body
+                    text: card.bodyText
                     textFormat: Text.PlainText; wrapMode: Text.Wrap; maximumLineCount: 4; elide: Text.ElideRight
                     color: Theme.label
                     font { family: Theme.fontUi; pixelSize: 13 }
                 }
                 RowLayout {
-                    visible: card.n.actions.some((a) => a.identifier !== "default")
+                    visible: card.actionList.length > 0
                     Layout.topMargin: 6
                     spacing: 6
                     Repeater {
-                        model: card.n.actions.filter((a) => a.identifier !== "default")
+                        model: card.actionList
                         delegate: Rectangle {
                             required property var modelData
                             Layout.fillWidth: true
                             implicitHeight: 26; radius: 13
                             color: actionTap.pressed ? Theme.selection : Theme.fill
                             Text { anchors.centerIn: parent; text: modelData.text; color: Theme.label; font { family: Theme.fontUi; pixelSize: 12; weight: Font.Medium } }
-                            TapHandler { id: actionTap; onTapped: modelData.invoke() }
+                            TapHandler { id: actionTap; onTapped: if (card.live) modelData.invoke() }
                         }
                     }
                 }
@@ -220,63 +251,94 @@ Scope {
             opacity: hover.hovered ? 1 : 0
             Behavior on opacity { NumberAnimation { duration: 150 } }
             Symbol { anchors.centerIn: parent; name: "xmark"; size: 10; tone: Theme.dark ? "white" : "dark" }
-            TapHandler { onTapped: card.n.dismiss() }
+            TapHandler { onTapped: if (card.live) card.n.dismiss() }
         }
     }
 
-    // Banners.
+    // Banners. The surface reaches the screen's edge, so a banner slides in
+    // from it and back out to it; only the banners take input.
     PanelWindow {
         id: bannerWindow
         screen: Quickshell.screens.find((s) => s.name === Hyprland.focusedMonitor?.name) ?? Quickshell.screens[0]
         anchors { top: true; right: true }
-        margins { top: 8; right: root.controlCenterOpen ? 366 : 10 }
-        implicitWidth: 360
-        implicitHeight: Math.max(1, column.implicitHeight + 8)
+        margins { top: 8; right: root.controlCenterOpen ? 356 : 0 }
+        implicitWidth: 370
+        // Room for four banners: a fixed size, so the surface doesn't resize
+        // on every frame while they move.
+        implicitHeight: 4 * 150 + 3 * 8 + 16
         exclusionMode: ExclusionMode.Normal   // sit below the menu bar
         color: "transparent"
-        visible: !root.dnd && root.banners.length > 0
+        visible: !root.dnd && (root.banners.length > 0 || bannerList.count > 0)
         WlrLayershell.namespace: "gg-notifications"
         WlrLayershell.layer: WlrLayer.Overlay
-        mask: Region { item: column }
+        mask: Region { item: bannerArea }
+        // Input only where the banners are. The view itself is the surface's
+        // height: one that shrank with its content dropped a leaving banner
+        // at once, outside it, before it could slide away.
+        Item { id: bannerArea; width: bannerList.width; height: Math.min(bannerList.contentHeight, bannerList.height) }
 
-        ColumnLayout {
-            id: column
-            width: parent.width
+        ListView {
+            id: bannerList
+            objectName: "bannerList"
+            x: 0; width: 360
+            height: parent.height
+            interactive: false
             spacing: 8
-            Repeater {
-                model: root.banners
-                delegate: Card {
-                    id: banner
-                    required property var modelData
-                    n: modelData
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: implicitHeight
-                    // Slide in from the right; follow the pointer when swiped. A
-                    // banner rebuilt when the list changes is already in place.
-                    property real dragX: 0
-                    property bool shown: Date.now() - (root.received[modelData.id] ?? 0) > 400
-                    x: (shown ? 0 : width + 20) + dragX
-                    opacity: 1 - Math.max(0, dragX) / 320
-                    Behavior on x { enabled: !drag.active; Spring { spring: Theme.snappy } }
-                    Component.onCompleted: shown = true
+            model: bannerModel
+            readonly property real away: width + 30
+            readonly property bool still: Theme.reduceMotion
 
-                    // The banner goes; the notification stays in Notification Center.
-                    // Its time counts from when it arrived: the list rebuilds these
-                    // cards whenever another banner comes or goes, and restarting the
-                    // full time then kept older banners up for good.
-                    readonly property int life: banner.n.expireTimeout > 0 ? banner.n.expireTimeout * 1000 : 5500
-                    Timer {
-                        interval: Math.max(600, banner.life - (Date.now() - (root.received[banner.n.id] ?? Date.now())))
-                        running: !bannerHover.hovered && !banner.n.resident
-                        onTriggered: root.dropBanner(banner.n)
-                    }
-                    HoverHandler { id: bannerHover }
-                    DragHandler {
-                        id: drag
-                        target: null
-                        xAxis.enabled: true; yAxis.enabled: false
-                        onTranslationChanged: banner.dragX = Math.max(-20, translation.x)
-                        onActiveChanged: if (!active) { if (banner.dragX > 110) root.dropBanner(banner.n); else banner.dragX = 0 }
+            add: Transition {
+                ParallelAnimation {
+                    NumberAnimation { property: "x"; from: bannerList.still ? 0 : bannerList.away; to: 0
+                        duration: bannerList.still ? 0 : Theme.snappy.duration; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.snappy.curve }
+                    NumberAnimation { property: "opacity"; from: 0; to: 1; duration: bannerList.still ? 160 : 220 }
+                }
+            }
+            remove: Transition {
+                ParallelAnimation {
+                    NumberAnimation { property: "x"; to: bannerList.still ? 0 : bannerList.away; duration: 300; easing.type: Easing.InCubic }
+                    NumberAnimation { property: "opacity"; to: 0; duration: 300; easing.type: Easing.InQuad }
+                }
+            }
+            displaced: Transition {
+                NumberAnimation { property: "y"; duration: bannerList.still ? 0 : Theme.snappy.duration
+                    easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.snappy.curve }
+                // A banner caught mid-arrival finishes arriving.
+                NumberAnimation { property: "x"; to: 0; duration: 200 }
+                NumberAnimation { property: "opacity"; to: 1; duration: 200 }
+            }
+
+            delegate: Card {
+                id: banner
+                required property int nid
+                n: null
+                width: bannerList.width
+                height: implicitHeight
+                Component.onCompleted: n = root.bannerFor(nid)
+                // A swipe to the right follows the pointer and fades it.
+                property real dragX: 0
+                transform: Translate { x: banner.dragX }
+                opacity: 1 - Math.max(0, dragX) / 320
+                Behavior on dragX { enabled: !drag.active; Spring { spring: Theme.snappy } }
+
+                // The banner goes; the notification stays in Notification Center.
+                // Its time counts from when it arrived.
+                readonly property int life: banner.live && banner.n.expireTimeout > 0 ? banner.n.expireTimeout * 1000 : 5500
+                Timer {
+                    interval: Math.max(600, banner.life - (Date.now() - (root.received[banner.nid] ?? Date.now())))
+                    running: banner.live && !bannerHover.hovered && !banner.n.resident
+                    onTriggered: root.dropBanner(banner.n)
+                }
+                HoverHandler { id: bannerHover }
+                DragHandler {
+                    id: drag
+                    target: null
+                    xAxis.enabled: true; yAxis.enabled: false
+                    onTranslationChanged: banner.dragX = Math.max(-20, translation.x)
+                    onActiveChanged: if (!active) {
+                        if (banner.dragX > 110 && banner.live) root.dropBanner(banner.n)
+                        else banner.dragX = 0
                     }
                 }
             }

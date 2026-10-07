@@ -2,7 +2,7 @@
 Type=Application
 Name=Citron Intelligence
 Comment=Writing tools, questions, image generation and photo editing with Gemini
-Icon=applications-graphics
+Icon=org.goldengate.Intelligence
 Exec=sh @APPS@/intelligence/open.sh
 StartupWMClass=org.goldengate.Intelligence
 Categories=Utility;

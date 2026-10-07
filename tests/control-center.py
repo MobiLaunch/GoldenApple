@@ -53,6 +53,12 @@ check(threshold is not None, "HyprGlass has a Control Center threshold")
 line = float(threshold.group(1)) if threshold else 0.0
 check(0.2 <= line <= 0.3, f"the threshold sits above the controls' shadows and below their glass, got {line}")
 check(re.search(r"Item \{\s*id: panel", qml) is not None, "the panel is geometry, not glass (no card behind the controls)")
+tint = re.search(r"component Module: Glass \{.*?tint: Theme\.dark \? Qt\.rgba\(([^)]*)\) : Qt\.rgba\(([^)]*)\)", qml, re.S)
+check(tint is not None, "the controls' glass tint is found")
+if tint:
+    for mode, args in (("dark", tint.group(1)), ("light", tint.group(2))):
+        alpha = float(args.split(",")[-1])
+        check(alpha > line, f"{mode} controls ({alpha:.2f} opaque) stay above the glass threshold, so the backdrop is blurred behind them")
 m = re.search(r"model: (\d+)\s*Rectangle \{.{0,400}?opacity: Theme\.dark \? ([\d.]+) : ([\d.]+)", qml, re.S)
 check(m is not None, "the shadow behind the controls is found")
 if m:

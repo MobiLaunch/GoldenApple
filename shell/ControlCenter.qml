@@ -175,10 +175,26 @@ PanelWindow {
         if (entry) entry.execute()
     }
 
-    // A piece of the grid: glass, round at the ends.
+    // A piece of the grid: glass, round at the ends. Both tints stay above
+    // HyprGlass's 25% line for this surface, so the backdrop is blurred
+    // behind each control (a fainter one would sit on the bare wallpaper).
     component Module: Glass {
         radius: Math.min(width, height) / 2
-        tint: Theme.dark ? Qt.rgba(1, 1, 1, 0.11) : Qt.rgba(1, 1, 1, 0.6)
+        tint: Theme.dark ? Qt.rgba(0.17, 0.17, 0.19, 0.42) : Qt.rgba(1, 1, 1, 0.6)
+    }
+
+    // A glyph that pops when its control switches, as SF Symbols bounce.
+    component PopSymbol: Symbol {
+        id: glyph
+        property bool on: false
+        property real pop: 1
+        onOnChanged: if (!Prefs.reduceMotion) popAnim.restart()
+        transform: Scale { origin.x: glyph.width / 2; origin.y: glyph.height / 2; xScale: glyph.pop; yScale: glyph.pop }
+        SequentialAnimation {
+            id: popAnim
+            NumberAnimation { target: glyph; property: "pop"; to: 1.22; duration: 110; easing.type: Easing.OutQuad }
+            NumberAnimation { target: glyph; property: "pop"; to: 1; duration: 420; easing.type: Easing.OutBack; easing.overshoot: 2.2 }
+        }
     }
 
     // The round icon at the start of a capsule: blue while it's on.
@@ -189,7 +205,7 @@ PanelWindow {
         width: 42; height: 42; radius: 21
         color: on ? Theme.accent : (Theme.dark ? "#2effffff" : "#17000000")
         Behavior on color { ColorAnimation { duration: Prefs.reduceMotion ? 1 : 140 } }
-        Symbol { anchors.centerIn: parent; name: disc.icon; size: 19; tone: disc.on ? "white" : "auto" }
+        PopSymbol { anchors.centerIn: parent; name: disc.icon; size: 19; on: disc.on; tone: disc.on ? "white" : "auto" }
     }
 
     // Wi-Fi, Bluetooth, AirDrop, Focus: its circle switches it; the rest of the
@@ -250,16 +266,21 @@ PanelWindow {
         width: cc.unit; height: cc.unit
         pressed: circleTap.pressed
         hovered: circleTap.containsMouse
+        // On, the fill grows out from the middle on a spring.
         Rectangle {
+            objectName: "circleFill"
             anchors.fill: parent
             radius: width / 2
             color: Theme.dark ? "#ffffff" : Theme.accent
             opacity: circle.on ? 1 : 0
+            scale: circle.on || Prefs.reduceMotion ? 1 : 0.55
             Behavior on opacity { NumberAnimation { duration: Prefs.reduceMotion ? 1 : 140 } }
+            Behavior on scale { enabled: !Prefs.reduceMotion; Spring { spring: Theme.bouncy } }
         }
-        Symbol {
+        PopSymbol {
             anchors.centerIn: parent
             name: circle.icon; size: 22
+            on: circle.on
             tone: circle.on ? (Theme.dark ? "dark" : "white") : "auto"
         }
         Rectangle {
@@ -360,7 +381,7 @@ PanelWindow {
     }
 
     // No card behind the controls: the controls are the glass. HyprGlass makes
-    // glass of anything on this surface more than 8% opaque
+    // glass of anything on this surface more than 25% opaque
     // (namespace_mask_thresholds in hyprglass-sync.sh), so the panel itself
     // is only geometry, and what's behind the controls is a soft shadow kept
     // under that line: a slight darkening, never a card.

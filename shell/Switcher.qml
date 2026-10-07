@@ -96,20 +96,29 @@ PanelWindow {
         scale: sw.open ? 1 : 0.9
         Behavior on scale { Spring { spring: Theme.popover } }
 
+        // One selection that springs from app to app as Tab moves it.
+        Rectangle {
+            objectName: "switcherSelection"
+            visible: sw.apps.length > 0
+            x: row.x + Math.max(0, sw.index) * (118 + row.spacing)
+            y: row.y
+            width: 118; height: 136
+            radius: 20
+            color: Theme.selection
+            border { width: 0.5; color: Theme.separator }
+            // Placed at once while closed, so it opens where it should be.
+            Behavior on x { enabled: !Theme.reduceMotion && sw.open; Spring { spring: Theme.snappy } }
+        }
         RowLayout {
             id: row
             anchors.centerIn: parent
             spacing: 8
             Repeater {
                 model: sw.apps
-                delegate: Rectangle {
+                delegate: Item {
                     required property var modelData
                     required property int index
                     implicitWidth: 118; implicitHeight: 136
-                    radius: 20
-                    color: index === sw.index ? Theme.selection : "transparent"
-                    border.width: index === sw.index ? 0.5 : 0
-                    border.color: Theme.separator
                     ColumnLayout {
                         anchors.centerIn: parent
                         spacing: 6

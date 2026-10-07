@@ -345,6 +345,25 @@ export const apps = {
      <path class="tint-stroke" d="M42.22 63.78A11 11 0 1 1 57.78 63.78 M35.15 70.85A21 21 0 1 1 64.85 70.85 M28.08 77.92A31 31 0 1 1 71.92 77.92" fill="none" stroke="#fff" stroke-width="6.5" stroke-linecap="round"/>
      <circle class="tint" cx="50" cy="56" r="4.5" fill="#fff"/>`),
 
+  // Citron Intelligence: Citron's orb (lib/CitronOrb.qml), clouds of its four
+  // colours inside a glass ball. Radial gradients only: Qt's SVG renderer has no blur.
+  intelligence: app("intelligence", "#a35cff", lin("intelligence-bg", "#2a2350", "#0c0a1f")
+      + `<radialGradient id="intelligence-ball" cx="50" cy="52" r="27" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#3a7bff"/><stop offset="1" stop-color="#2a3fd0"/></radialGradient>`
+      + `<radialGradient id="intelligence-c" cx="40" cy="42" r="20" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#5ee7ff" stop-opacity=".95"/><stop offset=".55" stop-color="#5ee7ff" stop-opacity=".55"/><stop offset="1" stop-color="#5ee7ff" stop-opacity="0"/></radialGradient><radialGradient id="intelligence-v" cx="61" cy="57" r="21" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#a35cff" stop-opacity=".95"/><stop offset=".55" stop-color="#a35cff" stop-opacity=".55"/><stop offset="1" stop-color="#a35cff" stop-opacity="0"/></radialGradient><radialGradient id="intelligence-p" cx="56" cy="39" r="15" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#ff5fb4" stop-opacity=".95"/><stop offset=".55" stop-color="#ff5fb4" stop-opacity=".55"/><stop offset="1" stop-color="#ff5fb4" stop-opacity="0"/></radialGradient>`
+      + `<radialGradient id="intelligence-core" cx="50" cy="50" r="13" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#fff" stop-opacity=".75"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>`
+      + `<radialGradient id="intelligence-bloom" cx="50" cy="52" r="40" gradientUnits="userSpaceOnUse"><stop offset=".55" stop-color="#7a5cff" stop-opacity=".45"/><stop offset="1" stop-color="#7a5cff" stop-opacity="0"/></radialGradient>`
+      + lin("intelligence-glass", "#ffffff", "#ffffff"),
+    `<rect class="bg" fill="url(#intelligence-bg)" width="100" height="100"/>
+     <circle cx="50" cy="52" r="40" fill="url(#intelligence-bloom)"/>
+     <g transform="translate(50 51) scale(1.22) translate(-50 -51)">
+     <circle cx="50" cy="51" r="27" fill="url(#intelligence-ball)"/>
+     <circle cx="40" cy="42" r="20" fill="url(#intelligence-c)"/>
+     <circle cx="61" cy="57" r="21" fill="url(#intelligence-v)"/>
+     <circle cx="56" cy="39" r="15" fill="url(#intelligence-p)"/>
+     <circle cx="50" cy="50" r="13" fill="url(#intelligence-core)"/>
+     <circle cx="50" cy="51" r="27" fill="none" stroke="#fff" stroke-opacity=".55" stroke-width="1.4"/>
+     <ellipse cx="41" cy="33" rx="10" ry="4.5" fill="#fff" fill-opacity=".5" transform="rotate(-20 41 33)"/></g>`),
+
   weather: app("weather", "#64d2ff", lin("weather-bg", "#3aa0f5", "#1a5fd0") + lin("weather-sun", "#ffe36b", "#ffb300"),
     `<rect class="bg" fill="url(#weather-bg)" width="100" height="100"/>
      <circle cx="40" cy="40" r="15" fill="url(#weather-sun)"/>

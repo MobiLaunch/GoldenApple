@@ -199,6 +199,28 @@ PanelWindow {
         }
         return out
     }
+    // Apps asking for attention (a window marked urgent): their icons bounce
+    // until one of their windows is brought forward, as on the Mac.
+    property var attention: []          // lower-case window classes
+    Connections {
+        target: Hyprland
+        function onRawEvent(event) {
+            if (event.name === "urgent") {
+                const address = "0x" + String(event.data).replace(/^0x/, "")
+                const t = Hyprland.toplevels.values.find((w) => (w.lastIpcObject?.address ?? "") === address)
+                const cls = (t?.wayland?.appId ?? t?.lastIpcObject?.class ?? "").toLowerCase()
+                if (cls && !dock.attention.includes(cls)) dock.attention = dock.attention.concat([cls])
+            } else if (event.name === "activewindow") {
+                const cls = String(event.parse(2)[0] ?? "").toLowerCase()
+                if (dock.attention.includes(cls)) dock.attention = dock.attention.filter((c) => c !== cls)
+            }
+        }
+    }
+    function wantsAttention(entry) {
+        const appId = (entry.id ?? "").toLowerCase()
+        const startup = (entry.startupClass ?? "").toLowerCase()
+        return attention.some((c) => c === appId || c === appId.split(".").pop() || (!!startup && c === startup))
+    }
     function windowsFor(entry) {
         const appId = (entry.id ?? "").toLowerCase()
         const bare = appId.split(".").pop()
@@ -245,6 +267,14 @@ PanelWindow {
         transform: Translate { x: tile.lifted ? dock.dragDX : 0; y: tile.lifted ? dock.dragDY : 0 }
         opacity: tile.lifted && !tile.kept && dock.dropSlot < 0 ? 0.6 : 1
 
+        // The icon bounces while the app opens, until its first window shows
+        // (or eight seconds pass), and while it asks for attention.
+        property bool launching: false
+        readonly property bool opening: dock.launcher?.state_ === "opening" && (dock.launcher.entry?.id ?? "") === (modelData.id ?? "")
+        readonly property bool hopping: (launching || opening || dock.wantsAttention(modelData)) && !Prefs.reduceMotion
+        onWinsChanged: if (wins.length) launching = false
+        Timer { running: tile.launching; interval: 8000; onTriggered: tile.launching = false }
+
         // Calendar apps show today's date, drawn over a date-less icon.
         readonly property bool calendar: /calendar/i.test(modelData.icon ?? "") && calBlank.loaded
 
@@ -266,13 +296,15 @@ PanelWindow {
             layer.enabled: gpu && tipArea.pressed
             layer.effect: MultiEffect { brightness: -0.28 }
             opacity: !gpu && tipArea.pressed ? 0.7 : 1
+            // A hop is thrown up and falls back as under gravity (out, then in);
+            // the last one always lands.
             SequentialAnimation on launchOffset {
-                id: bounce
-                running: false
-                NumberAnimation { to: -22; duration: 165; easing.type: Easing.OutQuad }
-                NumberAnimation { to: 0; duration: 180; easing.type: Easing.InOutQuad }
-                NumberAnimation { to: -7; duration: 110; easing.type: Easing.OutQuad }
-                NumberAnimation { to: 0; duration: 120; easing.type: Easing.InOutQuad }
+                running: tile.hopping
+                loops: Animation.Infinite
+                alwaysRunToEnd: true
+                NumberAnimation { to: -Math.round(dock.baseSize * 0.4); duration: 200; easing.type: Easing.OutQuad }
+                NumberAnimation { to: 0; duration: 200; easing.type: Easing.InQuad }
+                PauseAnimation { duration: 110 }
             }
             Text {
                 visible: tile.calendar
@@ -296,12 +328,30 @@ PanelWindow {
             width: 4; height: 4; radius: 2
             color: Theme.dark ? "#ccffffff" : "#8c000000"
             opacity: tile.wins.length && Prefs.dockIndicators ? 1 : 0
+            scale: opacity > 0.5 ? 1 : 0.2
             Behavior on opacity { NumberAnimation { duration: 300 } }
+            Behavior on scale { enabled: !Prefs.reduceMotion; Spring { spring: Theme.bouncy } }
         }
         // Unread notifications, as a red badge on the icon's top right.
         readonly property int badge: dock.notifications ? dock.notifications.countFor(modelData.id ?? "", modelData.startupClass ?? "") : 0
+        property int lastBadge: 0
+        onBadgeChanged: {
+            if (badge > lastBadge && lastBadge > 0 && !Prefs.reduceMotion) badgePulse.restart()
+            lastBadge = badge
+        }
         Rectangle {
-            visible: tile.badge > 0
+            id: badgeDot
+            // Pops in on a spring; a new notification bumps it.
+            scale: tile.badge > 0 ? 1 : 0
+            visible: scale > 0.01
+            Behavior on scale { enabled: !Prefs.reduceMotion; Spring { spring: Theme.bouncy } }
+            property real bump: 1
+            transform: Scale { origin.x: badgeDot.width / 2; origin.y: badgeDot.height / 2; xScale: badgeDot.bump; yScale: badgeDot.bump }
+            SequentialAnimation {
+                id: badgePulse
+                NumberAnimation { target: badgeDot; property: "bump"; to: 1.28; duration: 120; easing.type: Easing.OutQuad }
+                NumberAnimation { target: badgeDot; property: "bump"; to: 1; duration: 320; easing.type: Easing.OutBack }
+            }
             z: 1000
             readonly property real size: Math.max(16, Math.round(dock.baseSize * 0.34))
             x: icon.x + icon.width - width * 0.75
@@ -368,10 +418,11 @@ PanelWindow {
                 if (parked) dock.restore(parked)
                 else if (tile.wins.length) tile.wins[0].activate()
                 else if (dock.launcher?.enabled && Prefs.animateLaunch) {
+                    tile.launching = true
                     const p = icon.mapToItem(null, 0, 0)
                     dock.launcher.launch(tile.modelData, Qt.rect(p.x, dock.launcher.height - dock.height + p.y, icon.width, icon.height))
                 } else {
-                    if (!Prefs.reduceMotion && Prefs.animateLaunch) bounce.restart()
+                    if (Prefs.animateLaunch) tile.launching = true
                     tile.modelData.execute()
                 }
             }
