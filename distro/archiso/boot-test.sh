@@ -85,7 +85,7 @@ say "result: $result after ${t}s"
 if [[ $result == started ]]; then
   result=no-shell
   for ((; t < TIMEOUT; t += 5)); do
-    if grep -aq 'quickshell.*Configuration Loaded' "$OUT/serial.log" 2>/dev/null; then result=started; break; fi
+    if grep -aqE 'quickshell.*Configuration Loaded|gg-shell.*desktop ready' "$OUT/serial.log" 2>/dev/null; then result=started; break; fi
     kill -0 "$qemu" 2>/dev/null || { result=qemu-exited; break; }
     sleep 5
   done

@@ -10,6 +10,9 @@ import "components"
 
 ShellRoot {
     id: root
+    // The shell's own output goes to ~/.local/state/golden-gate-shell.log;
+    // the journal (and the ISO boot test, over the serial console) hears this.
+    Component.onCompleted: Quickshell.execDetached(["logger", "-t", "gg-shell", "desktop ready"])
     // One AppLaunch per screen; Spotlight picks the one on its own screen.
     property var launchers: []
     // Launchpad (F4, or the Dock's Applications), on the focused screen.

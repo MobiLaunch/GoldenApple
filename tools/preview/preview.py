@@ -22,6 +22,7 @@ import json
 import os
 from pathlib import Path
 import re
+import shutil
 import sys
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
@@ -430,6 +431,10 @@ def populate_home(home: Path) -> None:
     stamp = home / ".preview-populated-5"
     if stamp.exists():
         return
+    # The pictures are drawn with rsvg-convert: without it, leave the home
+    # unfinished so a later run (with it) makes them, not a home of blanks.
+    if not shutil.which("rsvg-convert"):
+        print("preview: rsvg-convert (librsvg) is missing, so the sample pictures are left out", file=sys.stderr)
     for rel, text in NOTES.items():
         f = home / "Documents/Notes" / rel
         f.parent.mkdir(parents=True, exist_ok=True)
@@ -458,7 +463,8 @@ def populate_home(home: Path) -> None:
         os.system(f"rsvg-convert '{svg}' -o '{pics / (name + '.png')}'")
         svg.unlink()
     os.system(f"rsvg-convert -w 1600 '{ROOT}/prototype/assets/wallpapers/dusk.svg' -o '{home / 'Desktop/Screenshot 2026-10-03 at 9.12.png'}'")
-    stamp.write_text("")
+    if shutil.which("rsvg-convert"):
+        stamp.write_text("")
 
 
 def main() -> int:
