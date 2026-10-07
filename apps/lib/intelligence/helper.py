@@ -25,8 +25,42 @@ import urllib.request
 
 API = "https://generativelanguage.googleapis.com/v1beta/"
 DEFAULTS = {"enabled": False, "textModel": "gemini-3.8-flash", "imageModel": "gemini-3.1-flash-image",
-            "voiceModel": "gemini-3.8-live", "voiceName": "Aoede"}
+            "voiceModel": "gemini-3.8-live", "voiceName": "Aoede", "voiceLanguage": "auto"}
 VOICES = ("Aoede", "Puck", "Kore", "Charon", "Fenrir")
+# The languages Citron's voice speaks, as Gemini Live names them. "auto" is the
+# system's language (LANG), else English.
+LANGUAGES = {
+    "en-US": "English (US)", "en-GB": "English (UK)", "en-AU": "English (Australia)", "en-IN": "English (India)",
+    "es-US": "Spanish (US)", "es-ES": "Spanish (Spain)", "fr-FR": "French", "fr-CA": "French (Canada)",
+    "de-DE": "German", "it-IT": "Italian", "pt-BR": "Portuguese (Brazil)", "nl-NL": "Dutch", "pl-PL": "Polish",
+    "ru-RU": "Russian", "tr-TR": "Turkish", "ar-XA": "Arabic", "hi-IN": "Hindi", "bn-IN": "Bengali",
+    "id-ID": "Indonesian", "vi-VN": "Vietnamese", "th-TH": "Thai", "ja-JP": "Japanese", "ko-KR": "Korean",
+    "cmn-CN": "Chinese (Mandarin)",
+}
+
+
+def system_language(env=None) -> str:
+    """The system's language as a LANGUAGES code: de_DE.UTF-8 → de-DE, else
+    the first code for its language (de_AT → de-DE), else en-US."""
+    env = os.environ if env is None else env
+    for name in ("LC_ALL", "LC_MESSAGES", "LANG"):
+        value = (env.get(name) or "").split(".")[0].split("@")[0]
+        if not value or value in ("C", "POSIX"):
+            continue
+        code = value.replace("_", "-")
+        if code in LANGUAGES:
+            return code
+        lang = code.split("-")[0].lower()
+        lang = "cmn" if lang == "zh" else lang
+        for known in LANGUAGES:
+            if known.split("-")[0] == lang:
+                return known
+        break
+    return "en-US"
+
+
+def voice_language(setting: str, env=None) -> str:
+    return setting if setting in LANGUAGES else system_language(env)
 CONFIG = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "golden-gate/intelligence.json"
 CACHE = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache")) / "golden-gate/intelligence"
 MAX_TEXT = 60000
@@ -78,7 +112,8 @@ def config() -> dict:
                 "imageModel": model_name(value.get("imageModel", DEFAULTS["imageModel"])),
                 "voiceModel": model_name(value.get("voiceModel", DEFAULTS["voiceModel"])),
                 "voiceName": value.get("voiceName", DEFAULTS["voiceName"]) if
-                    value.get("voiceName", DEFAULTS["voiceName"]) in VOICES else DEFAULTS["voiceName"]}
+                    value.get("voiceName", DEFAULTS["voiceName"]) in VOICES else DEFAULTS["voiceName"],
+                "voiceLanguage": value.get("voiceLanguage") if value.get("voiceLanguage") in LANGUAGES else "auto"}
     except (OSError, ValueError, IntelligenceError):
         return dict(DEFAULTS)
 
@@ -304,15 +339,19 @@ def dispatch(args: dict) -> dict:
             warning = ""
         except IntelligenceError as exc:
             ready, warning = False, str(exc)
-        return {"config": cfg, "hasKey": ready, "environmentKey": bool(os.environ.get("GEMINI_API_KEY")), "warning": warning}
+        return {"config": cfg, "hasKey": ready, "environmentKey": bool(os.environ.get("GEMINI_API_KEY")), "warning": warning,
+                "languages": [{"code": c, "name": n} for c, n in LANGUAGES.items()], "systemLanguage": LANGUAGES[system_language()]}
     if action == "configure":
         new = {"enabled": args.get("enabled") is True,
                "textModel": model_name(args.get("textModel", cfg["textModel"])),
                "imageModel": model_name(args.get("imageModel", cfg["imageModel"])),
                "voiceModel": model_name(args.get("voiceModel", cfg["voiceModel"])),
-               "voiceName": args.get("voiceName", cfg["voiceName"])}
+               "voiceName": args.get("voiceName", cfg["voiceName"]),
+               "voiceLanguage": args.get("voiceLanguage", cfg["voiceLanguage"])}
         if new["voiceName"] not in VOICES:
             raise IntelligenceError("Choose a supported assistant voice.", "invalid_voice")
+        if new["voiceLanguage"] != "auto" and new["voiceLanguage"] not in LANGUAGES:
+            raise IntelligenceError("Choose a language Citron can speak.", "invalid_language")
         key = args.get("apiKey", "")
         if key:
             key = text(key, "an API key", 256).strip()

@@ -11,16 +11,19 @@ from __future__ import annotations
 import asyncio
 import base64
 from array import array
+from collections import deque
 import ctypes
 import json
+import math
 import os
+import re
 import signal
 import shutil
 import sys
 from pathlib import Path
 from urllib.parse import quote
 
-from helper import IntelligenceError, api_key, config
+from helper import LANGUAGES, IntelligenceError, api_key, config, voice_language
 
 INPUT_RATE = 16000
 OUTPUT_RATE = 24000
@@ -46,24 +49,183 @@ def emit(event: str, **values) -> None:
     os.write(1, line.encode("utf-8"))
 
 
-def setup_message(model: str, voice: str) -> dict:
+def instructions(language: str) -> str:
+    name = LANGUAGES.get(language, "English")
+    return (
+        "You are Citron, the helpful voice assistant built into CitronOS. "
+        "Have a fluid, conversational, brief and warm dialogue. "
+        "Listen carefully, accept interruptions and follow-up questions. "
+        f"Always speak in {name} ({language}). Never change language because of "
+        "background noise, music, an accent, a name or a word from another language, "
+        "or audio you couldn't make out. Switch only when the person clearly asks you "
+        "to speak another language, and keep to it until they ask again. "
+        "Answer only clear speech addressed to you; if what you hear is noise, music, "
+        "other people talking to each other, or your own voice, say nothing. "
+        "Do not claim to access apps, the desktop or personal files, or "
+        "to execute actions you cannot actually perform."
+    )
+
+
+def setup_message(model: str, voice: str, language: str = "en-US", language_code: bool = True) -> dict:
+    speech = {"voiceConfig": {"prebuiltVoiceConfig": {"voiceName": voice}}}
+    if language_code:
+        speech["languageCode"] = language
     return {
         "setup": {
             "model": "models/" + model,
             "generationConfig": {
                 "responseModalities": ["AUDIO"],
-                "speechConfig": {"voiceConfig": {"prebuiltVoiceConfig": {"voiceName": voice}}},
+                "speechConfig": speech,
             },
+            # Slow to decide someone has started talking (a cough, a door, a
+            # TV doesn't start a reply), patient before deciding they've stopped.
+            "realtimeInputConfig": {"automaticActivityDetection": {
+                "startOfSpeechSensitivity": "START_SENSITIVITY_LOW",
+                "endOfSpeechSensitivity": "END_SENSITIVITY_LOW",
+                "prefixPaddingMs": 300,
+                "silenceDurationMs": 700,
+            }},
             "inputAudioTranscription": {},
             "outputAudioTranscription": {},
-            "systemInstruction": {"parts": [{"text":
-                "You are Citron, the helpful voice assistant built into CitronOS. "
-                "Have a fluid, conversational, brief and warm dialogue. "
-                "Listen carefully, accept interruptions and follow-up questions. "
-                "Do not claim to access apps, the desktop or personal files, or "
-                "to execute actions you cannot actually perform."}]},
+            "systemInstruction": {"parts": [{"text": instructions(language)}]},
         }
     }
+
+
+class SpeechGate:
+    """Decides, 100 ms at a time, whether the microphone hears someone talking.
+
+    Only speech is sent to Gemini: silence, steady sound (a fan, hum, hiss, a
+    held note) and lone clicks never leave the computer, so they can't start a
+    reply. Speech is louder than the room's noise floor (learned as it goes),
+    carries its energy in the voice band (not a low hum, not flat hiss), and
+    keeps rising and falling with its syllables while it's loud. Opening takes
+    200 ms of it; the 400 ms before are sent too, so the first syllable isn't
+    lost; it stays open through the pauses between words, and closes on a
+    sound that has gone steady. While Citron itself is talking, speech must be
+    clearly louder to count (talking over it), so its echo doesn't.
+    """
+    FRAME = 160            # 10 ms at 16 kHz
+    OPEN_CHUNKS = 2        # 200 ms of speech to open
+    HANGOVER = 8           # 800 ms of quiet to close
+    PAUSES = 12.0          # dB it drops between syllables; less for 1.2 s is a steady sound
+
+    def __init__(self):
+        self.floor = -60.0
+        self.open = False
+        self.run = 0
+        self.quiet = 0
+        self.preroll = deque(maxlen=4)
+        self.levels = deque(maxlen=120)     # 10 ms levels of the last 1.2 s
+
+    @classmethod
+    def features(cls, chunk: bytes):
+        samples = array("h")
+        samples.frombytes(chunk[: len(chunk) & ~1])
+        n = len(samples)
+        if n < cls.FRAME:
+            return -90.0, 0.0, []
+        energy = diff = 0
+        levels = []
+        prev = samples[0]
+        for start in range(0, n - cls.FRAME + 1, cls.FRAME):
+            e = 0
+            for s in samples[start:start + cls.FRAME]:
+                e += s * s
+                d = s - prev
+                diff += d * d
+                prev = s
+            energy += e
+            levels.append(10 * math.log10(e / cls.FRAME / 32768 ** 2 + 1e-10))
+        db = 10 * math.log10(energy / n / 32768 ** 2 + 1e-10)
+        # The first difference weighs high frequencies: hum has almost none of
+        # its energy there, flat hiss twice its energy; a voice lies between.
+        tilt = diff / energy if energy else 0.0
+        return db, tilt, levels
+
+    def syllable(self, threshold: float) -> bool:
+        """Whether, in the last 400 ms, a sound got loud and fell back by 10 dB
+        or more: a syllable. A fan or a note starting up rises and stays."""
+        frames = list(self.levels)[-40:]
+        start = next((i for i, l in enumerate(frames) if l > threshold), None)
+        if start is None:
+            return False
+        after = frames[start:]
+        peak = after.index(max(after))
+        return min(after[peak:]) < after[peak] - 10
+
+    def depth(self, above: float, frames: int) -> float:
+        """How far the last `frames` 10 ms frames louder than `above` rise and fall."""
+        loud = sorted(l for l in list(self.levels)[-frames:] if l > above)
+        if len(loud) < 10:
+            return 0.0
+        return loud[int(len(loud) * 0.9) - 1] - loud[int(len(loud) * 0.1)]
+
+    def feed(self, chunk: bytes, talking_over: bool = False):
+        """Returns (chunks to send now, whether the speech just ended)."""
+        db, tilt, levels = self.features(chunk)
+        self.levels.extend(levels)
+        # Talking over Citron takes a voice near the microphone, whatever the
+        # room: what's left of its own voice after echo cancelling is quieter.
+        threshold = max(self.floor + 18.0, -42.0) if talking_over else max(self.floor + 10.0, -55.0)
+        # Speech is quiet between syllables: its loudest 10 ms is what counts.
+        peak = max(levels) if levels else db
+        candidate = peak > threshold and 0.015 < tilt < 1.3
+        if self.open:
+            # Softer syllables and word endings keep it open too.
+            self.quiet = 0 if candidate or peak > threshold - 6 else self.quiet + 1
+            # Speech drops right down between syllables, again and again; a fan
+            # or music held open by chance wanders a few dB and no more.
+            steady = len(self.levels) == self.levels.maxlen and self.depth(-200.0, 120) < self.PAUSES
+            if self.quiet >= self.HANGOVER or steady:
+                self.open = False
+                self.run = 0
+                if steady:
+                    self.floor = max(self.floor, min(-25.0, db))   # that sound is the room now
+                else:
+                    self.learn(db)
+                return [], True
+            return [chunk], False
+        self.preroll.append(chunk)
+        self.run = self.run + 1 if candidate else 0
+        if self.run >= self.OPEN_CHUNKS and self.syllable(threshold):
+            self.open = True
+            self.quiet = 0
+            out = list(self.preroll)
+            self.preroll.clear()
+            return out, False
+        if not candidate:
+            self.learn(db)
+        elif self.run >= 10:
+            # Loud for a second without syllables: the room got louder.
+            self.learn(db)
+        return [], False
+
+    def learn(self, db: float) -> None:
+        # The floor falls quickly to a quieter room and rises slowly to a louder one.
+        rate = 0.3 if db < self.floor else 0.05
+        self.floor = max(-80.0, min(-25.0, self.floor + (db - self.floor) * rate))
+
+    def reset(self) -> None:
+        self.open = False
+        self.run = self.quiet = 0
+        self.preroll.clear()
+        self.levels.clear()
+
+
+WORD = re.compile(r"\w+", re.UNICODE)
+
+
+def echoes(heard: str, said: str) -> bool:
+    """Whether what the microphone heard is Citron's own recent words: most of
+    at least four heard words appear, in order, among what it just said."""
+    h = [w.lower() for w in WORD.findall(heard)]
+    s = [w.lower() for w in WORD.findall(said)]
+    if len(h) < 4 or not s:
+        return False
+    pairs = set(zip(s, s[1:]))
+    matched = sum(1 for pair in zip(h, h[1:]) if pair in pairs)
+    return matched / (len(h) - 1) >= 0.6
 
 
 def audio_packet(chunk: bytes) -> dict:
@@ -93,8 +255,15 @@ def alive(pid: int) -> bool:
 
 
 class VoiceSession:
-    def __init__(self, model: str, voice: str, key: str):
+    def __init__(self, model: str, voice: str, key: str, language: str = "en-US"):
         self.model, self.voice, self.key = model, voice, key
+        self.language = language if language in LANGUAGES else "en-US"
+        self.gate = SpeechGate()
+        # What Citron said lately and what Gemini heard this turn, to catch it
+        # hearing itself through the speakers.
+        self.said = deque(maxlen=6)
+        self.heard = ""
+        self.echo_tail = 0.35
         self.muted = False
         self.running = True
         self.mic_allowed = asyncio.Event()
@@ -268,11 +437,17 @@ class VoiceSession:
                         raise RuntimeError("Microphone disconnected. Check input permissions and PipeWire.")
                     if self.muted or not self.running or not self.mic_allowed.is_set():
                         break
-                    await self.ws.send(json.dumps(audio_packet(chunk)))
-                    emit("level", value=pcm_level(chunk))
+                    send, ended = self.gate.feed(chunk, talking_over=self.speaker_active)
+                    for piece in send:
+                        await self.ws.send(json.dumps(audio_packet(piece)))
+                    if ended:
+                        # The speech is over: say so, rather than streaming the room.
+                        await self.ws.send(json.dumps({"realtimeInput": {"audioStreamEnd": True}}))
+                    emit("level", value=pcm_level(chunk) if self.gate.open else 0)
             finally:
                 await self.stop_proc(self.mic_proc)
                 self.mic_proc = None
+                self.gate.reset()
 
     async def playback(self) -> None:
         # A None item marks the end of a turn. Closing pw-play's stdin and
@@ -297,7 +472,7 @@ class VoiceSession:
                                 self.out_proc = None
                     # Allow the room's acoustic echo/reverb to decay.
                     if self.half_duplex:
-                        await asyncio.sleep(0.35)
+                        await asyncio.sleep(self.echo_tail)
                     if epoch == self.audio_epoch:
                         self.speaker_active = False
                         if self.half_duplex and not self.muted:
@@ -328,9 +503,16 @@ class VoiceSession:
                 await self.reset_audio()
                 self.status("muted" if self.muted else "listening")
             if sc.get("inputTranscription", {}).get("text"):
-                emit("transcript", role="user", text=sc["inputTranscription"]["text"][:1200])
+                piece = sc["inputTranscription"]["text"]
+                self.heard = (self.heard + " " + piece)[-600:]
+                if echoes(self.heard, " ".join(self.said)):
+                    await self.heard_itself()
+                else:
+                    emit("transcript", role="user", text=piece[:1200])
             if sc.get("outputTranscription", {}).get("text"):
-                emit("transcript", role="assistant", text=sc["outputTranscription"]["text"][:1200])
+                said = sc["outputTranscription"]["text"]
+                self.said.append(said[-400:])
+                emit("transcript", role="assistant", text=said[:1200])
             for part in (sc.get("modelTurn") or {}).get("parts", []):
                 inline = part.get("inlineData") or {}
                 if not inline.get("data") or "audio" not in inline.get("mimeType", "audio/pcm"):
@@ -351,6 +533,7 @@ class VoiceSession:
                 self.play_queue.put_nowait((self.audio_epoch, data))
                 self.status("speaking")
             if sc.get("turnComplete"):
+                self.heard = ""
                 if self.turn_has_audio:
                     self.play_queue.put_nowait((self.audio_epoch, None))
                     self.turn_has_audio = False
@@ -358,6 +541,22 @@ class VoiceSession:
                     self.status("muted" if self.muted else "listening")
         if self.running:
             raise RuntimeError("Gemini closed the Live connection. Open voice mode again.")
+
+    async def heard_itself(self) -> None:
+        """Gemini is hearing Citron's own voice (speakers into the microphone,
+        an echo canceller that lets it through). Left alone it answers itself,
+        round and round. From now on the microphone rests while Citron talks,
+        and a little longer after, for the room's echo to die away."""
+        self.heard = ""
+        if self.half_duplex and self.echo_tail >= 0.8:
+            return
+        self.half_duplex = True
+        self.echo_tail = 0.8
+        if self.speaker_active:
+            self.mic_allowed.clear()
+            await self.stop_proc(self.mic_proc)
+            emit("level", value=0)
+        emit("notice", text="Citron heard itself through the speakers, so it will listen once it has finished talking. Headphones let you interrupt it.")
 
     async def controls(self) -> None:
         stream = asyncio.StreamReader()
@@ -415,12 +614,25 @@ class VoiceSession:
         self.status("connecting")
         uri = "wss://" + HOST + PATH + "?key=" + quote(self.key, safe="")
         try:
-            async with connect(uri, max_size=MAX_MESSAGE, open_timeout=12, ping_interval=15) as ws:
-                self.ws = ws
-                await ws.send(json.dumps(setup_message(self.model, self.voice)))
-                raw = await asyncio.wait_for(ws.recv(), timeout=20)
-                if "setupComplete" not in json.loads(raw):
+            # A model that speaks natively picks its language from the
+            # instructions and may refuse a languageCode: then ask again without.
+            for language_code in (True, False):
+                ws = await connect(uri, max_size=MAX_MESSAGE, open_timeout=12, ping_interval=15)
+                try:
+                    await ws.send(json.dumps(setup_message(self.model, self.voice, self.language, language_code)))
+                    raw = await asyncio.wait_for(ws.recv(), timeout=20)
+                    if "setupComplete" in json.loads(raw):
+                        break
+                except asyncio.TimeoutError:
+                    await ws.close()
+                    raise
+                except Exception:
+                    pass
+                await ws.close()
+                if not language_code:
                     raise RuntimeError("Gemini rejected voice setup. Verify the voice model and API access.")
+            async with ws:
+                self.ws = ws
                 await self.setup_echo_cancel()
                 self.status("listening")
                 tasks = [
@@ -454,7 +666,7 @@ async def main() -> int:
         if not shutil.which("pw-record") or not shutil.which("pw-play"):
             raise RuntimeError("PipeWire audio tools are missing (pw-record / pw-play).")
         key = api_key()
-        voice = VoiceSession(cfg["voiceModel"], cfg["voiceName"], key)
+        voice = VoiceSession(cfg["voiceModel"], cfg["voiceName"], key, voice_language(cfg.get("voiceLanguage", "auto")))
         await voice.run()
         emit("status", mode="stopped")
         return 0

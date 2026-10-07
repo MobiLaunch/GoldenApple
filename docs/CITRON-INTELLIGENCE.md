@@ -77,6 +77,35 @@ gg-intelligence --settings
   is not encrypted. The client does not provide Apple's on-device processing or
   Private Cloud Compute guarantees. Google's data terms and API billing apply.
 
+## Talking to Citron
+
+**Language.** Citron speaks one language: **Settings → Citron Intelligence →
+Language**, by default the system's (`LANG`, else English). The session asks
+Gemini Live for that language and tells Citron never to change it because of
+noise, music, an accent, a foreign name or audio it couldn't make out; it
+switches only when you ask it to, and keeps to the new one until you ask again.
+A model that refuses an explicit `languageCode` is set up again without it, with
+the instruction still in place.
+
+**Only speech is sent.** `live.py`'s `SpeechGate` listens to the microphone
+100 ms at a time and sends Gemini only what sounds like someone talking: louder
+than the room's noise floor (which it learns as it goes), with its energy in the
+voice band, and rising and falling with syllables. Silence, a fan, mains hum,
+hiss, a held note and lone clicks never leave the computer, so they can't start
+a reply; a sound that switches on and then stays steady is let through for at
+most about a second before it counts as part of the room. The 400 ms before
+speech is sent with it, so the first syllable isn't lost, and `audioStreamEnd`
+marks the end of it. While Citron is talking, interrupting it takes a voice
+near the microphone, louder than what's left of Citron's own voice after echo
+cancelling. Gemini's own detection is set to be slow to decide speech has
+started (`START_SENSITIVITY_LOW`) and patient before deciding it has ended.
+
+**Hearing itself.** If what Gemini transcribes from the microphone is what
+Citron has just said (speakers into the microphone, an echo canceller letting it
+through), it isn't shown as yours or answered round and round: for the rest of
+the session the microphone rests while Citron talks, and a little longer after,
+and Citron says why. Headphones let you interrupt it.
+
 ## Limits and errors
 
 Image input supports PNG, JPEG and WebP, up to 10 MB; convert HEIC/RAW first.
@@ -107,6 +136,7 @@ Run without an API key:
 ```sh
 python3 tests/intelligence.py
 python3 tests/intelligence-ui.py  # PySide6 6.11.2, offscreen Qt
+python3 tests/intelligence-live.py  # voice: language, speech gate, echo
 python3 tests/native-app-backends.py
 python3 tests/qml-load.py
 ```

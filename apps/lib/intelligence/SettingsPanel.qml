@@ -12,6 +12,10 @@ Column {
     property bool environmentKey: false
     property string status: "Loading settings…"
     property var models: []
+    // Citron's spoken languages ({ code, name }), from the helper; "auto" first.
+    property var languages: []
+    property string systemLanguage: "English (US)"
+    property string languageSetting: "auto"
     spacing: 14
     // The settings UI must remain usable even if the process adapter fails to
     // compile/load. Loading Service as a QML file isolates that failure.
@@ -55,6 +59,11 @@ Column {
                 voiceModel.text = result.config.voiceModel || "gemini-3.8-live"
                 const voiceIndex = voiceChooser.options.indexOf(result.config.voiceName || "Aoede")
                 voiceChooser.current = voiceIndex >= 0 ? voiceIndex : 0
+                panel.languageSetting = result.config.voiceLanguage || "auto"
+            }
+            if (result.languages) {
+                panel.languages = result.languages
+                panel.systemLanguage = result.systemLanguage || panel.systemLanguage
             }
             if (action === "status") {
                 panel.hasKey = result.hasKey
@@ -138,13 +147,33 @@ Column {
         enabled: !panel.busy && panel.serviceAvailable
         options: ["Aoede", "Puck", "Kore", "Charon", "Fenrir"]
     }
+    Text { text: "Language"; color: Theme.label; font { family: Theme.fontUi; pixelSize: 12 } }
+    PopUpButton {
+        id: languageChooser
+        objectName: "citronLanguage"
+        width: Math.min(280, parent.width)
+        menuParent: panel.menuParent
+        enabled: !panel.busy && panel.serviceAvailable
+        readonly property var codes: ["auto"].concat(panel.languages.map((l) => l.code))
+        options: ["Automatic (" + panel.systemLanguage + ")"].concat(panel.languages.map((l) => l.name))
+        current: Math.max(0, codes.indexOf(panel.languageSetting))
+        onPicked: (i) => panel.languageSetting = codes[i]
+    }
+    Text {
+        width: parent.width
+        wrapMode: Text.Wrap
+        text: "Citron speaks this language and keeps to it, unless you ask it to switch."
+        color: Theme.secondaryLabel
+        font { family: Theme.fontUi; pixelSize: 12 }
+    }
     Flow {
         width: parent.width; spacing: 8
         Button {
             text: "Save Settings"; prominent: true; enabled: !panel.busy && panel.serviceAvailable
             onClicked: panel.send({ action: "configure", enabled: panel.enabledSetting, apiKey: apiKey.text,
                                       textModel: textModel.text.trim(), imageModel: imageModel.text.trim(),
-                                      voiceModel: voiceModel.text.trim(), voiceName: voiceChooser.options[voiceChooser.current] })
+                                      voiceModel: voiceModel.text.trim(), voiceName: voiceChooser.options[voiceChooser.current],
+                                      voiceLanguage: panel.languageSetting })
         }
         Button { text: "Refresh Models"; enabled: !panel.busy && panel.serviceAvailable && panel.hasKey; onClicked: panel.send({ action: "models" }) }
         Button { text: "Remove Saved Key"; enabled: !panel.busy && panel.serviceAvailable && panel.hasKey; onClicked: { panel.enabledSetting = false; panel.send({ action: "forget" }) } }
