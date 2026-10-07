@@ -352,7 +352,7 @@ class LiveAudioHandling(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(ends), 1, "then the end of the speech")
 
     async def test_a_model_refusing_language_code_is_asked_again_without(self):
-        import websockets.asyncio.client as client
+        import types
         setups = []
 
         class Fake:
@@ -377,7 +377,14 @@ class LiveAudioHandling(unittest.IsolatedAsyncioTestCase):
         async def done(): return None
         for name in ("controls", "listen", "playback", "receive"):
             setattr(session, name, done)
-        with patch.object(client, "connect", connect), patch.object(voice, "emit"):
+        # A stand-in for websockets (not needed installed): run() imports connect from it.
+        client = types.ModuleType("websockets.asyncio.client")
+        client.connect = connect
+        package = types.ModuleType("websockets")
+        package.asyncio = types.ModuleType("websockets.asyncio")
+        package.asyncio.client = client
+        modules = {"websockets": package, "websockets.asyncio": package.asyncio, "websockets.asyncio.client": client}
+        with patch.dict(sys.modules, modules), patch.object(voice, "emit"):
             await session.run()
         self.assertEqual(len(setups), 2)
         self.assertIn("languageCode", setups[0]["generationConfig"]["speechConfig"])
