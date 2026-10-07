@@ -399,9 +399,11 @@ class OtherToolchains(unittest.TestCase):
     def test_c_tool(self):
         self.build_test_run("c-tool")
 
-    # A bare rustup (as CI images have) has cargo but no toolchain to run it.
-    @unittest.skipUnless(shutil.which("cargo") and subprocess.run(["cargo", "--version"], capture_output=True).returncode == 0,
-                         "cargo isn't installed")
+    # A bare rustup (as CI images have) has a cargo shim but no toolchain to
+    # run it, and the shim still answers --version: ask rustup itself.
+    @unittest.skipUnless(shutil.which("cargo") and (not shutil.which("rustup") or subprocess.run(
+                             ["rustup", "show", "active-toolchain"], capture_output=True).returncode == 0),
+                         "cargo (with a Rust toolchain) isn't installed")
     def test_rust_tool(self):
         self.build_test_run("rust-tool", timeout=300)
 
