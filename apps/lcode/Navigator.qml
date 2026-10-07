@@ -206,6 +206,7 @@ Item {
                 }
             }
         }
+        Scroller { flickable: tree }
 
         Row {
             id: filterBar

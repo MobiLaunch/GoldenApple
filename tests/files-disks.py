@@ -114,6 +114,33 @@ class FilesDisks(unittest.TestCase):
         self.assertEqual(self.value("title"), "Computer")
         self.assertFalse(self.root.findChild(QObject, "filesPathBar").property("visible"))
 
+    def test_a_deep_folder_folds_its_ancestors(self):
+        deep = self.home
+        for name in ("Projects", "Client Work 2026", "Golden Gate Redesign", "Assets and Exports", "Final Deliverables", "Print"):
+            deep = deep / name
+        deep.mkdir(parents=True)
+        self.call("navigate", str(deep), True)
+        self.assertTrue(self.wait_for(lambda: self.value("crumbs") and self.value("crumbs")[-1]["path"] == str(deep)))
+        QTest.qWait(150)
+        row = self.root.findChild(QObject, "filesCrumbs")
+        folded = next((i for i in self.walk(row) if i.objectName() == "filesCrumbsFolded"), None)
+        self.assertIsNotNone(folded, "the middle folders fold into …")
+        self.assertTrue(folded.isVisible())
+        self.assertEqual(row.property("x"), 0, "nothing is cropped: the disk and this folder both show whole")
+        names = [t.property("text") for t in self.walk(row) if t.metaObject().className().startswith("QQuickText")]
+        self.assertEqual(names[0], "CitronOS")
+        self.assertEqual(names[-1], "Print")
+        self.assertIn("…", names)
+
+    @staticmethod
+    def walk(item):
+        out, stack = [], [item]
+        while stack:
+            it = stack.pop(0)
+            out.append(it)
+            stack[0:0] = it.childItems()
+        return out
+
     def test_hidden_files(self):
         self.assertTrue(self.wait_for(lambda: len(self.value("entries")) == 3))
         self.assertNotIn(".config", [e["name"] for e in self.value("entries")])

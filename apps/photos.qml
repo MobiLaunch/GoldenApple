@@ -362,6 +362,7 @@ ShellRoot {
                     font { family: Theme.fontUi; pixelSize: Theme.fs(17); weight: Font.DemiBold }
                 }
             }
+            Scroller { flickable: grid }
 
             // Scroll edge under the toolbar.
             Rectangle {

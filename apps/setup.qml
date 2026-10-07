@@ -36,6 +36,8 @@ ShellRoot {
             Theme.reduceMotion = prefs.reduceMotion ?? false
             Theme.reduceTransparency = prefs.reduceTransparency ?? false
             Theme.textScale = prefs.textScale ?? 1
+            Theme.alwaysShowScrollbars = prefs.scrollBars === "always"
+            Theme.glassSolidity = prefs.glassSolidity ?? 0
         }
     }
 
@@ -419,6 +421,7 @@ ShellRoot {
                             }
                         }
                     }
+                    Scroller { flickable: list }
                 }
             }
 

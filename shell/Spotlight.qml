@@ -6,6 +6,7 @@ import Quickshell.Wayland
 import QtQuick
 import QtQuick.Layouts
 import "ui/theme"
+import "ui" as UI
 import "components"
 import "spotlight/answers.js" as Answers
 
@@ -243,6 +244,7 @@ PanelWindow {
                     }
                 }
             }
+            UI.Scroller { flickable: list }
         }
     }
 }

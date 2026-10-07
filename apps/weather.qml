@@ -509,6 +509,7 @@ ShellRoot {
                     }
                 }
             }
+            Scroller { flickable: scroller }
 
             // Scroll edge: content fades into the sky under the toolbar, as on macOS 27.
             Rectangle {

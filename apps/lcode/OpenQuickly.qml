@@ -113,4 +113,5 @@ Sheet {
             TapHandler { onTapped: { oq.selectedIndex = row.index; oq.accept() } }
         }
     }
+    Scroller { flickable: list }
 }

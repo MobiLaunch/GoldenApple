@@ -98,8 +98,10 @@ Safari-inspired toolbar, traffic lights, tab sidebar, start page, bookmarks,
 history, downloads, and private windows. Ctrl+L focuses the address, Ctrl+T/W
 opens/closes tabs, Ctrl+D bookmarks, Ctrl+J opens downloads, and Ctrl+Shift+N
 opens a private window. Restored background tabs load when selected. Normal
-profiles and private profiles are separate. This is an initial browser, without
-Safari/iCloud services, extension management, or a password manager.
+profiles and private profiles are separate. It saves and fills passwords in the
+system keyring (per profile, only on the exact HTTPS site), and has Reader,
+tab groups and profiles. It has no Safari/iCloud services, extensions,
+passkeys, password generation, import/sync or printing yet.
 
 If Web has graphics trouble in your VM, run `GG_WEB_SOFTWARE=1 gg-web`.
 The launcher keeps Chromium sandboxing enabled and must run as your desktop user.

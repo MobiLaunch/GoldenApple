@@ -209,6 +209,7 @@ ShellRoot {
                     }
                 }
             }
+            Scroller { flickable: page }
 
             Glass {
                 visible: !!editor.error

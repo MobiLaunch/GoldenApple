@@ -7,6 +7,7 @@ import "languages.js" as Languages
 
 Flickable {
     id: inspector
+    Scroller { parent: inspector; flickable: inspector }
     property var app
     property var backend
     property var menuParent

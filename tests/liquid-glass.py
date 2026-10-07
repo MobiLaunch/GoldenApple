@@ -101,6 +101,11 @@ calls, flagged, _ = run("dark", {"reduceTransparency": True})
 check(kw(calls, "decoration:active_opacity") == "1.0" and kw(calls, "decoration:inactive_opacity") == "1.0",
       "Reduce Transparency: windows solid")
 check("keyword windowrule match:class .*, opaque on" in calls and flagged, "Reduce Transparency: solid over the per-app rules too")
+calls, _, _ = run("dark", {"glassSolidity": 0.5})
+check((kw(calls, "decoration:active_opacity"), kw(calls, "decoration:inactive_opacity")) == ("0.94", "0.89"),
+      f"the Glass slider halfway: windows halfway to solid (got {kw(calls, 'decoration:active_opacity')}, {kw(calls, 'decoration:inactive_opacity')})")
+calls, flagged, _ = run("dark", {"glassSolidity": 1})
+check(kw(calls, "decoration:active_opacity") == "1.0" and flagged, "the Glass slider at Solid: every window solid")
 calls, flagged, _ = run("dark", {}, flag=True)
 check("reload" in calls and not flagged, "turning Reduce Transparency off reloads once to drop that rule")
 
@@ -114,8 +119,9 @@ for line in ("size = 12", "passes = 4", "new_optimizations = true", "ignore_opac
              "vibrancy_darkness = 0.15", "contrast = 1.2", "brightness = 1.1", "noise = 0.015", "popups = true",
              "popups_ignorealpha = 0.3", "range = 30", "render_power = 4", "color = rgba(00000045)"):
     check(line in deco, f"blur and shadow: {line}")
-check("opacity 0.85 override 0.75 override" in conf and "com\\.mitchellh\\.ghostty" in conf, "the terminal is clearer, as the spec's terminals")
-check(re.search(r"org\\\.goldengate\\\.Files.*opacity 0\.90 override 0\.82 override", conf) is not None, "Files as the spec's file managers")
+check("opacity 0.97 0.96" in conf and "com\\.mitchellh\\.ghostty" in conf, "the terminal is a little clearer, relative to the Glass slider")
+check(" override" not in "\n".join(l for l in conf.splitlines() if "opacity" in l and l.startswith("windowrule")),
+      "no app's opacity is fixed outright: the Glass slider moves every window")
 check("match:fullscreen 1, opaque on" in conf and "match:content ^(video|game)$, opaque on" in conf, "full screen, video and games stay solid")
 
 # Effects and match properties in Hyprland 0.56.2 (src/desktop/rule/…).

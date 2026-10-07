@@ -43,17 +43,42 @@
 
 ## 0.4: signature details
 
-- [ ] `hyprglass` plugin: per-surface refraction using `liquid-glass.frag`
+- [x] `hyprglass` plugin: per-surface refraction and blur for the glass
+      layers (thresholds per namespace, `hyprglass-sync.sh`)
 - [ ] Genie minimise as a Hyprland plugin (mesh-warp the window texture)
 - [x] Mission Control / Spaces overview in the Linux shell
-- [ ] Global app menus in the menu bar (appmenu D-Bus bridge; GTK3/Qt first)
-- [ ] Widgets on the desktop
+- [ ] Global app menus in the menu bar: today an app gets Window and Help
+      (the desktop gets Files' menus); a first-party action registry, then
+      the appmenu D-Bus bridge for GTK3/Qt, are still to do
+- [x] Widgets on the desktop
 
 ## 0.5: native apps
 
-- [ ] Files: GTK4 app matching the prototype (floating sidebar, glass toolbar,
-      icon/list/column/gallery views)
-- [ ] Settings: native app with the prototype's pane structure
-- [ ] Installer: Calamares with a CitronOS theme
+- [x] Files, Settings, the installer, Disk Utility and the other default apps
+      are native QML apps on one shared component store (`apps/lib`)
+- [ ] Files: column and gallery views, tags, smart folders, undo
 - [ ] Branding package (`golden-gate-branding`: os-release)
-- [ ] Choose a public product name
+
+## 0.6: from the branch audit (2026-10-07)
+
+Done: no silent overwrites (rename, Notes, Calendar, disks), one account
+made once at install, honest Setup finishing and Software Update results
+with rollback, acknowledged preferences, location consent, lasting alarms,
+a background keyring, Text Size and scroll bars in the native UI, a Glass
+transparency slider, menu-bar overflow, path-bar folding, a Utilities folder,
+and ⌘W/⌘Q told apart.
+
+Still to do:
+
+- [ ] Edge-to-edge sidebars (a design decision for every app at once)
+- [ ] One grouped Control Center panel (today: modules over the wallpaper,
+      a deliberate HyprGlass choice)
+- [ ] Printing and PDF; backup and recovery; full account management
+- [ ] Per-app privacy permissions; accessibility beyond motion,
+      transparency and text size (screen reader validation, zoom, keys)
+- [ ] Network configuration (hidden/enterprise Wi-Fi, VPN, proxy, DNS);
+      display resolution, arrangement and rotation
+- [ ] Disk encryption at install; migration at Setup
+- [ ] Mail (folders, attachments, drafts), Calendar (editing, recurrence,
+      CalDAV), Photos editing, MPRIS for Music
+- [ ] Translated UI (formats already follow the region; the apps are English)

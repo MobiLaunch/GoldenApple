@@ -177,5 +177,6 @@ StepFrame {
                 font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
             }
         }
+        Scroller { flickable: list }
     }
 }

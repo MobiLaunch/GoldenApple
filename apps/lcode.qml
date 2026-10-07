@@ -338,6 +338,9 @@ ShellRoot {
             helper.call("simRegion", { w: a.w, h: a.h })
         }
         Timer { id: bootTimer; interval: 300; onTriggered: ide.bootSimulator() }
+        // ⌘Q from any LCode window: the workspace's quit, which asks about
+        // unsaved files (set while a project is open).
+        property var quitHandler: null
     }
 
     LazyLoader {

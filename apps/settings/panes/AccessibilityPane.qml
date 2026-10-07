@@ -18,7 +18,7 @@ Pane {
         title: "Display"
         SetRow {
             title: "Reduce motion"
-            subtitle: "Windows and menus fade instead of springing; the Dock doesn't magnify."
+            subtitle: "Windows and menus fade instead of springing, and Dock icons don't bounce."
             Switch {
                 checked: pane.reduceMotion
                 onToggled: (on) => {

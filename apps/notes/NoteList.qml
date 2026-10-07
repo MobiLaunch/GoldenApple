@@ -7,6 +7,7 @@ import "../lib/theme"
 
 ListView {
     id: list
+    Scroller { parent: list; flickable: list }
     property var notes: []
     property string current: ""
     property bool showFolder: false

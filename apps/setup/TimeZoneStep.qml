@@ -58,4 +58,5 @@ StepFrame {
             TapHandler { onTapped: step.zoneChosen(parent.modelData) }
         }
     }
+    Scroller { flickable: list }
 }

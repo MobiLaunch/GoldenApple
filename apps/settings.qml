@@ -113,7 +113,8 @@ ShellRoot {
                         }
                     }
                 }
-            }
+            },
+            Scroller { flickable: navFlick }
         ]
 
         Item {

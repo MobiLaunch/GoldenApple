@@ -47,6 +47,8 @@ QtObject {
     property string glassStyle: "clear"
     property bool reduceTransparency: false
     property bool reduceMotion: false
+    property bool alwaysShowScrollbars: false
+    property real glassSolidity: 0
     property real textScale: 1
     function fs(n) { return n > 24 ? n : Math.round(n * Math.max(1, Math.min(1.5, textScale))) }
     // Control heights follow the text: fh(26) for a 26 px control.

@@ -29,6 +29,7 @@ AppWindow {
     minimumSize: Qt.size(780, 520)
     appearance: app.appearance
     closeAction: () => win.app.settingsOpen = false
+    quitAction: () => win.app.quitHandler ? win.app.quitHandler() : Qt.quit()
 
     toolbarCenter: [
         Text {

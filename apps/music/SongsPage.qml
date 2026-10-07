@@ -100,4 +100,5 @@ Item {
             }
         }
     }
+    Scroller { flickable: list }
 }

@@ -546,6 +546,7 @@ ShellRoot {
                         }
                     }
                 }
+                Scroller { flickable: messages }
 
                 // Nothing asked yet: the orb, a welcome, and a few ideas.
                 Column {

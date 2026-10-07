@@ -707,6 +707,7 @@ ShellRoot {
                     }
                 }
             }
+            Scroller { flickable: scroll }
 
             Flickable {
                 id: page
@@ -842,6 +843,7 @@ ShellRoot {
                     }
                 }
             }
+            Scroller { flickable: page }
 
             Rectangle {
                 anchors.fill: parent

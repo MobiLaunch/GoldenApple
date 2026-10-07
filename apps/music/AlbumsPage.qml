@@ -1,9 +1,11 @@
 // A grid of albums (Albums, Recently Added, an artist's albums).
 import QtQuick
+import "../lib"
 import "../lib/theme"
 
 GridView {
     id: grid
+    Scroller { parent: grid; flickable: grid }
     property string title
     property var albums: []
     property var player

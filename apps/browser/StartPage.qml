@@ -5,6 +5,7 @@ import "../lib/theme"
 
 Flickable {
     id: root
+    Scroller { parent: root; flickable: root }
     property var data: ({ favorites: [], frequent: [], readingList: [], recentlyClosed: [], private: false })
     signal openUrl(string url)
     signal addFavoriteRequested()

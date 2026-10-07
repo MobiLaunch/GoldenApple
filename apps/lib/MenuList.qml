@@ -234,6 +234,7 @@ Glass {
             }
         }
     }
+    Scroller { flickable: flick }
 
     // A submenu opens beside its row, on the side with room. Loaded by URL: a
     // component can't name itself.

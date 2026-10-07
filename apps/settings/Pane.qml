@@ -1,10 +1,12 @@
 // A settings pane: a scrolling column of groups under the toolbar, with the
 // pane's own header (big icon, title, description) where it has one.
 import QtQuick
+import "../lib"
 import "../lib/theme"
 
 Flickable {
     id: pane
+    Scroller { parent: pane; flickable: pane }
     property var sys
     property var nav                 // push(sub-page), window overlay for menus
     property string headerSymbol

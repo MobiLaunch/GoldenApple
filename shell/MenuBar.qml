@@ -149,6 +149,28 @@ PanelWindow {
         layer.effect: MultiEffect { shadowEnabled: true; shadowColor: "#38001440"; shadowBlur: 0.5; shadowVerticalOffset: 0 }
     }
 
+    // Room on the bar: the status items on the right come first (they're
+    // what you check); the app's menus get what's left. The app's name is
+    // shortened with an ellipsis past what fits, and menus that don't fit
+    // move into » (the first of them opens from there).
+    FontMetrics { id: titleMetrics; font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.Medium } }
+    FontMetrics { id: appMetrics; font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.Bold } }
+    readonly property real leftRoom: bar.width - statusRow.implicitWidth - 40
+    readonly property real appNatural: appMetrics.advanceWidth(bar.appName) + 18
+    readonly property int titlesShown: {
+        const reserve = 26 + Math.min(appNatural, 120)                  // the logo, and the name at least this wide
+        let used = reserve, n = 0
+        for (const t of bar.titles) {
+            const w = titleMetrics.advanceWidth(t) + 19
+            const more = n + 1 < bar.titles.length ? 24 : 0              // room for » if any are left
+            if (used + w + more > leftRoom) break
+            used += w; n++
+        }
+        return n
+    }
+    readonly property real titlesWidth: bar.titles.slice(0, titlesShown).reduce((a, t) => a + titleMetrics.advanceWidth(t) + 19, 0)
+        + (titlesShown < bar.titles.length ? 24 : 0)
+
     RowLayout {
         id: titlesRow
         anchors { left: parent.left; leftMargin: 8; verticalCenter: parent.verticalCenter }
@@ -163,10 +185,14 @@ PanelWindow {
             id: appItem
             highlighted: appMenu.open
             onClicked: bar.openMenu("app")
-            BarText { text: bar.appName; font.weight: Font.Bold; dark: bar.darkLeft }
+            BarText {
+                text: bar.appName; font.weight: Font.Bold; dark: bar.darkLeft
+                elide: Text.ElideRight
+                Layout.maximumWidth: Math.max(40, bar.leftRoom - 26 - bar.titlesWidth - 18)
+            }
         }
         Repeater {
-            model: bar.titles
+            model: bar.titles.slice(0, bar.titlesShown)
             delegate: BarItem {
                 id: titleItem
                 required property string modelData
@@ -176,9 +202,21 @@ PanelWindow {
                 BarText { text: titleItem.modelData; dark: bar.darkLeft }
             }
         }
+        BarItem {
+            id: overflowItem
+            objectName: "menuBarOverflow"
+            readonly property var hidden: bar.titles.slice(bar.titlesShown)
+            visible: hidden.length > 0
+            highlighted: barMenu.open && hidden.includes(bar.openTitle) || windowMenu.open && hidden.includes("Window")
+            onClicked: bar.openMenu(hidden[0])
+            Component.onCompleted: if (visible && hidden.includes("Window")) bar.windowItem = overflowItem
+            onHiddenChanged: if (hidden.includes("Window")) bar.windowItem = overflowItem
+            BarText { text: "»"; dark: bar.darkLeft }
+        }
     }
 
     RowLayout {
+        id: statusRow
         anchors { right: parent.right; rightMargin: 8; verticalCenter: parent.verticalCenter }
         spacing: 1
         // Recording the screen (⇧⌘5): stop, as on the Mac.
@@ -196,7 +234,8 @@ PanelWindow {
         BarItem {
             id: nowPlaying
             readonly property var player: Mpris.players.values.find((p) => p.isPlaying) ?? null
-            visible: Prefs.barNowPlaying && !!player
+            // The first to go on a narrow bar.
+            visible: Prefs.barNowPlaying && !!player && bar.width >= 1000
             onClicked: bar.controlCenter.toggle()
             RowLayout {
                 spacing: 5
@@ -424,6 +463,7 @@ PanelWindow {
         if (key === "Window" && !wasOpen) tileTarget = activeAddress()
         windowMenu.open = !wasOpen && key === "Window"
         const item = titleItems().find((i) => i.modelData === key)
+            ?? (overflowItem.hidden.includes(key) ? overflowItem : null)
         if (!wasOpen && item && key !== "Window") {
             openTitle = key
             barMenuX = item.x + titlesRow.x

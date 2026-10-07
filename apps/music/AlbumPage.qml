@@ -6,6 +6,7 @@ import "../lib/theme"
 
 ListView {
     id: page
+    Scroller { parent: page; flickable: page }
     property string title
     property string subtitle            // artist, in red
     property string detail              // "2026", "Playlist"

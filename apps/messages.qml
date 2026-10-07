@@ -480,6 +480,7 @@ ShellRoot {
                     ])
                 }
             }
+            Scroller { flickable: transcript }
 
             // Suggestions for the To: field.
             Rectangle {

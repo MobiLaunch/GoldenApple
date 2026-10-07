@@ -18,6 +18,9 @@ import "notes/md.js" as Md
 ShellRoot {
     AppWindow {
         id: win
+        // Closing (or quitting) saves the note being written first; a save
+        // that fails keeps Notes open.
+        closeAction: () => { if (editor.flush()) Qt.quit() }
         title: "Notes"
         implicitWidth: Math.min(1120, (Quickshell.screens[0]?.width ?? 1280) - 80)
         implicitHeight: Math.min(720, (Quickshell.screens[0]?.height ?? 900) - 150)

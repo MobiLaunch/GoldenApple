@@ -357,6 +357,18 @@ jobs:
         run: python tests/displays-scale.py
         env:
           QT_QPA_PLATFORM: offscreen
+      - name: "Scroll bars: shown while scrolling or always, draggable, in every main scroll area"
+        run: python tests/scroll-bars.py
+        env:
+          QT_QPA_PLATFORM: offscreen
+      - name: "⌘W closes, ⌘Q quits, unsaved work is asked about either way"
+        run: python tests/window-close.py
+        env:
+          QT_QPA_PLATFORM: offscreen
+      - name: "Menu bar: status items first, menus that don't fit move into »"
+        run: python tests/menubar-room.py
+      - name: "Launchpad: a Utilities folder by category"
+        run: python tests/launchpad-folders.py
       - name: A prominent destructive button is red, not the accent
         run: python tests/button-destructive.py
         env:

@@ -459,6 +459,7 @@ Item {
                 }
             }
         }
+    Scroller { flickable: view }
 
         // The coloured text, one Text per visible line.
         Repeater {

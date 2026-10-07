@@ -7,6 +7,7 @@ import "../lib/theme"
 
 Flickable {
     id: page
+    Scroller { parent: page; flickable: page }
     property var lib
     property var player
     signal openAlbum(var album)

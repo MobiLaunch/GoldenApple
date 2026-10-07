@@ -48,8 +48,12 @@ Item {
 
     readonly property real r: Math.min(radius, width / 2, height / 2)
     readonly property real band: Math.min(lens, r * 0.45)
-    readonly property real minAlpha: Theme.reduceTransparency ? material.reduced
-        : Theme.glassStyle === "tinted" ? material.tinted : 0
+    // The style's floor, raised toward Reduce Transparency's by the Glass
+    // slider (clear … solid).
+    readonly property real minAlpha: {
+        const base = Theme.reduceTransparency ? material.reduced : Theme.glassStyle === "tinted" ? material.tinted : 0
+        return base + (Math.max(base, material.reduced) - base) * Math.max(0, Math.min(1, Theme.glassSolidity))
+    }
     readonly property color shownTint: Qt.rgba(tint.r, tint.g, tint.b, Math.max(tint.a, minAlpha))
 
     // The press: the glass gives a few pixels whatever its size and bounces

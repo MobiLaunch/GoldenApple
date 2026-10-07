@@ -35,10 +35,12 @@ AppWindow {
     trailingSidebarWidth: inspectorOpen ? 260 : 0
     background: Theme.contentBg
     closeAction: () => win.requestClose()
+    Component.onDestruction: if (win.app && win.app.quitHandler === win.requestClose) win.app.quitHandler = null
     appearance: app.appearance
 
     // ------------------------------------------------------------ lifecycle
     Component.onCompleted: {
+        app.quitHandler = win.requestClose
         app.beforeTask = (then) => editorArea.saveAll((ok) => { if (ok) then() })
         // Settings ▸ General: reopen the files you had open, or start fresh.
         const st = app.settings.reopenFiles === false ? {} : (app.project.state || {})

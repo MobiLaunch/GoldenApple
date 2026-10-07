@@ -69,6 +69,18 @@ PanelWindow {
         "org.goldengate.TextEdit", "org.goldengate.LCode", "org.goldengate.AirDrop", "org.goldengate.Software", "org.goldengate.Settings",
         "org.goldengate.Terminal", "org.goldengate.DiskUtility"
     ]
+    // Utilities, as on the Mac: CitronOS's own (Terminal, Disk Utility) and
+    // other apps that say they're system tools (their desktop file's
+    // Categories), whatever their icon. Apps you installed stay on the grid.
+    readonly property var firstPartyUtilities: ["org.goldengate.Terminal", "org.goldengate.DiskUtility"]
+    readonly property var utilityCategories: ["System", "Settings", "DesktopSettings", "HardwareSettings", "Monitor",
+        "TerminalEmulator", "PackageManager", "Security", "Filesystem", "Archiving", "Compression", "Accessibility"]
+    function utility(e) {
+        if (firstPartyUtilities.includes(e.id)) return true
+        if (String(e.id).startsWith("org.goldengate.") || userApps[e.id]) return false
+        const cats = [...(e.categories ?? [])].map(String)
+        return cats.some((c) => utilityCategories.includes(c)) || (grouped(e) && cats.includes("Utility"))
+    }
     // Icon names the CitronOS theme draws itself, and the desktop files of
     // apps you installed (Flatpak, or your own): both stay on the grid.
     property var customIcons: ({})
@@ -125,17 +137,23 @@ PanelWindow {
         if (search.text.trim()) return matches
         // An app that repeats an icon already on the grid (Foot Client and
         // Foot Server beside Foot) joins the folder too.
-        const icons = {}, kept = [], others = []
+        const icons = {}, kept = [], others = [], utilities = []
         for (const e of matches) {
             const icon = String(e.icon ?? "")
             const own = String(e.id).startsWith("org.goldengate.")
-            if (grouped(e) || (!own && icons[icon])) others.push(e)
+            if (scanned && utility(e)) utilities.push(e)
+            else if (grouped(e) || (!own && icons[icon])) others.push(e)
             else { kept.push(e); icons[icon] = true }
         }
-        if (others.length < 2) return matches
+        // A folder of one is just that app.
+        const folders = []
+        if (utilities.length >= 2) folders.push({ isFolder: true, name: "Utilities", apps: utilities, id: "folder:utilities" })
+        else kept.push(...utilities)
+        if (others.length >= 2) folders.push({ isFolder: true, name: "Other", apps: others, id: "folder:other" })
+        else kept.push(...others)
+        if (!folders.length) return matches
         const ownCount = kept.filter((e) => firstParty.indexOf(e.id) >= 0).length
-        const tile = { isFolder: true, name: "Other", apps: others, id: "folder:other" }
-        return kept.slice(0, ownCount).concat([tile], kept.slice(ownCount))
+        return kept.slice(0, ownCount).concat(folders, kept.slice(ownCount))
     }
 
     // Grid metrics, from the screen: Launchpad's 7 × 5 with generous margins.

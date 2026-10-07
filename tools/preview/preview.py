@@ -329,7 +329,10 @@ class Preview(QObject):
 
     def _desktop_entries(self) -> list:
         out = []
-        for f in sorted((ROOT / "apps/desktop").glob("*.desktop")):
+        # CitronOS's own, then any GG_PREVIEW_APPLICATIONS folders (tests
+        # stand in for apps a system brings along).
+        dirs = [ROOT / "apps/desktop"] + [Path(d) for d in os.environ.get("GG_PREVIEW_APPLICATIONS", "").split(":") if d]
+        for f in [f for d in dirs for f in sorted(d.glob("*.desktop"))]:
             cp = configparser.ConfigParser(interpolation=None, strict=False)
             cp.optionxform = str
             try:

@@ -159,6 +159,7 @@ Item {
                     TapHandler { onDoubleTapped: if (fileIsDir) chooser.enter(filePath) }
                 }
             }
+            Scroller { flickable: files }
         }
 
         Row {

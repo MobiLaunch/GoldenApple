@@ -60,7 +60,9 @@ if [ -r "$BARS" ]; then
   fi
 fi
 
-read -r GLASS REDUCE <<EOF
+# glassSolidity (Settings › Appearance, 0 clear … 1 solid) moves windows'
+# opacity continuously from the style's look to fully solid.
+read -r GLASS REDUCE ACTIVE INACTIVE <<EOF
 $(python3 - "$CONFIG" <<'PY'
 import json, sys
 try:
@@ -68,7 +70,14 @@ try:
         d = json.load(f)
 except Exception:
     d = {}
-print(d.get("glass", "clear"), "1" if d.get("reduceTransparency", False) else "0")
+glass = d.get("glass", "clear")
+try:
+    s = min(1.0, max(0.0, float(d.get("glassSolidity", 0))))
+except (TypeError, ValueError):
+    s = 0.0
+a, i = (0.95, 0.90) if glass == "tinted" else (0.88, 0.78)
+reduce = d.get("reduceTransparency", False) or s >= 0.999
+print(glass, "1" if reduce else "0", f"{a + (1 - a) * s:.2f}", f"{i + (1 - i) * s:.2f}")
 PY
 )
 EOF
@@ -99,12 +108,9 @@ elif [ -e "$OPAQUE_FLAG" ]; then
   rm -f "$OPAQUE_FLAG"
   hyprctl reload >/dev/null 2>&1 || true
   exit 0
-elif [ "$GLASS" = tinted ]; then
-  kw decoration:active_opacity 0.95
-  kw decoration:inactive_opacity 0.90
 else
-  kw decoration:active_opacity 0.88
-  kw decoration:inactive_opacity 0.78
+  kw decoration:active_opacity "$ACTIVE"
+  kw decoration:inactive_opacity "$INACTIVE"
 fi
 
 # ------------------------------------------------------------- HyprGlass

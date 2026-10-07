@@ -290,4 +290,5 @@ Item {
             onClicked: { edit.forceActiveFocus(); edit.cursorPosition = edit.length }
         }
     }
+    Shared.Scroller { flickable: scroller }
 }

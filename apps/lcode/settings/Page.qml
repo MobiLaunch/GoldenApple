@@ -1,8 +1,10 @@
 // A settings page: scrolls when it's taller than the window.
 import QtQuick
+import "../../lib"
 
 Flickable {
     id: page
+    Scroller { parent: page; flickable: page }
     property var app
     property var backend
     property Item overlay: null

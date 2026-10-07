@@ -28,6 +28,12 @@ FloatingWindow {
     property bool forceDark: false        // Calculator is dark in both appearances
     property bool resizable: true
     property bool fullSizeContent: false  // content runs under the toolbar (Weather's sky)
+    // Closing and quitting, as on the Mac: the red button and ⌘W close this
+    // window (closeAction; a one-window app ends with its window), ⌘Q quits
+    // the app (quitAction). An app with documents sets them to ask about
+    // unsaved changes first; quitAction defaults to closeAction, so a check
+    // made on close is made on quit too.
+    property var quitAction: null
     property var closeAction: null        // close button and ⌘W: a function (one of several windows); quits without
     // ⌘[ and ⌘] (keyd sends Alt+Left/Right): Back and Forward, for apps with history.
     signal backRequested()
@@ -108,13 +114,16 @@ FloatingWindow {
             Theme.reduceTransparency = d.reduceTransparency ?? false
             Theme.reduceMotion = d.reduceMotion ?? false
             Theme.textScale = d.textScale ?? 1
+            Theme.alwaysShowScrollbars = d.scrollBars === "always"
+            Theme.glassSolidity = d.glassSolidity ?? 0
         }
     }
 
     // The Mac's window keys. keyd turns ⌘Q and ⌘W into Ctrl+Q and Ctrl+W, and
     // ⌘[ ⌘] into Alt+Left and Alt+Right.
     function closeWindow() { if (closeAction) closeAction(); else Qt.quit() }
-    Shortcut { sequence: "Ctrl+Q"; onActivated: win.closeWindow() }
+    function quitApp() { if (quitAction) quitAction(); else closeWindow() }
+    Shortcut { sequence: "Ctrl+Q"; onActivated: win.quitApp() }
     Shortcut { sequence: "Ctrl+W"; onActivated: win.closeWindow() }
     Shortcut { sequence: "Alt+Left"; onActivated: win.backRequested() }
     Shortcut { sequence: "Alt+Right"; onActivated: win.forwardRequested() }

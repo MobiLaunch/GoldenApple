@@ -137,6 +137,10 @@ function material(name, m) {
   q.push(`    property string glassStyle: "clear"`, `    property bool reduceTransparency: false`, `    property bool reduceMotion: false`);
   // Settings › Accessibility › Text Size (desktop.json textScale, 1–1.5).
   // fs(n): a body or label size n, scaled; display numerals above 24 stay.
+  // Settings › Appearance › Show scroll bars: Always (desktop.json scrollBars).
+  q.push(`    property bool alwaysShowScrollbars: false`);
+  // Settings › Appearance › Glass: 0 clear … 1 solid (desktop.json glassSolidity).
+  q.push(`    property real glassSolidity: 0`);
   q.push(`    property real textScale: 1`,
     `    function fs(n) { return n > 24 ? n : Math.round(n * Math.max(1, Math.min(1.5, textScale))) }`,
     `    // Control heights follow the text: fh(26) for a 26 px control.`,

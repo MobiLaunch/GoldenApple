@@ -73,6 +73,8 @@ ShellRoot {
     Binding { target: Theme; property: "reduceTransparency"; value: Prefs.reduceTransparency }
     Binding { target: Theme; property: "glassStyle"; value: Prefs.glass }
     Binding { target: Theme; property: "textScale"; value: Prefs.textScale }
+    Binding { target: Theme; property: "alwaysShowScrollbars"; value: Prefs.alwaysShowScrollbars }
+    Binding { target: Theme; property: "glassSolidity"; value: Prefs.glassSolidity }
     Connections {
         target: Prefs
         function onDataChanged() {

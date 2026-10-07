@@ -116,6 +116,22 @@ Pane {
             }
         }
     }
+    // How see-through glass is, from the style's look to solid: windows
+    // (gg-hyprglass-sync) and CitronOS's own glass follow it together.
+    Group {
+        SetRow {
+            title: "Transparency"
+            subtitle: "From clear glass to solid. Solid windows keep text easiest to read over busy wallpaper."
+            Text { text: "Clear"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.fs(11) } }
+            Slider {
+                objectName: "glassSolidity"
+                width: 180
+                value: pane.sys.prefs.glassSolidity ?? 0
+                onMoved: (v) => pane.sys.setPref(["glassSolidity"], Math.round(v * 100) / 100)
+            }
+            Text { text: "Solid"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.fs(11) } }
+        }
+    }
     Group {
         title: "Theme"
         SetRow {
@@ -166,7 +182,12 @@ Pane {
                 menuParent: pane.nav.overlay
                 options: ["Automatically based on mouse or trackpad", "Always"]
                 current: pane.overlayScroll ? 0 : 1
-                onPicked: (i) => { pane.overlayScroll = i === 0; pane.sys.run(["gsettings", "set", "org.gnome.desktop.interface", "overlay-scrolling", i === 0 ? "true" : "false"]) }
+                // CitronOS's own scroll bars (Theme.alwaysShowScrollbars) and GTK's.
+                onPicked: (i) => {
+                    pane.overlayScroll = i === 0
+                    pane.sys.setPref(["scrollBars"], i === 0 ? "automatic" : "always")
+                    pane.sys.run(["gsettings", "set", "org.gnome.desktop.interface", "overlay-scrolling", i === 0 ? "true" : "false"])
+                }
             }
         }
     }

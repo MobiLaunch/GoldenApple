@@ -852,6 +852,7 @@ ShellRoot {
                     }
                 }
             }
+            Scroller { flickable: grid }
 
             ListView {
                 id: list
@@ -936,6 +937,7 @@ ShellRoot {
                     }
                 }
             }
+            Scroller { flickable: list }
 
             // The path bar and status bar, as Finder's: the disk and the folders
             // down to this one (each opens on a click), the items and the room left.
@@ -948,20 +950,39 @@ ShellRoot {
                 color: Theme.contentBg
                 Rectangle { width: parent.width; height: 1; color: Theme.separator }
                 Item {
+                    id: crumbBox
                     anchors { left: parent.left; leftMargin: 10; right: status.left; rightMargin: 12; top: parent.top; bottom: parent.bottom }
                     clip: true
+                    // A deep folder doesn't crop names: the disk and this folder
+                    // stay, with as many folders before it as fit, and the rest
+                    // fold into "…", whose menu opens any of them.
+                    FontMetrics { id: crumbMetrics; font { family: Theme.fontUi; pixelSize: Theme.fs(11) } }
+                    function crumbWidth(c, i) { return crumbMetrics.advanceWidth(c.name) + 12 + 4 + 10 + 1 + (i > 0 ? 12 : 0) }
+                    readonly property var shown: {
+                        const cs = files.crumbs
+                        const all = cs.map((c, i) => ({ c: c, i: i }))
+                        if (cs.length < 3 || cs.reduce((a, c, i) => a + crumbWidth(c, i), 0) <= width) return all
+                        let used = crumbWidth(cs[0], 0) + 34 + crumbWidth(cs[cs.length - 1], 1)
+                        let start = cs.length - 1
+                        while (start - 1 > 0 && used + crumbWidth(cs[start - 1], 1) <= width) used += crumbWidth(cs[--start], 1)
+                        if (start === 1) return all
+                        return [all[0], { folded: cs.slice(1, start), i: 1 }].concat(all.slice(start))
+                    }
                     Row {
                         id: crumbRow
+                        objectName: "filesCrumbs"
                         anchors.verticalCenter: parent.verticalCenter
-                        // A deep folder keeps its end in view.
+                        // Still too long (one very long name): keep the end in view.
                         x: Math.min(0, parent.width - implicitWidth)
                         spacing: 1
                         Repeater {
-                            model: files.crumbs
+                            model: crumbBox.shown
                             delegate: Row {
                                 id: crumb
                                 required property var modelData
-                                required property int index
+                                readonly property int index: modelData.i
+                                readonly property var folded: modelData.folded ?? null
+                                readonly property var c: modelData.c ?? ({ name: "…", path: "", kind: "" })
                                 spacing: 1
                                 Symbol {
                                     visible: crumb.index > 0
@@ -969,8 +990,11 @@ ShellRoot {
                                     name: "chevron-small-right"; size: 11; tone: "gray"
                                 }
                                 Item {
+                                    objectName: crumb.folded ? "filesCrumbsFolded" : ""
                                     width: crumbContent.implicitWidth + 10; height: 22
                                     anchors.verticalCenter: parent.verticalCenter
+                                    Accessible.role: crumb.folded ? Accessible.ButtonMenu : Accessible.Button
+                                    Accessible.name: crumb.folded ? crumb.folded.map((f) => f.name).join(", ") : crumb.c.name
                                     Rectangle {
                                         anchors.fill: parent; radius: 6
                                         color: crumbArea.pressed ? Theme.selection : crumbArea.containsMouse ? (Theme.dark ? "#12ffffff" : "#0a000000") : "transparent"
@@ -979,11 +1003,11 @@ ShellRoot {
                                         id: crumbContent
                                         anchors.centerIn: parent
                                         spacing: 4
-                                        Symbol { anchors.verticalCenter: parent.verticalCenter; name: crumb.modelData.kind; size: 12; tone: crumb.modelData.kind === "folder" ? "accent" : "gray" }
+                                        Symbol { visible: !crumb.folded; anchors.verticalCenter: parent.verticalCenter; name: crumb.c.kind; size: 12; tone: crumb.c.kind === "folder" ? "accent" : "gray" }
                                         Text {
                                             anchors.verticalCenter: parent.verticalCenter
-                                            text: crumb.modelData.name
-                                            color: crumb.index === files.crumbs.length - 1 ? Theme.label : Theme.secondaryLabel
+                                            text: crumb.c.name
+                                            color: !crumb.folded && crumb.index === files.crumbs.length - 1 ? Theme.label : Theme.secondaryLabel
                                             font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
                                         }
                                     }
@@ -991,12 +1015,15 @@ ShellRoot {
                                         id: crumbArea
                                         anchors.fill: parent
                                         hoverEnabled: true
-                                        onClicked: files.navigate(crumb.modelData.path)
+                                        onClicked: crumb.folded
+                                            ? menu.popup(parent, 0, -6 - crumb.folded.length * 26, crumb.folded.map((f) => ({ text: f.name, action: () => files.navigate(f.path) })))
+                                            : files.navigate(crumb.c.path)
                                     }
                                     DropArea {
                                         anchors.fill: parent
-                                        onEntered: (drag) => drag.accepted = files.accepts(drag, crumb.modelData.path)
-                                        onDropped: (drop) => files.dropOn(drop, crumb.modelData.path)
+                                        enabled: !crumb.folded
+                                        onEntered: (drag) => drag.accepted = files.accepts(drag, crumb.c.path)
+                                        onDropped: (drop) => files.dropOn(drop, crumb.c.path)
                                     }
                                 }
                             }

@@ -1,5 +1,6 @@
 // Artists: the list on the left, the chosen artist's albums on the right.
 import QtQuick
+import "../lib"
 import "../lib/theme"
 
 Item {
@@ -43,6 +44,7 @@ Item {
             TapHandler { onTapped: page.selected = index }
         }
     }
+    Scroller { flickable: list }
     Rectangle { x: list.width; width: 0.5; height: parent.height; color: Theme.separator }
     AlbumsPage {
         x: list.width + 1; width: parent.width - x; height: parent.height
