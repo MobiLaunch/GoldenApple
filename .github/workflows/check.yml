@@ -245,8 +245,6 @@ jobs:
         run: python tests/installer-account.py
       - name: Installer refuses a swapped disk, reports a partial install, and isn't stopped by closing
         run: python tests/installer-failure.py
-      - name: Web's saved passwords come back without secret-tool's line break
-        run: python tests/browser-passwords.py
       - name: "Clock: alarms set only once systemd took them, listed and deletable; the timer outlives the window"
         run: python tests/clock-helper.py
       - name: "Mac apps: catalog, download, checksum, install, open with Darling, remove"
@@ -325,6 +323,11 @@ jobs:
         run: python tests/browser-motion.py
       - name: Exercise native Chromium navigation, tabs, private browsing, and shortcuts
         run: xvfb-run -a python tests/native-browser.py
+        env:
+          QT_QPA_PLATFORM: xcb
+          QTWEBENGINE_CHROMIUM_FLAGS: --disable-gpu
+      - name: "Web's keyring: in the background (a locked one never freezes Web), no stray line breaks"
+        run: xvfb-run -a python tests/browser-passwords.py
         env:
           QT_QPA_PLATFORM: xcb
           QTWEBENGINE_CHROMIUM_FLAGS: --disable-gpu

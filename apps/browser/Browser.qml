@@ -239,24 +239,60 @@ Window {
         }
         const username = String(body.u || "") || typedUsernames[site] || ""
         const password = String(body.p || "")
-        const kind = BrowserBackend.passwordOffer(url, username, password)
-        if (kind) passwordPrompt = { url: url, site: site, username: username, password: password, kind: kind }
-        if (kind && BrowserBackend.testAcceptsPasswords) answerPasswordPrompt("save")
+        // The keyring answers in the background (it may be locked).
+        const request = "offer" + (++passwordRequests)
+        pendingOffers[request] = { url: url, site: site, username: username, password: password }
+        BrowserBackend.requestPasswordOffer(request, url, username, password)
         return true
+    }
+    property int passwordRequests: 0
+    property var pendingOffers: ({})
+    Connections {
+        target: BrowserBackend
+        function onPasswordOfferReady(request, kind) {
+            const offer = root.pendingOffers[request]
+            delete root.pendingOffers[request]
+            if (!offer || !kind) return
+            root.passwordPrompt = Object.assign({ kind: kind }, offer)
+            if (BrowserBackend.testAcceptsPasswords) root.answerPasswordPrompt("save")
+        }
+        function onPasswordSaved(ok, kind) {
+            if (ok) BrowserBackend.notify(kind === "update" ? "Password updated" : "Password saved")
+        }
+        function onSavedLoginsReady(json) { root.savedLogins = JSON.parse(json) }
+    }
+    // A keyring that takes its time is waiting to be unlocked, not a frozen Web.
+    Rectangle {
+        objectName: "keyringWaiting"
+        z: 1000
+        visible: opacity > 0
+        opacity: BrowserBackend.keyringWaiting ? 1 : 0
+        Behavior on opacity { NumberAnimation { duration: 180 } }
+        anchors { horizontalCenter: parent.horizontalCenter; top: parent.top; topMargin: 64 }
+        width: keyringText.implicitWidth + 28; height: 30; radius: 15
+        color: Theme.dark ? "#e62c2c2e" : "#f2ffffff"
+        border { width: 0.5; color: Theme.dark ? "#33ffffff" : "#26000000" }
+        Text {
+            id: keyringText
+            anchors.centerIn: parent
+            text: "Waiting for the keyring… Unlock it if it asks."
+            color: Theme.dark ? "#ffffff" : "#1d1d1f"
+            font.pixelSize: 12
+        }
     }
 
     function answerPasswordPrompt(choice) {
         const prompt = passwordPrompt
         passwordPrompt = null
         if (!prompt) return
-        if (choice === "save" && BrowserBackend.savePassword(prompt.url, prompt.username, prompt.password))
-            BrowserBackend.notify(prompt.kind === "update" ? "Password updated" : "Password saved")
+        if (choice === "save")
+            BrowserBackend.savePasswordAsync(prompt.url, prompt.username, prompt.password, prompt.kind)
         else if (choice === "never")
             BrowserBackend.neverSavePasswordsFor(prompt.url)
     }
 
     function openPasswords() {
-        savedLogins = JSON.parse(BrowserBackend.savedLoginsJson())
+        BrowserBackend.requestSavedLogins()
         passwordsOpen = true
     }
 
@@ -1325,13 +1361,25 @@ Window {
                             if (info.status === WebEngineView.LoadSucceededStatus && url.toString() !== "about:blank") {
                                 rendererRestarts = 0
                                 BrowserBackend.visit(url.toString(), title || BrowserBackend.displayAddress(url.toString()))
-                                // Notice sign-ins, and fill a saved login, out of the page's sight.
-                                runJavaScript(BrowserBackend.passwordScript(url.toString()), WebEngineScript.ApplicationWorld)
+                                // Notice sign-ins, and fill a saved login, out of the page's sight
+                                // (the logins come from the keyring in the background).
+                                passwordRequest = "page" + (++root.passwordRequests)
+                                passwordUrl = url.toString()
+                                BrowserBackend.requestPasswordScript(passwordRequest, passwordUrl)
                             }
                             if (info.status === WebEngineView.LoadFailedStatus && webTab.index === root.currentIndex)
                                 BrowserBackend.notify(info.errorString || "This page could not be loaded.")
                         }
                         onLoadProgressChanged: tabsModel.setProperty(webTab.index, "progress", loadProgress)
+                        property string passwordRequest: ""
+                        property string passwordUrl: ""
+                        Connections {
+                            target: BrowserBackend
+                            function onPasswordScriptReady(request, script) {
+                                if (request !== web.passwordRequest || web.url.toString() !== web.passwordUrl) return
+                                web.runJavaScript(script, WebEngineScript.ApplicationWorld)
+                            }
+                        }
                         onJavaScriptConsoleMessage: function(level, message, lineNumber, sourceID) {
                             root.pagePasswordMessage(url.toString(), message)
                         }
@@ -2924,7 +2972,6 @@ Window {
                                     destructive: true
                                     onClicked: {
                                         BrowserBackend.removeSavedPassword(modelData.origin, modelData.username)
-                                        root.savedLogins = JSON.parse(BrowserBackend.savedLoginsJson())
                                     }
                                 }
                             }

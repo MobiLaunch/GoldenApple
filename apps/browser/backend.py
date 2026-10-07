@@ -9,9 +9,12 @@ import secrets
 from pathlib import Path
 import subprocess
 import sys
+import threading
+import time
+from concurrent.futures import ThreadPoolExecutor
 from urllib.parse import urlsplit
 
-from PySide6.QtCore import QCoreApplication, QObject, Property, QStandardPaths, Signal, Slot
+from PySide6.QtCore import QCoreApplication, QObject, Property, QStandardPaths, Qt, Signal, Slot
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtWebEngineCore import QWebEngineUrlRequestInterceptor
 
@@ -156,6 +159,7 @@ class BrowserBackend(QObject):
         self.passwords = Passwords(profile_key(self.profile_name))
         self._password_token = secrets.token_hex(12)
         self._password_sites = None
+        self._copyRequested.connect(self._copy_secret, Qt.QueuedConnection)
 
     def _read_profiles(self):
         names = ["Personal"]
@@ -557,62 +561,153 @@ class BrowserBackend(QObject):
     def testAcceptsPasswords(self):
         return os.environ.get("GG_WEB_TEST_ACCEPT_PASSWORDS") == "1"
 
+    # The keyring is only ever reached from one background worker: a locked
+    # or slow keyring (secret-tool can wait 20 s for an unlock) must never
+    # freeze the window. Results come back as signals; each site's logins
+    # are cached for a while and a lookup already under way is shared.
+    passwordScriptReady = Signal(str, str)      # request, page script
+    passwordOfferReady = Signal(str, str)       # request, "save" | "update" | ""
+    passwordSaved = Signal(bool, str)           # saved, kind
+    savedLoginsReady = Signal(str)              # [{origin, username}] as JSON
+    keyringWaitingChanged = Signal()
+    CACHE_SECONDS = 120
+
+    def _keyring(self):
+        if not hasattr(self, "_kr_pool"):
+            self._kr_pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="web-keyring")
+            self._kr_lock = threading.Lock()
+            self._kr_cache = {}                 # origin → (when, credentials)
+            self._kr_pending = 0
+            self._kr_waiting = False
+        return self._kr_pool
+
+    @Property(bool, notify=keyringWaitingChanged)
+    def keyringWaiting(self):
+        return getattr(self, "_kr_waiting", False)
+
+    def _set_waiting(self, on):
+        if on != getattr(self, "_kr_waiting", False):
+            self._kr_waiting = on
+            self.keyringWaitingChanged.emit()
+
+    def _in_background(self, job):
+        """Run job() on the keyring worker; after 1.5 s without an answer, say
+        it's waiting for the keyring (it may be asking to be unlocked)."""
+        pool = self._keyring()
+        with self._kr_lock:
+            self._kr_pending += 1
+
+        def slow():
+            if self._kr_pending:
+                self._set_waiting(True)
+
+        timer = threading.Timer(1.5, slow)
+        timer.daemon = True
+        timer.start()
+
+        def run():
+            try:
+                job()
+            except Exception as exc:            # never lose the worker to one bad call
+                print("Web: keyring:", exc, file=sys.stderr)
+            finally:
+                timer.cancel()
+                with self._kr_lock:
+                    self._kr_pending -= 1
+                    idle = self._kr_pending == 0
+                if idle:
+                    self._set_waiting(False)
+        pool.submit(run)
+
     def _sites_with_passwords(self):
         if self._password_sites is None:
             self._password_sites = {login["origin"] for login in self.passwords.logins()}
         return self._password_sites
 
+    def _credentials(self, origin):
+        """(Worker only.) This site's logins, from the cache when it's fresh."""
+        hit = self._kr_cache.get(origin)
+        if hit and time.monotonic() - hit[0] < self.CACHE_SECONDS:
+            return hit[1]
+        creds = self.passwords.credentials(origin) if origin in self._sites_with_passwords() else []
+        self._kr_cache[origin] = (time.monotonic(), creds)
+        return creds
+
+    def _forget_cache(self, origin=None):
+        if hasattr(self, "_kr_cache"):
+            if origin is None:
+                self._kr_cache.clear()
+            else:
+                self._kr_cache.pop(origin, None)
+
     def _never_save(self):
         value = self.store.data["settings"].get("neverSavePasswords", [])
         return value if isinstance(value, list) else []
 
-    @Slot(str, result=str)
-    def passwordScript(self, url):
-        """The page script for this page: it notices sign-ins, and fills a
-        saved login when there is one for the page's own site."""
-        if not hasattr(self, "_password_js"):
-            self._password_js = (Path(__file__).with_name("passwords.js").read_text(encoding="utf-8")
-                                 .replace("__TOKEN__", self._password_token))
-        return self._password_js.replace("__CREDENTIALS__", self.savedPasswordsFor(url))
-
-    @Slot(str, result=str)
-    def savedPasswordsFor(self, url):
-        """The logins to fill on this page, [{username, password}], as JSON.
-        Only for the page's exact origin, and only over HTTPS (or this
-        computer), so a password never goes to a page that could be faked."""
+    @staticmethod
+    def _fillable(url):
+        """The page's origin if a saved login may be filled there: its exact
+        origin, and only over HTTPS (or this computer), so a password never
+        goes to a page that could be faked."""
         origin = origin_of(url)
         host = (urlsplit(origin).hostname or "") if origin else ""
         secure = origin.startswith("https://") or host in ("localhost", "127.0.0.1", "::1")
-        if not origin or not secure or origin not in self._sites_with_passwords():
-            return "[]"
-        return json.dumps(self.passwords.credentials(origin))
+        return origin if origin and secure else ""
 
-    @Slot(str, str, str, result=str)
-    def passwordOffer(self, url, username, password):
-        """What to ask after a sign-in: "save", "update" or "" (nothing)."""
+    def _script(self, creds_json):
+        if not hasattr(self, "_password_js"):
+            self._password_js = (Path(__file__).with_name("passwords.js").read_text(encoding="utf-8")
+                                 .replace("__TOKEN__", self._password_token))
+        return self._password_js.replace("__CREDENTIALS__", creds_json)
+
+    @Slot(str, str)
+    def requestPasswordScript(self, request, url):
+        """The page script for this page (it notices sign-ins, and fills a
+        saved login for the page's own site), as passwordScriptReady."""
+        origin = self._fillable(url)
+        if not origin:
+            self.passwordScriptReady.emit(request, self._script("[]"))
+            return
+        self._in_background(lambda: self.passwordScriptReady.emit(
+            request, self._script(json.dumps(self._credentials(origin)))))
+
+    @Slot(str, str, str, str)
+    def requestPasswordOffer(self, request, url, username, password):
+        """What to ask after a sign-in, as passwordOfferReady: "save",
+        "update" or "" (nothing)."""
         origin = origin_of(url)
         if self.private or not origin or not password or origin in self._never_save():
-            return ""
-        if origin not in self._sites_with_passwords():
-            return "save"
-        saved = {c["username"]: c["password"] for c in self.passwords.credentials(origin)}
-        if username in saved:
-            return "" if saved[username] == password else "update"
-        return "save"
+            self.passwordOfferReady.emit(request, "")
+            return
 
-    @Slot(str, str, str, result=bool)
-    def savePassword(self, url, username, password):
+        def job():
+            if origin not in self._sites_with_passwords():
+                kind = "save"
+            else:
+                saved = {c["username"]: c["password"] for c in self._credentials(origin)}
+                kind = ("" if saved[username] == password else "update") if username in saved else "save"
+            self.passwordOfferReady.emit(request, kind)
+        self._in_background(job)
+
+    @Slot(str, str, str, str)
+    def savePasswordAsync(self, url, username, password, kind):
         origin = origin_of(url)
         if self.private or not origin:
-            return False
-        if not self.passwords.save(origin, username, password):
-            reason = self.passwords.error or "the keyring is locked."
-            print("Web: a password couldn't be saved:", reason, file=sys.stderr)
-            self.toastRequested.emit("The password couldn't be saved: " + reason)
-            return False
-        self._sites_with_passwords().add(origin)
-        self.passwordsChanged.emit()
-        return True
+            self.passwordSaved.emit(False, kind)
+            return
+
+        def job():
+            ok = self.passwords.save(origin, username, password)
+            self._forget_cache(origin)
+            if ok:
+                self._sites_with_passwords().add(origin)
+                self.passwordsChanged.emit()
+            else:
+                reason = self.passwords.error or "the keyring is locked."
+                print("Web: a password couldn't be saved:", reason, file=sys.stderr)
+                self.toastRequested.emit("The password couldn't be saved: " + reason)
+            self.passwordSaved.emit(ok, kind)
+        self._in_background(job)
 
     @Slot(str)
     def neverSavePasswordsFor(self, url):
@@ -624,25 +719,41 @@ class BrowserBackend(QObject):
             self.store.data["settings"]["neverSavePasswords"] = sites + [origin]
             self._save()
 
-    @Slot(result=str)
-    def savedLoginsJson(self):
-        logins = self.passwords.logins()
-        self._password_sites = {login["origin"] for login in logins}
-        return json.dumps(logins)
+    @Slot()
+    def requestSavedLogins(self):
+        def job():
+            logins = self.passwords.logins()
+            self._password_sites = {login["origin"] for login in logins}
+            self.savedLoginsReady.emit(json.dumps(logins))
+        self._in_background(job)
 
-    @Slot(str, str, result=bool)
+    @Slot(str, str)
     def removeSavedPassword(self, origin, username):
-        ok = self.passwords.remove(origin, username)
-        self._password_sites = None
-        self.passwordsChanged.emit()
-        return ok
+        def job():
+            if not self.passwords.remove(origin, username):
+                self.toastRequested.emit("That password couldn't be removed: " + (self.passwords.error or "the keyring is locked."))
+            self._password_sites = None
+            self._forget_cache(origin)
+            self.passwordsChanged.emit()
+            logins = self.passwords.logins()
+            self._password_sites = {login["origin"] for login in logins}
+            self.savedLoginsReady.emit(json.dumps(logins))
+        self._in_background(job)
 
     @Slot(str, str)
     def copySavedPassword(self, origin, username):
-        secret = self.passwords.password(origin, username)
-        if secret is None:
-            self.toastRequested.emit("That password couldn't be read from the keyring.")
-            return
+        def job():
+            secret = self.passwords.password(origin, username)
+            if secret is None:
+                self.toastRequested.emit("That password couldn't be read from the keyring.")
+                return
+            self._copyRequested.emit(secret)
+        self._in_background(job)
+
+    # The clipboard belongs to the main thread: the worker hands it over.
+    _copyRequested = Signal(str)
+
+    def _copy_secret(self, secret):
         QGuiApplication.clipboard().setText(secret)
         self.toastRequested.emit("Password copied.")
 
