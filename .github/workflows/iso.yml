@@ -39,7 +39,13 @@ jobs:
       - name: Build in an Arch Linux container
         run: |
           docker run --rm --privileged -v "$PWD:/repo" -w /repo -e GG_BUILD_AUR=1 archlinux:latest bash -euo pipefail -c '
-            pacman -Syu --noconfirm --needed archiso librsvg nodejs git base-devel sudo
+            # Mirrors drop connections now and then; downloaded packages stay
+            # cached, so a retry picks up where the last attempt stopped.
+            for try in 1 2 3; do
+              pacman -Syu --noconfirm --needed archiso librsvg nodejs git base-devel sudo && break
+              [ "$try" = 3 ] && exit 1
+              sleep $((try * 20))
+            done
             distro/archiso/build.sh
           '
           ls -lh out/

@@ -35,10 +35,14 @@ jobs:
           SHOTS: ${{ inputs.shots }}
         run: |
           docker run --rm -v "$PWD:/repo" -w /repo -e SHOTS archlinux:latest bash -euo pipefail -c '
+            for try in 1 2 3; do   # mirrors drop connections now and then; retries resume from the cache
             pacman -Syu --noconfirm --needed sway swaybg grim jq gjs gtk4 libadwaita librsvg imagemagick \
               dbus dconf nodejs util-linux libcap mesa inter-font ttf-jetbrains-mono adwaita-icon-theme \
               nautilus gnome-text-editor gnome-calculator gnome-control-center gnome-clocks gnome-calendar \
-              gnome-weather gnome-maps loupe gnome-music gnome-software fractal ghostty gnome-keyring firefox >/dev/null
+              gnome-weather gnome-maps loupe gnome-music gnome-software fractal ghostty gnome-keyring firefox >/dev/null && break
+              [ "$try" = 3 ] && exit 1
+              sleep $((try * 20))
+            done
             pacman -Q gtk4 libadwaita nautilus sway
             fc-cache -f >/dev/null
             # Arch gives sway cap_sys_nice, which a container user may not exec with.
