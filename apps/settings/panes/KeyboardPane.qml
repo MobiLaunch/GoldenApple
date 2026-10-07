@@ -13,15 +13,15 @@ Pane {
     Group {
         SetRow {
             title: "Key repeat rate"
-            Text { text: "Slow"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: 11 } }
+            Text { text: "Slow"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.fs(11) } }
             Slider { width: 180; steps: 7; value: ((pane.i.repeatRate ?? 25) - 5) / 45; onMoved: (v) => pane.sys.setInput("repeatRate", 5 + v * 45) }
-            Text { text: "Fast"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: 11 } }
+            Text { text: "Fast"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.fs(11) } }
         }
         SetRow {
             title: "Delay until repeat"
-            Text { text: "Long"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: 11 } }
+            Text { text: "Long"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.fs(11) } }
             Slider { width: 180; steps: 5; value: 1 - ((pane.i.repeatDelay ?? 600) - 150) / 850; onMoved: (v) => pane.sys.setInput("repeatDelay", 150 + (1 - v) * 850) }
-            Text { text: "Short"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: 11 } }
+            Text { text: "Short"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.fs(11) } }
         }
     }
     Group {

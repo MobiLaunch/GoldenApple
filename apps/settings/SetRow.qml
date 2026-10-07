@@ -23,7 +23,8 @@ Item {
     default property alias trailing: slot.data
     signal clicked()
     width: parent ? parent.width : 500
-    height: Math.max(subtitle ? 50 : 40, slot.childrenRect.height + 16)
+    // As tall as its text (which wraps, and grows with Text Size) or its controls.
+    height: Math.max(Theme.fh(subtitle ? 50 : 40), slot.childrenRect.height + 16, labels.implicitHeight + 18)
 
     Rectangle {
         visible: !row.first
@@ -50,6 +51,7 @@ Item {
         source: row.image
     }
     Column {
+        id: labels
         x: row.hasIcon ? 50 : 14
         anchors.verticalCenter: parent.verticalCenter
         width: parent.width - x - slot.width - 30
@@ -57,14 +59,14 @@ Item {
             width: parent.width; elide: Text.ElideRight
             text: row.title
             color: Theme.label
-            font { family: Theme.fontUi; pixelSize: 13 }
+            font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
         }
         Text {
             visible: !!row.subtitle
             width: parent.width; wrapMode: Text.WordWrap
             text: row.subtitle
             color: Theme.secondaryLabel
-            font { family: Theme.fontUi; pixelSize: 11 }
+            font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
         }
     }
     Row {

@@ -30,7 +30,7 @@ Item {
     component Label: Text {
         color: Theme.label
         font.family: Theme.fontUi
-        font.pixelSize: 12
+        font.pixelSize: Theme.fs(12)
         elide: Text.ElideRight
         maximumLineCount: 1
     }
@@ -47,7 +47,7 @@ Item {
         Label {
             text: Qt.formatDate(month.day, "MMMM").toUpperCase()
             color: month.red
-            font { pixelSize: 11; weight: Font.Bold; letterSpacing: 0.3 }
+            font { pixelSize: Theme.fs(11); weight: Font.Bold; letterSpacing: 0.3 }
             leftPadding: 3
         }
         Grid {
@@ -61,7 +61,7 @@ Item {
                     horizontalAlignment: Text.AlignHCenter
                     text: modelData
                     color: Theme.secondaryLabel
-                    font { pixelSize: 9; weight: Font.DemiBold }
+                    font { pixelSize: Theme.fs(9); weight: Font.DemiBold }
                 }
             }
             Repeater {
@@ -83,7 +83,7 @@ Item {
                         visible: parent.date >= 1 && parent.date <= month.days
                         text: parent.date
                         color: parent.today ? "white" : Theme.label
-                        font { pixelSize: 10; weight: parent.today ? Font.Bold : Font.Medium }
+                        font { pixelSize: Theme.fs(10); weight: parent.today ? Font.Bold : Font.Medium }
                     }
                 }
             }
@@ -102,7 +102,7 @@ Item {
                 visible: face.medium
                 anchors { left: parent.left; leftMargin: 16; top: parent.top; topMargin: 14; right: grid.left; rightMargin: 14 }
                 spacing: 0
-                Label { text: Qt.formatDate(face.now, "dddd").toUpperCase(); color: face.red; font { pixelSize: 11; weight: Font.Bold; letterSpacing: 0.3 } }
+                Label { text: Qt.formatDate(face.now, "dddd").toUpperCase(); color: face.red; font { pixelSize: Theme.fs(11); weight: Font.Bold; letterSpacing: 0.3 } }
                 Label { text: face.now.getDate(); font { family: Theme.fontDisplay; pixelSize: 38; weight: Font.Light } }
                 Item { width: 1; height: 6 }
                 Repeater {
@@ -113,8 +113,8 @@ Item {
                         Rectangle { width: 3; height: 28; radius: 1.5; y: 2; color: modelData.calendar === "Work" ? "#0a84ff" : face.red }
                         Column {
                             x: 9; width: parent.width - 9
-                            Label { width: parent.width; text: modelData.title; font { pixelSize: 12; weight: Font.DemiBold } }
-                            Label { width: parent.width; text: modelData.time || "All-Day"; color: Theme.secondaryLabel; font.pixelSize: 11 }
+                            Label { width: parent.width; text: modelData.title; font { pixelSize: Theme.fs(12); weight: Font.DemiBold } }
+                            Label { width: parent.width; text: modelData.time || "All-Day"; color: Theme.secondaryLabel; font.pixelSize: Theme.fs(11) }
                         }
                     }
                 }
@@ -122,7 +122,7 @@ Item {
                     visible: !(face.feeds?.upNext ?? []).length
                     text: "No more events today"
                     color: Theme.secondaryLabel
-                    font.pixelSize: 12
+                    font.pixelSize: Theme.fs(12)
                 }
             }
         }
@@ -172,7 +172,7 @@ Item {
                     y: dial.height / 2 - Math.cos(a) * dial.d * 0.385 - height / 2
                     text: index + 1
                     color: Theme.label
-                    font { family: Theme.fontDisplay; pixelSize: 15; weight: Font.Medium }
+                    font { family: Theme.fontDisplay; pixelSize: Theme.fs(15); weight: Font.Medium }
                 }
             }
             Repeater {   // the minute ticks
@@ -190,7 +190,7 @@ Item {
                 anchors { horizontalCenter: parent.horizontalCenter; verticalCenter: parent.verticalCenter; verticalCenterOffset: 22 }
                 text: Qt.formatDate(face.now, "ddd").toUpperCase()
                 color: Theme.secondaryLabel
-                font { pixelSize: 10; weight: Font.DemiBold }
+                font { pixelSize: Theme.fs(10); weight: Font.DemiBold }
             }
             Hand { cx: dial.width / 2; cy: dial.height / 2; angle: (dial.h + dial.m / 60) * 30; length: dial.d * 0.24; thickness: 4; color: Theme.label }
             Hand { cx: dial.width / 2; cy: dial.height / 2; angle: (dial.m + dial.s / 60) * 6; length: dial.d * 0.36; thickness: 3; color: Theme.label }
@@ -219,7 +219,7 @@ Item {
                 spacing: -2
                 Row {
                     spacing: 4
-                    Label { text: face.feeds?.place?.name ?? "Weather"; color: "white"; font { pixelSize: 14; weight: Font.DemiBold } }
+                    Label { text: face.feeds?.place?.name ?? "Weather"; color: "white"; font { pixelSize: Theme.fs(14); weight: Font.DemiBold } }
                     Shared.Symbol { anchors.verticalCenter: parent.verticalCenter; name: "location"; tone: "white"; size: 10 }
                 }
                 Label { text: w ? w.temp : "--"; color: "white"; font { family: Theme.fontDisplay; pixelSize: 42; weight: Font.Light } }
@@ -238,13 +238,13 @@ Item {
                 Label {
                     x: face.medium ? now.width - width : 0
                     text: w ? w.condition : (face.feeds?.place ? "Updating…" : "Finding your location…")
-                    color: "white"; font { pixelSize: 12; weight: Font.DemiBold }
+                    color: "white"; font { pixelSize: Theme.fs(12); weight: Font.DemiBold }
                 }
                 Label {
                     x: face.medium ? now.width - width : 0
                     visible: !!w
                     text: w ? "H:" + w.high + " L:" + w.low : ""
-                    color: "white"; font { pixelSize: 12; weight: Font.DemiBold }
+                    color: "white"; font { pixelSize: Theme.fs(12); weight: Font.DemiBold }
                 }
             }
             Row {
@@ -256,14 +256,14 @@ Item {
                         required property var modelData
                         width: (parent.width) / 6
                         spacing: 3
-                        Label { anchors.horizontalCenter: parent.horizontalCenter; text: modelData.label; color: "#d9ffffff"; font { pixelSize: 11; weight: Font.DemiBold } }
+                        Label { anchors.horizontalCenter: parent.horizontalCenter; text: modelData.label; color: "#d9ffffff"; font { pixelSize: Theme.fs(11); weight: Font.DemiBold } }
                         Image {
                             anchors.horizontalCenter: parent.horizontalCenter
                             width: 20; height: 20
                             source: Qt.resolvedUrl("weather/" + modelData.icon + ".svg")
                             sourceSize: Qt.size(40, 40)
                         }
-                        Label { anchors.horizontalCenter: parent.horizontalCenter; text: modelData.temp; color: "white"; font { pixelSize: 13; weight: Font.DemiBold } }
+                        Label { anchors.horizontalCenter: parent.horizontalCenter; text: modelData.temp; color: "white"; font { pixelSize: Theme.fs(13); weight: Font.DemiBold } }
                     }
                 }
             }
@@ -313,7 +313,7 @@ Item {
                     visible: face.medium
                     text: parent.parent.p?.isPlaying ? "NOW PLAYING" : "MUSIC"
                     color: face.red
-                    font { pixelSize: 10; weight: Font.Bold; letterSpacing: 0.3 }
+                    font { pixelSize: Theme.fs(10); weight: Font.Bold; letterSpacing: 0.3 }
                     bottomPadding: 3
                 }
                 Label { width: parent.width; text: parent.parent.p?.trackTitle || "Not Playing"; font { pixelSize: face.medium ? 15 : 13; weight: Font.DemiBold } }
@@ -359,17 +359,17 @@ Item {
                     source: Quickshell.iconPath(DesktopEntries.byId("org.goldengate.Notes")?.icon ?? "", true) || ""
                     sourceSize: Qt.size(32, 32)
                 }
-                Label { text: "Notes"; color: Theme.dark ? "#ffd60a" : "#c79a00"; font { pixelSize: 13; weight: Font.Bold } }
+                Label { text: "Notes"; color: Theme.dark ? "#ffd60a" : "#c79a00"; font { pixelSize: Theme.fs(13); weight: Font.Bold } }
             }
             Item { width: 1; height: 3 }
-            Label { width: face.width - 30; text: parent.n?.title ?? "No Notes"; font { pixelSize: 14; weight: Font.Bold } }
+            Label { width: face.width - 30; text: parent.n?.title ?? "No Notes"; font { pixelSize: Theme.fs(14); weight: Font.Bold } }
             Label {
                 width: face.width - 30
                 text: parent.n?.body || (parent.n ? "No additional text" : "Notes you write show here.")
                 color: Theme.secondaryLabel
                 wrapMode: Text.WordWrap
                 maximumLineCount: face.medium ? 4 : 3
-                font.pixelSize: 12
+                font.pixelSize: Theme.fs(12)
                 lineHeight: 1.08
             }
         }
@@ -404,7 +404,7 @@ Item {
             Label {
                 anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: 14 }
                 text: face.feeds?.hasBattery === false ? "Power Adapter" : Math.round(parent.level * 100) + "%"
-                font { pixelSize: 15; weight: Font.DemiBold }
+                font { pixelSize: Theme.fs(15); weight: Font.DemiBold }
             }
         }
     }

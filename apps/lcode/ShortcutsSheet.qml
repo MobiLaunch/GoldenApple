@@ -25,7 +25,7 @@ Sheet {
         id: title
         text: "Keyboard Shortcuts"
         color: Theme.label
-        font { family: Theme.fontUi; pixelSize: 15; weight: Font.Bold }
+        font { family: Theme.fontUi; pixelSize: Theme.fs(15); weight: Font.Bold }
     }
     Flickable {
         y: title.height + 10
@@ -49,8 +49,8 @@ Sheet {
                             required property var modelData
                             width: list.width
                             height: 24
-                            Text { anchors.verticalCenter: parent.verticalCenter; text: modelData[0]; color: Theme.label; font { family: Theme.fontUi; pixelSize: 13 } }
-                            Text { anchors { right: parent.right; verticalCenter: parent.verticalCenter } text: modelData[1]; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: 13 } }
+                            Text { anchors.verticalCenter: parent.verticalCenter; text: modelData[0]; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.fs(13) } }
+                            Text { anchors { right: parent.right; verticalCenter: parent.verticalCenter } text: modelData[1]; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.fs(13) } }
                         }
                     }
                 }

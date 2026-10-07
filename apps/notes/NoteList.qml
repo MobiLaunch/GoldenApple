@@ -52,7 +52,7 @@ ListView {
             x: 18; y: row.index === 0 ? 12 : 18
             text: row.group
             color: Theme.label
-            font { family: Theme.fontUi; pixelSize: 17; weight: Font.Bold }
+            font { family: Theme.fontUi; pixelSize: Theme.fs(17); weight: Font.Bold }
         }
         Rectangle {
             visible: row.firstOfGroup
@@ -80,7 +80,7 @@ ListView {
                     width: parent.width; elide: Text.ElideRight
                     text: row.modelData.title
                     color: Theme.label
-                    font { family: Theme.fontUi; pixelSize: 13; weight: Font.Bold }
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.Bold }
                 }
                 Row {
                     width: parent.width
@@ -89,13 +89,13 @@ ListView {
                         id: whenText
                         text: list.when(row.modelData.mtime)
                         color: Theme.label
-                        font { family: Theme.fontUi; pixelSize: 12 }
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
                     }
                     Text {
                         width: parent.width - whenText.width - 6; elide: Text.ElideRight
                         text: row.modelData.preview || "No additional text"
                         color: Theme.secondaryLabel
-                        font { family: Theme.fontUi; pixelSize: 12 }
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
                     }
                 }
                 Row {
@@ -105,7 +105,7 @@ ListView {
                     Text {
                         text: row.modelData.folder
                         color: Theme.secondaryLabel
-                        font { family: Theme.fontUi; pixelSize: 11 }
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
                     }
                 }
             }

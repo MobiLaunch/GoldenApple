@@ -228,12 +228,12 @@ ShellRoot {
                             Text {
                                 text: modelData.city
                                 color: Theme.label
-                                font { family: Theme.fontUi; pixelSize: 15; weight: Font.DemiBold }
+                                font { family: Theme.fontUi; pixelSize: Theme.fs(15); weight: Font.DemiBold }
                             }
                             Text {
                                 text: modelData.date
                                 color: Theme.secondaryLabel
-                                font { family: Theme.fontUi; pixelSize: 11 }
+                                font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
                             }
                         }
 
@@ -264,7 +264,7 @@ ShellRoot {
                     horizontalAlignment: Text.AlignHCenter
                     text: "Set an Alarm"
                     color: Theme.label
-                    font { family: Theme.fontUi; pixelSize: 24; weight: Font.Bold }
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(24); weight: Font.Bold }
                 }
                 Text {
                     width: parent.width
@@ -272,7 +272,7 @@ ShellRoot {
                     wrapMode: Text.WordWrap
                     text: "Alarms go off with Clock closed, and one missed while the computer was off goes off when you next sign in."
                     color: Theme.secondaryLabel
-                    font { family: Theme.fontUi; pixelSize: 12 }
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
                 }
                 Row {
                     width: parent.width
@@ -316,7 +316,7 @@ ShellRoot {
                             x: 14; anchors.verticalCenter: parent.verticalCenter
                             text: modelData.time
                             color: Theme.label
-                            font { family: Theme.fontUi; pixelSize: 20; weight: Font.Light }
+                            font { family: Theme.fontUi; pixelSize: Theme.fs(20); weight: Font.Light }
                         }
                         Text {
                             x: 84; anchors.verticalCenter: parent.verticalCenter
@@ -324,7 +324,7 @@ ShellRoot {
                             elide: Text.ElideRight
                             text: modelData.name + (modelData.daily ? " · every day" : "")
                             color: Theme.secondaryLabel
-                            font { family: Theme.fontUi; pixelSize: 12 }
+                            font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
                         }
                         Button {
                             anchors { right: parent.right; rightMargin: 10; verticalCenter: parent.verticalCenter }
@@ -342,7 +342,7 @@ ShellRoot {
                     wrapMode: Text.WordWrap
                     text: clock.notice
                     color: clock.noticeBad ? "#ff453a" : Theme.accent
-                    font { family: Theme.fontUi; pixelSize: 12; weight: Font.Medium }
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: Font.Medium }
                 }
             }
 
@@ -442,7 +442,7 @@ ShellRoot {
                     wrapMode: Text.WordWrap
                     text: clock.notice
                     color: "#ff453a"
-                    font { family: Theme.fontUi; pixelSize: 12 }
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
                 }
                 Text {
                     visible: clock.timerRunning
@@ -450,7 +450,7 @@ ShellRoot {
                     horizontalAlignment: Text.AlignHCenter
                     text: "The timer keeps going if you close Clock."
                     color: Theme.tertiaryLabel
-                    font { family: Theme.fontUi; pixelSize: 11 }
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
                 }
             }
         }

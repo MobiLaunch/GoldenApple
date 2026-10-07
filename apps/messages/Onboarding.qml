@@ -36,7 +36,7 @@ Item {
                 horizontalAlignment: Text.AlignHCenter
                 text: "Messages with Your iPhone"
                 color: Theme.label
-                font { family: Theme.fontDisplay; pixelSize: 24; weight: Font.Bold }
+                font { family: Theme.fontDisplay; pixelSize: Theme.fs(24); weight: Font.Bold }
             }
             Text {
                 width: parent.width
@@ -44,7 +44,7 @@ Item {
                 wrapMode: Text.WordWrap
                 text: "Send and receive iMessage and text messages on this computer through your iPhone, over Bluetooth. Nothing goes through a server, and you don't need to sign in."
                 color: Theme.secondaryLabel
-                font { family: Theme.fontUi; pixelSize: 13 }
+                font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
                 lineHeight: 1.15
             }
             Item { width: 1; height: 8 }
@@ -57,7 +57,7 @@ Item {
                 wrapMode: Text.WordWrap
                 text: "The iPhone connection (BlueFerry) isn't installed. Install blueferry-backend, then open Messages again."
                 color: Theme.label
-                font { family: Theme.fontUi; pixelSize: 13 }
+                font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
             }
 
             // This computer's Bluetooth can't do it.
@@ -68,7 +68,7 @@ Item {
                 wrapMode: Text.WordWrap
                 text: view.p.issue || "This computer's Bluetooth can't connect to an iPhone. It needs Bluetooth 4.0 or later."
                 color: Theme.label
-                font { family: Theme.fontUi; pixelSize: 13 }
+                font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
             }
 
             // Step 1: Bluetooth needs a restart with the features iPhone needs.
@@ -98,7 +98,7 @@ Item {
                         wrapMode: Text.WordWrap
                         text: "On your iPhone, open Settings › Bluetooth and keep it unlocked nearby."
                         color: Theme.label
-                        font { family: Theme.fontUi; pixelSize: 13 }
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
                     }
                     Repeater {
                         model: view.p.devices
@@ -115,7 +115,7 @@ Item {
                                     anchors.verticalCenter: parent.verticalCenter
                                     text: (modelData.name || "iPhone") + (modelData.paired ? "  (paired)" : "")
                                     color: view.p.selected === index ? "#ffffff" : Theme.label
-                                    font { family: Theme.fontUi; pixelSize: 13 }
+                                    font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
                                 }
                             }
                             HoverHandler { id: hoverRow }
@@ -186,7 +186,7 @@ Item {
                                     tone: view.p.transports[modelData.key] ? "accent" : "gray"
                                     anchors.verticalCenter: parent.verticalCenter
                                 }
-                                Text { text: modelData.label; color: Theme.label; font { family: Theme.fontUi; pixelSize: 12 } }
+                                Text { text: modelData.label; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.fs(12) } }
                             }
                         }
                     }
@@ -197,7 +197,7 @@ Item {
                         wrapMode: Text.WordWrap
                         text: "On your iPhone, tap ⓘ next to this computer in Settings › Bluetooth and turn on Show Message Notifications and Sync Contacts."
                         color: Theme.secondaryLabel
-                        font { family: Theme.fontUi; pixelSize: 11 }
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
                     }
                 }
             }
@@ -209,7 +209,7 @@ Item {
                 wrapMode: Text.WordWrap
                 text: view.p.status
                 color: Theme.secondaryLabel
-                font { family: Theme.fontUi; pixelSize: 12 }
+                font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
             }
             ProgressBar {
                 visible: view.p.busy && !view.p.confirming

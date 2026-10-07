@@ -41,7 +41,7 @@ Glass {
         Text {
             text: root.title
             color: "#ffffff"
-            font { family: Theme.fontUi; pixelSize: 14; weight: Font.DemiBold }
+            font { family: Theme.fontUi; pixelSize: Theme.fs(14); weight: Font.DemiBold }
         }
         RowLayout {
             spacing: 10

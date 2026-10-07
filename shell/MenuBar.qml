@@ -143,7 +143,7 @@ PanelWindow {
     component BarText: Text {
         property bool dark: false
         color: dark ? "#d6000000" : "#ffffff"
-        font { family: Theme.fontUi; pixelSize: 13; weight: Font.Medium }
+        font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.Medium }
         // Soft legibility shadow on the GPU renderer (shader effects need it).
         layer.enabled: GraphicsInfo.api !== GraphicsInfo.Software
         layer.effect: MultiEffect { shadowEnabled: true; shadowColor: "#38001440"; shadowBlur: 0.5; shadowVerticalOffset: 0 }

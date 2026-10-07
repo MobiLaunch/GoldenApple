@@ -44,7 +44,7 @@ Column {
     Text {
         text: (Catalog.CATALOG.events[list.event] || list.event)
         color: Theme.label
-        font { family: Theme.fontUi; pixelSize: 12; weight: Font.DemiBold }
+        font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: Font.DemiBold }
     }
     Repeater {
         model: list.actions
@@ -102,7 +102,7 @@ Column {
                             horizontalAlignment: Text.AlignRight
                             text: list.titles[fieldRow.modelData] || fieldRow.modelData
                             color: Theme.secondaryLabel
-                            font { family: Theme.fontUi; pixelSize: 11 }
+                            font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
                         }
                         Loader {
                             width: parent.width - 68
@@ -163,7 +163,7 @@ Column {
                         horizontalAlignment: Text.AlignRight
                         text: "Only When"
                         color: Theme.secondaryLabel
-                        font { family: Theme.fontUi; pixelSize: 11 }
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
                     }
                     PopUpButton {
                         width: parent.width - 68

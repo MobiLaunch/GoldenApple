@@ -40,7 +40,7 @@ Item {
             horizontalAlignment: Text.AlignHCenter
             text: root.title
             color: Theme.label
-            font { family: Theme.fontUi; pixelSize: 18; weight: Font.DemiBold }
+            font { family: Theme.fontUi; pixelSize: Theme.fs(18); weight: Font.DemiBold }
         }
         Text {
             width: parent.width
@@ -48,7 +48,7 @@ Item {
             wrapMode: Text.WordWrap
             text: root.text
             color: Theme.secondaryLabel
-            font { family: Theme.fontUi; pixelSize: 13 }
+            font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
         }
         Item { width: 1; height: 6; visible: root.actionText !== "" }
         Button {

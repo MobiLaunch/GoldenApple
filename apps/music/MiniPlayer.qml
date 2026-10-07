@@ -57,7 +57,7 @@ Item {
                 visible: bar.player.repeat === "one"
                 anchors { right: parent.right; rightMargin: 3; top: parent.top; topMargin: 11 }
                 text: "1"; color: "#fa2d48"
-                font { family: Theme.fontUi; pixelSize: 8; weight: Font.Bold }
+                font { family: Theme.fontUi; pixelSize: Theme.fs(8); weight: Font.Bold }
             }
         }
     }
@@ -85,14 +85,14 @@ Item {
                 width: parent.width; elide: Text.ElideRight
                 text: bar.player.current?.title ?? ""
                 color: Theme.label
-                font { family: Theme.fontUi; pixelSize: 12; weight: Font.DemiBold }
+                font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: Font.DemiBold }
             }
             Text {
                 width: parent.width; elide: Text.ElideRight
                 text: bar.player.current ? (bar.player.current.radio ? bar.player.current.artist
                      : bar.player.current.artist + " — " + bar.player.current.album) : ""
                 color: Theme.secondaryLabel
-                font { family: Theme.fontUi; pixelSize: 12 }
+                font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
             }
             TapHandler { onTapped: if (bar.player.current && !bar.player.current.radio) bar.openAlbum(bar.player.current) }
         }
@@ -101,7 +101,7 @@ Item {
             visible: !bar.player.current
             text: "Not Playing"
             color: Theme.secondaryLabel
-            font { family: Theme.fontUi; pixelSize: 12; weight: Font.Medium }
+            font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: Font.Medium }
         }
         // Progress: a hairline under the song; click or drag to seek.
         Item {

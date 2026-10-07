@@ -38,7 +38,7 @@ Page {
                 anchors.centerIn: parent
                 text: (page.identity.name || "?").split(/\s+/).filter((w) => w).slice(0, 2).map((w) => w[0].toUpperCase()).join("")
                 color: "white"
-                font { family: Theme.fontUi; pixelSize: 20; weight: Font.DemiBold }
+                font { family: Theme.fontUi; pixelSize: Theme.fs(20); weight: Font.DemiBold }
             }
         }
         Column {
@@ -47,12 +47,12 @@ Page {
             Text {
                 text: page.identity.name || "No Name Set"
                 color: Theme.label
-                font { family: Theme.fontUi; pixelSize: 15; weight: Font.DemiBold }
+                font { family: Theme.fontUi; pixelSize: Theme.fs(15); weight: Font.DemiBold }
             }
             Text {
                 text: page.gitInstalled ? (page.identity.email || "Set your name and email to commit") : "Git isn't installed: sudo pacman -S git"
                 color: page.gitInstalled ? Theme.secondaryLabel : "#ff453a"
-                font { family: Theme.fontUi; pixelSize: 12 }
+                font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
             }
         }
     }

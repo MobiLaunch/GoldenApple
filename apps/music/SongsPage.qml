@@ -40,7 +40,7 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
                     text: modelData.t
                     color: page.sortKey === modelData.k ? Theme.label : Theme.secondaryLabel
-                    font { family: Theme.fontUi; pixelSize: 11; weight: Font.DemiBold }
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(11); weight: Font.DemiBold }
                 }
                 Symbol {
                     anchors.verticalCenter: parent.verticalCenter
@@ -89,7 +89,7 @@ Item {
                     elide: Text.ElideRight
                     text: modelData.v
                     color: songRow.current && index === 0 ? "#fa2d48" : index === 0 ? Theme.label : Theme.secondaryLabel
-                    font { family: Theme.fontUi; pixelSize: 13 }
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
                 }
             }
             HoverHandler { id: rowHover }

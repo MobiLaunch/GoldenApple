@@ -47,13 +47,13 @@ StepFrame {
                 x: 12; anchors.verticalCenter: parent.verticalCenter
                 text: step.city(parent.modelData)
                 color: parent.chosen ? "#ffffff" : Theme.label
-                font { family: Theme.fontUi; pixelSize: 13 }
+                font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
             }
             Text {
                 anchors { right: parent.right; rightMargin: 12; verticalCenter: parent.verticalCenter }
                 text: step.area(parent.modelData)
                 color: parent.chosen ? "#ccffffff" : Theme.secondaryLabel
-                font { family: Theme.fontUi; pixelSize: 12 }
+                font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
             }
             TapHandler { onTapped: step.zoneChosen(parent.modelData) }
         }

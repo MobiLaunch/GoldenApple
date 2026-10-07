@@ -19,7 +19,7 @@ Item {
     property color selectedTextColor: Theme.label
     signal clicked()
 
-    implicitHeight: 31
+    implicitHeight: Theme.fh(31)
     implicitWidth: 180
     activeFocusOnTab: true
     Accessible.role: Accessible.Button
@@ -71,7 +71,7 @@ Item {
         text: row.text
         elide: Text.ElideRight
         color: row.selected ? row.selectedTextColor : Theme.label
-        font { family: Theme.fontUi; pixelSize: 13; weight: row.selected ? Font.DemiBold : Font.Normal }
+        font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: row.selected ? Font.DemiBold : Font.Normal }
     }
 
     Rectangle {
@@ -86,7 +86,7 @@ Item {
             anchors.centerIn: parent
             text: row.badge
             color: "#ffffff"
-            font { family: Theme.fontUi; pixelSize: 10; weight: Font.DemiBold }
+            font { family: Theme.fontUi; pixelSize: Theme.fs(10); weight: Font.DemiBold }
         }
     }
 

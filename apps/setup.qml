@@ -35,6 +35,7 @@ ShellRoot {
             try { prefs = JSON.parse(text()) } catch (e) {}
             Theme.reduceMotion = prefs.reduceMotion ?? false
             Theme.reduceTransparency = prefs.reduceTransparency ?? false
+            Theme.textScale = prefs.textScale ?? 1
         }
     }
 
@@ -310,7 +311,7 @@ ShellRoot {
                     opacity: startButton.opacity * 0.85
                     text: "Get Started"
                     color: "#ffffff"
-                    font { family: Theme.fontUi; pixelSize: 14; weight: Font.Medium }
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(14); weight: Font.Medium }
                 }
             }
 
@@ -404,13 +405,13 @@ ShellRoot {
                             Text {
                                 x: 12; anchors.verticalCenter: parent.verticalCenter
                                 text: modelData.flag
-                                font { family: "Noto Color Emoji"; pixelSize: 17 }
+                                font { family: "Noto Color Emoji"; pixelSize: Theme.fs(17) }
                             }
                             Text {
                                 x: 44; anchors.verticalCenter: parent.verticalCenter
                                 text: modelData.name
                                 color: parent.chosen ? "#ffffff" : Theme.label
-                                font { family: Theme.fontUi; pixelSize: 13 }
+                                font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
                             }
                             TapHandler {
                                 onTapped: { stage.region = modelData; stage.zone = modelData.zone }
@@ -449,7 +450,7 @@ ShellRoot {
                                 text: modelData
                                 color: Theme.label
                                 lineHeight: 1.15
-                                font { family: Theme.fontUi; pixelSize: 13 }
+                                font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
                             }
                         }
                     }
@@ -477,7 +478,7 @@ ShellRoot {
                             width: parent.width
                             wrapMode: Text.WordWrap
                             color: Theme.secondaryLabel
-                            font.pixelSize: 12
+                            font.pixelSize: Theme.fs(12)
                             text: "When an app asks where you are, CitronOS sends the hardware addresses and signal strengths of nearby Wi-Fi networks "
                                 + "(or, without Wi-Fi, just your internet address) to BeaconDB (beacondb.net), which returns approximate coordinates. "
                                 + "To name the place, those coordinates go to Photon (photon.komoot.io). Nothing is sent while Location Services is off, "
@@ -522,7 +523,7 @@ ShellRoot {
                             width: parent.width; wrapMode: Text.WordWrap
                             text: "Reports never include the contents of your files. Reports are always saved in Documents › Diagnostics, and you can write one yourself any time with gg-diagnostics."
                             color: Theme.secondaryLabel
-                            font { family: Theme.fontUi; pixelSize: 11 }
+                            font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
                         }
                     }
                 }
@@ -557,7 +558,7 @@ ShellRoot {
                                 : "Account created: " + stage.createdUsername + ". Choose Get Started to stay signed in as " + Quickshell.env("USER") + ", or sign out now and continue in your new CitronOS account.")
                             : "")
                         color: stage.finishError ? "#d8483e" : Theme.secondaryLabel
-                        font.pixelSize: 13
+                        font.pixelSize: Theme.fs(13)
                     }
                     onBack: stage.back()
                     onSecondary: stage.deferrable.length ? stage.deferAndContinue() : stage.finish(true)

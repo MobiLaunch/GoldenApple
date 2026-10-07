@@ -48,7 +48,7 @@ ShellRoot {
                 x: 8; y: 6
                 text: "History"
                 color: Theme.secondaryLabel
-                font { family: Theme.fontUi; pixelSize: 11; weight: Font.DemiBold }
+                font { family: Theme.fontUi; pixelSize: Theme.fs(11); weight: Font.DemiBold }
             },
             ListView {
                 y: 28; width: parent.width; height: parent.height - 28
@@ -62,8 +62,8 @@ ShellRoot {
                     Column {
                         anchors { right: parent.right; rightMargin: 10; verticalCenter: parent.verticalCenter }
                         width: parent.width - 20
-                        Text { width: parent.width; horizontalAlignment: Text.AlignRight; elide: Text.ElideLeft; text: calc.sep(modelData.expr); color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: 11 } }
-                        Text { width: parent.width; horizontalAlignment: Text.AlignRight; elide: Text.ElideLeft; text: calc.sep(modelData.result); color: "#ffffff"; font { family: Theme.fontUi; pixelSize: 16; weight: Font.Medium } }
+                        Text { width: parent.width; horizontalAlignment: Text.AlignRight; elide: Text.ElideLeft; text: calc.sep(modelData.expr); color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.fs(11) } }
+                        Text { width: parent.width; horizontalAlignment: Text.AlignRight; elide: Text.ElideLeft; text: calc.sep(modelData.result); color: "#ffffff"; font { family: Theme.fontUi; pixelSize: Theme.fs(16); weight: Font.Medium } }
                     }
                     HoverHandler { id: hover }
                     TapHandler { onTapped: calc.recall(modelData) }
@@ -305,7 +305,7 @@ ShellRoot {
                         anchors.verticalCenter: parent.verticalCenter
                         text: "Rad"
                         color: "#9a9c9d"
-                        font { family: Theme.fontUi; pixelSize: 12 }
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
                     }
                     Text {
                         anchors.fill: parent
@@ -314,7 +314,7 @@ ShellRoot {
                         text: calc.mode === "programmer" ? Engine.pexpression(calc.ptokens, calc.pcurrent, calc.base) : calc.exprText
                         color: "#9a9c9d"
                         elide: Text.ElideLeft
-                        font { family: Theme.fontUi; pixelSize: 17 }
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(17) }
                     }
                 }
                 // The number, with its unit when converting.
@@ -361,7 +361,7 @@ ShellRoot {
                             width: 24; height: 24; radius: 12
                             anchors.verticalCenter: parent.verticalCenter
                             color: swapTap.containsMouse ? "#33ffffff" : "#1fffffff"
-                            Text { anchors.centerIn: parent; text: "⇅"; color: "#ffffff"; font.pixelSize: 13 }
+                            Text { anchors.centerIn: parent; text: "⇅"; color: "#ffffff"; font.pixelSize: Theme.fs(13) }
                             MouseArea { id: swapTap; anchors.fill: parent; hoverEnabled: true; onClicked: calc.swapUnits() }
                         }
                         UnitButton {
@@ -399,7 +399,7 @@ ShellRoot {
                                 required property var modelData
                                 width: 72; height: 22; radius: 11
                                 color: calc.base === modelData[0] ? "#ff9500" : "#33ffffff"
-                                Text { anchors.centerIn: parent; text: parent.modelData[1]; color: "#ffffff"; font { family: Theme.fontUi; pixelSize: 11; weight: Font.Medium } }
+                                Text { anchors.centerIn: parent; text: parent.modelData[1]; color: "#ffffff"; font { family: Theme.fontUi; pixelSize: Theme.fs(11); weight: Font.Medium } }
                                 MouseArea { anchors.fill: parent; onClicked: calc.setBase(parent.modelData[0]) }
                             }
                         }
@@ -411,7 +411,7 @@ ShellRoot {
                             readonly property int highBit: 63 - index * 16
                             anchors.horizontalCenter: parent.horizontalCenter
                             spacing: 0
-                            Text { width: 22; text: parent.highBit; color: "#6d7174"; font { family: "SF Mono"; pixelSize: 9 } anchors.verticalCenter: parent.verticalCenter }
+                            Text { width: 22; text: parent.highBit; color: "#6d7174"; font { family: "SF Mono"; pixelSize: Theme.fs(9) } anchors.verticalCenter: parent.verticalCenter }
                             Repeater {
                                 model: 16
                                 Item {
@@ -423,7 +423,7 @@ ShellRoot {
                                         anchors.verticalCenter: parent.verticalCenter
                                         text: Engine.bit(calc.pvalue, parent.n)
                                         color: Engine.bit(calc.pvalue, parent.n) ? "#ffffff" : "#6d7174"
-                                        font { family: "SF Mono"; pixelSize: 12 }
+                                        font { family: "SF Mono"; pixelSize: Theme.fs(12) }
                                     }
                                     MouseArea { anchors.fill: parent; onClicked: calc.toggleBit(parent.n) }
                                 }
@@ -601,14 +601,14 @@ ShellRoot {
                                 visible: modelData.t !== "-" && !!modelData.on
                                 x: 8; anchors.verticalCenter: parent.verticalCenter
                                 text: "✓"; color: "#ffffff"
-                                font { family: Theme.fontUi; pixelSize: 12; weight: Font.DemiBold }
+                                font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: Font.DemiBold }
                             }
                             Text {
                                 visible: modelData.t !== "-"
                                 x: 24; anchors.verticalCenter: parent.verticalCenter
                                 text: modelData.t
                                 color: modelData.off ? "#66ffffff" : "#ffffff"
-                                font { family: Theme.fontUi; pixelSize: 13 }
+                                font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
                             }
                             HoverHandler { id: rowHover }
                             TapHandler {
@@ -640,9 +640,9 @@ ShellRoot {
             text: ub.unit
             elide: Text.ElideRight
             color: ub.muted ? "#b0b3b5" : "#ffffff"
-            font { family: Theme.fontUi; pixelSize: 11; weight: Font.Medium }
+            font { family: Theme.fontUi; pixelSize: Theme.fs(11); weight: Font.Medium }
         }
-        Text { anchors { right: parent.right; rightMargin: 5; verticalCenter: parent.verticalCenter } text: "⌄"; color: "#9a9c9d"; font.pixelSize: 10 }
+        Text { anchors { right: parent.right; rightMargin: 5; verticalCenter: parent.verticalCenter } text: "⌄"; color: "#9a9c9d"; font.pixelSize: Theme.fs(10) }
         MouseArea {
             id: ubTap; anchors.fill: parent; hoverEnabled: true
             onClicked: {
@@ -680,7 +680,7 @@ ShellRoot {
                                 x: 8; anchors.verticalCenter: parent.verticalCenter
                                 text: (parent.modelData === ub.unit ? "✓ " : "   ") + parent.modelData
                                 color: "#ffffff"
-                                font { family: Theme.fontUi; pixelSize: 12 }
+                                font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
                             }
                             MouseArea { id: rowTap; anchors.fill: parent; hoverEnabled: true; onClicked: { ub.chosen(parent.modelData); list.visible = false } }
                         }

@@ -69,7 +69,7 @@ Item {
                 text: browser.path
                 elide: Text.ElideMiddle
                 color: Theme.secondaryLabel
-                font { family: Theme.fontUi; pixelSize: 12 }
+                font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
             }
         }
         ListView {

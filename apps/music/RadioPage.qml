@@ -77,7 +77,7 @@ Item {
                 y: 78
                 text: page.loading ? "Loading stations…" : page.failed ? "Radio isn't available right now." : q.text ? "Stations" : "Top Stations"
                 color: Theme.label
-                font { family: Theme.fontUi; pixelSize: 17; weight: Font.Bold }
+                font { family: Theme.fontUi; pixelSize: Theme.fs(17); weight: Font.Bold }
             }
         }
         delegate: Item {
@@ -117,13 +117,13 @@ Item {
                 y: st.size + 6; width: st.size; elide: Text.ElideRight
                 text: st.modelData.name.trim()
                 color: st.current ? "#fa2d48" : Theme.label
-                font { family: Theme.fontUi; pixelSize: 13; weight: Font.Medium }
+                font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.Medium }
             }
             Text {
                 y: st.size + 23; width: st.size; elide: Text.ElideRight
                 text: [st.modelData.country, (st.modelData.tags || "").split(",")[0]].filter((x) => x).join(" · ")
                 color: Theme.secondaryLabel
-                font { family: Theme.fontUi; pixelSize: 12 }
+                font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
             }
             HoverHandler { id: stHover }
             TapHandler { onTapped: page.play(st.modelData) }

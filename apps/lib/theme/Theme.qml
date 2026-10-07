@@ -47,6 +47,10 @@ QtObject {
     property string glassStyle: "clear"
     property bool reduceTransparency: false
     property bool reduceMotion: false
+    property real textScale: 1
+    function fs(n) { return n > 24 ? n : Math.round(n * Math.max(1, Math.min(1.5, textScale))) }
+    // Control heights follow the text: fh(26) for a 26 px control.
+    function fh(n) { return Math.round(n * (1 + (Math.max(1, Math.min(1.5, textScale)) - 1) * 0.8)) }
     readonly property color accent: ({ blue: accentBlue, teal: accentBlue, purple: accentPurple, pink: accentPink, red: accentRed, orange: accentOrange, yellow: accentYellow, green: accentGreen, slate: accentGraphite })[accentName] ?? accentBlue
     readonly property color windowBg: dark ? "#1e1e1e" : "#ffffff"
     readonly property color contentBg: dark ? "#1a1a1a" : "#ffffff"

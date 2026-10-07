@@ -79,7 +79,7 @@ Item {
         visible: !!button.text
         text: button.text
         color: Theme.label
-        font { family: Theme.fontUi; pixelSize: 13; weight: Font.Medium }
+        font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.Medium }
     }
     HoverHandler { id: hover }
     TapHandler { id: tap; enabled: button.enabled; onTapped: { button.forceActiveFocus(); button.clicked() } }

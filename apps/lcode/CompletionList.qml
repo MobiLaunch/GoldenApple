@@ -134,7 +134,7 @@ Item {
             topPadding: 4
             text: list.currentItem ? list.currentItem.label || "" : ""
             color: Theme.label
-            font { family: Theme.fontUi; pixelSize: 12; weight: Font.DemiBold }
+            font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: Font.DemiBold }
         }
         Text {
             width: parent.width
@@ -142,7 +142,7 @@ Item {
             maximumLineCount: 3
             text: list.currentItem && list.currentItem.insert ? list.currentItem.insert.split("\n").slice(0, 3).join("\n").replace(/<#([^#\n]*)#>/g, "$1") : ""
             color: Theme.secondaryLabel
-            font { family: "monospace"; pixelSize: 11 }
+            font { family: "monospace"; pixelSize: Theme.fs(11) }
         }
     }
 }

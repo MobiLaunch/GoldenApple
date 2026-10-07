@@ -229,7 +229,7 @@ PanelWindow {
                 text: capsule.title
                 color: Theme.label
                 elide: Text.ElideRight
-                font { family: Theme.fontUi; pixelSize: 13; weight: Font.DemiBold }
+                font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.DemiBold }
             }
             Text {
                 width: parent.width
@@ -237,7 +237,7 @@ PanelWindow {
                 text: capsule.subtitle
                 color: Theme.secondaryLabel
                 elide: Text.ElideRight
-                font { family: Theme.fontUi; pixelSize: 11 }
+                font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
             }
         }
         MouseArea {
@@ -289,7 +289,7 @@ PanelWindow {
             width: 22; height: 22; radius: 11
             color: Theme.dark ? "#5a5a5e" : "#8e8e93"
             border { width: 1.5; color: Theme.dark ? "#1c1c1e" : "#ffffff" }
-            Text { anchors.centerIn: parent; anchors.verticalCenterOffset: -1; text: circle.badge; color: "#ffffff"; font { family: Theme.fontUi; pixelSize: 15; weight: Font.Bold } }
+            Text { anchors.centerIn: parent; anchors.verticalCenterOffset: -1; text: circle.badge; color: "#ffffff"; font { family: Theme.fontUi; pixelSize: Theme.fs(15); weight: Font.Bold } }
         }
         property bool showHint: false
         MouseArea {
@@ -307,7 +307,7 @@ PanelWindow {
             color: Theme.dark ? "#e62c2c2e" : "#f2ffffff"
             border { width: 0.5; color: Theme.separator }
             z: 10
-            Text { id: hintText; anchors.centerIn: parent; text: circle.name; color: Theme.label; font { family: Theme.fontUi; pixelSize: 11 } }
+            Text { id: hintText; anchors.centerIn: parent; text: circle.name; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.fs(11) } }
         }
         Accessible.role: Accessible.Button
         Accessible.name: circle.name
@@ -331,7 +331,7 @@ PanelWindow {
             anchors { left: parent.left; leftMargin: 18; top: parent.top; topMargin: 11 }
             text: tile.title
             color: Theme.label
-            font { family: Theme.fontUi; pixelSize: 13; weight: Font.DemiBold }
+            font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.DemiBold }
         }
         Symbol {
             id: low
@@ -457,14 +457,14 @@ PanelWindow {
                         Text {
                             text: Privacy.names[parent.modelData]
                             color: Theme.label
-                            font { family: Theme.fontUi; pixelSize: 12; weight: Font.DemiBold }
+                            font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: Font.DemiBold }
                         }
                         Text {
                             text: Privacy[parent.modelData].join(", ")
                             color: Theme.secondaryLabel
                             elide: Text.ElideRight
                             width: Math.min(implicitWidth, cc.span(4) - 150)
-                            font { family: Theme.fontUi; pixelSize: 12 }
+                            font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
                         }
                     }
                 }
@@ -514,14 +514,14 @@ PanelWindow {
                         text: cc.player?.trackTitle || "Not Playing"
                         color: Theme.label
                         elide: Text.ElideRight
-                        font { family: Theme.fontUi; pixelSize: 13; weight: Font.DemiBold }
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.DemiBold }
                     }
                     Text {
                         width: parent.width
                         text: cc.player ? [cc.player.trackArtist, cc.player.trackAlbum].filter((x) => !!x).join(" – ") || cc.player.identity : "Music"
                         color: Theme.secondaryLabel
                         elide: Text.ElideRight
-                        font { family: Theme.fontUi; pixelSize: 11 }
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
                     }
                 }
                 Row {
@@ -627,7 +627,7 @@ PanelWindow {
             visible: cc.editing
             width: parent.width
             spacing: 8
-            Text { text: "Add Controls"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: 11; weight: Font.DemiBold } }
+            Text { text: "Add Controls"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.fs(11); weight: Font.DemiBold } }
             Grid {
                 columns: 4
                 spacing: cc.gap
@@ -644,7 +644,7 @@ PanelWindow {
                             wrapMode: Text.WordWrap
                             maximumLineCount: 2
                             color: Theme.secondaryLabel
-                            font { family: Theme.fontUi; pixelSize: 10 }
+                            font { family: Theme.fontUi; pixelSize: Theme.fs(10) }
                         }
                     }
                 }
@@ -658,7 +658,7 @@ PanelWindow {
                 width: editLabel.implicitWidth + 30; height: 30
                 pressed: editTap.pressed
                 hovered: editTap.containsMouse
-                Text { id: editLabel; anchors.centerIn: parent; text: cc.editing ? "Done" : "Edit Controls"; color: Theme.label; font { family: Theme.fontUi; pixelSize: 12; weight: Font.Medium } }
+                Text { id: editLabel; anchors.centerIn: parent; text: cc.editing ? "Done" : "Edit Controls"; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: Font.Medium } }
                 MouseArea { id: editTap; anchors.fill: parent; hoverEnabled: true; onClicked: cc.editing = !cc.editing }
             }
         }
@@ -712,7 +712,7 @@ PanelWindow {
                 Layout.fillWidth: true
                 text: detailView.title
                 color: Theme.label
-                font { family: Theme.fontUi; pixelSize: 15; weight: Font.Bold }
+                font { family: Theme.fontUi; pixelSize: Theme.fs(15); weight: Font.Bold }
             }
             Shared.Switch {
                 visible: detailView.hasSwitch
@@ -748,13 +748,13 @@ PanelWindow {
                 }
                 Column {
                     anchors { left: airplayIcon.right; leftMargin: 9; right: airplaySwitch.left; rightMargin: 8; verticalCenter: parent.verticalCenter }
-                    Text { text: "AirPlay Receiver"; color: Theme.label; font { family: Theme.fontUi; pixelSize: 13 } }
+                    Text { text: "AirPlay Receiver"; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.fs(13) } }
                     Text {
                         width: parent.width
                         text: "Mirror your iPhone or iPad here"
                         elide: Text.ElideRight
                         color: Theme.secondaryLabel
-                        font { family: Theme.fontUi; pixelSize: 10 }
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(10) }
                     }
                 }
                 Shared.Switch {
@@ -775,7 +775,7 @@ PanelWindow {
                         color: Theme.dark ? "#26ffffff" : "#14000000"
                         Symbol { anchors.centerIn: parent; name: "mirror"; size: 13; tone: "auto" }
                     }
-                    Text { anchors.verticalCenter: parent.verticalCenter; text: "Mirror to a TV or Display…"; color: Theme.label; font { family: Theme.fontUi; pixelSize: 13 } }
+                    Text { anchors.verticalCenter: parent.verticalCenter; text: "Mirror to a TV or Display…"; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.fs(13) } }
                 }
                 MouseArea {
                     id: tvArea
@@ -795,7 +795,7 @@ PanelWindow {
                 : cc.detail === "bluetooth" ? ((Bluetooth.defaultAdapter?.enabled ?? false) ? "No Devices" : "Bluetooth is off")
                 : "No Outputs"
             color: Theme.secondaryLabel
-            font { family: Theme.fontUi; pixelSize: 12 }
+            font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
         }
 
         // Rows: an icon circle (in the accent when in use), the name, and a
@@ -836,7 +836,7 @@ PanelWindow {
                         text: item.label
                         elide: Text.ElideRight
                         color: Theme.label
-                        font { family: Theme.fontUi; pixelSize: 13; weight: item.active ? Font.DemiBold : Font.Normal }
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: item.active ? Font.DemiBold : Font.Normal }
                     }
                     Symbol {
                         visible: cc.detail === "wifi" && item.modelData.secure
@@ -866,7 +866,7 @@ PanelWindow {
                 anchors { left: parent.left; leftMargin: 8; verticalCenter: parent.verticalCenter }
                 text: cc.detail === "mirroring" ? "Display Settings…" : detailView.title.replace(" Output", "") + " Settings…"
                 color: Theme.label
-                font { family: Theme.fontUi; pixelSize: 13 }
+                font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
             }
             MouseArea {
                 id: settingsArea

@@ -135,6 +135,12 @@ function material(name, m) {
   q.push(`    property string accentName: "blue"`);
   // Settings › Appearance › Liquid Glass and Accessibility (desktop.json).
   q.push(`    property string glassStyle: "clear"`, `    property bool reduceTransparency: false`, `    property bool reduceMotion: false`);
+  // Settings › Accessibility › Text Size (desktop.json textScale, 1–1.5).
+  // fs(n): a body or label size n, scaled; display numerals above 24 stay.
+  q.push(`    property real textScale: 1`,
+    `    function fs(n) { return n > 24 ? n : Math.round(n * Math.max(1, Math.min(1.5, textScale))) }`,
+    `    // Control heights follow the text: fh(26) for a 26 px control.`,
+    `    function fh(n) { return Math.round(n * (1 + (Math.max(1, Math.min(1.5, textScale)) - 1) * 0.8)) }`);
   q.push(`    readonly property color accent: ({ blue: accentBlue, teal: accentBlue, purple: accentPurple, pink: accentPink, red: accentRed, orange: accentOrange, yellow: accentYellow, green: accentGreen, slate: accentGraphite })[accentName] ?? accentBlue`);
   for (const k of Object.keys(t.color.light)) {
     q.push(`    readonly property color ${k}: dark ? "${qmlColor(t.color.dark[k])}" : "${qmlColor(t.color.light[k])}"`);

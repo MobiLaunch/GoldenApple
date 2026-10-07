@@ -268,7 +268,7 @@ ShellRoot {
                     x: 16; y: 14
                     text: "Playing Next"
                     color: Theme.label
-                    font { family: Theme.fontUi; pixelSize: 15; weight: Font.Bold }
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(15); weight: Font.Bold }
                 }
                 ListView {
                     x: 8; y: 44; width: parent.width - 16; height: parent.height - 52
@@ -282,8 +282,8 @@ ShellRoot {
                         Artwork { x: 6; anchors.verticalCenter: parent.verticalCenter; width: 32; height: 32; radius: 4; maskColor: queuePanel.color; source: modelData.t.art }
                         Column {
                             x: 46; anchors.verticalCenter: parent.verticalCenter; width: parent.width - 52
-                            Text { width: parent.width; elide: Text.ElideRight; text: modelData.t.title; color: Theme.label; font { family: Theme.fontUi; pixelSize: 13 } }
-                            Text { width: parent.width; elide: Text.ElideRight; text: modelData.t.artist; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: 12 } }
+                            Text { width: parent.width; elide: Text.ElideRight; text: modelData.t.title; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.fs(13) } }
+                            Text { width: parent.width; elide: Text.ElideRight; text: modelData.t.artist; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.fs(12) } }
                         }
                         HoverHandler { id: qh }
                         TapHandler { onTapped: { audio.index = modelData.i; audio.load() } }
@@ -293,7 +293,7 @@ ShellRoot {
                         anchors.horizontalCenter: parent.horizontalCenter; y: 20
                         text: "Nothing Playing Next"
                         color: Theme.secondaryLabel
-                        font { family: Theme.fontUi; pixelSize: 13 }
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
                     }
                 }
             }

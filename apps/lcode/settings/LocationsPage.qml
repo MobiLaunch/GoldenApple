@@ -10,7 +10,7 @@ Page {
         wrapMode: Text.Wrap
         text: "LCode finds each toolchain on your PATH. Set a location to use another one, like a Swift you unpacked yourself or rustup's cargo."
         color: Theme.secondaryLabel
-        font { family: Theme.fontUi; pixelSize: 12 }
+        font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
     }
     Repeater {
         model: [

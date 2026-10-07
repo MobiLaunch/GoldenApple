@@ -156,7 +156,7 @@ PanelWindow {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: !nearby.device ? "" : nearby.device.kind === "phone" ? "iPhone" : (nearby.device.model || nearby.device.name)
                 color: Theme.label
-                font { family: Theme.fontDisplay; pixelSize: 20; weight: Font.Bold }
+                font { family: Theme.fontDisplay; pixelSize: Theme.fs(20); weight: Font.Bold }
             }
 
             // The device: its glyph in a soft disc that floats a little.
@@ -216,7 +216,7 @@ PanelWindow {
                     : nearby.device.kind === "phone" ? "Send and receive your messages on this computer."
                     : nearby.device.paired ? nearby.device.name : "Not Connected"
                 color: nearby.phase === "failed" ? "#ff453a" : Theme.secondaryLabel
-                font { family: Theme.fontUi; pixelSize: 12 }
+                font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
             }
         }
 

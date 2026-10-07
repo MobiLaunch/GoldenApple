@@ -50,7 +50,7 @@ Item {
             text: frame.text
             color: Theme.secondaryLabel
             lineHeight: 1.1
-            font { family: Theme.fontUi; pixelSize: 13 }
+            font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
         }
     }
     Item {

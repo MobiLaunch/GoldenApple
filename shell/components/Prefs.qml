@@ -40,6 +40,7 @@ Singleton {
     readonly property string glass: data.glass ?? "clear"
     readonly property bool reduceMotion: data.reduceMotion ?? false
     readonly property bool reduceTransparency: data.reduceTransparency ?? false
+    readonly property real textScale: data.textScale ?? 1
     // The menu bar's own background, as "Show menu bar background" in macOS 26.
     readonly property bool menuBarBackground: data.menuBar?.background ?? true
     readonly property bool clockShowDay: data.menuBar?.showDay ?? true

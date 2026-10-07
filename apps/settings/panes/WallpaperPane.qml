@@ -52,7 +52,7 @@ Pane {
                         width: parent.width; horizontalAlignment: Text.AlignHCenter; elide: Text.ElideRight
                         text: tile.modelData.split("/").pop().replace(/\.\w+$/, "").replace(/[-_]/g, " ").replace(/^\w/, (c) => c.toUpperCase())
                         color: tile.chosen ? Theme.label : Theme.secondaryLabel
-                        font { family: Theme.fontUi; pixelSize: 11; weight: tile.chosen ? Font.DemiBold : Font.Normal }
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(11); weight: tile.chosen ? Font.DemiBold : Font.Normal }
                     }
                     HoverHandler { id: whover }
                     TapHandler { id: wtap; onTapped: pane.sys.setPref(["wallpaper"], tile.modelData) }

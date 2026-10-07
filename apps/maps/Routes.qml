@@ -72,14 +72,14 @@ Item {
                     anchors.horizontalCenter: parent.horizontalCenter
                     text: Api.duration(overlay.routes[callout.index]?.duration ?? 0)
                     color: callout.chosen ? "#ffffff" : "#0a84ff"
-                    font { family: Theme.fontUi; pixelSize: 13; weight: Font.Bold }
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.Bold }
                 }
                 Text {
                     anchors.horizontalCenter: parent.horizontalCenter
                     visible: callout.index === 0 && overlay.routes.length > 1
                     text: "Fastest"
                     color: callout.chosen ? "#e6ffffff" : "#0a84ff"
-                    font { family: Theme.fontUi; pixelSize: 11; weight: Font.Medium }
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(11); weight: Font.Medium }
                 }
             }
             TapHandler { onTapped: overlay.picked(callout.index) }

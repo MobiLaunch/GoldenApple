@@ -41,13 +41,13 @@ Item {
             width: parent.width; elide: Text.ElideRight
             text: row.track?.title ?? ""
             color: row.current ? "#fa2d48" : Theme.label
-            font { family: Theme.fontUi; pixelSize: 13 }
+            font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
         }
         Text {
             width: parent.width; elide: Text.ElideRight
             text: row.track?.artist ?? ""
             color: Theme.secondaryLabel
-            font { family: Theme.fontUi; pixelSize: 12 }
+            font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
         }
     }
     Item {

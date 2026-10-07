@@ -64,7 +64,7 @@ Item {
             text: ({ buildSucceeded: "When a build succeeds", buildFailed: "When a build fails", testSucceeded: "When testing succeeds",
                      testFailed: "When testing fails", runStarted: "When running starts", runExited: "When running exits" })[page.selected] || ""
             color: Theme.label
-            font { family: Theme.fontUi; pixelSize: 15; weight: Font.Bold }
+            font { family: Theme.fontUi; pixelSize: Theme.fs(15); weight: Font.Bold }
         }
         FormRow {
             labelWidth: 120

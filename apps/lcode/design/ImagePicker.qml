@@ -31,7 +31,7 @@ Popover {
         Text {
             text: "Assets"
             color: Theme.secondaryLabel
-            font { family: Theme.fontUi; pixelSize: 11; weight: Font.DemiBold }
+            font { family: Theme.fontUi; pixelSize: Theme.fs(11); weight: Font.DemiBold }
         }
         GridView {
             width: parent.width
@@ -64,7 +64,7 @@ Popover {
                         elide: Text.ElideMiddle
                         text: parent.parent.modelData ? parent.parent.modelData.split("/").pop() : "None"
                         color: Theme.label
-                        font { family: Theme.fontUi; pixelSize: 10 }
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(10) }
                     }
                 }
                 HoverHandler { id: imgHover }
@@ -76,7 +76,7 @@ Popover {
             wrapMode: Text.Wrap
             text: picker.error || "Add an image: type its path (or a web address) and press Return."
             color: picker.error ? "#ff453a" : Theme.secondaryLabel
-            font { family: Theme.fontUi; pixelSize: 11 }
+            font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
         }
         TextField {
             id: importField

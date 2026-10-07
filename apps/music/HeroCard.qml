@@ -19,19 +19,19 @@ Item {
     Text {
         text: hero.kicker.toUpperCase()
         color: Theme.secondaryLabel
-        font { family: Theme.fontUi; pixelSize: 10; weight: Font.DemiBold; letterSpacing: 0.2 }
+        font { family: Theme.fontUi; pixelSize: Theme.fs(10); weight: Font.DemiBold; letterSpacing: 0.2 }
     }
     Text {
         y: 13; width: parent.width; elide: Text.ElideRight
         text: hero.album?.title ?? ""
         color: Theme.label
-        font { family: Theme.fontUi; pixelSize: 14; weight: Font.Medium }
+        font { family: Theme.fontUi; pixelSize: Theme.fs(14); weight: Font.Medium }
     }
     Text {
         y: 31; width: parent.width; elide: Text.ElideRight
         text: hero.album?.artist ?? ""
         color: Theme.secondaryLabel
-        font { family: Theme.fontUi; pixelSize: 14 }
+        font { family: Theme.fontUi; pixelSize: Theme.fs(14) }
     }
 
     Rectangle {
@@ -76,7 +76,7 @@ Item {
             text: hero.album ? hero.album.tracks.length + (hero.album.tracks.length === 1 ? " song" : " songs")
                   + (hero.album.year ? " · " + hero.album.year : "") : ""
             color: hero.lightTone ? "#cc000000" : "#e6ffffff"
-            font { family: Theme.fontUi; pixelSize: 12; weight: Font.Medium }
+            font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: Font.Medium }
         }
         Rectangle {
             anchors { left: parent.left; top: parent.top; margins: 14 }
@@ -85,7 +85,7 @@ Item {
             Text {
                 anchors.centerIn: parent; anchors.horizontalCenterOffset: 1
                 text: "▶"; color: hero.lightTone ? "#000000" : "#ffffff"
-                font.pixelSize: 14
+                font.pixelSize: Theme.fs(14)
             }
             scale: playArea.pressed ? 0.88 : 1
             Behavior on scale { Spring { spring: Theme.bouncy } }

@@ -329,7 +329,7 @@ Scope {
                     leftPadding: 10; bottomPadding: 6
                     text: "Widgets"
                     color: Theme.label
-                    font { family: Theme.fontUi; pixelSize: 17; weight: Font.Bold }
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(17); weight: Font.Bold }
                 }
                 Repeater {
                     model: [{ kind: "", name: "All Widgets" }].concat(root.catalog)
@@ -361,7 +361,7 @@ Scope {
                             x: 38; anchors.verticalCenter: parent.verticalCenter
                             text: parent.modelData.name
                             color: Theme.label
-                            font { family: Theme.fontUi; pixelSize: 13; weight: parent.chosen ? Font.DemiBold : Font.Normal }
+                            font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: parent.chosen ? Font.DemiBold : Font.Normal }
                         }
                         HoverHandler { id: rowHover }
                         TapHandler { onTapped: gallery.filter = parent.modelData.kind }
@@ -382,7 +382,7 @@ Scope {
                     width: parent.width - done.width - 12
                     text: shelf.chosen ? shelf.chosen.name : "All Widgets"
                     color: Theme.label
-                    font { family: Theme.fontUi; pixelSize: 17; weight: Font.Bold }
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(17); weight: Font.Bold }
                 }
                 Text {
                     y: 42
@@ -390,7 +390,7 @@ Scope {
                     text: shelf.chosen ? shelf.chosen.about : "Click a widget to add it to your desktop. Drag widgets on the desktop to move them."
                     color: Theme.secondaryLabel
                     elide: Text.ElideRight
-                    font { family: Theme.fontUi; pixelSize: 12 }
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
                 }
                 Shared.Button {
                     id: done
@@ -462,7 +462,7 @@ Scope {
                                     horizontalAlignment: Text.AlignHCenter
                                     text: gallery.filter ? offer.modelData.size[0].toUpperCase() + offer.modelData.size.slice(1) : offer.modelData.name
                                     color: Theme.secondaryLabel
-                                    font { family: Theme.fontUi; pixelSize: 12; weight: Font.Medium }
+                                    font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: Font.Medium }
                                 }
                             }
                         }

@@ -74,7 +74,7 @@ Popover {
                             anchors.centerIn: parent
                             text: "∅"
                             color: Theme.secondaryLabel
-                            font.pixelSize: 13
+                            font.pixelSize: Theme.fs(13)
                         }
                     }
                     HoverHandler { id: swatchHover }
@@ -86,7 +86,7 @@ Popover {
                         anchors.horizontalCenter: parent.horizontalCenter
                         width: tip.implicitWidth + 12; height: 20; radius: 6
                         color: Theme.dark ? "#3a3a3c" : "#2c2c2e"
-                        Text { id: tip; anchors.centerIn: parent; text: parent.parent.modelData || "Default"; color: "white"; font.pixelSize: 10 }
+                        Text { id: tip; anchors.centerIn: parent; text: parent.parent.modelData || "Default"; color: "white"; font.pixelSize: Theme.fs(10) }
                     }
                 }
             }
@@ -103,7 +103,7 @@ Popover {
                 wrapMode: Text.Wrap
                 text: "Your app's own colors appear here. Add one in the outline's Colors section."
                 color: Theme.secondaryLabel
-                font { family: Theme.fontUi; pixelSize: 12 }
+                font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
             }
             Repeater {
                 model: picker.doc ? picker.doc.colors : []

@@ -25,7 +25,7 @@ Item {
         else if (event.key === Qt.Key_End) { pick(options.length - 1); event.accepted = true }
     }
     FocusRing {}
-    implicitWidth: row.implicitWidth + 4; implicitHeight: 26
+    implicitWidth: row.implicitWidth + 4; implicitHeight: Theme.fh(26)
 
     Rectangle {
         anchors.fill: parent
@@ -63,7 +63,7 @@ Item {
                     color: Theme.label
                     opacity: segArea.pressed ? 0.55 : 1
                     Behavior on opacity { NumberAnimation { duration: 100 } }
-                    font { family: Theme.fontUi; pixelSize: 12; weight: index === seg.current ? Font.DemiBold : Font.Normal }
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: index === seg.current ? Font.DemiBold : Font.Normal }
                 }
                 MouseArea { id: segArea; anchors.fill: parent; onClicked: { seg.forceActiveFocus(); seg.pick(index) } }
             }

@@ -31,7 +31,7 @@ Item {
             horizontalAlignment: Text.AlignHCenter
             text: item.separator
             color: Theme.secondaryLabel
-            font { family: Theme.fontUi; pixelSize: 11; weight: Font.Medium }
+            font { family: Theme.fontUi; pixelSize: Theme.fs(11); weight: Font.Medium }
         }
         Text {
             visible: item.group && !item.mine && item.firstInRun && !!item.message.sender
@@ -39,7 +39,7 @@ Item {
             bottomPadding: 2
             text: item.message.sender || ""
             color: Theme.secondaryLabel
-            font { family: Theme.fontUi; pixelSize: 11 }
+            font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
         }
         Item {
             width: parent.width
@@ -59,7 +59,7 @@ Item {
                     textFormat: Text.PlainText
                     wrapMode: Text.Wrap
                     color: item.mine ? "#ffffff" : Theme.label
-                    font { family: Theme.fontUi; pixelSize: 14 }
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(14) }
                 }
                 TapHandler {
                     acceptedButtons: Qt.RightButton
@@ -88,7 +88,7 @@ Item {
             horizontalAlignment: Text.AlignRight
             text: item.footnote
             color: Theme.secondaryLabel
-            font { family: Theme.fontUi; pixelSize: 11; weight: Font.Medium }
+            font { family: Theme.fontUi; pixelSize: Theme.fs(11); weight: Font.Medium }
         }
     }
 }

@@ -49,6 +49,6 @@ Item {
         text: pin.label
         color: "#1d1d1f"
         style: Text.Outline; styleColor: "#e6ffffff"
-        font { family: Theme.fontUi; pixelSize: 12; weight: Font.DemiBold }
+        font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: Font.DemiBold }
     }
 }

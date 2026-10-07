@@ -124,7 +124,7 @@ StepFrame {
                     x: 32; y: 9; width: parent.width - 110; elide: Text.ElideRight
                     text: row.modelData.ssid
                     color: Theme.label
-                    font { family: Theme.fontUi; pixelSize: 13; weight: row.modelData.active ? Font.DemiBold : Font.Normal }
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: row.modelData.active ? Font.DemiBold : Font.Normal }
                 }
                 Row {
                     anchors { right: parent.right; rightMargin: 12 }
@@ -174,7 +174,7 @@ StepFrame {
                 visible: list.count === 0
                 text: step.scanning ? "Looking for networks…" : step.online ? "No Wi-Fi networks nearby." : "No Wi-Fi networks found."
                 color: Theme.secondaryLabel
-                font { family: Theme.fontUi; pixelSize: 13 }
+                font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
             }
         }
     }

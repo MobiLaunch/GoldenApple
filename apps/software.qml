@@ -416,7 +416,7 @@ ShellRoot {
                             text: lockup.app?.name ?? ""
                             elide: Text.ElideRight
                             color: Theme.label
-                            font { family: Theme.fontUi; pixelSize: 13; weight: Font.DemiBold }
+                            font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.DemiBold }
                         }
                         Rectangle {
                             id: macTag
@@ -425,7 +425,7 @@ ShellRoot {
                             width: macText.implicitWidth + 8; height: 15; radius: 4
                             color: "transparent"
                             border { width: 1; color: Theme.tertiaryLabel }
-                            Text { id: macText; anchors.centerIn: parent; text: "MAC"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: 9; weight: Font.Bold; letterSpacing: 0.2 } }
+                            Text { id: macText; anchors.centerIn: parent; text: "MAC"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.fs(9); weight: Font.Bold; letterSpacing: 0.2 } }
                         }
                     }
                     Text {
@@ -435,7 +435,7 @@ ShellRoot {
                         wrapMode: Text.Wrap
                         elide: Text.ElideRight
                         color: Theme.secondaryLabel
-                        font { family: Theme.fontUi; pixelSize: 12 }
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
                     }
                 }
                 GetButton { id: lockGet; anchors { right: parent.right; rightMargin: 8; verticalCenter: parent.verticalCenter }
@@ -460,14 +460,14 @@ ShellRoot {
                     width: parent.width; height: 30
                     Column {
                         anchors.bottom: parent.bottom
-                        Text { text: shelf.title; color: Theme.label; font { family: Theme.fontUi; pixelSize: 20; weight: Font.Bold } }
+                        Text { text: shelf.title; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.fs(20); weight: Font.Bold } }
                     }
                     Text {
                         anchors { right: parent.right; bottom: parent.bottom; bottomMargin: 3 }
                         visible: !!shelf.seeAll
                         text: "See All"
                         color: Theme.accent
-                        font { family: Theme.fontUi; pixelSize: 13 }
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
                         TapHandler { onTapped: { store.page = shelf.seeAll; scroll.contentY = 0 } }
                     }
                 }
@@ -477,7 +477,7 @@ ShellRoot {
                     text: shelf.subtitle
                     wrapMode: Text.WordWrap
                     color: Theme.secondaryLabel
-                    font { family: Theme.fontUi; pixelSize: 13 }
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
                 }
                 Grid {
                     width: parent.width
@@ -549,7 +549,7 @@ ShellRoot {
                                 anchors { left: parent.left; leftMargin: 32; verticalCenter: parent.verticalCenter }
                                 width: Math.min(440, parent.width * 0.52)
                                 spacing: 10
-                                Text { text: "NEW ON CITRONOS"; color: "#b3ffffff"; font { family: Theme.fontUi; pixelSize: 11; weight: Font.Bold; letterSpacing: 1.2 } }
+                                Text { text: "NEW ON CITRONOS"; color: "#b3ffffff"; font { family: Theme.fontUi; pixelSize: Theme.fs(11); weight: Font.Bold; letterSpacing: 1.2 } }
                                 Text {
                                     width: parent.width
                                     text: "Mac apps, right here."
@@ -562,7 +562,7 @@ ShellRoot {
                                     text: "Get apps made for the Mac straight from their developers. They install cleanly with Darling, open in your Applications folder, and show their native Mac-style icon once downloaded."
                                     wrapMode: Text.WordWrap
                                     color: "#e6ffffff"
-                                    font { family: Theme.fontUi; pixelSize: 13 }
+                                    font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
                                     lineHeight: 1.1
                                 }
                                 Item { width: 1; height: 4 }
@@ -622,13 +622,13 @@ ShellRoot {
                                     Text {
                                         text: store.darling ? "Mac app support is ready" : "Set up Mac app support"
                                         color: Theme.label
-                                        font { family: Theme.fontUi; pixelSize: 15; weight: Font.DemiBold }
+                                        font { family: Theme.fontUi; pixelSize: Theme.fs(15); weight: Font.DemiBold }
                                     }
                                     Text {
                                         Layout.fillWidth: true
                                         wrapMode: Text.WordWrap
                                         color: Theme.secondaryLabel
-                                        font { family: Theme.fontUi; pixelSize: 12 }
+                                        font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
                                         text: (store.darling
                                             ? "Mac apps open with Darling, the macOS translation layer."
                                             : "Mac apps open with Darling, the macOS translation layer. Setting it up installs Darling's official release in a Terminal window. Darling runs Intel Mac apps; many apps with windows still need manual testing and you can see the result per app.")
@@ -744,7 +744,7 @@ ShellRoot {
                                 text: page.app?.summary ?? ""
                                 wrapMode: Text.WordWrap
                                 color: Theme.secondaryLabel
-                                font { family: Theme.fontUi; pixelSize: 15 }
+                                font { family: Theme.fontUi; pixelSize: Theme.fs(15) }
                             }
                             Item { Layout.preferredHeight: 8; Layout.preferredWidth: 1 }
                             Row {
@@ -755,7 +755,7 @@ ShellRoot {
                                     anchors.verticalCenter: parent.verticalCenter
                                     text: "Remove"
                                     color: Theme.accentRed
-                                    font { family: Theme.fontUi; pixelSize: 13 }
+                                    font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
                                     TapHandler { onTapped: store.transact("remove", page.app) }
                                 }
                             }
@@ -788,9 +788,9 @@ ShellRoot {
                                 Column {
                                     anchors { horizontalCenter: parent.horizontalCenter; top: parent.top; topMargin: 8 }
                                     spacing: 3
-                                    Text { anchors.horizontalCenter: parent.horizontalCenter; text: modelData[0]; color: Theme.tertiaryLabel; font { family: Theme.fontUi; pixelSize: 10; weight: Font.Bold } }
-                                    Text { anchors.horizontalCenter: parent.horizontalCenter; text: modelData[1]; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: 17; weight: Font.DemiBold } }
-                                    Text { anchors.horizontalCenter: parent.horizontalCenter; visible: !!modelData[2]; text: modelData[2]; color: Theme.tertiaryLabel; font { family: Theme.fontUi; pixelSize: 10 } }
+                                    Text { anchors.horizontalCenter: parent.horizontalCenter; text: modelData[0]; color: Theme.tertiaryLabel; font { family: Theme.fontUi; pixelSize: Theme.fs(10); weight: Font.Bold } }
+                                    Text { anchors.horizontalCenter: parent.horizontalCenter; text: modelData[1]; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.fs(17); weight: Font.DemiBold } }
+                                    Text { anchors.horizontalCenter: parent.horizontalCenter; visible: !!modelData[2]; text: modelData[2]; color: Theme.tertiaryLabel; font { family: Theme.fontUi; pixelSize: Theme.fs(10) } }
                                 }
                             }
                         }
@@ -812,14 +812,14 @@ ShellRoot {
                                 width: parent.width
                                 wrapMode: Text.WordWrap
                                 color: Theme.label
-                                font { family: Theme.fontUi; pixelSize: 13; weight: Font.DemiBold }
+                                font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.DemiBold }
                                 text: page.app?.opened === false ? "This app didn't open under Darling last time." : page.app?.opened === true ? "This app opened under Darling on this computer." : "A Mac app, run with Darling"
                             }
                             Text {
                                 width: parent.width
                                 wrapMode: Text.WordWrap
                                 color: Theme.secondaryLabel
-                                font { family: Theme.fontUi; pixelSize: 12 }
+                                font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
                                 text: "It's downloaded from " + (page.app?.homepage ? page.app.homepage.replace(/^https?:\/\//, "").replace(/\/.*$/, "") : "its developer") + (page.app?.checksum ? ", checked against its published checksum," : " (its developer doesn't publish a checksum for it),") + " and installed in Applications in your home folder. Darling runs Intel Mac apps; apps built only for Apple silicon are refused before anything is installed."
                             }
                             Text {
@@ -828,7 +828,7 @@ ShellRoot {
                                 wrapMode: Text.WrapAnywhere
                                 text: page.app?.lastError ?? ""
                                 color: Theme.secondaryLabel
-                                font { family: "SF Mono"; pixelSize: 11 }
+                                font { family: "SF Mono"; pixelSize: Theme.fs(11) }
                             }
                         }
                     }
@@ -837,7 +837,7 @@ ShellRoot {
                         visible: !!page.app?.homepage
                         text: "Developer Website"
                         color: Theme.accent
-                        font { family: Theme.fontUi; pixelSize: 13 }
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
                         TapHandler { onTapped: Quickshell.execDetached(["xdg-open", page.app.homepage]) }
                     }
                 }
@@ -860,11 +860,11 @@ ShellRoot {
                         anchors { left: parent.left; right: parent.right; top: parent.top; margins: 20 }
                         spacing: 10
                         Symbol { anchors.horizontalCenter: parent.horizontalCenter; name: "window"; size: 36; tone: "accent" }
-                        Text { width: parent.width; horizontalAlignment: Text.AlignHCenter; text: "Mac app support isn't set up"; color: Theme.label; font { family: Theme.fontUi; pixelSize: 15; weight: Font.DemiBold } }
+                        Text { width: parent.width; horizontalAlignment: Text.AlignHCenter; text: "Mac app support isn't set up"; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.fs(15); weight: Font.DemiBold } }
                         Text {
                             width: parent.width; horizontalAlignment: Text.AlignHCenter; wrapMode: Text.WordWrap
                             text: "Mac apps open with Darling. Setting it up builds it on this computer, which takes about an hour, in a Terminal window."
-                            color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: 12 }
+                            color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
                         }
                         Item { width: 1; height: 4 }
                         Row {
@@ -898,7 +898,7 @@ ShellRoot {
                             maximumLineCount: 3
                             elide: Text.ElideRight
                             color: Theme.label
-                            font { family: Theme.fontUi; pixelSize: 12; weight: Font.Medium }
+                            font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: Font.Medium }
                         }
                         Button { visible: !!store.error && !store.busy; text: "OK"; onClicked: { store.error = ""; store.errorDetails = "" } }
                     }
@@ -910,7 +910,7 @@ ShellRoot {
                         maximumLineCount: 4
                         elide: Text.ElideRight
                         color: Theme.secondaryLabel
-                        font { family: "SF Mono"; pixelSize: 10 }
+                        font { family: "SF Mono"; pixelSize: Theme.fs(10) }
                     }
                     ProgressBar { visible: store.busy; Layout.fillWidth: true; value: store.progress; indeterminate: store.progress < 0.05 }
                 }
@@ -938,14 +938,14 @@ ShellRoot {
                             Text {
                                 text: store.installerSucceeded ? "Installed" : "Download complete"
                                 color: Theme.label
-                                font { family: Theme.fontUi; pixelSize: 18; weight: Font.DemiBold }
+                                font { family: Theme.fontUi; pixelSize: Theme.fs(18); weight: Font.DemiBold }
                             }
                             Text {
                                 width: parent.width
                                 text: store.installerSucceeded ? (store.installerApp?.name ?? "App") + " is ready in Applications." : "We’ve downloaded the package and are unpacking it into your Applications folder."
                                 wrapMode: Text.WordWrap
                                 color: Theme.secondaryLabel
-                                font { family: Theme.fontUi; pixelSize: 12 }
+                                font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
                             }
                         }
                     }
@@ -968,12 +968,12 @@ ShellRoot {
                                     border { width: 1; color: Theme.separator }
                                     AppIcon { app: store.installerApp; anchors.centerIn: parent; size: 52 }
                                 }
-                                Text { anchors.horizontalCenter: parent.horizontalCenter; text: "Apps"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: 11 } }
+                                Text { anchors.horizontalCenter: parent.horizontalCenter; text: "Apps"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.fs(11) } }
                             }
                             Rectangle {
                                 width: 52; height: 52; radius: 26; color: Theme.accent; opacity: 0.9
                                 anchors.verticalCenter: parent.verticalCenter
-                                Text { anchors.centerIn: parent; text: "→"; color: "#fff"; font { family: Theme.fontUi; pixelSize: 22; weight: Font.Bold } }
+                                Text { anchors.centerIn: parent; text: "→"; color: "#fff"; font { family: Theme.fontUi; pixelSize: Theme.fs(22); weight: Font.Bold } }
                             }
                             Column {
                                 width: 98
@@ -985,7 +985,7 @@ ShellRoot {
                                     border { width: 1; color: Theme.separator }
                                     Symbol { anchors.centerIn: parent; name: "folder"; size: 28; tone: Theme.accent }
                                 }
-                                Text { anchors.horizontalCenter: parent.horizontalCenter; text: "Applications"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: 11 } }
+                                Text { anchors.horizontalCenter: parent.horizontalCenter; text: "Applications"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.fs(11) } }
                             }
                         }
                     }
@@ -994,7 +994,7 @@ ShellRoot {
                         text: "Drag the app to Applications to finish installation."
                         color: Theme.secondaryLabel
                         horizontalAlignment: Text.AlignHCenter
-                        font { family: Theme.fontUi; pixelSize: 12 }
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
                     }
                     Row {
                         anchors.right: parent.right

@@ -16,7 +16,7 @@ Rectangle {
         x: 4; y: 4
         text: group.title
         color: Theme.label
-        font { family: Theme.fontUi; pixelSize: 13; weight: Font.Bold }
+        font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.Bold }
     }
     Rectangle {
         y: group.title ? 30 : 0

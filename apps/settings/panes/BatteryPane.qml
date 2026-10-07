@@ -27,7 +27,7 @@ Pane {
         SetRow {
             title: "Battery Level"
             subtitle: (pane.info.state ?? "").replace(/-/g, " ")
-            Text { text: pane.info.percentage ?? ""; color: Theme.label; font { family: Theme.fontUi; pixelSize: 13; weight: Font.DemiBold } }
+            Text { text: pane.info.percentage ?? ""; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.DemiBold } }
             Rectangle {
                 width: 34; height: 16; radius: 4
                 color: "transparent"; border { width: 1; color: Theme.secondaryLabel }
@@ -38,8 +38,8 @@ Pane {
                 }
             }
         }
-        SetRow { title: "Battery Health"; Text { text: pane.info.capacity ? (parseFloat(pane.info.capacity) >= 80 ? "Normal" : "Service Recommended") + " (" + Math.round(parseFloat(pane.info.capacity)) + "%)" : "—"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: 13 } } }
-        SetRow { visible: !!pane.info["time to empty"]; title: "Time Remaining"; Text { text: pane.info["time to empty"] ?? ""; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: 13 } } }
+        SetRow { title: "Battery Health"; Text { text: pane.info.capacity ? (parseFloat(pane.info.capacity) >= 80 ? "Normal" : "Service Recommended") + " (" + Math.round(parseFloat(pane.info.capacity)) + "%)" : "—"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.fs(13) } } }
+        SetRow { visible: !!pane.info["time to empty"]; title: "Time Remaining"; Text { text: pane.info["time to empty"] ?? ""; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.fs(13) } } }
     }
     Group {
         visible: !!pane.profile

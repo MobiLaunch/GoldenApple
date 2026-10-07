@@ -125,15 +125,15 @@ Popover {
                     spacing: 2
                     Row {
                         spacing: 6
-                        Text { text: snip.modelData.title; color: Theme.label; font { family: Theme.fontUi; pixelSize: 13; weight: Font.DemiBold } }
-                        Text { anchors.baseline: parent.children[0].baseline; text: snip.modelData.trigger; color: Theme.secondaryLabel; font { family: "monospace"; pixelSize: 11 } }
+                        Text { text: snip.modelData.title; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.DemiBold } }
+                        Text { anchors.baseline: parent.children[0].baseline; text: snip.modelData.trigger; color: Theme.secondaryLabel; font { family: "monospace"; pixelSize: Theme.fs(11) } }
                     }
                     Text {
                         width: parent.width
                         elide: Text.ElideRight
                         text: snip.modelData.body.split("\n")[0].replace(/<#([^#\n]*)#>/g, "$1")
                         color: Theme.secondaryLabel
-                        font { family: "monospace"; pixelSize: 11 }
+                        font { family: "monospace"; pixelSize: Theme.fs(11) }
                     }
                 }
                 ToolbarButton {
@@ -152,7 +152,7 @@ Popover {
                 visible: parent.count === 0
                 text: "No snippets for this language yet"
                 color: Theme.secondaryLabel
-                font { family: Theme.fontUi; pixelSize: 12 }
+                font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
             }
         }
 
@@ -182,7 +182,7 @@ Popover {
                     elide: Text.ElideRight
                     text: sym.modelData
                     color: Theme.secondaryLabel
-                    font { family: Theme.fontUi; pixelSize: 9 }
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(9) }
                 }
                 HoverHandler { id: symHover }
                 TapHandler { onTapped: lib.insertSymbol(sym.modelData) }
@@ -222,7 +222,7 @@ Popover {
                     elide: Text.ElideRight
                     text: col.modelData
                     color: Theme.secondaryLabel
-                    font { family: Theme.fontUi; pixelSize: 10 }
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(10) }
                 }
                 HoverHandler { id: colHover }
                 TapHandler { onTapped: lib.insertColor(col.modelData) }
@@ -238,7 +238,7 @@ Popover {
         Text {
             text: "New " + (Completion.LANGUAGE_NAMES[lib.language] || "") + " Snippet"
             color: Theme.label
-            font { family: Theme.fontUi; pixelSize: 14; weight: Font.Bold }
+            font { family: Theme.fontUi; pixelSize: Theme.fs(14); weight: Font.Bold }
         }
         TextField { id: titleField; width: parent.width; height: 28; placeholder: "Title, like “Fetch JSON”" }
         TextField { id: triggerField; width: parent.width; height: 28; placeholder: "Completion, like fetchjson (type it to get the snippet)" }
@@ -247,7 +247,7 @@ Popover {
             wrapMode: Text.Wrap
             text: "Write <#name#> where you'd like a placeholder: Tab goes from one to the next."
             color: Theme.secondaryLabel
-            font { family: Theme.fontUi; pixelSize: 11 }
+            font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
         }
         Rectangle {
             width: parent.width

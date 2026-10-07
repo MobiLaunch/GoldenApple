@@ -37,14 +37,14 @@ Item {
         anchors { right: parent.right; rightMargin: 10; top: parent.top; topMargin: 11 }
         text: app.listTime(row.thread.last_ts)
         color: row.selected ? "#d9ffffff" : Theme.secondaryLabel
-        font { family: Theme.fontUi; pixelSize: 11 }
+        font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
     }
     Text {
         anchors { left: face.right; leftMargin: 10; right: when.left; rightMargin: 6; top: parent.top; topMargin: 10 }
         text: row.thread.name || ""
         elide: Text.ElideRight
         color: row.selected ? "#ffffff" : Theme.label
-        font { family: Theme.fontUi; pixelSize: 13; weight: Font.DemiBold }
+        font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.DemiBold }
     }
     Text {
         anchors { left: face.right; leftMargin: 10; right: parent.right; rightMargin: 10; top: parent.top; topMargin: 28 }
@@ -54,7 +54,7 @@ Item {
         maximumLineCount: 2
         elide: Text.ElideRight
         color: row.selected ? "#e6ffffff" : Theme.secondaryLabel
-        font { family: Theme.fontUi; pixelSize: 12 }
+        font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
     }
     HoverHandler { id: hover }
     TapHandler {

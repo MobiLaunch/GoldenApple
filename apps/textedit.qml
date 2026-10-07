@@ -28,7 +28,7 @@ ShellRoot {
                 anchors.verticalCenter: parent.verticalCenter
                 text: "Edited"
                 color: Theme.secondaryLabel
-                font { family: Theme.fontUi; pixelSize: 11 }
+                font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
             },
             ToolbarButton {
                 round: true
@@ -42,7 +42,7 @@ ShellRoot {
             anchors.verticalCenter: parent.verticalCenter
             text: editor.fileName
             color: Theme.label
-            font { family: Theme.fontUi; pixelSize: 13; weight: Font.DemiBold }
+            font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.DemiBold }
         }
 
         FileDialog {
@@ -196,7 +196,7 @@ ShellRoot {
                     selectByMouse: true
                     activeFocusOnTab: true
                     persistentSelection: true
-                    font { family: Theme.fontUi; pixelSize: 15 }
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(15) }
                     onTextChanged: {
                         if (!editor.loading)
                             editor.dirty = text !== editor.savedText
@@ -224,7 +224,7 @@ ShellRoot {
                     wrapMode: Text.WordWrap
                     text: editor.error
                     color: "#ff453a"
-                    font { family: Theme.fontUi; pixelSize: 12 }
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
                 }
             }
         }
@@ -241,8 +241,8 @@ ShellRoot {
                 Column {
                     anchors { fill: parent; margins: 24 }
                     spacing: 16
-                    Text { text: "Keep your changes?"; color: Theme.label; font { family: Theme.fontUi; pixelSize: 18; weight: Font.Bold } }
-                    Text { width: parent.width; wrapMode: Text.Wrap; text: "This document has unsaved changes. Save it before continuing, or discard the changes."; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: 12 } }
+                    Text { text: "Keep your changes?"; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.fs(18); weight: Font.Bold } }
+                    Text { width: parent.width; wrapMode: Text.Wrap; text: "This document has unsaved changes. Save it before continuing, or discard the changes."; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.fs(12) } }
                     Row {
                         spacing: 8
                         Button { text: "Cancel"; onClicked: { discard.visible = false; editor.pendingAction = null } }

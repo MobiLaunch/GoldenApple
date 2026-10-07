@@ -38,8 +38,8 @@ AppWindow {
         Column {
             x: 52
             anchors.verticalCenter: parent.verticalCenter
-            Text { text: action.title; color: Theme.label; font { family: Theme.fontUi; pixelSize: 13; weight: Font.DemiBold } }
-            Text { text: action.detail; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: 12 } }
+            Text { text: action.title; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.DemiBold } }
+            Text { text: action.detail; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.fs(12) } }
         }
         HoverHandler { id: hover }
         TapHandler { onTapped: action.triggered() }
@@ -67,7 +67,7 @@ AppWindow {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: "Version 26.0"
                 color: Theme.secondaryLabel
-                font { family: Theme.fontUi; pixelSize: 13 }
+                font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
             }
             Item { width: 1; height: 12 }
             Action {
@@ -136,14 +136,14 @@ AppWindow {
                             text: recent.modelData.split("/").pop()
                             elide: Text.ElideRight
                             color: Theme.label
-                            font { family: Theme.fontUi; pixelSize: 13; weight: Font.DemiBold }
+                            font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.DemiBold }
                         }
                         Text {
                             width: parent.width
                             text: recent.modelData.replace(Quickshell.env("HOME"), "~")
                             elide: Text.ElideMiddle
                             color: Theme.secondaryLabel
-                            font { family: Theme.fontUi; pixelSize: 11 }
+                            font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
                         }
                     }
                     HoverHandler { id: recentHover }
@@ -197,9 +197,9 @@ AppWindow {
         Column {
             width: parent.width
             spacing: 12
-            Text { text: "Clone a Git Repository"; color: Theme.label; font { family: Theme.fontUi; pixelSize: 15; weight: Font.Bold } }
+            Text { text: "Clone a Git Repository"; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.fs(15); weight: Font.Bold } }
             TextField { id: urlField; width: parent.width; height: 30; placeholder: "https://github.com/owner/repository.git" }
-            Text { text: "Clone into:"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: 12 } }
+            Text { text: "Clone into:"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.fs(12) } }
             FolderBrowser { id: cloneBrowser; width: parent.width; height: 220; backend: win.backend }
             Text {
                 visible: !!clone.error || clone.working
@@ -207,7 +207,7 @@ AppWindow {
                 wrapMode: Text.WordWrap
                 text: clone.working ? "Cloning…" : clone.error
                 color: clone.working ? Theme.secondaryLabel : "#ff453a"
-                font { family: Theme.fontUi; pixelSize: 12 }
+                font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
             }
             Row {
                 anchors.right: parent.right

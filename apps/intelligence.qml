@@ -22,7 +22,7 @@ ShellRoot {
             anchors.verticalCenter: parent.verticalCenter
             text: "Citron Intelligence"
             color: Theme.label
-            font { family: Theme.fontUi; pixelSize: 14; weight: Font.DemiBold }
+            font { family: Theme.fontUi; pixelSize: Theme.fs(14); weight: Font.DemiBold }
         }
         toolbarRight: [
             ToolbarButton { symbol: "compose"; round: true; visible: app.page === "ask"; enabled: !service.busy && (app.history.length > 0 || !!app.photoPath); onClicked: app.newConversation() },
@@ -52,7 +52,7 @@ ShellRoot {
                         Text {
                             text: "Citron"
                             color: Theme.label
-                            font { family: Theme.fontUi; pixelSize: 14; weight: Font.DemiBold }
+                            font { family: Theme.fontUi; pixelSize: Theme.fs(14); weight: Font.DemiBold }
                         }
                     }
                 }
@@ -105,7 +105,7 @@ ShellRoot {
                     width: parent.width - 12
                     text: "Powered by Google Gemini"
                     color: Theme.secondaryLabel
-                    font { family: Theme.fontUi; pixelSize: 11 }
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
                 }
             }
         ]
@@ -293,7 +293,7 @@ ShellRoot {
                                 text: app.description
                                 wrapMode: Text.WordWrap
                                 color: Theme.secondaryLabel
-                                font { family: Theme.fontUi; pixelSize: 13 }
+                                font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
                             }
                         }
                     }
@@ -312,7 +312,7 @@ ShellRoot {
                         elide: Text.ElideMiddle
                         text: app.photoPath
                         color: Theme.secondaryLabel
-                        font { family: Theme.fontUi; pixelSize: 11 }
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
                     }
 
                     Rectangle {
@@ -427,7 +427,7 @@ ShellRoot {
                                     visible: !app.hasImageResult && !(app.page === "edit" && app.photoPath)
                                     text: "Your image will appear here"
                                     color: Theme.tertiaryLabel
-                                    font { family: Theme.fontUi; pixelSize: 14 }
+                                    font { family: Theme.fontUi; pixelSize: Theme.fs(14) }
                                 }
                             }
                         }
@@ -479,7 +479,7 @@ ShellRoot {
                         wrapMode: Text.Wrap
                         text: service.error || app.message || "Requests are sent to Google Gemini. Review generated content before using it."
                         color: service.error ? "#ff453a" : Theme.secondaryLabel
-                        font { family: Theme.fontUi; pixelSize: 11 }
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
                     }
                 }
             }
@@ -512,7 +512,7 @@ ShellRoot {
                                 anchors.verticalCenter: parent.verticalCenter
                                 text: "Thinking…"
                                 color: Theme.secondaryLabel
-                                font { family: Theme.fontUi; pixelSize: 13 }
+                                font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
                             }
                         }
                     }
@@ -541,7 +541,7 @@ ShellRoot {
                                 textFormat: TextEdit.PlainText
                                 color: turn.mine ? "#ffffff" : Theme.label
                                 selectionColor: turn.mine ? "#66ffffff" : Theme.accent
-                                font { family: Theme.fontUi; pixelSize: 14 }
+                                font { family: Theme.fontUi; pixelSize: Theme.fs(14) }
                             }
                         }
                     }
@@ -559,7 +559,7 @@ ShellRoot {
                         horizontalAlignment: Text.AlignHCenter
                         text: "A little help. A lot of possibilities."
                         color: Theme.label
-                        font { family: Theme.fontDisplay; pixelSize: 24; weight: Font.Bold }
+                        font { family: Theme.fontDisplay; pixelSize: Theme.fs(24); weight: Font.Bold }
                     }
                     Text {
                         width: parent.width
@@ -567,7 +567,7 @@ ShellRoot {
                         wrapMode: Text.WordWrap
                         text: "Ask a question, explore an idea, or attach a photo to understand it."
                         color: Theme.secondaryLabel
-                        font { family: Theme.fontUi; pixelSize: 13 }
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
                     }
                     Flow {
                         anchors.horizontalCenter: parent.horizontalCenter
@@ -583,7 +583,7 @@ ShellRoot {
                                 width: idea.implicitWidth + 26; height: 32; radius: 16
                                 color: ideaTap.containsMouse ? (Theme.dark ? "#33ffffff" : "#14000000") : (Theme.dark ? "#1fffffff" : "#0a000000")
                                 border { width: 1; color: Theme.separator }
-                                Text { id: idea; anchors.centerIn: parent; text: parent.modelData; color: Theme.label; font { family: Theme.fontUi; pixelSize: 12 } }
+                                Text { id: idea; anchors.centerIn: parent; text: parent.modelData; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.fs(12) } }
                                 MouseArea { id: ideaTap; anchors.fill: parent; hoverEnabled: true; enabled: !service.busy; onClicked: app.ask(parent.modelData) }
                             }
                         }
@@ -613,7 +613,7 @@ ShellRoot {
                             elide: Text.ElideMiddle
                             text: "📎 " + app.photoPath.split("/").pop()
                             color: Theme.label
-                            font { family: Theme.fontUi; pixelSize: 11 }
+                            font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
                         }
                         Symbol { id: chipX; anchors { right: parent.right; rightMargin: 8; verticalCenter: parent.verticalCenter } name: "xmark"; size: 10
                             MouseArea { anchors { fill: parent; margins: -6 } onClicked: app.photoPath = "" } }
@@ -671,7 +671,7 @@ ShellRoot {
                     elide: Text.ElideRight
                     text: service.error || app.message || "Citron uses Google Gemini. Check important information."
                     color: service.error ? "#ff453a" : Theme.tertiaryLabel
-                    font { family: Theme.fontUi; pixelSize: 11 }
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
                 }
             }
 

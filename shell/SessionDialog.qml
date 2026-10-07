@@ -88,7 +88,7 @@ PanelWindow {
                 wrapMode: Text.WordWrap
                 text: "Are you sure you want to " + dialog.copy.noun + " now?"
                 color: Theme.label
-                font { family: Theme.fontUi; pixelSize: 13; weight: Font.Bold }
+                font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.Bold }
             }
             Text {
                 Layout.fillWidth: true
@@ -96,7 +96,7 @@ PanelWindow {
                 wrapMode: Text.WordWrap
                 text: "If you do nothing, " + dialog.copy.auto + " automatically in " + dialog.remaining + " second" + (dialog.remaining === 1 ? "" : "s") + "."
                 color: Theme.secondaryLabel
-                font { family: Theme.fontUi; pixelSize: 11 }
+                font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
             }
             RowLayout {
                 Layout.fillWidth: true

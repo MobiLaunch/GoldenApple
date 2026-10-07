@@ -115,7 +115,7 @@ Item {
                 width: parent.width; elide: Text.ElideMiddle
                 text: viewer.item?.name ?? ""
                 color: Theme.label
-                font { family: Theme.fontUi; pixelSize: 15; weight: Font.Bold }
+                font { family: Theme.fontUi; pixelSize: Theme.fs(15); weight: Font.Bold }
             }
             Repeater {
                 model: [
@@ -128,8 +128,8 @@ Item {
                 delegate: Column {
                     required property var modelData
                     width: parent.width
-                    Text { text: modelData[0]; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: 11; weight: Font.DemiBold } }
-                    Text { width: parent.width; wrapMode: Text.Wrap; text: modelData[1]; color: Theme.label; font { family: Theme.fontUi; pixelSize: 13 } }
+                    Text { text: modelData[0]; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.fs(11); weight: Font.DemiBold } }
+                    Text { width: parent.width; wrapMode: Text.Wrap; text: modelData[1]; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.fs(13) } }
                 }
             }
         }

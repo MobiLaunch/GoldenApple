@@ -63,14 +63,14 @@ Sheet {
                 Text {
                     text: sheet.info ? sheet.info.name + " " + sheet.info.version : "Archive"
                     color: Theme.label
-                    font { family: Theme.fontUi; pixelSize: 17; weight: Font.Bold }
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(17); weight: Font.Bold }
                 }
                 Text {
                     text: !sheet.info ? "" : sheet.info.archived
                         ? "Archived " + Qt.formatDateTime(new Date(sheet.info.archive.date), "d MMM yyyy, hh:mm") + "  ·  " + Math.max(1, Math.round(sheet.info.size / 1024)) + " KB"
                         : "Not archived yet: choose Product ▸ Archive."
                     color: Theme.secondaryLabel
-                    font { family: Theme.fontUi; pixelSize: 12 }
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
                 }
                 Text {
                     visible: !!sheet.info && sheet.info.installed
@@ -78,7 +78,7 @@ Sheet {
                     elide: Text.ElideMiddle
                     text: "Installed in " + (sheet.info ? sheet.info.installedAt.replace(/^\/home\/[^/]+/, "~") : "")
                     color: "#30d158"
-                    font { family: Theme.fontUi; pixelSize: 12 }
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
                 }
             }
         }
@@ -86,7 +86,7 @@ Sheet {
         Text {
             text: "Distribute App"
             color: Theme.label
-            font { family: Theme.fontUi; pixelSize: 13; weight: Font.DemiBold }
+            font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.DemiBold }
         }
         Repeater {
             model: sheet.methods
@@ -106,14 +106,14 @@ Sheet {
                     anchors.verticalCenter: parent.verticalCenter
                     width: parent.width - 54 - 110
                     spacing: 2
-                    Text { text: card.modelData.title; color: Theme.label; font { family: Theme.fontUi; pixelSize: 13; weight: Font.DemiBold } }
+                    Text { text: card.modelData.title; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.DemiBold } }
                     Text {
                         width: parent.width
                         wrapMode: Text.Wrap
                         text: card.modelData.id === "flatpak" && sheet.info && !sheet.info.flatpak
                             ? "CitronOS apps run on Quickshell, which isn't a Flatpak runtime." : card.modelData.detail
                         color: Theme.secondaryLabel
-                        font { family: Theme.fontUi; pixelSize: 11 }
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
                     }
                 }
                 Button {
@@ -133,7 +133,7 @@ Sheet {
             wrapMode: Text.Wrap
             text: sheet.error || sheet.message
             color: sheet.error ? "#ff453a" : Theme.label
-            font { family: Theme.fontUi; pixelSize: 12 }
+            font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
         }
         Row {
             anchors.right: parent.right

@@ -40,7 +40,7 @@ ShellRoot {
                     anchors.verticalCenter: parent.verticalCenter
                     text: Qt.formatDate(cal.visibleMonth, "MMMM yyyy")
                     color: Theme.label
-                    font { family: Theme.fontUi; pixelSize: 15; weight: Font.Bold }
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(15); weight: Font.Bold }
                 }
             },
             Row {
@@ -62,7 +62,7 @@ ShellRoot {
                 x: 8
                 text: "Selected Day"
                 color: Theme.secondaryLabel
-                font { family: Theme.fontUi; pixelSize: 11; weight: Font.DemiBold }
+                font { family: Theme.fontUi; pixelSize: Theme.fs(11); weight: Font.DemiBold }
             },
             Column {
                 y: 26
@@ -74,14 +74,14 @@ ShellRoot {
                     x: 8
                     text: Qt.formatDate(cal.selectedDate, "dddd")
                     color: Theme.label
-                    font { family: Theme.fontUi; pixelSize: 18; weight: Font.Bold }
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(18); weight: Font.Bold }
                 }
                 Text {
                     width: parent.width - 16
                     x: 8
                     text: Qt.formatDate(cal.selectedDate, "MMMM d, yyyy")
                     color: Theme.secondaryLabel
-                    font { family: Theme.fontUi; pixelSize: 12 }
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
                 }
 
                 Item { width: 1; height: 6 }
@@ -116,13 +116,13 @@ ShellRoot {
                                 text: modelData.title
                                 elide: Text.ElideRight
                                 color: Theme.label
-                                font { family: Theme.fontUi; pixelSize: 12; weight: Font.DemiBold }
+                                font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: Font.DemiBold }
                             }
                             Text {
                                 width: parent.width
                                 text: modelData.time || "All day"
                                 color: Theme.secondaryLabel
-                                font { family: Theme.fontUi; pixelSize: 10 }
+                                font { family: Theme.fontUi; pixelSize: Theme.fs(10) }
                             }
                         }
 
@@ -337,7 +337,7 @@ ShellRoot {
                             verticalAlignment: Text.AlignVCenter
                             text: modelData
                             color: Theme.secondaryLabel
-                            font { family: Theme.fontUi; pixelSize: 11; weight: Font.DemiBold }
+                            font { family: Theme.fontUi; pixelSize: Theme.fs(11); weight: Font.DemiBold }
                         }
                     }
                 }
@@ -398,7 +398,7 @@ ShellRoot {
                                     color: dayCell.today ? "#ffffff" : Theme.label
                                     font {
                                         family: Theme.fontUi
-                                        pixelSize: 13
+                                        pixelSize: Theme.fs(13)
                                         weight: dayCell.today || dayCell.selected ? Font.DemiBold : Font.Normal
                                     }
                                 }
@@ -426,7 +426,7 @@ ShellRoot {
                                     anchors { right: parent.right; rightMargin: 8; bottom: parent.bottom; bottomMargin: 6 }
                                     text: "+" + (dayCell.count - 3)
                                     color: Theme.secondaryLabel
-                                    font { family: Theme.fontUi; pixelSize: 9 }
+                                    font { family: Theme.fontUi; pixelSize: Theme.fs(9) }
                                 }
                             }
 
@@ -471,7 +471,7 @@ ShellRoot {
                     horizontalAlignment: restoreButton.visible ? Text.AlignLeft : Text.AlignHCenter
                     wrapMode: Text.WordWrap
                     color: "#ff453a"
-                    font { family: Theme.fontUi; pixelSize: 12 }
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
                 }
             }
 
@@ -493,7 +493,7 @@ ShellRoot {
                     Text {
                         text: "New Event"
                         color: Theme.label
-                        font { family: Theme.fontUi; pixelSize: 18; weight: Font.DemiBold }
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(18); weight: Font.DemiBold }
                     }
 
                     TextField {

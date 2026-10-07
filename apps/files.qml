@@ -51,12 +51,12 @@ ShellRoot {
                     Text {
                         text: files.title
                         color: Theme.label
-                        font { family: Theme.fontUi; pixelSize: 13; weight: Font.Bold }
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.Bold }
                     }
                     Text {
                         text: files.entries.length + (files.entries.length === 1 ? " item" : " items")
                         color: Theme.secondaryLabel
-                        font { family: Theme.fontUi; pixelSize: 10 }
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(10) }
                     }
                 }
             },
@@ -126,7 +126,7 @@ ShellRoot {
                 x: 8
                 text: "Favorites"
                 color: Theme.secondaryLabel
-                font { family: Theme.fontUi; pixelSize: 11; weight: Font.DemiBold }
+                font { family: Theme.fontUi; pixelSize: Theme.fs(11); weight: Font.DemiBold }
             },
             Column {
                 y: 24
@@ -166,7 +166,7 @@ ShellRoot {
                     visible: files.volumes.length > 0
                     text: "Locations"
                     color: Theme.secondaryLabel
-                    font { family: Theme.fontUi; pixelSize: 11; weight: Font.DemiBold }
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(11); weight: Font.DemiBold }
                 }
                 Item { width: 1; height: 4; visible: files.volumes.length > 0 }
                 Repeater {
@@ -813,7 +813,7 @@ ShellRoot {
                             elide: Text.ElideRight
                             text: modelData.name
                             color: Theme.label
-                            font { family: Theme.fontUi; pixelSize: 12; weight: cell.selected ? Font.DemiBold : Font.Normal }
+                            font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: cell.selected ? Font.DemiBold : Font.Normal }
                         }
                         Text {
                             visible: !!cell.modelData.detail
@@ -822,7 +822,7 @@ ShellRoot {
                             elide: Text.ElideRight
                             text: cell.modelData.detail ?? ""
                             color: Theme.secondaryLabel
-                            font { family: Theme.fontUi; pixelSize: 10 }
+                            font { family: Theme.fontUi; pixelSize: Theme.fs(10) }
                         }
                     }
 
@@ -890,7 +890,7 @@ ShellRoot {
                         text: row.modelData.name
                         elide: Text.ElideRight
                         color: Theme.label
-                        font { family: Theme.fontUi; pixelSize: 12; weight: row.selected ? Font.DemiBold : Font.Normal }
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: row.selected ? Font.DemiBold : Font.Normal }
                     }
 
                     Text {
@@ -899,7 +899,7 @@ ShellRoot {
                             ? row.modelData.origin.replace(/\/[^/]+$/, "").replace(files.home, "~")
                             : new Date(row.modelData.modified * 1000).toLocaleDateString(Qt.locale(), Locale.ShortFormat)
                         color: Theme.secondaryLabel
-                        font { family: Theme.fontUi; pixelSize: 11 }
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
                     }
 
                     Text {
@@ -909,7 +909,7 @@ ShellRoot {
                         horizontalAlignment: Text.AlignRight
                         text: row.modelData.folder ? "Folder" : files.formatSize(row.modelData.size)
                         color: Theme.secondaryLabel
-                        font { family: Theme.fontUi; pixelSize: 11 }
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
                     }
 
                     HoverHandler { id: rowHover }
@@ -984,7 +984,7 @@ ShellRoot {
                                             anchors.verticalCenter: parent.verticalCenter
                                             text: crumb.modelData.name
                                             color: crumb.index === files.crumbs.length - 1 ? Theme.label : Theme.secondaryLabel
-                                            font { family: Theme.fontUi; pixelSize: 11 }
+                                            font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
                                         }
                                     }
                                     MouseArea {
@@ -1010,7 +1010,7 @@ ShellRoot {
                     text: files.notice || (files.entries.length + (files.entries.length === 1 ? " item" : " items")
                         + (files.free >= 0 ? ", " + files.formatSize(files.free) + " available" : ""))
                     color: files.notice ? Theme.label : Theme.secondaryLabel
-                    font { family: Theme.fontUi; pixelSize: 11; weight: files.notice ? Font.Medium : Font.Normal }
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(11); weight: files.notice ? Font.Medium : Font.Normal }
                 }
             }
 
@@ -1048,14 +1048,14 @@ ShellRoot {
                         wrapMode: Text.WordWrap
                         text: "Are you sure you want to permanently erase the items in the Trash?"
                         color: Theme.label
-                        font { family: Theme.fontUi; pixelSize: 13; weight: Font.Bold }
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.Bold }
                     }
                     Text {
                         width: parent.width
                         horizontalAlignment: Text.AlignHCenter
                         text: "You can’t undo this action."
                         color: Theme.secondaryLabel
-                        font { family: Theme.fontUi; pixelSize: 11 }
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
                     }
                     Item { width: 1; height: 4 }
                     Row {
@@ -1110,7 +1110,7 @@ ShellRoot {
                     Text {
                         text: files.dialogMode === "rename" ? "Rename" : "New Folder"
                         color: Theme.label
-                        font { family: Theme.fontUi; pixelSize: 17; weight: Font.DemiBold }
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(17); weight: Font.DemiBold }
                     }
 
                     TextField {

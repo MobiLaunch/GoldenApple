@@ -44,12 +44,12 @@ ListView {
                 width: parent.width; elide: Text.ElideRight
                 text: page.subtitle
                 color: "#fa2d48"
-                font { family: Theme.fontUi; pixelSize: 22 }
+                font { family: Theme.fontUi; pixelSize: Theme.fs(22) }
             }
             Text {
                 text: page.detail
                 color: Theme.secondaryLabel
-                font { family: Theme.fontUi; pixelSize: 11; weight: Font.DemiBold }
+                font { family: Theme.fontUi; pixelSize: Theme.fs(11); weight: Font.DemiBold }
             }
             Item { width: 1; height: 16 }
             Row {
@@ -65,7 +65,7 @@ ListView {
                             anchors.centerIn: parent
                             spacing: 6
                             Symbol { anchors.verticalCenter: parent.verticalCenter; name: modelData.s; tone: "red"; size: 12 }
-                            Text { text: modelData.t; color: "#fa2d48"; font { family: Theme.fontUi; pixelSize: 13; weight: Font.DemiBold } }
+                            Text { text: modelData.t; color: "#fa2d48"; font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.DemiBold } }
                         }
                         MouseArea {
                             anchors.fill: parent
@@ -105,7 +105,7 @@ ListView {
                 visible: !trackRow.current && !rowHover.hovered
                 text: page.numbered ? (trackRow.modelData.track || trackRow.index + 1) : trackRow.index + 1
                 color: Theme.secondaryLabel
-                font { family: Theme.fontUi; pixelSize: 13 }
+                font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
             }
             Symbol {
                 anchors { right: parent.right; verticalCenter: parent.verticalCenter }
@@ -120,13 +120,13 @@ ListView {
             elide: Text.ElideRight
             text: trackRow.modelData.title + (page.numbered ? "" : "  ·  " + trackRow.modelData.artist)
             color: trackRow.current ? "#fa2d48" : Theme.label
-            font { family: Theme.fontUi; pixelSize: 13 }
+            font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
         }
         Text {
             anchors { right: parent.right; rightMargin: 72; verticalCenter: parent.verticalCenter }
             text: page.time(trackRow.modelData.seconds)
             color: Theme.secondaryLabel
-            font { family: Theme.fontUi; pixelSize: 13 }
+            font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
         }
         Item {
             anchors { right: parent.right; rightMargin: 30; verticalCenter: parent.verticalCenter }
@@ -144,6 +144,6 @@ ListView {
         x: 28; topPadding: 14
         text: page.tracks.length + (page.tracks.length === 1 ? " song, " : " songs, ") + Math.round(page.totalSeconds / 60) + " minutes"
         color: Theme.secondaryLabel
-        font { family: Theme.fontUi; pixelSize: 12 }
+        font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
     }
 }

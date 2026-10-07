@@ -10,7 +10,7 @@ Text {
     color: Theme.secondaryLabel
     font {
         family: Theme.fontUi
-        pixelSize: 11
+        pixelSize: Theme.fs(11)
         weight: Font.DemiBold
     }
 }

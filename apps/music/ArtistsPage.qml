@@ -37,7 +37,7 @@ Item {
                 width: parent.width - 60; elide: Text.ElideRight
                 text: modelData.name
                 color: index === page.selected ? "#ffffff" : Theme.label
-                font { family: Theme.fontUi; pixelSize: 13; weight: Font.Medium }
+                font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.Medium }
             }
             HoverHandler { id: artistHover }
             TapHandler { onTapped: page.selected = index }

@@ -37,7 +37,7 @@ ShellRoot {
                     anchors.verticalCenter: parent.verticalCenter
                     text: mail.composing ? "New Message" : "Inbox"
                     color: Theme.label
-                    font { family: Theme.fontUi; pixelSize: 15; weight: Font.Bold }
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(15); weight: Font.Bold }
                 }
             },
             Row {
@@ -82,7 +82,7 @@ ShellRoot {
                 text: mail.account
                 elide: Text.ElideRight
                 color: Theme.secondaryLabel
-                font { family: Theme.fontUi; pixelSize: 10 }
+                font { family: Theme.fontUi; pixelSize: Theme.fs(10) }
             }
         ]
 
@@ -346,7 +346,7 @@ ShellRoot {
                     wrapMode: Text.WordWrap
                     text: "Connect an IMAP/SMTP account. Your password is stored in the system keyring, not in Mail's settings file."
                     color: Theme.secondaryLabel
-                    font { family: Theme.fontUi; pixelSize: 12 }
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
                 }
 
                 TextField {
@@ -485,7 +485,7 @@ ShellRoot {
                                         text: msgRow.modelData.from
                                         elide: Text.ElideRight
                                         color: Theme.label
-                                        font { family: Theme.fontUi; pixelSize: 12; weight: msgRow.modelData.unread ? Font.Bold : Font.DemiBold }
+                                        font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: msgRow.modelData.unread ? Font.Bold : Font.DemiBold }
                                     }
                                 }
 
@@ -494,14 +494,14 @@ ShellRoot {
                                     text: msgRow.modelData.subject
                                     elide: Text.ElideRight
                                     color: Theme.label
-                                    font { family: Theme.fontUi; pixelSize: 12; weight: msgRow.modelData.unread ? Font.DemiBold : Font.Normal }
+                                    font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: msgRow.modelData.unread ? Font.DemiBold : Font.Normal }
                                 }
                                 Text {
                                     width: parent.width
                                     text: msgRow.modelData.date
                                     elide: Text.ElideRight
                                     color: Theme.secondaryLabel
-                                    font { family: Theme.fontUi; pixelSize: 10 }
+                                    font { family: Theme.fontUi; pixelSize: Theme.fs(10) }
                                 }
                             }
 
@@ -560,20 +560,20 @@ ShellRoot {
                                 text: mail.selectedMessage.subject ?? ""
                                 wrapMode: Text.WordWrap
                                 color: Theme.label
-                                font { family: Theme.fontUi; pixelSize: 23; weight: Font.Bold }
+                                font { family: Theme.fontUi; pixelSize: Theme.fs(23); weight: Font.Bold }
                             }
                             Text {
                                 width: parent.width
                                 text: mail.selectedMessage.from ?? ""
                                 elide: Text.ElideRight
                                 color: Theme.label
-                                font { family: Theme.fontUi; pixelSize: 12; weight: Font.DemiBold }
+                                font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: Font.DemiBold }
                             }
                             Text {
                                 width: parent.width
                                 text: mail.selectedMessage.date ?? ""
                                 color: Theme.secondaryLabel
-                                font { family: Theme.fontUi; pixelSize: 10 }
+                                font { family: Theme.fontUi; pixelSize: Theme.fs(10) }
                             }
                             Rectangle { width: parent.width; height: 0.5; color: Theme.separator }
                             Text {
@@ -582,7 +582,7 @@ ShellRoot {
                                 textFormat: Text.PlainText
                                 wrapMode: Text.Wrap
                                 color: Theme.label
-                                font { family: Theme.fontUi; pixelSize: 13 }
+                                font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
                             }
                         }
                     }
@@ -623,7 +623,7 @@ ShellRoot {
                         selectByMouse: true
                         color: Theme.label
                         selectionColor: Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.30)
-                        font { family: Theme.fontUi; pixelSize: 13 }
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
                     }
                 }
 
@@ -656,7 +656,7 @@ ShellRoot {
                     wrapMode: Text.WordWrap
                     text: mail.error
                     color: "#ff453a"
-                    font { family: Theme.fontUi; pixelSize: 11 }
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
                 }
             }
         }

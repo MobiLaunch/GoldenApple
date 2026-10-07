@@ -37,7 +37,7 @@ Rectangle {
                 wrapMode: Text.WordWrap
                 color: Theme.label
                 lineHeight: 1.55
-                font { family: Theme.fontUi; pixelSize: 17 }
+                font { family: Theme.fontUi; pixelSize: Theme.fs(17) }
             }
         }
     }

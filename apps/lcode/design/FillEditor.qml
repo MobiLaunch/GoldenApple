@@ -49,7 +49,7 @@ Column {
             x: 40; anchors.verticalCenter: parent.verticalCenter
             text: fe.type === "color" ? String(fe.value.color) : ""
             color: Theme.label
-            font { family: Theme.fontUi; pixelSize: 11 }
+            font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
         }
         TapHandler { onTapped: fe.inspector.pickColor(colorWell, fe.value.color, (v) => fe.patch({ color: v || "accent" })) }
     }
@@ -92,7 +92,7 @@ Column {
         }
         Row {
             spacing: 6
-            Text { anchors.verticalCenter: parent.verticalCenter; text: "Angle"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: 11 } }
+            Text { anchors.verticalCenter: parent.verticalCenter; text: "Angle"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.fs(11) } }
             TextField {
                 width: 54; height: 24
                 text: fe.type === "gradient" ? String(fe.value.angle || 0) : ""
@@ -144,7 +144,7 @@ Column {
             elide: Text.ElideMiddle
             text: fe.type === "image" && fe.value.source ? fe.value.source : "Choose Image…"
             color: fe.type === "image" && fe.value.source ? Theme.label : Theme.tertiaryLabel
-            font { family: Theme.fontUi; pixelSize: 11 }
+            font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
         }
         TapHandler { onTapped: fe.inspector.pickImage(imageWell, fe.value.source, (v) => fe.patch({ source: v })) }
     }

@@ -76,7 +76,7 @@ Item {
             anchors.centerIn: parent
             text: root.tooltip
             color: Theme.label
-            font { family: Theme.fontUi; pixelSize: 11 }
+            font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
         }
     }
     Timer {

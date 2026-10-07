@@ -304,7 +304,7 @@ Scope {
                     anchors.centerIn: parent
                     text: Math.round(overlay.sel.width) + " × " + Math.round(overlay.sel.height)
                     color: "#ffffff"
-                    font { family: Theme.fontUi; pixelSize: 11; weight: Font.Medium }
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(11); weight: Font.Medium }
                 }
             }
         }
@@ -316,7 +316,7 @@ Scope {
             text: Math.round(root.pointer.x) + "\n" + Math.round(root.pointer.y)
             color: "#ffffff"
             style: Text.Outline; styleColor: "#80000000"
-            font { family: Theme.fontUi; pixelSize: 11; weight: Font.Medium; features: { "tnum": 1 } }
+            font { family: Theme.fontUi; pixelSize: Theme.fs(11); weight: Font.Medium; features: { "tnum": 1 } }
         }
 
         // The timer's countdown.
@@ -390,7 +390,7 @@ Scope {
                         id: optionsRow
                         anchors.centerIn: parent
                         spacing: 4
-                        Text { text: "Options"; color: Theme.label; font { family: Theme.fontUi; pixelSize: 13 } anchors.verticalCenter: parent.verticalCenter }
+                        Text { text: "Options"; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.fs(13) } anchors.verticalCenter: parent.verticalCenter }
                         Symbol { name: "chevron-down"; size: 10; tone: "auto"; anchors.verticalCenter: parent.verticalCenter }
                     }
                     HoverHandler { id: optHover }
@@ -480,7 +480,7 @@ Scope {
                     anchors.centerIn: parent
                     spacing: 6
                     Symbol { anchors.horizontalCenter: parent.horizontalCenter; name: "video"; size: 34; tone: "auto" }
-                    Text { anchors.horizontalCenter: parent.horizontalCenter; text: "Screen Recording"; color: Theme.label; font { family: Theme.fontUi; pixelSize: 12; weight: Font.Medium } }
+                    Text { anchors.horizontalCenter: parent.horizontalCenter; text: "Screen Recording"; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: Font.Medium } }
                 }
             }
             HoverHandler { id: cardHover }

@@ -150,7 +150,7 @@ PanelWindow {
                 bare: true
                 glyphSize: 20
                 placeholder: "Spotlight Search"
-                input.font.pixelSize: 21
+                input.font.pixelSize: Theme.fs(21)
                 input.Keys.onEscapePressed: spot.open = false
                 input.Keys.onDownPressed: spot.selected = Math.max(0, Math.min(spot.results.length - 1, spot.selected + 1))
                 input.Keys.onUpPressed: spot.selected = Math.max(0, spot.selected - 1)
@@ -190,7 +190,7 @@ PanelWindow {
                         x: 12; y: 6
                         text: row.modelData.section
                         color: Theme.secondaryLabel
-                        font { family: Theme.fontUi; pixelSize: 11; weight: Font.DemiBold }
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(11); weight: Font.DemiBold }
                     }
                     Rectangle {
                         anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
@@ -236,7 +236,7 @@ PanelWindow {
                                 text: row.modelData.subtitle
                                 elide: Text.ElideMiddle
                                 color: row.current ? "#ccffffff" : Theme.secondaryLabel
-                                font { family: Theme.fontUi; pixelSize: 12 }
+                                font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
                             }
                         }
                         MouseArea { anchors.fill: parent; hoverEnabled: true; onEntered: spot.selected = row.index; onClicked: spot.launch(row.index) }

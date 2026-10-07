@@ -24,8 +24,8 @@ Item {
             id: body
             anchors { left: parent.left; right: parent.right; top: parent.top; margins: 18 }
             spacing: 8
-            Text { width: parent.width; horizontalAlignment: Text.AlignHCenter; wrapMode: Text.WordWrap; text: sheet.title; color: Theme.label; font { family: Theme.fontUi; pixelSize: 13; weight: Font.Bold } }
-            Text { width: parent.width; horizontalAlignment: Text.AlignHCenter; wrapMode: Text.WordWrap; text: sheet.text; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: 11 } }
+            Text { width: parent.width; horizontalAlignment: Text.AlignHCenter; wrapMode: Text.WordWrap; text: sheet.title; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.Bold } }
+            Text { width: parent.width; horizontalAlignment: Text.AlignHCenter; wrapMode: Text.WordWrap; text: sheet.text; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.fs(11) } }
             Row {
                 topPadding: 8
                 spacing: 8

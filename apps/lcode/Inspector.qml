@@ -27,14 +27,14 @@ Flickable {
         Text {
             text: parent.label
             color: Theme.secondaryLabel
-            font { family: Theme.fontUi; pixelSize: 11 }
+            font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
         }
         Text {
             width: parent.width
             text: parent.value || "—"
             wrapMode: Text.WrapAnywhere
             color: Theme.label
-            font { family: Theme.fontUi; pixelSize: 12 }
+            font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
         }
     }
 
@@ -51,7 +51,7 @@ Flickable {
                 anchors.verticalCenter: parent.verticalCenter
                 text: "File"
                 color: Theme.label
-                font { family: Theme.fontUi; pixelSize: 13; weight: Font.DemiBold }
+                font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.DemiBold }
             }
         }
 
@@ -60,7 +60,7 @@ Flickable {
             visible: !inspector.path
             text: "No Selection"
             color: Theme.tertiaryLabel
-            font { family: Theme.fontUi; pixelSize: 13 }
+            font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
         }
         Field { visible: !!inspector.path; label: "Name"; value: inspector.fileName }
         Field { visible: !!inspector.path; label: "Type"; value: inspector.fileType }
@@ -78,7 +78,7 @@ Flickable {
         Row {
             visible: !!inspector.editor
             spacing: 8
-            Text { width: 84; anchors.verticalCenter: parent.verticalCenter; text: "Indent Using"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: 12 } }
+            Text { width: 84; anchors.verticalCenter: parent.verticalCenter; text: "Indent Using"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.fs(12) } }
             PopUpButton {
                 options: ["Spaces", "Tabs"]
                 current: inspector.editor && !inspector.editor.insertSpaces ? 1 : 0
@@ -89,7 +89,7 @@ Flickable {
         Row {
             visible: !!inspector.editor
             spacing: 8
-            Text { width: 84; anchors.verticalCenter: parent.verticalCenter; text: "Tab Width"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: 12 } }
+            Text { width: 84; anchors.verticalCenter: parent.verticalCenter; text: "Tab Width"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.fs(12) } }
             PopUpButton {
                 options: ["2", "3", "4", "8"]
                 current: inspector.editor ? Math.max(0, ["2", "3", "4", "8"].indexOf(String(inspector.editor.tabWidth))) : 2
@@ -106,13 +106,13 @@ Flickable {
                 anchors.verticalCenter: parent.verticalCenter
                 text: "Project"
                 color: Theme.label
-                font { family: Theme.fontUi; pixelSize: 13; weight: Font.DemiBold }
+                font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.DemiBold }
             }
         }
         Field { label: "Name"; value: inspector.app.project ? inspector.app.project.name : "" }
         Column {
             spacing: 4
-            Text { text: "Product Type"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: 11 } }
+            Text { text: "Product Type"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.fs(11) } }
             PopUpButton {
                 options: ["App", "Command Line Tool", "Library"]
                 current: inspector.app.project ? Math.max(0, ["app", "tool", "library"].indexOf(inspector.app.project.kind)) : 0
@@ -127,7 +127,7 @@ Flickable {
         Column {
             width: parent.width
             spacing: 4
-            Text { text: "Bundle Identifier"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: 11 } }
+            Text { text: "Bundle Identifier"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.fs(11) } }
             TextField {
                 id: bundleField
                 width: parent.width

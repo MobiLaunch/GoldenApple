@@ -29,7 +29,7 @@ Item {
             action: () => { pop.current = i; pop.picked(i) }
         })), current)
     }
-    implicitWidth: Math.max(90, label.implicitWidth + 44); implicitHeight: 24
+    implicitWidth: Math.max(90, label.implicitWidth + 44); implicitHeight: Theme.fh(24)
 
     Glass {
         anchors.fill: parent
@@ -45,7 +45,7 @@ Item {
         width: parent.width - 36; elide: Text.ElideRight
         text: pop.options[pop.current] ?? ""
         color: Theme.label
-        font { family: Theme.fontUi; pixelSize: 13 }
+        font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
     }
     Symbol {
         anchors { right: parent.right; rightMargin: 7; verticalCenter: parent.verticalCenter }

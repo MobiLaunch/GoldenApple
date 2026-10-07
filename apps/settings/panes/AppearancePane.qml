@@ -66,7 +66,7 @@ Pane {
             y: 62
             text: th.label
             color: th.chosen ? Theme.label : Theme.secondaryLabel
-            font { family: Theme.fontUi; pixelSize: 12; weight: th.chosen ? Font.Bold : Font.Normal }
+            font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: th.chosen ? Font.Bold : Font.Normal }
         }
     }
 
@@ -110,7 +110,7 @@ Pane {
                         anchors.horizontalCenter: parent.horizontalCenter; y: 62
                         text: modelData.t
                         color: parent.chosen ? Theme.label : Theme.secondaryLabel
-                        font { family: Theme.fontUi; pixelSize: 12; weight: parent.chosen ? Font.Bold : Font.Normal }
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: parent.chosen ? Font.Bold : Font.Normal }
                     }
                 }
             }
@@ -152,7 +152,7 @@ Pane {
                         anchors.horizontalCenter: parent.horizontalCenter; y: 28
                         text: modelData[2]
                         color: Theme.secondaryLabel
-                        font { family: Theme.fontUi; pixelSize: 10 }
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(10) }
                     }
                 }
             }

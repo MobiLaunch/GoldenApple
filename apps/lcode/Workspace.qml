@@ -400,7 +400,7 @@ AppWindow {
                 wrapMode: Text.WordWrap
                 text: confirm.heading
                 color: Theme.label
-                font { family: Theme.fontUi; pixelSize: 14; weight: Font.Bold }
+                font { family: Theme.fontUi; pixelSize: Theme.fs(14); weight: Font.Bold }
             }
             Text {
                 width: parent.width
@@ -409,7 +409,7 @@ AppWindow {
                 text: confirm.message
                 visible: !!confirm.message
                 color: Theme.secondaryLabel
-                font { family: Theme.fontUi; pixelSize: 12 }
+                font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
             }
             Row {
                 anchors.horizontalCenter: parent.horizontalCenter
@@ -458,7 +458,7 @@ AppWindow {
             Text {
                 text: prompt.heading
                 color: Theme.label
-                font { family: Theme.fontUi; pixelSize: 14; weight: Font.Bold }
+                font { family: Theme.fontUi; pixelSize: Theme.fs(14); weight: Font.Bold }
             }
             TextField {
                 id: nameField
@@ -585,7 +585,7 @@ AppWindow {
         Column {
             width: parent.width
             spacing: 10
-            Text { text: "Go to Line"; color: Theme.label; font { family: Theme.fontUi; pixelSize: 14; weight: Font.Bold } }
+            Text { text: "Go to Line"; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.fs(14); weight: Font.Bold } }
             TextField {
                 id: lineField
                 width: parent.width

@@ -28,13 +28,13 @@ Pane {
             anchors.horizontalCenter: parent.horizontalCenter
             text: Release.fullName
             color: Theme.label
-            font { family: Theme.fontUi; pixelSize: 22; weight: Font.Bold }
+            font { family: Theme.fontUi; pixelSize: Theme.fs(22); weight: Font.Bold }
         }
         Text {
             anchors.horizontalCenter: parent.horizontalCenter
             text: "Version " + Release.version + (pane.facts.build && pane.facts.build !== Release.version ? " (" + pane.facts.build + ")" : "")
             color: Theme.secondaryLabel
-            font { family: Theme.fontUi; pixelSize: 12 }
+            font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
         }
     }
     Group {
@@ -45,7 +45,7 @@ Pane {
             delegate: SetRow {
                 required property var modelData
                 title: modelData[0]
-                Text { text: modelData[1]; color: Theme.secondaryLabel; elide: Text.ElideRight; width: Math.min(implicitWidth, 320); font { family: Theme.fontUi; pixelSize: 13 } }
+                Text { text: modelData[1]; color: Theme.secondaryLabel; elide: Text.ElideRight; width: Math.min(implicitWidth, 320); font { family: Theme.fontUi; pixelSize: Theme.fs(13) } }
             }
         }
     }

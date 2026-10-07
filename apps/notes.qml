@@ -40,12 +40,12 @@ ShellRoot {
                 Text {
                     text: app.folderTitle
                     color: Theme.label
-                    font { family: Theme.fontUi; pixelSize: 13; weight: Font.Bold }
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.Bold }
                 }
                 Text {
                     text: app.visibleNotes.length + (app.visibleNotes.length === 1 ? " note" : " notes")
                     color: Theme.secondaryLabel
-                    font { family: Theme.fontUi; pixelSize: 11 }
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
                 }
             },
             ToolbarButton {
@@ -118,7 +118,7 @@ ShellRoot {
                     leftPadding: 10; topPadding: 6; bottomPadding: 4
                     text: "On My Computer"
                     color: Theme.secondaryLabel
-                    font { family: Theme.fontUi; pixelSize: 11; weight: Font.DemiBold }
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(11); weight: Font.DemiBold }
                 }
                 Repeater {
                     model: [{ name: "All Notes", path: "", symbol: "doc" }].concat(
@@ -142,13 +142,13 @@ ShellRoot {
                             width: parent.width - 70; elide: Text.ElideRight
                             text: folderRow.modelData.name
                             color: Theme.label
-                            font { family: Theme.fontUi; pixelSize: 13; weight: folderRow.selected ? Font.DemiBold : Font.Normal }
+                            font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: folderRow.selected ? Font.DemiBold : Font.Normal }
                         }
                         Text {
                             anchors { right: parent.right; rightMargin: 10; verticalCenter: parent.verticalCenter }
                             text: folderRow.count
                             color: Theme.secondaryLabel
-                            font { family: Theme.fontUi; pixelSize: 13 }
+                            font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
                         }
                         HoverHandler { id: fh }
                         TapHandler { onTapped: app.folder = folderRow.modelData.path }
@@ -354,7 +354,7 @@ ShellRoot {
                 visible: !app.current
                 text: app.notes.length ? "No Note Selected" : "No Notes"
                 color: Theme.tertiaryLabel
-                font { family: Theme.fontUi; pixelSize: 15; weight: Font.Medium }
+                font { family: Theme.fontUi; pixelSize: Theme.fs(15); weight: Font.Medium }
             }
         }
 

@@ -21,7 +21,7 @@ Item {
     // never the accent blue that says "safe default".
     readonly property color red: Theme.dark ? "#ff453a" : "#ff3b30"
     signal clicked()
-    implicitWidth: Math.max(72, row.implicitWidth + 28); implicitHeight: 26
+    implicitWidth: Math.max(72, row.implicitWidth + 28); implicitHeight: Theme.fh(26)
     opacity: enabled ? 1 : 0.45
 
     Glass {
@@ -46,7 +46,7 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
             text: b.text
             color: b.prominent ? "#ffffff" : b.destructive ? b.red : Theme.label
-            font { family: Theme.fontUi; pixelSize: 13; weight: b.prominent ? Font.DemiBold : Font.Medium }
+            font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: b.prominent ? Font.DemiBold : Font.Medium }
         }
     }
     MouseArea { id: ma; anchors.fill: parent; hoverEnabled: true; enabled: b.enabled; onClicked: { b.forceActiveFocus(); b.clicked() } }

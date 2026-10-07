@@ -68,7 +68,7 @@ Item {
             text: box.text
             color: Theme.label
             font.family: Theme.fontUi
-            font.pixelSize: 13
+            font.pixelSize: Theme.fs(13)
             font.weight: Font.Medium
         }
 
@@ -79,7 +79,7 @@ Item {
             text: box.detail
             color: Theme.secondaryLabel
             font.family: Theme.fontUi
-            font.pixelSize: 12
+            font.pixelSize: Theme.fs(12)
         }
     }
 

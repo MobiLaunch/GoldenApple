@@ -218,7 +218,7 @@ PanelWindow {
                         anchors.horizontalCenter: parent.horizontalCenter
                         text: "Desktop " + (desk.index + 1)
                         color: "#ffffff"
-                        font { family: Theme.fontUi; pixelSize: 12; weight: desk.current ? Font.DemiBold : Font.Medium }
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: desk.current ? Font.DemiBold : Font.Medium }
                     }
                 }
             }
@@ -229,7 +229,7 @@ PanelWindow {
             width: 44; height: 44; radius: 22
             color: plusHover.hovered ? "#59ffffff" : "#33ffffff"
             border { width: 0.5; color: "#59ffffff" }
-            Text { anchors.centerIn: parent; text: "+"; color: "#ffffff"; font { family: Theme.fontUi; pixelSize: 24; weight: Font.Light } }
+            Text { anchors.centerIn: parent; text: "+"; color: "#ffffff"; font { family: Theme.fontUi; pixelSize: Theme.fs(24); weight: Font.Light } }
             HoverHandler { id: plusHover }
             TapHandler { onTapped: mc.dismiss(() => Hyprland.dispatch("workspace emptym")) }
             Accessible.role: Accessible.Button
@@ -316,7 +316,7 @@ PanelWindow {
                     elide: Text.ElideRight
                     text: win.modelData.title || (DesktopEntries.byId(win.modelData.appId)?.name ?? win.modelData.appId)
                     color: "#ffffff"
-                    font { family: Theme.fontUi; pixelSize: 12; weight: Font.Medium }
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: Font.Medium }
                 }
             }
 
@@ -355,6 +355,6 @@ PanelWindow {
         opacity: mc.progress
         text: mc.appOnly ? "No windows" : "No windows on this desktop"
         color: "#d9ffffff"
-        font { family: Theme.fontUi; pixelSize: 15; weight: Font.Medium }
+        font { family: Theme.fontUi; pixelSize: Theme.fs(15); weight: Font.Medium }
     }
 }

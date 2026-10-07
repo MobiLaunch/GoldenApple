@@ -17,14 +17,14 @@ Sheet {
         Text {
             text: "Open a Project"
             color: Theme.label
-            font { family: Theme.fontUi; pixelSize: 15; weight: Font.Bold }
+            font { family: Theme.fontUi; pixelSize: Theme.fs(15); weight: Font.Bold }
         }
         Text {
             width: parent.width
             wrapMode: Text.WordWrap
             text: "Choose a project folder (Package.swift, Cargo.toml, meson.build, main.py or an LCode app). Double-click to go into a folder."
             color: Theme.secondaryLabel
-            font { family: Theme.fontUi; pixelSize: 12 }
+            font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
         }
         FolderBrowser {
             id: browser

@@ -217,7 +217,7 @@ PanelWindow {
                     : citron.phase === "speaking" ? "" : citron.micMuted ? "Microphone off" : "Listening…"
                 visible: text !== ""
                 color: "white"
-                font { family: Theme.fontUi; pixelSize: 13; weight: Font.DemiBold }
+                font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.DemiBold }
                 layer.enabled: GraphicsInfo.api !== GraphicsInfo.Software
                 layer.effect: MultiEffect { shadowEnabled: true; shadowColor: "#90000000"; shadowBlur: 0.6; shadowVerticalOffset: 1 }
             }
@@ -292,7 +292,7 @@ PanelWindow {
                 clip: true
                 color: Theme.label
                 selectionColor: "#55a992ff"
-                font { family: Theme.fontUi; pixelSize: 14 }
+                font { family: Theme.fontUi; pixelSize: Theme.fs(14) }
                 enabled: citron.everReady && citron.phase !== "error"
                 focus: citron.open
                 onAccepted: citron.sendText()

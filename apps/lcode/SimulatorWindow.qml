@@ -73,14 +73,14 @@ FloatingWindow {
                     text: win.app.simDevice.name
                     elide: Text.ElideRight
                     color: Theme.label
-                    font { family: Theme.fontUi; pixelSize: 13; weight: Font.DemiBold }
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.DemiBold }
                 }
                 Text {
                     width: parent.width
                     text: win.notice || (win.app.simPower === "booting" ? "Booting…" : Devices.OS_NAME + " " + Devices.OS_VERSION)
                     elide: Text.ElideRight
                     color: win.app.simError ? "#ff453a" : Theme.secondaryLabel
-                    font { family: Theme.fontUi; pixelSize: 11 }
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
                 }
             }
             Row {
@@ -123,7 +123,7 @@ FloatingWindow {
             wrapMode: Text.WordWrap
             text: win.app.simError
             color: "#ffffff"
-            font { family: Theme.fontUi; pixelSize: 13 }
+            font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
         }
 
         Item {

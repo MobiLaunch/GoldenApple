@@ -107,7 +107,7 @@ Sheet {
         id: heading
         text: ["Choose a template for your new project:", "Choose options for your new project:", "Choose where to create your project:"][sheet.step]
         color: Theme.label
-        font { family: Theme.fontUi; pixelSize: 15; weight: Font.Bold }
+        font { family: Theme.fontUi; pixelSize: Theme.fs(15); weight: Font.Bold }
     }
 
     // ------------------------------------------------------------ templates
@@ -131,7 +131,7 @@ Sheet {
             y: categoryPicker.height + 18
             text: sheet.categories[sheet.category]
             color: Theme.secondaryLabel
-            font { family: Theme.fontUi; pixelSize: 11; weight: Font.DemiBold }
+            font { family: Theme.fontUi; pixelSize: Theme.fs(11); weight: Font.DemiBold }
         }
         Flow {
             id: tiles
@@ -161,14 +161,14 @@ Sheet {
                         elide: Text.ElideRight
                         text: tile.modelData.title
                         color: Theme.label
-                        font { family: Theme.fontUi; pixelSize: 12; weight: Font.DemiBold }
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: Font.DemiBold }
                     }
                     Text {
                         anchors.horizontalCenter: parent.horizontalCenter
                         y: 102
                         text: Languages.toolchain(tile.modelData.toolchain).name
                         color: Theme.secondaryLabel
-                        font { family: Theme.fontUi; pixelSize: 10 }
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(10) }
                     }
                     HoverHandler { id: tileHover }
                     TapHandler {
@@ -187,7 +187,7 @@ Sheet {
                 wrapMode: Text.WordWrap
                 text: sheet.currentTemplate.detail
                 color: Theme.secondaryLabel
-                font { family: Theme.fontUi; pixelSize: 12 }
+                font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
             }
             Text {
                 // Building needs the language's tools; say so before you start.
@@ -196,7 +196,7 @@ Sheet {
                 wrapMode: Text.WordWrap
                 text: visible ? sheet.toolchainInfo.name + " isn't installed yet. Install it with: " + sheet.toolchainInfo.hint : ""
                 color: "#ff9f0a"
-                font { family: Theme.fontUi; pixelSize: 12 }
+                font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
             }
         }
     }
@@ -221,7 +221,7 @@ Sheet {
                     verticalAlignment: Text.AlignVCenter
                     text: parent.label
                     color: Theme.label
-                    font { family: Theme.fontUi; pixelSize: 13 }
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
                 }
                 Item { id: slot; width: 360; height: 30 }
             }
@@ -234,7 +234,7 @@ Sheet {
                     anchors.verticalCenter: parent.verticalCenter
                     text: nameField.text ? sheet.bundleId() : "—"
                     color: Theme.secondaryLabel
-                    font { family: Theme.fontUi; pixelSize: 13 }
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
                 }
             }
             Labeled {
@@ -243,7 +243,7 @@ Sheet {
                     anchors.verticalCenter: parent.verticalCenter
                     text: Languages.toolchain(sheet.currentTemplate.toolchain).name + (sheet.designed ? " (App Designer, QML)" : "")
                     color: Theme.secondaryLabel
-                    font { family: Theme.fontUi; pixelSize: 13 }
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
                 }
             }
             Labeled {
@@ -302,7 +302,7 @@ Sheet {
         elide: Text.ElideMiddle
         text: sheet.error || ("“" + nameField.text.trim() + "” will be created in " + (browser.selected || browser.path))
         color: sheet.error ? "#ff453a" : Theme.secondaryLabel
-        font { family: Theme.fontUi; pixelSize: 12 }
+        font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
     }
 
     Row {

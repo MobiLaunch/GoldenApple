@@ -65,14 +65,14 @@ Page {
                         anchors.verticalCenter: parent.verticalCenter
                         text: devRow.modelData.name
                         color: Theme.label
-                        font { family: Theme.fontUi; pixelSize: 13 }
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
                     }
                     Text {
                         anchors { right: parent.right; rightMargin: devRow.modelData.custom ? 40 : 12; verticalCenter: parent.verticalCenter }
                         text: devRow.modelData.width + " × " + devRow.modelData.height + " pt  ·  "
                             + ({ island: "Dynamic Island", "home-button": "Home Button", none: "No Cutout" })[devRow.modelData.cutout]
                         color: Theme.secondaryLabel
-                        font { family: Theme.fontUi; pixelSize: 12 }
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
                     }
                     ToolbarButton {
                         visible: !!devRow.modelData.custom
@@ -98,7 +98,7 @@ Page {
         Row {
             spacing: 8
             TextField { id: widthField; width: 80; height: 28; text: "393"; input.validator: IntValidator { bottom: 1; top: 4096 } }
-            Text { anchors.verticalCenter: parent.verticalCenter; text: "×"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: 13 } }
+            Text { anchors.verticalCenter: parent.verticalCenter; text: "×"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.fs(13) } }
             TextField { id: heightField; width: 80; height: 28; text: "852"; input.validator: IntValidator { bottom: 1; top: 4096 } }
         }
     }

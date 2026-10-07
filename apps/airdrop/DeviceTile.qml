@@ -91,7 +91,7 @@ Item {
         text: tile.device.alias || "Device"
         elide: Text.ElideRight
         color: Theme.label
-        font { family: Theme.fontUi; pixelSize: 13; weight: Font.Medium }
+        font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.Medium }
     }
     Text {
         anchors { top: name.bottom; topMargin: 1; horizontalCenter: parent.horizontalCenter }
@@ -102,7 +102,7 @@ Item {
         color: tile.transfer && tile.transfer.state === "sent" ? Theme.accent
              : tile.transfer && (tile.transfer.state === "declined" || tile.transfer.state === "failed") ? "#ff453a"
              : Theme.secondaryLabel
-        font { family: Theme.fontUi; pixelSize: 11 }
+        font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
     }
 
     MouseArea {

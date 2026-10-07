@@ -107,6 +107,7 @@ FloatingWindow {
             Theme.glassStyle = d.glass ?? "clear"
             Theme.reduceTransparency = d.reduceTransparency ?? false
             Theme.reduceMotion = d.reduceMotion ?? false
+            Theme.textScale = d.textScale ?? 1
         }
     }
 

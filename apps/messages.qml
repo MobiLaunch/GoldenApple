@@ -51,7 +51,7 @@ ShellRoot {
                     anchors.verticalCenter: parent.verticalCenter
                     text: app.composing ? "New Message" : app.current ? app.current.name : ""
                     color: Theme.label
-                    font { family: Theme.fontUi; pixelSize: 13; weight: Font.DemiBold }
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.DemiBold }
                 }
             },
             ToolbarButton {
@@ -118,7 +118,7 @@ ShellRoot {
                                     text: modelData.name
                                     elide: Text.ElideRight
                                     color: Theme.label
-                                    font { family: Theme.fontUi; pixelSize: 11 }
+                                    font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
                                 }
                                 TapHandler {
                                     acceptedButtons: Qt.LeftButton | Qt.RightButton
@@ -143,7 +143,7 @@ ShellRoot {
                                 anchors.verticalCenter: parent.verticalCenter
                                 text: app.recipientName ? app.recipientName : "New Message"
                                 color: "#ffffff"
-                                font { family: Theme.fontUi; pixelSize: 13; weight: Font.DemiBold }
+                                font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.DemiBold }
                             }
                         }
                     }
@@ -168,7 +168,7 @@ ShellRoot {
                         wrapMode: Text.WordWrap
                         text: search.text ? "No Results" : app.loaded ? "No Conversations" : ""
                         color: Theme.secondaryLabel
-                        font { family: Theme.fontUi; pixelSize: 13 }
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
                     }
                 }
             }
@@ -393,7 +393,7 @@ ShellRoot {
                             : app.phoneState === "starting" ? "Starting…"
                             : "Connecting to your iPhone… Keep it nearby with Bluetooth on."
                         color: Theme.secondaryLabel
-                        font { family: Theme.fontUi; pixelSize: 11 }
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
                     }
                     Button {
                         visible: app.phoneState === "locked"
@@ -428,7 +428,7 @@ ShellRoot {
                     anchors { left: parent.left; leftMargin: 18; verticalCenter: parent.verticalCenter }
                     text: "To:"
                     color: Theme.secondaryLabel
-                    font { family: Theme.fontUi; pixelSize: 13 }
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
                 }
                 TextField {
                     id: to
@@ -506,8 +506,8 @@ ShellRoot {
                                 Avatar { size: 28; name: modelData.name; anchors.verticalCenter: parent.verticalCenter }
                                 Column {
                                     anchors.verticalCenter: parent.verticalCenter
-                                    Text { text: modelData.name; color: pick.hovered ? "#ffffff" : Theme.label; font { family: Theme.fontUi; pixelSize: 13 } }
-                                    Text { text: modelData.address; color: pick.hovered ? "#d9ffffff" : Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: 11 } }
+                                    Text { text: modelData.name; color: pick.hovered ? "#ffffff" : Theme.label; font { family: Theme.fontUi; pixelSize: Theme.fs(13) } }
+                                    Text { text: modelData.address; color: pick.hovered ? "#d9ffffff" : Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.fs(11) } }
                                 }
                             }
                             HoverHandler { id: pick }
@@ -522,7 +522,7 @@ ShellRoot {
                 anchors.centerIn: parent
                 text: app.threads.length ? "" : "Messages you send and receive on your iPhone appear here."
                 color: Theme.secondaryLabel
-                font { family: Theme.fontUi; pixelSize: 13 }
+                font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
             }
 
             // ---------------------------------------------------- composer
@@ -541,7 +541,7 @@ ShellRoot {
                     wrapMode: Text.WordWrap
                     text: "Reply to this group from your iPhone. Your iPhone doesn't say who's in it."
                     color: Theme.secondaryLabel
-                    font { family: Theme.fontUi; pixelSize: 11 }
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
                 }
                 Glass {
                     id: draftBox
@@ -617,7 +617,7 @@ ShellRoot {
                     wrapMode: Text.WordWrap
                     text: app.error
                     color: Theme.label
-                    font { family: Theme.fontUi; pixelSize: 12 }
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
                 }
                 Timer { running: parent.visible; interval: 6000; onTriggered: app.error = "" }
             }

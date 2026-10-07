@@ -204,7 +204,7 @@ PanelWindow {
             foreground: "#ffffff"
             placeholderColor: Qt.rgba(1, 1, 1, 0.78)
             input.selectedTextColor: "#ffffff"
-            input.font.pixelSize: 13
+            input.font.pixelSize: Theme.fs(13)
             onTextChanged: { pages.currentIndex = 0; pages.positionViewAtBeginning() }
             input.Keys.onEscapePressed: apps.folder ? apps.folder = null : search.text ? search.text = "" : apps.dismiss()
             input.Keys.onReturnPressed: {
@@ -305,7 +305,7 @@ PanelWindow {
                             elide: Text.ElideRight
                             color: "#ffffff"
                             style: Text.Raised; styleColor: "#8c000000"
-                            font { family: Theme.fontUi; pixelSize: 13; weight: Font.Medium }
+                            font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.Medium }
                         }
                         MouseArea {
                             id: area
@@ -333,13 +333,13 @@ PanelWindow {
             anchors.horizontalCenter: parent.horizontalCenter
             text: search.text.trim() ? "No Results" : "No Applications"
             color: "#ffffff"
-            font { family: Theme.fontUi; pixelSize: 20; weight: Font.DemiBold }
+            font { family: Theme.fontUi; pixelSize: Theme.fs(20); weight: Font.DemiBold }
         }
         Text {
             anchors.horizontalCenter: parent.horizontalCenter
             text: search.text.trim() ? "Try another search." : "Run gg-diagnostics and check the CitronOS shell section."
             color: Qt.rgba(1, 1, 1, 0.7)
-            font { family: Theme.fontUi; pixelSize: 13 }
+            font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
         }
     }
 
@@ -411,7 +411,7 @@ PanelWindow {
                             elide: Text.ElideRight
                             color: "#ffffff"
                             style: Text.Raised; styleColor: "#8c000000"
-                            font { family: Theme.fontUi; pixelSize: 12; weight: Font.Medium }
+                            font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: Font.Medium }
                         }
                         MouseArea {
                             id: farea

@@ -195,7 +195,7 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
                 text: Math.round(root.battery * 100) + "%"
                 color: "white"
-                font { family: Theme.fontUi; pixelSize: 13; weight: Font.Medium }
+                font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.Medium }
             }
             Item {   // the battery, drawn
                 width: 27; height: 13
@@ -268,7 +268,7 @@ Item {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: root.userName
                 color: "white"
-                font { family: Theme.fontUi; pixelSize: 15; weight: Font.DemiBold }
+                font { family: Theme.fontUi; pixelSize: Theme.fs(15); weight: Font.DemiBold }
                 style: Text.Raised; styleColor: "#26001433"
             }
             Item { width: 1; height: 12 }
@@ -306,7 +306,7 @@ Item {
                         border.width: 0
                         enabled: !root.busy
                         input.passwordCharacter: "●"
-                        input.font.pixelSize: 13
+                        input.font.pixelSize: Theme.fs(13)
                         input.font.letterSpacing: field.text ? 2 : 0     // the dots, not the placeholder
                         input.focus: true
                         input.onTextChanged: if (field.text) root.wake()
@@ -360,7 +360,7 @@ Item {
                 color: "#d9ffffff"
                 opacity: text ? 1 : 0
                 Behavior on opacity { NumberAnimation { duration: 200 } }
-                font { family: Theme.fontUi; pixelSize: 12; weight: Font.Medium }
+                font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: Font.Medium }
             }
         }
     }

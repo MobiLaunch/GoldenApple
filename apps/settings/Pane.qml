@@ -34,7 +34,7 @@ Flickable {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: pane.headerTitle
                 color: Theme.label
-                font { family: Theme.fontUi; pixelSize: 17; weight: Font.Bold }
+                font { family: Theme.fontUi; pixelSize: Theme.fs(17); weight: Font.Bold }
             }
             Text {
                 width: parent.width
@@ -42,7 +42,7 @@ Flickable {
                 visible: !!pane.headerText
                 text: pane.headerText
                 color: Theme.secondaryLabel
-                font { family: Theme.fontUi; pixelSize: 12 }
+                font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
             }
         }
     }

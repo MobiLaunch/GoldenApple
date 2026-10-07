@@ -17,7 +17,7 @@ Item {
         Text {
             text: head.text
             color: Theme.label
-            font { family: Theme.fontUi; pixelSize: 17; weight: Font.Bold }
+            font { family: Theme.fontUi; pixelSize: Theme.fs(17); weight: Font.Bold }
         }
         Symbol {
             visible: head.more

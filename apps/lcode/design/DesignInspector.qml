@@ -80,7 +80,7 @@ Flickable {
             topPadding: 4
             text: parent.title
             color: Theme.label
-            font { family: Theme.fontUi; pixelSize: 12; weight: Font.DemiBold }
+            font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: Font.DemiBold }
         }
         Column { id: body; width: parent.width; spacing: 7 }
     }
@@ -98,7 +98,7 @@ Flickable {
             elide: Text.ElideRight
             text: parent.label
             color: Theme.secondaryLabel
-            font { family: Theme.fontUi; pixelSize: 11 }
+            font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
         }
         Item { id: slot; x: 90; width: parent.width - 90; height: childrenRect.height }
     }
@@ -178,7 +178,7 @@ Flickable {
                     required property int modelData
                     width: 16; height: 12; radius: 3
                     color: stepHover.hovered ? Theme.fill : "transparent"
-                    Text { anchors.centerIn: parent; text: parent.modelData > 0 ? "▴" : "▾"; color: Theme.secondaryLabel; font.pixelSize: 10 }
+                    Text { anchors.centerIn: parent; text: parent.modelData > 0 ? "▴" : "▾"; color: Theme.secondaryLabel; font.pixelSize: Theme.fs(10) }
                     HoverHandler { id: stepHover }
                     TapHandler { onTapped: nv.push((nv.empty ? 0 : nv.value) + parent.modelData * nv.step) }
                 }
@@ -210,7 +210,7 @@ Flickable {
             elide: Text.ElideRight
             text: cv.value || cv.placeholder
             color: cv.value ? Theme.label : Theme.tertiaryLabel
-            font { family: Theme.fontUi; pixelSize: 11 }
+            font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
         }
         TapHandler { onTapped: insp.pickColor(cv, cv.value, (v) => cv.commit(v), cv.customOnly) }
     }
@@ -230,7 +230,7 @@ Flickable {
             anchors.verticalCenter: parent.verticalCenter
             text: sv.value || "None"
             color: sv.value ? Theme.label : Theme.tertiaryLabel
-            font { family: Theme.fontUi; pixelSize: 11 }
+            font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
         }
         TapHandler { onTapped: insp.pickSymbol(sv, sv.value, (v) => sv.commit(v)) }
     }
@@ -303,7 +303,7 @@ Flickable {
                 text: insp.node ? Catalog.title(insp.node.type) : insp.sel.kind === "screen" ? "Screen" : insp.sel.kind === "variable" ? "Variable"
                     : insp.sel.kind === "color" ? "Color" : "App"
                 color: Theme.label
-                font { family: Theme.fontUi; pixelSize: 14; weight: Font.Bold }
+                font { family: Theme.fontUi; pixelSize: Theme.fs(14); weight: Font.Bold }
             }
         }
         Text {
@@ -312,7 +312,7 @@ Flickable {
             wrapMode: Text.Wrap
             text: insp.info ? insp.info.detail : ""
             color: Theme.secondaryLabel
-            font { family: Theme.fontUi; pixelSize: 11 }
+            font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
         }
 
         // Attributes / Layout / Actions.
@@ -377,7 +377,7 @@ Flickable {
                                         width: parent.width - 12
                                         text: String(fr.current || "")
                                         wrapMode: TextEdit.Wrap
-                                        font { family: Theme.fontUi; pixelSize: 12 }
+                                        font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
                                         onActiveFocusChanged: if (!activeFocus && text !== String(fr.current || "")) insp.set(fr.f.key, text)
                                     }
                                 }
@@ -422,7 +422,7 @@ Flickable {
                                         elide: Text.ElideMiddle
                                         text: fr.current ? String(fr.current) : "Choose…"
                                         color: fr.current ? Theme.label : Theme.tertiaryLabel
-                                        font { family: Theme.fontUi; pixelSize: 11 }
+                                        font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
                                     }
                                     TapHandler { onTapped: insp.pickImage(iw, String(fr.current || ""), (v) => insp.set(fr.f.key, v || null)) }
                                 }
@@ -463,7 +463,7 @@ Flickable {
                     wrapMode: Text.Wrap
                     text: insp.props.binding ? "Shows and changes “" + insp.props.binding + "”." : "Bind it to a variable to use its value elsewhere, with {name} in text or in actions."
                     color: Theme.tertiaryLabel
-                    font { family: Theme.fontUi; pixelSize: 10 }
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(10) }
                 }
             }
 
@@ -797,7 +797,7 @@ Flickable {
                 text: insp.node && insp.node.type === "Spacer" ? "A spacer takes all the room its stack has left. Use Minimum Length in Attributes to keep some space even when there's none left."
                                                               : "A divider runs across its stack (down it, in a horizontal stack)."
                 color: Theme.secondaryLabel
-                font { family: Theme.fontUi; pixelSize: 11 }
+                font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
             }
         }
 
@@ -811,7 +811,7 @@ Flickable {
                 wrapMode: Text.Wrap
                 text: "Actions run in order. Use {name} to put a variable's value in text."
                 color: Theme.secondaryLabel
-                font { family: Theme.fontUi; pixelSize: 11 }
+                font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
             }
             Repeater {
                 model: {
@@ -930,7 +930,7 @@ Flickable {
                         verticalAlignment: Text.AlignVCenter
                         text: insp.screen ? insp.screen.id : ""
                         color: Theme.secondaryLabel
-                        font { family: "monospace"; pixelSize: 11 }
+                        font { family: "monospace"; pixelSize: Theme.fs(11) }
                     }
                 }
                 Row {
@@ -998,7 +998,7 @@ Flickable {
                     text: (insp.variable && insp.variable.persist ? "Kept when the app quits, and restored when it opens. " : "Starts fresh each time the app opens. ")
                         + (insp.variable ? "Used by " + Design.usesOf(insp.doc, insp.variable.name).length + " item(s)." : "")
                     color: Theme.tertiaryLabel
-                    font { family: Theme.fontUi; pixelSize: 10 }
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(10) }
                 }
                 Button { text: "Delete Variable"; destructive: true; onClicked: insp.designer.removeSelected() }
             }
@@ -1030,7 +1030,7 @@ Flickable {
                     wrapMode: Text.Wrap
                     text: "Use it by name anywhere a color is chosen (the App tab of the color picker). It changes with the appearance."
                     color: Theme.tertiaryLabel
-                    font { family: Theme.fontUi; pixelSize: 10 }
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(10) }
                 }
                 Button { text: "Delete Color"; destructive: true; onClicked: insp.designer.removeSelected() }
             }

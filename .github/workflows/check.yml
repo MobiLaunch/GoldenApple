@@ -349,6 +349,14 @@ jobs:
         run: python tests/symbol-motion.py
         env:
           QT_QPA_PLATFORM: offscreen
+      - name: "Text Size scales CitronOS's own text and controls"
+        run: python tests/text-size.py
+        env:
+          QT_QPA_PLATFORM: offscreen
+      - name: "Displays: a scale change keeps the layout, asks to keep it, and reverts by itself"
+        run: python tests/displays-scale.py
+        env:
+          QT_QPA_PLATFORM: offscreen
       - name: A prominent destructive button is red, not the accent
         run: python tests/button-destructive.py
         env:

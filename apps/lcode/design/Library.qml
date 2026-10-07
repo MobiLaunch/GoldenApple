@@ -69,7 +69,7 @@ Popover {
                             y: 8
                             text: tile.modelData.section || ""
                             color: Theme.secondaryLabel
-                            font { family: Theme.fontUi; pixelSize: 11; weight: Font.DemiBold }
+                            font { family: Theme.fontUi; pixelSize: Theme.fs(11); weight: Font.DemiBold }
                         }
                         Rectangle {
                             visible: !tile.modelData.section
@@ -92,7 +92,7 @@ Popover {
                                 elide: Text.ElideRight
                                 text: tile.modelData.title || ""
                                 color: Theme.label
-                                font { family: Theme.fontUi; pixelSize: 11 }
+                                font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
                             }
                         }
                         MouseArea {
@@ -124,7 +124,7 @@ Popover {
                 topPadding: 6
                 text: lib.hovered ? lib.hovered.title : "Library"
                 color: Theme.label
-                font { family: Theme.fontUi; pixelSize: 12; weight: Font.DemiBold }
+                font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: Font.DemiBold }
             }
             Text {
                 width: parent.width
@@ -132,7 +132,7 @@ Popover {
                 wrapMode: Text.Wrap
                 text: lib.hovered ? lib.hovered.detail : "Double-click to add after the selection, or drag onto the canvas."
                 color: Theme.secondaryLabel
-                font { family: Theme.fontUi; pixelSize: 11 }
+                font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
             }
         }
     }

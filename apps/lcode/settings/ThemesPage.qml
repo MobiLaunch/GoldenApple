@@ -119,8 +119,8 @@ Item {
                         border { width: 1; color: Theme.separator }
                         Row {
                             anchors.centerIn: parent
-                            Text { text: "A"; color: themeRow.modelData.keyword; font { family: "monospace"; pixelSize: 13; weight: Font.Bold } }
-                            Text { text: "a"; color: themeRow.modelData.string; font { family: "monospace"; pixelSize: 13 } }
+                            Text { text: "A"; color: themeRow.modelData.keyword; font { family: "monospace"; pixelSize: Theme.fs(13); weight: Font.Bold } }
+                            Text { text: "a"; color: themeRow.modelData.string; font { family: "monospace"; pixelSize: Theme.fs(13) } }
                         }
                     }
                     Text {
@@ -130,7 +130,7 @@ Item {
                         elide: Text.ElideRight
                         text: themeRow.modelData.name
                         color: Theme.label
-                        font { family: Theme.fontUi; pixelSize: 13 }
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
                     }
                     Symbol {
                         visible: page.lightId === themeRow.modelData.id || page.darkId === themeRow.modelData.id
@@ -201,7 +201,7 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
                     text: page.selected.name
                     color: Theme.label
-                    font { family: Theme.fontUi; pixelSize: 15; weight: Font.Bold }
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(15); weight: Font.Bold }
                 }
                 Button {
                     anchors.right: parent.right
@@ -215,7 +215,7 @@ Item {
                 text: (page.lightId === page.selected.id ? "In use for the Light appearance. " : page.darkId === page.selected.id ? "In use for the Dark appearance. " : "")
                     + (page.selected.builtIn ? "Built-in themes stay as they are: duplicate one to change its colors." : "Click a color to change it.")
                 color: Theme.secondaryLabel
-                font { family: Theme.fontUi; pixelSize: 12 }
+                font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
             }
             Checkbox {
                 width: 440
@@ -258,11 +258,11 @@ Item {
                         Column {
                             x: chip.x + chip.width + 10
                             anchors.verticalCenter: parent.verticalCenter
-                            Text { text: Syntax.THEME_TITLES[tokenRow.modelData]; color: Theme.label; font { family: Theme.fontUi; pixelSize: 12 } }
+                            Text { text: Syntax.THEME_TITLES[tokenRow.modelData]; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.fs(12) } }
                             Text {
                                 text: page.selected[tokenRow.modelData] || "Accent color"
                                 color: Theme.secondaryLabel
-                                font { family: "monospace"; pixelSize: 10 }
+                                font { family: "monospace"; pixelSize: Theme.fs(10) }
                             }
                         }
                         HoverHandler { id: tokenHover }

@@ -92,12 +92,12 @@ Item {
             Text {
                 text: pe.project ? (pe.project.displayName || pe.project.name) : ""
                 color: Theme.label
-                font { family: Theme.fontUi; pixelSize: 15; weight: Font.Bold }
+                font { family: Theme.fontUi; pixelSize: Theme.fs(15); weight: Font.Bold }
             }
             Text {
                 text: pe.project ? Languages.toolchain(pe.project.toolchain).name + "  ·  " + (pe.project.bundleId || "no bundle identifier") : ""
                 color: Theme.secondaryLabel
-                font { family: Theme.fontUi; pixelSize: 11 }
+                font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
             }
         }
         Segmented {
@@ -115,7 +115,7 @@ Item {
         default property alias items: body.data
         width: parent ? parent.width : 0
         spacing: 8
-        Text { text: parent.title; color: Theme.label; font { family: Theme.fontUi; pixelSize: 13; weight: Font.Bold } }
+        Text { text: parent.title; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.Bold } }
         Rectangle {
             width: parent.width
             height: body.height + 24
@@ -130,7 +130,7 @@ Item {
             wrapMode: Text.Wrap
             text: parent.note
             color: Theme.secondaryLabel
-            font { family: Theme.fontUi; pixelSize: 11 }
+            font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
         }
     }
     component Field: Item {
@@ -145,7 +145,7 @@ Item {
             verticalAlignment: Text.AlignVCenter
             text: parent.label
             color: Theme.label
-            font { family: Theme.fontUi; pixelSize: 13 }
+            font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
         }
         Item { id: slot; x: 162; width: parent.width - 162; height: childrenRect.height }
     }
@@ -188,7 +188,7 @@ Item {
                         Row {
                             spacing: 8
                             MetaField { key: "version"; fallback: "1.0"; width: 90 }
-                            Text { anchors.verticalCenter: parent.verticalCenter; text: "Build"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: 13 } }
+                            Text { anchors.verticalCenter: parent.verticalCenter; text: "Build"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.fs(13) } }
                             MetaField { key: "build"; fallback: "1"; width: 70 }
                         }
                     }
@@ -237,7 +237,7 @@ Item {
                             verticalAlignment: Text.AlignVCenter
                             text: pe.project ? Languages.toolchain(pe.project.toolchain).name + (pe.app.projectToolchain && pe.app.projectToolchain.version ? "  —  " + pe.app.projectToolchain.version : "") : ""
                             color: Theme.secondaryLabel
-                            font { family: Theme.fontUi; pixelSize: 13 }
+                            font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
                         }
                     }
                     Field {
@@ -293,7 +293,7 @@ Item {
                                     }
                                 }
                             }
-                            Text { anchors.horizontalCenter: parent.horizontalCenter; text: modelData.title; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: 11 } }
+                            Text { anchors.horizontalCenter: parent.horizontalCenter; text: modelData.title; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.fs(11) } }
                         }
                     }
                 }
@@ -461,7 +461,7 @@ Item {
                     wrapMode: Text.Wrap
                     text: "When you export your app as a Flatpak it runs in a sandbox, like an App Store app. Turn on what it needs; everything else stays out of reach."
                     color: Theme.secondaryLabel
-                    font { family: Theme.fontUi; pixelSize: 12 }
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
                 }
                 Grid {
                     columns: 2
@@ -484,8 +484,8 @@ Item {
                                 x: 46; y: 12
                                 width: parent.width - 46 - 60
                                 spacing: 2
-                                Text { text: capCard.modelData.title; color: Theme.label; font { family: Theme.fontUi; pixelSize: 13; weight: Font.DemiBold } }
-                                Text { width: parent.width; wrapMode: Text.Wrap; text: capCard.modelData.detail; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: 11 } }
+                                Text { text: capCard.modelData.title; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.DemiBold } }
+                                Text { width: parent.width; wrapMode: Text.Wrap; text: capCard.modelData.detail; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.fs(11) } }
                             }
                             Switch {
                                 anchors { right: parent.right; rightMargin: 14; verticalCenter: parent.verticalCenter }

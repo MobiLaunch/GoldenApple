@@ -464,7 +464,7 @@ Item {
             id: toastText
             anchors.centerIn: parent
             color: "white"
-            font { family: Theme.fontUi; pixelSize: 12 }
+            font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
         }
         Timer { id: toastTimer; interval: 2600; onTriggered: toast.shown = false }
     }

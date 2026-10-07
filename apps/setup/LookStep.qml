@@ -82,7 +82,7 @@ StepFrame {
                     anchors.horizontalCenter: parent.horizontalCenter
                     text: modelData.t
                     color: Theme.label
-                    font { family: Theme.fontUi; pixelSize: 13; weight: step.look === modelData.v ? Font.DemiBold : Font.Normal }
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: step.look === modelData.v ? Font.DemiBold : Font.Normal }
                 }
             }
         }
@@ -94,6 +94,6 @@ StepFrame {
         visible: step.look === "auto"
         text: "Auto is light during the day and dark at night."
         color: Theme.secondaryLabel
-        font { family: Theme.fontUi; pixelSize: 12 }
+        font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
     }
 }

@@ -128,7 +128,7 @@ PanelWindow {
                             sourceSize: Qt.size(192, 192)
                             source: Quickshell.iconPath(modelData.icon, "application-x-executable")
                         }
-                        Text { Layout.alignment: Qt.AlignHCenter; text: modelData.name; color: Theme.label; font { family: Theme.fontUi; pixelSize: 12; weight: Font.Medium } }
+                        Text { Layout.alignment: Qt.AlignHCenter; text: modelData.name; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: Font.Medium } }
                     }
                 }
             }

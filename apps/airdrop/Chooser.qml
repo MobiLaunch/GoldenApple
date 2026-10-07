@@ -45,7 +45,7 @@ Item {
             text: "Choose Files to Send to " + chooser.to
             elide: Text.ElideRight
             color: Theme.label
-            font { family: Theme.fontUi; pixelSize: 13; weight: Font.Bold }
+            font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.Bold }
         }
 
         // Places.
@@ -78,7 +78,7 @@ Item {
                             anchors.verticalCenter: parent.verticalCenter
                             text: modelData.label
                             color: Theme.label
-                            font { family: Theme.fontUi; pixelSize: 12 }
+                            font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
                         }
                     }
                     HoverHandler { id: hover }
@@ -110,7 +110,7 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
                     text: String(files.folder).replace("file://", "").replace(chooser.homePath, "~")
                     color: Theme.secondaryLabel
-                    font { family: Theme.fontUi; pixelSize: 11 }
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
                 }
             }
             ListView {
@@ -142,7 +142,7 @@ Item {
                             text: fileName
                             elide: Text.ElideMiddle
                             color: picked ? "#ffffff" : Theme.label
-                            font { family: Theme.fontUi; pixelSize: 12 }
+                            font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
                             anchors.verticalCenter: parent.verticalCenter
                         }
                     }
@@ -152,7 +152,7 @@ Item {
                         text: fileSize > 1e9 ? (fileSize / 1e9).toFixed(1) + " GB" : fileSize > 1e6 ? (fileSize / 1e6).toFixed(1) + " MB"
                             : fileSize > 1e3 ? Math.round(fileSize / 1e3) + " KB" : fileSize + " bytes"
                         color: picked ? "#ffffff" : Theme.secondaryLabel
-                        font { family: Theme.fontUi; pixelSize: 11 }
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
                     }
                     HoverHandler { id: rowHover }
                     TapHandler { onTapped: chooser.toggle(filePath) }

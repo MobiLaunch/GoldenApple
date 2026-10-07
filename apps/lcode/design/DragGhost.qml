@@ -43,6 +43,6 @@ Item {
         anchors.verticalCenter: parent.verticalCenter
         text: ghost.title
         color: Theme.label
-        font { family: Theme.fontUi; pixelSize: 12; weight: Font.DemiBold }
+        font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: Font.DemiBold }
     }
 }

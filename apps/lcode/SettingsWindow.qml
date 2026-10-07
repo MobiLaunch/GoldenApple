@@ -35,7 +35,7 @@ AppWindow {
             anchors.verticalCenter: parent.verticalCenter
             text: win.pages[win.page].title
             color: Theme.label
-            font { family: Theme.fontUi; pixelSize: 13; weight: Font.Bold }
+            font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.Bold }
         }
     ]
 
@@ -77,7 +77,7 @@ AppWindow {
                         y: 34
                         text: tab.modelData.title
                         color: tab.current ? Theme.accent : Theme.label
-                        font { family: Theme.fontUi; pixelSize: 11; weight: tab.current ? Font.DemiBold : Font.Normal }
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(11); weight: tab.current ? Font.DemiBold : Font.Normal }
                     }
                     HoverHandler { id: tabHover }
                     TapHandler { onTapped: win.app.settingsPage = tab.index }

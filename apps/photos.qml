@@ -44,12 +44,12 @@ ShellRoot {
                     Text {
                         text: app.viewing >= 0 ? app.dayText(app.shown[app.viewing]) : app.sectionTitle
                         color: Theme.label
-                        font { family: Theme.fontUi; pixelSize: 13; weight: Font.Bold }
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.Bold }
                     }
                     Text {
                         text: app.viewing >= 0 ? app.timeText(app.shown[app.viewing]) : app.countText
                         color: Theme.secondaryLabel
-                        font { family: Theme.fontUi; pixelSize: 11 }
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
                     }
                 }
             },
@@ -335,7 +335,7 @@ ShellRoot {
                             text: Math.floor(tile.modelData.seconds / 60) + ":" + String(tile.modelData.seconds % 60).padStart(2, "0")
                             color: "#ffffff"
                             style: Text.Raised; styleColor: "#66000000"
-                            font { family: Theme.fontUi; pixelSize: 11; weight: Font.DemiBold }
+                            font { family: Theme.fontUi; pixelSize: Theme.fs(11); weight: Font.DemiBold }
                         }
                         Symbol {
                             visible: app.isFavorite(tile.modelData.path)
@@ -359,7 +359,7 @@ ShellRoot {
                     visible: grid.count === 0 && !scanner.running
                     text: app.section === "favorites" ? "No Favorites" : app.items.length ? "No Results" : "No Photos"
                     color: Theme.tertiaryLabel
-                    font { family: Theme.fontUi; pixelSize: 17; weight: Font.DemiBold }
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(17); weight: Font.DemiBold }
                 }
             }
 

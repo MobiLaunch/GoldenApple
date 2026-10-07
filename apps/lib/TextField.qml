@@ -18,7 +18,7 @@ Rectangle {
     property int fontWeight: Font.Normal
     property real glyphSize: 12            // the search glyph (Spotlight's is larger)
     signal accepted()
-    implicitWidth: 200; implicitHeight: 26
+    implicitWidth: 200; implicitHeight: Theme.fh(26)
     radius: search ? height / 2 : 7
     color: bare ? "transparent" : Theme.dark ? "#1affffff" : "#ffffff"
     border { width: bare ? 0 : input.activeFocus ? 3 : 0.5; color: input.activeFocus ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.5) : Theme.separator }
@@ -36,7 +36,7 @@ Rectangle {
         Accessible.name: tf.placeholder
         clip: true
         echoMode: tf.password ? TextInput.Password : TextInput.Normal
-        font { family: Theme.fontUi; pixelSize: 13; weight: tf.fontWeight }
+        font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: tf.fontWeight }
         onAccepted: tf.accepted()
         Text {
             width: input.width

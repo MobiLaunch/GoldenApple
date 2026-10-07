@@ -31,14 +31,14 @@ Item {
         elide: Text.ElideRight
         text: tile.album?.title ?? ""
         color: Theme.label
-        font { family: Theme.fontUi; pixelSize: 13; weight: Font.Medium }
+        font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.Medium }
     }
     Text {
         y: tile.size + 23; width: tile.size
         elide: Text.ElideRight
         text: tile.album?.artist ?? ""
         color: Theme.secondaryLabel
-        font { family: Theme.fontUi; pixelSize: 13 }
+        font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
     }
     HoverHandler { id: hover }
     TapHandler { onTapped: tile.open() }

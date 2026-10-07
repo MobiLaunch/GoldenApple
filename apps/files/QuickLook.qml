@@ -130,7 +130,7 @@ Item {
                     elide: Text.ElideMiddle
                     text: look.entry?.name ?? ""
                     color: Theme.label
-                    font { family: Theme.fontUi; pixelSize: 13; weight: Font.DemiBold }
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.DemiBold }
                 }
                 Text {
                     width: parent.width
@@ -138,7 +138,7 @@ Item {
                     visible: look.kind === "image" && picture.status === Image.Ready
                     text: picture.implicitWidth + " × " + picture.implicitHeight
                     color: Theme.secondaryLabel
-                    font { family: Theme.fontUi; pixelSize: 11 }
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
                 }
             }
             Button {
@@ -163,7 +163,7 @@ Item {
                 textFormat: Text.PlainText
                 wrapMode: Text.WrapAtWordBoundaryOrAnywhere
                 color: Theme.label
-                font { family: /\.(md|txt)$/i.test(look.entry?.name ?? "") ? Theme.fontUi : "SF Mono"; pixelSize: 13 }
+                font { family: /\.(md|txt)$/i.test(look.entry?.name ?? "") ? Theme.fontUi : "SF Mono"; pixelSize: Theme.fs(13) }
                 lineHeight: 1.15
             }
         }
@@ -185,19 +185,19 @@ Item {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: look.entry?.name ?? ""
                 color: Theme.label
-                font { family: Theme.fontUi; pixelSize: 17; weight: Font.DemiBold }
+                font { family: Theme.fontUi; pixelSize: Theme.fs(17); weight: Font.DemiBold }
             }
             Text {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: look.entry ? look.kindLabel + (look.entry.folder ? "" : " · " + look.formatSize(look.entry.size ?? 0)) : ""
                 color: Theme.secondaryLabel
-                font { family: Theme.fontUi; pixelSize: 13 }
+                font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
             }
             Text {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: look.entry ? "Modified " + new Date(look.entry.modified * 1000).toLocaleString(Qt.locale(), "MMMM d, yyyy 'at' h:mm AP") : ""
                 color: Theme.secondaryLabel
-                font { family: Theme.fontUi; pixelSize: 12 }
+                font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
             }
         }
     }

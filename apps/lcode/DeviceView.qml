@@ -177,7 +177,7 @@ Item {
                                 elide: Text.ElideRight
                                 text: icon.modelData
                                 color: "#ffffff"
-                                font { family: Theme.fontUi; pixelSize: 12 }
+                                font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
                             }
                             Rectangle {
                                 anchors.horizontalCenter: parent.horizontalCenter
@@ -202,7 +202,7 @@ Item {
                         anchors.horizontalCenter: parent.horizontalCenter
                         text: "Run an app from LCode to install it here."
                         color: "#e6ffffff"
-                        font { family: Theme.fontUi; pixelSize: 14 }
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(14) }
                     }
                 }
             }

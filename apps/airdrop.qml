@@ -30,7 +30,7 @@ ShellRoot {
             anchors.verticalCenter: parent.verticalCenter
             text: "AirDrop"
             color: Theme.label
-            font { family: Theme.fontUi; pixelSize: 13; weight: Font.DemiBold }
+            font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.DemiBold }
         }
 
         Item {
@@ -197,13 +197,13 @@ ShellRoot {
                         anchors.verticalCenter: parent.verticalCenter
                         text: "Choose who to send " + (app.pending.length === 1 ? "“" + app.pending[0].split("/").pop() + "”" : app.pending.length + " items") + " to."
                         color: Theme.label
-                        font { family: Theme.fontUi; pixelSize: 12 }
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
                     }
                     Text {
                         anchors.verticalCenter: parent.verticalCenter
                         text: "Cancel"
                         color: Theme.accent
-                        font { family: Theme.fontUi; pixelSize: 12; weight: Font.Medium }
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: Font.Medium }
                         TapHandler { onTapped: app.pending = [] }
                     }
                 }
@@ -239,7 +239,7 @@ ShellRoot {
                     anchors.horizontalCenter: parent.horizontalCenter
                     text: app.discoverable === "off" ? "AirDrop is off" : "Looking for people nearby…"
                     color: Theme.secondaryLabel
-                    font { family: Theme.fontUi; pixelSize: 15; weight: Font.Medium }
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(15); weight: Font.Medium }
                 }
                 Text {
                     anchors.horizontalCenter: parent.horizontalCenter
@@ -248,7 +248,7 @@ ShellRoot {
                     wrapMode: Text.WordWrap
                     text: "Devices on the same Wi-Fi appear here: CitronOS computers, and iPhones, iPads, Android phones and PCs with the free LocalSend app open."
                     color: Theme.tertiaryLabel
-                    font { family: Theme.fontUi; pixelSize: 12 }
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
                 }
             }
 
@@ -267,7 +267,7 @@ ShellRoot {
                     anchors.horizontalCenter: parent.horizontalCenter
                     text: "AirDrop lets you share instantly with people nearby."
                     color: Theme.secondaryLabel
-                    font { family: Theme.fontUi; pixelSize: 12 }
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
                 }
                 Row {
                     anchors.horizontalCenter: parent.horizontalCenter
@@ -276,7 +276,7 @@ ShellRoot {
                         anchors.verticalCenter: parent.verticalCenter
                         text: "Allow me to be discovered by:"
                         color: Theme.secondaryLabel
-                        font { family: Theme.fontUi; pixelSize: 12 }
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
                     }
                     PopUpButton {
                         anchors.verticalCenter: parent.verticalCenter
@@ -292,7 +292,7 @@ ShellRoot {
                     anchors.horizontalCenter: parent.horizontalCenter
                     text: "Others see this computer as “" + app.alias + "”."
                     color: Theme.tertiaryLabel
-                    font { family: Theme.fontUi; pixelSize: 11 }
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
                 }
             }
 
@@ -334,7 +334,7 @@ ShellRoot {
                             wrapMode: Text.WordWrap
                             text: app.request ? app.request.from + " would like to share " + (app.request.count === 1 ? "“" + app.request.files[0] + "”" : app.request.count + " items") + "." : ""
                             color: Theme.label
-                            font { family: Theme.fontUi; pixelSize: 13; weight: Font.Bold }
+                            font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.Bold }
                         }
                         Text {
                             width: parent.width
@@ -345,14 +345,14 @@ ShellRoot {
                             color: Theme.secondaryLabel
                             maximumLineCount: 3
                             elide: Text.ElideRight
-                            font { family: Theme.fontUi; pixelSize: 11 }
+                            font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
                         }
                         Text {
                             width: parent.width
                             horizontalAlignment: Text.AlignHCenter
                             text: app.request ? app.size(app.request.size) + " · saved to Downloads" : ""
                             color: Theme.tertiaryLabel
-                            font { family: Theme.fontUi; pixelSize: 11 }
+                            font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
                         }
                         Row {
                             topPadding: 6
@@ -392,7 +392,7 @@ ShellRoot {
                                 : app.received ? (app.received.paths.length === 1 ? app.received.paths[0].split("/").pop() : app.received.paths.length + " items") + " from " + app.received.from
                                 : ""
                             color: Theme.label
-                            font { family: Theme.fontUi; pixelSize: 12; weight: Font.DemiBold }
+                            font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: Font.DemiBold }
                         }
                         ProgressBar {
                             visible: !!app.receiving
@@ -403,7 +403,7 @@ ShellRoot {
                             visible: !!app.received
                             text: "Saved to Downloads"
                             color: Theme.secondaryLabel
-                            font { family: Theme.fontUi; pixelSize: 11 }
+                            font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
                         }
                     }
                 }

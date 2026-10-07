@@ -101,12 +101,12 @@ Sheet {
                 Text {
                     text: row.modelData.name
                     color: row.index === oq.selectedIndex ? "#ffffff" : Theme.label
-                    font { family: Theme.fontUi; pixelSize: 13; weight: Font.DemiBold }
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.DemiBold }
                 }
                 Text {
                     text: row.modelData.dir || "Project root"
                     color: row.index === oq.selectedIndex ? "#ccffffff" : Theme.secondaryLabel
-                    font { family: Theme.fontUi; pixelSize: 11 }
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
                 }
             }
             HoverHandler { id: hover }

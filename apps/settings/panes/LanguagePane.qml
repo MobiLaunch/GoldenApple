@@ -82,7 +82,7 @@ Pane {
             Text {
                 text: Qt.locale(pane.baseLocale(pane.lang) || Qt.locale().name).nativeTerritoryName || "—"
                 color: Theme.secondaryLabel
-                font { family: Theme.fontUi; pixelSize: 13 }
+                font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
             }
         }
         SetRow {
@@ -90,7 +90,7 @@ Pane {
             Text {
                 text: Qt.locale(pane.baseLocale(pane.lang) || Qt.locale().name).measurementSystem === Locale.MetricSystem ? "Metric" : "US"
                 color: Theme.secondaryLabel
-                font { family: Theme.fontUi; pixelSize: 13 }
+                font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
             }
         }
         SetRow {
@@ -98,7 +98,7 @@ Pane {
             Text {
                 text: new Date().toLocaleDateString(Qt.locale(pane.baseLocale(pane.lang) || Qt.locale().name), Locale.ShortFormat)
                 color: Theme.secondaryLabel
-                font { family: Theme.fontUi; pixelSize: 13 }
+                font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
             }
         }
     }

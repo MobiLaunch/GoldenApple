@@ -44,7 +44,7 @@ Popover {
                         size: 18
                         tone: picker.value === parent.parent.modelData ? "white" : "auto"
                     }
-                    Text { visible: !parent.parent.modelData; anchors.centerIn: parent; text: "None"; color: Theme.secondaryLabel; font.pixelSize: 9 }
+                    Text { visible: !parent.parent.modelData; anchors.centerIn: parent; text: "None"; color: Theme.secondaryLabel; font.pixelSize: Theme.fs(9) }
                 }
                 HoverHandler { id: cellHover }
                 TapHandler { onTapped: { picker.value = parent.modelData; picker.picked(parent.modelData); picker.close() } }

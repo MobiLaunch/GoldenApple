@@ -63,7 +63,7 @@ Item {
             elide: Text.ElideRight
             text: row.name
             color: Theme.label
-            font { family: Theme.fontUi; pixelSize: 13; weight: Font.DemiBold }
+            font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.DemiBold }
         }
         Text {
             visible: !!row.subtitle
@@ -71,7 +71,7 @@ Item {
             elide: Text.ElideRight
             text: row.subtitle
             color: Theme.secondaryLabel
-            font { family: Theme.fontUi; pixelSize: 11 }
+            font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
         }
     }
 

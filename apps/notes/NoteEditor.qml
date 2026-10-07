@@ -130,7 +130,7 @@ Item {
             anchors { fill: parent; margins: 10 }
             text: ed.saveError; wrapMode: Text.Wrap
             color: Theme.label
-            font { family: Theme.fontUi; pixelSize: 12 }
+            font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
         }
     }
     Timer { id: saveTimer; interval: 700; onTriggered: ed.save() }
@@ -202,7 +202,7 @@ Item {
                 visible: !!ed.path
                 text: ed.mtime ? new Date(ed.mtime * 1000).toLocaleString(Qt.locale(), "d MMMM yyyy 'at' " + Qt.locale().timeFormat(Locale.ShortFormat)) : ""
                 color: Theme.secondaryLabel
-                font { family: Theme.fontUi; pixelSize: 11; weight: Font.Medium }
+                font { family: Theme.fontUi; pixelSize: Theme.fs(11); weight: Font.Medium }
             }
             Shared.TextArea {
                 id: edit
@@ -216,7 +216,7 @@ Item {
                 color: Theme.label
                 selectionColor: Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.3)
                 selectedTextColor: Theme.label
-                font { family: Theme.fontUi; pixelSize: 14 }
+                font { family: Theme.fontUi; pixelSize: Theme.fs(14) }
                 onTextChanged: {
                     if (ed.loading) return
                     // A new note's first line is its title.

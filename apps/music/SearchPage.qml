@@ -44,7 +44,7 @@ Flickable {
             visible: !!page.q && !page.songs.length && !page.albums.length
             text: "No results for “" + page.query + "”"
             color: Theme.secondaryLabel
-            font { family: Theme.fontUi; pixelSize: 15 }
+            font { family: Theme.fontUi; pixelSize: Theme.fs(15) }
         }
         SectionHeader { visible: page.albums.length > 0; text: "Albums"; more: false }
         ListView {

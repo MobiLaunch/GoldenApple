@@ -72,6 +72,7 @@ ShellRoot {
     Binding { target: Theme; property: "reduceMotion"; value: Prefs.reduceMotion }
     Binding { target: Theme; property: "reduceTransparency"; value: Prefs.reduceTransparency }
     Binding { target: Theme; property: "glassStyle"; value: Prefs.glass }
+    Binding { target: Theme; property: "textScale"; value: Prefs.textScale }
     Connections {
         target: Prefs
         function onDataChanged() {
