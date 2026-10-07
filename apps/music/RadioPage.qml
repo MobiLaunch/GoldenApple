@@ -15,11 +15,23 @@ Item {
     readonly property string fixture: Quickshell.env("GG_MUSIC_RADIO_FIXTURE") ?? ""
     readonly property string api: "https://de1.api.radio-browser.info/json/stations/"
 
+    // A request that never answers (a captive portal, a dead link) is given up
+    // after 20 seconds, so the page says it couldn't load instead of waiting for good.
+    property var inflight: []
+    property int requestTimeout: 20000
+    Timer {
+        interval: Math.min(5000, page.requestTimeout / 2); repeat: true; running: page.inflight.length > 0
+        onTriggered: { for (const r of page.inflight) if (Date.now() - r.at >= page.requestTimeout) r.x.abort() }
+    }
+
     function load(q) {
         loading = true; failed = false
         const x = new XMLHttpRequest()
+        const req = { x, at: Date.now() }
+        inflight = inflight.concat([req])
         x.onreadystatechange = () => {
             if (x.readyState !== XMLHttpRequest.DONE) return
+            inflight = inflight.filter((r) => r !== req)
             loading = false
             try { stations = JSON.parse(x.responseText).filter((s) => s.url_resolved) } catch (e) { stations = []; failed = true }
         }

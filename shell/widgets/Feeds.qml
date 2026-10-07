@@ -37,10 +37,22 @@ Scope {
         : Qt.locale().measurementSystem !== Locale.MetricSystem
     readonly property var weather: forecast ? Wx.summary(forecast, imperial) : null
 
+    // A request that never answers (a captive portal, a dead link) is given up
+    // after 20 seconds, so the widget shows no weather instead of waiting for good.
+    property var inflight: []
+    property int requestTimeout: 20000
+    Timer {
+        interval: Math.min(5000, feeds.requestTimeout / 2); repeat: true; running: feeds.inflight.length > 0
+        onTriggered: { for (const r of feeds.inflight) if (Date.now() - r.at >= feeds.requestTimeout) r.x.abort() }
+    }
+
     function get(u, done) {
         const x = new XMLHttpRequest()
+        const req = { x, at: Date.now() }
+        inflight = inflight.concat([req])
         x.onreadystatechange = () => {
             if (x.readyState !== XMLHttpRequest.DONE) return
+            inflight = inflight.filter((r) => r !== req)
             let json = null
             if (x.status === 200 || (x.status === 0 && x.responseText)) {
                 try { json = JSON.parse(x.responseText) } catch (e) { json = null }

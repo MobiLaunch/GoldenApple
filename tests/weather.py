@@ -2,9 +2,12 @@
 """Weather (apps/weather.qml) with its offline fixture: My Location leads the
 places (from lib/location/locate.py), the large temperature shows, °C/°F
 switches and is remembered, and with Location Services off no location is
-asked for. Also the location helper itself: off means off."""
+asked for. Also the location helper itself: off means off, and a server that
+never answers is given up on."""
 import json
 import os
+import socket
+import time
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 os.environ.setdefault("QT_QUICK_BACKEND", "software")
 os.environ["QML_XHR_ALLOW_FILE_READ"] = "1"
@@ -81,6 +84,25 @@ class Weather(unittest.TestCase):
         saved = json.loads(self.root.findChild(QObject, "weatherStore").property("__text"))
         self.assertEqual(saved["units"], "imperial")
         self.assertFalse(any(p.get("current") for p in saved["places"]), "My Location isn't saved: it moves")
+
+    def test_a_server_that_never_answers_is_given_up(self):
+        self.load()
+        app = self.app()
+        hung = socket.socket()
+        hung.bind(("127.0.0.1", 0)); hung.listen(4)      # takes the connection, never replies
+        self.addCleanup(hung.close)
+        app.setProperty("requestTimeout", 400)
+        engine = self.view.engine()
+        engine.globalObject().setProperty("weatherApp", engine.newQObject(app))
+        engine.evaluate("var answer = 'waiting'; weatherApp.get('http://127.0.0.1:%d/', (j) => { answer = j === null ? 'gave up' : 'answered' })"
+                        % hung.getsockname()[1])
+        self.assertEqual(len(app.property("inflight").toVariant()), 1)
+        start = time.monotonic()
+        while engine.evaluate("answer").toString() == "waiting" and time.monotonic() - start < 5:
+            QTest.qWait(50)
+        self.assertEqual(engine.evaluate("answer").toString(), "gave up")
+        self.assertLess(time.monotonic() - start, 3)
+        self.assertEqual(len(app.property("inflight").toVariant()), 0)
 
     def test_location_services_off(self):
         self.load(location=False)

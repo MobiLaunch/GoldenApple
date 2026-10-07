@@ -173,10 +173,22 @@ ShellRoot {
                 if (fixture) return "file://" + fixture + "/" + kind + ".json"
                 return kind === "forecast" ? Api.forecastUrl(arg1, arg2) : kind === "air" ? Api.airUrl(arg1, arg2) : Api.geocodeUrl(arg1)
             }
+            // A request that never answers (a captive portal, a dead link) is given up
+            // after 20 seconds, so the page says it couldn't load instead of waiting for good.
+            property var inflight: []
+            property int requestTimeout: 20000
+            Timer {
+                interval: Math.min(5000, app.requestTimeout / 2); repeat: true; running: app.inflight.length > 0
+                onTriggered: { for (const r of app.inflight) if (Date.now() - r.at >= app.requestTimeout) r.x.abort() }
+            }
+
             function get(u, done) {
                 const x = new XMLHttpRequest()
+                const req = { x, at: Date.now() }
+                inflight = inflight.concat([req])
                 x.onreadystatechange = () => {
                     if (x.readyState !== XMLHttpRequest.DONE) return
+                    inflight = inflight.filter((r) => r !== req)
                     let json = null
                     if (x.status === 200 || (x.status === 0 && x.responseText)) {
                         try { json = JSON.parse(x.responseText) } catch (e) { json = null }
