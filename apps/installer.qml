@@ -46,8 +46,11 @@ ShellRoot {
             }
 
             function accountValid() {
+                // The quick check; installer/helper.py check-account has the
+                // final say (setup/account_rules.py) before the erase step.
                 return /^[a-z_][a-z0-9_-]{0,30}$/.test(username)
-                    && password.length >= 6
+                    && password.length >= 8 && password.length <= 256
+                    && !/[\x00-\x1f\x7f]/.test(password)
                     && password === passwordConfirm
             }
 
@@ -65,6 +68,11 @@ ShellRoot {
 
             function next() {
                 error = ""
+                if (step === 2) {
+                    if (!checkAccount.running)
+                        checkAccount.running = true
+                    return
+                }
                 if (step < 3) {
                     step++
                     return
@@ -127,6 +135,25 @@ ShellRoot {
                     "sh", helper
                 ]
                 install.running = true
+            }
+
+            Process {
+                id: checkAccount
+                command: ["python3", stage.helper, "check-account"]
+                stdinEnabled: true
+                onStarted: {
+                    write(JSON.stringify({ username: stage.username, password: stage.password }))
+                    stdinEnabled = false
+                }
+                stdout: StdioCollector {
+                    onStreamFinished: {
+                        let r = null
+                        try { r = JSON.parse(text) } catch (e) {}
+                        if (r && r.ok && stage.step === 2) stage.step = 3
+                        else stage.error = r?.error || "The account couldn't be checked."
+                    }
+                }
+                onExited: stdinEnabled = true
             }
 
             Process {
@@ -340,7 +367,7 @@ ShellRoot {
                     TextField {
                         width: parent.width
                         password: true
-                        placeholder: "At least 6 characters"
+                        placeholder: "At least 8 characters"
                         text: stage.password
                         onTextChanged: stage.password = text
                     }

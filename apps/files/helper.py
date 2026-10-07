@@ -308,28 +308,80 @@ def list_dir(raw: str, query: str = "", hidden: bool = False) -> int:
     return result(True, path=str(path), parent=parent, entries=rows, free=free, capacity=capacity)
 
 
+def clean_name(name: str) -> str:
+    """A name as typed, made safe for one directory entry ("" if it can't be)."""
+    clean = name.strip().replace("/", "-").replace("\0", "")
+    return "" if clean in (".", "..") else clean
+
+
 def mkdir(raw: str, name: str) -> int:
     parent = pathlib.Path(raw).expanduser().resolve()
-    clean = name.strip().replace("/", "-")
+    clean = clean_name(name)
     if not clean:
         return result(False, error="Enter a folder name.")
     target = parent / clean
     try:
         target.mkdir()
         return result(True, path=str(target))
+    except FileExistsError:
+        return result(False, error=f"The name “{clean}” is already taken. Please choose a different name.")
     except Exception as exc:
         return result(False, error=str(exc))
 
 
+RENAME_NOREPLACE = 1
+
+
+def rename_noreplace(src: pathlib.Path, dst: pathlib.Path) -> None:
+    """Rename src to dst, never replacing what's at dst (FileExistsError if
+    something is): renameat2(RENAME_NOREPLACE) where the kernel and disk
+    support it, otherwise a check just before the rename."""
+    try:
+        import ctypes
+        libc = ctypes.CDLL(None, use_errno=True)
+        renameat2 = libc.renameat2
+    except (OSError, AttributeError):
+        renameat2 = None
+    if renameat2 is not None:
+        AT_FDCWD = -100
+        if renameat2(AT_FDCWD, os.fsencode(src), AT_FDCWD, os.fsencode(dst), RENAME_NOREPLACE) == 0:
+            return
+        err = ctypes.get_errno()
+        if err not in (22, 38, 95):    # EINVAL, ENOSYS, EOPNOTSUPP: fall back
+            raise OSError(err, os.strerror(err), str(src), None, str(dst))
+    if os.path.lexists(dst):
+        raise FileExistsError(17, "File exists", str(dst))
+    os.rename(src, dst)
+
+
 def rename(raw: str, name: str) -> int:
-    path = pathlib.Path(raw).expanduser().resolve()
-    clean = name.strip().replace("/", "-")
+    # The entry itself, not where a link points: renaming a link renames the link.
+    path = pathlib.Path(raw).expanduser().absolute()
+    clean = clean_name(name)
     if not clean:
         return result(False, error="Enter a new name.")
+    if not os.path.lexists(path):
+        return result(False, error=f"“{path.name}” is no longer there.")
     target = path.with_name(clean)
+    if target.name == path.name:
+        return result(True, path=str(path))
     try:
-        path.rename(target)
+        if os.path.lexists(target) and target.name.casefold() == path.name.casefold() \
+                and os.path.samestat(os.lstat(target), os.lstat(path)):
+            # Only the case changes on a disk that ignores it (FAT, exFAT, NTFS):
+            # it's the same item, so go by way of a name nothing else has.
+            step = unique(path.with_name(f".{path.name}.renaming"))
+            rename_noreplace(path, step)
+            try:
+                rename_noreplace(step, target)
+            except Exception:
+                os.rename(step, path)
+                raise
+        else:
+            rename_noreplace(path, target)
         return result(True, path=str(target))
+    except FileExistsError:
+        return result(False, error=f"The name “{clean}” is already taken. Please choose a different name.")
     except Exception as exc:
         return result(False, error=str(exc))
 

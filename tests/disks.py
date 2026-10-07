@@ -54,6 +54,29 @@ INSTALLED = {"blockdevices": [
         dev("nvme0n1p3", size=799 * GB, fstype="ext4", mounts=["/home"], fssize=799 * GB, fsused=300 * GB, fsavail=450 * GB)]),
 ]}
 
+# Installed with full-disk encryption: LUKS in a partition, LVM inside that,
+# / and /var/lib on logical volumes; and a second internal disk with /srv and
+# a plain data volume mounted by the user under /run/media.
+NESTED = {"blockdevices": [
+    dev("nvme0n1", "disk", 1000 * GB, tran="nvme", model="WD Black SN850X", children=[
+        dev("nvme0n1p1", size=GB, fstype="vfat", mounts=["/boot"]),
+        dev("nvme0n1p2", size=999 * GB, fstype="crypto_LUKS", children=[
+            dev("cryptroot", "crypt", 999 * GB, fstype="LVM2_member", children=[
+                dev("vg-root", "lvm", 100 * GB, fstype="ext4", mounts=["/"]),
+                dev("vg-varlib", "lvm", 50 * GB, fstype="xfs", mounts=["/var/lib"])])])]),
+    dev("sdc", "disk", 4000 * GB, tran="sata", model="Seagate IronWolf", children=[
+        dev("sdc1", size=2000 * GB, fstype="ext4", mounts=["/srv"]),
+        dev("sdc2", size=2000 * GB, fstype="ext4", label="Scratch", mounts=["/run/media/you/Scratch"])]),
+    dev("sdd", "disk", 64 * GB, tran="usb", model="Stick", rm=True, children=[
+        dev("sdd1", size=64 * GB, fstype="ext4", label="Stick")]),
+]}
+# The kernel's table knows one mount lsblk didn't report.
+NESTED_MOUNTS = {"/var/lib/docker": ("/dev/sdd1", "ext4")}
+
+
+def nested():
+    return disks.parse(NESTED, NESTED_MOUNTS, "CitronOS", fake_usage)
+
 
 def fake_usage(path):
     return {"size": 16 * GB, "used": 4 * GB, "free": 12 * GB}
@@ -89,6 +112,19 @@ class Reading(unittest.TestCase):
         self.assertEqual(set(vols), {"Boot", "CitronOS", "Home"})
         self.assertTrue(all(v["system"] for v in vols.values()))
         self.assertEqual(vols["Home"]["free"], 450 * GB)
+
+    def test_nested_system_volumes(self):
+        snap = nested()
+        by = {d["device"]: d for d in snap["disks"]}
+        crypt = next(v for v in by["/dev/nvme0n1"]["volumes"] if v["device"] == "/dev/nvme0n1p2")
+        self.assertTrue(crypt["system"], "/ two layers down (LUKS, then LVM) protects the partition")
+        self.assertEqual(crypt["mountpoint"], "/")
+        self.assertTrue(by["/dev/nvme0n1"]["system"])
+        srv, scratch = by["/dev/sdc"]["volumes"]
+        self.assertTrue(srv["system"], "/srv is the system's, not yours")
+        self.assertFalse(scratch["system"], "a volume under /run/media is yours")
+        self.assertTrue(by["/dev/sdc"]["system"])
+        self.assertTrue(by["/dev/sdd"]["volumes"][0]["system"], "mounted under /var/lib, per the kernel")
 
     def test_names(self):
         self.assertEqual(disks.human(1_500_000_000), "1.5 GB")
@@ -127,6 +163,15 @@ class Changing(unittest.TestCase):
         self.assertIn("holds the running system", self.refused(disks.erase, "/dev/sda1", "exfat", "X"))
         self.assertIn("holds the running system", self.refused(disks.unmount, "/dev/sda1"))
         self.assertIn("holds the running system", self.refused(disks.check, "/dev/sda1"))
+
+    def test_nested_system_volumes_are_never_changed(self):
+        with patch.object(disks, "snapshot", nested):
+            self.assertIn("holds the running system", self.refused(disks.erase, "/dev/nvme0n1p2", "ext4", "X"))
+            self.assertIn("holds the running system", self.refused(disks.erase, "/dev/sdc1", "ext4", "X"))
+            self.assertIn("holds the running system", self.refused(disks.eject, "/dev/sdc"), "nor the disk /srv is on")
+            self.assertIn("holds the running system", self.refused(disks.erase, "/dev/sdd", "ext4", "X"))
+            disks.erase("/dev/sdc2", "ext4", "Scratch")
+            self.assertEqual(self.calls[0], ["udisksctl", "unmount", "-b", "/dev/sdc2"], "your own volume next to it can be")
 
     def test_mount_and_eject(self):
         self.assertEqual(disks.mount("/dev/nvme0n1p2"), {"mountpoint": "/run/media/live/Windows"})

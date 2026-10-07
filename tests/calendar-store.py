@@ -1,0 +1,107 @@
+#!/usr/bin/env python3
+"""Calendar's store (apps/calendar/helper.py): a missing store is an empty
+calendar, a damaged one is reported and never written over (until Restore
+puts the last good copy back, keeping the damaged file); two adds at once
+both keep their events; dates and times are checked for real, and a record
+that isn't valid is kept in the file rather than silently dropped."""
+from __future__ import annotations
+
+import json
+import os
+from pathlib import Path
+import subprocess
+import sys
+import tempfile
+import unittest
+from concurrent.futures import ThreadPoolExecutor
+
+HELPER = Path(__file__).resolve().parents[1] / "apps/calendar/helper.py"
+
+
+class CalendarStore(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.data = Path(self.tmp.name)
+        self.store = self.data / "golden-gate/calendar/events.json"
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def helper(self, *args, event=None):
+        p = subprocess.run([sys.executable, str(HELPER), *args], input=json.dumps(event) if event is not None else "",
+                           capture_output=True, text=True, env={**os.environ, "XDG_DATA_HOME": str(self.data)})
+        return json.loads(p.stdout)
+
+    def add(self, title, date="2026-10-07", time="", calendar="Home"):
+        return self.helper("add", event={"title": title, "date": date, "time": time, "calendar": calendar})
+
+    def test_missing_is_empty(self):
+        self.assertEqual(self.helper("list"), {"ok": True, "events": [], "invalid": 0})
+        self.assertTrue(self.add("Dentist", time="09:30")["ok"])
+        self.assertEqual([e["title"] for e in self.helper("list")["events"]], ["Dentist"])
+
+    def test_damaged_store_is_never_written_over(self):
+        self.assertTrue(self.add("Kept")["ok"])
+        self.assertTrue(self.add("Also kept")["ok"])         # leaves a backup with "Kept"
+        self.store.write_text('[{"title": "half')
+        r = self.helper("list")
+        self.assertFalse(r["ok"])
+        self.assertTrue(r["broken"] and r["canRestore"])
+        self.assertIn("damaged", r["error"])
+        self.assertFalse(self.add("New")["ok"], "an add can't replace it")
+        self.assertFalse(self.helper("delete", "x")["ok"])
+        self.assertEqual(self.store.read_text(), '[{"title": "half', "left exactly as it was")
+        r = self.helper("restore")
+        self.assertTrue(r["ok"] and r["restored"])
+        self.assertEqual(Path(r["kept"]).read_text(), '[{"title": "half', "the damaged file is kept")
+        self.assertEqual([e["title"] for e in self.helper("list")["events"]], ["Kept"])
+
+    def test_wrong_shape_is_damaged_too(self):
+        self.store.parent.mkdir(parents=True)
+        self.store.write_text('{"events": []}')
+        r = self.helper("list")
+        self.assertTrue(r["broken"])
+        self.assertFalse(r["canRestore"])
+        self.assertFalse(self.helper("restore")["ok"])
+
+    def test_concurrent_adds_keep_every_event(self):
+        titles = [f"Event {i}" for i in range(12)]
+        with ThreadPoolExecutor(12) as pool:
+            results = list(pool.map(self.add, titles))
+        self.assertTrue(all(r["ok"] for r in results))
+        self.assertEqual(sorted(e["title"] for e in self.helper("list")["events"]), sorted(titles))
+
+    def test_add_and_delete_at_once(self):
+        first = self.add("Stay")["event"]["id"]
+        gone = self.add("Go")["event"]["id"]
+        with ThreadPoolExecutor(4) as pool:
+            jobs = [pool.submit(self.helper, "delete", gone), pool.submit(self.add, "New 1"), pool.submit(self.add, "New 2")]
+            self.assertTrue(all(j.result()["ok"] for j in jobs))
+        events = self.helper("list")["events"]
+        self.assertEqual(sorted(e["title"] for e in events), ["New 1", "New 2", "Stay"])
+        self.assertIn(first, [e["id"] for e in events])
+
+    def test_dates_and_times_are_real(self):
+        for date in ("2026-02-30", "2026-13-01", "2026/10/07", "tomorrow!!", ""):
+            self.assertFalse(self.add("X", date=date)["ok"], date)
+        for time in ("25:00", "9:30", "noon", "12:60", "14:30:00"):
+            r = self.add("X", time=time)
+            self.assertFalse(r["ok"], time)
+            self.assertIn("HH:MM", r["error"])
+        self.assertTrue(self.add("Leap day", date="2028-02-29", time="23:59")["ok"])
+        self.assertFalse(self.add("  ")["ok"])
+        self.assertFalse(self.helper("add", event=["not", "a", "record"])["ok"])
+
+    def test_invalid_records_are_kept_not_dropped(self):
+        self.store.parent.mkdir(parents=True)
+        bad = {"id": "bad", "title": "Bad", "date": "2026-02-30", "time": "", "calendar": "Home"}
+        self.store.write_text(json.dumps([bad]))
+        r = self.helper("list")
+        self.assertEqual((r["events"], r["invalid"]), ([], 1))
+        self.assertTrue(self.add("Good")["ok"])
+        stored = json.loads(self.store.read_text())
+        self.assertIn(bad, stored, "still in the file after a save")
+
+
+if __name__ == "__main__":
+    unittest.main(verbosity=2)

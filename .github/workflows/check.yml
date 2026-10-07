@@ -147,6 +147,7 @@ jobs:
           test -d "$root/usr/share/golden-gate/ui"
           test -L "$root/usr/share/golden-gate/apps/lib"
           test "$(readlink "$root/usr/share/golden-gate/apps/lib")" = "../ui"
+          test -f "$root/usr/lib/golden-gate/account_rules.py"
           test -x "$root/usr/lib/golden-gate/pref-helper.py"
           test -x "$root/usr/lib/golden-gate/hyprglass-sync.sh"
           test -x "$root/usr/lib/golden-gate/apply-preferences.sh"
@@ -234,6 +235,14 @@ jobs:
         run: python tests/tiling.py
       - name: Files' backend (drag and drop, Trash, Recents)
         run: python tests/files-helper.py
+      - name: Notes' Recently Deleted never replaces a deleted note, and Recover puts it back
+        run: python tests/notes-trash.py
+      - name: Calendar's store never overwrites a damaged file, locks changes and checks dates
+        run: python tests/calendar-store.py
+      - name: Installer and Hello refuse taken account names and unsafe passwords before anything is erased
+        run: python tests/installer-account.py
+      - name: Web's saved passwords come back without secret-tool's line break
+        run: python tests/browser-passwords.py
       - name: "Mac apps: catalog, download, checksum, install, open with Darling, remove"
         run: python tests/mac-apps.py
       - name: Mac app support installs Darling's release after readying pacman
@@ -329,6 +338,10 @@ jobs:
           QT_QPA_PLATFORM: offscreen
       - name: "Symbols replace their glyph as SF Symbols do"
         run: python tests/symbol-motion.py
+        env:
+          QT_QPA_PLATFORM: offscreen
+      - name: A prominent destructive button is red, not the accent
+        run: python tests/button-destructive.py
         env:
           QT_QPA_PLATFORM: offscreen
       - name: "Liquid Glass drawn with OpenGL: see-through, its shadow outside it"

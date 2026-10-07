@@ -3,7 +3,9 @@
 moves within a disk and names clashes as Finder does ("name 2.txt"), copies
 when asked, never moves a folder into itself; Move to Trash writes the
 freedesktop .trashinfo, Put Back restores to where it was, Empty Trash empties
-it; Recents lists what was opened (recently-used.xbel) and what changed lately."""
+it; Recents lists what was opened (recently-used.xbel) and what changed lately.
+Rename never replaces another item (a clash is refused, a case-only change
+works) and renames a link itself, not what it points to."""
 from __future__ import annotations
 
 import json
@@ -35,6 +37,61 @@ class FilesHelper(unittest.TestCase):
         env = {**os.environ, "HOME": str(self.home), "XDG_DATA_HOME": str(self.home / ".local/share")}
         p = subprocess.run([sys.executable, str(HELPER), *args], capture_output=True, text=True, env=env)
         return json.loads(p.stdout)
+
+    def test_rename_never_replaces(self):
+        docs = self.home / "Documents"
+        (docs / "draft.txt").write_text("draft")
+        r = self.run_helper("rename", str(docs / "draft.txt"), "plan.txt")
+        self.assertFalse(r["ok"])
+        self.assertIn("already taken", r["error"])
+        self.assertEqual((docs / "draft.txt").read_text(), "draft", "neither file disappears")
+        self.assertEqual((docs / "plan.txt").read_text(), "plan")
+        r = self.run_helper("rename", str(docs / "plan.txt"), "Project")
+        self.assertFalse(r["ok"], "nor is a folder replaced")
+        self.assertTrue((docs / "Project/notes.md").exists())
+        (docs / "Empty").mkdir()
+        r = self.run_helper("rename", str(docs / "Project"), "Empty")
+        self.assertFalse(r["ok"], "not even an empty one")
+        self.assertTrue((docs / "Project/notes.md").exists())
+        r = self.run_helper("rename", str(docs / "draft.txt"), "final.txt")
+        self.assertTrue(r["ok"])
+        self.assertEqual((docs / "final.txt").read_text(), "draft")
+        self.assertFalse((docs / "draft.txt").exists())
+
+    def test_rename_case_and_odd_names(self):
+        docs = self.home / "Documents"
+        r = self.run_helper("rename", str(docs / "plan.txt"), "Plan.txt")
+        self.assertTrue(r["ok"], r)
+        self.assertEqual(sorted(p.name for p in docs.iterdir()), ["Plan.txt", "Project"])
+        self.assertEqual((docs / "Plan.txt").read_text(), "plan")
+        for bad in ("", "  ", ".", ".."):
+            self.assertFalse(self.run_helper("rename", str(docs / "Plan.txt"), bad)["ok"], repr(bad))
+        self.assertTrue(self.run_helper("rename", str(docs / "Plan.txt"), "Plan.txt")["ok"], "the same name is fine")
+        self.assertTrue((docs / "Plan.txt").exists())
+        self.assertFalse(self.run_helper("rename", str(docs / "gone.txt"), "x")["ok"])
+
+    def test_rename_a_link_renames_the_link(self):
+        docs = self.home / "Documents"
+        (docs / "to-plan").symlink_to(docs / "plan.txt")
+        r = self.run_helper("rename", str(docs / "to-plan"), "shortcut")
+        self.assertTrue(r["ok"], r)
+        self.assertTrue((docs / "plan.txt").exists(), "the target keeps its name")
+        self.assertEqual(os.readlink(docs / "shortcut"), str(docs / "plan.txt"))
+        self.assertFalse(os.path.lexists(docs / "to-plan"))
+        (docs / "dangling").symlink_to(docs / "nowhere")
+        r = self.run_helper("rename", str(docs / "dangling"), "still dangling")
+        self.assertTrue(r["ok"], r)
+        self.assertEqual(os.readlink(docs / "still dangling"), str(docs / "nowhere"))
+        (docs / "to-project").symlink_to(docs / "Project")
+        self.assertFalse(self.run_helper("rename", str(docs / "to-project"), "plan.txt")["ok"])
+        self.assertTrue((docs / "Project/notes.md").exists())
+        self.assertEqual((docs / "plan.txt").read_text(), "plan")
+
+    def test_new_folder_that_exists(self):
+        r = self.run_helper("mkdir", str(self.home / "Documents"), "Project")
+        self.assertFalse(r["ok"])
+        self.assertIn("already taken", r["error"])
+        self.assertTrue((self.home / "Documents/Project/notes.md").exists())
 
     def test_drop_moves_and_names_clashes(self):
         r = self.run_helper("drop", str(self.home / "Desktop"), "auto", str(self.home / "Documents/plan.txt"))

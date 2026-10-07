@@ -34,6 +34,7 @@ install_extras() {
   say "local account setup helper → $R/usr/lib/golden-gate"
   install -Dm644 "$REPO/third_party/hyprglass/LICENSE" "$R/usr/share/licenses/golden-gate/hyprglass/LICENSE"
   install -Dm755 "$REPO/apps/setup/account-helper.py" "$R/usr/lib/golden-gate/account-helper.py"
+  install -Dm644 "$REPO/apps/setup/account_rules.py" "$R/usr/lib/golden-gate/account_rules.py"
   install -Dm644 "$REPO/apps/setup/save-preferences.py" "$R/usr/lib/golden-gate/save-preferences.py"
   install -Dm755 "$REPO/apps/setup/pref-helper.py" "$R/usr/lib/golden-gate/pref-helper.py"
   install -Dm755 "$REPO/compositor/hyprland/hyprglass-sync.sh" "$R/usr/lib/golden-gate/hyprglass-sync.sh"

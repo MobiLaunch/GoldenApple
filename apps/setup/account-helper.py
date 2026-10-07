@@ -3,6 +3,7 @@
 No shell, arbitrary paths, command flags, or existing-account password changes.
 """
 import fcntl
+import importlib.util
 import json
 import os
 import pwd
@@ -11,19 +12,27 @@ import subprocess
 import sys
 
 
+def load_rules():
+    # Beside this file, root-owned like it (/usr/lib/golden-gate); never sys.path.
+    path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'account_rules.py')
+    spec = importlib.util.spec_from_file_location('account_rules', path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+rules = load_rules()
+
+
 def validate(data):
     name = data.get('username', '')
     full = data.get('fullName', '')
-    if isinstance(full, str):
-        full = full.strip()
     password = data.get('password', '')
-    if not isinstance(name, str) or not re.fullmatch(r'[a-z_][a-z0-9_-]{0,30}', name):
-        raise ValueError('Use a lowercase account name, starting with a letter, up to 31 characters.')
-    if not isinstance(full, str) or not full or len(full) > 80 or any(ord(c) < 32 or c in ':,' for c in full):
-        raise ValueError('Enter a full name without colons, commas, or control characters.')
-    if not isinstance(password, str) or not 8 <= len(password) <= 256 or any(c in password for c in '\n\r\0'):
-        raise ValueError('Use a password of 8–256 characters without line breaks.')
-    return name, full, password
+    problem = (rules.check_username(name, rules.names_in('/etc/passwd', '/etc/group'))
+               or rules.check_full_name(full) or rules.check_password(password))
+    if problem:
+        raise ValueError(problem)
+    return name, full.strip(), password
 
 
 def create(data):

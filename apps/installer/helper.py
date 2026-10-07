@@ -21,6 +21,21 @@ from typing import Any
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "settings"))
 import golden_update  # noqa: E402  (shared list of live-only files)
 
+
+def load_rules():
+    """setup/account_rules.py, by path: the same rules Hello uses."""
+    import importlib.util
+    path = pathlib.Path(__file__).resolve().parent.parent / "setup/account_rules.py"
+    spec = importlib.util.spec_from_file_location("account_rules", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+rules = load_rules()
+# The live account is removed from the installed copy before yours is made.
+LIVE_USER = "golden"
+
 TARGET = pathlib.Path("/mnt/golden-gate")
 
 
@@ -137,12 +152,38 @@ def validate_payload(data: dict[str, Any]) -> tuple[str, str, str]:
         raise RuntimeError("The selected disk size could not be verified.")
     if data.get("confirm") != "ERASE:" + device:
         raise RuntimeError("The erase confirmation did not match the selected disk.")
-    if not re.fullmatch(r"[a-z_][a-z0-9_-]{0,30}", username):
-        raise RuntimeError("Choose a username using lowercase letters, numbers, hyphens or underscores.")
-    if len(password) < 6:
-        raise RuntimeError("The account password must be at least six characters.")
+    problem = account_problem(data)
+    if problem:
+        raise RuntimeError(problem)
 
     return device, username, password
+
+
+def taken_names(root: str = "/") -> set[str]:
+    """Accounts and groups the installed system will already have: the live
+    system's, which is what gets copied, less the live account itself."""
+    base = pathlib.Path(root)
+    return rules.names_in(str(base / "etc/passwd"), str(base / "etc/group")) - {LIVE_USER}
+
+
+def account_problem(data: dict[str, Any], root: str = "/") -> str:
+    """Why this account can't be made on the installed system, or ""."""
+    username, password = data.get("username"), data.get("password")
+    if isinstance(username, str):
+        username = username.strip()
+    return rules.check_username(username, taken_names(root)) or rules.check_password(password)
+
+
+def check_account() -> int:
+    """The account page's check (no root needed): the same rules the install
+    applies before anything is erased."""
+    try:
+        data = json.load(sys.stdin)
+    except ValueError:
+        data = {}
+    problem = account_problem(data if isinstance(data, dict) else {})
+    print(json.dumps({"ok": not problem, "error": problem}, separators=(",", ":")))
+    return 0
 
 
 def stage(progress: float, message: str, detail: str = "") -> None:
@@ -296,6 +337,10 @@ def install() -> int:
         run(["arch-chroot", str(TARGET), "systemd-machine-id-setup"])
 
         stage(0.66, "Creating your account", username)
+        # Checked again on the copy itself, just before the account is made.
+        problem = rules.check_username(username, rules.names_in(str(TARGET / "etc/passwd"), str(TARGET / "etc/group")))
+        if problem:
+            raise RuntimeError(problem)
         run(["arch-chroot", str(TARGET), "useradd", "-m", "-G", "wheel", "-s", "/bin/bash", username])
         # Password never appears in argv, logs or a temporary file.
         run(["arch-chroot", str(TARGET), "chpasswd"], input_text=f"{username}:{password}\n")
@@ -453,6 +498,8 @@ def main() -> int:
         return preflight()
     if sys.argv[1] == "disks":
         return disks()
+    if sys.argv[1] == "check-account":
+        return check_account()
     if sys.argv[1] == "install":
         return install()
     return 2

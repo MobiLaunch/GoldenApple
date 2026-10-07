@@ -50,6 +50,7 @@ ShellRoot {
                 ToolbarButton {
                     round: true
                     symbol: "plus"
+                    enabled: !cal.broken
                     onClicked: cal.openAdd()
                 }
             }
@@ -156,6 +157,8 @@ ShellRoot {
             property var events: []
             property bool loading: true
             property string error: ""
+            property bool broken: false         // the store can't be read: nothing is saved over it
+            property bool canRestore: false
 
             property string draftTitle: ""
             property string draftDate: Qt.formatDate(selectedDate, "yyyy-MM-dd")
@@ -191,6 +194,8 @@ ShellRoot {
             }
 
             function openAdd() {
+                if (broken)
+                    return
                 draftTitle = ""
                 draftDate = selectedKey
                 draftTime = ""
@@ -199,7 +204,7 @@ ShellRoot {
             }
 
             function addEvent() {
-                if (!draftTitle.trim())
+                if (!draftTitle.trim() || broken)
                     return
                 addProc.stdinEnabled = true
                 addProc.running = true
@@ -210,6 +215,11 @@ ShellRoot {
                     return
                 deleteProc.command = ["python3", helper, "delete", id]
                 deleteProc.running = true
+            }
+
+            function restore() {
+                if (!restoreProc.running)
+                    restoreProc.running = true
             }
 
             function reload() {
@@ -226,10 +236,13 @@ ShellRoot {
                     onStreamFinished: {
                         try {
                             const r = JSON.parse(text)
+                            cal.broken = !r.ok && !!r.broken
+                            cal.canRestore = !!r.canRestore
                             if (r.ok) {
                                 cal.events = r.events ?? []
-                                cal.error = ""
+                                cal.error = r.invalid ? r.invalid + (r.invalid === 1 ? " event couldn't be shown: its date or time isn't valid." : " events couldn't be shown: their dates or times aren't valid.") : ""
                             } else {
+                                cal.events = []
                                 cal.error = r.error ?? "Calendar data could not be read."
                             }
                         } catch (e) {
@@ -269,6 +282,19 @@ ShellRoot {
                     stdinEnabled = false
                 }
                 onExited: stdinEnabled = true
+            }
+
+            Process {
+                id: restoreProc
+                command: ["python3", cal.helper, "restore"]
+                stdout: StdioCollector {
+                    onStreamFinished: {
+                        let r = null
+                        try { r = JSON.parse(text) } catch (e) {}
+                        if (r && r.ok) cal.reload()
+                        else cal.error = r?.error ?? "The earlier copy couldn't be put back."
+                    }
+                }
             }
 
             Process {
@@ -421,17 +447,28 @@ ShellRoot {
             Glass {
                 visible: !!cal.error
                 anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: 14 }
-                width: Math.min(520, parent.width - 40)
-                height: 50
+                width: Math.min(560, parent.width - 40)
+                height: Math.max(50, errorText.implicitHeight + 24)
                 radius: 16
                 tint: Theme.dark ? "#d02b1f24" : "#eefdf0f0"
                 z: 40
 
+                Button {
+                    id: restoreButton
+                    objectName: "calendarRestore"
+                    visible: cal.broken && cal.canRestore
+                    anchors { right: parent.right; rightMargin: 12; verticalCenter: parent.verticalCenter }
+                    text: "Restore"
+                    onClicked: cal.restore()
+                }
+
                 Text {
-                    anchors.centerIn: parent
-                    width: parent.width - 24
+                    id: errorText
+                    objectName: "calendarError"
+                    anchors { left: parent.left; leftMargin: 12; verticalCenter: parent.verticalCenter
+                              right: restoreButton.visible ? restoreButton.left : parent.right; rightMargin: 12 }
                     text: cal.error
-                    horizontalAlignment: Text.AlignHCenter
+                    horizontalAlignment: restoreButton.visible ? Text.AlignLeft : Text.AlignHCenter
                     wrapMode: Text.WordWrap
                     color: "#ff453a"
                     font { family: Theme.fontUi; pixelSize: 12 }

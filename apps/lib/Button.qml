@@ -17,6 +17,9 @@ Item {
     property string symbol
     property bool prominent: false
     property bool destructive: false
+    // Destructive wins: a prominent destructive button (Erase, Delete) is red,
+    // never the accent blue that says "safe default".
+    readonly property color red: Theme.dark ? "#ff453a" : "#ff3b30"
     signal clicked()
     implicitWidth: Math.max(72, row.implicitWidth + 28); implicitHeight: 26
     opacity: enabled ? 1 : 0.45
@@ -25,8 +28,9 @@ Item {
         anchors.fill: parent
         radius: height / 2
         role: "control"
-        // The default button is stained with the accent; the others are plain glass.
-        tint: b.prominent ? Theme.accent : material.tint
+        // The default button is stained with the accent (red if it destroys
+        // something); the others are plain glass.
+        tint: b.prominent ? (b.destructive ? b.red : Theme.accent) : material.tint
         pressed: ma.pressed
         hovered: ma.containsMouse
         shadow: Theme.dark ? "#40000000" : "#1a000000"
@@ -41,7 +45,7 @@ Item {
         Text {
             anchors.verticalCenter: parent.verticalCenter
             text: b.text
-            color: b.prominent ? "#ffffff" : b.destructive ? "#ff3b30" : Theme.label
+            color: b.prominent ? "#ffffff" : b.destructive ? b.red : Theme.label
             font { family: Theme.fontUi; pixelSize: 13; weight: b.prominent ? Font.DemiBold : Font.Medium }
         }
     }

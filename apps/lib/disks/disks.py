@@ -84,8 +84,37 @@ def mount_table() -> dict[str, tuple[str, str]]:
     return out
 
 
+# Where volumes you plug in or mount yourself go. A mount anywhere else
+# (/, /usr, /var/lib, /srv, an fstab /data…) is part of how this computer
+# runs, so its volume, and everything holding it, is left alone.
+USER_MOUNT_ROOTS = ("/run/media/", "/media/", "/mnt/")
+
+
 def is_system(mounts: list[str]) -> bool:
-    return any(m in SYSTEM_MOUNTS for m in mounts)
+    for m in mounts:
+        if m in SYSTEM_MOUNTS or m == "[SWAP]":
+            return True
+        if not m.startswith(USER_MOUNT_ROOTS) and m not in ("/mnt", "/media"):
+            return True
+    return False
+
+
+def descendants(dev: dict) -> list[dict]:
+    """dev and everything stacked on it, at any depth: LUKS inside a
+    partition, LVM inside that, and so on."""
+    out = [dev]
+    for child in dev.get("children") or []:
+        out += descendants(child)
+    return out
+
+
+def mounted_at(nodes: list[dict], mounts: dict[str, tuple[str, str]]) -> list[str]:
+    """Every mount point of these devices, from lsblk and the kernel's table."""
+    points, paths = [], {n.get("path") for n in nodes if n.get("path")}
+    for n in nodes:
+        points += [m for m in (n.get("mountpoints") or []) if m and m not in points]
+    points += [t for t, (src, _) in mounts.items() if src in paths and t not in points]
+    return points
 
 
 def display_name(dev: dict, mounts: list[str], system_name: str) -> str:
@@ -132,9 +161,9 @@ def parse(tree: dict, mounts: dict[str, tuple[str, str]] | None = None, system_n
         for part in (children or [dev]):
             if part.get("type") not in ("part", "disk", "rom", "crypt", "lvm"):
                 continue
-            points = [m for m in (part.get("mountpoints") or []) if m]
-            for child in part.get("children") or []:            # LUKS / LVM inside a partition
-                points += [m for m in (child.get("mountpoints") or []) if m]
+            stack = descendants(part) if part is not dev else [dev]
+            points = mounted_at(stack, mounts)
+            system = is_system(points)
             fstype = part.get("fstype") or next((mounts[m][1] for m in points if m in mounts), "")
             if not fstype and not points and part is dev:
                 continue                                        # an empty disk: no volume to show
@@ -160,7 +189,7 @@ def parse(tree: dict, mounts: dict[str, tuple[str, str]] | None = None, system_n
                 "free": free or 0,
                 "mountpoint": first,
                 "mounted": bool(points),
-                "system": is_system(points),
+                "system": system,
                 "removable": removable,
                 "readonly": bool(part.get("ro")),
                 "partition": part is not dev,
@@ -174,7 +203,8 @@ def parse(tree: dict, mounts: dict[str, tuple[str, str]] | None = None, system_n
             "transport": dev.get("tran") or "",
             "removable": removable,
             "readonly": bool(dev.get("ro")),
-            "system": any(v["system"] for v in volumes),
+            # Anything on the disk, at any depth, that the system runs from.
+            "system": any(v["system"] for v in volumes) or is_system(mounted_at(descendants(dev), mounts)),
             "volumes": volumes,
         })
     # The live system's / is an overlay with no disk of its own: show it anyway.

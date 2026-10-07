@@ -82,11 +82,12 @@ ShellRoot {
                 round: true; symbol: "ellipsis"
                 enabled: !!app.current
                 onClicked: listMenu.popup(noteMore, 0, height + 6, [
-                    { text: "Delete Note", action: () => app.deleteNote(app.current) },
+                    app.inTrash(app.current) ? { text: "Recover Note", action: () => app.recoverNote(app.current) } : null,
+                    { text: app.inTrash(app.current) ? "Delete Immediately" : "Delete Note", action: () => app.deleteNote(app.current) },
                     { text: "Copy as Markdown", action: () => Quickshell.clipboardText = editor.markdown() },
                     { separator: true },
                     { text: "Show in Files", action: () => Quickshell.execDetached(["gg-files", "--select", app.current]) },
-                ])
+                ].filter((i) => i))
             },
             ToolbarButton {
                 x: parent.width - width - 12
@@ -222,12 +223,18 @@ ShellRoot {
                 const inTrash = path.includes("/" + trashName + "/")
                 const i = visibleNotes.findIndex((n) => n.path === path)
                 const next = visibleNotes[i + 1] ?? visibleNotes[i - 1] ?? null
-                if (inTrash) Quickshell.execDetached(["rm", "-f", path])
-                else Quickshell.execDetached(["sh", "-c", "mkdir -p \"$1\" && mv -f \"$2\" \"$1\"/", "sh", root + "/" + trashName, path])
+                // Never replaces a note already in Recently Deleted (see notes/trash.py).
+                trashOp.go([inTrash ? "erase" : "delete", path])
                 notes = notes.filter((n) => n.path !== path)
                 current = next ? next.path : ""
-                refreshLater.restart()
             }
+            function recoverNote(path) {
+                if (!path || !editor.flush()) return
+                trashOp.go(["recover", path])
+                notes = notes.filter((n) => n.path !== path)
+                if (current === path) current = ""
+            }
+            function inTrash(path) { return !!path && path.includes("/" + trashName + "/") }
             function newFolder() { sidebarOpen = true; namingFolder = true; folderName.text = "New Folder"; folderName.input.selectAll(); folderName.input.forceActiveFocus() }
             function createFolder(name) {
                 namingFolder = false
@@ -250,6 +257,28 @@ ShellRoot {
             }
 
             Timer { id: refreshLater; interval: 250; onTriggered: app.refresh() }
+            Process {
+                id: trashOp
+                property var queue: []
+                property string doing: ""
+                function go(args) { queue = queue.concat([args]); if (!running && !doing) next() }
+                function next() {
+                    doing = ""
+                    if (!queue.length) { refreshLater.restart(); return }
+                    doing = queue[0][0]
+                    command = ["python3", Qt.resolvedUrl("notes/trash.py").toString().replace("file://", ""), queue[0][0], app.root, queue[0][1]]
+                    queue = queue.slice(1)
+                    running = true
+                }
+                stdout: StdioCollector {
+                    onStreamFinished: {
+                        let r = null
+                        try { r = JSON.parse(text) } catch (e) {}
+                        if (r && r.ok && trashOp.doing === "recover") app.current = r.path
+                    }
+                }
+                onExited: Qt.callLater(trashOp.next)
+            }
             Process {
                 id: lister
                 running: true
@@ -297,10 +326,14 @@ ShellRoot {
                 current: app.current
                 showFolder: app.folder === "" || !!app.matches
                 onPicked: (path) => { if (editor.flush()) app.current = path }
-                onMenu: (path, item, mx, my) => listMenu.popup(item, mx, my, [
+                onMenu: (path, item, mx, my) => listMenu.popup(item, mx, my, (app.inTrash(path) ? [
+                    { text: "Recover", action: () => app.recoverNote(path) },
+                    { text: "Delete Immediately", action: () => app.deleteNote(path) },
+                ] : [
                     { text: "Delete", action: () => app.deleteNote(path) },
+                ]).concat([
                     { text: "Show in Files", action: () => Quickshell.execDetached(["gg-files", "--select", path]) },
-                ])
+                ]))
             }
             Rectangle { x: app.listWidth; width: 1; height: parent.height; color: Theme.separator }
 

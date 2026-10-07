@@ -91,7 +91,11 @@ class Passwords:
         p = self._call(["lookup", *self._attrs(origin, username)])
         if p is None or p.returncode != 0:
             return None
-        return p.stdout
+        # secret-tool ends its output with a line break when it writes to a
+        # terminal (and some builds always do). A web password can't contain
+        # one, so a single trailing break is never part of the secret.
+        secret = p.stdout
+        return secret[:-1] if secret.endswith("\n") else secret
 
     def credentials(self, origin: str) -> list[dict]:
         """[{username, password}] saved for this site."""
