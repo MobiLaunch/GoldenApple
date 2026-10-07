@@ -414,9 +414,29 @@ Scope {
                         delegate: ColumnLayout {
                             id: group
                             required property var modelData
+                            required property int index
                             readonly property bool open: center.expanded[modelData.app] === true || modelData.items.length === 1
                             Layout.fillWidth: true
                             spacing: 6
+                            // Opening Notification Center, the groups cascade in after
+                            // the panel, one a moment after another.
+                            property real shown: 1
+                            opacity: shown
+                            transform: Translate { x: (1 - group.shown) * 40 }
+                            Connections {
+                                target: root
+                                function onCenterOpenChanged() {
+                                    if (!root.centerOpen || Theme.reduceMotion) return
+                                    group.shown = 0
+                                    cascade.restart()
+                                }
+                            }
+                            SequentialAnimation {
+                                id: cascade
+                                PauseAnimation { duration: 70 + Math.min(group.index, 6) * 45 }
+                                NumberAnimation { target: group; property: "shown"; to: 1; duration: Theme.snappy.duration
+                                    easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.snappy.curve }
+                            }
                             // An app with several notifications shows them stacked; a click spreads them.
                             RowLayout {
                                 visible: group.modelData.items.length > 1
@@ -447,10 +467,22 @@ Scope {
                             Repeater {
                                 model: group.open ? group.modelData.items : group.modelData.items.slice(0, 1)
                                 delegate: Card {
+                                    id: stacked
                                     required property var modelData
+                                    required property int index
                                     n: modelData
                                     Layout.fillWidth: true
                                     Layout.preferredHeight: implicitHeight
+                                    // Spreading a stack, the cards behind slide down out of it.
+                                    property real spread: 0
+                                    opacity: 1 - spread
+                                    transform: Translate { y: -stacked.spread * 24 * Math.min(stacked.index, 3) }
+                                    Component.onCompleted: if (index > 0 && !Theme.reduceMotion) { spread = 1; unstack.start() }
+                                    NumberAnimation {
+                                        id: unstack
+                                        target: stacked; property: "spread"; to: 0
+                                        duration: Theme.snappy.duration; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.snappy.curve
+                                    }
                                     // A collapsed stack shows the edge of the cards behind.
                                     Item {
                                         visible: !group.open && group.modelData.items.length > 1

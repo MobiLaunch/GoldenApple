@@ -159,9 +159,12 @@ PanelWindow {
         }
 
         Glass {
+            id: resultsPanel
             visible: spot.results.length > 0
             Layout.fillWidth: true
             Layout.preferredHeight: Math.min(list.contentHeight + 16, Math.max(60, spot.height * 0.78 - 90))
+            // The results grow and shrink with what you type instead of jumping.
+            Behavior on Layout.preferredHeight { enabled: resultsPanel.visible && !Prefs.reduceMotion; Spring { spring: Theme.snappy } }
             role: "regular"
             radius: 24
             ListView {

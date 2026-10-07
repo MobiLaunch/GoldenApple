@@ -13,9 +13,18 @@ Item {
     implicitWidth: 360
     implicitHeight: col.implicitHeight
 
+    // It settles in as it appears, rather than popping into place.
+    property real enter: 1
+    function appear() { if (Theme.reduceMotion) return; enter = 0; rise.restart() }
+    onVisibleChanged: if (visible) appear()
+    Component.onCompleted: if (visible) appear()
+    NumberAnimation { id: rise; target: root; property: "enter"; to: 1; duration: 340; easing.type: Easing.OutCubic }
+
     Column {
         id: col
         anchors.centerIn: parent
+        opacity: root.enter
+        transform: Translate { y: (1 - root.enter) * 10 }
         width: Math.min(460, root.width - 32)
         spacing: 8
 

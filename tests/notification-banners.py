@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Banners move as on the Mac: a new one slides in from the screen's edge, a
 dropped one slides back out (it doesn't vanish in a frame, and keeps what it
-says while it goes), and the banners below it move up into its place. Runs
-the whole shell in the preview harness."""
+says while it goes), and the banners below it move up into its place.
+Opening Notification Center, its groups cascade in. Runs the whole shell in
+the preview harness."""
 import json
 import os
 from pathlib import Path
@@ -36,6 +37,19 @@ def cards(view):
              if c.property("nid") is not None and c.property("title") is not None and c.property("visible")]
     return sorted((c.property("y"), c.property("x"), c.property("opacity"), c.property("title")) for c in items)
 
+def groups():
+    """Notification Center's groups: how far each has come in (0…1)."""
+    out = []
+    for w in QGuiApplication.topLevelWindows():
+        root = w.contentItem()
+        stack = [root]
+        while stack:
+            it = stack.pop()
+            stack.extend(it.childItems())
+            if it.property("shown") is not None and it.property("modelData") is not None and it.property("open") is not None:
+                out.append(round(it.property("shown"), 2))
+    return out
+
 def ipc(self, target, function, args):
     view = find("bannerList")
     if function == "send":
@@ -57,6 +71,12 @@ def ipc(self, target, function, args):
         state["leaving"] = cards(view)
         QTest.qWait(900)
         state["after"] = cards(view)
+        # Notification Center: its groups cascade in.
+        n.setProperty("centerOpen", True)
+        QTest.qWait(30)
+        state["cascade"] = groups()
+        QTest.qWait(1200)
+        state["settled"] = groups()
         open(out, "w").write(json.dumps(state))
 P.Preview.ipc = ipc
 sys.exit(P.main())
@@ -97,10 +117,14 @@ def main() -> int:
                 failures.append(f"…moving right and fading as it goes: x {x}, opacity {opacity}")
         if [c[3] for c in s["after"]] != ["Ferry tickets"]:
             failures.append(f"then it's gone, the other stays: {s['after']}")
+        if not s["cascade"] or max(s["cascade"]) > 0.5:
+            failures.append(f"opening Notification Center, its groups start out of place and cascade in: {s['cascade']}")
+        if not s["settled"] or min(s["settled"]) < 1:
+            failures.append(f"…and all arrive: {s['settled']}")
         if failures:
             print("\n".join("FAIL " + f for f in failures), file=sys.stderr)
             return 1
-        print("Notification banners: slide in from the edge, slide out when dropped, keep their words as they go")
+        print("Notification banners: slide in from the edge, slide out when dropped, keep their words as they go; Notification Center cascades in")
         return 0
 
 

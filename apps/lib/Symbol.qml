@@ -22,19 +22,52 @@ Item {
     width: size; height: size
     implicitWidth: size; implicitHeight: size
 
+    // A new glyph replaces the old one as SF Symbols do: the old shrinks
+    // away as the new one grows in (play ↔ pause, the Wi-Fi bars, mute).
+    readonly property url src: root.name ? Qt.resolvedUrl("assets/symbols/" + root.name + (root.resolved === "white" ? "" : "@" + root.resolved) + ".svg") : ""
+    property url shown: ""
+    onSrcChanged: {
+        if (shown != "" && src != "" && visible && !Theme.reduceMotion) {
+            outgoing.source = shown
+            swap.restart()
+        }
+        shown = src
+    }
+    Component.onCompleted: shown = src
+
     Image {
-        id: img
+        id: outgoing
+        objectName: "symbolOutgoing"
         anchors.fill: parent
-        source: root.name ? Qt.resolvedUrl("assets/symbols/" + root.name + (root.resolved === "white" ? "" : "@" + root.resolved) + ".svg") : ""
         sourceSize: Qt.size(root.size * 2, root.size * 2)
         smooth: true
-        visible: !root.tinted
+        visible: opacity > 0 && !root.tinted
+        opacity: 0
     }
-    MultiEffect {
-        anchors.fill: img
-        source: img
-        visible: root.tinted
-        colorization: 1.0
-        colorizationColor: root.tint
+    Item {
+        id: face
+        anchors.fill: parent
+        Image {
+            id: img
+            anchors.fill: parent
+            source: root.src
+            sourceSize: Qt.size(root.size * 2, root.size * 2)
+            smooth: true
+            visible: !root.tinted
+        }
+        MultiEffect {
+            anchors.fill: img
+            source: img
+            visible: root.tinted
+            colorization: 1.0
+            colorizationColor: root.tint
+        }
+    }
+    ParallelAnimation {
+        id: swap
+        NumberAnimation { target: outgoing; property: "opacity"; from: 1; to: 0; duration: 140; easing.type: Easing.OutQuad }
+        NumberAnimation { target: outgoing; property: "scale"; from: 1; to: 0.55; duration: 180; easing.type: Easing.InQuad }
+        NumberAnimation { target: face; property: "opacity"; from: 0; to: 1; duration: 160; easing.type: Easing.OutQuad }
+        NumberAnimation { target: face; property: "scale"; from: 0.55; to: 1; duration: 300; easing.type: Easing.OutBack; easing.overshoot: 1.6 }
     }
 }
