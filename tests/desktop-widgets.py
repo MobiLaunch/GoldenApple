@@ -62,15 +62,10 @@ with tempfile.TemporaryDirectory() as t:
                    if (c := img.pixelColor(i, j)).red() > 230 and 120 < c.green() < 180 and c.blue() < 60)
         check(hand > 15, f"the Clock widget has its orange second hand (found {hand})")
         x, y = cell(0, 1)
-        sky = img.pixelColor(x + 300, y + 100)
-        if not (sky.lightness() < 170 and sky.blue() > sky.red()):
-            check(False, f"the Weather widget paints the sky, got {sky.name()}")
-            # Show what was there instead (CI keeps no screenshots of this job).
-            from PySide6.QtCore import QBuffer, QIODevice
-            buf = QBuffer()
-            buf.open(QIODevice.WriteOnly)
-            img.copy(0, 0, 720, 460).scaledToWidth(360).save(buf, "JPG", 70)
-            print("--- desktop.jpg base64 begin ---\n" + bytes(buf.data().toBase64()).decode() + "\n--- end ---")
+        # Most of the medium widget is sky, not one pixel that fonts can move text onto.
+        cells = [(i, j) for i in range(x + 8, x + 2 * CELL + GAP - 8, 4) for j in range(y + 8, y + CELL - 8, 4)]
+        skyish = sum(1 for i, j in cells if (c := img.pixelColor(i, j)).lightness() < 190 and c.blue() > c.red())
+        check(skyish > len(cells) * 0.5, f"the Weather widget paints the sky ({skyish} of {len(cells)} samples)")
         white = sum(1 for i in range(x + 15, x + 120) for j in range(y + 30, y + 75) if img.pixelColor(i, j).lightness() > 245)
         check(white > 150, f"the Weather widget shows the temperature (found {white} white pixels)")
 
