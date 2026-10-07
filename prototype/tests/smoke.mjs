@@ -109,7 +109,13 @@ await scenario("windows: minimise, restore, mission control, tiling", "?quiet&op
   await p.click(".notes .lights .min"); await wait(p, 900);
   await p.click(".dock-item.mini"); await wait(p, 800);
   await p.keyboard.press("Control+ArrowUp"); await wait(p, 900);
-  await p.keyboard.press("Escape"); await wait(p, 1200);                 // let Mission Control settle
+  await p.keyboard.press("Escape");
+  // Mission Control closed and every window back in place (on a slow runner a
+  // fixed wait measured the toolbar mid-flight and pressed beside it).
+  await p.waitForFunction(() => !document.getElementById("desktop").classList.contains("mission")
+    && [...document.querySelectorAll(".win")].every((w) => w.getAnimations().every((a) => a.playState !== "running")),
+    null, { timeout: 8000 });
+  await wait(p, 200);
   const t = await p.$(".notes .toolbar"); const b = await t.boundingBox();
   await p.mouse.move(b.x + 20, b.y + 20); await p.mouse.down(); await p.mouse.move(2, 400, { steps: 8 }); await p.mouse.up(); await wait(p, 800);
   if (parseFloat(await p.$eval(".win.notes", (e) => e.style.left)) > 20) throw new Error("window did not snap to the left half");
