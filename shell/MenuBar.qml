@@ -388,6 +388,8 @@ PanelWindow {
         anchor.rect.y: bar.height + 5
         items: bar.active ? [
             { label: "Hide " + bar.appName, shortcut: "⌘H", action: () => Hyprland.dispatch("movetoworkspacesilent special:hidden,class:^(" + String(bar.active.appId).replace(/[.^$*+?()[\]{}|\\]/g, "\\$&") + ")$") },
+            { label: "Hide Others", shortcut: "⌥⌘H", action: () => bar.hideOthers(String(bar.active.appId)) },
+            { label: "Show All", enabled: bar.hiddenWindows().length > 0, action: () => bar.showAll() },
             "-",
             { label: "Quit " + bar.appName, shortcut: "⌘Q", action: () => bar.appWindows.forEach((w) => w.close()) }
         ] : [
@@ -397,8 +399,8 @@ PanelWindow {
             "-",
             { label: "Empty Trash…", action: () => bar.emptyTrash() },
             "-",
-            { label: "Hide Others", enabled: false },
-            { label: "Show All", enabled: false }
+            { label: "Hide Others", shortcut: "⌥⌘H", action: () => bar.hideOthers("") },
+            { label: "Show All", enabled: bar.hiddenWindows().length > 0, action: () => bar.showAll() }
         ]
     }
     HyprlandFocusGrab {
@@ -435,6 +437,32 @@ PanelWindow {
         const a = Hyprland.activeToplevel?.address ?? ""
         return a ? "0x" + String(a).replace(/^0x/, "") : ""
     }
+    // Hide Others, Show All and Bring All to Front, as the Mac's app and
+    // Window menus have them. Hidden windows wait on special:hidden (⌘H),
+    // minimised ones on special:minimized; the Dock brings either back.
+    function windowClass(t) { return String(t.wayland?.appId ?? t.lastIpcObject?.class ?? "") }
+    function windowAddress(t) { return t.address ? "0x" + String(t.address).replace(/^0x/, "") : "" }
+    function hiddenWindows() { return Hyprland.toplevels.values.filter((t) => t.workspace?.name === "special:hidden") }
+    function minimizedWindows() { return Hyprland.toplevels.values.filter((t) => t.workspace?.name === "special:minimized") }
+    function hideOthers(keep) {
+        const ws = Hyprland.focusedWorkspace?.id
+        for (const t of Hyprland.toplevels.values) {
+            if (t.workspace?.id !== ws || windowClass(t) === keep || !windowAddress(t)) continue
+            Hyprland.dispatch("movetoworkspacesilent special:hidden,address:" + windowAddress(t))
+        }
+    }
+    function showAll(minimizedToo) {
+        const ws = Hyprland.focusedWorkspace?.id ?? 1
+        for (const t of hiddenWindows().concat(minimizedToo ? minimizedWindows() : []))
+            if (windowAddress(t)) Hyprland.dispatch("movetoworkspacesilent " + ws + ",address:" + windowAddress(t))
+    }
+    function bringToFront(appId) {
+        const ws = Hyprland.focusedWorkspace?.id ?? 1
+        for (const t of Hyprland.toplevels.values)
+            if (windowClass(t) === appId && windowAddress(t) && t.workspace?.id !== ws)
+                Hyprland.dispatch("movetoworkspacesilent " + ws + ",address:" + windowAddress(t))
+        if (tileTarget) Hyprland.dispatch("focuswindow address:" + tileTarget)
+    }
     function tile(layout) { Hyprland.dispatch("exec gg-tile " + layout + (tileTarget ? " " + tileTarget : "")) }
     function minimize() { Hyprland.dispatch("movetoworkspacesilent special:minimized" + (tileTarget ? ",address:" + tileTarget : "")) }
     // Full screen and Zoom act on the focused window: focus it first.
@@ -453,7 +481,7 @@ PanelWindow {
             { label: "Zoom", enabled: false },
             "-",
             { label: "Mission Control", action: () => bar.shell("missioncontrol toggle") },
-            { label: "Bring All to Front", enabled: false }
+            { label: "Bring All to Front", enabled: bar.minimizedWindows().length > 0, action: () => bar.showAll(true) }
         ] : [
             { label: "Minimize", shortcut: "⌘M", action: () => bar.minimize() },
             { label: "Zoom", shortcut: "⌥⌘F", action: () => bar.fullscreen(1) },
@@ -474,7 +502,9 @@ PanelWindow {
             "-",
             { label: "Return to Previous Size", shortcut: "⌃⌥⌫", action: () => bar.tile("restore") },
             "-",
-            { label: "Enter Full Screen", shortcut: "⌃⌘F", action: () => bar.fullscreen(0) }
+            { label: "Enter Full Screen", shortcut: "⌃⌘F", action: () => bar.fullscreen(0) },
+            "-",
+            { label: "Bring All to Front", action: () => bar.bringToFront(String(bar.active.appId)) }
         ]
     }
     HyprlandFocusGrab {

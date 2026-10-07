@@ -60,6 +60,11 @@ ShellRoot {
             const m = root.menuBars.find((x) => x.screen?.name === name) ?? root.menuBars[0]
             m?.openMenu(menu)
         }
+        // ⌥⌘H: hide every window but the front app's.
+        function hideOthers(): void {
+            const m = root.menuBars[0]
+            m?.hideOthers(m.active ? String(m.active.appId) : "")
+        }
     }
     Binding { target: Theme; property: "reduceMotion"; value: Prefs.reduceMotion }
     Binding { target: Theme; property: "reduceTransparency"; value: Prefs.reduceTransparency }
