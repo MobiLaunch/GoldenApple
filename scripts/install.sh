@@ -39,6 +39,7 @@ install_extras() {
   install -Dm755 "$REPO/compositor/hyprland/hyprglass-sync.sh" "$R/usr/lib/golden-gate/hyprglass-sync.sh"
   install -Dm755 "$REPO/compositor/hyprland/apply-preferences.sh" "$R/usr/lib/golden-gate/apply-preferences.sh"
   install -Dm755 "$REPO/compositor/hyprland/tile.py" "$R/usr/lib/golden-gate/tile.py"
+  install -Dm755 "$REPO/compositor/hyprland/idle.py" "$R/usr/lib/golden-gate/idle.py"
   # Standard password-authenticated administration for accounts created in Hello.
   install -d -m755 "$R/etc/sudoers.d"
   if [[ ! -e "$R/etc/sudoers.d/20-golden-wheel" ]]; then
@@ -80,8 +81,9 @@ install_extras() {
   printf '#!/bin/sh\nexec /usr/lib/golden-gate/hyprglass-sync.sh "$@"\n' > "$BIN/gg-hyprglass-sync"
   printf '#!/bin/sh\nexec /usr/lib/golden-gate/apply-preferences.sh "$@"\n' > "$BIN/gg-apply-preferences"
   printf '#!/bin/sh\nexec python3 /usr/lib/golden-gate/tile.py "$@"\n' > "$BIN/gg-tile"
+  printf '#!/bin/sh\nexec python3 /usr/lib/golden-gate/idle.py "$@"\n' > "$BIN/gg-idle"
   cp "$REPO/distro/archiso/overlay/usr/local/bin/gg-session" "$BIN/gg-session"
-  chmod 755 "$BIN/gg-diagnostics" "$BIN/gg-settings" "$BIN/gg-web" "$BIN/gg-install" "$BIN/gg-software" "$BIN/gg-files" "$BIN/gg-lcode" "$BIN/gg-airdrop" "$BIN/gg-pref" "$BIN/gg-hyprglass-sync" "$BIN/gg-apply-preferences" "$BIN/gg-tile" "$BIN/gg-mac-open" "$BIN/gg-session"
+  chmod 755 "$BIN/gg-diagnostics" "$BIN/gg-settings" "$BIN/gg-web" "$BIN/gg-install" "$BIN/gg-software" "$BIN/gg-files" "$BIN/gg-lcode" "$BIN/gg-airdrop" "$BIN/gg-pref" "$BIN/gg-hyprglass-sync" "$BIN/gg-apply-preferences" "$BIN/gg-tile" "$BIN/gg-idle" "$BIN/gg-mac-open" "$BIN/gg-session"
   mkdir -p "$R/usr/share/wayland-sessions"
   cat > "$R/usr/share/wayland-sessions/golden-gate.desktop" <<'EOF'
 [Desktop Entry]
@@ -325,19 +327,22 @@ cp "$REPO/apps/setup/pref-helper.py" "$RUNTIME/pref-helper.py"
 cp "$REPO/compositor/hyprland/hyprglass-sync.sh" "$RUNTIME/hyprglass-sync.sh"
 cp "$REPO/compositor/hyprland/apply-preferences.sh" "$RUNTIME/apply-preferences.sh"
 cp "$REPO/compositor/hyprland/tile.py" "$RUNTIME/tile.py"
-chmod 755 "$RUNTIME/pref-helper.py" "$RUNTIME/hyprglass-sync.sh" "$RUNTIME/apply-preferences.sh" "$RUNTIME/tile.py"
+cp "$REPO/compositor/hyprland/idle.py" "$RUNTIME/idle.py"
+chmod 755 "$RUNTIME/pref-helper.py" "$RUNTIME/hyprglass-sync.sh" "$RUNTIME/apply-preferences.sh" "$RUNTIME/tile.py" "$RUNTIME/idle.py"
 if [[ $MODE == system ]]; then
   printf '#!/bin/sh\nexec python3 /usr/share/golden-gate/runtime/pref-helper.py "$@"\n' > "$BIN/gg-pref"
   printf '#!/bin/sh\nexec /usr/share/golden-gate/runtime/hyprglass-sync.sh "$@"\n' > "$BIN/gg-hyprglass-sync"
   printf '#!/bin/sh\nexec /usr/share/golden-gate/runtime/apply-preferences.sh "$@"\n' > "$BIN/gg-apply-preferences"
   printf '#!/bin/sh\nexec python3 /usr/share/golden-gate/runtime/tile.py "$@"\n' > "$BIN/gg-tile"
+  printf '#!/bin/sh\nexec python3 /usr/share/golden-gate/runtime/idle.py "$@"\n' > "$BIN/gg-idle"
 else
   printf '#!/bin/sh\nexec python3 "%s/pref-helper.py" "$@"\n' "$RUNTIME" > "$BIN/gg-pref"
   printf '#!/bin/sh\nexec "%s/hyprglass-sync.sh" "$@"\n' "$RUNTIME" > "$BIN/gg-hyprglass-sync"
   printf '#!/bin/sh\nexec "%s/apply-preferences.sh" "$@"\n' "$RUNTIME" > "$BIN/gg-apply-preferences"
   printf '#!/bin/sh\nexec python3 "%s/tile.py" "$@"\n' "$RUNTIME" > "$BIN/gg-tile"
+  printf '#!/bin/sh\nexec python3 "%s/idle.py" "$@"\n' "$RUNTIME" > "$BIN/gg-idle"
 fi
-chmod +x "$BIN/gg-settings" "$BIN/gg-software" "$BIN/gg-mac-open" "$BIN/gg-files" "$BIN/gg-lcode" "$BIN/gg-airdrop" "$BIN/gg-pref" "$BIN/gg-hyprglass-sync" "$BIN/gg-apply-preferences" "$BIN/gg-tile"
+chmod +x "$BIN/gg-settings" "$BIN/gg-software" "$BIN/gg-mac-open" "$BIN/gg-files" "$BIN/gg-lcode" "$BIN/gg-airdrop" "$BIN/gg-pref" "$BIN/gg-hyprglass-sync" "$BIN/gg-apply-preferences" "$BIN/gg-tile" "$BIN/gg-idle"
 for f in "$REPO"/apps/desktop/*.desktop; do
   sed "s#@APPS@#$APPS_RUN#g" "$f" > "$DATA/applications/$(basename "$f")"
 done

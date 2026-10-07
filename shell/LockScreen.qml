@@ -49,6 +49,7 @@ Scope {
                 id: surface
                 anchors.fill: parent
                 wallpaper: "file://" + root.wallpaper
+                message: Prefs.lockMessage
                 userName: root.realName || (root.user ? root.user.charAt(0).toUpperCase() + root.user.slice(1) : "Golden User")
                 // ~/.face, else the picture AccountsService keeps for the account.
                 avatars: ["file://" + root.home + "/.face", "file:///var/lib/AccountsService/icons/" + root.user]

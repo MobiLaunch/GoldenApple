@@ -18,6 +18,7 @@ import "components"
 
 Scope {
     id: root
+    objectName: "notifications"
     readonly property bool dnd: Prefs.focusDnd
     readonly property var list: server.trackedNotifications.values
     property var banners: []            // notifications showing as banners, newest first
@@ -35,8 +36,35 @@ Scope {
     }
     function countFor(appId, startupClass) {
         const ids = [appId, appId.split(".").pop(), startupClass ?? ""].map((s) => s.toLowerCase()).filter((s) => s)
-        return list.filter((n) => ids.includes((n.desktopEntry || "").toLowerCase())
+        return list.filter((n) => Prefs.notifyApp(keyOf(n)).badges).filter((n) => ids.includes((n.desktopEntry || "").toLowerCase())
             || ids.includes((n.appName || "").toLowerCase()) || ids.includes(ownerOf(n).toLowerCase())).length
+    }
+    // One name per app for its Notifications settings: the app it speaks for,
+    // else its desktop file, else the name it gives.
+    function keyOf(n) {
+        return (ownerOf(n) || n.desktopEntry || n.appName || "notification").toLowerCase()
+    }
+    // The apps that have notified, for Settings → Notifications to list:
+    // ~/.local/state/golden-gate/notifiers.json, { key: { name, icon } }.
+    readonly property string notifiersFile: (Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state") + "/golden-gate/notifiers.json"
+    property var notifiers: ({})
+    FileView {
+        path: root.notifiersFile
+        printErrors: false
+        onLoaded: { try { root.notifiers = JSON.parse(text()) } catch (e) { root.notifiers = ({}) } }
+    }
+    function remember(n) {
+        const k = keyOf(n)
+        if (notifiers[k]) return
+        const all = Object.assign({}, notifiers)
+        all[k] = { name: appLabel(n), icon: ownerOf(n) || n.desktopEntry || n.appIcon || "" }
+        notifiers = all
+        Quickshell.execDetached(["sh", "-c", 'mkdir -p "${1%/*}" && printf "%s\\n" "$2" > "$1"', "sh", notifiersFile, JSON.stringify(all)])
+    }
+    // The alert sound, as the Mac plays one with each banner.
+    function chime() {
+        Quickshell.execDetached(["sh", "-c", "pw-play /usr/share/sounds/freedesktop/stereo/message-new-instant.oga 2>/dev/null"
+            + " || canberra-gtk-play -i message-new-instant 2>/dev/null || true"])
     }
     function iconFor(n) {
         if (n.image) return n.image
@@ -92,11 +120,15 @@ Scope {
         imageSupported: true
         bodyMarkupSupported: false
         onNotification: (n) => {
+            const choice = Prefs.notifyApp(root.keyOf(n))
+            root.remember(n)
+            if (!choice.allow) return          // untracked, so it's dropped
             n.tracked = true
             const r = Object.assign({}, root.received); r[n.id] = Date.now(); root.received = r
             root.now = Date.now()
             n.closed.connect(() => root.dropBanner(n))
-            if (!root.dnd && !root.centerOpen) root.banners = [n].concat(root.banners.filter((b) => b !== n)).slice(0, 4)
+            if (!root.dnd && !root.centerOpen && choice.banners) root.banners = [n].concat(root.banners.filter((b) => b !== n)).slice(0, 4)
+            if (!root.dnd && Prefs.notifySounds && choice.sound && !n.transient && !(n.hints?.["suppress-sound"] ?? false)) root.chime()
         }
     }
 
@@ -143,7 +175,8 @@ Scope {
                 RowLayout {
                     Text {
                         Layout.fillWidth: true
-                        text: card.n.summary || root.appLabel(card.n)
+                        // Previews off: the app's name and no more, as on the Mac.
+                        text: Prefs.notifyPreviews === "never" ? root.appLabel(card.n) : card.n.summary || root.appLabel(card.n)
                         textFormat: Text.PlainText; elide: Text.ElideRight
                         color: Theme.label
                         font { family: Theme.fontUi; pixelSize: 13; weight: Font.DemiBold }
@@ -157,7 +190,7 @@ Scope {
                 Text {
                     Layout.fillWidth: true
                     visible: text !== ""
-                    text: card.n.body
+                    text: Prefs.notifyPreviews === "never" ? "Notification" : card.n.body
                     textFormat: Text.PlainText; wrapMode: Text.Wrap; maximumLineCount: 4; elide: Text.ElideRight
                     color: Theme.label
                     font { family: Theme.fontUi; pixelSize: 13 }

@@ -7,6 +7,9 @@ import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Hyprland
 import Quickshell.Services.UPower
+import Quickshell.Services.Pipewire
+import Quickshell.Services.Mpris
+import Quickshell.Bluetooth
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Effects
@@ -189,8 +192,31 @@ PanelWindow {
                 Rectangle { anchors.centerIn: parent; width: 6.5; height: 6.5; radius: 1.2; color: bar.darkRight ? "#d6000000" : "#ffffff" }
             }
         }
+        // Now Playing (Control Center settings): the playing track's title.
         BarItem {
-            visible: UPower.displayDevice.isLaptopBattery
+            id: nowPlaying
+            readonly property var player: Mpris.players.values.find((p) => p.isPlaying) ?? null
+            visible: Prefs.barNowPlaying && !!player
+            onClicked: bar.controlCenter.toggle()
+            RowLayout {
+                spacing: 5
+                Symbol { name: "music"; size: 14; tone: bar.darkRight ? "dark" : "white" }
+                BarText {
+                    Layout.maximumWidth: 180
+                    text: nowPlaying.player?.trackTitle ?? ""
+                    elide: Text.ElideRight
+                    dark: bar.darkRight
+                }
+            }
+        }
+        // Focus: the moon while Do Not Disturb is on.
+        BarItem {
+            visible: Prefs.barFocus && Prefs.focusDnd
+            onClicked: bar.controlCenter.toggle()
+            Symbol { name: "moon"; size: 15; tone: bar.darkRight ? "dark" : "white" }
+        }
+        BarItem {
+            visible: Prefs.barBattery && UPower.displayDevice.isLaptopBattery
             // Drawn in the bar's ink (dark over a light wallpaper), red when low
             // and not charging.
             RowLayout {
@@ -200,6 +226,12 @@ PanelWindow {
                 readonly property bool charging: UPower.displayDevice.state === UPowerDeviceState.Charging
                     || UPower.displayDevice.state === UPowerDeviceState.FullyCharged
                 spacing: 1
+                BarText {
+                    visible: Prefs.barBatteryPercent
+                    Layout.rightMargin: 4
+                    text: Math.round(battery.level * 100) + "%"
+                    dark: bar.darkRight
+                }
                 Rectangle {
                     implicitWidth: 25; implicitHeight: 12; radius: 4
                     color: "transparent"; border.width: 1.2
@@ -213,8 +245,35 @@ PanelWindow {
                 Rectangle { implicitWidth: 1.8; implicitHeight: 4.5; color: Qt.rgba(battery.ink.r, battery.ink.g, battery.ink.b, 0.45) }
             }
         }
+        // Bluetooth and Sound (Control Center settings), each opening its
+        // Control Center list.
         BarItem {
-            visible: bar.wifiState !== "none"
+            visible: Prefs.barBluetooth && !!Bluetooth.defaultAdapter
+            Symbol {
+                name: "bluetooth"; size: 15; tone: bar.darkRight ? "dark" : "white"
+                opacity: (Bluetooth.defaultAdapter?.enabled ?? false) ? 1 : 0.35
+            }
+            onClicked: {
+                if (!bar.controlCenter.open) bar.controlCenter.toggle()
+                bar.controlCenter.showDetail("bluetooth")
+            }
+        }
+        BarItem {
+            id: soundItem
+            readonly property var sink: Pipewire.defaultAudioSink
+            visible: Prefs.barSound && !!sink
+            PwObjectTracker { objects: [soundItem.sink] }
+            Symbol {
+                name: (soundItem.sink?.audio?.muted ?? false) || (soundItem.sink?.audio?.volume ?? 1) === 0 ? "speaker" : "speaker-wave"
+                size: 15; tone: bar.darkRight ? "dark" : "white"
+            }
+            onClicked: {
+                if (!bar.controlCenter.open) bar.controlCenter.toggle()
+                bar.controlCenter.showDetail("sound")
+            }
+        }
+        BarItem {
+            visible: Prefs.barWifi && bar.wifiState !== "none"
             Symbol {
                 name: "wifi"; size: 16; tone: bar.darkRight ? "dark" : "white"
                 opacity: bar.wifiState === "connected" ? 1 : 0.35
@@ -224,8 +283,9 @@ PanelWindow {
                 bar.controlCenter.showDetail("wifi")
             }
         }
-        BarItem { Symbol { name: "search"; size: 15; tone: bar.darkRight ? "dark" : "white" } onClicked: bar.spotlight.toggle() }
+        BarItem { visible: Prefs.barSpotlight; Symbol { name: "search"; size: 15; tone: bar.darkRight ? "dark" : "white" } onClicked: bar.spotlight.toggle() }
         BarItem {
+            visible: Prefs.barCitron
             Accessible.name: "Citron Intelligence"
             Shared.Symbol { name: "wand"; size: 15; tone: bar.darkRight ? "dark" : "white" }
             onClicked: Quickshell.execDetached(["gg-intelligence"])

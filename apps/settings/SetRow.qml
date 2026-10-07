@@ -10,6 +10,8 @@ Item {
     property string title
     property string subtitle
     property string symbol
+    property string image              // an app's icon, in place of a symbol
+    readonly property bool hasIcon: !!symbol || !!image
     property color symbolTint: "#8e8e93"
     property bool chevron: false
     property bool first: index === 0
@@ -25,7 +27,7 @@ Item {
 
     Rectangle {
         visible: !row.first
-        x: row.symbol ? 50 : 14; width: parent.width - x - 14; height: 0.5
+        x: row.hasIcon ? 50 : 14; width: parent.width - x - 14; height: 0.5
         color: Theme.separator
     }
     Rectangle {
@@ -36,12 +38,19 @@ Item {
         Behavior on opacity { NumberAnimation { duration: 120 } }
     }
     PaneIcon {
-        visible: !!row.symbol
+        visible: !!row.symbol && !row.image
         x: 14; anchors.verticalCenter: parent.verticalCenter
         symbol: row.symbol; tint: row.symbolTint
     }
+    Image {
+        visible: !!row.image
+        x: 12; anchors.verticalCenter: parent.verticalCenter
+        width: 28; height: 28
+        sourceSize: Qt.size(56, 56)
+        source: row.image
+    }
     Column {
-        x: row.symbol ? 50 : 14
+        x: row.hasIcon ? 50 : 14
         anchors.verticalCenter: parent.verticalCenter
         width: parent.width - x - slot.width - 30
         Text {

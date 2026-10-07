@@ -40,10 +40,11 @@ PanelWindow {
     // arrow keys walk through all of it; `section` labels each part.
     readonly property string query: input.text.trim()
     property var files: []              // { path, name, folder, dir } from fileSearch
-    readonly property var answer: Answers.calculate(query) ?? Answers.convert(query)
+    // Each kind can be turned off in Settings → Spotlight.
+    readonly property var answer: Prefs.spotlightShows("answers") ? Answers.calculate(query) ?? Answers.convert(query) : null
     readonly property var apps: {
         const q = query.toLowerCase()
-        if (!q) return []
+        if (!q || !Prefs.spotlightShows("apps")) return []
         return DesktopEntries.applications.values
             // GNOME Settings opens CitronOS's own (gnome-control-center wrapper): list it once.
             .filter((e) => !e.noDisplay && e.id !== "org.gnome.Settings" && (e.name.toLowerCase().includes(q) || (e.genericName ?? "").toLowerCase().includes(q) || (e.keywords ?? []).some((k) => k.toLowerCase().startsWith(q))))
@@ -61,9 +62,9 @@ PanelWindow {
         if (answer) out.push({ section: "Top Hit", kind: "answer", title: answer.display, subtitle: answer.expression + "  ·  Return copies it", symbol: "calculator" })
         else if (apps.length && apps[0].name.toLowerCase().startsWith(lower)) { out.push(app(apps[0], "Top Hit")); rest = apps.slice(1) }
         for (const e of rest) out.push(app(e, "Applications"))
-        for (const p of Answers.settings(q)) out.push({ section: "System Settings", kind: "settings", pane: p.pane, title: p.title, subtitle: "System Settings", symbol: "gear" })
+        for (const p of Prefs.spotlightShows("settings") ? Answers.settings(q) : []) out.push({ section: "System Settings", kind: "settings", pane: p.pane, title: p.title, subtitle: "System Settings", symbol: "gear" })
         for (const f of files.slice(0, 6)) out.push({ section: "Documents", kind: "file", path: f.path, dir: f.dir, title: f.name, subtitle: f.folder, symbol: f.symbol })
-        out.push({ section: "Web", kind: "web", title: "Search the Web for \u201c" + q + "\u201d", subtitle: "Web", symbol: "globe" })
+        if (Prefs.spotlightShows("web")) out.push({ section: "Web", kind: "web", title: "Search the Web for \u201c" + q + "\u201d", subtitle: "Web", symbol: "globe" })
         return out
     }
 
@@ -72,7 +73,7 @@ PanelWindow {
         id: fileDelay
         interval: 160
         onTriggered: {
-            if (spot.query.length < 2 || spot.answer) { spot.files = []; return }
+            if (spot.query.length < 2 || spot.answer || !Prefs.spotlightShows("files")) { spot.files = []; return }
             fileSearch.running = false
             fileSearch.command = ["sh", "-c", 'cd "$HOME" 2>/dev/null || exit 0; find . -maxdepth 5 \\( -path "*/.*" -prune \\) -o -iname "*$1*" -print 2>/dev/null | head -n 40', "sh", spot.query]
             fileSearch.running = true

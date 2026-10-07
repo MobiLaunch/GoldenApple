@@ -282,6 +282,12 @@ jobs:
         env:
           QT_QPA_PLATFORM: offscreen
           QT_QUICK_BACKEND: software
+      - name: "Settings: Lock Screen timers, Spotlight finds every pane, the shell reads each choice"
+        run: python tests/system-settings.py
+      - name: "Notifications follow Settings: allow, banners, badges, the list of apps"
+        run: python tests/notification-settings.py
+        env:
+          QT_QPA_PLATFORM: offscreen
       - name: Validate Citron voice WebSocket contracts without microphone or network
         run: python tests/intelligence-live.py
       - name: Test account failures, preferences, and browser state

@@ -18,6 +18,7 @@ PanelWindow {
         id: surface
         anchors.fill: parent
         wallpaper: "file://" + Prefs.wallpaper
+        message: Prefs.lockMessage
         login: Quickshell.env("GG_LOCK_PREVIEW") === "login"
         battery: 0.82
         onSubmitted: fail()

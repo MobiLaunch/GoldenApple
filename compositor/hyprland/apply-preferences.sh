@@ -13,6 +13,9 @@ command -v flatpak >/dev/null 2>&1 &&
   flatpak override --user --filesystem=xdg-config/gtk-4.0:ro --filesystem=xdg-config/gtk-3.0:ro >/dev/null 2>&1 || true
 
 [ -r "$CONFIG" ] || exit 0
+
+# Settings → Lock Screen: hypridle's timers.
+grep -q '"lockScreen"' "$CONFIG" 2>/dev/null && command -v gg-idle >/dev/null 2>&1 && gg-idle >/dev/null 2>&1 || true
 read -r NIGHT WARMTH BRIGHTNESS <<EOF
 $(python3 - "$CONFIG" <<'PY'
 import json, sys

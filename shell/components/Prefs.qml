@@ -46,6 +46,29 @@ Singleton {
     readonly property bool clockShowDate: data.menuBar?.showDate ?? true
     readonly property bool clock24: data.menuBar?.clock24 ?? false
     readonly property bool clockSeconds: data.menuBar?.seconds ?? false
+    // Control Center (Settings): what the menu bar shows, defaults as macOS's.
+    readonly property var barItems: data.menuBar?.items ?? ({})
+    readonly property bool barWifi: barItems.wifi ?? true
+    readonly property bool barBluetooth: barItems.bluetooth ?? false
+    readonly property bool barSound: barItems.sound ?? false
+    readonly property bool barFocus: barItems.focus ?? true          // while a Focus is on
+    readonly property bool barNowPlaying: barItems.nowPlaying ?? false
+    readonly property bool barBattery: barItems.battery ?? true
+    readonly property bool barBatteryPercent: barItems.batteryPercent ?? false
+    readonly property bool barSpotlight: barItems.spotlight ?? true
+    readonly property bool barCitron: barItems.citron ?? true
+    // Notifications (Settings): previews, sounds, and each app's choices,
+    // keyed as Notifications.keyOf() names an app.
+    readonly property var notifyPrefs: data.notifications ?? ({})
+    readonly property string notifyPreviews: notifyPrefs.previews ?? "always"   // always | never
+    readonly property bool notifySounds: notifyPrefs.sounds ?? true
+    function notifyApp(key) {
+        return Object.assign({ allow: true, banners: true, sound: true, badges: true }, (notifyPrefs.apps ?? {})[key] ?? {})
+    }
+    // Spotlight (Settings): which kinds of result it shows.
+    function spotlightShows(kind) { return (data.spotlight ?? {})[kind] ?? true }
+    // Lock Screen (Settings): a message under the clock.
+    readonly property string lockMessage: data.lockScreen?.message ?? ""
     readonly property bool focusDnd: data.focus?.dnd ?? false
     readonly property bool nightShift: data.display?.nightShift ?? false
     readonly property int displayWarmth: data.display?.warmth ?? 4500

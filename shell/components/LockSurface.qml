@@ -21,6 +21,7 @@ Item {
     property int avatarTry: 0
     property url wallpaper
     property string hint: ""            // shown under the field after three wrong tries
+    property string message: ""         // Settings → Lock Screen: "Show message when locked"
     property bool login: false          // the login window: awake from the start
     property bool busy: false
     property real battery: -1           // 0…1, or -1 for no battery
@@ -167,6 +168,22 @@ Item {
                     letterSpacing: -Math.round(time.size * 0.035)
                 }
             }
+        }
+
+        // The lock message, under the clock, until you start to unlock.
+        Text {
+            visible: root.message !== "" && !root.login
+            anchors { horizontalCenter: parent.horizontalCenter; top: when.bottom; topMargin: 6 }
+            width: Math.min(parent.width - 80, 560)
+            horizontalAlignment: Text.AlignHCenter
+            text: root.message
+            textFormat: Text.PlainText; wrapMode: Text.Wrap; maximumLineCount: 3; elide: Text.ElideRight
+            color: "#e6ffffff"
+            opacity: root.awake ? 0 : 1
+            Behavior on opacity { NumberAnimation { duration: root.still ? 0 : 200 } }
+            font { family: Theme.fontUi; pixelSize: Math.max(14, Math.round(root.height * 0.018)); weight: Font.Medium }
+            layer.enabled: root.gpu
+            layer.effect: MultiEffect { shadowEnabled: true; shadowColor: "#59001433"; shadowBlur: 0.6; shadowVerticalOffset: 1 }
         }
 
         // ------------------------------------------------------------ status
