@@ -191,7 +191,13 @@ class Session:
     """helper.py serve, driven like the LCode window drives it."""
 
     def __init__(self, home: str, swift: str, **extra):
-        env = dict(os.environ, HOME=home, XDG_CONFIG_HOME=home + "/config", XDG_RUNTIME_DIR=home + "/run", LCODE_SWIFT=swift, **extra)
+        # A temporary HOME, but the machine's own Rust: rustup keeps its
+        # toolchains and default in ~/.rustup, which the temporary HOME hides.
+        real = os.path.expanduser("~")
+        rust = {"RUSTUP_HOME": os.environ.get("RUSTUP_HOME", real + "/.rustup"),
+                "CARGO_HOME": os.environ.get("CARGO_HOME", real + "/.cargo")}
+        env = dict(os.environ, HOME=home, XDG_CONFIG_HOME=home + "/config", XDG_RUNTIME_DIR=home + "/run", LCODE_SWIFT=swift,
+                   **rust, **extra)
         os.makedirs(home + "/run", exist_ok=True)
         self.p = subprocess.Popen([sys.executable, str(ROOT / "apps/lcode/helper.py"), "serve"], stdin=subprocess.PIPE,
                                   stdout=subprocess.PIPE, text=True, env=env, bufsize=1)
@@ -399,11 +405,7 @@ class OtherToolchains(unittest.TestCase):
     def test_c_tool(self):
         self.build_test_run("c-tool")
 
-    # A bare rustup (as CI images have) has a cargo shim but no toolchain to
-    # run it, and the shim still answers --version: ask rustup itself.
-    @unittest.skipUnless(shutil.which("cargo") and (not shutil.which("rustup") or subprocess.run(
-                             ["rustup", "show", "active-toolchain"], capture_output=True).returncode == 0),
-                         "cargo (with a Rust toolchain) isn't installed")
+    @unittest.skipUnless(shutil.which("cargo"), "cargo isn't installed")
     def test_rust_tool(self):
         self.build_test_run("rust-tool", timeout=300)
 

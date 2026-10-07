@@ -220,7 +220,9 @@ def list_recents(query: str = "") -> int:
                     seen[full] = max(seen.get(full, 0), mtime)
     q = query.strip().casefold()
     rows = []
-    for path, when in sorted(seen.items(), key=lambda kv: -kv[1]):
+    # Newest first; files from the same second in a steady order, not the
+    # order the disk happens to list them in.
+    for path, when in sorted(seen.items(), key=lambda kv: (-kv[1], kv[0])):
         p = pathlib.Path(path)
         if not p.is_file() or (q and q not in p.name.casefold()):
             continue

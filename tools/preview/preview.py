@@ -428,7 +428,7 @@ Review on Thursday at 10:30 in the studio.
 
 def populate_home(home: Path) -> None:
     """A lived-in home folder for the apps to show: notes, documents and photos."""
-    stamp = home / ".preview-populated-5"
+    stamp = home / ".preview-populated-6"
     if stamp.exists():
         return
     # The pictures are drawn with rsvg-convert: without it, leave the home
@@ -463,6 +463,13 @@ def populate_home(home: Path) -> None:
         os.system(f"rsvg-convert '{svg}' -o '{pics / (name + '.png')}'")
         svg.unlink()
     os.system(f"rsvg-convert -w 1600 '{ROOT}/prototype/assets/wallpapers/dusk.svg' -o '{home / 'Desktop/Screenshot 2026-10-03 at 9.12.png'}'")
+    # Hours apart, as in a real home, with the screenshot newest: Recents
+    # sorts by when, and same-second files come in whatever order the disk lists them.
+    import time
+    now = time.time()
+    for age, f in enumerate(sorted((p for p in home.rglob("*") if p.is_file() and ".local" not in p.parts),
+                                   key=lambda p: p.name != "Screenshot 2026-10-03 at 9.12.png")):
+        os.utime(f, (now - age * 3600, now - age * 3600))
     if shutil.which("rsvg-convert"):
         stamp.write_text("")
 
