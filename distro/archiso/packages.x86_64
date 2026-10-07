@@ -85,6 +85,12 @@ gptfdisk
 parted
 dosfstools
 e2fsprogs
+# Disks: Files' Locations and Disk Utility mount, eject, check and erase
+# through udisks (polkit asks for the password), with each format's tools.
+udisks2
+exfatprogs
+ntfs-3g
+btrfs-progs
 mkinitcpio
 rsync
 pacman-contrib

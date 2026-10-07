@@ -273,7 +273,7 @@ def drop(dest_raw: str, mode: str, *raws: str) -> int:
     return result(True, action="copy" if mode == "copy" else "move", paths=done)
 
 
-def list_dir(raw: str, query: str = "") -> int:
+def list_dir(raw: str, query: str = "", hidden: bool = False) -> int:
     if raw == "trash:" or pathlib.Path(raw).expanduser() == trash_dir() / "files":
         return list_trash(query)
     if raw == "recents:":
@@ -286,7 +286,7 @@ def list_dir(raw: str, query: str = "") -> int:
     rows: list[dict[str, object]] = []
     try:
         for child in path.iterdir():
-            if child.name.startswith("."):
+            if child.name.startswith(".") and not hidden:
                 continue
             if q and q not in child.name.casefold():
                 continue
@@ -299,7 +299,13 @@ def list_dir(raw: str, query: str = "") -> int:
 
     rows.sort(key=lambda r: (not bool(r["folder"]), str(r["name"]).casefold()))
     parent = str(path.parent) if path.parent != path else ""
-    return result(True, path=str(path), parent=parent, entries=rows)
+    # The free space on this folder's disk, for the path bar.
+    try:
+        st = os.statvfs(path)
+        free, capacity = st.f_bavail * st.f_frsize, st.f_blocks * st.f_frsize
+    except OSError:
+        free = capacity = -1
+    return result(True, path=str(path), parent=parent, entries=rows, free=free, capacity=capacity)
 
 
 def mkdir(raw: str, name: str) -> int:
@@ -342,7 +348,8 @@ def main() -> int:
         return 2
     cmd = sys.argv[1]
     if cmd == "list" and len(sys.argv) >= 3:
-        return list_dir(sys.argv[2], sys.argv[3] if len(sys.argv) > 3 else "")
+        return list_dir(sys.argv[2], sys.argv[3] if len(sys.argv) > 3 else "",
+                        hidden=len(sys.argv) > 4 and sys.argv[4] == "hidden")
     if cmd == "mkdir" and len(sys.argv) == 4:
         return mkdir(sys.argv[2], sys.argv[3])
     if cmd == "rename" and len(sys.argv) == 4:

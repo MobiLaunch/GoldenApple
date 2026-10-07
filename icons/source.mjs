@@ -85,6 +85,7 @@ export const symbols = {
   music: S(`<path d="M9 18V6l10-2v11.5"/><ellipse cx="6.5" cy="18" rx="2.6" ry="2.2" fill="currentColor"/><ellipse cx="16.5" cy="15.5" rx="2.6" ry="2.2" fill="currentColor"/>`),
   film: S(`<rect x="3.5" y="4" width="17" height="16" rx="2"/><path d="M7.5 4v16M16.5 4v16M3.5 8h4M3.5 12h4M3.5 16h4M16.5 8h4M16.5 12h4M16.5 16h4"/>`, ' stroke-width="1.6"'),
   cloud: S(`<path d="M7 18.5a4.5 4.5 0 0 1-.6-9A6 6 0 0 1 18 10a4.3 4.3 0 0 1-.5 8.5z"/>`),
+  eject: S(`<path d="M12 4.5l7.5 8.5h-15z" fill="currentColor"/><rect x="4.5" y="16" width="15" height="2.8" rx="1.1" fill="currentColor"/>`),
   drive: S(`<rect x="3" y="7" width="18" height="10" rx="2.5"/><path d="M6.5 13.5h6"/>${dot(17, 13.5, 1.2)}`),
   trash: S(`<path d="M4 6.5h16M9.5 6.5V4.5h5v2M6 6.5l1 13a1.5 1.5 0 0 0 1.5 1.4h7a1.5 1.5 0 0 0 1.5-1.4l1-13M10 10.5v6.5M14 10.5v6.5"/>`),
   plus: S(`<path d="M12 5v14M5 12h14"/>`, ' stroke-width="2"'),

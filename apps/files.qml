@@ -155,6 +155,59 @@ ShellRoot {
                         }
                     }
                 }
+
+                // Locations: the disks, as on a Mac. The system's volume, Home if
+                // it has its own, and every other volume you can open; a volume
+                // that isn't mounted yet is mounted when it's opened. External
+                // ones have an eject button.
+                Item { width: 1; height: 12; visible: files.volumes.length > 0 }
+                Text {
+                    x: 8
+                    visible: files.volumes.length > 0
+                    text: "Locations"
+                    color: Theme.secondaryLabel
+                    font { family: Theme.fontUi; pixelSize: 11; weight: Font.DemiBold }
+                }
+                Item { width: 1; height: 4; visible: files.volumes.length > 0 }
+                Repeater {
+                    model: files.volumes
+                    delegate: SidebarRow {
+                        id: volumeRow
+                        required property var modelData
+                        objectName: "filesVolume:" + modelData.name
+                        width: parent.width
+                        text: modelData.name
+                        symbol: "drive"
+                        opacity: modelData.mounted ? 1 : 0.55
+                        selected: !!modelData.mountpoint && files.path === modelData.mountpoint || volumeDrop.containsDrag
+                        onClicked: files.openVolume(modelData)
+                        DropArea {
+                            id: volumeDrop
+                            anchors.fill: parent
+                            enabled: volumeRow.modelData.mounted && !volumeRow.modelData.readonly
+                            onEntered: (drag) => drag.accepted = files.accepts(drag, volumeRow.modelData.mountpoint)
+                            onDropped: (drop) => files.dropOn(drop, volumeRow.modelData.mountpoint)
+                        }
+                        Item {
+                            visible: volumeRow.modelData.removable && volumeRow.modelData.mounted
+                            anchors { right: parent.right; rightMargin: 8; verticalCenter: parent.verticalCenter }
+                            width: 20; height: 20
+                            Rectangle {
+                                anchors.fill: parent; radius: 10
+                                color: ejectArea.containsMouse ? (Theme.dark ? "#1affffff" : "#12000000") : "transparent"
+                            }
+                            Symbol { anchors.centerIn: parent; name: "eject"; size: 11; tone: "gray" }
+                            MouseArea {
+                                id: ejectArea
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                onClicked: files.eject(volumeRow.modelData)
+                            }
+                            Accessible.role: Accessible.Button
+                            Accessible.name: "Eject " + volumeRow.modelData.name
+                        }
+                    }
+                }
             }
         ]
 
@@ -180,16 +233,61 @@ ShellRoot {
             property string dialogMode: ""
             property string dialogText: ""
             property string pendingOp: ""
+            property bool showHidden: false
+            property real free: -1              // space left on this folder's disk
+            property string notice: ""          // a passing word in the path bar (an eject that failed)
+
+            // ---------------------------------------------------- disks
+            readonly property string disksHelper: Qt.resolvedUrl("lib/disks/disks.py").toString().replace("file://", "")
+            property var disks: []
+            // What Locations shows: not boot, EFI or swap partitions, nor the live USB's own.
+            readonly property var volumes: {
+                const out = []
+                for (const d of disks) for (const v of d.volumes) {
+                    const shown = v.mountpoint === "/" || v.mountpoint === "/home"
+                        || (!v.system && !v.swap && !!v.fstype && !/EFI/i.test(v.name)
+                            && !(v.fstype === "vfat" && !v.removable && v.capacity < 2e9))
+                    if (shown) out.push(Object.assign({}, v, { diskName: d.name }))
+                }
+                return out
+            }
+            // The volume a path is on: the one mounted deepest above it.
+            function volumeFor(p) {
+                let best = null
+                for (const v of volumes)
+                    if (v.mountpoint && (p === v.mountpoint || p.startsWith(v.mountpoint === "/" ? "/" : v.mountpoint + "/"))
+                        && (!best || v.mountpoint.length > best.mountpoint.length)) best = v
+                return best
+            }
+            function openVolume(v) {
+                if (v.mounted && v.mountpoint) { navigate(v.mountpoint); return }
+                if (diskOp.running) return
+                diskOp.kind = "mount"
+                diskOp.command = ["python3", disksHelper, "mount", v.device]
+                diskOp.running = true
+            }
+            function eject(v) {
+                if (diskOp.running) return
+                diskOp.kind = "eject"
+                diskOp.volume = v
+                diskOp.command = ["python3", disksHelper, "eject", v.disk || v.device]
+                diskOp.running = true
+            }
+            function say(text) { notice = text; noticeTimer.restart() }
 
             // Two views that aren't folders: Recents and the Trash.
             readonly property bool inTrash: path === "trash:"
             readonly property bool inRecents: path === "recents:"
-            readonly property bool special: inTrash || inRecents
+            readonly property bool inComputer: path === "computer:"
+            readonly property bool special: inTrash || inRecents || inComputer
 
             readonly property string title: {
                 if (inTrash) return "Trash"
                 if (inRecents) return "Recents"
+                if (inComputer) return "Computer"
                 if (path === home) return "Home"
+                const vol = volumeFor(path)
+                if (vol && vol.mountpoint === path) return vol.name
                 const bits = path.split("/").filter((x) => x)
                 return bits.length ? bits[bits.length - 1] : "Computer"
             }
@@ -206,12 +304,41 @@ ShellRoot {
                 { name: "Trash", icon: "trash", path: "trash:" }
             ]
 
+            // The path bar: the disk, then each folder down to this one.
+            readonly property var crumbs: {
+                if (special) return []
+                const vol = volumeFor(path)
+                const root = vol ? vol.mountpoint : "/"
+                const out = [{ name: vol ? vol.name : "Computer", path: root, kind: "drive" }]
+                let acc = root === "/" ? "" : root
+                for (const part of path.slice(root.length).split("/").filter((s) => s)) {
+                    acc += "/" + part
+                    out.push({ name: part, path: acc, kind: acc === home ? "house" : "folder" })
+                }
+                return out
+            }
+
             function reload() {
-                if (listProc.running)
+                if (inComputer) {
+                    // Computer: every volume, with the room left on it.
+                    entries = volumes.map((v) => ({
+                        name: v.name, path: v.mountpoint || "volume:" + v.device, folder: true,
+                        icon: "drive-harddisk", size: 0, modified: 0, mime: "inode/directory", volume: v,
+                        detail: v.mounted ? formatSize(v.free) + " free of " + formatSize(v.size) : "Not mounted"
+                    }))
+                    error = ""
+                    loading = false
                     return
+                }
+                // One listing at a time; asked again meanwhile, it lists again after.
+                if (listProc.running) {
+                    listProc.again = true
+                    return
+                }
                 loading = true
                 error = ""
-                listProc.command = ["python3", helper, "list", path, query]
+                listProc.asked = path
+                listProc.command = ["python3", helper, "list", path, query, showHidden ? "hidden" : ""]
                 listProc.running = true
             }
 
@@ -284,6 +411,11 @@ ShellRoot {
                 editDialog.visible = true
                 Qt.callLater(() => dialogField.input.forceActiveFocus())
             }
+            // ⇧⌘. shows the files whose names start with a dot, as on the Mac.
+            function toggleHidden() {
+                showHidden = !showHidden
+                reload()
+            }
             function enclosingFolder() {
                 if (special) return
                 const up = path.replace(/\/[^/]+\/?$/, "") || "/"
@@ -291,6 +423,7 @@ ShellRoot {
             }
             Keys.onPressed: (event) => {
                 const ctrl = event.modifiers & Qt.ControlModifier
+                const shift = event.modifiers & Qt.ShiftModifier
                 const columns = view === "grid" ? Math.max(1, Math.floor(grid.width / grid.cellWidth)) : 1
                 if (event.key === Qt.Key_Space || (ctrl && event.key === Qt.Key_Y)) {
                     if (selectedEntry || quickLook.open) quickLook.open = !quickLook.open
@@ -298,6 +431,9 @@ ShellRoot {
                 else if (ctrl && (event.key === Qt.Key_O || event.key === Qt.Key_End)) {
                     if (selectedEntry) { quickLook.open = false; openEntry(selectedEntry) }
                 } else if (ctrl && event.key === Qt.Key_Home) enclosingFolder()
+                else if (ctrl && shift && (event.key === Qt.Key_Period || event.key === Qt.Key_Greater)) toggleHidden()
+                else if (ctrl && shift && event.key === Qt.Key_C) navigate("computer:")
+                else if (ctrl && shift && event.key === Qt.Key_H) navigate(home)
                 else if (ctrl && event.key === Qt.Key_Backspace) {
                     if (selectedEntry && !inTrash) runOperation(["trash", selectedPath], "trash")
                 } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
@@ -311,7 +447,9 @@ ShellRoot {
             }
 
             function openEntry(entry) {
-                if (entry.folder) {
+                if (entry.volume) {
+                    openVolume(entry.volume)
+                } else if (entry.folder) {
                     navigate(entry.path)
                 } else {
                     opProc.command = ["python3", helper, "open", entry.path]
@@ -413,6 +551,10 @@ ShellRoot {
                     { text: "Share with AirDrop…", enabled: !!selectedPath, action: () => Quickshell.execDetached(["gg-airdrop", selectedPath]) },
                     { text: "Move to Trash", enabled: !!selectedPath, action: () => runOperation(["trash", selectedPath], "trash") },
                     { separator: true },
+                    { text: showHidden ? "Hide Hidden Files" : "Show Hidden Files", shortcut: "⇧⌘.", action: () => toggleHidden() },
+                    { text: "Computer", shortcut: "⇧⌘C", action: () => navigate("computer:") },
+                    { text: "Open Disk Utility", action: () => Quickshell.execDetached(["gg-disk-utility"]) },
+                    { separator: true },
                     { text: "Refresh", action: () => reload() }
                 ]
                 menu.popup(anchor, 0, anchor.height + 6, actions)
@@ -439,13 +581,18 @@ ShellRoot {
 
             Process {
                 id: listProc
+                property string asked: ""       // the folder this listing is for
+                property bool again: false
                 stdout: StdioCollector {
                     onStreamFinished: {
+                        // Gone somewhere else while it was being read: not this one.
+                        if (listProc.asked !== files.path) return
                         try {
                             const r = JSON.parse(text)
                             if (r.ok) {
                                 files.path = r.path
                                 files.entries = r.entries ?? []
+                                files.free = r.free ?? -1
                                 files.error = ""
                                 if (files.initialSelect) {
                                     const found = files.entries.find((e) => e.path === files.initialSelect)
@@ -460,7 +607,10 @@ ShellRoot {
                         }
                     }
                 }
-                onExited: files.loading = false
+                onExited: {
+                    files.loading = false
+                    if (listProc.again) { listProc.again = false; files.reload() }
+                }
             }
 
             Process {
@@ -478,6 +628,64 @@ ShellRoot {
                         } catch (e) {
                             files.error = "The operation could not be completed."
                         }
+                    }
+                }
+            }
+
+            Process {
+                id: diskProc
+                running: true
+                command: ["python3", files.disksHelper, "snapshot"]
+                stdout: StdioCollector {
+                    onStreamFinished: {
+                        try {
+                            const r = JSON.parse(text)
+                            if (r.ok) {
+                                files.disks = r.disks
+                                if (files.inComputer) files.reload()
+                            }
+                        } catch (e) {}
+                    }
+                }
+            }
+            // Disks plugged in or out, volumes mounted or unmounted (by Files or
+            // anything else): look again a moment later. Without udevadm and
+            // findmnt, every fifteen seconds.
+            Process {
+                id: diskWatch
+                running: true
+                command: ["sh", "-c", "command -v udevadm >/dev/null || command -v findmnt >/dev/null || exit 3; "
+                    + "{ command -v udevadm >/dev/null && stdbuf -oL udevadm monitor --udev --subsystem-match=block & } ; "
+                    + "{ command -v findmnt >/dev/null && stdbuf -oL findmnt --poll -o ACTION,TARGET & } ; wait"]
+                stdout: SplitParser { onRead: diskSettle.restart() }
+                onExited: diskFallback.start()
+            }
+            Timer { id: diskSettle; interval: 600; onTriggered: if (!diskProc.running) diskProc.running = true }
+            Timer {
+                id: diskFallback
+                interval: 15000
+                onTriggered: { if (!diskProc.running) diskProc.running = true; diskWatch.running = true }
+            }
+            Timer { id: noticeTimer; interval: 4000; onTriggered: files.notice = "" }
+            Process {
+                id: diskOp
+                property string kind: ""
+                property var volume: null
+                stdout: StdioCollector {
+                    onStreamFinished: {
+                        let r = null
+                        try { r = JSON.parse(text) } catch (e) {}
+                        if (!r || !r.ok) {
+                            files.say(r?.error ?? (diskOp.kind === "mount" ? "The volume couldn't be opened." : "The disk couldn't be ejected."))
+                        } else if (diskOp.kind === "mount" && r.mountpoint) {
+                            files.navigate(r.mountpoint)
+                        } else if (diskOp.kind === "eject") {
+                            const v = diskOp.volume
+                            if (v && v.mountpoint && (files.path === v.mountpoint || files.path.startsWith(v.mountpoint + "/")))
+                                files.navigate(files.home)
+                            files.say((v?.name ?? "The disk") + " can be unplugged now.")
+                        }
+                        diskProc.running = true
                     }
                 }
             }
@@ -556,7 +764,7 @@ ShellRoot {
                 visible: files.view === "grid" && !files.loading && !files.error
                 // The window draws under its toolbar; the grid starts below it and
                 // scrolls up under it (clipped at the window, not at the toolbar).
-                anchors { fill: parent; margins: 18; topMargin: 0 }
+                anchors { fill: parent; margins: 18; topMargin: 0; bottomMargin: pathBar.visible ? pathBar.height + 4 : 18 }
                 topMargin: win.toolbarHeight + 10
                 cellWidth: 118
                 cellHeight: 112
@@ -607,6 +815,15 @@ ShellRoot {
                             color: Theme.label
                             font { family: Theme.fontUi; pixelSize: 12; weight: cell.selected ? Font.DemiBold : Font.Normal }
                         }
+                        Text {
+                            visible: !!cell.modelData.detail
+                            width: parent.width
+                            horizontalAlignment: Text.AlignHCenter
+                            elide: Text.ElideRight
+                            text: cell.modelData.detail ?? ""
+                            color: Theme.secondaryLabel
+                            font { family: Theme.fontUi; pixelSize: 10 }
+                        }
                     }
 
                     HoverHandler { id: cellHover }
@@ -639,7 +856,7 @@ ShellRoot {
             ListView {
                 id: list
                 visible: files.view === "list" && !files.loading && !files.error
-                anchors { fill: parent; margins: 16; topMargin: 0 }
+                anchors { fill: parent; margins: 16; topMargin: 0; bottomMargin: pathBar.visible ? pathBar.height + 4 : 16 }
                 topMargin: win.toolbarHeight + 6
                 spacing: 1
                 model: files.entries
@@ -720,11 +937,89 @@ ShellRoot {
                 }
             }
 
+            // The path bar and status bar, as Finder's: the disk and the folders
+            // down to this one (each opens on a click), the items and the room left.
+            Rectangle {
+                id: pathBar
+                objectName: "filesPathBar"
+                visible: !files.special && !files.loading
+                anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
+                height: 28
+                color: Theme.contentBg
+                Rectangle { width: parent.width; height: 1; color: Theme.separator }
+                Item {
+                    anchors { left: parent.left; leftMargin: 10; right: status.left; rightMargin: 12; top: parent.top; bottom: parent.bottom }
+                    clip: true
+                    Row {
+                        id: crumbRow
+                        anchors.verticalCenter: parent.verticalCenter
+                        // A deep folder keeps its end in view.
+                        x: Math.min(0, parent.width - implicitWidth)
+                        spacing: 1
+                        Repeater {
+                            model: files.crumbs
+                            delegate: Row {
+                                id: crumb
+                                required property var modelData
+                                required property int index
+                                spacing: 1
+                                Symbol {
+                                    visible: crumb.index > 0
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    name: "chevron-small-right"; size: 11; tone: "gray"
+                                }
+                                Item {
+                                    width: crumbContent.implicitWidth + 10; height: 22
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    Rectangle {
+                                        anchors.fill: parent; radius: 6
+                                        color: crumbArea.pressed ? Theme.selection : crumbArea.containsMouse ? (Theme.dark ? "#12ffffff" : "#0a000000") : "transparent"
+                                    }
+                                    Row {
+                                        id: crumbContent
+                                        anchors.centerIn: parent
+                                        spacing: 4
+                                        Symbol { anchors.verticalCenter: parent.verticalCenter; name: crumb.modelData.kind; size: 12; tone: crumb.modelData.kind === "folder" ? "accent" : "gray" }
+                                        Text {
+                                            anchors.verticalCenter: parent.verticalCenter
+                                            text: crumb.modelData.name
+                                            color: crumb.index === files.crumbs.length - 1 ? Theme.label : Theme.secondaryLabel
+                                            font { family: Theme.fontUi; pixelSize: 11 }
+                                        }
+                                    }
+                                    MouseArea {
+                                        id: crumbArea
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        onClicked: files.navigate(crumb.modelData.path)
+                                    }
+                                    DropArea {
+                                        anchors.fill: parent
+                                        onEntered: (drag) => drag.accepted = files.accepts(drag, crumb.modelData.path)
+                                        onDropped: (drop) => files.dropOn(drop, crumb.modelData.path)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                Text {
+                    id: status
+                    objectName: "filesStatus"
+                    anchors { right: parent.right; rightMargin: 12; verticalCenter: parent.verticalCenter }
+                    text: files.notice || (files.entries.length + (files.entries.length === 1 ? " item" : " items")
+                        + (files.free >= 0 ? ", " + files.formatSize(files.free) + " available" : ""))
+                    color: files.notice ? Theme.label : Theme.secondaryLabel
+                    font { family: Theme.fontUi; pixelSize: 11; weight: files.notice ? Font.Medium : Font.Normal }
+                }
+            }
+
+            // Sizes as the Mac gives them: in thousands (1 GB is 1,000,000,000 bytes).
             function formatSize(bytes) {
-                if (bytes < 1024) return bytes + " B"
-                if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB"
-                if (bytes < 1024 * 1024 * 1024) return (bytes / 1024 / 1024).toFixed(1) + " MB"
-                return (bytes / 1024 / 1024 / 1024).toFixed(1) + " GB"
+                const units = ["bytes", "KB", "MB", "GB", "TB", "PB"]
+                let n = Math.max(0, bytes), i = 0
+                while (n >= 1000 && i < units.length - 1) { n /= 1000; i++ }
+                return i === 0 ? n + " bytes" : (i === 1 || n >= 100 ? Math.round(n) : n.toFixed(1).replace(/\.0$/, "")) + " " + units[i]
             }
 
             PopupMenu { id: menu; parent: win.overlay }
