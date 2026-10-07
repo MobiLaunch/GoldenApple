@@ -606,7 +606,9 @@ class BrowserBackend(QObject):
         if self.private or not origin:
             return False
         if not self.passwords.save(origin, username, password):
-            self.toastRequested.emit("The password couldn't be saved: " + (self.passwords.error or "the keyring is locked."))
+            reason = self.passwords.error or "the keyring is locked."
+            print("Web: a password couldn't be saved:", reason, file=sys.stderr)
+            self.toastRequested.emit("The password couldn't be saved: " + reason)
             return False
         self._sites_with_passwords().add(origin)
         self.passwordsChanged.emit()

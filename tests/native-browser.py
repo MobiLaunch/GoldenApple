@@ -103,11 +103,16 @@ def browser_env(root: Path, exit_ms=1700):
     data = root / "data"
     cache = root / "cache"
     downloads = root / "downloads"
-    for path in (home, data, cache, downloads):
+    run = root / "run"
+    for path in (home, data, cache, downloads, run):
         path.mkdir(parents=True, exist_ok=True)
+    run.chmod(0o700)
     env = os.environ.copy()
     env.update({
         "HOME": str(home),
+        # Its own runtime dir: on CI runners the real one can hold another
+        # session's keyring, which `gnome-keyring-daemon --start` joins.
+        "XDG_RUNTIME_DIR": str(run),
         "XDG_DATA_HOME": str(data),
         "XDG_CACHE_HOME": str(cache),
         "XDG_DOWNLOAD_DIR": str(downloads),
@@ -172,7 +177,7 @@ class NativeQmlBrowser(unittest.TestCase):
         finally:
             if web.poll() is None:
                 web.kill()
-        self.assertTrue(reached, "Web never got there")
+        self.assertTrue(reached, "Web never got there:\n" + "\n".join(err.splitlines()[-25:]))
         return subprocess.CompletedProcess(cmd, web.returncode, out, err)
 
     def test_qml_chromium_starts_and_persists_session(self):

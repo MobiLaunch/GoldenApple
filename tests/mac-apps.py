@@ -230,8 +230,21 @@ class MacApps(unittest.TestCase):
             macapps.extract_zip(archive, dest)
         self.assertFalse((self.home / "planted").exists())
 
+    def without_7zip(self):
+        """PATH as it is, less any 7-Zip the machine has (CI images now ship one)."""
+        shadow = self.home / "no7z"
+        shadow.mkdir(exist_ok=True)
+        for d in ("/usr/bin", "/bin"):
+            for f in Path(d).iterdir():
+                if f.name not in ("7z", "7zz", "7za", "7zr") and not (shadow / f.name).exists():
+                    (shadow / f.name).symlink_to(f)
+        return f"{self.bin}:{shadow}"
+
     def test_dmg_opens_with_7zip(self):
+        path = self.env["PATH"]
+        self.env["PATH"] = self.without_7zip()
         code, events = self.run_helper("install", "disk")
+        self.env["PATH"] = path
         self.assertEqual(code, 1)
         self.assertIn("7-Zip", events[-1]["message"], "says what's missing")
         # 7-Zip unpacks the image's volume, with the app inside it.
