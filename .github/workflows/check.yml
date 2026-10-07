@@ -247,6 +247,8 @@ jobs:
         run: python tests/installer-failure.py
       - name: Web's saved passwords come back without secret-tool's line break
         run: python tests/browser-passwords.py
+      - name: "Clock: alarms set only once systemd took them, listed and deletable; the timer outlives the window"
+        run: python tests/clock-helper.py
       - name: "Mac apps: catalog, download, checksum, install, open with Darling, remove"
         run: python tests/mac-apps.py
       - name: Mac app support installs Darling's release after readying pacman
@@ -354,6 +356,10 @@ jobs:
           QT_QPA_PLATFORM: offscreen
       - name: "Hello: Try or Install on the USB, waits for each finishing step, setup-done last"
         run: python tests/setup-finish.py
+        env:
+          QT_QPA_PLATFORM: offscreen
+      - name: "Settings: atomic, acknowledged preference writes; Setup's keyboard variant kept"
+        run: python tests/settings-prefs.py
         env:
           QT_QPA_PLATFORM: offscreen
       - name: "Liquid Glass drawn with OpenGL: see-through, its shadow outside it"

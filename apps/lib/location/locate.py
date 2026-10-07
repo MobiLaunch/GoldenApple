@@ -45,10 +45,13 @@ def cache_file() -> Path:
 
 
 def enabled() -> bool:
+    """Only when you said yes: privacy.json's "location" is true. No answer
+    recorded, or a file that can't be read, means no (it fails closed)."""
     try:
-        return json.loads((config_dir() / "privacy.json").read_text()).get("location", True) is not False
+        data = json.loads((config_dir() / "privacy.json").read_text())
+        return isinstance(data, dict) and data.get("location") is True
     except (OSError, ValueError):
-        return True
+        return False
 
 
 def wifi_networks() -> list[dict]:

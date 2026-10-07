@@ -55,6 +55,9 @@ class Maps(unittest.TestCase):
     def load(self, location=True):
         if not location:
             (self.temp / "config/golden-gate/privacy.json").write_text(json.dumps({"location": False}))
+        else:
+            # Location Services is off until you turn it on: say yes, as Hello records it.
+            (self.temp / "config/golden-gate/privacy.json").write_text(json.dumps({"location": True}))
         env = {"HOME": str(self.temp), "USER": "test", "XDG_CONFIG_HOME": str(self.temp / "config"),
                "XDG_CACHE_HOME": str(self.temp / "cache"), "XDG_RUNTIME_DIR": str(self.temp),
                "GG_MAPS_FIXTURE": str(self.temp / "fx"), "GG_LOCATION_FIXTURE": "29.76,-95.37,Houston"}

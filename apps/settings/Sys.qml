@@ -14,6 +14,10 @@ Item {
     property var prefs: ({})         // desktop.json
     property var privacy: ({})       // privacy.json
     property var input: ({})         // input.json (keyboard, trackpad)
+    // A change that couldn't be saved: Settings shows it, and the file (which
+    // was left as it was) is read again so the controls show what's saved.
+    property string writeError: ""
+    readonly property string writer: decodeURIComponent(Qt.resolvedUrl("write-file.py").toString().replace("file://", ""))
 
     Component {
         id: procComp
@@ -30,8 +34,31 @@ Item {
     }
     function sh(script, done) { run(["sh", "-c", script], done) }
 
-    function writeJson(file, obj) {
-        Quickshell.execDetached(["sh", "-c", 'mkdir -p "$1" && printf "%s\\n" "$2" > "$1/$3"', "sh", gg, JSON.stringify(obj, null, 1), file])
+    Component {
+        id: writeComp
+        Process {
+            id: w
+            property string content
+            property string what
+            stdinEnabled: true
+            stderr: StdioCollector { id: werr }
+            onStarted: { write(w.content); stdinEnabled = false }
+            onExited: (code) => {
+                if (code !== 0) sys.failed(w.what, werr.text.trim() || "the file couldn't be written")
+                w.destroy()
+            }
+        }
+    }
+    // Every preference file is replaced whole and atomically (write-file.py),
+    // and a failure is reported, never assumed away.
+    function writeFile(path, text, what) {
+        const w = writeComp.createObject(sys, { command: ["python3", writer, path], content: text, what: what ?? path.split("/").pop() })
+        w.running = true
+    }
+    function writeJson(file, obj) { writeFile(gg + "/" + file, JSON.stringify(obj, null, 1) + "\n", file) }
+    function failed(what, why) {
+        writeError = "Your change couldn't be saved (" + what + ": " + why + "). The previous setting was kept."
+        for (const f of [desktopFile, privacyFile, inputFile]) f.reload()
     }
     function setIn(obj, path, value) {
         const copy = JSON.parse(JSON.stringify(obj ?? {}))
@@ -57,7 +84,8 @@ Item {
     // one another by rewriting a stale copy of the whole file.
     function setPref(path, value) {
         prefs = setIn(prefs, path, value)
-        Quickshell.execDetached(["gg-pref", path.join("."), JSON.stringify(value)])
+        const key = path.join(".")
+        run(["gg-pref", key, JSON.stringify(value)], (out, code) => { if (code !== 0) sys.failed("desktop.json", key) })
         if (path[0] === "glass" || path[0] === "reduceTransparency") {
             glassDirty = true
             glassSync.restart()
@@ -96,8 +124,7 @@ Item {
         interval: 80
         onTriggered: {
             sys.writeJson("input.json", sys.input)
-            Quickshell.execDetached(["sh", "-c", 'mkdir -p "$1" && printf "%s" "$2" > "$1/input.conf"', "sh",
-                                     sys.config + "/hypr/golden-gate", sys.inputConfig()])
+            sys.writeFile(sys.config + "/hypr/golden-gate/input.conf", sys.inputConfig(), "input.conf")
         }
     }
 
@@ -108,11 +135,20 @@ Item {
         onFileChanged: reload()
         onLoaded: { try { sys[key] = JSON.parse(text()) } catch (e) {} }
     }
-    JsonFile { path: sys.gg + "/desktop.json"; key: "prefs" }
-    JsonFile { path: sys.gg + "/privacy.json"; key: "privacy" }
-    JsonFile { path: sys.gg + "/input.json"; key: "input" }
-    // First time: pick up the keyboard layout Setup Assistant wrote.
-    Component.onCompleted: sh('sed -n "s/^ *kb_layout *= *//p" "$HOME/.config/hypr/golden-gate/input.conf" 2>/dev/null | head -n1', (out) => {
-        if (out.trim() && !input.layout) input = setIn(input, ["layout"], out.trim())
+    JsonFile { id: desktopFile; path: sys.gg + "/desktop.json"; key: "prefs" }
+    JsonFile { id: privacyFile; path: sys.gg + "/privacy.json"; key: "privacy" }
+    JsonFile { id: inputFile; path: sys.gg + "/input.json"; key: "input" }
+    // First time: pick up the keyboard Setup Assistant wrote (layout and
+    // variant both: a later change, such as the repeat rate, rewrites the
+    // file from input.json and must keep the same keys).
+    Component.onCompleted: sh('sed -n "s/^ *\\(kb_layout\\|kb_variant\\) *= *\\(.*\\)/\\1=\\2/p" "' + config + '/hypr/golden-gate/input.conf" 2>/dev/null', (out) => {
+        if (input.layout) return
+        let i = input
+        for (const line of out.split("\n")) {
+            const [k, v] = line.split("=")
+            if (k === "kb_layout" && v && v.trim()) i = setIn(i, ["layout"], v.trim())
+            if (k === "kb_variant" && v !== undefined) i = setIn(i, ["variant"], v.trim())
+        }
+        input = i
     })
 }

@@ -15,8 +15,8 @@ Pane {
         title: "Privacy"
         SetRow {
             title: "Location Services"; symbol: "location"; symbolTint: "#0a84ff"
-            subtitle: "Lets apps like Maps and Weather use your approximate location."
-            Switch { checked: pane.p.location ?? true; onToggled: (on) => { pane.sys.setPrivacy("location", on); pane.sys.run(["gsettings", "set", "org.gnome.system.location", "enabled", String(on)]) } }
+            subtitle: "Lets apps like Maps and Weather use your approximate location. Nearby Wi-Fi networks (or your internet address) go to BeaconDB to find it, and Photon names the place."
+            Switch { checked: pane.p.location === true; onToggled: (on) => { pane.sys.setPrivacy("location", on); pane.sys.run(["gsettings", "set", "org.gnome.system.location", "enabled", String(on)]) } }
         }
     }
     Group {

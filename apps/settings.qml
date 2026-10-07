@@ -259,6 +259,27 @@ ShellRoot {
             }
         }
 
+        // A preference that couldn't be saved: said, not assumed.
+        Glass {
+            objectName: "settingsWriteError"
+            parent: win.overlay
+            visible: !!sys.writeError
+            anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: 18 }
+            width: Math.min(560, parent.width - 40)
+            height: writeErrorText.implicitHeight + 24
+            radius: 16
+            z: 50
+            Text {
+                id: writeErrorText
+                anchors { left: parent.left; right: dismissWriteError.left; margins: 14; verticalCenter: parent.verticalCenter }
+                text: sys.writeError
+                wrapMode: Text.WordWrap
+                color: "#ff453a"
+                font { family: Theme.fontUi; pixelSize: 12 }
+            }
+            Button { id: dismissWriteError; text: "OK"; anchors { right: parent.right; rightMargin: 12; verticalCenter: parent.verticalCenter } onClicked: sys.writeError = "" }
+        }
+
         // Search suggestions, under the field.
         Rectangle {
             id: suggestions

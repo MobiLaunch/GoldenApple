@@ -36,9 +36,16 @@ ShellRoot {
             property int timerRemaining: timerSeconds
             property bool timerRunning: false
             property double timerDeadline: 0
-            property string alarmMinutes: "10"
+            property string alarmTime: "07:00"
             property string alarmMessage: "Alarm"
+            property bool alarmDaily: false
+            property var alarms: []
             property string notice: ""
+            property bool noticeBad: false
+            property bool busy: helper.running
+            // Alarms and the timer live in the user's systemd (clock/helper.py):
+            // they go off with Clock closed, and Clock shows them when it opens.
+            readonly property string helperPath: decodeURIComponent(Qt.resolvedUrl("clock/helper.py").toString().replace("file://", ""))
 
             function formatDuration(seconds, tenths) {
                 const value = Math.max(0, seconds)
@@ -68,33 +75,66 @@ ShellRoot {
                 stopwatchElapsed = 0
             }
 
-            function toggleTimer() {
-                if (timerRunning) {
+            // Runs one helper command; `done` gets its reply once it's in.
+            property var queue: []
+            function call(args, done) {
+                queue = queue.concat([{ args: args, done: done ?? null }])
+                if (!helper.running) callNext()
+            }
+            function callNext() {
+                if (!queue.length) return
+                helper.current = queue[0]
+                queue = queue.slice(1)
+                helper.command = ["python3", helperPath].concat(helper.current.args)
+                helper.running = true
+            }
+            function say(text, bad) { notice = text; noticeBad = !!bad }
+
+            function applyStatus(r) {
+                alarms = r.alarms ?? []
+                const t = r.timer ?? {}
+                if (t.seconds) timerSeconds = t.seconds
+                if (t.deadline) {
+                    timerDeadline = t.deadline * 1000
                     timerRemaining = Math.max(0, Math.ceil((timerDeadline - Date.now()) / 1000))
-                    timerRunning = false
-                } else if (timerRemaining > 0) {
-                    timerDeadline = Date.now() + timerRemaining * 1000
                     timerRunning = true
+                } else {
+                    timerRunning = false
+                    timerRemaining = t.remaining !== undefined ? t.remaining : timerSeconds
                 }
+            }
+            function refresh() { call(["status"], (r) => { if (r.ok) applyStatus(r) }) }
+
+            function toggleTimer() {
+                if (timerRunning)
+                    call(["timer-pause"], (r) => r.ok ? applyStatus({ alarms: alarms, timer: r.timer }) : say(r.error, true))
+                else if (timerRemaining > 0)
+                    call(["timer-start", String(timerRemaining)], (r) => {
+                        if (r.ok) { applyStatus({ alarms: alarms, timer: r.timer }); say("") }
+                        else say(r.error, true)
+                    })
             }
 
             function resetTimer() {
-                timerRunning = false
-                timerRemaining = timerSeconds
+                call(["timer-cancel"], (r) => {
+                    timerRunning = false
+                    timerRemaining = timerSeconds
+                })
             }
 
             function scheduleAlarm() {
-                const minutes = Math.max(1, parseInt(alarmMinutes, 10) || 1)
-                const unit = "golden-gate-alarm-" + Date.now()
-                alarmProc.command = [
-                    "systemd-run", "--user", "--quiet",
-                    "--unit=" + unit,
-                    "--on-active=" + minutes + "m",
-                    "notify-send", "-u", "critical", "Clock", alarmMessage || "Alarm"
-                ]
-                alarmProc.running = true
-                notice = "Alarm set for " + minutes + (minutes === 1 ? " minute from now." : " minutes from now.")
+                const t = alarmTime.trim()
+                call(["alarm-add", t, alarmMessage || "Alarm"].concat(alarmDaily ? ["daily"] : []), (r) => {
+                    if (!r.ok) { say(r.error, true); return }
+                    say((alarmDaily ? "Alarm set for " + t + " every day." : "Alarm set for " + t + "."), false)
+                    refresh()
+                })
             }
+            function removeAlarm(id) {
+                call(["alarm-remove", id], (r) => { if (!r.ok) say(r.error, true); refresh() })
+            }
+
+            Component.onCompleted: refresh()
 
             // Only while the stopwatch or a timer runs (20 times a second, for
             // the stopwatch's hundredths).
@@ -108,8 +148,9 @@ ShellRoot {
                     if (clock.timerRunning) {
                         clock.timerRemaining = Math.max(0, Math.ceil((clock.timerDeadline - Date.now()) / 1000))
                         if (clock.timerRemaining <= 0) {
+                            // The notification comes from the timer's own unit.
                             clock.timerRunning = false
-                            Quickshell.execDetached(["notify-send", "-u", "critical", "Clock", "Timer finished"])
+                            clock.timerRemaining = clock.timerSeconds
                         }
                     }
                 }
@@ -141,7 +182,19 @@ ShellRoot {
                 }
             }
 
-            Process { id: alarmProc }
+            Process {
+                id: helper
+                property var current: null
+                stdout: StdioCollector {
+                    onStreamFinished: {
+                        let r = null
+                        try { r = JSON.parse(text) } catch (e) {}
+                        const c = helper.current
+                        if (c && c.done) c.done(r ?? { ok: false, error: "Clock's helper didn't answer." })
+                    }
+                }
+                onExited: Qt.callLater(clock.callNext)
+            }
 
             Rectangle {
                 anchors.fill: parent
@@ -217,35 +270,78 @@ ShellRoot {
                     width: parent.width
                     horizontalAlignment: Text.AlignHCenter
                     wrapMode: Text.WordWrap
-                    text: "Alarms are scheduled with your user session, so they keep counting even after Clock is closed."
+                    text: "Alarms go off with Clock closed, and one missed while the computer was off goes off when you next sign in."
                     color: Theme.secondaryLabel
                     font { family: Theme.fontUi; pixelSize: 12 }
                 }
-                TextField {
+                Row {
                     width: parent.width
-                    placeholder: "Minutes from now"
-                    text: clock.alarmMinutes
-                    onTextChanged: clock.alarmMinutes = text.replace(/[^0-9]/g, "")
+                    spacing: 8
+                    TextField {
+                        objectName: "clockAlarmTime"
+                        width: 90
+                        placeholder: "07:30"
+                        text: clock.alarmTime
+                        onTextChanged: clock.alarmTime = text.replace(/[^0-9:]/g, "")
+                    }
+                    TextField {
+                        width: parent.width - 98
+                        placeholder: "Alarm name"
+                        text: clock.alarmMessage
+                        onTextChanged: clock.alarmMessage = text
+                    }
                 }
-                TextField {
-                    width: parent.width
-                    placeholder: "Alarm name"
-                    text: clock.alarmMessage
-                    onTextChanged: clock.alarmMessage = text
+                Checkbox {
+                    text: "Every day"
+                    checked: clock.alarmDaily
+                    onToggled: (on) => clock.alarmDaily = on
                 }
                 Button {
                     anchors.horizontalCenter: parent.horizontalCenter
-                    text: "Set Alarm"
+                    text: clock.busy ? "Setting…" : "Set Alarm"
                     prominent: true
-                    enabled: parseInt(clock.alarmMinutes, 10) > 0
+                    enabled: /^([01]\d|2[0-3]):[0-5]\d$/.test(clock.alarmTime) && !clock.busy
                     onClicked: clock.scheduleAlarm()
                 }
+                Repeater {
+                    model: clock.alarms
+                    delegate: Rectangle {
+                        required property var modelData
+                        width: parent.width
+                        height: 46
+                        radius: 12
+                        color: Theme.dark ? "#0dffffff" : "#07000000"
+                        border { width: 0.5; color: Theme.separator }
+                        Text {
+                            x: 14; anchors.verticalCenter: parent.verticalCenter
+                            text: modelData.time
+                            color: Theme.label
+                            font { family: Theme.fontUi; pixelSize: 20; weight: Font.Light }
+                        }
+                        Text {
+                            x: 84; anchors.verticalCenter: parent.verticalCenter
+                            width: parent.width - 84 - 90
+                            elide: Text.ElideRight
+                            text: modelData.name + (modelData.daily ? " · every day" : "")
+                            color: Theme.secondaryLabel
+                            font { family: Theme.fontUi; pixelSize: 12 }
+                        }
+                        Button {
+                            anchors { right: parent.right; rightMargin: 10; verticalCenter: parent.verticalCenter }
+                            text: "Delete"
+                            destructive: true
+                            onClicked: clock.removeAlarm(modelData.id)
+                        }
+                    }
+                }
                 Text {
+                    objectName: "clockNotice"
                     visible: !!clock.notice
                     width: parent.width
                     horizontalAlignment: Text.AlignHCenter
+                    wrapMode: Text.WordWrap
                     text: clock.notice
-                    color: Theme.accent
+                    color: clock.noticeBad ? "#ff453a" : Theme.accent
                     font { family: Theme.fontUi; pixelSize: 12; weight: Font.Medium }
                 }
             }
@@ -338,6 +434,23 @@ ShellRoot {
                         text: "Reset"
                         onClicked: clock.resetTimer()
                     }
+                }
+                Text {
+                    visible: clock.noticeBad && !!clock.notice
+                    width: parent.width
+                    horizontalAlignment: Text.AlignHCenter
+                    wrapMode: Text.WordWrap
+                    text: clock.notice
+                    color: "#ff453a"
+                    font { family: Theme.fontUi; pixelSize: 12 }
+                }
+                Text {
+                    visible: clock.timerRunning
+                    width: parent.width
+                    horizontalAlignment: Text.AlignHCenter
+                    text: "The timer keeps going if you close Clock."
+                    color: Theme.tertiaryLabel
+                    font { family: Theme.fontUi; pixelSize: 11 }
                 }
             }
         }

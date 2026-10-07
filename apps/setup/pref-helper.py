@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Atomically update one nested CitronOS desktop preference."""
 from __future__ import annotations
+import fcntl
 import json
 import os
 import pathlib
@@ -20,6 +21,10 @@ config = pathlib.Path(os.environ.get("XDG_CONFIG_HOME", pathlib.Path.home() / ".
 directory = config / "golden-gate"
 path = directory / "desktop.json"
 directory.mkdir(parents=True, exist_ok=True)
+# One writer at a time: read, change and replace under the lock, so two
+# changes made together (Settings, Control Center, the shell) both stay.
+lock = open(directory / ".desktop.json.lock", "a")
+fcntl.flock(lock, fcntl.LOCK_EX)
 
 try:
     data = json.loads(path.read_text(encoding="utf-8"))

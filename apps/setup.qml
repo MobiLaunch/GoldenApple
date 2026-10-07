@@ -58,7 +58,7 @@ ShellRoot {
             readonly property var steps: ["hello", "account", "region", "wifi", "privacy", "location", "timezone", "analytics", "look", "welcome"]
             property var region: Regions.LIST[0]
             property string zone: region.zone
-            property bool location: true
+            property bool location: false          // off until you turn it on
             property bool shareDiagnostics: true
             property bool shareWithDevelopers: false
             property string look: "light"
@@ -461,16 +461,27 @@ ShellRoot {
                 StepFrame {
                     symbol: "location"
                     title: "Enable Location Services"
-                    text: "Location Services lets apps like Maps and Weather use this computer's approximate location, found from nearby Wi-Fi networks."
+                    text: "Location Services lets apps like Maps and Weather use this computer's approximate location. It's off unless you turn it on."
                     onBack: stage.back(); onNext: stage.next()
                     Column {
                         width: parent.width
                         spacing: 18
                         Checkbox {
                             text: "Enable Location Services on this computer"
-                            detail: "You can change this later in Settings › Privacy."
+                            detail: "You can change this later in Settings › Privacy & Security."
                             checked: stage.location
                             onCheckedChanged: stage.location = checked
+                        }
+                        // What leaves the computer, and to whom, before you choose.
+                        Text {
+                            width: parent.width
+                            wrapMode: Text.WordWrap
+                            color: Theme.secondaryLabel
+                            font.pixelSize: 12
+                            text: "When an app asks where you are, CitronOS sends the hardware addresses and signal strengths of nearby Wi-Fi networks "
+                                + "(or, without Wi-Fi, just your internet address) to BeaconDB (beacondb.net), which returns approximate coordinates. "
+                                + "To name the place, those coordinates go to Photon (photon.komoot.io). Nothing is sent while Location Services is off, "
+                                + "and apps such as Weather and Maps let you search for a city instead."
                         }
                     }
                 }
