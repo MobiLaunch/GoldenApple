@@ -267,13 +267,18 @@ jobs:
         env:
           QT_QPA_PLATFORM: offscreen
           QT_QUICK_BACKEND: software
-      - name: Calculator: Basic, Scientific, Programmer and Convert
+      - name: "Calculator: Basic, Scientific, Programmer and Convert"
         run: python tests/calculator.py
         env:
           QT_QPA_PLATFORM: offscreen
           QT_QUICK_BACKEND: software
-      - name: Weather: My Location, the large header, °C/°F
+      - name: "Weather: My Location, the large header, °C/°F"
         run: python tests/weather.py
+        env:
+          QT_QPA_PLATFORM: offscreen
+          QT_QUICK_BACKEND: software
+      - name: "Maps: My Location, Find Nearby, Favorites, Share"
+        run: python tests/maps.py
         env:
           QT_QPA_PLATFORM: offscreen
           QT_QUICK_BACKEND: software

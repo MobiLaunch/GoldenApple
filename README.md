@@ -296,8 +296,10 @@ live with `hyprctl keyword`. Unknown legacy `gnome-control-center` panel names
 remain inside CitronOS Settings instead of opening a second settings UI.
 Notes keeps each note as a Markdown file in ~/Documents/Notes/<folder>/, named
 after its first line. Photos shows ~/Pictures and ~/Videos, with the folders in
-~/Pictures as albums. Maps uses OpenStreetMap throughout (CARTO tiles, Photon
-search, OSRM routes), so it needs no account.
+~/Pictures as albums. Maps uses OpenStreetMap throughout (CARTO tiles, Esri imagery
+for Satellite and Hybrid, Photon search and Find Nearby, OSRM routes), so it
+needs no account; with Location Services on it shows where you are (⌘L) and
+starts directions there, and it keeps Favorites in maps.json.
 
 `shell/tests/screenshot.sh` starts Sway with the pixman renderer and Mesa's
 llvmpipe, loads the shell, drives it over IPC and captures the screenshots

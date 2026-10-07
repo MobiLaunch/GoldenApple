@@ -5,8 +5,10 @@
 // drawn in Maps blue and their times on the map.
 //
 // OpenStreetMap all the way down, no account: CARTO tiles (Esri imagery for
-// Satellite), Photon search, OSRM routes. Recents and the last view are kept
-// in ~/.config/golden-gate/maps.json. Long-press the map to drop a pin.
+// Satellite and Hybrid), Photon search and Find Nearby, OSRM routes. Your
+// location (the blue dot, ⌘L) from lib/location/locate.py with Location
+// Services on. Favorites, recents and the last view are kept in
+// ~/.config/golden-gate/maps.json. Long-press the map to drop a pin.
 // GG_MAPS_FIXTURE=<dir> reads search.json / route.json / reverse.json from a
 // folder instead of the network (tests).
 import Quickshell
@@ -38,7 +40,16 @@ ShellRoot {
                 anchors.fill: parent
                 style: app.mapStyle === "standard" && Theme.dark ? "dark" : app.mapStyle
                 online: !app.fixture
+                imperial: app.imperial
+                scaleInset: win.contentX + app.panelWidth + 16
                 onLongPressed: (la, lo) => app.dropPin(la, lo)
+
+                LocationDot {
+                    view: map
+                    visible: !!app.here
+                    lat: app.here?.lat ?? 0; lon: app.here?.lon ?? 0
+                    accuracy: app.here?.accuracy ?? 0
+                }
 
                 Routes {
                     view: map
@@ -113,6 +124,22 @@ ShellRoot {
                 NavItem { symbol: "search"; text: "Search"; tint: "#8e8e93"; selected: app.mode === "search" || app.mode === "place"; onClicked: app.startSearch() }
                 NavItem { symbol: "arrow-up"; text: "Directions"; tint: "#0a84ff"; selected: app.mode === "directions"; onClicked: app.startDirections(null) }
                 Text {
+                    visible: app.favorites.length > 0
+                    leftPadding: 10; topPadding: 18; bottomPadding: 6
+                    text: "Favorites"
+                    color: Theme.secondaryLabel
+                    font { family: Theme.fontUi; pixelSize: 12; weight: Font.DemiBold }
+                }
+                Repeater {
+                    model: app.favorites
+                    delegate: NavItem {
+                        required property var modelData
+                        symbol: "star"; tint: "#ffcc00"
+                        text: modelData.name
+                        onClicked: app.showPlace(modelData)
+                    }
+                }
+                Text {
                     visible: app.recents.length > 0
                     leftPadding: 10; topPadding: 18; bottomPadding: 6
                     text: "Recents"
@@ -159,6 +186,11 @@ ShellRoot {
             property bool routeFailed: false
             property bool stepsOpen: false
             property string editing: ""             // "from" | "to" while typing in a directions field
+            property var favorites: []
+            property var here: null                 // { lat, lon, accuracy, name } from the location helper
+            property bool locating: false
+            property string locateError: ""
+            property string nearbyName: ""          // the Find Nearby category shown, if any
             readonly property real panelWidth: 360
 
             function get(url, kind, done) {
@@ -183,7 +215,51 @@ ShellRoot {
                     if (then) then()
                 })
             }
-            function startSearch() { mode = "search"; place = null; Qt.callLater(() => searchField.input.forceActiveFocus()) }
+            function startSearch() { mode = "search"; place = null; nearbyName = ""; Qt.callLater(() => searchField.input.forceActiveFocus()) }
+            // Where you are; fly there if asked (the location button, ⌘L).
+            property bool flyHere: false
+            function locateMe(fly) {
+                flyHere = fly
+                if (here && fly) flyToHere()
+                if (locator.running) return
+                locating = true
+                locator.running = true
+            }
+            function located(r) {
+                locating = false
+                if (!r || !r.ok) { locateError = r?.error ?? "Your location couldn't be found."; return }
+                locateError = ""
+                here = { lat: r.lat, lon: r.lon, accuracy: r.accuracy ?? 0, name: "My Location", current: true }
+                if (flyHere) flyToHere()
+            }
+            // Centred in the part of the map the panels don't cover.
+            function flyToHere() {
+                const z = Math.max(map.zoom, 15)
+                const inset = win.contentX + panelWidth + 16
+                const w = Api.worldPx(here.lat, here.lon, z)
+                const c = Api.fromWorldPx(w.x - inset / 2, w.y, z)
+                map.flyTo(c.lat, c.lon, z)
+            }
+            function isFavorite(p) { return !!p && favorites.some((f) => Math.abs(f.lat - p.lat) < 1e-5 && Math.abs(f.lon - p.lon) < 1e-5) }
+            function toggleFavorite(p) {
+                if (!p) return
+                favorites = isFavorite(p) ? favorites.filter((f) => !(Math.abs(f.lat - p.lat) < 1e-5 && Math.abs(f.lon - p.lon) < 1e-5))
+                                          : favorites.concat([{ name: p.name, address: p.address, lat: p.lat, lon: p.lon, kind: p.kind ?? "", key: p.key ?? "" }])
+                save()
+            }
+            function nearby(cat) {
+                const revision = ++searchRevision
+                nearbyName = cat.name
+                mode = "search"
+                searching = true
+                results = []
+                get(Api.nearbyUrl(cat, map.lat, map.lon), "search", (j) => {
+                    if (revision !== searchRevision) return
+                    searching = false
+                    results = (j?.features ?? []).map(Api.place)
+                    if (results.length > 1) map.fit(results.map((r) => [r.lon, r.lat]), win.contentX + panelWidth + 16)
+                })
+            }
             function showPlace(p) {
                 place = p
                 mode = "place"
@@ -205,6 +281,7 @@ ShellRoot {
                 mode = "directions"
                 stepsOpen = false
                 if (dest) to = dest
+                if (!from && here) from = here
                 if (!from && !to) editing = "to"
                 else if (!from) editing = "from"
                 else editing = ""
@@ -236,7 +313,7 @@ ShellRoot {
                 })
             }
             function save() {
-                const snapshot = JSON.stringify({ recents: recents, view: { lat: map.lat, lon: map.lon, zoom: map.zoom }, style: mapStyle }, null, 1)
+                const snapshot = JSON.stringify({ favorites: favorites, recents: recents, view: { lat: map.lat, lon: map.lon, zoom: map.zoom }, style: mapStyle }, null, 1)
                 if (snapshot === savedSnapshot) return
                 Quickshell.execDetached(["mkdir", "-p", configFile.replace(/\/[^/]+$/, "")])
                 store.setText(snapshot)
@@ -252,11 +329,24 @@ ShellRoot {
                     try {
                         const j = JSON.parse(text())
                         app.recents = j.recents ?? []
+                        app.favorites = j.favorites ?? []
                         app.mapStyle = j.style ?? "standard"
                         if (j.view) { map.lat = j.view.lat; map.lon = j.view.lon; map.zoom = j.view.zoom }
                     } catch (e) {}
                 }
-                onLoadFailed: zoneProc.running = true
+                onLoadFailed: { zoneProc.running = true; app.locateMe(true) }
+            }
+            Component.onCompleted: app.locateMe(false)
+            Process {
+                id: locator
+                command: ["python3", decodeURIComponent(Qt.resolvedUrl("lib/location/locate.py").toString().replace("file://", "")), "--app", "Maps"]
+                stdout: StdioCollector {
+                    onStreamFinished: {
+                        let r = null
+                        try { r = JSON.parse(text) } catch (e) { r = null }
+                        app.located(r)
+                    }
+                }
             }
             // First run: start over the city of the time zone (else San Francisco).
             Process {
@@ -340,11 +430,46 @@ ShellRoot {
                             TapHandler { onTapped: app.showPlace(modelData) }
                         }
                         Text {
-                            visible: !app.results.length
+                            visible: !app.results.length && (!!searchField.text || !!app.nearbyName || app.searching)
                             x: 10; y: 8; width: parent.width - 20; wrapMode: Text.Wrap
-                            text: app.searching ? "Searching…" : searchField.text ? "No Results" : "Search for a place or address, or long-press the map to drop a pin."
+                            text: app.searching ? "Searching…" : "No Results"
                             color: Theme.secondaryLabel
                             font { family: Theme.fontUi; pixelSize: 13 }
+                        }
+                    }
+                    // Find Nearby: Maps' categories, around what's on the map.
+                    Column {
+                        visible: app.mode === "search" && !searchField.text && !app.nearbyName && !app.results.length && !app.searching
+                        x: 18; y: 66; width: parent.width - 36
+                        spacing: 10
+                        Text { text: "Find Nearby"; color: Theme.label; font { family: Theme.fontUi; pixelSize: 15; weight: Font.Bold } }
+                        Grid {
+                            columns: 4
+                            columnSpacing: 6; rowSpacing: 12
+                            Repeater {
+                                model: Api.NEARBY
+                                delegate: Column {
+                                    required property var modelData
+                                    width: 75
+                                    spacing: 5
+                                    Rectangle {
+                                        anchors.horizontalCenter: parent.horizontalCenter
+                                        width: 44; height: 44; radius: 22
+                                        color: modelData.tint
+                                        Symbol { anchors.centerIn: parent; name: modelData.symbol; tone: "white"; size: 18 }
+                                        MouseArea { anchors.fill: parent; onClicked: app.nearby(modelData) }
+                                    }
+                                    Text { width: parent.width; horizontalAlignment: Text.AlignHCenter; text: modelData.name; elide: Text.ElideRight
+                                           color: Theme.label; font { family: Theme.fontUi; pixelSize: 11 } }
+                                }
+                            }
+                        }
+                        Text {
+                            width: parent.width; wrapMode: Text.Wrap
+                            topPadding: 6
+                            text: "Search for a place or address, or long-press the map to drop a pin."
+                            color: Theme.secondaryLabel
+                            font { family: Theme.fontUi; pixelSize: 12 }
                         }
                     }
                     // Place card
@@ -364,6 +489,31 @@ ShellRoot {
                                 Text { text: "Directions"; color: "#ffffff"; font { family: Theme.fontUi; pixelSize: 15; weight: Font.DemiBold } }
                             }
                             MouseArea { anchors.fill: parent; onClicked: app.startDirections(app.place) }
+                        }
+                        // Favorite, Share, Copy Coordinates: round buttons under Directions.
+                        Row {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            topPadding: 8
+                            spacing: 22
+                            Repeater {
+                                model: [
+                                    { s: "star", t: app.isFavorite(app.place) ? "Favorited" : "Favorite", lit: app.isFavorite(app.place), a: () => app.toggleFavorite(app.place) },
+                                    { s: "share", t: "Share", a: () => { Quickshell.clipboardText = Api.shareUrl(app.place); app.toast = "Link copied" } },
+                                    { s: "copy", t: "Coordinates", a: () => { Quickshell.clipboardText = app.place.lat.toFixed(5) + ", " + app.place.lon.toFixed(5); app.toast = "Coordinates copied" } }
+                                ]
+                                delegate: Column {
+                                    required property var modelData
+                                    spacing: 4
+                                    Rectangle {
+                                        anchors.horizontalCenter: parent.horizontalCenter
+                                        width: 40; height: 40; radius: 20
+                                        color: modelData.lit ? "#ffcc00" : (Theme.dark ? "#1fffffff" : "#e5e5ea")
+                                        Symbol { anchors.centerIn: parent; name: modelData.s; size: 16; tone: modelData.lit ? "white" : "accent" }
+                                        MouseArea { anchors.fill: parent; onClicked: modelData.a() }
+                                    }
+                                    Text { anchors.horizontalCenter: parent.horizontalCenter; text: modelData.t; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: 11 } }
+                                }
+                            }
                         }
                         Item { width: 1; height: 10 }
                         Rectangle {
@@ -385,7 +535,7 @@ ShellRoot {
                                     text: "Open in OpenStreetMap ↗"
                                     color: Theme.accent
                                     font { family: Theme.fontUi; pixelSize: 13; weight: Font.Medium }
-                                    TapHandler { onTapped: Qt.openUrlExternally("https://www.openstreetmap.org/?mlat=" + app.place.lat + "&mlon=" + app.place.lon + "#map=17/" + app.place.lat + "/" + app.place.lon) }
+                                    TapHandler { onTapped: Qt.openUrlExternally(Api.shareUrl(app.place)) }
                                 }
                             }
                         }
@@ -597,6 +747,12 @@ ShellRoot {
                 anchors { right: parent.right; rightMargin: 14; top: parent.top; topMargin: win.toolbarHeight + 4 }
                 spacing: 8
                 GlassButton {
+                    objectName: "mapsLocate"
+                    symbol: "location"
+                    opacity: app.locating ? 0.6 : 1
+                    onClicked: app.locateMe(true)
+                }
+                GlassButton {
                     id: styleBtn
                     symbol: "layers"
                     onClicked: menu.popup(styleBtn, -180, height + 6, Object.keys(Api.STYLES).filter((k) => k !== "dark").map((k) => ({
@@ -610,9 +766,26 @@ ShellRoot {
                 GlassButton { symbol: "minus"; radius: 10; onClicked: map.flyTo(map.lat, map.lon, Math.max(2, Math.round(map.zoom) - 1)) }
             }
 
+            // "Link copied", "Location Services are off": a capsule at the bottom, briefly.
+            property string toast: ""
+            onLocateErrorChanged: if (locateError && flyHere) toast = locateError
+            onToastChanged: if (toast) toastTimer.restart()
+            Timer { id: toastTimer; interval: 2600; onTriggered: app.toast = "" }
+            Rectangle {
+                anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: 26 }
+                visible: opacity > 0
+                opacity: app.toast ? 1 : 0
+                Behavior on opacity { NumberAnimation { duration: 200 } }
+                width: toastText.implicitWidth + 32; height: 34; radius: 17
+                color: Theme.dark ? "#e62c2c2e" : "#f2ffffff"
+                border { width: 0.5; color: Theme.dark ? "#26ffffff" : "#26000000" }
+                Text { id: toastText; anchors.centerIn: parent; text: app.toast; color: Theme.label; font { family: Theme.fontUi; pixelSize: 13; weight: Font.Medium } }
+            }
+
             Keys.onPressed: (e) => {
                 const ctrl = e.modifiers & Qt.ControlModifier
                 if (ctrl && e.key === Qt.Key_F) { app.startSearch(); e.accepted = true }
+                else if (ctrl && e.key === Qt.Key_L) { app.locateMe(true); e.accepted = true }
                 else if (ctrl && e.key === Qt.Key_R) { app.startDirections(app.place); e.accepted = true }
                 else if (ctrl && (e.key === Qt.Key_Equal || e.key === Qt.Key_Plus)) { map.flyTo(map.lat, map.lon, Math.round(map.zoom) + 1); e.accepted = true }
                 else if (ctrl && e.key === Qt.Key_Minus) { map.flyTo(map.lat, map.lon, Math.round(map.zoom) - 1); e.accepted = true }

@@ -100,7 +100,52 @@ Item {
         }
     }
 
+    // Hybrid's names and roads, over the imagery.
+    Repeater {
+        model: map.styleDef.labels ? map.cols * map.rows : 0
+        delegate: Image {
+            required property int index
+            readonly property int sc: index % map.cols
+            readonly property int sr: Math.floor(index / map.cols)
+            readonly property int tx: map.firstX + (((sc - map.firstX) % map.cols) + map.cols) % map.cols
+            readonly property int ty: map.firstY + (((sr - map.firstY) % map.rows) + map.rows) % map.rows
+            readonly property int n: 1 << map.tz
+            x: map.width / 2 + (tx * 256 - map.c.x) * map.scale
+            y: map.height / 2 + (ty * 256 - map.c.y) * map.scale
+            width: Math.ceil(map.ts) + 1; height: width
+            visible: ty >= 0 && ty < n
+            source: visible && map.online ? map.styleDef.labels(map.tz, ((tx % n) + n) % n, ty) : ""
+            asynchronous: true
+            smooth: true
+        }
+    }
+
     Item { id: overlayLayer; anchors.fill: parent }
+
+    // The scale, bottom left, as in Maps: a round distance and its length.
+    property bool imperial: false
+    property real scaleInset: 0                // where the map shows past the panel
+    Item {
+        id: scaleBar
+        readonly property var bar: Api.scaleBar(map.lat, map.zoom, 110, map.imperial)
+        readonly property bool dark: map.style === "dark" || map.style === "satellite" || map.style === "hybrid"
+        x: map.scaleInset + 14; anchors { bottom: parent.bottom; bottomMargin: 14 }
+        width: bar.px; height: 22
+        Text {
+            anchors { left: parent.left; bottom: line.top; bottomMargin: 2 }
+            text: scaleBar.bar.label
+            color: scaleBar.dark ? "#ffffff" : "#3a3a3c"
+            font { family: Theme.fontUi; pixelSize: 10; weight: Font.DemiBold }
+            style: Text.Outline; styleColor: scaleBar.dark ? "#80000000" : "#b3ffffff"
+        }
+        Rectangle {
+            id: line
+            anchors { left: parent.left; bottom: parent.bottom }
+            width: scaleBar.bar.px; height: 4; radius: 2
+            color: scaleBar.dark ? "#ffffff" : "#3a3a3c"
+            border { width: 1; color: scaleBar.dark ? "#80000000" : "#ccffffff" }
+        }
+    }
 
     // Gestures
     DragHandler {
@@ -149,7 +194,7 @@ Item {
     Text {
         anchors { right: parent.right; bottom: parent.bottom; margins: 6 }
         text: map.styleDef.credit
-        color: map.style === "dark" || map.style === "satellite" ? "#b3ffffff" : "#8c000000"
+        color: map.style === "dark" || map.style === "satellite" || map.style === "hybrid" ? "#b3ffffff" : "#8c000000"
         font { family: Theme.fontUi; pixelSize: 9 }
     }
 }

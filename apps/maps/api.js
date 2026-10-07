@@ -13,7 +13,48 @@ var STYLES = {
                 credit: "© OpenStreetMap contributors © CARTO", bg: "#262626" },
     satellite:{ name: "Satellite", url: function (z, x, y) { return "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/" + z + "/" + y + "/" + x; },
                 credit: "© Esri, Maxar, Earthstar Geographics", bg: "#1b2a1f" },
+    // Hybrid: the imagery with roads and names over it, as Maps' Hybrid.
+    hybrid:   { name: "Hybrid", url: function (z, x, y) { return "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/" + z + "/" + y + "/" + x; },
+                labels: function (z, x, y) { return "https://" + "abcd"[(x + y) % 4] + ".basemaps.cartocdn.com/rastertiles/dark_only_labels/" + z + "/" + x + "/" + y + "@2x.png"; },
+                credit: "© Esri, Maxar · © OpenStreetMap contributors © CARTO", bg: "#1b2a1f" },
 };
+
+// Find Nearby: Maps' categories, as OpenStreetMap tags Photon can filter by.
+var NEARBY = [
+    { name: "Restaurants", tag: "amenity:restaurant", symbol: "heart", tint: "#ff9500" },
+    { name: "Coffee", tag: "amenity:cafe", symbol: "drop", tint: "#a2845e" },
+    { name: "Groceries", tag: "shop:supermarket", symbol: "shippingbox", tint: "#ffcc00" },
+    { name: "Gas Stations", tag: "amenity:fuel", symbol: "car", tint: "#0a84ff" },
+    { name: "EV Chargers", tag: "amenity:charging_station", symbol: "bolt", tint: "#30d158" },
+    { name: "Parking", tag: "amenity:parking", symbol: "car", tint: "#5e5ce6" },
+    { name: "Hotels", tag: "tourism:hotel", symbol: "house", tint: "#af52de" },
+    { name: "Pharmacies", tag: "amenity:pharmacy", symbol: "plus", tint: "#ff3b30" }
+];
+function nearbyUrl(cat, lat, lon) {
+    return "https://photon.komoot.io/api/?limit=20&lang=en&q=" + encodeURIComponent(cat.name)
+        + "&osm_tag=" + encodeURIComponent(cat.tag) + "&lat=" + lat.toFixed(4) + "&lon=" + lon.toFixed(4)
+        + "&location_bias_scale=0.9&zoom=14";
+}
+
+// Metres a pixel covers at this latitude and zoom (256-pixel tiles).
+function metresPerPixel(lat, z) { return 156543.03392 * Math.cos(lat * Math.PI / 180) / Math.pow(2, z); }
+// A scale bar's length and label: a round distance at most `maxPx` long.
+function scaleBar(lat, z, maxPx, imperial) {
+    var mpp = metresPerPixel(lat, z);
+    var unit = imperial ? 0.3048 : 1;                    // feet or metres
+    var max = maxPx * mpp / unit;
+    var steps = [1, 2, 5];
+    var best = 1;
+    for (var e = 0; e < 9; e++) for (var i = 0; i < 3; i++) { var v = steps[i] * Math.pow(10, e); if (v <= max) best = v; }
+    var label;
+    if (imperial) label = best >= 5280 ? (best / 5280).toFixed(best % 5280 ? 1 : 0) + " mi" : best + " ft";
+    else label = best >= 1000 ? best / 1000 + " km" : best + " m";
+    if (imperial && best >= 5280) { var miles = [0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000]; var mb = 0.5;
+        for (var j = 0; j < miles.length; j++) if (miles[j] * 5280 <= max) mb = miles[j];
+        best = mb * 5280; label = mb + " mi"; }
+    return { px: best * unit / mpp, label: label };
+}
+function shareUrl(p) { return "https://www.openstreetmap.org/?mlat=" + p.lat.toFixed(5) + "&mlon=" + p.lon.toFixed(5) + "#map=17/" + p.lat.toFixed(5) + "/" + p.lon.toFixed(5); }
 
 function searchUrl(q, lat, lon) {
     return "https://photon.komoot.io/api/?limit=10&lang=en&q=" + encodeURIComponent(q)
