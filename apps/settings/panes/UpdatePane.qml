@@ -90,6 +90,9 @@ Pane {
             } else if (event.event === "source") {
                 source = event
             } else if (event.event === "error") {
+                // Some parts may have installed (CitronOS among them): say so,
+                // but the update stays unfinished and can be tried again.
+                if (event.restart) { relogin = true; readSource() }
                 state = "error"
                 error = event.message ?? "Software Update could not complete."
                 message = "Update interrupted"

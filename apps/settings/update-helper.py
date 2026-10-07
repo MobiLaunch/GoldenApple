@@ -214,18 +214,39 @@ def apply() -> int:
         emit("progress", progress=0.1, message="Repairing the package signing keys…", remaining=-1)
         repair_keyring(initial=False)
         code, errors = system_upgrade()
-    failed = (explain_pacman(errors) or f"pacman exited with status {code}.") if code != 0 else ""
+    # Each part says how it went; the last event is "done" only if none
+    # failed. A part that failed stays failed (and its update available).
+    parts: list[dict] = []
+    parts.append({"name": "System packages", "ok": code == 0,
+                  "detail": (explain_pacman(errors) or f"pacman exited with status {code}.") if code != 0 else ""})
     if shutil.which("flatpak"):
-        stream(["flatpak", "--system", "update", "-y", "--noninteractive"], 0.8, 0.05, "Apps")
+        fcode, ferrors = stream(["flatpak", "--system", "update", "-y", "--noninteractive"], 0.8, 0.05, "Apps")
+        parts.append({"name": "Apps for everyone", "ok": fcode == 0,
+                      "detail": ((ferrors.splitlines() or [""])[-1] or f"Flatpak exited with status {fcode}.") if fcode else ""})
     # CitronOS still updates when the system packages couldn't: its fixes
-    # (including ones for updating itself) shouldn't wait on them.
-    updated = golden_update.apply(emit)
+    # (including ones for updating itself) shouldn't wait on them. Its own
+    # errors are its part's result, not the end of the whole update.
+    problems: list[str] = []
+
+    def golden_emit(event: str, **payload: object) -> None:
+        if event == "error":
+            problems.append(str(payload.get("message") or "CitronOS couldn't be updated."))
+        else:
+            emit(event, **payload)
+
+    outcome = golden_update.apply(golden_emit)
+    parts.append({"name": "CitronOS", "ok": outcome != "failed",
+                  "detail": problems[-1] if problems else ("" if outcome != "failed" else "CitronOS couldn't be updated.")})
+    updated = outcome == "updated"
+    failed = [p for p in parts if not p["ok"]]
     if failed:
-        if not updated:
-            emit("error", message=failed)
-            return code
-        emit("notice", message="CitronOS was updated, but the system packages weren't: " + failed)
-    emit("done", progress=1.0, completed=datetime.now().isoformat(), restart=updated,
+        message = " ".join(f"{p['name']}: {p['detail']}" for p in failed)
+        if len(failed) < len(parts):
+            done = [p["name"] for p in parts if p["ok"]]
+            message = "Some updates didn't install. " + message + " (" + ", ".join(done) + " updated.)"
+        emit("error", message=message, parts=parts, restart=updated)
+        return 1
+    emit("done", progress=1.0, completed=datetime.now().isoformat(), restart=updated, parts=parts,
          message="CitronOS is up to date." + (" Log out and back in to finish." if updated else ""))
     return 0
 

@@ -367,37 +367,60 @@ def unpack(archive: Path, dest: Path) -> Path:
     return tops[0]
 
 
-def _package_list(tree: Path) -> list[str]:
+class UpdateFailed(Exception):
+    """A step of installing CitronOS failed; the message says which and why."""
+
+
+def _package_list(tree: Path, name: str) -> list[str]:
     names = []
-    for name in ("distro/archiso/packages.x86_64", "distro/archiso/packages.extra"):
-        try:
-            for line in (tree / name).read_text().splitlines():
-                line = line.split("#", 1)[0].strip()
-                if line:
-                    names.append(line)
-        except OSError:
-            pass
+    try:
+        for line in (tree / name).read_text().splitlines():
+            line = line.split("#", 1)[0].strip()
+            if line:
+                names.append(line)
+    except OSError:
+        pass
     return names
 
 
-def install_packages(tree: Path, emit: Emit) -> list[str]:
-    """New packages from the list that the official repos have; returns the
-    ones that must be built from the AUR and so were left out."""
+def _pacman_reason(proc: subprocess.CompletedProcess) -> str:
+    lines = [l for l in (proc.stdout + proc.stderr).strip().splitlines() if l.strip()]
+    errors = [l for l in lines if l.lower().startswith("error")]
+    return ((errors or lines or ["pacman exited with status %d" % proc.returncode])[-1])[:200]
+
+
+def install_packages(tree: Path, emit: Emit) -> dict[str, str]:
+    """The packages this CitronOS needs that aren't installed yet. Required
+    ones (packages.x86_64, from the official repositories) must install, or
+    the update stops here with nothing changed (UpdateFailed). Optional ones
+    (packages.extra: may need the AUR) are tried; returns those left out,
+    with why."""
     if not shutil.which("pacman") or not path("/var/lib/pacman/local").is_dir():
-        return []
+        return {}
     pacman = ["pacman"] if ROOT == Path("/") else ["pacman", "--sysroot", str(ROOT)]
-    wanted = _package_list(tree)
-    missing = [p for p in _run([*pacman, "-T", *wanted]).stdout.split() if p]
-    if not missing:
-        return []
-    available = [p for p in missing if _run([*pacman, "-Si", p]).returncode == 0]
-    skipped = [p for p in missing if p not in available]
-    if available:
-        emit("progress", progress=0.9, message="Installing " + ", ".join(available[:4]) + ("…" if len(available) > 4 else ""), remaining=-1)
-        proc = _run([*pacman, "-S", "--needed", "--noconfirm", "--noprogressbar", *available], timeout=3600)
+    required = _package_list(tree, "distro/archiso/packages.x86_64")
+    optional = [p for p in _package_list(tree, "distro/archiso/packages.extra") if p not in required]
+    missing = set(_run([*pacman, "-T", *required, *optional]).stdout.split()) if required or optional else set()
+    need = [p for p in required if p in missing]
+    want = [p for p in optional if p in missing]
+    if need:
+        unavailable = [p for p in need if _run([*pacman, "-Si", p]).returncode != 0]
+        if unavailable:
+            raise UpdateFailed("This version needs packages the package repositories don't have right now: "
+                               + ", ".join(unavailable[:6]) + ". Nothing was changed; try again later.")
+        emit("progress", progress=0.88, message="Installing " + ", ".join(need[:4]) + ("…" if len(need) > 4 else ""), remaining=-1)
+        proc = _run([*pacman, "-S", "--needed", "--noconfirm", "--noprogressbar", *need], timeout=3600)
         if proc.returncode != 0:
-            skipped += available
-    return skipped
+            raise UpdateFailed("Packages this version needs couldn't be installed, so nothing was changed: " + _pacman_reason(proc))
+    left: dict[str, str] = {}
+    for p in want:
+        if _run([*pacman, "-Si", p]).returncode != 0:
+            left[p] = "needs the AUR"
+            continue
+        proc = _run([*pacman, "-S", "--needed", "--noconfirm", "--noprogressbar", p], timeout=1800)
+        if proc.returncode != 0:
+            left[p] = _pacman_reason(proc)
+    return left
 
 
 def _snapshot_skel(into: Path) -> Path:
@@ -479,13 +502,24 @@ def refresh_accounts(old_skel: Path) -> list[str]:
     return kept
 
 
-def apply_overlay(tree: Path):
+def apply_overlay(tree: Path, backup: Path | None = None):
+    """The system files CitronOS ships. With backup, each file replaced is
+    kept there first, and each new one listed (backup/created), for rollback."""
     overlay = tree / "distro/archiso/overlay"
+    created = []
     for f in sorted(overlay.rglob("*")):
         rel = f.relative_to(overlay).as_posix()
         if f.is_dir() or rel.startswith(LIVE_ONLY):
             continue
         dest = path("/" + rel)
+        if backup is not None:
+            if os.path.lexists(dest):
+                if not (backup / "files" / rel).exists():
+                    (backup / "files" / rel).parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(dest, backup / "files" / rel, follow_symlinks=False)
+            else:
+                created.append(rel)
+                (backup / "created").write_text("\n".join(created) + "\n")
         dest.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(f, dest)
 
@@ -497,6 +531,7 @@ def update_hyprglass(tree: Path):
     plugin = path("/usr/lib/golden-gate/hyprglass.so")
     if not (ver and sha) or not plugin.parent.is_dir():
         return
+    stamp = plugin.with_name(plugin.name + ".hyprland")
     if plugin.exists() and hashlib.sha256(plugin.read_bytes()).hexdigest() == sha.group(1):
         return
     url = f"https://github.com/hyprnux/hyprglass/releases/download/{ver.group(1)}/hyprglass.so"
@@ -508,6 +543,31 @@ def update_hyprglass(tree: Path):
     tmp.write_bytes(data)
     os.chmod(tmp, 0o755)
     tmp.replace(plugin)
+    release = hyprland_release()
+    if release:
+        stamp.write_text(release + "\n")
+
+
+def hyprland_release() -> str:
+    """The installed Hyprland's version ("" if it can't be told)."""
+    if not shutil.which("pacman"):
+        return ""
+    pacman = ["pacman"] if ROOT == Path("/") else ["pacman", "--sysroot", str(ROOT)]
+    q = _run([*pacman, "-Q", "hyprland"])
+    return q.stdout.split()[-1].split("-")[0] if q.returncode == 0 and q.stdout.split() else ""
+
+
+def glass_notice(reason: str) -> str:
+    """What to say when the Liquid Glass plugin couldn't be updated: whether
+    the one in place was built for the Hyprland installed now."""
+    plugin = path("/usr/lib/golden-gate/hyprglass.so")
+    stamp = plugin.with_name(plugin.name + ".hyprland")
+    now = hyprland_release()
+    built = stamp.read_text().strip() if stamp.exists() else ""
+    if now and built and built != now:
+        return (f"The Liquid Glass plugin couldn't be updated ({reason}), and the one installed was made for "
+                f"Hyprland {built}, not {now}: windows and panels may show without glass until the next update.")
+    return f"The Liquid Glass plugin couldn't be updated ({reason}); the current one is still in use."
 
 
 def update_hyprbars(tree: Path, emit: Emit) -> None:
@@ -553,13 +613,17 @@ def enable_services(tree: Path):
             _run([*ctl, "enable", *(["--now"] if ROOT == Path("/") else []), unit], timeout=60)
 
 
-def apply(emit: Emit) -> bool:
-    """As root: install the newest CitronOS. False when nothing was done."""
+def apply(emit: Emit) -> str:
+    """As root: install the newest CitronOS. "updated", "unchanged" (already
+    the newest, or it couldn't be checked: a notice says why), or "failed"
+    (the download or install failed: an error says why)."""
     status = check()
     if not status["available"]:
+        # Not checked (offline, no access): nothing was tried, so nothing
+        # failed; Software Update says so beside the result.
         if status["error"]:
-            emit("notice", message=status["error"])
-        return False
+            emit("notice", message="CitronOS wasn't checked: " + status["error"])
+        return "unchanged"
     src = source()
     work = Path(tempfile.mkdtemp(prefix="gg-golden-update-", dir=path("/var/tmp") if path("/var/tmp").is_dir() else None))
     try:
@@ -567,66 +631,160 @@ def apply(emit: Emit) -> bool:
         tree = download(src, status["latest"], work)
         version = {"repo": src["repo"], "branch": src["branch"], "commit": status["latest"],
                    "date": status.get("latestDate", ""), "subject": status.get("latestSubject", "")}
-        return install_tree(tree, version, emit, work)
-    except GitHubError as e:
-        emit("error", message=str(e))
-        return False
+        return "updated" if install_tree(tree, version, emit, work) else "failed"
+    except (GitHubError, OSError, tarfile.TarError) as e:
+        emit("error", message=f"CitronOS couldn't be downloaded: {e}")
+        shutil.rmtree(work, ignore_errors=True)
+        return "failed"
+
+
+ROLLBACK = "/var/lib/golden-gate/rollback"
+JOURNAL = "/var/lib/golden-gate/update-journal.json"
+
+
+def _journal(state: str, step: str, version: dict, detail: str = "") -> None:
+    """Where the last install got to, kept on disk (it outlives a crash)."""
+    try:
+        j = path(JOURNAL)
+        j.parent.mkdir(parents=True, exist_ok=True)
+        tmp = j.with_suffix(".tmp")
+        tmp.write_text(json.dumps({"state": state, "step": step, "commit": version.get("commit", ""),
+                                   "detail": detail, "at": datetime.now(timezone.utc).isoformat()}) + "\n")
+        tmp.replace(j)
+    except OSError:
+        pass
+
+
+def _restore(backup: Path, runtime: Path, skel_shell: Path) -> list[str]:
+    """Put back what an install replaced (see install_tree). Returns what
+    couldn't be put back."""
+    problems = []
+    for p, name in ((runtime, "runtime"), (skel_shell, "skel-shell")):
+        if (backup / name).exists():
+            try:
+                shutil.rmtree(p, ignore_errors=True)
+                shutil.copytree(backup / name, p, symlinks=True)
+            except OSError as e:
+                problems.append(f"{p}: {e}")
+    files = backup / "files"
+    if files.is_dir():
+        for f in sorted(files.rglob("*")):
+            if f.is_dir():
+                continue
+            dest = path("/" + f.relative_to(files).as_posix())
+            try:
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(f, dest, follow_symlinks=False)
+            except OSError as e:
+                problems.append(f"{dest}: {e}")
+    if (backup / "created").exists():
+        for rel in (backup / "created").read_text().split():
+            try:
+                path("/" + rel).unlink(missing_ok=True)
+            except OSError as e:
+                problems.append(f"/{rel}: {e}")
+    return problems
 
 
 def install_tree(tree: Path, version: dict, emit: Emit, work: Path) -> bool:
-    """Install CitronOS from an unpacked tree (see apply's steps)."""
-    backup = work / "previous"
+    """Install CitronOS from an unpacked tree. Steps, each journalled: the
+    packages it needs (none missing, or nothing is changed); a backup of
+    everything it replaces (the runtime, the shell for new accounts, system
+    files, the glass plugin), kept in /var/lib/golden-gate/rollback; then
+    install.sh, accounts, system files, plugins, services and the boot
+    image. Any failure puts the backup back and says at which step. Not
+    rolled back: packages installed (they're only ever added), and the new
+    shell files given to accounts, which keep any file their user edited."""
     runtime = path("/usr/share/golden-gate")
     skel_shell = path("/etc/skel/.config/quickshell/golden-gate")
+    backup = path(ROLLBACK)
+    step = "checking the packages it needs"
+    backed_up = False
     try:
-        skipped = install_packages(tree, emit)
+        _journal("installing", step, version)
+        left = install_packages(tree, emit)
+
+        step = "keeping a copy of the current version"
+        _journal("installing", step, version)
         emit("progress", progress=0.92, message="Installing CitronOS…", remaining=-1)
         old_skel = _snapshot_skel(work)
+        shutil.rmtree(backup, ignore_errors=True)
+        backup.mkdir(parents=True)
         for p, name in ((runtime, "runtime"), (skel_shell, "skel-shell")):
             if p.exists():
                 shutil.copytree(p, backup / name, symlinks=True)
+        for plugin in ("hyprglass.so", "hyprglass.so.hyprland"):
+            src = path("/usr/lib/golden-gate/" + plugin)
+            if src.exists():
+                (backup / "files/usr/lib/golden-gate").mkdir(parents=True, exist_ok=True)
+                shutil.copy2(src, backup / "files/usr/lib/golden-gate" / plugin)
+        backed_up = True
+
+        step = "installing CitronOS's files"
+        _journal("installing", step, version)
         proc = _run(["bash", str(tree / "scripts/install.sh"), "--system", str(ROOT)],
                     env={**os.environ, "GG_SKIP_BUILD": "1"}, timeout=1800, cwd=str(tree))
         if proc.returncode != 0:
-            for p, name in ((runtime, "runtime"), (skel_shell, "skel-shell")):
-                if (backup / name).exists():
-                    shutil.rmtree(p, ignore_errors=True)
-                    shutil.copytree(backup / name, p, symlinks=True)
             tail = (proc.stdout + proc.stderr).strip().splitlines()[-1:] or ["unknown error"]
-            emit("error", message="CitronOS's update didn't install, and the previous version was kept: " + tail[0][:200])
-            return False
+            raise UpdateFailed(tail[0][:200])
+
+        step = "updating your settings"
+        _journal("installing", step, version)
         emit("progress", progress=0.96, message="Updating your settings…", remaining=-1)
         kept = refresh_accounts(old_skel)
-        apply_overlay(tree)
+
+        step = "installing system files"
+        _journal("installing", step, version)
+        apply_overlay(tree, backup)
+
         try:
             update_hyprglass(tree)
-        except (OSError, GitHubError, urllib.error.URLError):
-            pass                                # the old plugin keeps working
+        except (OSError, GitHubError, urllib.error.URLError) as exc:
+            emit("notice", message=glass_notice(str(exc)[:120]))
         try:
             update_hyprbars(tree, emit)
         except (OSError, subprocess.SubprocessError) as exc:
             emit("notice", message=f"Title bars for downloaded apps couldn't be built: {exc}")
+
+        step = "turning on services"
+        _journal("installing", step, version)
         enable_services(tree)
         # Installs made before the installer cleaned these up still carry
         # them; the boot image is rebuilt if it was built with archiso's hooks.
         rebuild = remove_live_leftovers(ROOT)
         ensure_keyring(ROOT)
         if rebuild and shutil.which("mkinitcpio") and path("/boot/vmlinuz-linux").exists():
+            step = "rebuilding the boot image"
+            _journal("installing", step, version)
             emit("progress", progress=0.98, message="Rebuilding the boot image…", remaining=-1)
-            _run(["mkinitcpio", "-P"] if ROOT == Path("/") else ["arch-chroot", str(ROOT), "mkinitcpio", "-P"],
-                 timeout=900)
+            proc = _run(["mkinitcpio", "-P"] if ROOT == Path("/") else ["arch-chroot", str(ROOT), "mkinitcpio", "-P"],
+                        timeout=900)
+            if proc.returncode != 0:
+                raise UpdateFailed(_pacman_reason(proc))
+
+        step = "recording the version"
         (runtime / "version.json").write_text(json.dumps({
             **version, "date": version.get("date") or datetime.now(timezone.utc).isoformat(),
             "installed": datetime.now(timezone.utc).isoformat(),
         }, indent=2) + "\n")
+        _journal("installed", "done", version)
         if kept:
             emit("notice", message="Kept your edited " + ", ".join(kept[:3]) + ("…" if len(kept) > 3 else "")
                  + "; the new versions are beside them as .golden-gate-new.")
-        if skipped:
-            emit("notice", message="Not installed (needs the AUR): " + ", ".join(skipped[:6]))
+        if left:
+            emit("notice", message="Not installed: " + "; ".join(f"{p} ({why})" for p, why in list(left.items())[:6]))
         return True
-    except GitHubError as e:
-        emit("error", message=str(e))
+    except (UpdateFailed, GitHubError, OSError, subprocess.SubprocessError, ValueError) as e:
+        reason = str(e) or e.__class__.__name__
+        if backed_up:
+            problems = _restore(backup, runtime, skel_shell)
+            after = (" The previous version was put back." if not problems else
+                     " Putting the previous version back didn't fully work (" + problems[0][:120]
+                     + "); its copy is in " + str(backup) + ".")
+        else:
+            after = "" if isinstance(e, UpdateFailed) else " Nothing was changed."
+        _journal("failed", step, version, reason[:300])
+        emit("error", message=f"CitronOS's update didn't install (while {step}): {reason[:200]}{after}")
         return False
     finally:
         shutil.rmtree(work, ignore_errors=True)

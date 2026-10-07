@@ -51,7 +51,7 @@ In supported editors, right-click → **Writing Tools…** or press
 | **CitronOS apps**: Files, Web, Mail, Messages, Maps, Photos, Music, Calendar, Notes, Weather, App Store, Settings, Clock, TextEdit, Calculator and Installer | `apps/` | First-party frontends use the shared component store; mature backends such as Qt WebEngine, Flatpak, IMAP/SMTP, BlueFerry (iMessage and SMS through a paired iPhone) and Ghostty remain isolated behind CitronOS UI |
 | **LCode**: an Xcode-style IDE: Welcome window and template gallery, project navigator, tabbed editor with colour themes, code completion and snippets, minimap and inline issues, a visual App Designer for CitronOS apps, the project editor (app info, icon, capabilities, scheme), Archive and the Organizer, Run/Stop and scheme ▸ destination pills, activity view, debug console, inspectors, Open Quickly, Find in Project, a Settings window, and a Simulator that runs the built app inside a device frame | `apps/lcode.qml`, `apps/lcode/` | CitronOS apps, Swift packages, Rust crates, Meson (C) projects and Python programs build, test, run and package; no debugger yet |
 | **System Settings**: a near copy of macOS System Settings (glass sidebar with search suggestions, back and forward, grouped panes) that changes the real system: Wi-Fi, Bluetooth, Network, Battery, General (About, Software Update, Storage, Date & Time, Language & Region), Accessibility, Appearance (mode, accent, Liquid Glass clear or tinted), Desktop & Dock, Displays, Wallpaper, Focus, Sound, Privacy & Security, Users & Groups, Keyboard, Trackpad & Mouse | `apps/settings.qml`, `apps/settings/` | Done; `gg-settings [pane]` and `gnome-control-center [panel]` open it at a pane |
-| **Setup Assistant**: the first-login hello and shared CitronOS controls over the HyprGlass desktop material, then local account creation, country or region, Wi-Fi, Data & Privacy, Location Services, time zone, crash and diagnostics sharing, and Choose Your Look | `apps/setup.qml`, `apps/setup/` | Done; runs once (`~/.config/golden-gate/setup-done`), `gg.nosetup` on the kernel command line skips it |
+| **Setup Assistant**: the first-login hello and shared CitronOS controls over the HyprGlass desktop material, then local account creation (Try or Install on the live USB, where the installer makes the account), country or region, Wi-Fi, Data & Privacy, Location Services, time zone, crash and diagnostics sharing, and Choose Your Look | `apps/setup.qml`, `apps/setup/` | Done; runs once (`~/.config/golden-gate/setup-done`), `gg.nosetup` on the kernel command line skips it |
 | **Theming**: fonts, ⌘ key layer, login screen, boot splash, terminal | `themes/` | Done: fontconfig, keyd, SDDM theme, Plymouth theme, Ghostty |
 | **Distro**: bootable live ISO + graphical installer | `distro/archiso/`, `apps/installer*` | Boots on real hardware; native installer performs UEFI preflight, disk erase/partitioning, filesystem copy, account provisioning, initramfs, systemd-boot and verification |
 
@@ -240,6 +240,17 @@ repository and branch the ISO was built from (recorded in
 read-only fine-grained token (Contents: read) for a private repository. Each
 account's shell is refreshed; a Hyprland, GTK or Ghostty file you edited is
 kept, with the new one beside it as `*.golden-gate-new`.
+
+Each part (Arch packages, apps for everyone, CitronOS) reports its own result,
+and Software Update only says it's up to date when all of them installed; a
+part that failed stays listed, with why, and Update Now tries it again.
+Packages a new CitronOS version requires must install first, or nothing is
+changed. Before replacing anything it keeps a copy of the current version
+(runtime, new-account shell, system files, glass plugin) in
+`/var/lib/golden-gate/rollback`; a failure at any later step puts that copy
+back. `/var/lib/golden-gate/update-journal.json` records the last step
+reached. Packages added and the refreshed shells in accounts aren't rolled
+back.
 
 Without GitHub, from a USB stick, either way keeps accounts and files:
 
