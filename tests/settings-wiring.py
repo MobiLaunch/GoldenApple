@@ -19,7 +19,7 @@ for path in sorted(panes.glob("*.qml")):
         errors.append(f"{path.name}: {controls} adjustable controls but only {handlers} action handlers")
 
 required = {
-    "AccessibilityPane.qml": ['setPref(["reduceMotion"]', 'setPref(["reduceTransparency"]', "text-scaling-factor"],
+    "AccessibilityPane.qml": ['setPref(["reduceMotion"]', 'setPref(["reduceTransparency"]', "text-scaling-factor", 'setRecord("accessibility"'],
     "AppearancePane.qml": ['setPref(["glass"]', "accent-color", "overlay-scrolling"],
     "BatteryPane.qml": ["powerprofilesctl"],
     "BluetoothPane.qml": ["bluetoothctl"],
@@ -54,7 +54,7 @@ for needle in ["setMode(", "appearance.json", "accent-color", "overlay-scrolling
         errors.append(f"AppearancePane.qml: missing real appearance wiring {needle!r}")
 
 sys_qml = (root / "apps/settings/Sys.qml").read_text(encoding="utf-8")
-for needle in ["gg-pref", "privacySave", "inputSave", "hyprctl", "gg-hyprglass-sync"]:
+for needle in ["gg-pref", "set-prefs.py", "recordSave", "hyprctl", "gg-hyprglass-sync"]:
     if needle not in sys_qml:
         errors.append(f"Sys.qml: missing central settings plumbing {needle!r}")
 

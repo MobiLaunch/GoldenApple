@@ -80,7 +80,6 @@ Item {
             Quickshell.execDetached(["gg-hyprglass-sync"])
         }
     }
-    Timer { id: privacySave; interval: 70; onTriggered: sys.writeJson("privacy.json", sys.privacy) }
 
     // desktop.json has one authoritative writer: gg-pref performs an atomic
     // nested-key update, so Settings, shell IPC and Control Center cannot stomp
@@ -94,41 +93,72 @@ Item {
             glassSync.restart()
         }
     }
-    function setPrivacy(key, value) {
-        privacy = setIn(privacy, [key], value)
-        privacySave.restart()
-    }
-
-    // Keyboard and pointer: input.json is the record; hypr's input.conf is written
-    // from it (sourced by hyprland.conf), and each change applies at once.
-    function setInput(key, value) {
-        input = setIn(input, [key], value)
-        inputSave.restart()
-        const kw = { layout: "input:kb_layout", variant: "input:kb_variant", repeatRate: "input:repeat_rate", repeatDelay: "input:repeat_delay",
-                     sensitivity: "input:sensitivity", naturalScroll: "input:touchpad:natural_scroll", tapToClick: "input:touchpad:tap-to-click" }[key]
-        if (kw) Quickshell.execDetached(["hyprctl", "keyword", kw, String(typeof value === "number" && key !== "sensitivity" ? Math.round(value) : value)])
-    }
-
-    function inputConfig() {
-        const i = input
-        return "input {\n"
-            + "    kb_layout = " + (i.layout ?? "us") + "\n"
-            + "    kb_variant = " + (i.variant ?? "") + "\n"
-            + "    repeat_rate = " + Math.round(i.repeatRate ?? 25) + "\n"
-            + "    repeat_delay = " + Math.round(i.repeatDelay ?? 600) + "\n"
-            + "    sensitivity = " + (i.sensitivity ?? 0).toFixed(2) + "\n"
-            + "    touchpad {\n"
-            + "        natural_scroll = " + (i.naturalScroll ?? true) + "\n"
-            + "        tap-to-click = " + (i.tapToClick ?? true) + "\n"
-            + "    }\n}\n"
+    // privacy.json, input.json (with hypr's input.conf) and accessibility.json
+    // (with accessibility.conf) have one writer too, set-prefs.py: it changes
+    // only the keys asked for in the latest saved record, under the record's
+    // lock, so two Settings windows never undo each other's changes. A change
+    // is shown at once, saved (changes made close together go in one call),
+    // and only once it's saved applied to the running session; the record
+    // shown afterwards is the one saved.
+    readonly property string setter: decodeURIComponent(Qt.resolvedUrl("set-prefs.py").toString().replace("file://", ""))
+    readonly property var recordFiles: ({ privacy: "privacy.json", input: "input.json", accessibility: "accessibility.json" })
+    property var pendingKeys: ({})          // record → { key: value } not yet saved
+    property var afterSave: ({})            // record → [function(ok)]
+    function setRecord(name, key, value, applied) {
+        const p = Object.assign({}, pendingKeys)
+        p[name] = Object.assign({}, p[name] ?? {})
+        p[name][key] = value
+        pendingKeys = p
+        if (applied) {
+            const a = Object.assign({}, afterSave)
+            a[name] = (a[name] ?? []).concat([applied])
+            afterSave = a
+        }
+        if (sys[name] !== undefined) sys[name] = setIn(sys[name], [key], value)
+        recordSave.restart()
     }
     Timer {
-        id: inputSave
+        id: recordSave
         interval: 80
         onTriggered: {
-            sys.writeJson("input.json", sys.input)
-            sys.writeFile(sys.config + "/hypr/golden-gate/input.conf", sys.inputConfig(), "input.conf")
+            const pending = sys.pendingKeys, after = sys.afterSave
+            sys.pendingKeys = ({})
+            sys.afterSave = ({})
+            for (const name in pending) {
+                const keys = pending[name]
+                sys.run(["python3", sys.setter, name].concat(Object.keys(keys).map((k) => k + "=" + JSON.stringify(keys[k]))), (out, code) => {
+                    let r = null
+                    try { r = JSON.parse(out) } catch (e) {}
+                    const ok = code === 0 && !!r && r.ok === true
+                    if (ok && sys[name] !== undefined) sys[name] = r.record
+                    if (!ok) sys.failed(sys.recordFiles[name], r?.error ?? "the file couldn't be written")
+                    for (const f of after[name] ?? []) f(ok, keys)
+                })
+            }
         }
+    }
+    // A change was saved but the running session refused it: it isn't lost,
+    // and it applies the next time you sign in.
+    function notApplied(what, why) {
+        writeError = "Your change was saved, but it couldn't be applied now (" + what + ": " + why + "). It takes effect the next time you sign in."
+    }
+    function applyLive(args, what) {
+        run(args, (out, code) => {
+            if (code !== 0 || /error|invalid|no such/i.test(out)) notApplied(what, (out.trim() || "status " + code).split("\n")[0])
+        })
+    }
+
+    function setPrivacy(key, value) { setRecord("privacy", key, value) }
+
+    // Keyboard and pointer: input.json is the record; hypr's input.conf is
+    // generated from it with it (sourced by hyprland.conf).
+    readonly property var inputKeywords: ({ layout: "input:kb_layout", variant: "input:kb_variant", repeatRate: "input:repeat_rate", repeatDelay: "input:repeat_delay",
+                                            sensitivity: "input:sensitivity", naturalScroll: "input:touchpad:natural_scroll", tapToClick: "input:touchpad:tap-to-click" })
+    function setInput(key, value) {
+        setRecord("input", key, value, (ok) => {
+            const kw = inputKeywords[key]
+            if (ok && kw) applyLive(["hyprctl", "keyword", kw, String(typeof value === "number" && key !== "sensitivity" ? Math.round(value) : value)], "input.conf")
+        })
     }
 
     component JsonFile: FileView {
@@ -141,9 +171,9 @@ Item {
     JsonFile { id: desktopFile; path: sys.gg + "/desktop.json"; key: "prefs" }
     JsonFile { id: privacyFile; path: sys.gg + "/privacy.json"; key: "privacy" }
     JsonFile { id: inputFile; path: sys.gg + "/input.json"; key: "input" }
-    // First time: pick up the keyboard Setup Assistant wrote (layout and
-    // variant both: a later change, such as the repeat rate, rewrites the
-    // file from input.json and must keep the same keys).
+    // First time: show the keyboard Setup Assistant wrote (set-prefs.py keeps
+    // it in input.json the first time it saves, so a later change, such as the
+    // repeat rate, keeps the same layout and variant).
     Component.onCompleted: sh('sed -n "s/^ *\\(kb_layout\\|kb_variant\\) *= *\\(.*\\)/\\1=\\2/p" "' + config + '/hypr/golden-gate/input.conf" 2>/dev/null', (out) => {
         if (input.layout) return
         let i = input

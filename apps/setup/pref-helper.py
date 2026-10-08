@@ -26,12 +26,16 @@ directory.mkdir(parents=True, exist_ok=True)
 lock = open(directory / ".desktop.json.lock", "a")
 fcntl.flock(lock, fcntl.LOCK_EX)
 
+# A damaged file is left as it is and the change refused: starting again
+# from {} would throw away every other preference on a guess.
 try:
-    data = json.loads(path.read_text(encoding="utf-8"))
-    if not isinstance(data, dict):
-        data = {}
-except Exception:
+    data = json.loads(path.read_bytes().decode("utf-8"))
+except FileNotFoundError:
     data = {}
+except (OSError, ValueError) as exc:
+    raise SystemExit(f"desktop.json can't be used ({getattr(exc, 'strerror', None) or exc}); it was left as it is")
+if not isinstance(data, dict):
+    raise SystemExit("desktop.json is damaged; it was left as it is")
 
 node = data
 parts = [p for p in key.split(".") if p]
