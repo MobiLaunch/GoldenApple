@@ -245,7 +245,7 @@ ShellRoot {
                 width: parent.width; height: win.toolbarHeight
                 readonly property var flick: pages.item && pages.item.contentY !== undefined ? pages.item : null
                 opacity: flick && flick.contentY > flick.originY - flick.topMargin + 2 ? 1 : 0
-                Behavior on opacity { NumberAnimation { duration: 150 } }
+                Behavior on opacity { NumberAnimation { duration: 130 } }
                 gradient: Gradient {
                     GradientStop { position: 0; color: Theme.contentBg }
                     GradientStop { position: 0.6; color: Qt.rgba(Theme.contentBg.r, Theme.contentBg.g, Theme.contentBg.b, 0.8) }

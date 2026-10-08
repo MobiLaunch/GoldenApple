@@ -292,7 +292,7 @@ ShellRoot {
                 anchors.fill: parent
                 visible: opacity > 0
                 opacity: stage.step === 0 ? 1 : 0
-                Behavior on opacity { NumberAnimation { duration: 500; easing.type: Easing.InOutQuad } }
+                Behavior on opacity { NumberAnimation { duration: 435; easing.type: Easing.InOutQuad } }
 
                 GlassHello {
                     id: hello
@@ -306,10 +306,10 @@ ShellRoot {
                 SequentialAnimation {
                     running: stage.step === 0 && !Theme.reduceMotion
                     loops: Animation.Infinite
-                    PauseAnimation { duration: 600 }
-                    NumberAnimation { target: hello; property: "progress"; from: 0; to: 1; duration: 3400; easing.type: Easing.InOutSine }
-                    PauseAnimation { duration: 5200 }
-                    NumberAnimation { target: hello; property: "opacity"; to: 0; duration: 700 }
+                    PauseAnimation { duration: 520 }
+                    NumberAnimation { target: hello; property: "progress"; from: 0; to: 1; duration: 2960; easing.type: Easing.InOutSine }
+                    PauseAnimation { duration: 4525 }
+                    NumberAnimation { target: hello; property: "opacity"; to: 0; duration: 610 }
                     PropertyAction { target: hello; property: "progress"; value: 0 }
                     PropertyAction { target: hello; property: "opacity"; value: 1 }
                 }
@@ -321,7 +321,7 @@ ShellRoot {
                     opacity: hello.progress > 0.85 || startShown ? 1 : 0
                     property bool startShown: false
                     onOpacityChanged: if (opacity === 1) startShown = true
-                    Behavior on opacity { NumberAnimation { duration: 600 } }
+                    Behavior on opacity { NumberAnimation { duration: 520 } }
                     LiquidGlass {
                         anchors.fill: parent
                         radius: 32; bezel: 18; strength: 16
@@ -348,8 +348,8 @@ ShellRoot {
                 visible: opacity > 0
                 opacity: stage.step > 0 ? 1 : 0
                 scale: stage.step > 0 ? 1 : 0.94
-                Behavior on opacity { NumberAnimation { duration: 450; easing.type: Easing.OutCubic } }
-                Behavior on scale { NumberAnimation { duration: 550; easing.type: Easing.OutCubic } }
+                Behavior on opacity { NumberAnimation { duration: 390; easing.type: Easing.OutCubic } }
+                Behavior on scale { NumberAnimation { duration: 480; easing.type: Easing.OutCubic } }
 
                 LiquidGlass {
                     anchors.fill: parent
@@ -375,15 +375,15 @@ ShellRoot {
                 }
                 ScriptAction { script: { stage.step = pageSwap.target; page.x = pageSwap.forward ? 40 : -40 } }
                 ParallelAnimation {
-                    NumberAnimation { target: page; property: "opacity"; to: 1; duration: 260 }
-                    NumberAnimation { target: page; property: "x"; to: 0; duration: 320; easing.type: Easing.OutCubic }
+                    NumberAnimation { target: page; property: "opacity"; to: 1; duration: 225 }
+                    NumberAnimation { target: page; property: "x"; to: 0; duration: 280; easing.type: Easing.OutCubic }
                 }
             }
             // The desktop, revealed.
             SequentialAnimation {
                 id: outro
-                PauseAnimation { duration: Theme.reduceMotion ? 0 : 500 }
-                NumberAnimation { target: stage; property: "opacity"; to: 0; duration: Theme.reduceMotion ? 0 : 700; easing.type: Easing.InOutQuad }
+                PauseAnimation { duration: Theme.reduceMotion ? 0 : 435 }
+                NumberAnimation { target: stage; property: "opacity"; to: 0; duration: Theme.reduceMotion ? 0 : 610; easing.type: Easing.InOutQuad }
                 ScriptAction { script: Qt.quit() }
             }
 

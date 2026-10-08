@@ -34,7 +34,7 @@ Item {
         width: 84; height: 84
         anchors { horizontalCenter: parent.horizontalCenter; top: parent.top; topMargin: 6 }
         scale: drop.containsDrag ? 1.12 : area.pressed ? 0.94 : 1
-        Behavior on scale { NumberAnimation { duration: Theme.reduceMotion ? 1 : 160; easing.type: Easing.OutBack } }
+        Behavior on scale { NumberAnimation { duration: Theme.reduceMotion ? 1 : 140; easing.type: Easing.OutBack } }
 
         Rectangle {
             anchors.fill: parent
@@ -63,7 +63,7 @@ Item {
                 PathAngleArc {
                     centerX: 42; centerY: 42; radiusX: 40; radiusY: 40; startAngle: -90
                     sweepAngle: tile.transfer && tile.transfer.state === "sending" ? Math.max(4, 360 * tile.progress) : 0
-                    Behavior on sweepAngle { NumberAnimation { duration: 180 } }
+                    Behavior on sweepAngle { NumberAnimation { duration: 155 } }
                 }
             }
         }
@@ -77,8 +77,8 @@ Item {
             SequentialAnimation on opacity {
                 running: !!tile.transfer && tile.transfer.state === "waiting" && !Theme.reduceMotion
                 loops: Animation.Infinite
-                NumberAnimation { from: 0.25; to: 1; duration: 700; easing.type: Easing.InOutSine }
-                NumberAnimation { from: 1; to: 0.25; duration: 700; easing.type: Easing.InOutSine }
+                NumberAnimation { from: 0.25; to: 1; duration: 610; easing.type: Easing.InOutSine }
+                NumberAnimation { from: 1; to: 0.25; duration: 610; easing.type: Easing.InOutSine }
             }
         }
     }

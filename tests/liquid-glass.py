@@ -98,7 +98,7 @@ for key, value in [("plugin:hyprglass:blur_strength", "0.95"), ("plugin:hyprglas
                    ("plugin:hyprglass:manage_window_blur", "1"), ("plugin:hyprglass:layers:manage_blur", "1"),
                    ("plugin:hyprglass:layers:mask_mode", "auto"), ("plugin:hyprglass:dark:vibrancy_darkness", "0.15"),
                    ("decoration:active_opacity", "1.0"), ("decoration:inactive_opacity", "1.0"),
-                   ("plugin:hyprglass:glass_opacity", "0.48"),
+                   ("plugin:hyprglass:glass_opacity", "0.58"),
                    ("general:col.active_border", "rgba(ffffff66) rgba(ffffff11) 45deg"),
                    ("general:col.inactive_border", "rgba(ffffff22) rgba(00000011) 45deg")]:
     check(kw(calls, key) == value, f"dark, Clear glass: {key} = {value} (got {kw(calls, key)!r})")
@@ -113,7 +113,7 @@ check("keyword windowrule match:class .*, opaque on" in calls and flagged, "Redu
 calls, _, _ = run("dark", {"glassSolidity": 0.5})
 check((kw(calls, "decoration:active_opacity"), kw(calls, "decoration:inactive_opacity")) == ("1.0", "1.0"),
       "the Transparency slider never fades window contents")
-check(kw(calls, "plugin:hyprglass:glass_opacity") == "0.72",
+check(kw(calls, "plugin:hyprglass:glass_opacity") == "0.77",
       f"the Transparency slider halfway: the glass halfway to solid (got {kw(calls, 'plugin:hyprglass:glass_opacity')})")
 calls, flagged, _ = run("dark", {"glassSolidity": 1})
 check(kw(calls, "decoration:active_opacity") == "1.0" and flagged, "the Glass slider at Solid: every window solid")

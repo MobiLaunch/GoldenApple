@@ -139,7 +139,7 @@ PanelWindow {
             SpringAnimation { spring: 3.2; damping: 0.28; epsilon: 0.25 }
         }
         opacity: nearby.shown ? 1 : 0
-        Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 220 } }
+        Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 190 } }
 
         // Close.
         Rectangle {
@@ -175,12 +175,12 @@ PanelWindow {
                     SequentialAnimation on scale {
                         running: nearby.shown && nearby.phase === "connecting" && !Theme.reduceMotion
                         loops: Animation.Infinite
-                        NumberAnimation { from: 0.8; to: 1.25; duration: 1100; easing.type: Easing.OutCubic }
+                        NumberAnimation { from: 0.8; to: 1.25; duration: 955; easing.type: Easing.OutCubic }
                     }
                     SequentialAnimation on opacity {
                         running: nearby.shown && nearby.phase === "connecting" && !Theme.reduceMotion
                         loops: Animation.Infinite
-                        NumberAnimation { from: 0.6; to: 0; duration: 1100; easing.type: Easing.OutCubic }
+                        NumberAnimation { from: 0.6; to: 0; duration: 955; easing.type: Easing.OutCubic }
                     }
                 }
                 Rectangle {
@@ -201,8 +201,8 @@ PanelWindow {
                     SequentialAnimation on anchors.verticalCenterOffset {
                         running: nearby.shown && nearby.phase === "" && !Theme.reduceMotion
                         loops: Animation.Infinite
-                        NumberAnimation { from: 0; to: -4; duration: 1400; easing.type: Easing.InOutSine }
-                        NumberAnimation { from: -4; to: 0; duration: 1400; easing.type: Easing.InOutSine }
+                        NumberAnimation { from: 0; to: -4; duration: 1220; easing.type: Easing.InOutSine }
+                        NumberAnimation { from: -4; to: 0; duration: 1220; easing.type: Easing.InOutSine }
                     }
                 }
             }

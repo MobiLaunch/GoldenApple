@@ -27,7 +27,7 @@ Item {
         radius: Theme.radiusWindow
         color: "#000000"
         opacity: sheet.shown ? (Theme.dark ? 0.32 : 0.14) : 0
-        Behavior on opacity { NumberAnimation { id: fade; duration: Theme.reduceMotion ? 1 : 180 } }
+        Behavior on opacity { NumberAnimation { id: fade; duration: Theme.reduceMotion ? 1 : 155 } }
         MouseArea {
             anchors.fill: parent
             onClicked: if (sheet.dismissible) sheet.close()
@@ -44,7 +44,7 @@ Item {
         opacity: sheet.shown ? 1 : 0
         scale: sheet.shown ? 1 : 0.97
         Behavior on y { NumberAnimation { duration: Theme.reduceMotion ? 1 : Theme.popover.duration; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.popover.curve } }
-        Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 160 } }
+        Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 140 } }
         Behavior on scale { NumberAnimation { duration: Theme.reduceMotion ? 1 : Theme.popover.duration; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.popover.curve } }
         Keys.onEscapePressed: if (sheet.dismissible) sheet.close()
 

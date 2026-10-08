@@ -70,7 +70,7 @@ PanelWindow {
         anchors { horizontalCenter: parent.horizontalCenter; verticalCenter: parent.verticalCenter; verticalCenterOffset: -parent.height * 0.12 }
         opacity: dialog.open ? 1 : 0
         scale: dialog.open || Theme.reduceMotion ? 1 : 0.92
-        Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 160 } }
+        Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 140 } }
         Behavior on scale { Spring { spring: Theme.popover } }
         Keys.onEscapePressed: dialog.cancel()
 

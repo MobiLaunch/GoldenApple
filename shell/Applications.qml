@@ -173,7 +173,7 @@ PanelWindow {
         id: backdrop
         anchors.fill: parent
         opacity: apps.open ? 1 : 0
-        Behavior on opacity { NumberAnimation { id: fade; duration: Theme.reduceMotion ? 1 : 260; easing.type: Easing.OutCubic } }
+        Behavior on opacity { NumberAnimation { id: fade; duration: Theme.reduceMotion ? 1 : 225; easing.type: Easing.OutCubic } }
 
         Image {
             id: wall
@@ -252,10 +252,10 @@ PanelWindow {
         // Opening zooms the icons in from a little larger, as on the Mac. An
         // open folder dims the page behind it.
         opacity: backdrop.opacity * (apps.folder ? 0.1 : 1)
-        Behavior on opacity { enabled: !fade.running; NumberAnimation { duration: Theme.reduceMotion ? 1 : 220; easing.type: Easing.OutCubic } }
+        Behavior on opacity { enabled: !fade.running; NumberAnimation { duration: Theme.reduceMotion ? 1 : 190; easing.type: Easing.OutCubic } }
         interactive: !apps.folder
         scale: apps.open || Theme.reduceMotion ? 1 : 1.08
-        Behavior on scale { NumberAnimation { duration: 320; easing.type: Easing.OutCubic } }
+        Behavior on scale { NumberAnimation { duration: 280; easing.type: Easing.OutCubic } }
 
         delegate: Item {
             id: page
@@ -384,8 +384,8 @@ PanelWindow {
         visible: opacity > 0
         opacity: apps.folder ? backdrop.opacity : 0
         scale: apps.folder || Theme.reduceMotion ? 1 : 0.86
-        Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 200; easing.type: Easing.OutCubic } }
-        Behavior on scale { NumberAnimation { duration: 260; easing.type: Easing.OutBack; easing.overshoot: 1.1 } }
+        Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 175; easing.type: Easing.OutCubic } }
+        Behavior on scale { NumberAnimation { duration: 225; easing.type: Easing.OutBack; easing.overshoot: 1.1 } }
         MouseArea { anchors.fill: parent }        // clicks inside stay inside
 
         Text {
@@ -458,7 +458,7 @@ PanelWindow {
                 required property int index
                 width: 7; height: 7; radius: 3.5
                 color: index === pages.currentIndex ? "#ffffff" : Qt.rgba(1, 1, 1, 0.38)
-                Behavior on color { ColorAnimation { duration: 160 } }
+                Behavior on color { ColorAnimation { duration: 140 } }
                 MouseArea { anchors { fill: parent; margins: -6 } onClicked: pages.currentIndex = parent.index }
             }
         }

@@ -165,7 +165,7 @@ PanelWindow {
     NumberAnimation {
         id: fade
         target: card; property: "opacity"; to: 0
-        duration: 260; easing.type: Easing.OutCubic
+        duration: 225; easing.type: Easing.OutCubic
         onFinished: launcher.reset()
     }
 

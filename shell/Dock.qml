@@ -350,8 +350,8 @@ PanelWindow {
                 running: tile.hopping
                 loops: Animation.Infinite
                 alwaysRunToEnd: true
-                NumberAnimation { to: -Math.round(dock.baseSize * 0.4); duration: 200; easing.type: Easing.OutQuad }
-                NumberAnimation { to: 0; duration: 200; easing.type: Easing.InQuad }
+                NumberAnimation { to: -Math.round(dock.baseSize * 0.4); duration: 175; easing.type: Easing.OutQuad }
+                NumberAnimation { to: 0; duration: 175; easing.type: Easing.InQuad }
                 PauseAnimation { duration: 110 }
             }
             Text {
@@ -377,7 +377,7 @@ PanelWindow {
             color: Theme.dark ? "#ccffffff" : "#8c000000"
             opacity: tile.wins.length && Prefs.dockIndicators ? 1 : 0
             scale: opacity > 0.5 ? 1 : 0.2
-            Behavior on opacity { NumberAnimation { duration: 300 } }
+            Behavior on opacity { NumberAnimation { duration: 260 } }
             Behavior on scale { enabled: !Prefs.reduceMotion; Spring { spring: Theme.bouncy } }
         }
         // Unread notifications, as a red badge on the icon's top right.
@@ -398,7 +398,7 @@ PanelWindow {
             SequentialAnimation {
                 id: badgePulse
                 NumberAnimation { target: badgeDot; property: "bump"; to: 1.28; duration: 120; easing.type: Easing.OutQuad }
-                NumberAnimation { target: badgeDot; property: "bump"; to: 1; duration: 320; easing.type: Easing.OutBack }
+                NumberAnimation { target: badgeDot; property: "bump"; to: 1; duration: 280; easing.type: Easing.OutBack }
             }
             z: 1000
             readonly property real size: Math.max(16, Math.round(dock.baseSize * 0.34))
@@ -498,7 +498,7 @@ PanelWindow {
                 width: Math.max(0, dock.previewOrder.length * dock.step - 6)
                 height: dock.baseSize
                 anchors.bottom: parent.bottom
-                Behavior on width { enabled: !Prefs.reduceMotion; NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+                Behavior on width { enabled: !Prefs.reduceMotion; NumberAnimation { duration: 190; easing.type: Easing.OutCubic } }
                 Repeater {
                     model: dock.entries
                     delegate: AppTile {
@@ -508,7 +508,7 @@ PanelWindow {
                         // In its slot; the one being dragged stays where it was
                         // picked up (it follows the pointer from there).
                         x: lifted ? dock.slotXAtPress : dock.slotX(modelData.id)
-                        Behavior on x { enabled: !keptTile.lifted && !Prefs.reduceMotion; NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+                        Behavior on x { enabled: !keptTile.lifted && !Prefs.reduceMotion; NumberAnimation { duration: 190; easing.type: Easing.OutCubic } }
                     }
                 }
             }
@@ -623,10 +623,10 @@ PanelWindow {
         }
         ParallelAnimation {
             id: puff
-            NumberAnimation { target: cloud; property: "spread"; from: 4; to: 30; duration: 360; easing.type: Easing.OutCubic }
+            NumberAnimation { target: cloud; property: "spread"; from: 4; to: 30; duration: 315; easing.type: Easing.OutCubic }
             SequentialAnimation {
                 NumberAnimation { target: cloud; property: "opacity"; from: 0; to: 1; duration: 60 }
-                NumberAnimation { target: cloud; property: "opacity"; to: 0; duration: 300; easing.type: Easing.InQuad }
+                NumberAnimation { target: cloud; property: "opacity"; to: 0; duration: 260; easing.type: Easing.InQuad }
             }
         }
     }

@@ -42,7 +42,7 @@ Box {
             radius: root.sw ? height / 2 : 4
             color: root.on ? root.tintColor : (root.sw ? (root.dark ? "#39393d" : "#e3e3e8") : (root.dark ? "#26ffffff" : "#ffffff"))
             border { width: !root.sw && !root.on ? 1 : 0; color: root.dark ? "#40ffffff" : "#33000000" }
-            Behavior on color { ColorAnimation { duration: Theme.reduceMotion ? 1 : 150 } }
+            Behavior on color { ColorAnimation { duration: Theme.reduceMotion ? 1 : 130 } }
         }
         Rectangle {
             visible: root.sw
@@ -51,7 +51,7 @@ Box {
             x: root.on ? parent.width - width - 2 : 2
             color: "white"
             border { width: 0.5; color: "#1f000000" }
-            Behavior on x { NumberAnimation { duration: Theme.reduceMotion ? 1 : 160; easing.type: Easing.OutCubic } }
+            Behavior on x { NumberAnimation { duration: Theme.reduceMotion ? 1 : 140; easing.type: Easing.OutCubic } }
         }
         Text {
             visible: !root.sw && root.on

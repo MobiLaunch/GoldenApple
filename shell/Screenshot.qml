@@ -458,7 +458,7 @@ Scope {
         Item {
             id: slide
             width: parent.width; height: parent.height
-            Behavior on x { enabled: !swipe.active; NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+            Behavior on x { enabled: !swipe.active; NumberAnimation { duration: 190; easing.type: Easing.OutCubic } }
             Rectangle {
                 id: card
                 anchors { fill: parent; margins: 6 }
@@ -467,8 +467,8 @@ Scope {
                 border { width: 3; color: "#ffffff" }
                 opacity: thumb.shown ? 1 : 0
                 scale: thumb.shown ? 1 : 0.92
-                Behavior on opacity { NumberAnimation { duration: 200 } }
-                Behavior on scale { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+                Behavior on opacity { NumberAnimation { duration: 175 } }
+                Behavior on scale { NumberAnimation { duration: 190; easing.type: Easing.OutCubic } }
                 clip: true
                 Image {
                     anchors { fill: parent; margins: 3 }

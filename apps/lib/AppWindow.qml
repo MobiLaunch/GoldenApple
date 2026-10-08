@@ -296,7 +296,7 @@ FloatingWindow {
                     ? (Theme.dark ? "#30ffffff" : "#26000000")
                     : (Theme.dark ? "#1affffff" : "#18000000")
             }
-            Behavior on border.color { ColorAnimation { duration: Theme.reduceMotion ? 1 : 150 } }
+            Behavior on border.color { ColorAnimation { duration: Theme.reduceMotion ? 1 : 130 } }
         }
 
         Item {

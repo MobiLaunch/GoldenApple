@@ -63,7 +63,7 @@ Item {
         anchors.fill: parent
         color: "#000000"
         opacity: look.open ? (Theme.dark ? 0.28 : 0.12) : 0
-        Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 180 } }
+        Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 155 } }
         MouseArea { anchors.fill: parent; enabled: look.open; onClicked: look.closed() }
     }
 
@@ -93,9 +93,9 @@ Item {
         opacity: look.open ? 1 : 0
         scale: look.open || Theme.reduceMotion ? 1 : 0.9
         Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : (look.open ? 160 : 140) } }
-        Behavior on scale { NumberAnimation { duration: Theme.reduceMotion ? 1 : 240; easing.type: Easing.OutBack; easing.overshoot: 0.9 } }
-        Behavior on width { enabled: look.open && !Theme.reduceMotion; NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
-        Behavior on height { enabled: look.open && !Theme.reduceMotion; NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
+        Behavior on scale { NumberAnimation { duration: Theme.reduceMotion ? 1 : 210; easing.type: Easing.OutBack; easing.overshoot: 0.9 } }
+        Behavior on width { enabled: look.open && !Theme.reduceMotion; NumberAnimation { duration: 155; easing.type: Easing.OutCubic } }
+        Behavior on height { enabled: look.open && !Theme.reduceMotion; NumberAnimation { duration: 155; easing.type: Easing.OutCubic } }
         MouseArea { anchors.fill: parent }       // clicks inside don't close it
 
         Image {

@@ -97,7 +97,7 @@ Item {
             blur: root.awake ? 0.62 : 0
             saturation: root.awake ? 0.12 : 0
             Behavior on blur { NumberAnimation { duration: root.still ? 0 : 520; easing.type: Easing.OutCubic } }
-            Behavior on saturation { NumberAnimation { duration: 520 } }
+            Behavior on saturation { NumberAnimation { duration: 450 } }
         }
     }
     // What the glass on the lock screen bends: its wallpaper.
@@ -340,7 +340,7 @@ Item {
                             color: "#4dffffff"
                             opacity: field.text && !root.busy ? 1 : 0
                             scale: field.text && !root.busy ? 1 : 0.6
-                            Behavior on opacity { NumberAnimation { duration: 150 } }
+                            Behavior on opacity { NumberAnimation { duration: 130 } }
                             Behavior on scale { Spring { spring: Theme.bouncy } }
                             Symbol { anchors.centerIn: parent; name: "arrow-up"; size: 13 }
                             MouseArea { anchors.fill: parent; enabled: parent.opacity > 0.5; onClicked: root.submit() }
@@ -354,7 +354,7 @@ Item {
                                 strokeColor: "white"; strokeWidth: 2; fillColor: "transparent"; capStyle: ShapePath.RoundCap
                                 PathAngleArc { centerX: 8; centerY: 8; radiusX: 6.5; radiusY: 6.5; startAngle: 0; sweepAngle: 280 }
                             }
-                            RotationAnimation on rotation { from: 0; to: 360; duration: 800; loops: Animation.Infinite; running: root.busy }
+                            RotationAnimation on rotation { from: 0; to: 360; duration: 695; loops: Animation.Infinite; running: root.busy }
                         }
                     }
                 }
@@ -368,7 +368,7 @@ Item {
                     : root.awake ? "" : (root.login ? "" : "Press any key or click to unlock")
                 color: "#d9ffffff"
                 opacity: text ? 1 : 0
-                Behavior on opacity { NumberAnimation { duration: 200 } }
+                Behavior on opacity { NumberAnimation { duration: 175 } }
                 font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: Font.Medium }
             }
         }
@@ -379,7 +379,7 @@ Item {
     // and the user rises, each a beat after the other.
     ParallelAnimation {
         id: arrive
-        NumberAnimation { target: backdrop; property: "zoom"; from: root.still ? 1 : 1.06; to: 1; duration: 900; easing.type: Easing.OutCubic }
+        NumberAnimation { target: backdrop; property: "zoom"; from: root.still ? 1 : 1.06; to: 1; duration: 785; easing.type: Easing.OutCubic }
         SequentialAnimation {
             PropertyAction { targets: [when, who]; property: "opacity"; value: 0 }
             PauseAnimation { duration: root.still ? 0 : 80 }
@@ -421,6 +421,6 @@ Item {
     SequentialAnimation {
         id: flash
         NumberAnimation { target: slot; property: "flash"; to: 1; duration: 90 }
-        NumberAnimation { target: slot; property: "flash"; to: 0; duration: 700; easing.type: Easing.OutCubic }
+        NumberAnimation { target: slot; property: "flash"; to: 0; duration: 610; easing.type: Easing.OutCubic }
     }
 }

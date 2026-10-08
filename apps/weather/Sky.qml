@@ -57,7 +57,7 @@ Item {
         NumberAnimation on x {
             running: sky.moving
             from: 0; to: -sky.width
-            duration: 240000
+            duration: 208800
             loops: Animation.Infinite
         }
         onWidthChanged: requestPaint()
@@ -150,8 +150,8 @@ Item {
                 SequentialAnimation {
                     running: sky.moving && sky.snowing
                     loops: Animation.Infinite
-                    NumberAnimation { target: sway; property: "x"; from: -8; to: 8; duration: 1800 + drop.r1 * 1400; easing.type: Easing.InOutSine }
-                    NumberAnimation { target: sway; property: "x"; from: 8; to: -8; duration: 1800 + drop.r1 * 1400; easing.type: Easing.InOutSine }
+                    NumberAnimation { target: sway; property: "x"; from: -8; to: 8; duration: 1565 + drop.r1 * 1400; easing.type: Easing.InOutSine }
+                    NumberAnimation { target: sway; property: "x"; from: 8; to: -8; duration: 1565 + drop.r1 * 1400; easing.type: Easing.InOutSine }
                 }
             }
         }
@@ -177,6 +177,6 @@ Item {
         NumberAnimation { target: flash; property: "opacity"; to: 0.35; duration: 60 }
         NumberAnimation { target: flash; property: "opacity"; to: 0.05; duration: 90 }
         NumberAnimation { target: flash; property: "opacity"; to: 0.25; duration: 50 }
-        NumberAnimation { target: flash; property: "opacity"; to: 0; duration: 400; easing.type: Easing.OutCubic }
+        NumberAnimation { target: flash; property: "opacity"; to: 0; duration: 350; easing.type: Easing.OutCubic }
     }
 }

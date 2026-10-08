@@ -59,8 +59,11 @@ void main() {
     vec2 swell = -p * dome * h;
     vec2 at = px + n * bend + swell;
     vec2 fringe = n * bend * dispersion;
-    vec4 mid = sampleAt(at);
-    vec4 c = vec4(sampleAt(at + fringe).r, mid.g, sampleAt(at - fringe).b, mid.a);
+    vec4 c = sampleAt(at);
+    // The colours part only in the bevel; across the flat middle one
+    // lookup is enough (a third of the work over most of the glass).
+    if (bend * dispersion > 0.05)
+        c = vec4(sampleAt(at + fringe).r, c.g, sampleAt(at - fringe).b, c.a);
     float coverage = clamp(0.5 - d, 0.0, 1.0);              // antialiased edge
     fragColor = c * coverage * qt_Opacity;
 }

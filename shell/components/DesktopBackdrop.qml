@@ -56,17 +56,32 @@ Item {
         return Hyprland.toplevels.values
             .map((t) => ({ t: t, o: t.lastIpcObject }))
             .filter(({ o }) => o?.at && o.size && !o.hidden && o.workspace?.id === ws && (o.monitor === undefined || o.monitor === mon?.id))
-            .map(({ t, o }) => ({ toplevel: t.wayland, x: o.at[0] - ox, y: o.at[1] - oy, w: o.size[0], h: o.size[1], order: o.focusHistoryID ?? 0 }))
+            .map(({ t, o }) => ({ id: String(t.address ?? o.address ?? ""), toplevel: t.wayland, x: o.at[0] - ox, y: o.at[1] - oy, w: o.size[0], h: o.size[1], order: o.focusHistoryID ?? 0 }))
             .filter((w) => w.toplevel && w.x < r.x + r.width && w.x + w.w > r.x && w.y < r.y + r.height && w.y + w.h > r.y)
             .sort((a, b) => b.order - a.order)
     }
+    // The captures are kept by window: the list of windows (and so the
+    // captures) changes only when one comes, goes or changes places in the
+    // stack; a window moving only moves its capture. Rebuilding them on every
+    // refresh restarted each capture several times a second.
+    property var windowIds: []
+    property var frames: ({})
+    onWindowsChanged: {
+        const ids = windows.map((w) => w.id)
+        if (ids.join() !== windowIds.join()) windowIds = ids
+        const f = {}
+        for (const w of windows) f[w.id] = w
+        frames = f
+    }
     Repeater {
-        model: bd.windows
+        model: bd.windowIds
         delegate: ScreencopyView {
-            required property var modelData
-            x: modelData.x; y: modelData.y
-            width: modelData.w; height: modelData.h
-            captureSource: bd.shown ? modelData.toplevel : null
+            required property string modelData
+            readonly property var frame: bd.frames[modelData] ?? null
+            visible: !!frame
+            x: frame?.x ?? 0; y: frame?.y ?? 0
+            width: frame?.w ?? 0; height: frame?.h ?? 0
+            captureSource: bd.shown && frame ? frame.toplevel : null
             live: bd.shown
         }
     }

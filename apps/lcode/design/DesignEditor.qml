@@ -454,7 +454,7 @@ Item {
         property alias text: toastText.text
         visible: opacity > 0
         opacity: shown ? 1 : 0
-        Behavior on opacity { NumberAnimation { duration: 160 } }
+        Behavior on opacity { NumberAnimation { duration: 140 } }
         anchors { horizontalCenter: canvas.horizontalCenter; bottom: parent.bottom; bottomMargin: 16 }
         width: toastText.implicitWidth + 28
         height: 30

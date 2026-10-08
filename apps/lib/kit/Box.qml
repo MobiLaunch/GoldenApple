@@ -107,7 +107,7 @@ Item {
 
     // ------------------------------------------------------ show and hide
     property real appear: shown ? 1 : 0
-    Behavior on appear { enabled: cell.transition !== "none" && !Theme.reduceMotion; NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+    Behavior on appear { enabled: cell.transition !== "none" && !Theme.reduceMotion; NumberAnimation { duration: 190; easing.type: Easing.OutCubic } }
     visible: shown || appear > 0.001
     Accessible.name: accessibilityLabel
 

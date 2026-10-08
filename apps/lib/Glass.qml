@@ -60,17 +60,34 @@ Item {
     readonly property var backdrop: backdropEntry?.texture ?? null
     readonly property bool lensing: !!backdrop && !!root.Window.window && visible && width > 0 && height > 0 && !filled
         && !Theme.reduceTransparency && GraphicsInfo.api !== GraphicsInfo.Software
-    // Where this glass is in the backdrop's texture. Followed every frame
-    // while it bends, so it stays put through moves, springs and scaling.
-    property point lensOrigin: Qt.point(0, 0)
-    function placeLens() {
-        if (!lensing || !backdropEntry.item) return
-        const p = root.mapToItem(backdropEntry.item, 0, 0)
-        const o = Qt.point(p.x - backdrop.sourceRect.x, p.y - backdrop.sourceRect.y)
-        if (o.x !== lensOrigin.x || o.y !== lensOrigin.y) lensOrigin = o
+    // Where this glass is in the backdrop's texture. A binding that depends on
+    // the place, size, scale and transforms of every item above the glass and
+    // above the backdrop, so it follows a layout, a scroll, a spring or a drag
+    // moving any of them, and costs nothing while nothing moves. (Following it
+    // every frame instead kept each window with glass redrawing at full rate
+    // all the time, which made everything on screen choppy.) The glass's own
+    // press and lift aren't counted: the lens moves with them.
+    readonly property point lensOrigin: {
+        const e = backdropEntry
+        if (!lensing || !e?.item || !root.parent) return Qt.point(0, 0)
+        root.x; root.y
+        watchAncestors(root.parent)
+        watchAncestors(e.item)
+        const p = root.parent.mapToItem(e.item, root.x, root.y)
+        const s = e.texture.sourceRect
+        return Qt.point(p.x - s.x, p.y - s.y)
     }
-    FrameAnimation { running: root.lensing; onTriggered: root.placeLens() }
-    onLensingChanged: { Backdrops.use(backdrop, root, lensing); placeLens() }
+    function watchAncestors(item) {
+        for (let p = item; p; p = p.parent) {
+            p.x; p.y; p.width; p.height; p.scale; p.rotation
+            const t = p.transform
+            for (let i = 0; t && i < t.length; i++) {
+                const f = t[i]
+                f.x; f.y; f.xScale; f.yScale; f.angle; f.origin
+            }
+        }
+    }
+    onLensingChanged: Backdrops.use(backdrop, root, lensing)
     onBackdropChanged: Backdrops.use(backdrop, root, lensing)
     Component.onDestruction: Backdrops.use(null, root, false)
 
@@ -82,8 +99,9 @@ Item {
         const base = Theme.reduceTransparency ? material.reduced : Theme.glassStyle === "tinted" ? material.tinted : 0
         return base + (Math.max(base, material.reduced) - base) * Math.max(0, Math.min(1, Theme.glassSolidity))
     }
-    // Over bent content the tint thins, so the bending shows through it.
-    readonly property color shownTint: Qt.rgba(tint.r, tint.g, tint.b, Math.max(tint.a * (lensing ? 0.6 : 1), minAlpha))
+    // Over bent content the tint thins a little, so the bending shows
+    // through it while what's on the glass stays easy to read.
+    readonly property color shownTint: Qt.rgba(tint.r, tint.g, tint.b, Math.max(tint.a * (lensing ? 0.8 : 1), minAlpha))
 
     // The press: the glass gives a few pixels whatever its size and bounces
     // back (macOS 27); under the pointer it lifts a pixel. Transforms, so
@@ -113,7 +131,7 @@ Item {
         shadowOpacity: root.material.shadowOpacity + (root.pressed ? -0.06 : root.hovered ? 0.05 : 0)
         shadowBlur: root.role === "control" ? 0.5 : 1.0
         shadowVerticalOffset: root.material.shadowY * (root.pressed ? 0.4 : root.hovered ? 1.3 : 1)
-        Behavior on shadowOpacity { NumberAnimation { duration: 160 } }
+        Behavior on shadowOpacity { NumberAnimation { duration: 140 } }
     }
     // What's behind, through the glass.
     // Made only while it bends: a shader with no texture to sample stalls
@@ -140,7 +158,7 @@ Item {
         anchors.fill: parent
         radius: root.r
         color: root.filled ? (Theme.dark ? "#e6ffffff" : "#f2ffffff") : root.shownTint
-        Behavior on color { ColorAnimation { duration: 180 } }
+        Behavior on color { ColorAnimation { duration: 155 } }
     }
     // The interaction glow: the glass lights up under the pointer.
     Rectangle {
@@ -204,7 +222,7 @@ Item {
         anchors.fill: parent
         visible: opacity > 0
         opacity: pointer.hovered && !root.filled && !Theme.reduceTransparency ? 1 : 0
-        Behavior on opacity { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+        Behavior on opacity { NumberAnimation { duration: 190; easing.type: Easing.OutCubic } }
         preferredRendererType: Shape.CurveRenderer
         ShapePath {
             strokeColor: "transparent"
@@ -223,7 +241,7 @@ Item {
     // 27 draws on the far side, and inside that the slab's inner face
     // catching the light, which gives the glass its thickness.
     property real rimGain: pointer.hovered || hovered ? 1.2 : 1
-    Behavior on rimGain { NumberAnimation { duration: 160 } }
+    Behavior on rimGain { NumberAnimation { duration: 140 } }
     Shape {
         anchors.fill: parent
         preferredRendererType: Shape.CurveRenderer

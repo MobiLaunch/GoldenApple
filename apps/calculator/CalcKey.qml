@@ -27,7 +27,7 @@ Item {
         anchors.fill: parent
         radius: height / 2
         color: key.base
-        Behavior on color { ColorAnimation { duration: 160 } }
+        Behavior on color { ColorAnimation { duration: 140 } }
         // Liquid Glass: a light rim along the top, a faint darker edge below.
         border { width: 0.5; color: Qt.rgba(1, 1, 1, 0.10) }
         Rectangle {
@@ -80,7 +80,7 @@ Item {
     SequentialAnimation {
         id: flashAnim
         NumberAnimation { target: flash; property: "opacity"; to: 0.28; duration: 40 }
-        NumberAnimation { target: flash; property: "opacity"; to: 0; duration: 320; easing.type: Easing.OutCubic }
+        NumberAnimation { target: flash; property: "opacity"; to: 0; duration: 280; easing.type: Easing.OutCubic }
     }
     function flashNow() { flashAnim.restart() }
 }

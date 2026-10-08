@@ -263,7 +263,7 @@ PanelWindow {
                 color: fill
                 scale: rbTap.pressed && !Theme.reduceMotion ? 0.92 : 1
                 Behavior on scale { NumberAnimation { duration: 90 } }
-                Behavior on color { ColorAnimation { duration: 160 } }
+                Behavior on color { ColorAnimation { duration: 140 } }
                 Shared.Symbol { anchors.centerIn: parent; name: rb.symbol; size: 16; tone: rb.tone }
                 MouseArea { id: rbTap; anchors.fill: parent; onClicked: rb.clicked() }
             }
@@ -316,8 +316,8 @@ PanelWindow {
                 width: textEntry.text.trim() ? 36 : 0
                 opacity: textEntry.text.trim() ? 1 : 0
                 visible: width > 1
-                Behavior on width { NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
-                Behavior on opacity { NumberAnimation { duration: 160 } }
+                Behavior on width { NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
+                Behavior on opacity { NumberAnimation { duration: 140 } }
                 Accessible.name: "Send"
                 onClicked: citron.sendText()
             }

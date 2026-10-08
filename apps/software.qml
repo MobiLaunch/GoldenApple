@@ -361,7 +361,7 @@ ShellRoot {
                 implicitWidth: working ? implicitHeight : Math.max(large ? 84 : 66, text.implicitWidth + 28)
                 implicitHeight: large ? 32 : 28
                 width: implicitWidth; height: implicitHeight
-                Behavior on implicitWidth { NumberAnimation { duration: Theme.reduceMotion ? 1 : 180; easing.type: Easing.OutCubic } }
+                Behavior on implicitWidth { NumberAnimation { duration: Theme.reduceMotion ? 1 : 155; easing.type: Easing.OutCubic } }
                 Rectangle {
                     anchors.fill: parent
                     radius: height / 2

@@ -172,10 +172,10 @@ ShellRoot {
                         running: !Theme.reduceMotion && app.discoverable !== "off"
                         loops: Animation.Infinite
                         ParallelAnimation {
-                            NumberAnimation { target: wave; property: "r"; from: 90; to: Math.max(radar.width, radar.height); duration: 3200; easing.type: Easing.OutCubic }
-                            NumberAnimation { target: wave; property: "opacity"; from: 0.35; to: 0; duration: 3200; easing.type: Easing.OutCubic }
+                            NumberAnimation { target: wave; property: "r"; from: 90; to: Math.max(radar.width, radar.height); duration: 2785; easing.type: Easing.OutCubic }
+                            NumberAnimation { target: wave; property: "opacity"; from: 0.35; to: 0; duration: 2785; easing.type: Easing.OutCubic }
                         }
-                        PauseAnimation { duration: 900 }
+                        PauseAnimation { duration: 785 }
                     }
                 }
             }
@@ -223,8 +223,8 @@ ShellRoot {
                         opacity: 0
                         scale: 0.6
                         Component.onCompleted: { opacity = 1; scale = 1 }
-                        Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 260 } }
-                        Behavior on scale { NumberAnimation { duration: Theme.reduceMotion ? 1 : 360; easing.type: Easing.OutBack } }
+                        Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 225 } }
+                        Behavior on scale { NumberAnimation { duration: Theme.reduceMotion ? 1 : 315; easing.type: Easing.OutBack } }
                         onChosen: app.pending.length ? app.sendTo(modelData, app.pending) : (app.chooseFor = modelData, chooser.open(chooser.homePath))
                         onDropped: (paths) => app.sendTo(modelData, paths)
                         onCancelRequested: service.send({ cmd: "cancel", to: modelData.fingerprint })

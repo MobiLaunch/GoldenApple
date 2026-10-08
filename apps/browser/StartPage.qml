@@ -103,7 +103,7 @@ Flickable {
                         SequentialAnimation {
                             id: favoriteIn
                             PauseAnimation { duration: 40 + Math.min(favorite.index, 10) * 30 }
-                            NumberAnimation { target: favorite; property: "enter"; to: 1; duration: 380; easing.type: Easing.OutCubic }
+                            NumberAnimation { target: favorite; property: "enter"; to: 1; duration: 330; easing.type: Easing.OutCubic }
                         }
                         Rectangle {
                             id: favIcon

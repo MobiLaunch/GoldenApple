@@ -71,7 +71,7 @@ PanelWindow {
         anchors.fill: parent
         color: Prefs.reduceTransparency ? (Theme.dark ? "#f21e1e20" : "#f2f4f4f6")
              : Prefs.menuBarBackground ? (Theme.dark ? "#8c1c1c20" : "#b8f2f2f5") : "#14ffffff"
-        Behavior on color { ColorAnimation { duration: Theme.reduceMotion ? 0 : 200 } }
+        Behavior on color { ColorAnimation { duration: Theme.reduceMotion ? 0 : 175 } }
         Rectangle {
             anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
             height: 1
@@ -359,7 +359,7 @@ PanelWindow {
                             width: on ? (modelData === "location" ? 15 : 12) : 0
                             height: 16
                             clip: true
-                            Behavior on width { enabled: !Prefs.reduceMotion; NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+                            Behavior on width { enabled: !Prefs.reduceMotion; NumberAnimation { duration: 190; easing.type: Easing.OutCubic } }
                             Accessible.name: Privacy.names[modelData] + " in use"
                             // Location: the Mac's filled arrow.
                             Canvas {
@@ -367,7 +367,7 @@ PanelWindow {
                                 anchors.centerIn: parent
                                 width: 11; height: 11
                                 scale: parent.on ? 1 : 0.4
-                                Behavior on scale { enabled: !Prefs.reduceMotion; NumberAnimation { duration: 260; easing.type: Easing.OutBack } }
+                                Behavior on scale { enabled: !Prefs.reduceMotion; NumberAnimation { duration: 225; easing.type: Easing.OutBack } }
                                 onPaint: {
                                     const c = getContext("2d")
                                     c.reset()
@@ -382,7 +382,7 @@ PanelWindow {
                                 color: Privacy.colors[parent.modelData]
                                 border { width: 0.5; color: Qt.rgba(0, 0, 0, 0.18) }
                                 scale: parent.on ? 1 : 0.2
-                                Behavior on scale { enabled: !Prefs.reduceMotion; NumberAnimation { duration: 260; easing.type: Easing.OutBack } }
+                                Behavior on scale { enabled: !Prefs.reduceMotion; NumberAnimation { duration: 225; easing.type: Easing.OutBack } }
                             }
                         }
                     }

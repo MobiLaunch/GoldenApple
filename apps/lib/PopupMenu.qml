@@ -49,7 +49,7 @@ Item {
     SequentialAnimation {
         id: vanish
         property var action
-        NumberAnimation { target: box; property: "opacity"; to: 0; duration: Theme.reduceMotion ? 0 : 160 }
+        NumberAnimation { target: box; property: "opacity"; to: 0; duration: Theme.reduceMotion ? 0 : 140 }
         ScriptAction { script: { const a = vanish.action; menu.close(); if (a) a() } }
     }
 

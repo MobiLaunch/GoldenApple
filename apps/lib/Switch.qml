@@ -26,7 +26,7 @@ Item {
         anchors.fill: parent
         radius: height / 2
         color: sw.checked ? Theme.accent : (Theme.dark ? "#3dffffff" : "#29000000")
-        Behavior on color { ColorAnimation { duration: 200 } }
+        Behavior on color { ColorAnimation { duration: 175 } }
         border { width: sw.activeFocus ? 3 : 0; color: Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.45) }
         Rectangle {
             anchors.fill: parent

@@ -73,9 +73,9 @@ Item {
     }
     ParallelAnimation {
         id: fly
-        NumberAnimation { id: latAnim; target: map; property: "lat"; duration: 650; easing.type: Easing.InOutCubic }
-        NumberAnimation { id: lonAnim; target: map; property: "lon"; duration: 650; easing.type: Easing.InOutCubic }
-        NumberAnimation { id: zoomAnim; target: map; property: "zoom"; duration: 650; easing.type: Easing.InOutCubic }
+        NumberAnimation { id: latAnim; target: map; property: "lat"; duration: 565; easing.type: Easing.InOutCubic }
+        NumberAnimation { id: lonAnim; target: map; property: "lon"; duration: 565; easing.type: Easing.InOutCubic }
+        NumberAnimation { id: zoomAnim; target: map; property: "zoom"; duration: 565; easing.type: Easing.InOutCubic }
         onFinished: map.lon = map.wrapLon(map.lon)
     }
 

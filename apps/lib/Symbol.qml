@@ -66,8 +66,8 @@ Item {
     ParallelAnimation {
         id: swap
         NumberAnimation { target: outgoing; property: "opacity"; from: 1; to: 0; duration: 140; easing.type: Easing.OutQuad }
-        NumberAnimation { target: outgoing; property: "scale"; from: 1; to: 0.55; duration: 180; easing.type: Easing.InQuad }
-        NumberAnimation { target: face; property: "opacity"; from: 0; to: 1; duration: 160; easing.type: Easing.OutQuad }
-        NumberAnimation { target: face; property: "scale"; from: 0.55; to: 1; duration: 300; easing.type: Easing.OutBack; easing.overshoot: 1.6 }
+        NumberAnimation { target: outgoing; property: "scale"; from: 1; to: 0.55; duration: 155; easing.type: Easing.InQuad }
+        NumberAnimation { target: face; property: "opacity"; from: 0; to: 1; duration: 140; easing.type: Easing.OutQuad }
+        NumberAnimation { target: face; property: "scale"; from: 0.55; to: 1; duration: 260; easing.type: Easing.OutBack; easing.overshoot: 1.6 }
     }
 }

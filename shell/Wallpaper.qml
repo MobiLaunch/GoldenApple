@@ -30,7 +30,7 @@ PanelWindow {
         asynchronous: true
         smooth: true
         opacity: status === Image.Ready ? 1 : 0
-        Behavior on opacity { NumberAnimation { duration: 400; easing.type: Easing.OutCubic } }
+        Behavior on opacity { NumberAnimation { duration: 350; easing.type: Easing.OutCubic } }
     }
 
     MouseArea {

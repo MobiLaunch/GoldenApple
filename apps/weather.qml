@@ -140,7 +140,7 @@ ShellRoot {
                 scrollAnim.to = Math.max(0, Math.min(max, to)); scrollAnim.restart()
                 e.accepted = true
             }
-            NumberAnimation { id: scrollAnim; target: scroller; property: "contentY"; duration: 260; easing.type: Easing.OutCubic }
+            NumberAnimation { id: scrollAnim; target: scroller; property: "contentY"; duration: 225; easing.type: Easing.OutCubic }
 
             property bool sidebarOpen: false
             property var places: []

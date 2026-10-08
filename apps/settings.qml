@@ -65,7 +65,7 @@ ShellRoot {
                     if (top < contentY) contentY = Math.max(0, top - 8)
                     else if (top + row.height > contentY + height) contentY = Math.min(contentHeight - height, top + row.height - height + 8)
                 }
-                Behavior on contentY { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+                Behavior on contentY { NumberAnimation { duration: 190; easing.type: Easing.OutCubic } }
                 contentHeight: nav.height + 12
                 clip: true
                 boundsBehavior: Flickable.StopAtBounds
@@ -259,8 +259,8 @@ ShellRoot {
                 }
                 ScriptAction { script: { loader.load(); loader.x = swap.forward ? 24 : -24 } }
                 ParallelAnimation {
-                    NumberAnimation { target: loader; property: "opacity"; to: 1; duration: 180 }
-                    NumberAnimation { target: loader; property: "x"; to: 0; duration: 260; easing.type: Easing.OutCubic }
+                    NumberAnimation { target: loader; property: "opacity"; to: 1; duration: 155 }
+                    NumberAnimation { target: loader; property: "x"; to: 0; duration: 225; easing.type: Easing.OutCubic }
                 }
             }
             // Scroll edge under the toolbar.
@@ -268,7 +268,7 @@ ShellRoot {
                 width: parent.width; height: 14
                 readonly property var flick: loader.item
                 opacity: flick && flick.contentY > flick.originY - flick.topMargin + 2 ? 1 : 0
-                Behavior on opacity { NumberAnimation { duration: 150 } }
+                Behavior on opacity { NumberAnimation { duration: 130 } }
                 gradient: Gradient {
                     GradientStop { position: 0; color: win.background }
                     GradientStop { position: 0.6; color: Qt.rgba(win.background.r, win.background.g, win.background.b, 0.8) }

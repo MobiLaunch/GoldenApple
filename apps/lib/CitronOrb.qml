@@ -96,7 +96,7 @@ Item {
         }
         layer.enabled: orb.effects
         layer.effect: MultiEffect { blurEnabled: true; blur: 1.0; blurMax: 48 }
-        Behavior on opacity { NumberAnimation { duration: 300 } }
+        Behavior on opacity { NumberAnimation { duration: 260 } }
         visible: orb.effects
     }
 
@@ -121,7 +121,7 @@ Item {
         visible: false
         // Thinking, the colours swirl round.
         rotation: orb.busy && !orb.calm ? orb.t * 40 : 0
-        Rectangle { anchors.fill: parent; scale: 1.5; color: orb.hues[1]; Behavior on color { ColorAnimation { duration: 400 } } }
+        Rectangle { anchors.fill: parent; scale: 1.5; color: orb.hues[1]; Behavior on color { ColorAnimation { duration: 350 } } }
         Repeater {
             model: 4
             Rectangle {
@@ -134,7 +134,7 @@ Item {
                 y: orb.height / 2 - height / 2 + Math.sin(orb.t * (1.1 + index * 0.17) + phase * 1.3) * reach
                 color: orb.hues[index]
                 opacity: 0.9
-                Behavior on color { ColorAnimation { duration: 400 } }
+                Behavior on color { ColorAnimation { duration: 350 } }
             }
         }
         // A brighter core that brightens with the voice.

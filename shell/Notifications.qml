@@ -249,7 +249,7 @@ Scope {
             role: "control"
             x: -7; y: -7; width: 22; height: 22; radius: 11
             opacity: hover.hovered ? 1 : 0
-            Behavior on opacity { NumberAnimation { duration: 150 } }
+            Behavior on opacity { NumberAnimation { duration: 130 } }
             Symbol { anchors.centerIn: parent; name: "xmark"; size: 10; tone: Theme.dark ? "white" : "dark" }
             TapHandler { onTapped: if (card.live) card.n.dismiss() }
         }
@@ -299,16 +299,16 @@ Scope {
             }
             remove: Transition {
                 ParallelAnimation {
-                    NumberAnimation { property: "x"; to: bannerList.still ? 0 : bannerList.away; duration: 300; easing.type: Easing.InCubic }
-                    NumberAnimation { property: "opacity"; to: 0; duration: 300; easing.type: Easing.InQuad }
+                    NumberAnimation { property: "x"; to: bannerList.still ? 0 : bannerList.away; duration: 260; easing.type: Easing.InCubic }
+                    NumberAnimation { property: "opacity"; to: 0; duration: 260; easing.type: Easing.InQuad }
                 }
             }
             displaced: Transition {
                 NumberAnimation { property: "y"; duration: bannerList.still ? 0 : Theme.snappy.duration
                     easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.snappy.curve }
                 // A banner caught mid-arrival finishes arriving.
-                NumberAnimation { property: "x"; to: 0; duration: 200 }
-                NumberAnimation { property: "opacity"; to: 1; duration: 200 }
+                NumberAnimation { property: "x"; to: 0; duration: 175 }
+                NumberAnimation { property: "opacity"; to: 1; duration: 175 }
             }
 
             delegate: Card {

@@ -43,7 +43,7 @@ Pane {
                             color: "transparent"
                             border { width: 3; color: Theme.accent }
                             opacity: tile.chosen ? 1 : 0
-                            Behavior on opacity { NumberAnimation { duration: 160 } }
+                            Behavior on opacity { NumberAnimation { duration: 140 } }
                         }
                         RoundedImage { anchors.fill: parent; radius: 8; source: "file://" + tile.modelData }
                     }

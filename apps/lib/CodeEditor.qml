@@ -413,9 +413,9 @@ Item {
                     running: edit.activeFocus && !Theme.reduceMotion
                     loops: Animation.Infinite
                     PropertyAction { value: 1 }
-                    PauseAnimation { duration: 530 }
+                    PauseAnimation { duration: 460 }
                     PropertyAction { value: 0 }
-                    PauseAnimation { duration: 530 }
+                    PauseAnimation { duration: 460 }
                 }
             }
             onTextChanged: root.reparse()
@@ -650,7 +650,7 @@ Item {
         visible: view.visibleArea.heightRatio < 1
         color: Theme.dark ? "#66ffffff" : "#55000000"
         opacity: view.moving || scrollFade.running ? 1 : 0
-        Behavior on opacity { NumberAnimation { duration: 200 } }
+        Behavior on opacity { NumberAnimation { duration: 175 } }
         Timer { id: scrollFade; interval: 700 }
         Connections {
             target: view

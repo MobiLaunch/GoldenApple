@@ -262,7 +262,7 @@ PanelWindow {
             height: modelData.h + (to.height - modelData.h) * p
             z: drag.active ? 10 : lit ? 2 : 1
             scale: drag.active ? 0.6 : 1
-            Behavior on scale { NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
+            Behavior on scale { NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
 
             // Where the pointer has dragged it, while dragging.
             QtObject { id: drag; property bool active: false; property real dx: 0; property real dy: 0 }

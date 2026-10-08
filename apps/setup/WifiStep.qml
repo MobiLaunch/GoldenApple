@@ -109,7 +109,7 @@ StepFrame {
                 readonly property bool asking: step.joining === modelData.ssid
                 width: list.width
                 height: asking ? 76 : 34
-                Behavior on height { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
+                Behavior on height { NumberAnimation { duration: 155; easing.type: Easing.OutCubic } }
                 clip: true
                 Rectangle {
                     width: parent.width; height: 34; radius: 7

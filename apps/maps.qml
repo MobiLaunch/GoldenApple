@@ -787,7 +787,7 @@ ShellRoot {
                 anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: 26 }
                 visible: opacity > 0
                 opacity: app.toast ? 1 : 0
-                Behavior on opacity { NumberAnimation { duration: 200 } }
+                Behavior on opacity { NumberAnimation { duration: 175 } }
                 width: toastText.implicitWidth + 32; height: 34; radius: 17
                 color: Theme.dark ? "#e62c2c2e" : "#f2ffffff"
                 border { width: 0.5; color: Theme.dark ? "#26ffffff" : "#26000000" }

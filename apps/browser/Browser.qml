@@ -267,7 +267,7 @@ Window {
         z: 1000
         visible: opacity > 0
         opacity: BrowserBackend.keyringWaiting ? 1 : 0
-        Behavior on opacity { NumberAnimation { duration: 180 } }
+        Behavior on opacity { NumberAnimation { duration: 155 } }
         anchors { horizontalCenter: parent.horizontalCenter; top: parent.top; topMargin: 64 }
         width: keyringText.implicitWidth + 28; height: 30; radius: 15
         color: Theme.dark ? "#e62c2c2e" : "#f2ffffff"
@@ -723,7 +723,7 @@ Window {
                         width: addressField.input.activeFocus ? 2 : 0.5
                         color: addressField.input.activeFocus ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.55) : Theme.separator
                     }
-                    Behavior on width { NumberAnimation { duration: Theme.reduceMotion ? 1 : 180; easing.type: Easing.OutCubic } }
+                    Behavior on width { NumberAnimation { duration: Theme.reduceMotion ? 1 : 155; easing.type: Easing.OutCubic } }
 
                     BrowserButton {
                         id: pageButton
@@ -796,8 +796,8 @@ Window {
                         opacity: loading ? 1 : 0
                         Behavior on opacity {
                             SequentialAnimation {
-                                PauseAnimation { duration: Theme.reduceMotion ? 0 : 160 }
-                                NumberAnimation { duration: Theme.reduceMotion ? 1 : 260; easing.type: Easing.OutCubic }
+                                PauseAnimation { duration: Theme.reduceMotion ? 0 : 140 }
+                                NumberAnimation { duration: Theme.reduceMotion ? 1 : 225; easing.type: Easing.OutCubic }
                             }
                         }
                         anchors { bottom: parent.bottom; left: parent.left; right: parent.right; leftMargin: 10; rightMargin: 10 }
@@ -815,7 +815,7 @@ Window {
                                 if (goal < width || Theme.reduceMotion) { glide.stop(); width = goal }
                                 else { glide.to = goal; glide.restart() }
                             }
-                            NumberAnimation { id: glide; target: progressFill; property: "width"; duration: 240; easing.type: Easing.OutCubic }
+                            NumberAnimation { id: glide; target: progressFill; property: "width"; duration: 210; easing.type: Easing.OutCubic }
                         }
                     }
                 }
@@ -961,7 +961,7 @@ Window {
                 // A new tab grows in; the others slide to make room, and close up after one closes.
                 add: Transition {
                     enabled: !Theme.reduceMotion
-                    NumberAnimation { property: "opacity"; from: 0; to: 1; duration: 200; easing.type: Easing.OutCubic }
+                    NumberAnimation { property: "opacity"; from: 0; to: 1; duration: 175; easing.type: Easing.OutCubic }
                     NumberAnimation { property: "scale"; from: 0.8; to: 1; duration: Theme.snappy.duration; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.snappy.curve }
                 }
                 move: Transition {
@@ -1037,7 +1037,7 @@ Window {
                                     RotationAnimation on rotation {
                                         running: tab.loading && !Theme.reduceMotion
                                         loops: Animation.Infinite
-                                        from: 0; to: 360; duration: 750
+                                        from: 0; to: 360; duration: 650
                                     }
                                 }
                             }
@@ -1132,7 +1132,7 @@ Window {
                 ? (Theme.dark ? "#ee2b2732" : "#f5ece8f2")
                 : (Theme.dark ? "#f128282c" : "#f4ececf0")
             border { width: 0; color: "transparent" }
-            Behavior on width { NumberAnimation { duration: Theme.reduceMotion ? 1 : 200; easing.type: Easing.OutCubic } }
+            Behavior on width { NumberAnimation { duration: Theme.reduceMotion ? 1 : 175; easing.type: Easing.OutCubic } }
 
             Flickable {
                 anchors { fill: parent; margins: 10 }
@@ -1322,7 +1322,7 @@ Window {
                     // Switching tabs, the page fades in rather than cutting.
                     opacity: 1
                     onVisibleChanged: if (visible && !Theme.reduceMotion) pageIn.restart()
-                    NumberAnimation { id: pageIn; target: webTab; property: "opacity"; from: 0.35; to: 1; duration: 180; easing.type: Easing.OutCubic }
+                    NumberAnimation { id: pageIn; target: webTab; property: "opacity"; from: 0.35; to: 1; duration: 155; easing.type: Easing.OutCubic }
                     function go(target) {
                         if (target === "about:blank") web.stop()
                         web.url = target
@@ -1448,7 +1448,7 @@ Window {
                 anchors.fill: parent
                 visible: opacity > 0.01
                 opacity: root.readerOpen ? 1 : 0
-                Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 220; easing.type: Easing.OutCubic } }
+                Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 190; easing.type: Easing.OutCubic } }
                 z: 12
                 articleTitle: root.readerTitle
                 articleText: root.readerText
@@ -1579,7 +1579,7 @@ Window {
         opacity: reveal ? 1 : 0
         scale: reveal || Theme.reduceMotion ? 1 : 1.03
         transformOrigin: Item.Center
-        Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 170; easing.type: Easing.OutCubic } }
+        Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 150; easing.type: Easing.OutCubic } }
         Behavior on scale { enabled: !Theme.reduceMotion; Spring { spring: Theme.popover } }
         anchors.fill: body
         color: Theme.dark ? "#f31b1b20" : "#f5f2f3f6"
@@ -1702,7 +1702,7 @@ Window {
                                     RotationAnimation on rotation {
                                         running: overviewCard.loading && !Theme.reduceMotion
                                         loops: Animation.Infinite
-                                        from: 0; to: 360; duration: 750
+                                        from: 0; to: 360; duration: 650
                                     }
                                 }
                             }
@@ -1760,7 +1760,7 @@ Window {
         opacity: reveal ? 1 : 0
         scale: reveal || Theme.reduceMotion ? 1 : 0.97
         transformOrigin: Item.Top
-        Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 170; easing.type: Easing.OutCubic } }
+        Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 150; easing.type: Easing.OutCubic } }
         Behavior on scale { enabled: !Theme.reduceMotion; Spring { spring: Theme.popover } }
         x: {
             let p = smartField.mapToItem(root.contentItem, 0, smartField.height + 5)
@@ -1846,7 +1846,7 @@ Window {
         opacity: reveal ? 1 : 0
         scale: reveal || Theme.reduceMotion ? 1 : 0.94
         transformOrigin: Item.TopRight
-        Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 170; easing.type: Easing.OutCubic } }
+        Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 150; easing.type: Easing.OutCubic } }
         Behavior on scale { enabled: !Theme.reduceMotion; Spring { spring: Theme.popover } }
         z: 52
         // webArea sits inside the content row, so place the bar by mapping.
@@ -1898,7 +1898,7 @@ Window {
         opacity: reveal ? 1 : 0
         scale: reveal || Theme.reduceMotion ? 1 : 0.92
         transformOrigin: Item.TopRight
-        Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 170; easing.type: Easing.OutCubic } }
+        Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 150; easing.type: Easing.OutCubic } }
         Behavior on scale { enabled: !Theme.reduceMotion; Spring { spring: Theme.popover } }
         x: root.width - width - 16
         y: toolbar.height + 5
@@ -1997,7 +1997,7 @@ Window {
         opacity: reveal ? 1 : 0
         scale: reveal || Theme.reduceMotion ? 1 : 0.94
         transformOrigin: Item.Center
-        Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 170; easing.type: Easing.OutCubic } }
+        Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 150; easing.type: Easing.OutCubic } }
         Behavior on scale { enabled: !Theme.reduceMotion; Spring { spring: Theme.popover } }
         anchors.centerIn: parent
         width: Math.min(560, root.width - 60)
@@ -2206,7 +2206,7 @@ Window {
         opacity: reveal ? 1 : 0
         scale: reveal || Theme.reduceMotion ? 1 : 0.94
         transformOrigin: Item.Center
-        Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 170; easing.type: Easing.OutCubic } }
+        Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 150; easing.type: Easing.OutCubic } }
         Behavior on scale { enabled: !Theme.reduceMotion; Spring { spring: Theme.popover } }
         anchors.centerIn: parent
         width: Math.min(570, root.width - 60)
@@ -2343,7 +2343,7 @@ Window {
         opacity: reveal ? 1 : 0
         scale: reveal || Theme.reduceMotion ? 1 : 0.94
         transformOrigin: Item.Center
-        Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 170; easing.type: Easing.OutCubic } }
+        Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 150; easing.type: Easing.OutCubic } }
         Behavior on scale { enabled: !Theme.reduceMotion; Spring { spring: Theme.popover } }
         anchors.centerIn: parent
         width: Math.min(500, root.width - 70)
@@ -2469,7 +2469,7 @@ Window {
         opacity: reveal ? 1 : 0
         scale: reveal || Theme.reduceMotion ? 1 : 0.94
         transformOrigin: Item.Center
-        Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 170; easing.type: Easing.OutCubic } }
+        Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 150; easing.type: Easing.OutCubic } }
         Behavior on scale { enabled: !Theme.reduceMotion; Spring { spring: Theme.popover } }
         anchors.centerIn: parent
         width: 470
@@ -2604,7 +2604,7 @@ Window {
         opacity: reveal ? 1 : 0
         scale: reveal || Theme.reduceMotion ? 1 : 0.94
         transformOrigin: Item.Center
-        Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 170; easing.type: Easing.OutCubic } }
+        Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 150; easing.type: Easing.OutCubic } }
         Behavior on scale { enabled: !Theme.reduceMotion; Spring { spring: Theme.popover } }
         anchors.centerIn: parent
         width: 500
@@ -2747,7 +2747,7 @@ Window {
         opacity: reveal ? 1 : 0
         scale: reveal || Theme.reduceMotion ? 1 : 0.94
         transformOrigin: Item.Center
-        Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 170; easing.type: Easing.OutCubic } }
+        Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 150; easing.type: Easing.OutCubic } }
         Behavior on scale { enabled: !Theme.reduceMotion; Spring { spring: Theme.popover } }
         anchors.centerIn: parent
         width: 430
@@ -2811,7 +2811,7 @@ Window {
         z: 69
         visible: opacity > 0
         opacity: root.passwordPrompt ? 1 : 0
-        Behavior on opacity { NumberAnimation { duration: 180 } }
+        Behavior on opacity { NumberAnimation { duration: 155 } }
         parent: webArea       // over the page, under the toolbar
         anchors { horizontalCenter: parent.horizontalCenter; top: parent.top; topMargin: 12 }
         width: Math.min(520, webArea.width - 32)
@@ -2883,7 +2883,7 @@ Window {
         opacity: reveal ? 1 : 0
         scale: reveal || Theme.reduceMotion ? 1 : 0.94
         transformOrigin: Item.Center
-        Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 170; easing.type: Easing.OutCubic } }
+        Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 150; easing.type: Easing.OutCubic } }
         Behavior on scale { enabled: !Theme.reduceMotion; Spring { spring: Theme.popover } }
         anchors.centerIn: parent
         width: Math.min(570, root.width - 60)
@@ -2991,7 +2991,7 @@ Window {
         opacity: reveal ? 1 : 0
         scale: reveal || Theme.reduceMotion ? 1 : 0.94
         transformOrigin: Item.Center
-        Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 170; easing.type: Easing.OutCubic } }
+        Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 150; easing.type: Easing.OutCubic } }
         Behavior on scale { enabled: !Theme.reduceMotion; Spring { spring: Theme.popover } }
         anchors.centerIn: parent
         width: 420
@@ -3052,7 +3052,7 @@ Window {
         border { width: 0.5; color: Theme.separator }
         opacity: 0
         visible: opacity > 0
-        Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 160 } }
+        Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 140 } }
 
         Text {
             id: toastLabel

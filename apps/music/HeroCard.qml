@@ -39,7 +39,7 @@ Item {
         y: 54; width: parent.width; height: parent.height - 54
         radius: 10
         color: hero.tone
-        Behavior on color { ColorAnimation { duration: 300 } }
+        Behavior on color { ColorAnimation { duration: 260 } }
         clip: true
 
         // Samples the art down to 6×6 pixels and averages them.

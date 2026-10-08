@@ -208,7 +208,7 @@ PanelWindow {
         SequentialAnimation {
             id: popAnim
             NumberAnimation { target: glyph; property: "pop"; to: 1.22; duration: 110; easing.type: Easing.OutQuad }
-            NumberAnimation { target: glyph; property: "pop"; to: 1; duration: 420; easing.type: Easing.OutBack; easing.overshoot: 2.2 }
+            NumberAnimation { target: glyph; property: "pop"; to: 1; duration: 365; easing.type: Easing.OutBack; easing.overshoot: 2.2 }
         }
     }
 
@@ -419,7 +419,7 @@ PanelWindow {
         scale: cc.open || Prefs.reduceMotion ? 1 : 0.965
         transformOrigin: Item.TopRight
         Behavior on opacity { NumberAnimation { duration: Prefs.reduceMotion ? 1 : 130; easing.type: Easing.OutCubic } }
-        Behavior on scale { enabled: !Prefs.reduceMotion; NumberAnimation { duration: 170; easing.type: Easing.OutCubic } }
+        Behavior on scale { enabled: !Prefs.reduceMotion; NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
         Glass {
             objectName: "ccPanel"
             anchors.fill: parent
@@ -448,7 +448,7 @@ PanelWindow {
         Behavior on opacity { NumberAnimation { duration: Prefs.reduceMotion ? 1 : 160; easing.type: Easing.OutCubic } }
         transform: Translate {
             x: cc.detail && !Prefs.reduceMotion ? -28 : 0
-            Behavior on x { NumberAnimation { duration: 260; easing.type: Easing.OutCubic } }
+            Behavior on x { NumberAnimation { duration: 225; easing.type: Easing.OutCubic } }
         }
 
         // In use: which apps have the microphone, camera, screen or location,
@@ -702,7 +702,7 @@ PanelWindow {
         transform: Translate {
             id: detailShift
             x: cc.detail || Prefs.reduceMotion ? 0 : 28
-            Behavior on x { NumberAnimation { duration: 260; easing.type: Easing.OutCubic } }
+            Behavior on x { NumberAnimation { duration: 225; easing.type: Easing.OutCubic } }
         }
         focus: cc.detail !== ""
         Keys.onEscapePressed: cc.detail = ""

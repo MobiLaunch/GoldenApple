@@ -27,7 +27,7 @@ Item {
 
             Behavior on width {
                 enabled: !root.indeterminate && !Theme.reduceMotion
-                NumberAnimation { duration: 180; easing.type: Easing.OutCubic }
+                NumberAnimation { duration: 155; easing.type: Easing.OutCubic }
             }
 
             SequentialAnimation on x {
@@ -37,7 +37,7 @@ Item {
                 NumberAnimation {
                     from: -fill.width
                     to: Math.max(0, root.width)
-                    duration: 1050
+                    duration: 915
                     easing.type: Easing.InOutCubic
                 }
                 PauseAnimation { duration: 90 }

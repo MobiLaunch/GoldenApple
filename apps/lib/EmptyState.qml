@@ -18,7 +18,7 @@ Item {
     function appear() { if (Theme.reduceMotion) return; enter = 0; rise.restart() }
     onVisibleChanged: if (visible) appear()
     Component.onCompleted: if (visible) appear()
-    NumberAnimation { id: rise; target: root; property: "enter"; to: 1; duration: 340; easing.type: Easing.OutCubic }
+    NumberAnimation { id: rise; target: root; property: "enter"; to: 1; duration: 295; easing.type: Easing.OutCubic }
 
     Column {
         id: col

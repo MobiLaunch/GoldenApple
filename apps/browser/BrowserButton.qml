@@ -34,7 +34,7 @@ Item {
     SequentialAnimation {
         id: hop
         NumberAnimation { target: root; property: "hopScale"; to: 1.3; duration: 130; easing.type: Easing.OutQuad }
-        NumberAnimation { target: root; property: "hopScale"; to: 1; duration: 420; easing.type: Easing.OutBack; easing.overshoot: 2.4 }
+        NumberAnimation { target: root; property: "hopScale"; to: 1; duration: 365; easing.type: Easing.OutBack; easing.overshoot: 2.4 }
     }
 
     Symbol {

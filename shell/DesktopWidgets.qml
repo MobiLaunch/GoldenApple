@@ -136,8 +136,8 @@ Scope {
             radius: 22
             color: "#1fffffff"
             border { width: 1; color: "#40ffffff" }
-            Behavior on x { NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
-            Behavior on y { NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
+            Behavior on x { NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
+            Behavior on y { NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
         }
 
         Repeater {
@@ -175,7 +175,7 @@ Scope {
                 Component.onCompleted: if (!shown) Qt.callLater(() => { tile.shown = true; root.arrived = "" })
                 opacity: shown && !going ? 1 : 0
                 scale: !shown || going ? 0.7 : dragging ? 1.04 : 1
-                Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 0 : 220; easing.type: Easing.OutCubic } }
+                Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 0 : 190; easing.type: Easing.OutCubic } }
                 Behavior on scale { NumberAnimation { duration: Theme.reduceMotion ? 0 : Theme.bouncy.duration; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.bouncy.curve } }
 
                 ParallelAnimation {
@@ -254,7 +254,7 @@ Scope {
                     opacity: root.editing ? 1 : 0
                     visible: opacity > 0
                     Behavior on scale { NumberAnimation { duration: Theme.reduceMotion ? 0 : Theme.bouncy.duration; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.bouncy.curve } }
-                    Behavior on opacity { NumberAnimation { duration: 160 } }
+                    Behavior on opacity { NumberAnimation { duration: 140 } }
                     Rectangle { anchors.centerIn: parent; width: 10; height: 2; radius: 1; color: Theme.dark ? "white" : "#3c3c43" }
                     MouseArea { id: minus; anchors.fill: parent; anchors.margins: -4; onClicked: root.remove(tile.wid) }
                 }
@@ -318,7 +318,7 @@ Scope {
             radius: 28
             opacity: root.editing ? 1 : 0
             y: root.editing ? 0 : 60
-            Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 0 : 220; easing.type: Easing.OutCubic } }
+            Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 0 : 190; easing.type: Easing.OutCubic } }
             Behavior on y { NumberAnimation { duration: Theme.reduceMotion ? 0 : Theme.snappy.duration; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.snappy.curve } }
             Keys.onEscapePressed: root.editing = false
             focus: root.editing
@@ -440,7 +440,7 @@ Scope {
                                         width: offer.px.width; height: offer.px.height
                                         scale: offers.k * (pick.pressed ? 0.96 : pick.containsMouse ? 1.03 : 1)
                                         transformOrigin: Item.TopLeft
-                                        Behavior on scale { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
+                                        Behavior on scale { NumberAnimation { duration: 155; easing.type: Easing.OutCubic } }
                                         Glass { anchors.fill: parent; role: "regular"; radius: 22; visible: !previewFace.ownBackground }
                                         Face { id: previewFace; anchors.fill: parent; kind: offer.modelData.kind; size: offer.modelData.size; feeds: shared }
                                     }

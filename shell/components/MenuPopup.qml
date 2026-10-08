@@ -61,7 +61,7 @@ PopupWindow {
     SequentialAnimation {
         id: vanish
         property var action
-        NumberAnimation { target: list; property: "opacity"; to: 0; duration: Theme.reduceMotion ? 0 : 160 }
+        NumberAnimation { target: list; property: "opacity"; to: 0; duration: Theme.reduceMotion ? 0 : 140 }
         ScriptAction { script: { const a = vanish.action; vanish.action = null; if (a) a() } }
     }
 

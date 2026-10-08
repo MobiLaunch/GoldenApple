@@ -30,14 +30,14 @@ Item {
         SequentialAnimation on scale {
             running: !Theme.reduceMotion && dot.visible
             loops: Animation.Infinite
-            NumberAnimation { from: 1; to: 2.2; duration: 1600; easing.type: Easing.OutCubic }
-            PauseAnimation { duration: 400 }
+            NumberAnimation { from: 1; to: 2.2; duration: 1390; easing.type: Easing.OutCubic }
+            PauseAnimation { duration: 350 }
         }
         SequentialAnimation on opacity {
             running: !Theme.reduceMotion && dot.visible
             loops: Animation.Infinite
-            NumberAnimation { from: 0.9; to: 0; duration: 1600; easing.type: Easing.OutCubic }
-            PauseAnimation { duration: 400 }
+            NumberAnimation { from: 0.9; to: 0; duration: 1390; easing.type: Easing.OutCubic }
+            PauseAnimation { duration: 350 }
         }
     }
     Rectangle {

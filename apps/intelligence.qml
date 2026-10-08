@@ -656,7 +656,7 @@ ShellRoot {
                         anchors { right: parent.right; rightMargin: 8; bottom: parent.bottom; bottomMargin: 8 }
                         width: 32; height: 32; radius: 16
                         color: ready ? Theme.accent : (Theme.dark ? "#3a3b40" : "#d9dadf")
-                        Behavior on color { ColorAnimation { duration: 150 } }
+                        Behavior on color { ColorAnimation { duration: 130 } }
                         Symbol { anchors.centerIn: parent; name: service.busy ? "stop" : "arrow-up"; size: 15; tone: "white" }
                         MouseArea {
                             anchors.fill: parent

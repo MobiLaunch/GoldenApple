@@ -76,6 +76,11 @@ view.rootObject().findChild(QObject, "holder").setProperty("x", 10)
 QTest.qWait(400)
 glass = view.rootObject().findChild(QObject, "glass")
 print("lensing", glass.property("lensing"))
+# Still glass over still content draws nothing more: the window rests.
+frames = [0]
+view.frameSwapped.connect(lambda: frames.__setitem__(0, frames[0] + 1))
+QTest.qWait(1000)
+print("idle frames", frames[0])
 view.grabWindow().save(out)
 '''
 
@@ -109,6 +114,9 @@ def main():
             print(p.stdout, p.stderr[-2000:], file=sys.stderr)
             return 1
         img = QImage(str(out))
+        idle = [int(l.split()[-1]) for l in p.stdout.splitlines() if l.startswith("idle frames")]
+        if not idle or idle[0] > 6:
+            failures.append(f"still glass lets the window rest: {idle[0] if idle else '?'} frames drawn in a second with nothing moving")
         pr, outr = render(t, True)
         if "lensing False" not in pr.stdout:
             failures.append(f"Reduce Transparency: no lens ({pr.stdout.strip()})")

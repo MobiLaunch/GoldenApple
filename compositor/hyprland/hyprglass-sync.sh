@@ -227,7 +227,7 @@ else
     glass_opacity 0.80
     [ "$THEME" = dark ] && kw plugin:hyprglass:tint_color 0x283c6e38 || kw plugin:hyprglass:tint_color 0xffffff42
   else
-    glass_opacity 0.48
+    glass_opacity 0.58
     [ "$THEME" = dark ] && kw plugin:hyprglass:tint_color 0x283c6e24 || kw plugin:hyprglass:tint_color 0x7f879018
   fi
 fi
@@ -240,7 +240,7 @@ kw plugin:hyprglass:layers:enabled 1
 kw plugin:hyprglass:layers:namespaces "gg-menubar,gg-dock,gg-controlcenter,gg-spotlight,gg-applications,gg-notifications,gg-notification-center,gg-nearby,gg-widgets,gg-widget-gallery,gg-osd,gg-alert,gg-switcher,gg-screenshot,gg-screenshot-thumbnail,gg-citron"
 kw plugin:hyprglass:layers:namespace_mask_thresholds "gg-menubar=0.05,gg-dock=0.25,gg-controlcenter=0.25,gg-spotlight=0.25,gg-applications=0.06,gg-notifications=0.25,gg-notification-center=0.3,gg-nearby=0.25,gg-widgets=0.25,gg-widget-gallery=0.25,gg-osd=0.3,gg-alert=0.3,gg-switcher=0.3,gg-screenshot=0.5,gg-screenshot-thumbnail=0.3,gg-citron=0.5"
 kw plugin:hyprglass:layers:live_resample 1
-kw plugin:hyprglass:layers:live_resample_fps 30
+kw plugin:hyprglass:layers:live_resample_fps 60
 kw plugin:hyprglass:layers:manage_blur 1
 
 logger -t gg-hyprglass "HyprGlass applied ($THEME, $GLASS, reduceTransparency=$REDUCE, virt=${VIRT:-none})"
