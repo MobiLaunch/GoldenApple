@@ -453,6 +453,8 @@ jobs:
         run: python tests/wallpaper.py
       - name: "Touch ID: fingerprints in Settings, the lock screen, and sudo when chosen"
         run: python tests/touchid.py
+      - name: "Battery level and time left; alert sounds and the charging chime"
+        run: python tests/battery-sounds.py
         env:
           QT_QPA_PLATFORM: offscreen
       - name: Privacy indicators show who uses the microphone, camera, screen and location

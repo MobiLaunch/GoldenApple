@@ -18,6 +18,11 @@ Singleton {
     // Shell glass bends live captures of the windows under it (DesktopBackdrop);
     // off ("glassWindows": false), it bends only the wallpaper.
     readonly property bool glassWindows: data.glassWindows ?? true
+    // Settings › Sound: the alert sound (CitronOS's own, ui/assets/sounds),
+    // and the chime when power is connected.
+    readonly property string alertSound: data.sound?.alert ?? "Crystal"
+    readonly property bool chargingSound: data.sound?.charging ?? true
+    function soundPath(name) { return decodeURIComponent(Qt.resolvedUrl("../ui/assets/sounds/" + name + ".wav").toString().replace("file://", "")) }
     // Settings › Touch ID & Password: a finger unlocks the lock screen.
     readonly property bool touchIdUnlock: data.touchId?.unlock ?? true
     readonly property real dockSize: data.dock?.size ?? 54

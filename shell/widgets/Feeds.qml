@@ -8,6 +8,7 @@ import Quickshell.Io
 import Quickshell.Services.Mpris
 import Quickshell.Services.UPower
 import QtQuick
+import "../components"
 import "weather.js" as Wx
 
 Scope {
@@ -25,10 +26,10 @@ Scope {
     readonly property var player: Mpris.players.values.find((p) => p.isPlaying) ?? (Mpris.players.values.length ? Mpris.players.values[0] : null)
 
     // --------------------------------------------------------------- battery
-    readonly property bool hasBattery: UPower.displayDevice.isLaptopBattery
-    readonly property real battery: hasBattery ? UPower.displayDevice.percentage : 1
-    readonly property bool charging: UPower.displayDevice.state === UPowerDeviceState.Charging
-        || UPower.displayDevice.state === UPowerDeviceState.FullyCharged || !hasBattery
+    // The firmware's level and the smoothed time left (components/Battery.qml).
+    readonly property bool hasBattery: Battery.present
+    readonly property real battery: hasBattery ? Battery.level : 1
+    readonly property bool charging: Battery.charging || !hasBattery
 
     // --------------------------------------------------------------- weather
     property var place: null            // { name, lat, lon }

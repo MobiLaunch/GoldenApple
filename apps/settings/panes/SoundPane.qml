@@ -1,5 +1,6 @@
-// Sound: output and input volume and mute, and the output device, through
-// PipeWire (wpctl).
+// Sound: the alert sound (CitronOS's own, lib/assets/sounds; choosing one
+// plays it, as on the Mac) and the chime when power is connected; output and
+// input volume and mute, and the output device, through PipeWire (wpctl).
 import QtQuick
 import "../../lib"
 import "../../lib/theme"
@@ -25,6 +26,35 @@ Pane {
         })
     }
     Component.onCompleted: refresh()
+
+    readonly property var alerts: ["Crystal", "Ping", "Pebble", "Bubble", "Breeze", "Chord"]
+    readonly property string alert: sys.prefs.sound?.alert ?? "Crystal"
+    function soundPath(name) { return decodeURIComponent(Qt.resolvedUrl("../../lib/assets/sounds/" + name + ".wav").toString().replace("file://", "")) }
+    function play(name) { sys.run(["sh", "-c", "pw-play \"$1\" 2>/dev/null || paplay \"$1\" 2>/dev/null || true", "sh", soundPath(name)]) }
+
+    Group {
+        objectName: "alertSounds"
+        title: "Alert sound"
+        Repeater {
+            model: pane.alerts
+            delegate: SetRow {
+                required property string modelData
+                title: modelData
+                selectable: true
+                Symbol { visible: pane.alert === modelData; name: "checkmark"; tone: "accent"; size: 14 }
+                onClicked: { pane.sys.setPref(["sound", "alert"], modelData); pane.play(modelData) }
+            }
+        }
+    }
+    Group {
+        SetRow {
+            title: "Play sound when connecting to power"
+            Switch {
+                checked: pane.sys.prefs.sound?.charging ?? true
+                onToggled: (on) => { pane.sys.setPref(["sound", "charging"], on); if (on) pane.play("Charging") }
+            }
+        }
+    }
 
     Group {
         title: "Output"

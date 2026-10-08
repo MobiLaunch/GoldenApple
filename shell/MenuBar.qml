@@ -268,20 +268,27 @@ PanelWindow {
                 Symbol { name: "moon"; size: 15; tone: bar.darkRight ? "dark" : "white" }
             }
             BarItem {
-                visible: Prefs.barBattery && UPower.displayDevice.isLaptopBattery
+                id: batteryItem
+                visible: Prefs.barBattery && Battery.present
+                highlighted: batteryMenu.open
+                // Its menu, as on the Mac: the charge and time left, the power
+                // source, and Battery settings.
+                onClicked: {
+                    bar.batteryMenuX = batteryItem.mapToItem(bar.contentItem, 0, 0).x
+                    batteryMenu.open = !batteryMenu.open
+                }
                 // Drawn in the bar's ink (dark over a light wallpaper), red when low
-                // and not charging.
+                // and not charging. The level is the firmware's (Battery.qml).
                 RowLayout {
                     id: battery
                     readonly property color ink: bar.darkRight ? "#000000" : "#ffffff"
-                    readonly property real level: UPower.displayDevice.percentage
-                    readonly property bool charging: UPower.displayDevice.state === UPowerDeviceState.Charging
-                        || UPower.displayDevice.state === UPowerDeviceState.FullyCharged
+                    readonly property real level: Battery.level
+                    readonly property bool charging: Battery.charging
                     spacing: 1
                     BarText {
                         visible: Prefs.barBatteryPercent
                         Layout.rightMargin: 4
-                        text: Math.round(battery.level * 100) + "%"
+                        text: Battery.percent + "%"
                         dark: bar.darkRight
                     }
                     Rectangle {
@@ -625,6 +632,29 @@ PanelWindow {
             { label: "Ask Citron…", action: () => Quickshell.execDetached(["gg-intelligence"]) }
         ]
         return []
+    }
+    property real batteryMenuX: 0
+    MenuPopup {
+        id: batteryMenu
+        objectName: "batteryMenu"
+        instant: true
+        anchor.window: bar
+        anchor.rect.x: Math.min(bar.batteryMenuX, bar.width - menuWidth - 8)
+        anchor.rect.y: bar.height + 5
+        items: [
+            { header: "Battery" },
+            { text: Battery.percent + "%", shortcut: Battery.timeText, enabled: false },
+            { text: "Power Source: " + Battery.sourceText, enabled: false },
+            "-",
+            { text: "Show Percentage in Menu Bar", checked: Prefs.barBatteryPercent,
+              action: () => Quickshell.execDetached(["gg-pref", "menuBar.items.batteryPercent", Prefs.barBatteryPercent ? "false" : "true"]) },
+            { text: "Battery Settings…", action: () => Quickshell.execDetached(["gg-settings", "battery"]) }
+        ]
+    }
+    HyprlandFocusGrab {
+        windows: [batteryMenu]
+        active: batteryMenu.open
+        onCleared: batteryMenu.open = false
     }
     MenuPopup {
         id: barMenu

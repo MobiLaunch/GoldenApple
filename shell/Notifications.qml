@@ -61,10 +61,12 @@ Scope {
         notifiers = all
         Quickshell.execDetached(["sh", "-c", 'mkdir -p "${1%/*}" && printf "%s\\n" "$2" > "$1"', "sh", notifiersFile, JSON.stringify(all)])
     }
-    // The alert sound, as the Mac plays one with each banner.
+    // The alert sound, as the Mac plays one with each banner: the one chosen
+    // in Settings › Sound (CitronOS's own), else the system's.
     function chime() {
-        Quickshell.execDetached(["sh", "-c", "pw-play /usr/share/sounds/freedesktop/stereo/message-new-instant.oga 2>/dev/null"
-            + " || canberra-gtk-play -i message-new-instant 2>/dev/null || true"])
+        Quickshell.execDetached(["sh", "-c", "pw-play \"$1\" 2>/dev/null || paplay \"$1\" 2>/dev/null"
+            + " || pw-play /usr/share/sounds/freedesktop/stereo/message-new-instant.oga 2>/dev/null"
+            + " || canberra-gtk-play -i message-new-instant 2>/dev/null || true", "sh", Prefs.soundPath(Prefs.alertSound)])
     }
     function iconFor(n) {
         if (n.image) return n.image

@@ -85,8 +85,8 @@ Scope {
                 userName: root.realName || (root.user ? root.user.charAt(0).toUpperCase() + root.user.slice(1) : "Golden User")
                 // ~/.face, else the picture AccountsService keeps for the account.
                 avatars: ["file://" + root.home + "/.face", "file:///var/lib/AccountsService/icons/" + root.user]
-                battery: UPower.displayDevice.isLaptopBattery ? UPower.displayDevice.percentage : -1
-                charging: UPower.displayDevice.state === UPowerDeviceState.Charging || UPower.displayDevice.state === UPowerDeviceState.FullyCharged
+                battery: Battery.present ? Battery.level : -1
+                charging: Battery.charging
                 Component.onCompleted: { root.surfaces = root.surfaces.concat([surface]); reset() }
                 Component.onDestruction: root.surfaces = root.surfaces.filter((s) => s !== surface)
                 onUnlocked: session.locked = false

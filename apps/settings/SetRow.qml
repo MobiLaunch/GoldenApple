@@ -14,6 +14,7 @@ Item {
     readonly property bool hasIcon: !!symbol || !!image
     property color symbolTint: "#8e8e93"
     property bool chevron: false
+    property bool selectable: false     // a row you pick (a list of choices), with no chevron
     property bool first: index === 0
     property int index: {
         const kids = parent ? parent.children : []
@@ -79,6 +80,6 @@ Item {
         anchors { right: parent.right; rightMargin: 12; verticalCenter: parent.verticalCenter }
         name: "chevron-right"; tone: "gray"; size: 12
     }
-    HoverHandler { id: hover; enabled: row.chevron }
-    TapHandler { id: tap; enabled: row.chevron; onTapped: row.clicked() }
+    HoverHandler { id: hover; enabled: row.chevron || row.selectable }
+    TapHandler { id: tap; enabled: row.chevron || row.selectable; onTapped: row.clicked() }
 }
