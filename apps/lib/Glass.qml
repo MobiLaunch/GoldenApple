@@ -8,9 +8,12 @@
 //   dock     the Dock: smoked graphite, so icons stay vivid on real GPUs
 // The layers, as Apple describes them: a neutral tint (glass takes its colour
 // from what is behind it), a lens band that gathers light inside the edge, a
-// one-pixel specular rim lit from the top left, the darker inner edge on the
-// far side (macOS 27), a top light catch and a shadow that follows the
-// interaction. HyprGlass blurs the backdrop where a surface exposes one.
+// one-pixel specular rim lit from the top left and bright all the way round,
+// the darker inner edge on the far side (macOS 27) with the slab's inner
+// face catching the light just inside it (its thickness), a top light catch,
+// a soft light that follows the pointer across the glass, and a shadow that
+// follows the interaction: the glass lifts under the pointer and gives when
+// pressed. HyprGlass blurs the backdrop where a surface exposes one.
 // `tint` stays settable for stained glass (the accent on a default button,
 // red on an error banner); Tinted style and Reduce Transparency only ever
 // thicken it.
@@ -57,10 +60,19 @@ Item {
     readonly property color shownTint: Qt.rgba(tint.r, tint.g, tint.b, Math.max(tint.a, minAlpha))
 
     // The press: the glass gives a few pixels whatever its size and bounces
-    // back (macOS 27). A transform, so callers can still animate `scale`.
+    // back (macOS 27); under the pointer it lifts a pixel. Transforms, so
+    // callers can still animate `scale` and `y`.
     property real pressScale: pressed ? Math.max(0.94, 1 - 5 / Math.max(1, Math.max(width, height))) : 1
     Behavior on pressScale { Spring { spring: root.pressed ? Theme.snappy : Theme.bouncy } }
-    transform: Scale { origin.x: root.width / 2; origin.y: root.height / 2; xScale: root.pressScale; yScale: root.pressScale }
+    property real lift: hovered && !pressed && !Theme.reduceMotion ? -1 : 0
+    Behavior on lift { Spring { spring: Theme.snappy } }
+    transform: [
+        Scale { origin.x: root.width / 2; origin.y: root.height / 2; xScale: root.pressScale; yScale: root.pressScale },
+        Translate { y: root.lift }
+    ]
+    // Where the pointer is over the glass, for the light that follows it. A
+    // passive handler: it never takes a click or a hover from the controls.
+    HoverHandler { id: pointer }
 
     // The shadow falls only outside the glass. MultiEffect draws its source
     // too, so the shape is masked back out: without that, on a GPU, a solid
@@ -131,16 +143,40 @@ Item {
         anchors.fill: parent
         visible: !root.filled && root.band > 1
         preferredRendererType: Shape.CurveRenderer
-        // Faint: the band should be felt at the edge, not seen as a sheen. Over
-        // dark glass the same white reads twice as strong, so it's halved there.
-        readonly property real s: (root.clearMaterial ? 0.07 : 0.05) * (Theme.dark ? 0.5 : 1)
+        // Frosted thickness at the edge, felt more than seen; over dark glass
+        // the same white reads twice as strong, so it's halved there.
+        readonly property real s: (root.clearMaterial ? 0.10 : 0.08) * (Theme.dark ? 0.5 : 1)
         LensRing { depth: root.band; w: root.width; h: root.height; rr: root.r; strength: lensShape.s }
         LensRing { depth: root.band * 0.68; w: root.width; h: root.height; rr: root.r; strength: lensShape.s }
         LensRing { depth: root.band * 0.42; w: root.width; h: root.height; rr: root.r; strength: lensShape.s }
         LensRing { depth: root.band * 0.2; w: root.width; h: root.height; rr: root.r; strength: lensShape.s }
     }
-    // Rim: the specular hairline, lit top left, and just inside it the darker
-    // edge that macOS 27 draws on the far side.
+    // The light that follows the pointer: a soft glow on the glass where the
+    // pointer is, as if lit from just above it.
+    Shape {
+        anchors.fill: parent
+        visible: opacity > 0
+        opacity: pointer.hovered && !root.filled && !Theme.reduceTransparency ? 1 : 0
+        Behavior on opacity { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+        preferredRendererType: Shape.CurveRenderer
+        ShapePath {
+            strokeColor: "transparent"
+            fillGradient: RadialGradient {
+                centerX: pointer.point.position.x; centerY: pointer.point.position.y
+                focalX: centerX; focalY: centerY
+                centerRadius: Math.min(220, Math.max(root.width, root.height) * 0.6)
+                GradientStop { position: 0; color: Qt.rgba(1, 1, 1, Theme.dark ? 0.06 : 0.12) }
+                GradientStop { position: 1; color: "transparent" }
+            }
+            PathRectangle { x: 0; y: 0; width: root.width; height: root.height; radius: root.r }
+        }
+    }
+    // Rim: the specular hairline, lit top left and bright all the way round,
+    // brighter still under the pointer; just inside it the darker edge macOS
+    // 27 draws on the far side, and inside that the slab's inner face
+    // catching the light, which gives the glass its thickness.
+    property real rimGain: pointer.hovered || hovered ? 1.2 : 1
+    Behavior on rimGain { NumberAnimation { duration: 160 } }
     Shape {
         anchors.fill: parent
         preferredRendererType: Shape.CurveRenderer
@@ -149,10 +185,10 @@ Item {
             fillRule: ShapePath.OddEvenFill
             fillGradient: LinearGradient {
                 x1: 0; y1: 0; x2: root.width; y2: root.height
-                GradientStop { position: 0; color: root.rim }
-                GradientStop { position: 0.35; color: root.rimLow }
-                GradientStop { position: 0.75; color: root.rimLow }
-                GradientStop { position: 1; color: Qt.rgba(root.rim.r, root.rim.g, root.rim.b, root.rim.a * 0.55) }
+                GradientStop { position: 0; color: Qt.rgba(root.rim.r, root.rim.g, root.rim.b, Math.min(1, root.rim.a * root.rimGain)) }
+                GradientStop { position: 0.3; color: Qt.rgba(root.rimLow.r, root.rimLow.g, root.rimLow.b, Math.min(1, root.rimLow.a * root.rimGain)) }
+                GradientStop { position: 0.7; color: Qt.rgba(root.rimLow.r, root.rimLow.g, root.rimLow.b, Math.min(1, root.rimLow.a * root.rimGain)) }
+                GradientStop { position: 1; color: Qt.rgba(root.rim.r, root.rim.g, root.rim.b, Math.min(1, root.rim.a * 0.8 * root.rimGain)) }
             }
             PathRectangle { x: 0; y: 0; width: root.width; height: root.height; radius: root.r }
             PathRectangle { x: 1; y: 1; width: Math.max(0, root.width - 2); height: Math.max(0, root.height - 2); radius: Math.max(0, root.r - 1) }
@@ -167,6 +203,20 @@ Item {
             }
             PathRectangle { x: 1; y: 1; width: Math.max(0, root.width - 2); height: Math.max(0, root.height - 2); radius: Math.max(0, root.r - 1) }
             PathRectangle { x: 2; y: 2; width: Math.max(0, root.width - 4); height: Math.max(0, root.height - 4); radius: Math.max(0, root.r - 2) }
+        }
+        // The inner face: light gathered on the far side, just inside the
+        // edge. Only on glass big enough to have a visible thickness.
+        ShapePath {
+            strokeColor: "transparent"
+            fillRule: ShapePath.OddEvenFill
+            fillGradient: LinearGradient {
+                x1: 0; y1: 0; x2: root.width; y2: root.height
+                GradientStop { position: 0.4; color: "transparent" }
+                GradientStop { position: 1; color: root.filled || Math.min(root.width, root.height) < 28 ? "transparent"
+                    : Qt.rgba(root.rimLow.r, root.rimLow.g, root.rimLow.b, root.rimLow.a * 0.9) }
+            }
+            PathRectangle { x: 2; y: 2; width: Math.max(0, root.width - 4); height: Math.max(0, root.height - 4); radius: Math.max(0, root.r - 2) }
+            PathRectangle { x: 3.5; y: 3.5; width: Math.max(0, root.width - 7); height: Math.max(0, root.height - 7); radius: Math.max(0, root.r - 3.5) }
         }
     }
     Item {

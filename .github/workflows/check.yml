@@ -393,6 +393,10 @@ jobs:
         run: python tests/region-settings.py
         env:
           QT_QPA_PLATFORM: offscreen
+      - name: "Liquid Glass reacts: a light follows the pointer, it lifts and gives; its rim bright all round"
+        run: python tests/glass-reactions.py
+        env:
+          QT_QPA_PLATFORM: offscreen
       - name: "Liquid Glass drawn with OpenGL: see-through, its shadow outside it"
         run: sudo apt-get install -y libgl1-mesa-dri libglx-mesa0 && python tests/glass-gpu.py
       - name: Files' Quick Look previews pictures, text and other files
