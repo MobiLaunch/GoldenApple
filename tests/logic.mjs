@@ -81,20 +81,35 @@ test('latest route wins when travel mode changes during fetch', () => {
   assert.equal(c.routes[0].id,'foot');
 });
 
-test('failed note rename preserves the original, draft and dirty state', () => {
-  const removed=[];
-  const state={dirty:true,loadedPath:'/notes/Old.md',loading:false,saveTimer:{stop(){}},
-    markdown:()=> '# New\nBody',taken:[],Md:{fileName:t=>t+'.md'},
+test('failed note save preserves the original, draft and dirty state; a saved one is renamed without replacing', () => {
+  const state={dirty:true,loadedPath:'/notes/Old.md',loading:false,saveTimer:{stop(){},restart(){}},
+    markdown:()=> '# New\nBody',Md:{fileName:t=>t+'.md'},root:'/notes',fresh:false,lastSaved:'# Old',
+    onDisk:()=> '# Old',notice:'',renaming:false,
     writer:{setText(){}},file:{path:'/notes/Old.md'},writeOk:false,saveError:'',
-    saveFailed(){},Quickshell:{execDetached:args=>removed.push(args)},saved(){}};
+    renamer:{running:false},Qt:{resolvedUrl:u=>'file:///apps/notes/'+u},
+    saveFailed(){},saved(){}};
   const c=context('apps/notes/NoteEditor.qml',['save'],state);
   assert.equal(c.save(),false);
   assert.equal(c.loadedPath,'/notes/Old.md'); assert.equal(c.dirty,true);
-  assert.equal(removed.length,0); assert.ok(c.saveError);
+  assert.equal(c.renamer.running,false,'no rename for a note that was not saved'); assert.ok(c.saveError);
   c.writer.setText=()=>{c.writeOk=true};
   assert.equal(c.save(),true);
-  assert.equal(c.loadedPath,'/notes/New.md'); assert.equal(c.dirty,false);
-  assert.equal(removed.length,1); assert.equal(removed[0].at(-1),'/notes/Old.md');
+  assert.equal(c.dirty,false); assert.equal(c.saveError,'');
+  assert.equal(c.loadedPath,'/notes/Old.md','renamed only once trash.py has done it');
+  assert.equal(c.renamer.running,true);
+  assert.deepEqual([...c.renamer.command.slice(2)],['rename','/notes','/notes/Old.md','New.md']);
+});
+
+test('a note changed elsewhere is never written over', () => {
+  const state={dirty:true,loadedPath:'/notes/A.md',loading:false,saveTimer:{stop(){}},
+    markdown:()=> '# A\nmine',Md:{fileName:t=>t+'.md'},root:'',fresh:false,lastSaved:'# A\nold',
+    onDisk:p=> p==='/notes/A.md' ? '# A\ntheirs' : null,notice:'',renaming:false,
+    writer:{path:'',setText(){state.writeOk=true}},file:{path:'/notes/A.md'},writeOk:false,saveError:'',
+    renamer:{running:false},saveFailed(){},saved(){}};
+  const c=context('apps/notes/NoteEditor.qml',['save'],state);
+  assert.equal(c.save(),true);
+  assert.equal(c.writer.path,'/notes/A 2.md');
+  assert.equal(c.loadedPath,'/notes/A 2.md'); assert.match(c.notice,/changed somewhere else/);
 });
 
 function library(path) {
