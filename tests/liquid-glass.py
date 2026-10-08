@@ -181,6 +181,15 @@ check(re.search(r"^    visible: false$", root_block, re.M) is not None, "the she
 check("hideSource" not in backdrop, "the shell's backdrop doesn't depend on hideSource to stay off screen")
 check(not re.search(r"Rectangle \{[^}]*color: \"#", backdrop), "the shell's backdrop has no coloured placeholder to show")
 
+# Window captures behind shell glass let go of a window as it closes: at
+# Hyprland's closewindow, and through Quickshell's own list of windows, never a
+# reference kept from the last refresh (copying a closed window could crash).
+check('event.name === "closewindow") bd.windowClosed(' in backdrop, "a capture stops at Hyprland's closewindow")
+check("captureSource: bd.shown && frame && !bd.closing[modelData] ? bd.toplevelOf(modelData) : null" in backdrop,
+      "each capture finds its window in Quickshell's own list")
+check("toplevel: t.wayland" not in backdrop, "no window kept from the last refresh")
+check("Prefs.glassWindows" in backdrop, "window captures can be turned off (glassWindows)")
+
 if failures:
     for f in failures:
         print("FAIL", f)

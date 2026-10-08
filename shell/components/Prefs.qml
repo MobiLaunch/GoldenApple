@@ -15,6 +15,9 @@ Singleton {
     property var data: ({})
 
     readonly property string wallpaper: data.wallpaper || Quickshell.env("GG_WALLPAPER") || "/usr/share/backgrounds/golden-gate/tide.png"
+    // Shell glass bends live captures of the windows under it (DesktopBackdrop);
+    // off ("glassWindows": false), it bends only the wallpaper.
+    readonly property bool glassWindows: data.glassWindows ?? true
     readonly property real dockSize: data.dock?.size ?? 54
     readonly property bool dockIndicators: data.dock?.indicators ?? true
     readonly property bool animateLaunch: (data.dock?.animateLaunch ?? true) && !reduceMotion

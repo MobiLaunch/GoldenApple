@@ -52,7 +52,7 @@ Item {
 
     // The windows under the surface, bottom to top, live while it shows.
     readonly property var windows: {
-        if (!includeWindows || !shown) return []
+        if (!includeWindows || !Prefs.glassWindows || !shown) return []
         const mon = Hyprland.monitorFor(bd.screen)
         const ws = mon?.activeWorkspace?.id
         const ox = mon?.x ?? 0, oy = mon?.y ?? 0
@@ -60,8 +60,8 @@ Item {
         return Hyprland.toplevels.values
             .map((t) => ({ t: t, o: t.lastIpcObject }))
             .filter(({ o }) => o?.at && o.size && !o.hidden && o.workspace?.id === ws && (o.monitor === undefined || o.monitor === mon?.id))
-            .map(({ t, o }) => ({ id: String(t.address ?? o.address ?? ""), toplevel: t.wayland, x: o.at[0] - ox, y: o.at[1] - oy, w: o.size[0], h: o.size[1], order: o.focusHistoryID ?? 0 }))
-            .filter((w) => w.toplevel && w.x < r.x + r.width && w.x + w.w > r.x && w.y < r.y + r.height && w.y + w.h > r.y)
+            .map(({ t, o }) => ({ id: bd.addressOf(t.address ?? o.address), x: o.at[0] - ox, y: o.at[1] - oy, w: o.size[0], h: o.size[1], order: o.focusHistoryID ?? 0, live: !!t.wayland }))
+            .filter((w) => w.id && w.live && !bd.closing[w.id] && w.x < r.x + r.width && w.x + w.w > r.x && w.y < r.y + r.height && w.y + w.h > r.y)
             .sort((a, b) => b.order - a.order)
     }
     // The captures are kept by window: the list of windows (and so the
@@ -71,11 +71,32 @@ Item {
     property var windowIds: []
     property var frames: ({})
     onWindowsChanged: {
-        const ids = windows.map((w) => w.id)
-        if (ids.join() !== windowIds.join()) windowIds = ids
         const f = {}
         for (const w of windows) f[w.id] = w
         frames = f
+        const ids = windows.map((w) => w.id)
+        if (ids.join() !== windowIds.join()) windowIds = ids
+    }
+    // Hyprland's addresses, with or without their 0x, compared as one.
+    function addressOf(a) { return a ? String(a).replace(/^0x/, "") : "" }
+    // A capture lets go of a window the moment it closes: Hyprland's
+    // closewindow drops it at once (before any refresh), and each capture
+    // finds its window in Quickshell's own list, which drops it as it goes.
+    // Captures kept until the next refresh went on copying a window that was
+    // gone, which could bring Quickshell down.
+    property var closing: ({})
+    function windowClosed(address) {
+        const id = addressOf(address)
+        if (!id) return
+        const c = Object.assign({}, closing); c[id] = true; closing = c
+        if (frames[id]) { const f = Object.assign({}, frames); delete f[id]; frames = f }
+        if (windowIds.includes(id)) windowIds = windowIds.filter((w) => w !== id)
+        forget.restart()
+    }
+    Timer { id: forget; interval: 5000; onTriggered: bd.closing = ({}) }    // addresses aren't reused that soon
+    function toplevelOf(id) {
+        const t = Hyprland.toplevels.values.find((w) => bd.addressOf(w.address ?? w.lastIpcObject?.address) === id)
+        return t?.wayland ?? null
     }
     Repeater {
         model: bd.windowIds
@@ -85,8 +106,8 @@ Item {
             visible: !!frame
             x: frame?.x ?? 0; y: frame?.y ?? 0
             width: frame?.w ?? 0; height: frame?.h ?? 0
-            captureSource: bd.shown && frame ? frame.toplevel : null
-            live: bd.shown
+            captureSource: bd.shown && frame && !bd.closing[modelData] ? bd.toplevelOf(modelData) : null
+            live: bd.shown && !!captureSource
         }
     }
 
@@ -145,7 +166,7 @@ Item {
     // dragging or resizing a window sends no event, several times a second
     // while some glass here is bending the backdrop. Without that a surface
     // that's always shown (the Dock) kept the windows it saw at login.
-    readonly property bool following: includeWindows && shown && Backdrops.used(texture)
+    readonly property bool following: includeWindows && Prefs.glassWindows && shown && Backdrops.used(texture)
     onFollowingChanged: if (following) Hyprland.refreshToplevels()
     Timer { interval: 100; repeat: true; running: bd.following; onTriggered: Hyprland.refreshToplevels() }
     Timer { id: refreshSoon; interval: 16; onTriggered: Hyprland.refreshToplevels() }
@@ -155,6 +176,13 @@ Item {
         function onRawEvent(event) {
             if (["openwindow", "closewindow", "movewindowv2", "changefloatingmode", "fullscreen", "workspacev2", "activewindowv2"].includes(event.name))
                 refreshSoon.restart()
+        }
+    }
+    Connections {
+        target: Hyprland
+        enabled: bd.includeWindows
+        function onRawEvent(event) {
+            if (event.name === "closewindow") bd.windowClosed(event.parse(1)[0] ?? "")
         }
     }
     Connections {
