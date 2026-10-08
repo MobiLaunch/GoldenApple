@@ -33,7 +33,7 @@ EOF
 decoration:blur:passes = 1
 decoration:blur:size = 8
 decoration:shadow:enabled = false
-animation = windowsIn, 1, 2, smooth, popin 96%
+animation = windowsIn, 1, 2, smooth, popin 100%
 animation = windowsOut, 1, 1, smooth, popin 100%
 animation = layersIn, 1, 3, smooth, fade
 animation = workspaces, 1, 4, smooth, slide

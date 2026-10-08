@@ -265,7 +265,7 @@ function qmlColor(c) {
     // opening, and of a window closing back into its Dock icon (the opening in
     // reverse); the window itself only settles in, or fades out, underneath
     // it, quickly (it had the smooth spring's whole settle, 0.6 s).
-    `    animation = windowsIn, 1, 3, snappy, popin 96%`,
+    `    animation = windowsIn, 1, 3, snappy, popin 100%`,
     `    animation = windowsOut, 1, 1, smooth, popin 100%`,
     `    animation = fadeOut, 1, 1, smooth`,
     `    animation = windowsMove, 1, ${ds("snappy")}, snappy`,

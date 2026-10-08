@@ -246,6 +246,7 @@ Scope {
         }
         // The close button appears on hover, top left like the system's.
         Glass {
+            objectName: "notificationClose"
             role: "control"
             x: -7; y: -7; width: 22; height: 22; radius: 11
             opacity: hover.hovered ? 1 : 0
@@ -261,8 +262,12 @@ Scope {
         id: bannerWindow
         screen: Quickshell.screens.find((s) => s.name === Hyprland.focusedMonitor?.name) ?? Quickshell.screens[0]
         anchors { top: true; right: true }
-        margins { top: 8; right: root.controlCenterOpen ? 356 : 0 }
-        implicitWidth: 370
+        margins { top: 0; right: root.controlCenterOpen ? 356 : 0 }
+        // The banners sit `inset` in from the surface's top and left, so the
+        // close button, which hangs off a banner's top-left corner, is drawn
+        // whole (it was cut off along the surface's edges) and can be clicked.
+        readonly property real inset: 10
+        implicitWidth: 360 + 2 * inset
         // Room for four banners: a fixed size, so the surface doesn't resize
         // on every frame while they move.
         implicitHeight: 4 * 150 + 3 * 8 + 16
@@ -277,13 +282,13 @@ Scope {
         // Input only where the banners are. The view itself is the surface's
         // height: one that shrank with its content dropped a leaving banner
         // at once, outside it, before it could slide away.
-        Item { id: bannerArea; width: bannerList.width; height: Math.min(bannerList.contentHeight, bannerList.height) }
+        Item { id: bannerArea; width: bannerList.width + bannerWindow.inset; height: Math.min(bannerList.contentHeight, bannerList.height) + bannerWindow.inset }
 
         ListView {
             id: bannerList
             objectName: "bannerList"
-            x: 0; width: 360
-            height: parent.height
+            x: bannerWindow.inset; y: bannerWindow.inset; width: 360
+            height: parent.height - bannerWindow.inset
             interactive: false
             spacing: 8
             model: bannerModel
@@ -387,10 +392,13 @@ Scope {
                 anchors.fill: parent
                 contentHeight: stack.implicitHeight
                 clip: true
+                // Room inside the clip for a card's close button, which hangs
+                // off its top-left corner.
+                leftMargin: 10; topMargin: 10
                 boundsBehavior: Flickable.StopAtBounds
                 ColumnLayout {
                     id: stack
-                    width: parent.width
+                    width: parent.width - 10
                     spacing: 10
 
                     RowLayout {

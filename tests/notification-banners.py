@@ -65,6 +65,18 @@ def ipc(self, target, function, args):
     if function == "drop":
         n = find("notifications")
         state["before"] = cards(view)
+        # Each banner's close button, where it is in its surface.
+        from PySide6.QtCore import QPointF
+        w = view.window()
+        surface = view.parentItem()            # the banners' surface
+        found, stack = [], [view]
+        while stack:
+            it = stack.pop()
+            stack.extend(it.childItems())
+            if it.objectName() == "notificationClose":
+                found.append(it)
+        state["closes"] = [(round(c.mapToItem(surface, QPointF(0, 0)).x(), 1), round(c.mapToItem(surface, QPointF(0, 0)).y(), 1),
+                            c.property("width"), c.property("height"), surface.width(), surface.height()) for c in found]
         older = [b for b in n.property("banners").toVariant() if b.property("summary") == "Design review"][0]
         QMetaObject.invokeMethod(n, "dropBanner", Q_ARG("QVariant", older))
         QTest.qWait(90)
@@ -108,6 +120,9 @@ def main() -> int:
             failures.append(f"two banners, the newest on top, both in place: {s['before']}")
         elif any(abs(c[1]) > 0.5 for c in s["before"]):
             failures.append(f"banners that have arrived sit at x 0: {s['before']}")
+        closes = s.get("closes", [])
+        if not closes or any(x < 0 or y < 0 or x + cw > ww or y + ch > wh for x, y, cw, ch, ww, wh in closes):
+            failures.append(f"a banner's close button is whole inside its surface (x, y, w, h, surface w, h): {closes}")
         leaving = {c[3]: c for c in s["leaving"]}
         if "Design review" not in leaving:
             failures.append(f"a dropped banner slides out rather than vanishing at once: {s['leaving']}")

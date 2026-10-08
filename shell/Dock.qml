@@ -97,7 +97,7 @@ PanelWindow {
         const wins = windowsFor(entry)
         if (parked) restore(parked)
         else if (wins.length) wins[0].activate()
-        else entry.execute()
+        else if (!entry.synthetic) entry.execute()
     }
 
     function quitEntry(entry) {
@@ -122,7 +122,7 @@ PanelWindow {
         }
         menu.push("-")
         const kept = dock.pinned.includes(entry.id)
-        if (entry.id !== "org.goldengate.Installer")
+        if (entry.id !== "org.goldengate.Installer" && !entry.synthetic)
             menu.push({ label: kept ? "Remove from Dock" : "Keep in Dock", action: () => dock.keep(entry, !kept) })
         if (wins.length) {
             menu.push("-")
@@ -224,19 +224,33 @@ PanelWindow {
         DesktopEntries.applications.values;
         return pinned.map((id) => DesktopEntries.byId(id)).filter((e) => e)
     }
-    // Open apps that aren't kept in the Dock, in the order they opened.
+    // Open apps that aren't kept in the Dock, in the order they opened: every
+    // one, as on the Mac. Its desktop entry is found by id, by id in lower
+    // case, by Quickshell's guess, or by the entry's StartupWMClass (hidden
+    // entries too: a running app is shown either way). An app with no entry
+    // at all (a script, an AppImage, a Mac app) gets a stand-in: its name made
+    // from its window's id and the icon theme's icon for that id. Apps whose
+    // entry couldn't be found used to be left out of the Dock altogether.
     readonly property var running: {
         DesktopEntries.applications.values;
         const out = []
         for (const t of ToplevelManager.toplevels.values) {
             const appId = t.appId ?? ""
             if (!appId) continue
-            const entry = DesktopEntries.byId(appId) ?? DesktopEntries.heuristicLookup(appId)
-            if (!entry || entry.noDisplay) continue
-            if (entries.some((e) => windowsFor(e).includes(t)) || out.includes(entry)) continue
+            if (entries.some((e) => windowsFor(e).includes(t))) continue
+            const entry = entryForWindow(appId)
+            if (out.some((e) => e.id === entry.id)) continue
             out.push(entry)
         }
         return out
+    }
+    function entryForWindow(appId) {
+        const lower = appId.toLowerCase()
+        const found = DesktopEntries.byId(appId) ?? DesktopEntries.byId(lower) ?? DesktopEntries.heuristicLookup(appId)
+            ?? DesktopEntries.applications.values.find((e) => (e.startupClass ?? "").toLowerCase() === lower)
+        if (found) return found
+        const name = appId.split(".").pop().replace(/[-_]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
+        return { id: appId, name: name || appId, icon: lower, startupClass: appId, synthetic: true, execute: () => {} }
     }
     // Apps asking for attention (a window marked urgent): their icons bounce
     // until one of their windows is brought forward, as on the Mac.
@@ -438,7 +452,8 @@ PanelWindow {
             acceptedButtons: Qt.LeftButton | Qt.RightButton
             property point start             // on the ground line
             property bool moved: false
-            readonly property bool movable: tile.modelData.id !== "org.goldengate.Installer"
+            // A stand-in (no desktop entry) can't be kept: nothing would open it again.
+            readonly property bool movable: tile.modelData.id !== "org.goldengate.Installer" && !tile.modelData.synthetic
             function onGround(mouse) { return tipArea.mapToItem(ground, mouse.x, mouse.y) }
             onPressed: mouse => { start = onGround(mouse); moved = false }
             onPositionChanged: mouse => {

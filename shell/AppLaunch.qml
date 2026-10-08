@@ -4,8 +4,9 @@
 // where the window will open and shows the app's icon on the window colour, like
 // an iOS launch screen, while the app starts. When Hyprland maps the window, the
 // card springs onto its real frame (keeping its momentum, so the motion bends
-// rather than restarts) and dissolves into it. Hyprland itself only fades the
-// window in (windowsIn popin 96% in hyprland.conf), so the two hand over cleanly.
+// rather than restarts) and, once it sits exactly on it, dissolves into it.
+// Hyprland itself only fades the window in, in place (windowsIn popin 100%):
+// one outline dissolving into the same one, so the two hand over cleanly.
 //
 // Closing is the same motion in reverse, as when an iPad app is swiped away:
 // when a window closes, a card in its colour with the app's icon starts on
@@ -160,8 +161,26 @@ PanelWindow {
         interval: 8000
         onTriggered: { launcher.state_ = "cancelling"; launcher.aim(launcher.from); fade.restart() }
     }
-    // Give the window a moment to draw its first frame under the card.
-    Timer { id: handOver; interval: 80; onTriggered: fade.restart() }
+    // The card dissolves into the window only once it sits on the window's
+    // frame (or after a moment, whatever happens), snapped exactly onto it:
+    // fading while it was still springing there showed two outlines, the card
+    // sliding over a window already in place. The window has had those frames
+    // to draw underneath.
+    Timer {
+        id: handOver
+        interval: 16; repeat: true
+        property int ticks: 0
+        onRunningChanged: if (running) ticks = 0
+        onTriggered: {
+            const t = launcher.to
+            const there = Math.abs(gx.value - t.x) < 1.5 && Math.abs(gy.value - t.y) < 1.5
+                && Math.abs(gw.value - t.width) < 1.5 && Math.abs(gh.value - t.height) < 1.5
+            if (!there && ++ticks < 22) return
+            stop()
+            for (const [s, v] of [[gx, t.x], [gy, t.y], [gw, t.width], [gh, t.height]]) s.jump(v)
+            fade.restart()
+        }
+    }
     NumberAnimation {
         id: fade
         target: card; property: "opacity"; to: 0

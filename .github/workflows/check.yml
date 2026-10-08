@@ -397,6 +397,10 @@ jobs:
           QT_QPA_PLATFORM: offscreen
       - name: "Closing a window folds it back into its Dock icon (the opening in reverse)"
         run: python tests/window-fold.py
+      - name: "Opening an app: the card lands on the window, then dissolves into it"
+        run: python tests/window-open.py
+      - name: "Dock: every running app, kept or not, with or without a desktop entry"
+        run: python tests/dock-running.py
         env:
           QT_QPA_PLATFORM: offscreen
       - name: "Dock: a dragged icon stays under the pointer, lands where it's let go, and is removed dragged off"
