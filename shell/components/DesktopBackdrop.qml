@@ -107,8 +107,24 @@ Item {
             x: frame?.x ?? 0; y: frame?.y ?? 0
             width: frame?.w ?? 0; height: frame?.h ?? 0
             captureSource: bd.shown && frame && !bd.closing[modelData] ? bd.toplevelOf(modelData) : null
-            live: bd.shown && !!captureSource
+            // Frames on a clock (bd.capturing), not every one the window
+            // draws: a window under the glass is copied at most 30 times a
+            // second rather than at its own rate, and only while glass here
+            // is bending it.
+            live: false
+            Connections {
+                target: bd
+                function onTick() { if (captureSource) captureFrame() }
+            }
+            onCaptureSourceChanged: if (captureSource) captureFrame()
         }
+    }
+    signal tick()
+    Timer {
+        id: capturing
+        interval: 33; repeat: true
+        running: bd.following && bd.windowIds.length > 0
+        onTriggered: bd.tick()
     }
 
     // The texture every piece of glass in the surface samples: the part of

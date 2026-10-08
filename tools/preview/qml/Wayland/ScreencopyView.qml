@@ -10,6 +10,8 @@ Item {
     property bool paintCursor: false
     readonly property bool hasContent: !!captureSource
     readonly property size sourceSize: Qt.size(width, height)
+    property int frames: 0                 // captureFrame() calls, for tests
+    function captureFrame() { frames++ }
     readonly property string appId: captureSource?.appId ?? ""
     readonly property bool dark: appId.endsWith("Terminal") || appId.endsWith("Music")
     Rectangle {

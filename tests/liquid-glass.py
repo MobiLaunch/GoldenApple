@@ -189,6 +189,13 @@ check("captureSource: bd.shown && frame && !bd.closing[modelData] ? bd.toplevelO
       "each capture finds its window in Quickshell's own list")
 check("toplevel: t.wayland" not in backdrop, "no window kept from the last refresh")
 check("Prefs.glassWindows" in backdrop, "window captures can be turned off (glassWindows)")
+# Captures run on a clock (at most 30 a second, only while glass is bending
+# them), never streaming every frame; menus, made and dropped all the time,
+# capture no windows at all.
+check("live: false" in backdrop and "interval: 33" in backdrop and "captureFrame()" in backdrop,
+      "window captures are taken at most 30 times a second")
+menu = (ROOT / "shell/components/MenuPopup.qml").read_text()
+check("includeWindows: false" in menu, "menus capture no windows")
 
 if failures:
     for f in failures:

@@ -67,8 +67,12 @@ PopupWindow {
 
     // What the menu's glass bends: the desktop under it, placed from the
     // surface it opens over and where it's anchored there.
+    // Only the wallpaper: a menu's surface comes and goes with every opening,
+    // and window captures made and dropped that often are what Quickshell
+    // copes with least. Under a menu's tint the difference hardly shows.
     DesktopBackdrop {
         surface: menu
+        includeWindows: false
         fixedAt: {
             const o = Backdrops.ownerOf(menu.anchor.window?.contentItem ?? null)
             return o && o.placed ? Qt.point(o.at.x + menu.anchor.rect.x, o.at.y + menu.anchor.rect.y) : null
