@@ -121,7 +121,7 @@ Pane {
     Group {
         SetRow {
             title: "Transparency"
-            subtitle: "From clear glass to solid. Solid windows keep text easiest to read over busy wallpaper."
+            subtitle: "Sidebars, the Dock, menus and panels, from clear glass to solid. What's in a window is always solid."
             Text { text: "Clear"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.fs(11) } }
             Slider {
                 objectName: "glassSolidity"

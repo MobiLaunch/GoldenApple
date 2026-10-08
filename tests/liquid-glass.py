@@ -96,20 +96,24 @@ for key, value in [("plugin:hyprglass:blur_strength", "1.2"), ("plugin:hyprglass
                    ("plugin:hyprglass:chromatic_aberration", "0.03"), ("plugin:hyprglass:skip_opaque_windows", "1"),
                    ("plugin:hyprglass:manage_window_blur", "1"), ("plugin:hyprglass:layers:manage_blur", "1"),
                    ("plugin:hyprglass:layers:mask_mode", "auto"), ("plugin:hyprglass:dark:vibrancy_darkness", "0.15"),
-                   ("decoration:active_opacity", "0.88"), ("decoration:inactive_opacity", "0.78"),
+                   ("decoration:active_opacity", "1.0"), ("decoration:inactive_opacity", "1.0"),
+                   ("plugin:hyprglass:glass_opacity", "0.48"),
                    ("general:col.active_border", "rgba(ffffff66) rgba(ffffff11) 45deg"),
                    ("general:col.inactive_border", "rgba(ffffff22) rgba(00000011) 45deg")]:
     check(kw(calls, key) == value, f"dark, Clear glass: {key} = {value} (got {kw(calls, key)!r})")
 calls, _, _ = run("light", {"glass": "tinted"})
 check(kw(calls, "general:col.active_border") == "rgba(ffffffb3) rgba(0000001f) 45deg", "light: the rim darkens on its far side")
-check(kw(calls, "decoration:active_opacity") == "0.95", "Tinted glass: windows a little more solid")
+check(kw(calls, "decoration:active_opacity") == "1.0", "Tinted glass: window contents solid too")
+check(kw(calls, "plugin:hyprglass:glass_opacity") == "0.76", "Tinted glass: the glass a little more solid")
 calls, flagged, _ = run("dark", {"reduceTransparency": True})
 check(kw(calls, "decoration:active_opacity") == "1.0" and kw(calls, "decoration:inactive_opacity") == "1.0",
       "Reduce Transparency: windows solid")
 check("keyword windowrule match:class .*, opaque on" in calls and flagged, "Reduce Transparency: solid over the per-app rules too")
 calls, _, _ = run("dark", {"glassSolidity": 0.5})
-check((kw(calls, "decoration:active_opacity"), kw(calls, "decoration:inactive_opacity")) == ("0.94", "0.89"),
-      f"the Glass slider halfway: windows halfway to solid (got {kw(calls, 'decoration:active_opacity')}, {kw(calls, 'decoration:inactive_opacity')})")
+check((kw(calls, "decoration:active_opacity"), kw(calls, "decoration:inactive_opacity")) == ("1.0", "1.0"),
+      "the Transparency slider never fades window contents")
+check(kw(calls, "plugin:hyprglass:glass_opacity") == "0.72",
+      f"the Transparency slider halfway: the glass halfway to solid (got {kw(calls, 'plugin:hyprglass:glass_opacity')})")
 calls, flagged, _ = run("dark", {"glassSolidity": 1})
 check(kw(calls, "decoration:active_opacity") == "1.0" and flagged, "the Glass slider at Solid: every window solid")
 # The plugin goes only into the Hyprland it was built for; otherwise Hyprland's
@@ -128,14 +132,14 @@ check("reload" in calls and not flagged, "turning Reduce Transparency off reload
 # ------------------------------------------------------- the configuration
 conf = (ROOT / "compositor/hyprland/hyprland.conf").read_text()
 for line in ("gaps_in = 8", "gaps_out = 16", "border_size = 1", "col.active_border = rgba(ffffff66) rgba(ffffff11) 45deg",
-             "col.inactive_border = rgba(ffffff22) rgba(00000011) 45deg", "active_opacity = 0.88", "inactive_opacity = 0.78"):
+             "col.inactive_border = rgba(ffffff22) rgba(00000011) 45deg", "active_opacity = 1.0", "inactive_opacity = 1.0"):
     check(line in conf, f"hyprland.conf: {line}")
 deco = (ROOT / "design/dist/hyprland-motion.conf").read_text()
 for line in ("size = 12", "passes = 4", "new_optimizations = true", "ignore_opacity = false", "vibrancy = 0.35",
              "vibrancy_darkness = 0.15", "contrast = 1.2", "brightness = 1.1", "noise = 0.015", "popups = true",
              "popups_ignorealpha = 0.3", "range = 30", "render_power = 4", "color = rgba(00000045)"):
     check(line in deco, f"blur and shadow: {line}")
-check("opacity 0.97 0.96" in conf and "com\\.mitchellh\\.ghostty" in conf, "the terminal is a little clearer, relative to the Glass slider")
+check("opacity 0.97 0.96" in conf and "com\\.mitchellh\\.ghostty" in conf, "the terminal is a little clearer")
 check(" override" not in "\n".join(l for l in conf.splitlines() if "opacity" in l and l.startswith("windowrule")),
       "no app's opacity is fixed outright: the Glass slider moves every window")
 check("match:fullscreen 1, opaque on" in conf and "match:content ^(video|game)$, opaque on" in conf, "full screen, video and games stay solid")

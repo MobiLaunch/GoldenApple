@@ -60,9 +60,11 @@ if [ -r "$BARS" ]; then
   fi
 fi
 
-# glassSolidity (Settings › Appearance, 0 clear … 1 solid) moves windows'
-# opacity continuously from the style's look to fully solid.
-read -r GLASS REDUCE ACTIVE INACTIVE <<EOF
+# glassSolidity (Settings › Appearance › Transparency, 0 clear … 1 solid)
+# moves the glass (sidebars, the Dock, menus, panels) continuously from the
+# style's look to fully solid. Window contents are never see-through: a
+# document's text and pictures read the same over any wallpaper.
+read -r GLASS REDUCE SOLID <<EOF
 $(python3 - "$CONFIG" <<'PY'
 import json, sys
 try:
@@ -75,17 +77,17 @@ try:
     s = min(1.0, max(0.0, float(d.get("glassSolidity", 0))))
 except (TypeError, ValueError):
     s = 0.0
-a, i = (0.95, 0.90) if glass == "tinted" else (0.88, 0.78)
 reduce = d.get("reduceTransparency", False) or s >= 0.999
-print(glass, "1" if reduce else "0", f"{a + (1 - a) * s:.2f}", f"{i + (1 - i) * s:.2f}")
+print(glass, "1" if reduce else "0", f"{s:.2f}")
 PY
 )
 EOF
 
 # ------------------------------------------------------------- windows
-# The specular rim (a 1 px border lit from the top left) and how see-through
-# windows are: the Liquid Glass look, a little more solid with the Tinted
-# glass style, and fully solid with Reduce Transparency.
+# The specular rim (a 1 px border lit from the top left). Windows are solid
+# (their sidebars and toolbars are the glass, drawn see-through by the app
+# over the compositor's blur); Reduce Transparency makes every window solid,
+# terminals included.
 if [ "$THEME" = dark ]; then
   kw general:col.active_border "rgba(ffffff66) rgba(ffffff11) 45deg"
   kw general:col.inactive_border "rgba(ffffff22) rgba(00000011) 45deg"
@@ -109,8 +111,8 @@ elif [ -e "$OPAQUE_FLAG" ]; then
   hyprctl reload >/dev/null 2>&1 || true
   exit 0
 else
-  kw decoration:active_opacity "$ACTIVE"
-  kw decoration:inactive_opacity "$INACTIVE"
+  kw decoration:active_opacity 1.0
+  kw decoration:inactive_opacity 1.0
 fi
 
 # ------------------------------------------------------------- HyprGlass
@@ -203,24 +205,27 @@ kw plugin:hyprglass:light:vibrancy_darkness 0.15
 kw plugin:hyprglass:skip_opaque_windows 1
 kw plugin:hyprglass:layers:mask_mode auto
 
+# The glass's own opacity, from the style's look toward solid (0.96) as the
+# Transparency slider moves.
+glass_opacity() { kw plugin:hyprglass:glass_opacity "$(awk -v g="$1" -v s="$SOLID" 'BEGIN { printf "%.2f", g + (0.96 - g) * s }')"; }
 if [ "$REDUCE" = 1 ]; then
   kw plugin:hyprglass:glass_opacity 0.96
   kw plugin:hyprglass:refraction_strength 0.04
   kw plugin:hyprglass:chromatic_aberration 0.0
 elif [ "$GLASS" = tinted ]; then
   if [ -n "$VIRT" ] && [ "$VIRT" != none ]; then
-    kw plugin:hyprglass:glass_opacity 0.90
+    glass_opacity 0.90
     [ "$THEME" = dark ] && kw plugin:hyprglass:tint_color 0x283c6e70 || kw plugin:hyprglass:tint_color 0xf5f7ff72
   else
-    kw plugin:hyprglass:glass_opacity 0.76
+    glass_opacity 0.76
     [ "$THEME" = dark ] && kw plugin:hyprglass:tint_color 0x283c6e42 || kw plugin:hyprglass:tint_color 0xf5f7ff38
   fi
 else
   if [ -n "$VIRT" ] && [ "$VIRT" != none ]; then
-    kw plugin:hyprglass:glass_opacity 0.80
+    glass_opacity 0.80
     [ "$THEME" = dark ] && kw plugin:hyprglass:tint_color 0x283c6e38 || kw plugin:hyprglass:tint_color 0xffffff42
   else
-    kw plugin:hyprglass:glass_opacity 0.48
+    glass_opacity 0.48
     [ "$THEME" = dark ] && kw plugin:hyprglass:tint_color 0x283c6e24 || kw plugin:hyprglass:tint_color 0x7f879018
   fi
 fi
