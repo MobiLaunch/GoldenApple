@@ -119,6 +119,8 @@ PanelWindow {
     color: "transparent"
     visible: shown || card.y < height
     WlrLayershell.namespace: "gg-nearby"
+    // What its glass bends: the desktop under it.
+    DesktopBackdrop { surface: nearby; namespace: "gg-nearby" }
     WlrLayershell.layer: WlrLayer.Overlay
     mask: Region { item: card }
 

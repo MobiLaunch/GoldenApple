@@ -55,7 +55,13 @@ Rectangle {
             }
         }
     }
-    Glass { objectName: "glass"; x: 100; y: 60; width: 200; height: 80; radius: 24; role: "control"; tint: "transparent" }
+    // Moved once it's drawn, as a layout moves a toolbar's buttons: the glass's
+    // own x never changes, so only following its place every frame keeps the
+    // lens over what's under it (rather than a miniature of the whole window).
+    Item {
+        objectName: "holder"
+        Glass { objectName: "glass"; x: 100; y: 60; width: 190; height: 80; radius: 24; role: "control"; tint: "transparent" }
+    }
 }
 """ % (root, root, "true" if reduce else "false"))
 view.setSource(QUrl.fromLocalFile(str(fixture)))
@@ -64,8 +70,11 @@ if view.status() != QQuickView.Ready:
     sys.exit(2)
 view.resize(400, 200)
 view.show()
-QTest.qWait(600)
-glass = view.rootObject().findChild(__import__("PySide6.QtCore", fromlist=["QObject"]).QObject, "glass")
+QTest.qWait(400)
+from PySide6.QtCore import QObject
+view.rootObject().findChild(QObject, "holder").setProperty("x", 10)
+QTest.qWait(400)
+glass = view.rootObject().findChild(QObject, "glass")
 print("lensing", glass.property("lensing"))
 view.grabWindow().save(out)
 '''
@@ -113,10 +122,10 @@ def main():
         def edges(y, x0, x1):
             return [x for x in range(x0 + 1, x1) if dark(x, y) != dark(x - 1, y)]
 
-        # Outside the glass the stripes are 10 px wide; under its middle,
-        # magnified, they're wider.
-        outside = edges(30, 100, 300)
-        inside = edges(100, 160, 240)
+        # The glass is at x 110..300 once moved. Outside it the stripes are
+        # 10 px wide; under its middle, magnified, they're wider.
+        outside = edges(30, 110, 300)
+        inside = edges(100, 165, 245)
         widths_out = [b - a for a, b in zip(outside, outside[1:])]
         widths_in = [b - a for a, b in zip(inside, inside[1:])]
         mean = lambda xs: sum(xs) / max(1, len(xs))
@@ -124,14 +133,19 @@ def main():
             failures.append(f"the middle magnifies: stripes {mean(widths_out):.1f} px outside, {mean(widths_in):.1f} under the glass")
         # Near the left edge the bevel bends them: the edges there no longer
         # line up with the ones outside.
-        near = edges(100, 102, 118)
-        straight = [x for x in outside if 102 < x < 118]
+        near = edges(100, 112, 128)
+        straight = [x for x in outside if 112 < x < 128]
         if near == straight:
             failures.append(f"the edge bends what's under it: {near} vs {straight}")
         # The glass doesn't sample itself: no dark halo of its own fill.
-        corner = img.pixelColor(100 + 30, 60 + 40)
+        corner = img.pixelColor(110 + 30, 60 + 40)
         if corner.alpha() < 250:
             failures.append(f"the lens is opaque where content is: {corner.name()}")
+        # Under its centre (x 205, the middle of a light stripe) is what's
+        # behind it there, not what was behind it before it moved (a dark
+        # stripe) nor a shrunken copy of the whole window.
+        if dark(205, 100) != dark(205, 30):
+            failures.append(f"the lens follows the glass: {img.pixelColor(205, 100).name()} under its centre, {img.pixelColor(205, 30).name()} behind it")
     for f in failures:
         print("FAIL", f, file=sys.stderr)
     if not failures:

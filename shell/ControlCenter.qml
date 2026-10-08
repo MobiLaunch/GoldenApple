@@ -73,6 +73,8 @@ PanelWindow {
     exclusionMode: ExclusionMode.Ignore
     color: "transparent"
     WlrLayershell.namespace: "gg-controlcenter"
+    // What its glass bends: the desktop under it.
+    DesktopBackdrop { surface: cc; namespace: "gg-controlcenter" }
     WlrLayershell.layer: WlrLayer.Overlay
 
     onOpenChanged: if (!open) { closeTimer.restart(); detail = ""; editing = false }

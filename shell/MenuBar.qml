@@ -57,6 +57,8 @@ PanelWindow {
     exclusiveZone: implicitHeight
     color: "transparent"
     WlrLayershell.namespace: "gg-menubar"
+    // What its glass bends: the desktop under it.
+    DesktopBackdrop { surface: bar; namespace: "gg-menubar" }
     WlrLayershell.layer: WlrLayer.Top
 
     // Liquid Glass (docs/LIQUID-GLASS.md). With its background on (the

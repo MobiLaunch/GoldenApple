@@ -270,6 +270,8 @@ Scope {
         color: "transparent"
         visible: !root.dnd && (root.banners.length > 0 || bannerList.count > 0)
         WlrLayershell.namespace: "gg-notifications"
+        // What its glass bends: the desktop under it.
+        DesktopBackdrop { surface: bannerWindow; namespace: "gg-notifications" }
         WlrLayershell.layer: WlrLayer.Overlay
         mask: Region { item: bannerArea }
         // Input only where the banners are. The view itself is the surface's
@@ -354,6 +356,8 @@ Scope {
         color: "transparent"
         visible: root.centerOpen || panel.x < center.width
         WlrLayershell.namespace: "gg-notification-center"
+        // What its glass bends: the desktop under it.
+        DesktopBackdrop { surface: center; namespace: "gg-notification-center" }
         WlrLayershell.layer: WlrLayer.Overlay
         WlrLayershell.keyboardFocus: root.centerOpen ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
 

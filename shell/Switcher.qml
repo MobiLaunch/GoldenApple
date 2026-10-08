@@ -23,6 +23,8 @@ PanelWindow {
     color: "transparent"
     visible: open
     WlrLayershell.namespace: "gg-switcher"
+    // What its glass bends: the desktop under it.
+    DesktopBackdrop { surface: sw; namespace: "gg-switcher" }
     WlrLayershell.layer: WlrLayer.Overlay
     mask: Region {}
 

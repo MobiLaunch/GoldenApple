@@ -176,6 +176,8 @@ Scope {
         WlrLayershell.layer: WlrLayer.Overlay
         WlrLayershell.keyboardFocus: visible ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
         WlrLayershell.namespace: "gg-screenshot"
+        // What its glass bends: the desktop under it.
+        DesktopBackdrop { surface: overlay; namespace: "gg-screenshot" }
 
         readonly property bool selecting: root.mode === "area" || (root.mode === "toolbar" && (root.choice === "selection" || root.choice === "recordSelection"))
         readonly property bool picking: root.mode === "window" || (root.mode === "toolbar" && root.choice === "window")
@@ -448,6 +450,8 @@ Scope {
         color: "transparent"
         WlrLayershell.layer: WlrLayer.Overlay
         WlrLayershell.namespace: "gg-screenshot-thumbnail"
+        // What its glass bends: the desktop under it.
+        DesktopBackdrop { surface: thumb; namespace: "gg-screenshot-thumbnail" }
 
         Timer { id: linger; interval: 5000; onTriggered: if (!cardHover.hovered) thumb.dismiss(); else restart() }
 

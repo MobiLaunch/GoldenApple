@@ -18,6 +18,8 @@ PanelWindow {
     exclusionMode: ExclusionMode.Ignore
     WlrLayershell.layer: WlrLayer.Background
     WlrLayershell.namespace: "gg-wallpaper"
+    // Where it is, for the glass of a menu opened over it (see MenuPopup).
+    DesktopBackdrop { surface: wall; namespace: "gg-wallpaper"; includeWindows: false }
     color: "#1b3f9e"   // the wallpaper's deep blue, shown until the image is decoded
 
     Image {

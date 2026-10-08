@@ -100,6 +100,15 @@ Item {
             Behavior on saturation { NumberAnimation { duration: 520 } }
         }
     }
+    // What the glass on the lock screen bends: its wallpaper.
+    ShaderEffectSource {
+        id: backdropTexture
+        visible: false
+        sourceItem: Backdrops.used(backdropTexture) ? backdrop : null
+        live: true
+        Component.onCompleted: Backdrops.add(root, backdrop, backdropTexture)
+        Component.onDestruction: Backdrops.remove(backdropTexture)
+    }
     Rectangle {   // darker behind the date and clock, so white numerals read over a pale sky
         anchors.fill: parent
         gradient: Gradient {

@@ -59,6 +59,8 @@ PanelWindow {
     visible: shown || panel.opacity > 0
     mask: Region {}                     // never takes input
     WlrLayershell.namespace: "gg-osd"
+    // What its glass bends: the desktop under it.
+    DesktopBackdrop { surface: osd; namespace: "gg-osd" }
     WlrLayershell.layer: WlrLayer.Overlay
 
     Glass {

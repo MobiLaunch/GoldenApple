@@ -65,6 +65,16 @@ PopupWindow {
         ScriptAction { script: { const a = vanish.action; vanish.action = null; if (a) a() } }
     }
 
+    // What the menu's glass bends: the desktop under it, placed from the
+    // surface it opens over and where it's anchored there.
+    DesktopBackdrop {
+        surface: menu
+        fixedAt: {
+            const o = Backdrops.ownerOf(menu.anchor.window?.contentItem ?? null)
+            return o && o.placed ? Qt.point(o.at.x + menu.anchor.rect.x, o.at.y + menu.anchor.rect.y) : null
+        }
+    }
+
     Shared.MenuList {
         id: list
         items: menu.items

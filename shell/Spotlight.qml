@@ -22,6 +22,8 @@ PanelWindow {
     exclusionMode: ExclusionMode.Ignore
     color: "transparent"
     WlrLayershell.namespace: "gg-spotlight"
+    // What its glass bends: the desktop under it.
+    DesktopBackdrop { surface: spot; namespace: "gg-spotlight" }
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: open ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
 

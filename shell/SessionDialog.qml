@@ -54,6 +54,8 @@ PanelWindow {
     exclusionMode: ExclusionMode.Ignore
     color: "transparent"
     WlrLayershell.namespace: "gg-alert"
+    // What its glass bends: the desktop under it.
+    DesktopBackdrop { surface: dialog; namespace: "gg-alert" }
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: open ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
 

@@ -110,6 +110,8 @@ Scope {
         exclusionMode: ExclusionMode.Ignore
         WlrLayershell.layer: WlrLayer.Bottom
         WlrLayershell.namespace: "gg-widgets"
+        // What its glass bends: the desktop under it.
+        DesktopBackdrop { surface: board; namespace: "gg-widgets"; includeWindows: false }
         color: "transparent"
         // Input only where the widgets are, so the desktop's own menu still
         // opens around them; all of it while editing (a click away is Done).
@@ -300,6 +302,8 @@ Scope {
         exclusionMode: ExclusionMode.Ignore
         WlrLayershell.layer: WlrLayer.Overlay
         WlrLayershell.namespace: "gg-widget-gallery"
+        // What its glass bends: the desktop under it.
+        DesktopBackdrop { surface: gallery; namespace: "gg-widget-gallery" }
         WlrLayershell.keyboardFocus: root.editing ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
         color: "transparent"
         implicitWidth: Math.min((root.screen?.width ?? 1440) - 48, 960)

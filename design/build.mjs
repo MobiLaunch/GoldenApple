@@ -180,8 +180,9 @@ function material(name, m) {
   for (const dir of [join(here, "..", "apps", "lib", "theme")]) {
     mkdirSync(dir, { recursive: true });
     writeFileSync(join(dir, "Theme.qml"), q.join("\n"));
-    // Release.qml (the system's name and version) lives beside the theme.
-    writeFileSync(join(dir, "qmldir"), "singleton Theme 1.0 Theme.qml\nsingleton Release 1.0 Release.qml\n");
+    // Release.qml (the system's name and version) and Backdrops.qml (what
+    // glass bends, Glass.qml) live beside the theme.
+    writeFileSync(join(dir, "qmldir"), "singleton Theme 1.0 Theme.qml\nsingleton Release 1.0 Release.qml\nsingleton Backdrops 1.0 Backdrops.qml\n");
   }
 }
 
@@ -264,7 +265,7 @@ function qmlColor(c) {
     // opening, and of a window closing back into its Dock icon (the opening in
     // reverse); the window itself only settles in, or fades out, underneath it.
     `    animation = windowsIn, 1, ${ds("smooth")}, smooth, popin 96%`,
-    `    animation = windowsOut, 1, 2, smooth, fade`,
+    `    animation = windowsOut, 1, 2, smooth, popin 100%`,
     `    animation = windowsMove, 1, ${ds("snappy")}, snappy`,
     `    animation = layersIn, 1, ${ds("popover")}, popover, popin 90%`,
     `    animation = layersOut, 1, 2, smooth, fade`,

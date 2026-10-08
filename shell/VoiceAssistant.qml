@@ -103,6 +103,8 @@ PanelWindow {
     exclusionMode: ExclusionMode.Ignore
     color: "transparent"
     WlrLayershell.namespace: "gg-citron"
+    // What its glass bends: the desktop under it.
+    DesktopBackdrop { surface: citron; namespace: "gg-citron" }
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: open ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
     // Transparent everywhere else: do not swallow clicks on underlying apps.

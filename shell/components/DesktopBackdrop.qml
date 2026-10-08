@@ -24,6 +24,7 @@ Item {
     property string namespace: ""
     property bool includeWindows: true       // false for surfaces under the windows (desktop widgets)
     property point at: Qt.point(0, 0)        // the surface's top-left on its screen
+    property var fixedAt: null               // given instead (a popup: its parent's place and its anchor)
     property bool placed: false
     readonly property var screen: surface.screen
     readonly property bool shown: surface.visible && !Theme.reduceTransparency && GraphicsInfo.api !== GraphicsInfo.Software
@@ -80,7 +81,6 @@ Item {
         hideSource: true
         live: true
         sourceRect: Qt.rect(bd.at.x, bd.at.y, bd.surface.width, bd.surface.height)
-        Component.onCompleted: Backdrops.add(bd.parent, bd, texture, bd)
         Component.onDestruction: Backdrops.remove(texture)
     }
 
@@ -88,10 +88,14 @@ Item {
     // lists every layer surface with its place.
     readonly property var previewAt: bd.surface.__x !== undefined ? Qt.point(bd.surface.__x, bd.surface.__y) : null
     onPreviewAtChanged: locate()
+    onFixedAtChanged: locate()
     function locate() {
         if (previewAt) { at = previewAt; placed = true; return }
+        if (fixedAt) { at = fixedAt; placed = true; return }
         if (namespace && !layers.running) layers.running = true
     }
+    // Its glass bends it only once it's known where the surface is.
+    onPlacedChanged: if (placed) Backdrops.add(bd.parent, bd, texture, bd)
     Process {
         id: layers
         command: ["hyprctl", "layers", "-j"]
@@ -114,6 +118,24 @@ Item {
     }
     Timer { id: relocate; interval: 60; onTriggered: bd.locate() }
     onShownChanged: if (shown) { Hyprland.refreshToplevels(); relocate.restart() }
+
+    // Live: the windows' places are asked of Hyprland again whenever one
+    // opens, closes, moves between workspaces or changes mode, and, because
+    // dragging or resizing a window sends no event, several times a second
+    // while some glass here is bending the backdrop. Without that a surface
+    // that's always shown (the Dock) kept the windows it saw at login.
+    readonly property bool following: includeWindows && shown && Backdrops.used(texture)
+    onFollowingChanged: if (following) Hyprland.refreshToplevels()
+    Timer { interval: 100; repeat: true; running: bd.following; onTriggered: Hyprland.refreshToplevels() }
+    Timer { id: refreshSoon; interval: 16; onTriggered: Hyprland.refreshToplevels() }
+    Connections {
+        target: Hyprland
+        enabled: bd.following
+        function onRawEvent(event) {
+            if (["openwindow", "closewindow", "movewindowv2", "changefloatingmode", "fullscreen", "workspacev2", "activewindowv2"].includes(event.name))
+                refreshSoon.restart()
+        }
+    }
     Connections {
         target: bd.surface
         ignoreUnknownSignals: true
