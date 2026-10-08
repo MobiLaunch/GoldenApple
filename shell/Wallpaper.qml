@@ -60,7 +60,7 @@ PanelWindow {
     }
     HyprlandFocusGrab {
         windows: [desktopMenu]
-        active: desktopMenu.open
-        onCleared: desktopMenu.open = false
+        active: desktopMenu.open && !desktopMenu.reopening
+        onCleared: if (!desktopMenu.reopening) desktopMenu.open = false
     }
 }

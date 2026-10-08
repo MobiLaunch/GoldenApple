@@ -116,6 +116,22 @@ ShellRoot {
             property string composeSubject: ""
             property string composeBody: ""
 
+            // What the provider wants instead of the account password, said
+            // before Connect rather than after the server turns it down.
+            readonly property string setupDomain: setupEmail.includes("@") ? setupEmail.split("@").pop().toLowerCase() : ""
+            readonly property string passwordHint: ["gmail.com", "googlemail.com"].includes(setupDomain)
+                ? "Gmail needs an app password, not your Google password: turn on 2-Step Verification, then make one at myaccount.google.com/apppasswords."
+                : ["icloud.com", "me.com", "mac.com"].includes(setupDomain)
+                ? "iCloud Mail needs an app-specific password: make one at account.apple.com, under Sign-In and Security."
+                : ["yahoo.com", "ymail.com", "aol.com"].includes(setupDomain)
+                ? "This account needs an app password: make one under Account Security › Generate app password."
+                : ["outlook.com", "hotmail.com", "live.com", "msn.com"].includes(setupDomain)
+                ? "Microsoft accounts only sign in through Microsoft's own page, which Mail doesn't have yet."
+                : ""
+            // Servers filled in for a known provider as the address is typed
+            // (they were only filled by the button), unless typed by hand.
+            property bool serversTyped: false
+            onSetupDomainChanged: if (!serversTyped) inferServers()
             function inferServers() {
                 const domain = setupEmail.split("@").pop().toLowerCase()
                 if (domain === "gmail.com" || domain === "googlemail.com") {
@@ -371,7 +387,7 @@ ShellRoot {
                         width: parent.width - imapPort.width - imapSecurity.width - 2 * parent.spacing
                         placeholder: "IMAP server"
                         text: mail.imapHost
-                        onTextChanged: mail.imapHost = text
+                        onTextChanged: { if (text !== mail.imapHost && activeFocus) mail.serversTyped = true; mail.imapHost = text }
                     }
                     TextField {
                         id: imapPort
@@ -397,7 +413,7 @@ ShellRoot {
                         width: parent.width - smtpPort.width - smtpSecurity.width - 2 * parent.spacing
                         placeholder: "SMTP server"
                         text: mail.smtpHost
-                        onTextChanged: mail.smtpHost = text
+                        onTextChanged: { if (text !== mail.smtpHost && activeFocus) mail.serversTyped = true; mail.smtpHost = text }
                     }
                     TextField {
                         id: smtpPort
@@ -418,9 +434,30 @@ ShellRoot {
                 TextField {
                     width: parent.width
                     password: true
-                    placeholder: "Password or app-specific password"
+                    placeholder: mail.passwordHint && !mail.passwordHint.startsWith("Microsoft") ? "App password" : "Password or app-specific password"
                     text: mail.setupPassword
                     onTextChanged: mail.setupPassword = text
+                    onAccepted: if (connectButton.enabled) mail.setupAccount()
+                }
+                Text {
+                    visible: !!mail.passwordHint
+                    width: parent.width
+                    wrapMode: Text.WordWrap
+                    text: mail.passwordHint
+                    color: Theme.secondaryLabel
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+                }
+                // Why Connect didn't work (it was never shown, so a failed
+                // Connect looked like nothing happening).
+                Text {
+                    objectName: "mailSetupError"
+                    visible: !!mail.error && !setupProc.running
+                    width: parent.width
+                    wrapMode: Text.WordWrap
+                    horizontalAlignment: Text.AlignHCenter
+                    text: mail.error
+                    color: Theme.dark ? "#ff453a" : "#d70015"
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
                 }
 
                 Row {
@@ -431,9 +468,10 @@ ShellRoot {
                         onClicked: mail.inferServers()
                     }
                     Button {
-                        text: "Connect"
+                        id: connectButton
+                        text: setupProc.running ? "Connecting…" : "Connect"
                         prominent: true
-                        enabled: mail.setupEmail.includes("@")
+                        enabled: !setupProc.running && mail.setupEmail.includes("@")
                             && !!mail.imapHost && !!mail.smtpHost && mail.setupPassword.length > 0
                         onClicked: mail.setupAccount()
                     }
@@ -641,15 +679,18 @@ ShellRoot {
                 }
             }
 
+            // (While setting up, the error shows under Connect instead.)
             Glass {
-                visible: !!mail.error
+                objectName: "mailInboxError"
+                visible: !!mail.error && mail.configured
                 anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: 16 }
                 width: Math.min(560, parent.width - 40)
-                height: 54
+                height: Math.max(54, errorText.implicitHeight + 22)
                 radius: 17
                 tint: Theme.dark ? "#d02b1f24" : "#eefdf0f0"
                 z: 50
                 Text {
+                    id: errorText
                     anchors.centerIn: parent
                     width: parent.width - 24
                     horizontalAlignment: Text.AlignHCenter

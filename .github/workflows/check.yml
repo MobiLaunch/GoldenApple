@@ -455,6 +455,12 @@ jobs:
         run: python tests/touchid.py
       - name: gg-settings opens every pane by its own name and the old ones
         run: python tests/settings-open.py
+      - name: "Shell menus never resize while up (the menu-switch crash and restart)"
+        run: python tests/menu-popup.py
+        env:
+          QT_QPA_PLATFORM: offscreen
+      - name: "Mail setup: plain-word errors, app passwords, both servers checked"
+        run: python tests/mail-connect.py
       - name: "Battery level and time left; alert sounds and the charging chime"
         run: python tests/battery-sounds.py
         env:

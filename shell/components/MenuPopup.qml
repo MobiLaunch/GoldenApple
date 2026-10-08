@@ -17,18 +17,53 @@ PopupWindow {
     property alias growFrom: list.transformOrigin      // the corner nearest the pointer
     signal dismissed()
 
-    visible: open || vanish.running
+    // A popup surface must not change size or place while it's up: Qt makes
+    // it again, draws before the compositor has configured the new one, and
+    // the compositor drops the whole shell for it (xdg_surface "has never
+    // been configured", then Quickshell exits and restarts). That happened
+    // going from one menu-bar menu to the next, right-clicking a second Dock
+    // icon or another spot on the desktop, or when a menu's items changed
+    // while it was open. So what's shown is fixed while the menu is up; a
+    // change that would move or resize it closes the surface and opens it
+    // again a moment later, with the new items, where it now belongs.
+    property var shown: items
+    property bool reopening: false
+    visible: (open || vanish.running) && !reopening
     color: "transparent"
+    function shape(list) {
+        return JSON.stringify((list ?? []).map((it) => typeof it === "string" ? it
+            : [it?.label ?? "", it?.header ?? "", it?.symbol ?? "", it?.shortcut ?? "", !!it?.submenu, (it?.submenu ?? []).length]))
+    }
+    onItemsChanged: {
+        if (!open) { shown = items; return }
+        if (shape(items) === shape(shown)) shown = items       // same rows: actions and ticks refreshed in place
+        else reopen()
+    }
+    readonly property string place: (anchor.window ? "w" : "") + "," + anchor.rect.x + "," + anchor.rect.y
+    onPlaceChanged: if (open && visible) reopen()
+    function reopen() {
+        reopening = true
+        reopenTimer.restart()
+    }
+    Timer {
+        id: reopenTimer
+        interval: 40
+        onTriggered: {
+            menu.shown = menu.items
+            menu.reopening = false
+            if (menu.open) list.forceActiveFocus()
+        }
+    }
     // The menu's own size, for callers placing it; the surface adds room
     // right and below for the shadow, and takes input only on the menu.
     readonly property real menuWidth: list.width
     readonly property real menuHeight: list.implicitHeight
     // Room for a submenu beside its row, sized before the menu opens (a
     // popup surface resized while open is dismissed); input only on what shows.
-    readonly property real subRoom: items.some((it) => it && it.submenu) ? 300 : 0
+    readonly property real subRoom: shown.some((it) => it && it.submenu) ? 300 : 0
     readonly property real subDepth: {
         let y = list.pad, deepest = 0
-        for (const it of items) {
+        for (const it of shown) {
             if (it && it.submenu)
                 deepest = Math.max(deepest, y + it.submenu.reduce((h, s) => h + list.rowHeight(s), 0) + 2 * list.pad)
             y += list.rowHeight(it)
@@ -43,6 +78,9 @@ PopupWindow {
     }
 
     onOpenChanged: if (open) {
+        reopenTimer.stop()
+        reopening = false
+        shown = items
         vanish.stop()
         list.opacity = 1
         list.selected = -1
@@ -81,7 +119,7 @@ PopupWindow {
 
     Shared.MenuList {
         id: list
-        items: menu.items
+        items: menu.shown
         minimumWidth: 220
         transformOrigin: Item.TopLeft
         onDismissed: { menu.open = false; menu.dismissed() }

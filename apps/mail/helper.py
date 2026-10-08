@@ -12,6 +12,7 @@ import os
 import pathlib
 import re
 import smtplib
+import socket
 import ssl
 import subprocess
 import sys
@@ -164,22 +165,115 @@ def body_text(msg: email.message.EmailMessage) -> str:
     return ""
 
 
+# The usual ports say which security they speak; a port and an SSL/TLS
+# choice that disagree (993 with STARTTLS, 587 with SSL) is fixed here
+# rather than failing with an SSL "wrong version number" or a hang.
+IMPLICIT_TLS_PORTS = {993, 465, 995}
+STARTTLS_PORTS = {143, 587, 25}
+
+
+def security_for(port: int, chosen: str) -> str:
+    if port in IMPLICIT_TLS_PORTS:
+        return "ssl"
+    if port in STARTTLS_PORTS:
+        return "starttls"
+    return chosen if chosen in ("ssl", "starttls") else "ssl"
+
+
+APP_PASSWORDS = {
+    ("gmail.com", "googlemail.com"): "Google turned down that password. Gmail needs an app password, not your Google password: "
+        "turn on 2-Step Verification, make one at myaccount.google.com/apppasswords, and paste its 16 letters here.",
+    ("icloud.com", "me.com", "mac.com"): "Apple turned down that password. iCloud Mail needs an app-specific password: "
+        "make one at account.apple.com under Sign-In and Security, and paste it here.",
+    ("yahoo.com", "ymail.com", "rocketmail.com"): "Yahoo turned down that password. Yahoo Mail needs an app password: "
+        "make one under Account Security › Generate app password, and paste it here.",
+    ("aol.com",): "AOL turned down that password. AOL Mail needs an app password: "
+        "make one under Account Security › Generate app password, and paste it here.",
+}
+MICROSOFT = ("outlook.com", "hotmail.com", "live.com", "msn.com", "office365.com", "outlook.office365.com")
+
+
+def domain_of(cfg: dict[str, object]) -> str:
+    return str(cfg.get("email") or "").rsplit("@", 1)[-1].lower()
+
+
+def friendly(exc: BaseException, cfg: dict[str, object], server: str = "imap") -> str:
+    """What went wrong, in words someone can act on (the raw text was shown before)."""
+    host = str(cfg.get(server + "_host") or "")
+    port = cfg.get(server + "_port") or ""
+    text = str(exc)
+    low = text.lower()
+    kind = "incoming (IMAP)" if server == "imap" else "outgoing (SMTP)"
+    auth = isinstance(exc, smtplib.SMTPAuthenticationError) or (
+        isinstance(exc, imaplib.IMAP4.error)
+        and any(k in low for k in ("authenticationfailed", "invalid credentials", "login failed", "authentication failed",
+                                  "application-specific password", "authenticate failed", "incorrect", "web login required",
+                                  "logondenied", "no login")))
+    if auth:
+        domain = domain_of(cfg)
+        if domain in MICROSOFT or host.endswith("office365.com") or host.endswith("outlook.com"):
+            return ("Microsoft turned down the password. Outlook, Hotmail and Live accounts no longer let mail apps sign in "
+                    "with a password; they need Microsoft's own sign-in, which Mail doesn't have yet.")
+        for domains, message in APP_PASSWORDS.items():
+            if domain in domains:
+                return message
+        return "The " + kind + " server turned down the user name or password. Check both (some providers need an app password)."
+    if isinstance(exc, socket.gaierror):
+        return "Mail couldn't find the " + kind + " server “" + host + "”. Check its name, and that this computer is online."
+    if isinstance(exc, ConnectionRefusedError):
+        return "“" + host + "” refused the connection on port " + str(port) + ". Check the port number."
+    if isinstance(exc, (socket.timeout, TimeoutError)):
+        return "“" + host + "” didn't answer on port " + str(port) + ". Check the server and port, and that this computer is online."
+    if isinstance(exc, ssl.SSLCertVerificationError):
+        return ("The " + kind + " server's certificate couldn't be checked. If the date and time on this computer are wrong, "
+                "set them in Settings › Date & Time and try again.")
+    if isinstance(exc, ssl.SSLError):
+        return "A secure connection to “" + host + "” on port " + str(port) + " couldn't be made (" + (exc.reason or text) + ")."
+    if isinstance(exc, OSError) and getattr(exc, "errno", None) in (101, 113):
+        return "This computer isn't online, so Mail can't reach “" + host + "”."
+    if isinstance(exc, UnicodeEncodeError):
+        return "The server only takes passwords in plain English letters, digits and symbols."
+    return text or exc.__class__.__name__
+
+
 def imap_client(cfg: dict[str, object], password: str) -> imaplib.IMAP4:
     host = str(cfg.get("imap_host") or "")
     port = int(cfg.get("imap_port") or 993)
     user = str(cfg.get("username") or cfg.get("email") or "")
-    security = str(cfg.get("imap_security") or "ssl")
+    security = security_for(port, str(cfg.get("imap_security") or "ssl"))
     if security == "ssl":
         client: imaplib.IMAP4 = imaplib.IMAP4_SSL(host, port, ssl_context=ssl.create_default_context(), timeout=20)
     else:
         client = imaplib.IMAP4(host, port, timeout=20)
-        if security == "starttls":
-            client.starttls(ssl_context=ssl.create_default_context())
+        client.starttls(ssl_context=ssl.create_default_context())
     client.login(user, password)
     return client
 
 
+def smtp_client(cfg: dict[str, object], password: str) -> smtplib.SMTP:
+    host = str(cfg.get("smtp_host") or "")
+    port = int(cfg.get("smtp_port") or 465)
+    user = str(cfg.get("username") or cfg.get("email") or "")
+    security = security_for(port, str(cfg.get("smtp_security") or "ssl"))
+    context = ssl.create_default_context()
+    if security == "ssl":
+        client: smtplib.SMTP = smtplib.SMTP_SSL(host, port, context=context, timeout=25)
+    else:
+        client = smtplib.SMTP(host, port, timeout=25)
+        client.ehlo()
+        client.starttls(context=context)
+        client.ehlo()
+    try:
+        client.login(user, password)
+    except BaseException:
+        client.close()
+        raise
+    return client
+
+
 def cmd_setup() -> int:
+    cfg: dict[str, object] = {}
+    server = "imap"
     try:
         data = json.load(sys.stdin)
         email_addr = str(data.get("email") or "").strip()
@@ -187,26 +281,37 @@ def cmd_setup() -> int:
         imap_host = str(data.get("imap_host") or "").strip()
         smtp_host = str(data.get("smtp_host") or "").strip()
         password = str(data.get("password") or "")
+        # App passwords are shown in groups ("abcd efgh ijkl mnop"); the
+        # spaces aren't part of them.
+        if re.fullmatch(r"[a-z]{4}( [a-z]{4}){3}", password.strip()):
+            password = password.replace(" ", "")
         if "@" not in email_addr or not imap_host or not smtp_host or not password:
             return emit(False, error="Enter your email address, mail servers and password.")
-        cfg: dict[str, object] = {
+        imap_port = int(data.get("imap_port") or 993)
+        smtp_port = int(data.get("smtp_port") or 465)
+        cfg = {
             "email": email_addr,
             "username": username,
             "imap_host": imap_host,
-            "imap_port": int(data.get("imap_port") or 993),
-            "imap_security": str(data.get("imap_security") or "ssl"),
+            "imap_port": imap_port,
+            "imap_security": security_for(imap_port, str(data.get("imap_security") or "ssl")),
             "smtp_host": smtp_host,
-            "smtp_port": int(data.get("smtp_port") or 465),
-            "smtp_security": str(data.get("smtp_security") or "ssl"),
+            "smtp_port": smtp_port,
+            "smtp_security": security_for(smtp_port, str(data.get("smtp_security") or "ssl")),
         }
-        # Verify IMAP before persisting anything.
-        temp = imap_client(cfg, password)
-        temp.logout()
+        # Verify both servers before keeping anything: a wrong outgoing
+        # server used to show up only when the first message failed to send.
+        imap_client(cfg, password).logout()
+        server = "smtp"
+        smtp_client(cfg, password).quit()
+        server = "keyring"
         secret_store(email_addr, password)
         atomic_json(CONFIG, cfg)
         return emit(True, account=email_addr)
-    except Exception as exc:
+    except RuntimeError as exc:
         return emit(False, error=str(exc))
+    except Exception as exc:
+        return emit(False, error=friendly(exc, cfg, server) if server != "keyring" else str(exc))
 
 
 def cmd_status() -> int:
@@ -261,8 +366,10 @@ def cmd_list() -> int:
                 client.logout()
             except Exception:
                 pass
-    except Exception as exc:
+    except RuntimeError as exc:
         return emit(False, error=str(exc))
+    except Exception as exc:
+        return emit(False, error=friendly(exc, load_config()))
 
 
 def cmd_read(uid: str) -> int:
@@ -294,8 +401,10 @@ def cmd_read(uid: str) -> int:
                 client.logout()
             except Exception:
                 pass
-    except Exception as exc:
+    except RuntimeError as exc:
         return emit(False, error=str(exc))
+    except Exception as exc:
+        return emit(False, error=friendly(exc, load_config()))
 
 
 def cmd_send() -> int:
@@ -314,27 +423,13 @@ def cmd_send() -> int:
         msg["Subject"] = subject
         msg.set_content(body)
 
-        host = str(cfg.get("smtp_host") or "")
-        port = int(cfg.get("smtp_port") or 465)
-        user = str(cfg.get("username") or cfg.get("email") or "")
-        security = str(cfg.get("smtp_security") or "ssl")
-        context = ssl.create_default_context()
-
-        if security == "ssl":
-            with smtplib.SMTP_SSL(host, port, context=context, timeout=25) as client:
-                client.login(user, password)
-                client.send_message(msg)
-        else:
-            with smtplib.SMTP(host, port, timeout=25) as client:
-                client.ehlo()
-                if security == "starttls":
-                    client.starttls(context=context)
-                    client.ehlo()
-                client.login(user, password)
-                client.send_message(msg)
+        with smtp_client(cfg, password) as client:
+            client.send_message(msg)
         return emit(True)
-    except Exception as exc:
+    except RuntimeError as exc:
         return emit(False, error=str(exc))
+    except Exception as exc:
+        return emit(False, error=friendly(exc, load_config(), "smtp"))
 
 
 def main() -> int:
