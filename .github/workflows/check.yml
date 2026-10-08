@@ -393,6 +393,10 @@ jobs:
         run: python tests/region-settings.py
         env:
           QT_QPA_PLATFORM: offscreen
+      - name: "Closing a window folds it back into its Dock icon (the opening in reverse)"
+        run: python tests/window-fold.py
+        env:
+          QT_QPA_PLATFORM: offscreen
       - name: "Dock: a dragged icon stays under the pointer, lands where it's let go, and is removed dragged off"
         run: python tests/dock-drag.py
         env:

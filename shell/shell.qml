@@ -214,10 +214,11 @@ ShellRoot {
             AppLaunch {
                 id: launch
                 screen: perScreen.modelData
+                dock: screenDock
                 Component.onCompleted: root.launchers = root.launchers.concat([launch])
                 Component.onDestruction: root.launchers = root.launchers.filter((l) => l !== launch)
             }
-            Dock { screen: perScreen.modelData; launcher: launch; applications: applicationsPanel; notifications: notificationCenter }
+            Dock { id: screenDock; screen: perScreen.modelData; launcher: launch; applications: applicationsPanel; notifications: notificationCenter }
         }
     }
 

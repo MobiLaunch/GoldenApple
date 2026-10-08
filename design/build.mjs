@@ -261,9 +261,10 @@ function qmlColor(c) {
   const ds = (k) => Math.max(1, Math.round(springs[k].duration / 100));
   lines.push(
     // The shell's launch card (shell/AppLaunch.qml) carries the motion of an app
-    // opening; the window itself only settles in underneath it.
+    // opening, and of a window closing back into its Dock icon (the opening in
+    // reverse); the window itself only settles in, or fades out, underneath it.
     `    animation = windowsIn, 1, ${ds("smooth")}, smooth, popin 96%`,
-    `    animation = windowsOut, 1, ${ds("snappy")}, smooth, popin 92%`,
+    `    animation = windowsOut, 1, 2, smooth, fade`,
     `    animation = windowsMove, 1, ${ds("snappy")}, snappy`,
     `    animation = layersIn, 1, ${ds("popover")}, popover, popin 90%`,
     `    animation = layersOut, 1, 2, smooth, fade`,

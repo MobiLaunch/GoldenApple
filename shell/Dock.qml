@@ -154,6 +154,23 @@ PanelWindow {
 
     function emptyTrash() { Trash.empty() }
 
+    // The Dock icon of the app a window belongs to (its class), for a closing
+    // window to fold back into: x across the screen, y up from its bottom
+    // edge (negative), which is where every full-width bottom surface agrees.
+    property var tiles: []
+    function iconFor(appClass) {
+        const c = String(appClass ?? "").toLowerCase()
+        if (!c) return null
+        const tile = tiles.find((t) => {
+            const id = String(t.modelData?.id ?? "").toLowerCase()
+            const startup = String(t.modelData?.startupClass ?? "").toLowerCase()
+            return id === c || id.split(".").pop() === c || (startup && startup === c)
+        })
+        if (!tile || !tile.visible) return null
+        const p = tile.iconItem.mapToItem(ground, 0, 0)
+        return { entry: tile.modelData, rect: Qt.rect(p.x, p.y - ground.height + 1, tile.iconItem.width, tile.iconItem.height) }
+    }
+
     function openApplications() {
         if (applications)
             applications.present()
@@ -278,6 +295,9 @@ PanelWindow {
         required property int index
         property bool kept: false
         readonly property var wins: dock.windowsFor(modelData)
+        readonly property Item iconItem: icon
+        Component.onCompleted: dock.tiles = dock.tiles.concat([tile])
+        Component.onDestruction: dock.tiles = dock.tiles.filter((t) => t !== tile)
         readonly property bool lifted: dock.dragId === (modelData.id ?? "") && dock.dragKept === kept
         width: dock.baseSize
         height: row.height

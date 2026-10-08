@@ -7,6 +7,13 @@
 // rather than restarts) and dissolves into it. Hyprland itself only fades the
 // window in (windowsIn popin 96% in hyprland.conf), so the two hand over cleanly.
 //
+// Closing is the same motion in reverse, as when an iPad app is swiped away:
+// when a window closes, a card in its colour with the app's icon starts on
+// the window's last frame and springs back down into the app's Dock icon,
+// the colour fading as the icon grows to fill it. Hyprland only fades the
+// window out underneath (windowsOut fade). Windows are followed from
+// Hyprland's events (and a light refresh) so their last frame is known.
+//
 // Launch with launch(entry, rect) where rect is the icon in this screen's
 // coordinates. It also runs under Qt's software renderer (VMs without 3D): the
 // card is plain rectangles and images, and only its area is redrawn.
@@ -30,7 +37,8 @@ PanelWindow {
     property var entry: null
     property rect from: Qt.rect(0, 0, 0, 0)
     property rect to: Qt.rect(0, 0, 0, 0)
-    property string state_: "idle"           // idle | opening | handing-over | cancelling
+    property string state_: "idle"           // idle | opening | handing-over | cancelling | closing
+    property var dock: null                  // this screen's Dock: where a closing window goes back to
     // Last window size per app, so the card aims for the right frame next time.
     // CitronOS's own apps start out known: their windows have a fixed size.
     property var sizes: ({ "org.goldengate.Web": { w: 1160, h: 760 }, "org.goldengate.Calculator": { w: 229, h: 405 }, "org.goldengate.Weather": { w: 1100, h: 860 }, "org.goldengate.Music": { w: 1180, h: 760 }, "org.goldengate.Notes": { w: 1120, h: 720 }, "org.goldengate.Photos": { w: 1180, h: 780 }, "org.goldengate.Maps": { w: 1280, h: 800 }, "org.goldengate.Settings": { w: 780, h: 700 } })
@@ -79,6 +87,73 @@ PanelWindow {
 
     function reset() { state_ = "idle"; entry = null; pendingAddress = ""; giveUp.stop(); findWindow.stop(); handOver.stop() }
 
+    // ------------------------------------------------------------ closing
+    // Every window's last known frame, by address: { app, rect, workspace }.
+    property var frames: ({})
+    function snapshot() {
+        const monitor = Hyprland.monitorFor(launcher.screen)
+        const out = {}
+        for (const t of Hyprland.toplevels.values) {
+            const o = t.lastIpcObject
+            if (!o?.address || !o.at || !o.size || o.hidden) continue
+            if (o.monitor !== undefined && monitor && o.monitor !== monitor.id) continue
+            out[o.address] = { app: o.class ?? "", workspace: o.workspace?.id ?? -1,
+                               rect: Qt.rect(o.at[0] - (monitor?.x ?? 0), o.at[1] - (monitor?.y ?? 0), o.size[0], o.size[1]) }
+        }
+        frames = out
+    }
+    Timer { id: resnap; interval: 120; onTriggered: launcher.snapshot() }
+    function refreshSoon() { Hyprland.refreshToplevels(); resnap.restart() }
+    // Sizes change without an event (a resize by its edge), so a light refresh.
+    Timer { interval: 2000; repeat: true; running: launcher.enabled && Hyprland.toplevels.values.length > 0; onTriggered: launcher.refreshSoon() }
+    Component.onCompleted: snapshot()
+
+    // A window closed: if it was on this screen's current desktop and its app
+    // has a Dock icon, fold it back into the icon.
+    function windowClosed(address) {
+        const f = frames[address]
+        if (!f || !enabled || !dock || state_ === "opening" || state_ === "handing-over") return false
+        const active = Hyprland.monitorFor(launcher.screen)?.activeWorkspace?.id
+        if (active !== undefined && f.workspace !== active) return false
+        const target = dock.iconFor(f.app)
+        if (!target) return false
+        return fold(target.entry, f.rect, Qt.rect(target.rect.x, height + target.rect.y, target.rect.width, target.rect.height))
+    }
+    // The opening in reverse: from the window's frame into the icon's.
+    function fold(e, windowRect, iconRect) {
+        if (!enabled) return false
+        handOver.stop(); findWindow.stop(); giveUp.stop(); fade.stop()
+        entry = e
+        from = iconRect
+        to = windowRect
+        for (const [s, v] of [[gx, windowRect.x], [gy, windowRect.y], [gw, windowRect.width], [gh, windowRect.height]]) s.jump(v)
+        card.opacity = 1
+        state_ = "closing"
+        aim(iconRect)
+        landed.restart()
+        return true
+    }
+    // Home: once the card is the icon again (or after a moment, whatever
+    // happens), it goes, leaving the Dock icon where it was.
+    Timer {
+        id: landed
+        interval: 30; repeat: true
+        property int ticks: 0
+        onRunningChanged: if (running) ticks = 0
+        onTriggered: {
+            if (Math.abs(gw.value - launcher.from.width) < 1.5 && Math.abs(gy.value - launcher.from.y) < 1.5 || ++ticks > 40) {
+                stop()
+                fadeHome.restart()
+            }
+        }
+    }
+    NumberAnimation {
+        id: fadeHome
+        target: card; property: "opacity"; to: 0
+        duration: 120; easing.type: Easing.OutCubic
+        onFinished: launcher.reset()
+    }
+
     // The app never opened a window: fall back into the icon.
     Timer {
         id: giveUp
@@ -99,6 +174,17 @@ PanelWindow {
     Connections {
         target: Hyprland
         function onRawEvent(event) {
+            if (event.name === "closewindow") {
+                const raw = event.parse(1)[0] ?? ""
+                const address = raw.startsWith("0x") ? raw : "0x" + raw
+                launcher.windowClosed(address)
+                const f = launcher.frames
+                delete f[address]
+                launcher.frames = f
+                return
+            }
+            if (["openwindow", "activewindowv2", "movewindowv2", "changefloatingmode", "fullscreen", "workspacev2"].includes(event.name))
+                launcher.refreshSoon()
             if (event.name !== "openwindow" || launcher.state_ !== "opening") return
             const parts = event.parse(4)
             const appClass = (parts[2] ?? "").toLowerCase()
@@ -139,6 +225,7 @@ PanelWindow {
 
     Item {
         id: card
+        objectName: "launchCard"
         visible: launcher.state_ !== "idle"
         x: gx.value; y: gy.value; width: gw.value; height: gh.value
         // 0 while the card is still the icon, 1 once it has the window's size.
