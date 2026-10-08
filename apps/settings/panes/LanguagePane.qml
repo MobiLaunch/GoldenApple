@@ -1,4 +1,7 @@
-// Language & Region: change the installed system locale without leaving Settings.
+// Language & Region: the language (the system locale, LANG) and the region's
+// formats (dates, numbers, currency, measurement: LC_* for your account, as
+// Setup Assistant saved them in region.json) are separate choices, so an
+// English system with Swiss formats shows Swiss formats here.
 import Quickshell
 import QtQuick
 import "../../lib"
@@ -11,6 +14,22 @@ Pane {
     property var locales: []
     property bool busy: false
     property string message: ""
+    // The formats in use for new sessions: the saved ones, else the language's.
+    readonly property string formats: sys.region.formats || baseLocale(lang)
+    readonly property var formatLocales: [...new Set(locales.map((v) => baseLocale(v)).concat(sys.region.formats ? [sys.region.formats] : [])
+        .filter((v) => /^[a-z]{2,3}_[A-Z]{2}$/.test(v)))]
+        .sort((a, b) => localeLabel(a).localeCompare(localeLabel(b)))
+
+    function setFormats(value) {
+        if (!value || busy) return
+        busy = true
+        message = "Saving region formats…"
+        sys.regionRun(["set-formats", value, Qt.locale(value).nativeTerritoryName || ""], (ok, why) => {
+            busy = false
+            message = ok ? "Apps you open after you next sign in show dates, numbers and currency for " + localeLabel(value) + "."
+                         : (why || "The region formats couldn't be saved.")
+        })
+    }
 
     function baseLocale(value) {
         return String(value || "").split(".")[0].split("@")[0]
@@ -52,7 +71,7 @@ Pane {
         })
     }
 
-    Component.onCompleted: refresh()
+    Component.onCompleted: { refresh(); sys.refreshRegion() }
 
     Group {
         SetRow {
@@ -77,18 +96,27 @@ Pane {
                 }
             }
         }
+    }
+
+    Group {
         SetRow {
             title: "Region"
-            Text {
-                text: Qt.locale(pane.baseLocale(pane.lang) || Qt.locale().name).nativeTerritoryName || "—"
-                color: Theme.secondaryLabel
-                font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
+            subtitle: "Dates, numbers, currency and measurement. Apps you open after you next sign in use them; CitronOS's own apps are in English."
+            PopUpButton {
+                objectName: "regionFormats"
+                width: 260
+                menuParent: pane.nav.overlay
+                enabled: !pane.busy && pane.formatLocales.length > 0
+                options: pane.formatLocales.map((value) => (Qt.locale(value).nativeTerritoryName || value) + " (" + pane.localeLabel(value) + ")")
+                current: Math.max(0, pane.formatLocales.indexOf(pane.formats))
+                onPicked: (i) => { if (i >= 0 && i < pane.formatLocales.length) pane.setFormats(pane.formatLocales[i]) }
             }
         }
         SetRow {
             title: "Measurement system"
             Text {
-                text: Qt.locale(pane.baseLocale(pane.lang) || Qt.locale().name).measurementSystem === Locale.MetricSystem ? "Metric" : "US"
+                objectName: "regionMeasurement"
+                text: Qt.locale(pane.formats || Qt.locale().name).measurementSystem === Locale.MetricSystem ? "Metric" : "US"
                 color: Theme.secondaryLabel
                 font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
             }
@@ -96,7 +124,8 @@ Pane {
         SetRow {
             title: "Date format"
             Text {
-                text: new Date().toLocaleDateString(Qt.locale(pane.baseLocale(pane.lang) || Qt.locale().name), Locale.ShortFormat)
+                objectName: "regionDate"
+                text: new Date(2026, 0, 31).toLocaleDateString(Qt.locale(pane.formats || Qt.locale().name), Locale.ShortFormat)
                 color: Theme.secondaryLabel
                 font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
             }

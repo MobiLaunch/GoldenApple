@@ -161,6 +161,41 @@ Item {
         })
     }
 
+    // Region, formats and what Setup Assistant put off (region.py): Language &
+    // Region shows the saved formats, not the language's; Finish Setting Up
+    // lists what's left, each with a way to finish it.
+    readonly property string regionTool: decodeURIComponent(Qt.resolvedUrl("region.py").toString().replace("file://", ""))
+    readonly property string systemCall: decodeURIComponent(Qt.resolvedUrl("../setup/account-call.sh").toString().replace("file://", ""))
+    property var region: ({ region: "", zone: "", formats: "", deferred: [] })
+    function refreshRegion() {
+        run(["python3", regionTool, "status"], (out) => {
+            try { const r = JSON.parse(out); if (r.ok) region = r } catch (e) {}
+        })
+    }
+    function regionRun(args, done) {
+        run(["python3", regionTool].concat(args), (out, code) => {
+            let r = null
+            try { r = JSON.parse(out) } catch (e) {}
+            refreshRegion()
+            if (done) done(code === 0 && !!r && r.ok === true, r?.error ?? "")
+        })
+    }
+    // The system-wide part (time zone, generating a formats locale) needs an
+    // administrator: the same root helper Setup Assistant uses.
+    function systemSetup(request, done) {
+        run(["sh", "-c", 'printf "%s" "$1" | sh "$2"', "sh", JSON.stringify(Object.assign({ operation: "system" }, request)), systemCall], (out, code) => {
+            let r = null
+            try { r = JSON.parse(out) } catch (e) {}
+            done(code === 0 && !!r && r.ok === true, r ? (r.zone || r.formats || r.error || "") : (out.trim() || "Authorization was refused or isn't available."))
+        })
+    }
+    function setZone(zone, done) {
+        run(["timedatectl", "set-timezone", zone], (out, code) => {
+            if (code !== 0) { if (done) done(false, out.trim() || "The time zone couldn't be set."); return }
+            regionRun(["set-zone", zone], done)
+        })
+    }
+
     component JsonFile: FileView {
         property string key
         printErrors: false
@@ -174,7 +209,8 @@ Item {
     // First time: show the keyboard Setup Assistant wrote (set-prefs.py keeps
     // it in input.json the first time it saves, so a later change, such as the
     // repeat rate, keeps the same layout and variant).
-    Component.onCompleted: sh('sed -n "s/^ *\\(kb_layout\\|kb_variant\\) *= *\\(.*\\)/\\1=\\2/p" "' + config + '/hypr/golden-gate/input.conf" 2>/dev/null', (out) => {
+    Component.onCompleted: { refreshRegion(); readSetupKeyboard() }
+    function readSetupKeyboard() { sh('sed -n "s/^ *\\(kb_layout\\|kb_variant\\) *= *\\(.*\\)/\\1=\\2/p" "' + config + '/hypr/golden-gate/input.conf" 2>/dev/null', (out) => {
         if (input.layout) return
         let i = input
         for (const line of out.split("\n")) {
@@ -183,5 +219,5 @@ Item {
             if (k === "kb_variant" && v !== undefined) i = setIn(i, ["variant"], v.trim())
         }
         input = i
-    })
+    }) }
 }

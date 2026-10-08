@@ -79,6 +79,22 @@ ShellRoot {
                         clickable: true
                         onClicked: app.open("users")
                     }
+                    // What Setup Assistant put off, until it's finished (as
+                    // "Finish setting up your Mac" on macOS).
+                    SidebarRow {
+                        objectName: "finishSetupRow"
+                        visible: (sys.region.deferred ?? []).length > 0
+                        width: parent.width
+                        height: visible ? 30 : 0
+                        text: "Finish Setting Up"
+                        badge: String((sys.region.deferred ?? []).length)
+                        selected: app.current === "finishsetup"
+                        selectedFill: win.active ? Theme.accent : (Theme.dark ? "#26ffffff" : "#14000000")
+                        selectedTextColor: win.active ? "#ffffff" : Theme.label
+                        leadingSize: 22
+                        leading: Component { PaneIcon { symbol: "gear"; tint: "#ff9f0a"; size: 22 } }
+                        onClicked: app.open("finishsetup")
+                    }
                     Repeater {
                         model: app.groups
                         delegate: Column {
@@ -153,6 +169,7 @@ ShellRoot {
                 update: { title: "Software Update", file: "UpdatePane", parent: "general", symbol: "arrow-clockwise", tint: "#8e8e93", words: "update upgrade packages arch software current" },
                 storage: { title: "Storage", file: "StoragePane", parent: "general", symbol: "drive", tint: "#8e8e93", words: "disk drive space capacity available used" },
                 datetime: { title: "Date & Time", file: "DateTimePane", parent: "general", symbol: "clock", tint: "#0a84ff", words: "date time timezone clock automatic ntp 24 hour" },
+                finishsetup: { title: "Finish Setting Up", file: "FinishSetupPane", symbol: "gear", tint: "#ff9f0a", words: "setup deferred time zone formats location finish later" },
                 language: { title: "Language & Region", file: "LanguagePane", parent: "general", symbol: "globe", tint: "#0a84ff", words: "language locale region measurement format" },
             })
             readonly property var groups: [1, 2, 3, 4, 5].map((g) => panes.filter((p) => p.group === g))

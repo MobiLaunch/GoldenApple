@@ -385,8 +385,12 @@ jobs:
         run: python tests/notes-conflicts.py
         env:
           QT_QPA_PLATFORM: offscreen
-      - name: "Settings: atomic, acknowledged preference writes; Setup's keyboard variant kept"
+      - name: "Settings: key-level, acknowledged preference writes; two windows keep both; Setup's keyboard variant kept"
         run: python tests/settings-prefs.py
+        env:
+          QT_QPA_PLATFORM: offscreen
+      - name: "Language & Region shows the saved formats; what Setup put off can be finished in Settings"
+        run: python tests/region-settings.py
         env:
           QT_QPA_PLATFORM: offscreen
       - name: "Liquid Glass drawn with OpenGL: see-through, its shadow outside it"

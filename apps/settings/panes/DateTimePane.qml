@@ -31,7 +31,7 @@ Pane {
                 current: Math.max(0, options.indexOf(pane.zone.split("/")[0]))
                 onPicked: (i) => {
                     const first = pane.zones.find((z) => z.startsWith(options[i] + "/"))
-                    if (first) { pane.zone = first; pane.sys.run(["timedatectl", "set-timezone", first]) }
+                    if (first) { pane.zone = first; pane.sys.setZone(first) }
                 }
             }
         }
@@ -46,7 +46,7 @@ Pane {
                 }
                 options: zoneList.map((z) => z.split("/").slice(1).join(" / ").replace(/_/g, " ") || z)
                 current: Math.max(0, zoneList.indexOf(pane.zone))
-                onPicked: (i) => { pane.zone = zoneList[i]; pane.sys.run(["timedatectl", "set-timezone", pane.zone]) }
+                onPicked: (i) => { pane.zone = zoneList[i]; pane.sys.setZone(pane.zone) }
             }
         }
         SetRow {
