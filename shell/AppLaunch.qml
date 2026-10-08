@@ -150,7 +150,7 @@ PanelWindow {
     NumberAnimation {
         id: fadeHome
         target: card; property: "opacity"; to: 0
-        duration: 120; easing.type: Easing.OutCubic
+        duration: 90; easing.type: Easing.OutCubic
         onFinished: launcher.reset()
     }
 
@@ -161,11 +161,11 @@ PanelWindow {
         onTriggered: { launcher.state_ = "cancelling"; launcher.aim(launcher.from); fade.restart() }
     }
     // Give the window a moment to draw its first frame under the card.
-    Timer { id: handOver; interval: 140; onTriggered: fade.restart() }
+    Timer { id: handOver; interval: 80; onTriggered: fade.restart() }
     NumberAnimation {
         id: fade
         target: card; property: "opacity"; to: 0
-        duration: 225; easing.type: Easing.OutCubic
+        duration: 150; easing.type: Easing.OutCubic
         onFinished: launcher.reset()
     }
 
@@ -218,10 +218,10 @@ PanelWindow {
     }
 
     // Spring: quick and nearly critically damped, like an iOS app opening.
-    SpringValue { id: gx; response: 0.46; dampingFraction: 0.9 }
-    SpringValue { id: gy; response: 0.46; dampingFraction: 0.9 }
-    SpringValue { id: gw; response: 0.46; dampingFraction: 0.9 }
-    SpringValue { id: gh; response: 0.46; dampingFraction: 0.9 }
+    SpringValue { id: gx; response: 0.32; dampingFraction: 0.92 }
+    SpringValue { id: gy; response: 0.32; dampingFraction: 0.92 }
+    SpringValue { id: gw; response: 0.32; dampingFraction: 0.92 }
+    SpringValue { id: gh; response: 0.32; dampingFraction: 0.92 }
 
     Item {
         id: card

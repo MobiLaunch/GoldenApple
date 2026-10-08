@@ -18,6 +18,14 @@ import QtQuick
 //   Backdrops.use(texture, glass, on)    glass starts or stops sampling it
 QtObject {
     property var entries: []
+    // Backdrops are drawn at half resolution: the glass blurs what it bends
+    // anyway, so it looks the same, and each redraw of one (a scroll, a
+    // window moving under the Dock) fills a quarter of the pixels.
+    readonly property real resolution: 0.5
+    function textureSize(w, h, dpr) {
+        const s = resolution * (dpr > 0 ? dpr : 1)
+        return Qt.size(Math.max(1, Math.ceil(w * s)), Math.max(1, Math.ceil(h * s)))
+    }
     property var users: []
     function add(root, item, texture, owner) {
         entries = entries.filter((e) => e.texture !== texture)

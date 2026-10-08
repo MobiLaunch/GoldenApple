@@ -180,7 +180,9 @@ else
   # as the glass moves over it; a lighter blur so the shapes stay readable
   # through it, and a trace of dispersion at the rim.
   kw plugin:hyprglass:blur_strength 0.95
-  kw plugin:hyprglass:blur_iterations 3
+  # Two passes: the shell's glass draws its own bent backdrop over this, so
+  # the compositor's blur mostly shows in app sidebars, where two is plenty.
+  kw plugin:hyprglass:blur_iterations 2
   kw plugin:hyprglass:refraction_strength 0.55
   kw plugin:hyprglass:chromatic_aberration 0.08
   kw plugin:hyprglass:fresnel_strength 0.22

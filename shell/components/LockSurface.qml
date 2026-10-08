@@ -106,6 +106,7 @@ Item {
         visible: false
         sourceItem: Backdrops.used(backdropTexture) ? backdrop : null
         live: true
+        textureSize: Backdrops.textureSize(backdrop.width, backdrop.height, Screen.devicePixelRatio)
         Component.onCompleted: Backdrops.add(root, backdrop, backdropTexture)
         Component.onDestruction: Backdrops.remove(backdropTexture)
     }

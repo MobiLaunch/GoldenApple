@@ -155,6 +155,7 @@ FloatingWindow {
             visible: false
             sourceItem: Backdrops.used(underToolbarTexture) ? underToolbar : null
             live: true
+            textureSize: Backdrops.textureSize(underToolbar.width, underToolbar.height, Screen.devicePixelRatio)
             Component.onCompleted: Backdrops.add(frame, underToolbar, underToolbarTexture)
             Component.onDestruction: Backdrops.remove(underToolbarTexture)
         }

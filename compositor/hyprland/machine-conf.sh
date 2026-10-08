@@ -33,8 +33,8 @@ EOF
 decoration:blur:passes = 1
 decoration:blur:size = 8
 decoration:shadow:enabled = false
-animation = windowsIn, 1, 3, smooth, popin 96%
-animation = windowsOut, 1, 2, smooth, popin 100%
+animation = windowsIn, 1, 2, smooth, popin 96%
+animation = windowsOut, 1, 1, smooth, popin 100%
 animation = layersIn, 1, 3, smooth, fade
 animation = workspaces, 1, 4, smooth, slide
 # Qt's own 2D renderer draws the shell with a fraction of the CPU that OpenGL on

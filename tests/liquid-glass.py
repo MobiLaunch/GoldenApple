@@ -168,6 +168,15 @@ for kind, effects in (("windowrule", WINDOW_EFFECTS), ("layerrule", LAYER_EFFECT
             else:
                 check(word in effects, f"{kind}: unknown effect {word!r} in {rule!r}")
 
+# What shell glass bends is never drawn in the surface itself, only into its
+# texture: toggled with the texture, it could show for a frame as a box of
+# wallpaper (or plain blue) filling a menu popup's spare room round the menu.
+backdrop = (ROOT / "shell/components/DesktopBackdrop.qml").read_text()
+root_block = backdrop.split("\n    Image {", 1)[0]
+check(re.search(r"^    visible: false$", root_block, re.M) is not None, "the shell's backdrop is never drawn in its surface (visible: false)")
+check("hideSource" not in backdrop, "the shell's backdrop doesn't depend on hideSource to stay off screen")
+check(not re.search(r"Rectangle \{[^}]*color: \"#", backdrop), "the shell's backdrop has no coloured placeholder to show")
+
 if failures:
     for f in failures:
         print("FAIL", f)

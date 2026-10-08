@@ -30,14 +30,18 @@ Item {
     readonly property bool shown: surface.visible && !Theme.reduceTransparency && GraphicsInfo.api !== GraphicsInfo.Software
 
     parent: surface.contentItem
-    visible: Backdrops.used(texture)       // only ever drawn into the texture (hideSource)
+    // Never drawn in the surface itself, only into the texture (which renders
+    // it all the same). Shown and hidden with the texture instead, a frame of
+    // it could reach the screen: a box of wallpaper (or, before the image was
+    // in, of plain blue) round a menu, filling the popup's spare room.
+    visible: false
     x: -at.x; y: -at.y
     width: screen?.width ?? 0
     height: screen?.height ?? 0
     z: -1000
 
-    Rectangle { anchors.fill: parent; color: "#1b3f9e" }     // as the wallpaper surface, until its image is in
     Image {
+        id: wallpaper
         anchors.fill: parent
         source: "file://" + Prefs.wallpaper
         sourceSize: Qt.size(bd.width, bd.height)
@@ -93,9 +97,9 @@ Item {
         parent: bd.parent
         visible: false
         sourceItem: Backdrops.used(texture) ? bd : null
-        hideSource: true
         live: true
         sourceRect: Qt.rect(bd.at.x, bd.at.y, bd.surface.width, bd.surface.height)
+        textureSize: Backdrops.textureSize(bd.surface.width, bd.surface.height, Screen.devicePixelRatio)
         Component.onDestruction: Backdrops.remove(texture)
     }
 
@@ -109,8 +113,10 @@ Item {
         if (fixedAt) { at = fixedAt; placed = true; return }
         if (namespace && !layers.running) layers.running = true
     }
-    // Its glass bends it only once it's known where the surface is.
-    onPlacedChanged: if (placed) Backdrops.add(bd.parent, bd, texture, bd)
+    // Its glass bends it once it's known where the surface is and the
+    // wallpaper is in (until then the compositor's blur is behind the glass).
+    readonly property bool ready: placed && wallpaper.status === Image.Ready
+    onReadyChanged: if (ready) Backdrops.add(bd.parent, bd, texture, bd)
     Process {
         id: layers
         command: ["hyprctl", "layers", "-j"]
