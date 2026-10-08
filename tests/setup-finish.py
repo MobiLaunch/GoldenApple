@@ -132,6 +132,36 @@ class Finishing(unittest.TestCase):
         self.assertIn("Try or Install CitronOS", self.texts(), "no account is made on the USB")
         self.assertNotIn("Create Your Local Account", self.texts())
 
+    def test_install_hands_the_screen_to_the_installer(self):
+        self.load(step="1", extra={"gg-install": ("", 0)})
+        QTest.qWait(200)
+        win = next(o for o in self.root.findChildren(QObject) if o.property("exclusionMode") is not None)
+        self.assertTrue(win.property("visible"))
+        self.call("startInstaller")
+        self.assertIn("gg-install", " ".join(self.stand.ran))
+        # The stand-in installer has been closed again: Hello is back on Try or Install.
+        self.assertTrue(win.property("visible"))
+        self.assertEqual(self.value("step"), 1, "back where it was, not moved on")
+        self.assertEqual(self.value("installError"), "")
+
+    def test_hello_steps_aside_while_installing(self):
+        self.load(step="1")
+        win = next(o for o in self.root.findChildren(QObject) if o.property("exclusionMode") is not None)
+        self.stage.setProperty("installing", True)
+        QTest.qWait(50)
+        self.assertFalse(win.property("visible"), "the installer isn't behind Hello")
+        self.stage.setProperty("installing", False)
+        QTest.qWait(50)
+        self.assertTrue(win.property("visible"))
+
+    def test_installer_that_wont_open(self):
+        self.load(step="1", extra={"gg-install": ("", 1)})
+        self.call("startInstaller")
+        self.assertIn("couldn't be opened", self.value("installError"))
+        shown = next(o for o in self.root.findChildren(QObject) if o.objectName() == "helloInstallError")
+        self.assertIn("couldn't be opened", shown.property("text"), "said on the Try or Install page")
+        self.assertEqual(self.value("step"), 1)
+
     def test_installed_account_skips_the_account_step(self):
         self.load(step="2", extra={"account-ready": ("", 0)})
         QTest.qWait(100)

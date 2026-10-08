@@ -332,10 +332,20 @@ def mkdir(raw: str, name: str) -> int:
 RENAME_NOREPLACE = 1
 
 
+class RenameUnsafe(OSError):
+    """This disk offers no way to rename without risking a replace."""
+
+
 def rename_noreplace(src: pathlib.Path, dst: pathlib.Path) -> None:
     """Rename src to dst, never replacing what's at dst (FileExistsError if
-    something is): renameat2(RENAME_NOREPLACE) where the kernel and disk
-    support it, otherwise a check just before the rename."""
+    something is, then or at any moment during the rename).
+
+    renameat2(RENAME_NOREPLACE) where the kernel and disk support it.
+    Otherwise the new name is claimed by an operation that itself fails if
+    the name is taken: a hard link for a file or link (then the old name is
+    removed), an empty folder for a folder (renaming a folder onto an empty
+    folder is atomic, and fails if anything has been put in it). A disk that
+    allows neither raises RenameUnsafe and nothing is changed."""
     try:
         import ctypes
         libc = ctypes.CDLL(None, use_errno=True)
@@ -347,11 +357,28 @@ def rename_noreplace(src: pathlib.Path, dst: pathlib.Path) -> None:
         if renameat2(AT_FDCWD, os.fsencode(src), AT_FDCWD, os.fsencode(dst), RENAME_NOREPLACE) == 0:
             return
         err = ctypes.get_errno()
-        if err not in (22, 38, 95):    # EINVAL, ENOSYS, EOPNOTSUPP: fall back
+        if err not in (22, 38, 95):    # EINVAL, ENOSYS, EOPNOTSUPP: no flag support here
             raise OSError(err, os.strerror(err), str(src), None, str(dst))
-    if os.path.lexists(dst):
-        raise FileExistsError(17, "File exists", str(dst))
-    os.rename(src, dst)
+    st = os.lstat(src)
+    if stat.S_ISDIR(st.st_mode):
+        os.mkdir(dst, 0o700)                      # FileExistsError if taken
+        try:
+            os.rename(src, dst)                   # onto our empty folder only
+        except OSError:
+            try:
+                os.rmdir(dst)
+            except OSError:
+                pass
+            raise
+        return
+    try:
+        os.link(src, dst, follow_symlinks=False)  # FileExistsError if taken
+    except FileExistsError:
+        raise
+    except OSError as exc:
+        raise RenameUnsafe(exc.errno or 95, "This disk can't rename without the risk of replacing another item",
+                           str(src)) from exc
+    os.unlink(src)
 
 
 def rename(raw: str, name: str) -> int:
@@ -382,6 +409,9 @@ def rename(raw: str, name: str) -> int:
         return result(True, path=str(target))
     except FileExistsError:
         return result(False, error=f"The name “{clean}” is already taken. Please choose a different name.")
+    except RenameUnsafe:
+        return result(False, error=f"“{path.name}” wasn't renamed: this disk can't rename without the risk of "
+                                   "replacing another item. Duplicate it under the new name instead.")
     except Exception as exc:
         return result(False, error=str(exc))
 

@@ -55,7 +55,8 @@ for ns in ("gg-dock", "gg-controlcenter", "gg-spotlight", "gg-notifications", "g
     check(0.22 < float(thresholds.get(ns, 0)) < 0.34, f"{ns}: shadows stay shadows and glass stays glass ({thresholds.get(ns)})")
 
 # ---------------------------------------------------- the sync script, run
-def run(theme: str, prefs: dict, flag: bool = False) -> tuple[list[str], bool, Path]:
+def run(theme: str, prefs: dict, flag: bool = False, built_for: str | None = "0.56.2",
+        running: str = "0.56.2", incompatible: bool = False) -> tuple[list[str], bool, Path]:
     with tempfile.TemporaryDirectory() as t:
         tmp = Path(t)
         (tmp / "bin").mkdir()
@@ -64,9 +65,14 @@ def run(theme: str, prefs: dict, flag: bool = False) -> tuple[list[str], bool, P
                                           'case "$1 $2" in "plugin list") echo "hyprglass hyprbars";; esac\nexit 0\n')
         (tmp / "bin/systemd-detect-virt").write_text("#!/bin/sh\necho none\n")
         (tmp / "bin/logger").write_text("#!/bin/sh\nexit 0\n")
+        (tmp / "bin/pacman").write_text(f"#!/bin/sh\necho 'hyprland {running}-1'\n")
         for f in (tmp / "bin").iterdir():
             f.chmod(0o755)
         (tmp / "hyprglass.so").write_text("")
+        if built_for:
+            (tmp / "hyprglass.so.hyprland").write_text(built_for + "\n")
+        if incompatible:
+            (tmp / "hyprglass.so.incompatible").write_text("built for Hyprland 0.56.2; installed 0.57.0\n")
         (tmp / "config/golden-gate").mkdir(parents=True)
         (tmp / "config/golden-gate/desktop.json").write_text(json.dumps(prefs))
         (tmp / "run").mkdir()
@@ -106,6 +112,16 @@ check((kw(calls, "decoration:active_opacity"), kw(calls, "decoration:inactive_op
       f"the Glass slider halfway: windows halfway to solid (got {kw(calls, 'decoration:active_opacity')}, {kw(calls, 'decoration:inactive_opacity')})")
 calls, flagged, _ = run("dark", {"glassSolidity": 1})
 check(kw(calls, "decoration:active_opacity") == "1.0" and flagged, "the Glass slider at Solid: every window solid")
+# The plugin goes only into the Hyprland it was built for; otherwise Hyprland's
+# own blur keeps windows frosted and readable.
+calls, _, _ = run("dark", {})
+check(kw(calls, "decoration:blur:enabled") == "0", "with the plugin, Hyprland's blur is off (one pipeline)")
+for case, kwargs in (("another Hyprland", {"running": "0.57.0"}), ("no build stamp", {"built_for": None}),
+                     ("marked incompatible", {"incompatible": True})):
+    calls, _, _ = run("dark", {}, **kwargs)
+    check(not any(c.startswith("plugin load") and "hyprglass" in c for c in calls), f"{case}: the plugin isn't loaded")
+    check(kw(calls, "decoration:blur:enabled") == "1", f"{case}: Hyprland's own blur instead")
+    check(kw(calls, "plugin:hyprglass:enabled") is None, f"{case}: no plugin settings")
 calls, flagged, _ = run("dark", {}, flag=True)
 check("reload" in calls and not flagged, "turning Reduce Transparency off reloads once to drop that rule")
 

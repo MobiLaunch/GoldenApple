@@ -185,16 +185,21 @@ fi
 # a silently incompatible compositor plugin after Arch updates Hyprland.
 HYPRGLASS_VERSION="v0.8.1"
 HYPRGLASS_SHA256="1db3ccb154e7a7f04954602c1a9a643fd680e724491fe6be7ccc88e166162233"
+# The Hyprland release this plugin binary was built for. Stamped beside it
+# (hyprglass.so.hyprland): Software Update and gg-hyprglass-sync compare it
+# with the Hyprland installed, and never load it into another.
+HYPRGLASS_HYPRLAND="0.56.2"
 HYPRLAND_VERSION="$(pacman -Si hyprland 2>/dev/null | awk -F': ' '/^Version/{print $2; exit}')"
 case "$HYPRLAND_VERSION" in
-  0.56.2-*) ;;
-  *) echo "HyprGlass $HYPRGLASS_VERSION is pinned for Hyprland 0.56.2, but repositories provide $HYPRLAND_VERSION"; exit 1 ;;
+  "$HYPRGLASS_HYPRLAND"-*) ;;
+  *) echo "HyprGlass $HYPRGLASS_VERSION is pinned for Hyprland $HYPRGLASS_HYPRLAND, but repositories provide $HYPRLAND_VERSION"; exit 1 ;;
 esac
 say "HyprGlass $HYPRGLASS_VERSION for Hyprland $HYPRLAND_VERSION"
 mkdir -p "$AIR/usr/lib/golden-gate"
 curl -fL --retry 3 --retry-delay 2   "https://github.com/hyprnux/hyprglass/releases/download/$HYPRGLASS_VERSION/hyprglass.so"   -o "$AIR/usr/lib/golden-gate/hyprglass.so"
 printf '%s  %s\n' "$HYPRGLASS_SHA256" "$AIR/usr/lib/golden-gate/hyprglass.so" | sha256sum -c -
 chmod 755 "$AIR/usr/lib/golden-gate/hyprglass.so"
+printf '%s\n' "$HYPRGLASS_HYPRLAND" > "$AIR/usr/lib/golden-gate/hyprglass.so.hyprland"
 
 # ---------------------------------------------------------------- title bars
 # Apps that leave their title bar to the compositor (Qt and Electron apps from

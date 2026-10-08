@@ -49,6 +49,7 @@ import os
 import pwd
 import re
 import shutil
+import stat
 import subprocess
 import tarfile
 import tempfile
@@ -502,37 +503,47 @@ def refresh_accounts(old_skel: Path) -> list[str]:
     return kept
 
 
-def apply_overlay(tree: Path, backup: Path | None = None):
-    """The system files CitronOS ships. With backup, each file replaced is
-    kept there first, and each new one listed (backup/created), for rollback."""
+def apply_overlay(tree: Path):
+    """The system files CitronOS ships (kept beforehand by install_tree)."""
     overlay = tree / "distro/archiso/overlay"
-    created = []
     for f in sorted(overlay.rglob("*")):
         rel = f.relative_to(overlay).as_posix()
         if f.is_dir() or rel.startswith(LIVE_ONLY):
             continue
         dest = path("/" + rel)
-        if backup is not None:
-            if os.path.lexists(dest):
-                if not (backup / "files" / rel).exists():
-                    (backup / "files" / rel).parent.mkdir(parents=True, exist_ok=True)
-                    shutil.copy2(dest, backup / "files" / rel, follow_symlinks=False)
-            else:
-                created.append(rel)
-                (backup / "created").write_text("\n".join(created) + "\n")
         dest.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(f, dest)
 
 
-def update_hyprglass(tree: Path):
+def update_hyprglass(tree: Path, emit: Emit | None = None) -> None:
+    """The Liquid Glass plugin this version pins, for the Hyprland it was
+    built for (HYPRGLASS_HYPRLAND in build.sh, stamped beside the plugin).
+    A plugin is never kept or installed for a Hyprland other than its own:
+    then it's marked incompatible (gg-hyprglass-sync won't load it, and uses
+    Hyprland's own blur instead) and a notice says so, even when the bytes
+    on disk already match."""
+    emit = emit or (lambda *a, **k: None)
     text = (tree / "distro/archiso/build.sh").read_text()
     ver = re.search(r'^HYPRGLASS_VERSION="?([^"\s]+)"?', text, re.M)
     sha = re.search(r'^HYPRGLASS_SHA256="?([0-9a-f]{64})"?', text, re.M)
+    target = re.search(r'^HYPRGLASS_HYPRLAND="?([^"\s]+)"?', text, re.M)
     plugin = path("/usr/lib/golden-gate/hyprglass.so")
     if not (ver and sha) or not plugin.parent.is_dir():
         return
     stamp = plugin.with_name(plugin.name + ".hyprland")
+    off = plugin.with_name(plugin.name + ".incompatible")
+    built_for = target.group(1) if target else ""
+    installed = hyprland_release()
+    if built_for and installed and installed != built_for:
+        off.write_text(f"built for Hyprland {built_for}; installed {installed}\n")
+        emit("notice", message=f"Liquid Glass is off for now: its plugin is built for Hyprland {built_for}, "
+                               f"and Hyprland {installed} is installed. Windows use Hyprland's own blur until a "
+                               "matching plugin comes with an update.")
+        return
     if plugin.exists() and hashlib.sha256(plugin.read_bytes()).hexdigest() == sha.group(1):
+        if built_for:
+            stamp.write_text(built_for + "\n")
+        off.unlink(missing_ok=True)
         return
     url = f"https://github.com/hyprnux/hyprglass/releases/download/{ver.group(1)}/hyprglass.so"
     with urllib.request.urlopen(url, timeout=60) as r:
@@ -543,9 +554,13 @@ def update_hyprglass(tree: Path):
     tmp.write_bytes(data)
     os.chmod(tmp, 0o755)
     tmp.replace(plugin)
-    release = hyprland_release()
-    if release:
-        stamp.write_text(release + "\n")
+    # What it was built for, from the pin: not the Hyprland that happens to
+    # be installed.
+    if built_for:
+        stamp.write_text(built_for + "\n")
+    else:
+        stamp.unlink(missing_ok=True)
+    off.unlink(missing_ok=True)
 
 
 def hyprland_release() -> str:
@@ -640,6 +655,10 @@ def apply(emit: Emit) -> str:
 
 ROLLBACK = "/var/lib/golden-gate/rollback"
 JOURNAL = "/var/lib/golden-gate/update-journal.json"
+# What install.sh --system replaces wholesale; everything else it writes is
+# a single file. (The staged run says exactly which.)
+REPLACED_TREES = ["usr/share/golden-gate/ui", "usr/share/golden-gate/apps", "usr/share/icons/GoldenGate",
+                  "etc/skel/.config/quickshell/golden-gate"]
 
 
 def _journal(state: str, step: str, version: dict, detail: str = "") -> None:
@@ -655,78 +674,195 @@ def _journal(state: str, step: str, version: dict, detail: str = "") -> None:
         pass
 
 
-def _restore(backup: Path, runtime: Path, skel_shell: Path) -> list[str]:
-    """Put back what an install replaced (see install_tree). Returns what
-    couldn't be put back."""
-    problems = []
-    for p, name in ((runtime, "runtime"), (skel_shell, "skel-shell")):
-        if (backup / name).exists():
+def _rel(p: Path) -> str:
+    """p as a path inside the system being updated ("usr/share/…")."""
+    return str(p.relative_to(ROOT)) if p.is_absolute() and p.is_relative_to(ROOT) else str(p).lstrip("/")
+
+
+class Rollback:
+    """Everything an update is about to change, kept before it changes:
+    each tree and file is copied (with its owner and mode) into ROLLBACK,
+    or noted as absent, in a manifest written as it goes. undo() puts every
+    one back, newest first, and removes what didn't exist before."""
+
+    def __init__(self, where: Path):
+        self.where = where
+        shutil.rmtree(where, ignore_errors=True)
+        (where / "saved").mkdir(parents=True)
+        self.entries: list[dict] = []
+        self.seen: set[str] = set()
+
+    def _note(self, entry: dict) -> None:
+        self.entries.append(entry)
+        tmp = self.where / "manifest.tmp"
+        tmp.write_text(json.dumps(self.entries))
+        tmp.replace(self.where / "manifest.json")
+
+    def keep(self, p: Path) -> None:
+        """Keep p (a file, link or whole tree) as it is now."""
+        rel = _rel(p)
+        if rel in self.seen or any(rel.startswith(s + "/") for s in self.seen):
+            return
+        self.seen.add(rel)
+        saved = self.where / "saved" / rel
+        if not os.path.lexists(p):
+            self._note({"path": rel, "kind": "absent"})
+            return
+        st = os.lstat(p)
+        saved.parent.mkdir(parents=True, exist_ok=True)
+        if stat.S_ISDIR(st.st_mode) and not os.path.islink(p):
+            shutil.copytree(p, saved, symlinks=True)
+            kind = "tree"
+        else:
+            shutil.copy2(p, saved, follow_symlinks=False)
+            kind = "file"
+        owners = {}
+        if kind == "tree":
+            for dirpath, dirnames, filenames in os.walk(p):
+                for n in [dirpath, *[os.path.join(dirpath, x) for x in dirnames + filenames]]:
+                    s2 = os.lstat(n)
+                    owners[os.path.relpath(n, p)] = [s2.st_uid, s2.st_gid]
+        self._note({"path": rel, "kind": kind, "uid": st.st_uid, "gid": st.st_gid, "owners": owners})
+
+    def undo(self) -> list[str]:
+        problems = []
+        for e in reversed(self.entries):
+            dest = path("/" + e["path"])
             try:
-                shutil.rmtree(p, ignore_errors=True)
-                shutil.copytree(backup / name, p, symlinks=True)
-            except OSError as e:
-                problems.append(f"{p}: {e}")
-    files = backup / "files"
-    if files.is_dir():
-        for f in sorted(files.rglob("*")):
-            if f.is_dir():
-                continue
-            dest = path("/" + f.relative_to(files).as_posix())
-            try:
+                if os.path.islink(dest) or dest.is_file():
+                    dest.unlink()
+                elif dest.is_dir():
+                    shutil.rmtree(dest)
+                if e["kind"] == "absent":
+                    continue
+                saved = self.where / "saved" / e["path"]
                 dest.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(f, dest, follow_symlinks=False)
-            except OSError as e:
-                problems.append(f"{dest}: {e}")
-    if (backup / "created").exists():
-        for rel in (backup / "created").read_text().split():
-            try:
-                path("/" + rel).unlink(missing_ok=True)
-            except OSError as e:
-                problems.append(f"/{rel}: {e}")
-    return problems
+                if e["kind"] == "tree":
+                    shutil.copytree(saved, dest, symlinks=True)
+                else:
+                    shutil.copy2(saved, dest, follow_symlinks=False)
+                if os.geteuid() == 0:
+                    os.lchown(dest, e["uid"], e["gid"])
+                    for rel, (uid, gid) in e.get("owners", {}).items():
+                        try:
+                            os.lchown(os.path.join(dest, rel), uid, gid)
+                        except OSError:
+                            pass
+            except OSError as exc:
+                problems.append(f"/{e['path']}: {exc.strerror or exc}")
+        return problems
+
+
+def _staged_changes(stage: Path) -> tuple[list[str], list[str]]:
+    """What install.sh, run into stage, would change: the trees it replaces
+    whole and every other file or link it writes (paths inside the root)."""
+    trees = [t for t in REPLACED_TREES if os.path.lexists(stage / t)]
+    files = []
+    for dirpath, dirnames, filenames in os.walk(stage):
+        rel_dir = os.path.relpath(dirpath, stage)
+        if any(rel_dir == t or rel_dir.startswith(t + "/") for t in trees):
+            dirnames[:] = []
+            continue
+        for n in filenames + [d for d in dirnames if os.path.islink(os.path.join(dirpath, d))]:
+            rel = os.path.normpath(os.path.join(rel_dir, n))
+            if not any(rel == t or rel.startswith(t + "/") for t in trees):
+                files.append(rel)
+    return trees, sorted(set(files))
+
+
+def _activate(stage: Path, trees: list[str], files: list[str]) -> None:
+    """Put the staged install in place, keeping what each path pointed to."""
+    for t in trees:
+        dest = path("/" + t)
+        tmp = dest.with_name(dest.name + ".golden-gate-new")
+        shutil.rmtree(tmp, ignore_errors=True)
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copytree(stage / t, tmp, symlinks=True)
+        if os.path.lexists(dest):
+            shutil.rmtree(dest) if dest.is_dir() and not dest.is_symlink() else dest.unlink()
+        tmp.rename(dest)
+    for f in files:
+        dest = path("/" + f)
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        tmp = dest.with_name("." + dest.name + ".golden-gate-new")
+        if os.path.lexists(tmp):
+            tmp.unlink()
+        shutil.copy2(stage / f, tmp, follow_symlinks=False)
+        os.replace(tmp, dest)
 
 
 def install_tree(tree: Path, version: dict, emit: Emit, work: Path) -> bool:
-    """Install CitronOS from an unpacked tree. Steps, each journalled: the
-    packages it needs (none missing, or nothing is changed); a backup of
-    everything it replaces (the runtime, the shell for new accounts, system
-    files, the glass plugin), kept in /var/lib/golden-gate/rollback; then
-    install.sh, accounts, system files, plugins, services and the boot
-    image. Any failure puts the backup back and says at which step. Not
-    rolled back: packages installed (they're only ever added), and the new
-    shell files given to accounts, which keep any file their user edited."""
+    """Install CitronOS from an unpacked tree, as one transaction:
+
+    1. the packages it needs (none missing, or nothing is changed);
+    2. install.sh runs into an empty staging folder, and the result is
+       checked: nothing on the system has changed yet;
+    3. everything about to change is kept (Rollback): the staged trees and
+       files, each account's CitronOS shell and managed settings, system
+       files, plugins and boot images;
+    4. then it's put in place, accounts refreshed, system files, plugins,
+       services and the boot image.
+
+    A failure at any step after 3 puts every kept path back, as it was, and
+    says which step failed. Two things aren't undone, and the message says
+    so when they happened: packages installed in step 1 (only ever added)
+    and services turned on. The copy stays in /var/lib/golden-gate/rollback
+    until the next update."""
     runtime = path("/usr/share/golden-gate")
-    skel_shell = path("/etc/skel/.config/quickshell/golden-gate")
-    backup = path(ROLLBACK)
     step = "checking the packages it needs"
-    backed_up = False
+    rollback = None
+    services_changed = False
     try:
         _journal("installing", step, version)
         left = install_packages(tree, emit)
 
-        step = "keeping a copy of the current version"
+        step = "preparing the new version"
         _journal("installing", step, version)
         emit("progress", progress=0.92, message="Installing CitronOS…", remaining=-1)
-        old_skel = _snapshot_skel(work)
-        shutil.rmtree(backup, ignore_errors=True)
-        backup.mkdir(parents=True)
-        for p, name in ((runtime, "runtime"), (skel_shell, "skel-shell")):
-            if p.exists():
-                shutil.copytree(p, backup / name, symlinks=True)
-        for plugin in ("hyprglass.so", "hyprglass.so.hyprland"):
-            src = path("/usr/lib/golden-gate/" + plugin)
-            if src.exists():
-                (backup / "files/usr/lib/golden-gate").mkdir(parents=True, exist_ok=True)
-                shutil.copy2(src, backup / "files/usr/lib/golden-gate" / plugin)
-        backed_up = True
-
-        step = "installing CitronOS's files"
-        _journal("installing", step, version)
-        proc = _run(["bash", str(tree / "scripts/install.sh"), "--system", str(ROOT)],
+        stage = work / "stage"
+        shutil.rmtree(stage, ignore_errors=True)
+        stage.mkdir(parents=True)
+        proc = _run(["bash", str(tree / "scripts/install.sh"), "--system", str(stage)],
                     env={**os.environ, "GG_SKIP_BUILD": "1"}, timeout=1800, cwd=str(tree))
         if proc.returncode != 0:
             tail = (proc.stdout + proc.stderr).strip().splitlines()[-1:] or ["unknown error"]
-            raise UpdateFailed(tail[0][:200])
+            raise UpdateFailed(tail[0][:200] + " Nothing was changed.")
+        trees, files = _staged_changes(stage)
+        missing = [t for t in ("usr/share/golden-gate/apps", "usr/share/golden-gate/ui",
+                               "etc/skel/.config/quickshell/golden-gate/shell.qml") if not os.path.lexists(stage / t)]
+        if missing:
+            raise UpdateFailed("The new version is incomplete (" + ", ".join(missing) + "). Nothing was changed.")
+
+        step = "keeping a copy of the current version"
+        _journal("installing", step, version)
+        old_skel = _snapshot_skel(work)
+        rollback = Rollback(path(ROLLBACK))
+        for t in trees:
+            rollback.keep(path("/" + t))
+        for f in files:
+            rollback.keep(path("/" + f))
+        rollback.keep(runtime / "version.json")
+        skel = path("/etc/skel/.config")
+        themes = [f"ghostty/themes/{p.name}" for p in (stage / "etc/skel/.config/ghostty/themes").glob("*")]
+        for entry, home in _accounts():
+            conf = home / ".config"
+            rollback.keep(conf / "quickshell/golden-gate")
+            for rel in MANAGED + themes:
+                rollback.keep(conf / rel)
+                rollback.keep(conf / (rel + ".golden-gate-new"))
+        overlay = tree / "distro/archiso/overlay"
+        for f in sorted(overlay.rglob("*")):
+            rel = f.relative_to(overlay).as_posix()
+            if not f.is_dir() and not rel.startswith(LIVE_ONLY):
+                rollback.keep(path("/" + rel))
+        for plugin in ("hyprglass.so", "hyprglass.so.hyprland", "hyprbars.so", "hyprbars.so.hyprland"):
+            rollback.keep(path("/usr/lib/golden-gate/" + plugin))
+        for image in sorted(path("/boot").glob("initramfs-*.img")) if path("/boot").is_dir() else []:
+            rollback.keep(image)
+
+        step = "installing CitronOS's files"
+        _journal("installing", step, version)
+        _activate(stage, trees, files)
 
         step = "updating your settings"
         _journal("installing", step, version)
@@ -735,10 +871,10 @@ def install_tree(tree: Path, version: dict, emit: Emit, work: Path) -> bool:
 
         step = "installing system files"
         _journal("installing", step, version)
-        apply_overlay(tree, backup)
+        apply_overlay(tree)
 
         try:
-            update_hyprglass(tree)
+            update_hyprglass(tree, emit)
         except (OSError, GitHubError, urllib.error.URLError) as exc:
             emit("notice", message=glass_notice(str(exc)[:120]))
         try:
@@ -748,6 +884,7 @@ def install_tree(tree: Path, version: dict, emit: Emit, work: Path) -> bool:
 
         step = "turning on services"
         _journal("installing", step, version)
+        services_changed = True
         enable_services(tree)
         # Installs made before the installer cleaned these up still carry
         # them; the boot image is rebuilt if it was built with archiso's hooks.
@@ -776,13 +913,17 @@ def install_tree(tree: Path, version: dict, emit: Emit, work: Path) -> bool:
         return True
     except (UpdateFailed, GitHubError, OSError, subprocess.SubprocessError, ValueError) as e:
         reason = str(e) or e.__class__.__name__
-        if backed_up:
-            problems = _restore(backup, runtime, skel_shell)
-            after = (" The previous version was put back." if not problems else
-                     " Putting the previous version back didn't fully work (" + problems[0][:120]
-                     + "); its copy is in " + str(backup) + ".")
-        else:
-            after = "" if isinstance(e, UpdateFailed) else " Nothing was changed."
+        after = ""
+        if rollback is not None:
+            problems = rollback.undo()
+            if problems:
+                after = (" Putting the previous version back didn't fully work (" + problems[0][:120]
+                         + "); its copy is in " + str(path(ROLLBACK)) + ".")
+            else:
+                after = " The previous version was put back"
+                left_over = (["packages it needed were added"] if step != "checking the packages it needs" else []) \
+                    + (["services it turns on stay on"] if services_changed else [])
+                after += (" (" + "; ".join(left_over) + ")." if left_over else ".")
         _journal("failed", step, version, reason[:300])
         emit("error", message=f"CitronOS's update didn't install (while {step}): {reason[:200]}{after}")
         return False

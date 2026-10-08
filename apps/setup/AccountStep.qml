@@ -11,10 +11,12 @@ StepFrame {
     property bool liveSession: false
     property bool liveChecked: false
     property string error: ""
+    property string installError: ""     // the installer didn't open (setup.qml)
     property bool busy: createAccount.running
     property string currentUser: Quickshell.env("USER") || ""
     signal accountCreated(string username)
     signal advance()
+    signal installRequested()
     // Running from the USB: no account is made here. Try goes on as the live
     // session; Install opens the installer, where your account is made once.
     readonly property bool tryOrInstall: liveSession && !createdUsername
@@ -29,10 +31,9 @@ StepFrame {
                        && password.text.length >= 8 && password.text === confirm.text)))
     secondaryText: tryOrInstall ? "Install CitronOS…"
         : liveChecked && !liveSession && !busy && !createdUsername ? "Use Existing Account" : ""
-    onSecondary: {
-        if (tryOrInstall) Quickshell.execDetached(["gg-install"])
-        advance()
-    }
+    // Install hands the screen to the installer (setup.qml hides Hello until
+    // it's closed); Use Existing Account just goes on.
+    onSecondary: tryOrInstall ? installRequested() : advance()
     onNext: submit()
 
     function submit() {
@@ -91,5 +92,14 @@ StepFrame {
             }
             Text { width: parent.width; visible: !!step.error; text: step.error; textFormat: Text.PlainText; wrapMode: Text.WordWrap; color: "#d8483e"; font.pixelSize: Theme.fs(12) }
         }
+    }
+    Text {
+        objectName: "helloInstallError"
+        visible: step.tryOrInstall && !!step.installError
+        anchors { left: parent.left; right: parent.right; top: parent.top }
+        text: step.installError
+        wrapMode: Text.WordWrap
+        color: "#d8483e"
+        font.pixelSize: Theme.fs(12)
     }
 }

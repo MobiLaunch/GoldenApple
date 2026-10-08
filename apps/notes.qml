@@ -20,7 +20,10 @@ ShellRoot {
         id: win
         // Closing (or quitting) saves the note being written first; a save
         // that fails keeps Notes open.
-        closeAction: () => { if (editor.flush()) Qt.quit() }
+        closeAction: () => {
+            if (editor.flush()) Qt.quit()
+            else if (!editor.saveError) editor.quitAfterRename = true    // quit once the rename lands
+        }
         title: "Notes"
         implicitWidth: Math.min(1120, (Quickshell.screens[0]?.width ?? 1280) - 80)
         implicitHeight: Math.min(720, (Quickshell.screens[0]?.height ?? 900) - 150)
@@ -348,6 +351,7 @@ ShellRoot {
                 path: app.current
                 mtime: app.notes.find((n) => n.path === app.current)?.mtime ?? 0
                 taken: app.notes.map((n) => n.path)
+                root: app.root
                 onSaved: (path, newPath, title, preview) => app.saved(path, newPath, title, preview)
                 onSaveFailed: app.current = editor.loadedPath
                 onMenuRequested: (items, item, mx, my) => listMenu.popup(item, mx, my, items)

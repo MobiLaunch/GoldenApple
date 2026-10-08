@@ -2,7 +2,10 @@
 """Notes' Recently Deleted (apps/notes/trash.py): deleting never replaces a
 note already deleted (same title, or the same title from another folder);
 Recover puts each back in the folder it came from, as "Title 2.md" if that
-name has been taken since; Delete Immediately works only in Recently Deleted."""
+name has been taken since; Delete Immediately works only in Recently Deleted.
+Deletes made at once keep every origin, an origin that can't be recorded
+undoes its delete, and renaming a note (to follow its title) never replaces
+another."""
 from __future__ import annotations
 
 import json
@@ -91,6 +94,45 @@ class NotesTrash(unittest.TestCase):
         self.assertTrue(self.run_trash("delete", p)["ok"])
         self.assertEqual((self.bin / ".origins.broken.json").read_text(), "{not json")
         self.assertEqual(Path(self.run_trash("recover", self.bin / "A.md")["path"]), p)
+
+    def test_deletes_at_once_keep_every_origin(self):
+        from concurrent.futures import ThreadPoolExecutor
+        folders = [f"F{i}" for i in range(8)]
+        notes = []
+        for f in folders:
+            (self.root / f).mkdir()
+            notes.append(self.note(f, "Plan.md", f"from {f}"))
+        with ThreadPoolExecutor(8) as pool:
+            results = list(pool.map(lambda p: self.run_trash("delete", p), notes))
+        self.assertTrue(all(r["ok"] for r in results), results)
+        origins = json.loads((self.bin / ".origins.json").read_text())
+        self.assertEqual(len(origins), 8, "every note's origin kept")
+        for r in results:
+            back = Path(self.run_trash("recover", r["path"])["path"])
+            self.assertEqual(back.read_text(), "from " + back.parent.name, "each back in its own folder")
+
+    def test_a_lost_origin_undoes_the_delete(self):
+        import importlib.util
+        from unittest.mock import patch
+        spec = importlib.util.spec_from_file_location("notes_trash", TRASH)
+        trash = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(trash)
+        p = self.note("Work", "Kept.md", "kept")
+        with patch.object(trash, "save_origins", side_effect=OSError(28, "No space left on device")), \
+                patch("builtins.print"):
+            self.assertEqual(trash.main(["trash.py", "delete", str(self.root), str(p)]), 1)
+        self.assertEqual(p.read_text(), "kept", "still where it was")
+        self.assertEqual(list(self.bin.glob("*.md")), [], "no copy left in Recently Deleted")
+
+    def test_rename_never_replaces(self):
+        a = self.note("Notes", "Draft.md", "draft")
+        self.note("Notes", "Plan.md", "someone else's plan")
+        r = subprocess.run([sys.executable, str(TRASH), "rename", str(self.root), str(a), "Plan.md"],
+                           capture_output=True, text=True)
+        self.assertEqual(Path(json.loads(r.stdout)["path"]).name, "Plan 2.md")
+        self.assertEqual((self.root / "Notes/Plan.md").read_text(), "someone else's plan")
+        self.assertEqual((self.root / "Notes/Plan 2.md").read_text(), "draft")
+        self.assertFalse(a.exists())
 
 
 if __name__ == "__main__":

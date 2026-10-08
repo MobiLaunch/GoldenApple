@@ -381,6 +381,10 @@ jobs:
         run: python tests/setup-finish.py
         env:
           QT_QPA_PLATFORM: offscreen
+      - name: "Notes never writes over a note changed elsewhere; renames never replace"
+        run: python tests/notes-conflicts.py
+        env:
+          QT_QPA_PLATFORM: offscreen
       - name: "Settings: atomic, acknowledged preference writes; Setup's keyboard variant kept"
         run: python tests/settings-prefs.py
         env:

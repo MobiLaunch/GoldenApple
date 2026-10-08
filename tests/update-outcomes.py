@@ -104,9 +104,26 @@ class Staged(unittest.TestCase):
         (self.root / "etc/gg/existing.conf").write_text("old conf")
         (self.root / "usr/lib/golden-gate/hyprglass.so").write_bytes(b"old plugin")
         (self.tree / "scripts").mkdir(parents=True)
+        # A stand-in install.sh: writes the new runtime, new-account shell, a
+        # default config and a helper into the root it's given (the staging folder).
         (self.tree / "scripts/install.sh").write_text(
-            f'#!/bin/sh\nrm -rf "{self.root}/usr/share/golden-gate"; mkdir -p "{self.root}/usr/share/golden-gate"; '
-            f'echo new > "{self.root}/usr/share/golden-gate/new.qml"\n')
+            '#!/bin/sh\nR="$2"\nmkdir -p "$R/usr/share/golden-gate/apps" "$R/usr/share/golden-gate/ui" '
+            '"$R/etc/skel/.config/quickshell/golden-gate" "$R/etc/skel/.config/hypr" "$R/usr/lib/golden-gate"\n'
+            'echo new > "$R/usr/share/golden-gate/apps/new.qml"\necho new > "$R/usr/share/golden-gate/ui/Theme.qml"\n'
+            'echo "new shell" > "$R/etc/skel/.config/quickshell/golden-gate/shell.qml"\n'
+            'echo "new hypr" > "$R/etc/skel/.config/hypr/hyprland.conf"\n'
+            'echo "new rules" > "$R/usr/lib/golden-gate/account_rules.py"\n')
+        (self.root / "usr/share/golden-gate/apps").mkdir(parents=True)
+        (self.root / "usr/share/golden-gate/apps/old.qml").write_text("old app")
+        (self.root / "etc/skel/.config/hypr").mkdir(parents=True)
+        (self.root / "etc/skel/.config/hypr/hyprland.conf").write_text("old hypr")
+        (self.root / "usr/lib/golden-gate/account_rules.py").write_text("old rules")
+        # An account with the old shell and an unedited default config.
+        self.home = self.root / "home/ada"
+        (self.home / ".config/quickshell/golden-gate").mkdir(parents=True)
+        (self.home / ".config/quickshell/golden-gate/shell.qml").write_text("old shell")
+        (self.home / ".config/hypr").mkdir(parents=True)
+        (self.home / ".config/hypr/hyprland.conf").write_text("old hypr")
         ov = self.tree / "distro/archiso/overlay"
         (ov / "etc/gg").mkdir(parents=True)
         (ov / "etc/gg/existing.conf").write_text("new conf")
@@ -117,7 +134,7 @@ class Staged(unittest.TestCase):
         self.work = base / "work"
         self.work.mkdir()
         self.events = []
-        self.patches = [patch.object(gu, "ROOT", self.root), patch.object(gu, "_accounts", lambda: []),
+        self.patches = [patch.object(gu, "ROOT", self.root), patch.object(gu, "_accounts", lambda: iter([(type("E", (), {"pw_uid": os.getuid(), "pw_gid": os.getgid(), "pw_name": "ada"})(), self.home)])),
                         patch.object(gu, "update_hyprbars", lambda tree, emit: None),
                         patch.object(gu, "remove_live_leftovers", lambda root: False),
                         patch.object(gu, "ensure_keyring", lambda root: None)]
@@ -158,7 +175,7 @@ class Staged(unittest.TestCase):
         self.assertFalse(self.install(available=()))
         self.assertIn("packages the package repositories don't have", self.events[-1]["message"])
         self.assertIn("newdep", self.events[-1]["message"])
-        self.assertEqual((self.root / "usr/share/golden-gate/old.qml").read_text(), "old runtime")
+        self.assertEqual((self.root / "usr/share/golden-gate/apps/old.qml").read_text(), "old app")
         self.assertEqual((self.root / "etc/gg/existing.conf").read_text(), "old conf")
         self.assertEqual(self.journal()["state"], "failed")
 
@@ -172,6 +189,8 @@ class Staged(unittest.TestCase):
         self.assertIn("aur-thing (needs the AUR)", notices)
         self.assertEqual(self.journal()["state"], "installed")
         self.assertEqual((self.root / "etc/gg/existing.conf").read_text(), "new conf")
+        self.assertEqual((self.home / ".config/quickshell/golden-gate/shell.qml").read_text().strip(), "new shell")
+        self.assertEqual((self.root / "usr/lib/golden-gate/account_rules.py").read_text().strip(), "new rules")
 
     def test_a_later_failure_puts_everything_back(self):
         with patch.object(gu, "enable_services", side_effect=OSError("systemctl: Failed to enable unit")):
@@ -179,14 +198,22 @@ class Staged(unittest.TestCase):
         msg = self.events[-1]["message"]
         self.assertIn("while turning on services", msg)
         self.assertIn("previous version was put back", msg)
-        self.assertEqual((self.root / "usr/share/golden-gate/old.qml").read_text(), "old runtime")
-        self.assertFalse((self.root / "usr/share/golden-gate/new.qml").exists())
+        self.assertEqual((self.root / "usr/share/golden-gate/apps/old.qml").read_text(), "old app")
+        self.assertFalse((self.root / "usr/share/golden-gate/apps/new.qml").exists())
+        self.assertFalse((self.root / "usr/share/golden-gate/ui").exists(), "a tree the update added is removed")
+        # Everything install.sh and the account refresh changed is back (R02).
+        self.assertEqual((self.home / ".config/quickshell/golden-gate/shell.qml").read_text(), "old shell", "the account's shell")
+        self.assertEqual((self.home / ".config/hypr/hyprland.conf").read_text(), "old hypr", "the account's config")
+        self.assertEqual((self.root / "etc/skel/.config/hypr/hyprland.conf").read_text(), "old hypr", "the default config")
+        self.assertEqual((self.root / "usr/lib/golden-gate/account_rules.py").read_text(), "old rules", "the system helper")
+        self.assertEqual((self.root / "etc/skel/.config/quickshell/golden-gate/shell.qml").read_text(), "old shell")
+        self.assertIn("services it turns on stay on", msg, "and it says what wasn't undone")
         self.assertEqual((self.root / "etc/gg/existing.conf").read_text(), "old conf")
         self.assertFalse((self.root / "etc/gg/added.conf").exists(), "a file the update added is removed")
         self.assertEqual((self.root / "usr/lib/golden-gate/hyprglass.so").read_bytes(), b"old plugin")
         j = self.journal()
         self.assertEqual((j["state"], j["step"]), ("failed", "turning on services"))
-        self.assertTrue((self.root / "var/lib/golden-gate/rollback/runtime/old.qml").exists(), "the copy is kept")
+        self.assertTrue((self.root / "var/lib/golden-gate/rollback/manifest.json").exists(), "the copy is kept")
 
     def test_glass_plugin_failure_is_said(self):
         (self.root / "usr/lib/golden-gate/hyprglass.so.hyprland").write_text("0.49.0\n")
@@ -195,6 +222,61 @@ class Staged(unittest.TestCase):
         notices = " ".join(e["message"] for e in self.events if e["event"] == "notice")
         self.assertIn("Liquid Glass plugin couldn't be updated", notices)
         self.assertIn("Hyprland 0.49.0, not 0.52.1", notices)
+
+
+class GlassPlugin(unittest.TestCase):
+    """The plugin goes only with the Hyprland it was built for (R11)."""
+    def setUp(self):
+        import hashlib
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self.tmp.name) / "root"
+        (self.root / "usr/lib/golden-gate").mkdir(parents=True)
+        self.tree = Path(self.tmp.name) / "tree"
+        (self.tree / "distro/archiso").mkdir(parents=True)
+        self.bytes = b"plugin built for 0.56.2"
+        (self.tree / "distro/archiso/build.sh").write_text(
+            f'HYPRGLASS_VERSION="v0.8.1"\nHYPRGLASS_SHA256="{hashlib.sha256(self.bytes).hexdigest()}"\nHYPRGLASS_HYPRLAND="0.56.2"\n')
+        self.events = []
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def update(self, installed, have=True, download=None):
+        plugin = self.root / "usr/lib/golden-gate/hyprglass.so"
+        if have:
+            plugin.write_bytes(self.bytes)
+        fetched = []
+
+        class R:
+            def __init__(s, data): s.data = data
+            def __enter__(s): return s
+            def __exit__(s, *a): pass
+            def read(s): return s.data
+
+        with patch.object(gu, "ROOT", self.root), patch.object(gu, "path", lambda p: self.root / p.lstrip("/")), \
+                patch.object(gu, "hyprland_release", return_value=installed), \
+                patch.object(gu.urllib.request, "urlopen", lambda *a, **k: fetched.append(a) or R(download or self.bytes)):
+            gu.update_hyprglass(self.tree, lambda e, **k: self.events.append({"event": e, **k}))
+        return plugin, fetched
+
+    def test_checksum_hit_with_another_hyprland(self):
+        plugin, fetched = self.update("0.57.0")
+        self.assertTrue(plugin.with_name("hyprglass.so.incompatible").exists(), "marked: gg-hyprglass-sync won't load it")
+        self.assertIn("Hyprland 0.57.0 is installed", " ".join(e["message"] for e in self.events))
+        self.assertEqual(fetched, [])
+
+    def test_matching_hyprland(self):
+        plugin, _ = self.update("0.56.2")
+        self.assertEqual(plugin.with_name("hyprglass.so.hyprland").read_text().strip(), "0.56.2")
+        self.assertFalse(plugin.with_name("hyprglass.so.incompatible").exists())
+        self.assertEqual(self.events, [])
+
+    def test_download_is_stamped_with_its_build_target(self):
+        plugin, fetched = self.update("0.56.2", have=False)
+        self.assertEqual(len(fetched), 1)
+        self.assertEqual(plugin.read_bytes(), self.bytes)
+        self.assertEqual(plugin.with_name("hyprglass.so.hyprland").read_text().strip(), "0.56.2",
+                         "the pin's Hyprland, not just whatever is installed")
 
 
 if __name__ == "__main__":

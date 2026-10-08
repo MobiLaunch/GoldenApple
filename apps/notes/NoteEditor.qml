@@ -20,7 +20,10 @@ Item {
     property string saveError: ""
     property bool writeOk: false
     signal saveFailed()
-    property var taken: []              // paths of other notes (renames never overwrite one)
+    property var taken: []              // paths of other notes (new notes' first names avoid them)
+    property string root: ""            // the Notes folder (renames go through notes/trash.py)
+    property string notice: ""          // a save that went to a new note, and why
+    property bool quitAfterRename: false
     signal saved(string path, string newPath, string title, string preview)
     signal menuRequested(var items, Item item, real x, real y)
 
@@ -38,7 +41,8 @@ Item {
 
     function markdown() { return edit.getFormattedText(0, edit.length) }
     function writingTools() { edit.openWritingTools() }
-    function flush() { return !dirty || !loadedPath || save() }
+    // Saved, and no rename in flight (a rename moves the file being written).
+    function flush() { return (!dirty || !loadedPath || save()) && !renamer.running }
     function startNew(p) { fresh = true }
 
     onPathChanged: {
@@ -78,23 +82,48 @@ Item {
         }
     }
 
+    // What's on disk at p right now (null if nothing is), read at once.
+    FileView {
+        id: checker
+        preload: false
+        blockLoading: true
+        printErrors: false
+        property bool missing: false
+        onLoaded: missing = false
+        onLoadFailed: missing = true
+    }
+    function onDisk(p) {
+        checker.missing = false
+        checker.path = ""
+        checker.path = p
+        checker.reload()
+        return checker.missing ? null : checker.text()
+    }
+
     function save() {
         saveTimer.stop()
         if (!dirty || !loadedPath || loading) return !dirty
+        // A rename is moving this note's file: save once it's done.
+        if (renamer.running) { saveTimer.restart(); return false }
         const md = markdown()
         const lines = md.split("\n").filter((l) => l.trim())
         const clean = (s) => s.replace(/^[#>*+ -]+/, "").replace(/^\[[ xX]\]\s*/, "").replace(/\*\*|__|~~|`|\\/g, "").replace(/\]\([^)]*\)/g, "").replace(/\[/g, "").trim()
         const title = lines.length ? clean(lines[0]) : ""
         const preview = lines.slice(1).map(clean).join(" ").slice(0, 140)
         const from = loadedPath
-        // Follow the title with the file name (never over another note).
+        // Never write over what someone else wrote: if the file changed since
+        // it was loaded or last saved here (another window, another app, or a
+        // new note's name taken meanwhile), this version goes to a note of its own.
         let to = from
-        if (title) {
-            const want = from.replace(/[^/]+$/, "") + Md.fileName(title)
-            if (want !== from && !taken.includes(want)) to = want
+        const now = onDisk(from)
+        const conflict = now !== null && now !== lastSaved && !(fresh && !now.trim())
+        if (conflict) {
+            const dir = from.replace(/[^/]+$/, "")
+            const base = Md.fileName(title || "New Note").replace(/\.md$/, "")
+            for (let n = 2; onDisk(to = dir + base + " " + n + ".md") !== null; n++) {}
         }
         // Write separately: changing the reader's path before a failed write
-        // used to discard the draft and delete the original during a rename.
+        // used to discard the draft.
         writeOk = false
         writer.path = to
         writer.setText(md)
@@ -104,12 +133,41 @@ Item {
             return false
         }
         saveError = ""
+        notice = conflict ? "This note was changed somewhere else, so your version was saved as “" + to.split("/").pop().replace(/\.md$/, "") + "”." : ""
         lastSaved = md
         if (to !== from) { renaming = true; loadedPath = to; file.path = to }
-        if (to !== from) Quickshell.execDetached(["rm", "-f", "--", from])
         dirty = false
         saved(from, to, title, preview)
+        // Follow the title with the file name, without ever replacing another
+        // note (notes/trash.py rename picks "Title 2.md" if it's taken).
+        const want = title ? Md.fileName(title) : ""
+        if (root && want && want !== to.split("/").pop()) {
+            renamer.from = to
+            renamer.title = title
+            renamer.preview = preview
+            renamer.command = ["python3", decodeURIComponent(Qt.resolvedUrl("trash.py").toString().replace("file://", "")), "rename", root, to, want]
+            renamer.running = true
+        }
         return true
+    }
+    Process {
+        id: renamer
+        property string from
+        property string title
+        property string preview
+        stdout: StdioCollector {
+            onStreamFinished: {
+                let r = null
+                try { r = JSON.parse(text) } catch (e) {}
+                if (r && r.ok && r.path !== renamer.from && ed.loadedPath === renamer.from) {
+                    ed.renaming = true
+                    ed.loadedPath = r.path
+                    file.path = r.path
+                    ed.saved(renamer.from, r.path, renamer.title, renamer.preview)
+                }
+            }
+        }
+        onExited: if (ed.quitAfterRename && ed.flush()) Qt.quit()
     }
     FileView {
         id: writer
@@ -118,6 +176,21 @@ Item {
         atomicWrites: true
         onSaved: ed.writeOk = true
         onSaveFailed: ed.writeOk = false
+    }
+    Rectangle {
+        anchors { left: parent.left; right: parent.right; bottom: parent.bottom; margins: 8 }
+        height: noticeLabel.implicitHeight + 20
+        visible: !!ed.notice && !ed.saveError
+        color: Theme.dark ? "#26303d" : "#eef4ff"
+        radius: 8; z: 20
+        Text {
+            id: noticeLabel
+            objectName: "notesConflictNotice"
+            anchors { fill: parent; margins: 10 }
+            text: ed.notice; wrapMode: Text.Wrap
+            color: Theme.label
+            font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+        }
     }
     Rectangle {
         anchors { left: parent.left; right: parent.right; bottom: parent.bottom; margins: 8 }
@@ -206,6 +279,7 @@ Item {
             }
             Shared.TextArea {
                 id: edit
+                objectName: "notesEditText"
                 width: parent.width
                 visible: !!ed.path
                 textFormat: TextEdit.MarkdownText

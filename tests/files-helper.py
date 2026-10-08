@@ -87,6 +87,47 @@ class FilesHelper(unittest.TestCase):
         self.assertTrue((docs / "Project/notes.md").exists())
         self.assertEqual((docs / "plan.txt").read_text(), "plan")
 
+    def test_fallback_never_replaces_a_name_taken_mid_rename(self):
+        """A disk without renameat2(RENAME_NOREPLACE): another item appearing
+        under the new name while renaming is never replaced."""
+        import importlib.util
+        from unittest.mock import patch
+        spec = importlib.util.spec_from_file_location("files_helper", HELPER)
+        helper = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(helper)
+        docs = self.home / "Documents"
+        (docs / "a.txt").write_text("A")
+        (docs / "dir").mkdir()
+        (docs / "dir/in.txt").write_text("in")
+        real_lstat = os.lstat
+        unsupported = patch.object(helper, "RENAME_NOREPLACE", 1 << 30)    # EINVAL: as if unsupported
+
+        def racing(target, content):
+            def lstat(p, *a, **k):
+                r = real_lstat(p, *a, **k)
+                if not os.path.lexists(target):           # someone else takes the name just now
+                    (target.mkdir() if content is None else target.write_text(content))
+                return r
+            return lstat
+        with unsupported, patch.object(helper.os, "lstat", racing(docs / "b.txt", "B")):
+            with self.assertRaises(FileExistsError):
+                helper.rename_noreplace(docs / "a.txt", docs / "b.txt")
+        self.assertEqual(((docs / "a.txt").read_text(), (docs / "b.txt").read_text()), ("A", "B"), "both kept")
+        with unsupported, patch.object(helper.os, "lstat", racing(docs / "other", None)):
+            with self.assertRaises(FileExistsError):
+                helper.rename_noreplace(docs / "dir", docs / "other")
+        self.assertTrue((docs / "dir/in.txt").exists())
+        with unsupported:
+            helper.rename_noreplace(docs / "a.txt", docs / "c.txt")
+            helper.rename_noreplace(docs / "dir", docs / "dir2")
+        self.assertEqual((docs / "c.txt").read_text(), "A")
+        self.assertTrue((docs / "dir2/in.txt").exists() and not (docs / "dir").exists())
+        # No hard links either (FAT through FUSE…): refused, nothing changed.
+        with unsupported, patch.object(helper.os, "link", side_effect=PermissionError(1, "Operation not permitted")):
+            with self.assertRaises(helper.RenameUnsafe):
+                helper.rename_noreplace(docs / "c.txt", docs / "d.txt")
+        self.assertTrue((docs / "c.txt").exists() and not (docs / "d.txt").exists())
+
     def test_new_folder_that_exists(self):
         r = self.run_helper("mkdir", str(self.home / "Documents"), "Project")
         self.assertFalse(r["ok"])

@@ -20,7 +20,12 @@ QtObject {
     function text() { return __text }
     function data() { return __text }
     function reload() { __load() }
-    function setText(t) { __text = t; __preview.log("write " + path) }
+    // Written for real only when the harness allows it (tests); otherwise logged.
+    function setText(t) {
+        __text = t
+        if (__preview.allowWrites === true) { if (__preview.writeFile(path, t)) saved(); else saveFailed(5) }
+        else __preview.log("write " + path)
+    }
     function writeAdapter() {}
     function __load() {
         if (!path) return

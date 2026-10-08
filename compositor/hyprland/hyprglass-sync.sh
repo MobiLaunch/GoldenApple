@@ -114,14 +114,30 @@ else
 fi
 
 # ------------------------------------------------------------- HyprGlass
-[ -r "$PLUGIN" ] || exit 0
+# Hyprland's own blur, for when the plugin can't be used: windows and panels
+# stay frosted and readable instead of turning plain see-through.
+fallback() {
+  logger -t gg-hyprglass "$1; using Hyprland's blur"
+  kw decoration:blur:enabled 1
+  kw decoration:blur:size 10
+  kw decoration:blur:passes 3
+  exit 0
+}
+[ -r "$PLUGIN" ] || fallback "no plugin at $PLUGIN"
+# Only into the Hyprland it was built for (its stamp, from the release pin).
+BUILT_FOR="$(cat "$PLUGIN.hyprland" 2>/dev/null || true)"
+RUNNING="$(pacman -Q hyprland 2>/dev/null | awk '{print $2}' | cut -d- -f1)"
+[ -e "$PLUGIN.incompatible" ] && fallback "plugin marked incompatible: $(cat "$PLUGIN.incompatible")"
+if [ -z "$BUILT_FOR" ] || { [ -n "$RUNNING" ] && [ "$BUILT_FOR" != "$RUNNING" ]; }; then
+  fallback "plugin built for Hyprland ${BUILT_FOR:-unknown}, running ${RUNNING:-unknown}"
+fi
 
 if ! hyprctl plugin list 2>/dev/null | grep -qi 'hyprglass'; then
   if ! hyprctl plugin load "$PLUGIN" >/dev/null 2>&1; then
-    logger -t gg-hyprglass "could not load $PLUGIN"
-    exit 0
+    fallback "could not load $PLUGIN"
   fi
 fi
+kw decoration:blur:enabled 0
 
 
 # HyprGlass owns backdrop blur/refraction. QML only paints the material/tint and

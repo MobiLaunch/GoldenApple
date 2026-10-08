@@ -272,6 +272,22 @@ class Preview(QObject):
         except (OSError, UnicodeDecodeError):
             return None
 
+    # Tests can let FileView write for real (atomically, like Quickshell's).
+    allowWrites = Property(bool, lambda self: getattr(self, "_allow_writes", False), constant=True)
+
+    @Slot(str, str, result=bool)
+    def writeFile(self, path, text):
+        if not getattr(self, "_allow_writes", False):
+            return False
+        try:
+            target = Path(path)
+            tmp = target.with_name("." + target.name + ".preview-tmp")
+            tmp.write_text(text, encoding="utf-8")
+            os.replace(tmp, target)
+            return True
+        except OSError:
+            return False
+
     @Slot(str, result=str)
     def iconPath(self, name):
         if not name:

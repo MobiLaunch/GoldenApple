@@ -48,7 +48,8 @@ ShellRoot {
         exclusionMode: ExclusionMode.Ignore
         WlrLayershell.layer: WlrLayer.Overlay
         WlrLayershell.namespace: "gg-setup"
-        WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
+        WlrLayershell.keyboardFocus: stage.installing ? WlrKeyboardFocus.None : WlrKeyboardFocus.Exclusive
+        visible: !stage.installing
         color: "black"
 
         Item {
@@ -71,6 +72,28 @@ ShellRoot {
             property string createdUsername: ""
             property string finishError: ""
             property bool accountReady: false
+            // Install from the Try or Install page: Hello steps aside (its
+            // full-screen overlay holds the keyboard) while the installer runs,
+            // and comes back on that page if the installer is closed or can't open.
+            property bool installing: false
+            property string installError: ""
+            function startInstaller() {
+                if (installer.running) return
+                installError = ""
+                installing = true
+                installer.running = true
+            }
+            Process {
+                id: installer
+                objectName: "helloInstaller"
+                command: ["gg-install"]
+                stderr: StdioCollector { id: installerErr }
+                onExited: (code) => {
+                    stage.installing = false
+                    if (code !== 0)
+                        stage.installError = "The installer couldn't be opened" + (installerErr.text.trim() ? ": " + installerErr.text.trim() : ".")
+                }
+            }
             property var preferences: ({})
 
             function go(n) {
@@ -369,6 +392,8 @@ ShellRoot {
                 id: accountStep
                 AccountStep {
                     createdUsername: stage.createdUsername
+                    onInstallRequested: stage.startInstaller()
+                    installError: stage.installError
                     onAccountCreated: (username) => stage.createdUsername = username
                     onBack: stage.back()
                     onAdvance: stage.next()
