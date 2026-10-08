@@ -92,8 +92,9 @@ def kw(calls: list[str], key: str) -> str | None:
 
 
 calls, _, _ = run("dark", {})
-for key, value in [("plugin:hyprglass:blur_strength", "1.2"), ("plugin:hyprglass:refraction_strength", "0.08"),
-                   ("plugin:hyprglass:chromatic_aberration", "0.03"), ("plugin:hyprglass:skip_opaque_windows", "1"),
+for key, value in [("plugin:hyprglass:blur_strength", "0.95"), ("plugin:hyprglass:refraction_strength", "0.55"),
+                   ("plugin:hyprglass:chromatic_aberration", "0.08"), ("plugin:hyprglass:edge_thickness", "0.08"),
+                   ("plugin:hyprglass:lens_distortion", "0.42"), ("plugin:hyprglass:skip_opaque_windows", "1"),
                    ("plugin:hyprglass:manage_window_blur", "1"), ("plugin:hyprglass:layers:manage_blur", "1"),
                    ("plugin:hyprglass:layers:mask_mode", "auto"), ("plugin:hyprglass:dark:vibrancy_darkness", "0.15"),
                    ("decoration:active_opacity", "1.0"), ("decoration:inactive_opacity", "1.0"),

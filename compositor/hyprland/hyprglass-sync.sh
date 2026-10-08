@@ -155,14 +155,14 @@ kw plugin:hyprglass:default_preset default
 # and rim, so the compositor's specular and fresnel stay low in both profiles.
 VIRT="$(systemd-detect-virt --vm 2>/dev/null || true)"
 if [ -n "$VIRT" ] && [ "$VIRT" != none ]; then
-  kw plugin:hyprglass:blur_strength 1.85
+  kw plugin:hyprglass:blur_strength 1.5
   kw plugin:hyprglass:blur_iterations 3
-  kw plugin:hyprglass:refraction_strength 0.38
+  kw plugin:hyprglass:refraction_strength 0.6
   kw plugin:hyprglass:chromatic_aberration 0.14
   kw plugin:hyprglass:fresnel_strength 0.36
   kw plugin:hyprglass:specular_strength 0.42
-  kw plugin:hyprglass:edge_thickness 0.045
-  kw plugin:hyprglass:lens_distortion 0.28
+  kw plugin:hyprglass:edge_thickness 0.08
+  kw plugin:hyprglass:lens_distortion 0.45
   kw plugin:hyprglass:dark:brightness 0.82
   kw plugin:hyprglass:dark:contrast 0.94
   kw plugin:hyprglass:dark:saturation 0.88
@@ -174,17 +174,19 @@ if [ -n "$VIRT" ] && [ "$VIRT" != none ]; then
   kw plugin:hyprglass:light:vibrancy 0.12
   kw plugin:hyprglass:light:adaptive_boost 0.28
 else
-  # The Liquid Glass physics (docs/LIQUID-GLASS.md): a soft blur, edge
-  # refraction you notice only as the glass moves over something, and a
-  # trace of dispersion at the rim.
-  kw plugin:hyprglass:blur_strength 1.2
+  # The Liquid Glass physics (docs/LIQUID-GLASS.md): thick glass. What's behind
+  # bends at the edge, where a wide bevel pulls in what lies just beyond it,
+  # and swells a little under the middle (the dome lens), so it visibly morphs
+  # as the glass moves over it; a lighter blur so the shapes stay readable
+  # through it, and a trace of dispersion at the rim.
+  kw plugin:hyprglass:blur_strength 0.95
   kw plugin:hyprglass:blur_iterations 3
-  kw plugin:hyprglass:refraction_strength 0.08
-  kw plugin:hyprglass:chromatic_aberration 0.03
+  kw plugin:hyprglass:refraction_strength 0.55
+  kw plugin:hyprglass:chromatic_aberration 0.08
   kw plugin:hyprglass:fresnel_strength 0.22
   kw plugin:hyprglass:specular_strength 0.16
-  kw plugin:hyprglass:edge_thickness 0.032
-  kw plugin:hyprglass:lens_distortion 0.18
+  kw plugin:hyprglass:edge_thickness 0.08
+  kw plugin:hyprglass:lens_distortion 0.42
   kw plugin:hyprglass:dark:brightness 0.80
   kw plugin:hyprglass:dark:contrast 0.98
   kw plugin:hyprglass:dark:saturation 0.92

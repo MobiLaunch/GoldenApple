@@ -148,69 +148,77 @@ FloatingWindow {
     Item {
         id: frame
         anchors.fill: parent
-
-        // The window body: opaque everywhere except under the sidebars, which
-        // are glass (the compositor blurs the desktop behind them).
-        Rectangle {
-            x: win.contentX
-            width: win.contentWidth; height: parent.height
-            topLeftRadius: win.sidebarWidth > 0 ? 0 : Theme.radiusWindow
-            bottomLeftRadius: topLeftRadius
-            topRightRadius: win.trailingSidebarWidth > 0 ? 0 : Theme.radiusWindow
-            bottomRightRadius: topRightRadius
-            color: win.background
-        }
+        // What the toolbar's glass bends: everything under the toolbar, where
+        // content runs under it (fullSizeContent). Glass.qml looks for this.
+        readonly property Item glassBackdrop: win.fullSizeContent ? underToolbar : null
 
         Item {
-            id: backdropArea
+            id: underToolbar
             anchors.fill: parent
-        }
 
-        // Glass sidebar, edge to edge.
-        Rectangle {
-            id: sidebarGlass
-            visible: win.sidebarWidth > 0
-            width: win.sidebarWidth; height: parent.height
-            topLeftRadius: Theme.radiusWindow
-            bottomLeftRadius: Theme.radiusWindow
-            color: Theme.reduceTransparency ? Qt.rgba(Theme.sidebarBg.r, Theme.sidebarBg.g, Theme.sidebarBg.b, 1) : Theme.sidebarBg
-            // Where the content begins: a hairline, as on the Mac.
+            // The window body: opaque everywhere except under the sidebars, which
+            // are glass (the compositor blurs the desktop behind them).
             Rectangle {
-                anchors { right: parent.right; top: parent.top; bottom: parent.bottom }
-                width: 1
-                color: Theme.dark ? "#59000000" : "#1a000000"
+                x: win.contentX
+                width: win.contentWidth; height: parent.height
+                topLeftRadius: win.sidebarWidth > 0 ? 0 : Theme.radiusWindow
+                bottomLeftRadius: topLeftRadius
+                topRightRadius: win.trailingSidebarWidth > 0 ? 0 : Theme.radiusWindow
+                bottomRightRadius: topRightRadius
+                color: win.background
             }
-            Item {
-                id: sidebarArea
-                anchors { fill: parent; topMargin: win.toolbarHeight; leftMargin: 10; rightMargin: 10; bottomMargin: 8 }
-            }
-        }
 
-        // Trailing glass sidebar (inspectors), the mirror of the leading one.
-        Rectangle {
-            visible: win.trailingSidebarWidth > 0
-            x: parent.width - win.trailingSidebarWidth
-            width: win.trailingSidebarWidth; height: parent.height
-            topRightRadius: Theme.radiusWindow
-            bottomRightRadius: Theme.radiusWindow
-            color: sidebarGlass.color
+            Item {
+                id: backdropArea
+                anchors.fill: parent
+            }
+
+            // Glass sidebar, edge to edge.
             Rectangle {
-                anchors { left: parent.left; top: parent.top; bottom: parent.bottom }
-                width: 1
-                color: Theme.dark ? "#59000000" : "#1a000000"
+                id: sidebarGlass
+                visible: win.sidebarWidth > 0
+                width: win.sidebarWidth; height: parent.height
+                topLeftRadius: Theme.radiusWindow
+                bottomLeftRadius: Theme.radiusWindow
+                color: Theme.reduceTransparency ? Qt.rgba(Theme.sidebarBg.r, Theme.sidebarBg.g, Theme.sidebarBg.b, 1) : Theme.sidebarBg
+                // Where the content begins: a hairline, as on the Mac.
+                Rectangle {
+                    anchors { right: parent.right; top: parent.top; bottom: parent.bottom }
+                    width: 1
+                    color: Theme.dark ? "#59000000" : "#1a000000"
+                }
+                Item {
+                    id: sidebarArea
+                    anchors { fill: parent; topMargin: win.toolbarHeight; leftMargin: 10; rightMargin: 10; bottomMargin: 8 }
+                }
             }
-            Item {
-                id: trailingArea
-                anchors { fill: parent; topMargin: win.toolbarHeight; leftMargin: 10; rightMargin: 10; bottomMargin: 8 }
-            }
-        }
 
-        Item {
-            id: contentArea
-            x: win.contentX
-            y: win.fullSizeContent ? 0 : win.toolbarHeight
-            width: win.contentWidth
-            height: parent.height - y
+            // Trailing glass sidebar (inspectors), the mirror of the leading one.
+            Rectangle {
+                visible: win.trailingSidebarWidth > 0
+                x: parent.width - win.trailingSidebarWidth
+                width: win.trailingSidebarWidth; height: parent.height
+                topRightRadius: Theme.radiusWindow
+                bottomRightRadius: Theme.radiusWindow
+                color: sidebarGlass.color
+                Rectangle {
+                    anchors { left: parent.left; top: parent.top; bottom: parent.bottom }
+                    width: 1
+                    color: Theme.dark ? "#59000000" : "#1a000000"
+                }
+                Item {
+                    id: trailingArea
+                    anchors { fill: parent; topMargin: win.toolbarHeight; leftMargin: 10; rightMargin: 10; bottomMargin: 8 }
+                }
+            }
+
+            Item {
+                id: contentArea
+                x: win.contentX
+                y: win.fullSizeContent ? 0 : win.toolbarHeight
+                width: win.contentWidth
+                height: parent.height - y
+            }
         }
 
         // Toolbar row: drag to move, double-click to zoom.

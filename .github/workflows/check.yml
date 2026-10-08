@@ -407,6 +407,8 @@ jobs:
           QT_QPA_PLATFORM: offscreen
       - name: "Liquid Glass drawn with OpenGL: see-through, its shadow outside it"
         run: sudo apt-get install -y libgl1-mesa-dri libglx-mesa0 && python tests/glass-gpu.py
+      - name: "Liquid Glass bends what's under it: magnified in the middle, pulled at the edge (OpenGL)"
+        run: python tests/glass-lens.py
       - name: Files' Quick Look previews pictures, text and other files
         run: python tests/quicklook.py
         env:

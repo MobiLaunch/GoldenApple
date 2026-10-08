@@ -49,6 +49,44 @@ Item {
     property color shadow: "transparent"                // a darker contact shadow (knobs)
     default property alias content: body.data
 
+    // Glass over an app's own content (a toolbar over a note, the Weather sky):
+    // that content, bent as through a thick slab (shaders/glasslens.frag).
+    // Over the desktop the compositor bends what's behind (HyprGlass), so
+    // this is only where the app itself draws it: AppWindow names that part
+    // (glassBackdrop), and glass inside it doesn't sample itself.
+    property Item backdrop: findBackdrop()
+    function findBackdrop() {
+        for (let p = parent; p; p = p.parent) {
+            if (p.glassBackdrop === undefined) continue
+            const b = p.glassBackdrop
+            for (let q = root; q; q = q.parent) if (q === b) return null
+            return b
+        }
+        return null
+    }
+    onParentChanged: backdrop = findBackdrop()
+    Component.onCompleted: backdrop = findBackdrop()
+    readonly property bool lensing: !!backdrop && visible && width > 0 && height > 0 && !filled
+        && !Theme.reduceTransparency && GraphicsInfo.api !== GraphicsInfo.Software
+    readonly property real lensMargin: 16
+    property rect lensRect: Qt.rect(0, 0, 0, 0)
+    function placeLens() {
+        if (!lensing) return
+        const p = root.mapToItem(backdrop, 0, 0)
+        lensRect = Qt.rect(p.x - lensMargin, p.y - lensMargin, width + 2 * lensMargin, height + 2 * lensMargin)
+    }
+    onXChanged: placeLens()
+    onYChanged: placeLens()
+    onWidthChanged: placeLens()
+    onHeightChanged: placeLens()
+    onLensingChanged: placeLens()
+    Connections {
+        target: root.Window.window
+        enabled: root.lensing
+        function onWidthChanged() { Qt.callLater(root.placeLens) }
+        function onHeightChanged() { Qt.callLater(root.placeLens) }
+    }
+
     readonly property real r: Math.min(radius, width / 2, height / 2)
     readonly property real band: Math.min(lens, r * 0.45)
     // The style's floor, raised toward Reduce Transparency's by the Glass
@@ -57,7 +95,8 @@ Item {
         const base = Theme.reduceTransparency ? material.reduced : Theme.glassStyle === "tinted" ? material.tinted : 0
         return base + (Math.max(base, material.reduced) - base) * Math.max(0, Math.min(1, Theme.glassSolidity))
     }
-    readonly property color shownTint: Qt.rgba(tint.r, tint.g, tint.b, Math.max(tint.a, minAlpha))
+    // Over bent content the tint thins, so the bending shows through it.
+    readonly property color shownTint: Qt.rgba(tint.r, tint.g, tint.b, Math.max(tint.a * (lensing ? 0.6 : 1), minAlpha))
 
     // The press: the glass gives a few pixels whatever its size and bounces
     // back (macOS 27); under the pointer it lifts a pixel. Transforms, so
@@ -88,6 +127,29 @@ Item {
         shadowBlur: root.role === "control" ? 0.5 : 1.0
         shadowVerticalOffset: root.material.shadowY * (root.pressed ? 0.4 : root.hovered ? 1.3 : 1)
         Behavior on shadowOpacity { NumberAnimation { duration: 160 } }
+    }
+    // What's behind, through the glass.
+    ShaderEffectSource {
+        id: lensSource
+        visible: false
+        sourceItem: root.lensing ? root.backdrop : null
+        sourceRect: root.lensRect
+        live: true
+        hideSource: false
+    }
+    ShaderEffect {
+        anchors.fill: parent
+        visible: root.lensing
+        property variant source: lensSource
+        property size size: Qt.size(width, height)
+        property real radius: root.r
+        property real bevel: Math.min(18, Math.min(width, height) * 0.32)
+        property real strength: Math.min(14, Math.min(width, height) * 0.22)
+        property real dome: 0.05
+        property real dispersion: 0.18
+        property real blur: 1.6
+        property real margin: root.lensMargin
+        fragmentShader: Qt.resolvedUrl("shaders/glasslens.frag.qsb")
     }
     Rectangle {
         anchors.fill: parent
