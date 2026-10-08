@@ -65,33 +65,43 @@ def check(event: dict) -> str:
     return ""
 
 
-def load() -> list:
-    """Every stored record (valid or not, so none is lost on the next save).
-    Raises Broken if the store is there but unusable."""
+def parse(raw: bytes) -> list:
+    """The store's contract, for events.json and any copy that would replace
+    it: UTF-8 JSON holding a list. Raises Broken otherwise."""
     try:
-        text = PATH.read_text(encoding="utf-8")
-    except FileNotFoundError:
-        return []
-    except OSError as exc:
-        raise Broken(f"Calendar can't read its events ({exc.strerror or exc}).") from exc
-    try:
-        data = json.loads(text)
-    except ValueError as exc:
+        data = json.loads(raw.decode("utf-8"))
+    except ValueError as exc:                    # bad JSON or bad UTF-8
         raise Broken("Calendar's events file is damaged.") from exc
     if not isinstance(data, list):
         raise Broken("Calendar's events file is damaged.")
     return data
 
 
+def load() -> list:
+    """Every stored record (valid or not, so none is lost on the next save).
+    Raises Broken if the store is there but unusable."""
+    try:
+        raw = PATH.read_bytes()
+    except FileNotFoundError:
+        return []
+    except OSError as exc:
+        raise Broken(f"Calendar can't read its events ({exc.strerror or exc}).") from exc
+    return parse(raw)
+
+
 def save(events: list) -> None:
     ROOT.mkdir(parents=True, exist_ok=True)
     if PATH.exists():
         shutil.copy2(PATH, BACKUP)
+    install((json.dumps(events, indent=1) + "\n").encode("utf-8"))
+
+
+def install(raw: bytes) -> None:
+    """events.json becomes raw, all at once."""
     fd, name = tempfile.mkstemp(prefix=".events.", suffix=".json", dir=ROOT)
     try:
-        with os.fdopen(fd, "w", encoding="utf-8") as f:
-            json.dump(events, f, indent=1)
-            f.write("\n")
+        with os.fdopen(fd, "wb") as f:
+            f.write(raw)
             f.flush()
             os.fsync(f.fileno())
         os.replace(name, PATH)
@@ -111,6 +121,26 @@ def locked():
             yield
         finally:
             fcntl.flock(lock, fcntl.LOCK_UN)
+
+
+def keep_broken() -> pathlib.Path | None:
+    """A copy of the damaged store under a name of its own (two restores in
+    the same second each keep theirs), left beside it."""
+    if not PATH.exists():
+        return None
+    stamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+    n = 1
+    while True:
+        kept = ROOT / (f"events.broken-{stamp}.json" if n == 1 else f"events.broken-{stamp}-{n}.json")
+        n += 1
+        try:
+            with open(kept, "xb") as out:
+                out.write(PATH.read_bytes())
+                out.flush()
+                os.fsync(out.fileno())
+            return kept
+        except FileExistsError:
+            continue
 
 
 def emit(ok: bool, **data: object) -> int:
@@ -196,19 +226,22 @@ def main() -> int:
                 pass
             if not BACKUP.exists():
                 return emit(False, error="There's no earlier copy to restore.")
+            # The copy must pass the same check as the store itself, or the
+            # store stays as it is: a restore never puts back something that
+            # would be damaged again on the next look.
             try:
-                json.loads(BACKUP.read_text(encoding="utf-8"))
-            except (OSError, ValueError):
-                return emit(False, error="The earlier copy is damaged too.")
-            stamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-            kept = ROOT / f"events.broken-{stamp}.json"
+                raw = BACKUP.read_bytes()
+                parse(raw)
+            except OSError as exc:
+                return emit(False, error=f"The earlier copy can't be read ({exc.strerror or exc}).")
+            except Broken:
+                return emit(False, error="The earlier copy is damaged too. Nothing was changed.")
             try:
-                if PATH.exists():
-                    os.replace(PATH, kept)
-                shutil.copy2(BACKUP, PATH)
+                kept = keep_broken()
+                install(raw)                     # the bytes that were checked, not the file again
             except OSError as exc:
                 return emit(False, error=f"The earlier copy couldn't be put back ({exc.strerror or exc}).")
-            return emit(True, restored=True, kept=str(kept))
+            return emit(True, restored=True, kept=str(kept) if kept else "")
 
     return 2
 

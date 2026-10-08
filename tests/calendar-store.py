@@ -2,7 +2,9 @@
 """Calendar's store (apps/calendar/helper.py): a missing store is an empty
 calendar, a damaged one is reported and never written over (until Restore
 puts the last good copy back, keeping the damaged file); two adds at once
-both keep their events; dates and times are checked for real, and a record
+both keep their events; a copy Restore would put back must pass the same
+check as the store, or nothing is changed; each restore keeps its own copy
+of the damaged file; dates and times are checked for real, and a record
 that isn't valid is kept in the file rather than silently dropped."""
 from __future__ import annotations
 
@@ -63,6 +65,46 @@ class CalendarStore(unittest.TestCase):
         self.assertTrue(r["broken"])
         self.assertFalse(r["canRestore"])
         self.assertFalse(self.helper("restore")["ok"])
+
+    def damage_with_backup(self, backup):
+        self.store.parent.mkdir(parents=True, exist_ok=True)
+        self.store.write_text('[{"title": "half')
+        bak = self.store.with_name("events.json.bak")
+        if isinstance(backup, bytes):
+            bak.write_bytes(backup)
+        else:
+            bak.mkdir()                          # there, but unreadable as a file
+        return bak
+
+    def test_an_unusable_backup_is_not_put_back(self):
+        for name, backup in (("object", b'{"events": []}'), ("scalar", b"42"), ("malformed", b"[{"),
+                             ("not utf-8", b'["\xff"]'), ("unreadable", None)):
+            with self.subTest(name):
+                self.setUp()
+                self.damage_with_backup(backup)
+                r = self.helper("restore")
+                self.assertFalse(r["ok"], r)
+                self.assertFalse(r.get("restored"))
+                self.assertEqual(self.store.read_text(), '[{"title": "half', "the store is left as it was")
+                self.assertEqual(list(self.store.parent.glob("events.broken-*")), [], "nothing moved aside")
+                self.assertTrue(self.helper("list")["broken"])
+
+    def test_a_restored_store_loads(self):
+        self.damage_with_backup(b'[{"id": "a", "title": "Kept", "date": "2026-10-07"}, {"title": ""}]\n')
+        r = self.helper("restore")
+        self.assertTrue(r["ok"] and r["restored"], r)
+        listed = self.helper("list")
+        self.assertTrue(listed["ok"])
+        self.assertEqual(([e["title"] for e in listed["events"]], listed["invalid"]), (["Kept"], 1),
+                         "an invalid record comes back too, not dropped")
+
+    def test_repeated_restores_keep_each_damaged_copy(self):
+        self.damage_with_backup(b"[]")
+        first = self.helper("restore")["kept"]
+        self.store.write_text("[{second")
+        second = self.helper("restore")["kept"]
+        self.assertNotEqual(first, second, "the same second, two names")
+        self.assertEqual((Path(first).read_text(), Path(second).read_text()), ('[{"title": "half', "[{second"))
 
     def test_concurrent_adds_keep_every_event(self):
         titles = [f"Event {i}" for i in range(12)]

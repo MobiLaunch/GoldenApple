@@ -103,22 +103,35 @@ ShellRoot {
                     timerRemaining = t.remaining !== undefined ? t.remaining : timerSeconds
                 }
             }
-            function refresh() { call(["status"], (r) => { if (r.ok) applyStatus(r) }) }
+            function refresh() {
+                call(["status"], (r) => {
+                    if (!r.ok) { say(r.error, true); return }
+                    applyStatus(r)
+                    if (r.note) say(r.note, true)
+                })
+            }
 
+            // What the helper did is what's shown: a refusal leaves the timer as
+            // it was (and says why), a note says what was left over.
             function toggleTimer() {
                 if (timerRunning)
-                    call(["timer-pause"], (r) => r.ok ? applyStatus({ alarms: alarms, timer: r.timer }) : say(r.error, true))
+                    call(["timer-pause"], (r) => {
+                        if (!r.ok) { say(r.error, true); refresh(); return }
+                        applyStatus({ alarms: alarms, timer: r.timer }); say(r.note ?? "", !!r.note)
+                    })
                 else if (timerRemaining > 0)
                     call(["timer-start", String(timerRemaining)], (r) => {
-                        if (r.ok) { applyStatus({ alarms: alarms, timer: r.timer }); say("") }
-                        else say(r.error, true)
+                        if (!r.ok) { say(r.error, true); refresh(); return }
+                        applyStatus({ alarms: alarms, timer: r.timer }); say(r.note ?? "", !!r.note)
                     })
             }
 
             function resetTimer() {
                 call(["timer-cancel"], (r) => {
+                    if (!r.ok) { say(r.error, true); refresh(); return }
                     timerRunning = false
                     timerRemaining = timerSeconds
+                    say(r.note ?? "", !!r.note)
                 })
             }
 
