@@ -29,6 +29,12 @@ PanelWindow {
     // As on the Mac: drag an icon along the Dock and the others make room;
     // drag a kept app up off the Dock and "Remove" shows, and it goes in a
     // puff; drag a running app in among the kept ones to keep it there.
+    //
+    // The pointer is measured against `ground`, a line along the bottom of the
+    // surface that never moves: not against the dragged icon (which moves with
+    // the pointer, so its own coordinates would feed back into the drag) and
+    // not against the shelf (which recentres as icons make room). The icon is
+    // then placed where the pointer is, whatever the shelf did meanwhile.
     property string dragId: ""
     property bool dragKept: false
     property real dragDX: 0
@@ -47,19 +53,23 @@ PanelWindow {
         return out
     }
     function slotX(id) { return Math.max(0, previewOrder.indexOf(id)) * step }
-    function dragMoved(tile, area, mouse) {
-        const p = area.mapToItem(keptBox, mouse.x, mouse.y)
+    function dragMoved(groundPoint) {
+        const p = ground.mapToItem(keptBox, groundPoint.x, groundPoint.y)
+        // Where the icon's middle is (it may have been picked up off-centre).
+        const mid = ground.mapToItem(keptBox, pressGroundX + dragDX + baseSize / 2, 0).x
         const others = entries.filter((e) => e.id !== dragId).length
-        const near = p.x < keptBox.width + baseSize && p.y > -baseSize * 1.15 && p.y < baseSize * 1.6
+        const near = mid < keptBox.width + baseSize && p.y > -baseSize * 1.15 && p.y < baseSize * 1.6
         // The live session's Installer stays first.
         const first = liveSession ? 1 : 0
-        dropSlot = near ? Math.max(first, Math.min(others, Math.round((p.x - baseSize / 2) / step))) : -1
+        dropSlot = near ? Math.max(first, Math.min(others, Math.round((mid - baseSize / 2) / step))) : -1
     }
     function dragEnded() {
         const id = dragId
         if (removing) {
-            const p = keptBox.mapToItem(null, 0, 0)
-            poof.play(p.x + slotXAtPress + dragDX + baseSize / 2, p.y + dragDY + baseSize / 2)
+            // Where the icon is: under the pointer.
+            const p = ground.mapToItem(null, pressGroundX + dragDX, 0)
+            const top = keptBox.mapToItem(null, 0, 0).y
+            poof.play(p.x + baseSize / 2, top + dragDY + baseSize / 2)
             Prefs.setDockPinned(keptIds.filter((k) => k !== id))
         } else if (dropSlot >= 0) {
             const order = previewOrder.filter((k) => k !== "org.goldengate.Installer")
@@ -71,6 +81,7 @@ PanelWindow {
         dragDY = 0
     }
     property real slotXAtPress: 0
+    property real pressGroundX: 0       // where the lifted icon was on the ground line when picked up
     // Size from Settings › Desktop & Dock. Keep every icon on one stable grid.
     readonly property int tileCount: entries.length + running.length + places.length
     readonly property real restingWidth: tileCount * (baseSize + 6) + 28
@@ -149,14 +160,23 @@ PanelWindow {
     }
 
     anchors { bottom: true; left: true; right: true }
-    // Include the label, its gap, bounce and spring overshoot inside the layer surface.
-    implicitHeight: baseSize + (dragging ? 230 : 70)
+    // Room for the label, its gap, the bounce and an icon dragged up off the
+    // Dock. Always this tall: a surface resized under a pressed pointer moves
+    // everything under it (and can cancel the press).
+    implicitHeight: baseSize + 230
     exclusiveZone: baseSize + 22
     color: "transparent"
     WlrLayershell.namespace: "gg-dock"
     WlrLayershell.layer: WlrLayer.Top
-    // Touch-style shelf: only the shelf itself takes input.
-    mask: Region { item: shelf }
+    // Touch-style shelf: only the shelf itself takes input, except while an
+    // icon is dragged, when the whole surface follows the pointer.
+    mask: Region { item: dock.dragging ? dragZone : shelf }
+    Item { id: dragZone; anchors.fill: parent }
+    Item {
+        id: ground
+        anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
+        height: 1
+    }
 
     SystemClock { id: clock; precision: SystemClock.Minutes }
     Process {
@@ -262,9 +282,15 @@ PanelWindow {
         width: dock.baseSize
         height: row.height
         z: lifted ? 100 : 0
-        // While dragged, it follows the pointer; a running app that won't land
-        // anywhere stays in its place.
-        transform: Translate { x: tile.lifted ? dock.dragDX : 0; y: tile.lifted ? dock.dragDY : 0 }
+        // While dragged, it sits under the pointer: where it was picked up plus
+        // how far the pointer has gone, less wherever its slot has moved to
+        // since (the shelf recentring as icons make room). A running app that
+        // won't land anywhere is dimmed.
+        readonly property real groundX: shelf.x + row.x + (kept ? keptBox.x : 0) + x
+        transform: Translate {
+            x: tile.lifted ? dock.pressGroundX + dock.dragDX - tile.groundX : 0
+            y: tile.lifted ? dock.dragDY : 0
+        }
         opacity: tile.lifted && !tile.kept && dock.dropSlot < 0 ? 0.6 : 1
 
         // The icon bounces while the app opens, until its first window shows
@@ -388,23 +414,26 @@ PanelWindow {
             anchors.fill: parent
             hoverEnabled: true
             acceptedButtons: Qt.LeftButton | Qt.RightButton
-            property point start
+            property point start             // on the ground line
             property bool moved: false
             readonly property bool movable: tile.modelData.id !== "org.goldengate.Installer"
-            onPressed: mouse => { start = Qt.point(mouse.x, mouse.y); moved = false }
+            function onGround(mouse) { return tipArea.mapToItem(ground, mouse.x, mouse.y) }
+            onPressed: mouse => { start = onGround(mouse); moved = false }
             onPositionChanged: mouse => {
                 if (!pressed || !(pressedButtons & Qt.LeftButton) || !movable) return
-                const dx = mouse.x - start.x, dy = mouse.y - start.y
+                const p = onGround(mouse)
+                const dx = p.x - start.x, dy = p.y - start.y
                 if (!moved && Math.hypot(dx, dy) < 8) return
                 if (!moved) {
                     moved = true
                     dock.slotXAtPress = tile.kept ? dock.slotX(tile.modelData.id) : 0
+                    dock.pressGroundX = tile.groundX
                     dock.dragKept = tile.kept
                     dock.dragId = tile.modelData.id
                 }
                 dock.dragDX = dx
                 dock.dragDY = dy
-                dock.dragMoved(tile, tipArea, mouse)
+                dock.dragMoved(p)
             }
             onReleased: { if (moved) dock.dragEnded() }
             onCanceled: { if (moved) dock.dragEnded() }
@@ -470,7 +499,7 @@ PanelWindow {
             }
             Repeater {
                 model: dock.running
-                delegate: AppTile { anchors.bottom: parent.bottom; opacity: dock.dragging && dock.dragId === modelData.id && dock.dropSlot >= 0 ? 0 : 1 }
+                delegate: AppTile { anchors.bottom: parent.bottom }
             }
             Item {
                 width: 11; height: dock.baseSize
