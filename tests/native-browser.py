@@ -337,6 +337,22 @@ class NativeQmlBrowser(unittest.TestCase):
             self.assertIn(BASE + "/handoff-first", tabs)
             self.assertIn(BASE + "/handoff-second", tabs)
 
+    def test_no_crash_prone_patterns(self):
+        """Two ways Web used to be able to crash mid-use."""
+        import re
+        qml = (ROOT / "apps/browser/Browser.qml").read_text()
+        # A new-window request is deleted once its handler returns: it's
+        # opened at once, not later.
+        body = qml.split("function requestNewWindow(request) {", 1)[1].split("\n    }\n", 1)[0]
+        self.assertIn("request.openIn(", body)
+        code = "\n".join(l for l in body.splitlines() if not l.strip().startswith("//"))
+        self.assertNotIn("callLater", code)
+        # Signals from the keyring's threads reach QML on the main thread.
+        backend = (ROOT / "apps/browser/backend.py").read_text()
+        section = backend.split("def _keyring(self):", 1)[1].split("def createProfile(self", 1)[0]
+        direct = [m for m in re.findall(r"self\.(\w+)\.emit\(", section) if m not in ("_copyRequested", "_mainCall")]
+        self.assertEqual(direct, [], "keyring code emits only through _post")
+
     def test_production_path_is_qml_not_qtwidgets(self):
         launcher = (ROOT / "apps/browser/browser.py").read_text()
         qml = (ROOT / "apps/browser/Browser.qml").read_text()

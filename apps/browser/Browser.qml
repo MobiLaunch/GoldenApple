@@ -407,10 +407,11 @@ Window {
         }
         let background = request.destination === WebEngineNewWindowRequest.InNewBackgroundTab
         let index = newTab("about:blank", !background)
-        Qt.callLater(function() {
-            let item = tabViews.itemAt(index)
-            if (item) request.openIn(item.view)
-        })
+        // At once, inside this handler: the request is deleted once it
+        // returns, and opening it later (Qt.callLater) crashed Web. The new
+        // tab's view exists already (the Repeater makes it as the tab is added).
+        let item = tabViews.itemAt(index)
+        if (item) request.openIn(item.view)
     }
 
     function acceptDownload(download) {

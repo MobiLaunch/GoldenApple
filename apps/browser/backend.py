@@ -160,6 +160,7 @@ class BrowserBackend(QObject):
         self._password_token = secrets.token_hex(12)
         self._password_sites = None
         self._copyRequested.connect(self._copy_secret, Qt.QueuedConnection)
+        self._mainCall.connect(self._run_on_main, Qt.QueuedConnection)
 
     def _read_profiles(self):
         names = ["Personal"]
@@ -572,6 +573,22 @@ class BrowserBackend(QObject):
     keyringWaitingChanged = Signal()
     CACHE_SECONDS = 120
 
+    # Signals from the keyring's threads reach QML on the window's thread: a
+    # notify or handler run on a worker thread can crash Qt's QML engine
+    # (intermittently, as threads do). _post emits at once on the main
+    # thread, and hands the signal over to it from any other.
+    _mainCall = Signal(object)
+
+    def _post(self, signal, *args):
+        if threading.current_thread() is threading.main_thread():
+            signal.emit(*args)
+        else:
+            self._mainCall.emit((signal, args))
+
+    def _run_on_main(self, payload):
+        signal, args = payload
+        signal.emit(*args)
+
     def _keyring(self):
         if not hasattr(self, "_kr_pool"):
             self._kr_pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="web-keyring")
@@ -588,7 +605,7 @@ class BrowserBackend(QObject):
     def _set_waiting(self, on):
         if on != getattr(self, "_kr_waiting", False):
             self._kr_waiting = on
-            self.keyringWaitingChanged.emit()
+            self._post(self.keyringWaitingChanged)
 
     def _in_background(self, job):
         """Run job() on the keyring worker; after 1.5 s without an answer, say
@@ -666,9 +683,9 @@ class BrowserBackend(QObject):
         saved login for the page's own site), as passwordScriptReady."""
         origin = self._fillable(url)
         if not origin:
-            self.passwordScriptReady.emit(request, self._script("[]"))
+            self._post(self.passwordScriptReady, request, self._script("[]"))
             return
-        self._in_background(lambda: self.passwordScriptReady.emit(
+        self._in_background(lambda: self._post(self.passwordScriptReady, 
             request, self._script(json.dumps(self._credentials(origin)))))
 
     @Slot(str, str, str, str)
@@ -677,7 +694,7 @@ class BrowserBackend(QObject):
         "update" or "" (nothing)."""
         origin = origin_of(url)
         if self.private or not origin or not password or origin in self._never_save():
-            self.passwordOfferReady.emit(request, "")
+            self._post(self.passwordOfferReady, request, "")
             return
 
         def job():
@@ -686,14 +703,14 @@ class BrowserBackend(QObject):
             else:
                 saved = {c["username"]: c["password"] for c in self._credentials(origin)}
                 kind = ("" if saved[username] == password else "update") if username in saved else "save"
-            self.passwordOfferReady.emit(request, kind)
+            self._post(self.passwordOfferReady, request, kind)
         self._in_background(job)
 
     @Slot(str, str, str, str)
     def savePasswordAsync(self, url, username, password, kind):
         origin = origin_of(url)
         if self.private or not origin:
-            self.passwordSaved.emit(False, kind)
+            self._post(self.passwordSaved, False, kind)
             return
 
         def job():
@@ -701,12 +718,12 @@ class BrowserBackend(QObject):
             self._forget_cache(origin)
             if ok:
                 self._sites_with_passwords().add(origin)
-                self.passwordsChanged.emit()
+                self._post(self.passwordsChanged)
             else:
                 reason = self.passwords.error or "the keyring is locked."
                 print("Web: a password couldn't be saved:", reason, file=sys.stderr)
-                self.toastRequested.emit("The password couldn't be saved: " + reason)
-            self.passwordSaved.emit(ok, kind)
+                self._post(self.toastRequested, "The password couldn't be saved: " + reason)
+            self._post(self.passwordSaved, ok, kind)
         self._in_background(job)
 
     @Slot(str)
@@ -724,20 +741,20 @@ class BrowserBackend(QObject):
         def job():
             logins = self.passwords.logins()
             self._password_sites = {login["origin"] for login in logins}
-            self.savedLoginsReady.emit(json.dumps(logins))
+            self._post(self.savedLoginsReady, json.dumps(logins))
         self._in_background(job)
 
     @Slot(str, str)
     def removeSavedPassword(self, origin, username):
         def job():
             if not self.passwords.remove(origin, username):
-                self.toastRequested.emit("That password couldn't be removed: " + (self.passwords.error or "the keyring is locked."))
+                self._post(self.toastRequested, "That password couldn't be removed: " + (self.passwords.error or "the keyring is locked."))
             self._password_sites = None
             self._forget_cache(origin)
-            self.passwordsChanged.emit()
+            self._post(self.passwordsChanged)
             logins = self.passwords.logins()
             self._password_sites = {login["origin"] for login in logins}
-            self.savedLoginsReady.emit(json.dumps(logins))
+            self._post(self.savedLoginsReady, json.dumps(logins))
         self._in_background(job)
 
     @Slot(str, str)
@@ -745,7 +762,7 @@ class BrowserBackend(QObject):
         def job():
             secret = self.passwords.password(origin, username)
             if secret is None:
-                self.toastRequested.emit("That password couldn't be read from the keyring.")
+                self._post(self.toastRequested, "That password couldn't be read from the keyring.")
                 return
             self._copyRequested.emit(secret)
         self._in_background(job)
@@ -755,7 +772,7 @@ class BrowserBackend(QObject):
 
     def _copy_secret(self, secret):
         QGuiApplication.clipboard().setText(secret)
-        self.toastRequested.emit("Password copied.")
+        self._post(self.toastRequested, "Password copied.")
 
     @Slot(str, result=bool)
     def createProfile(self, name):
