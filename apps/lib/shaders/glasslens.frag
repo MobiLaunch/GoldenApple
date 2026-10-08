@@ -5,8 +5,9 @@
 // away across a bevel at the edge. Where it falls, the content is bent
 // outward (the edge pulls in what lies just beyond it), with the colours
 // parting slightly; under the middle a gentle dome magnifies it. A light
-// blur on top. The source is the backdrop, `margin` px larger on each side
-// than the glass, so there is something beyond the edge to pull in.
+// blur on top. The source is the whole surface's backdrop (Backdrops.qml);
+// `origin` is where this glass sits in it, so there is something beyond the
+// glass's edge to pull in.
 layout(location = 0) in vec2 qt_TexCoord0;
 layout(location = 0) out vec4 fragColor;
 layout(std140, binding = 0) uniform buf {
@@ -19,7 +20,8 @@ layout(std140, binding = 0) uniform buf {
     float dome;         // magnification under the middle (0: none)
     float dispersion;   // how far the colours part at the edge (0..1)
     float blur;         // blur radius, px
-    float margin;       // the source's extra border, px
+    vec2 origin;        // the glass's top-left in the source, px
+    vec2 texSize;       // the source's size, px
 };
 layout(binding = 1) uniform sampler2D source;
 
@@ -31,9 +33,8 @@ float roundRect(vec2 p, vec2 half_, float r) {
 // Premultiplied, as the source is: a see-through part of the backdrop (a
 // sidebar over the desktop) stays see-through.
 vec4 sampleAt(vec2 px) {
-    vec2 full = size + 2.0 * margin;
-    vec2 uv = (px + margin) / full;
-    vec2 t = vec2(blur) / full;
+    vec2 uv = clamp((origin + px) / texSize, vec2(0.0), vec2(1.0));
+    vec2 t = vec2(blur) / texSize;
     vec4 c = texture(source, uv) * 0.36;
     c += texture(source, uv + vec2(t.x, 0.0)) * 0.16;
     c += texture(source, uv - vec2(t.x, 0.0)) * 0.16;

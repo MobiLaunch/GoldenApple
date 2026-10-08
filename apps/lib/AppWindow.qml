@@ -148,9 +148,16 @@ FloatingWindow {
     Item {
         id: frame
         anchors.fill: parent
-        // What the toolbar's glass bends: everything under the toolbar, where
-        // content runs under it (fullSizeContent). Glass.qml looks for this.
-        readonly property Item glassBackdrop: win.fullSizeContent ? underToolbar : null
+        // What the glass in this window bends (its toolbar, menus and
+        // popovers): the window's body, sidebars and content, under the toolbar.
+        ShaderEffectSource {
+            id: underToolbarTexture
+            visible: false
+            sourceItem: Backdrops.used(underToolbarTexture) ? underToolbar : null
+            live: true
+            Component.onCompleted: Backdrops.add(frame, underToolbar, underToolbarTexture)
+            Component.onDestruction: Backdrops.remove(underToolbarTexture)
+        }
 
         Item {
             id: underToolbar

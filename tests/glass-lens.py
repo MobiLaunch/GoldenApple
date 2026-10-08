@@ -35,9 +35,16 @@ fixture.write_text("""import QtQuick
 import "file:%s/apps/lib"
 import "file:%s/apps/lib/theme"
 Rectangle {
+    id: root
     width: 400; height: 200; color: "white"
     Component.onCompleted: Theme.reduceTransparency = %s
-    property Item glassBackdrop: stripes
+    ShaderEffectSource {
+        id: texture
+        visible: false
+        sourceItem: Backdrops.used(texture) ? stripes : null
+        live: true
+        Component.onCompleted: Backdrops.add(root, stripes, texture)
+    }
     Item {
         id: stripes
         anchors.fill: parent

@@ -49,43 +49,30 @@ Item {
     property color shadow: "transparent"                // a darker contact shadow (knobs)
     default property alias content: body.data
 
-    // Glass over an app's own content (a toolbar over a note, the Weather sky):
-    // that content, bent as through a thick slab (shaders/glasslens.frag).
-    // Over the desktop the compositor bends what's behind (HyprGlass), so
-    // this is only where the app itself draws it: AppWindow names that part
-    // (glassBackdrop), and glass inside it doesn't sample itself.
-    property Item backdrop: findBackdrop()
-    function findBackdrop() {
-        for (let p = parent; p; p = p.parent) {
-            if (p.glassBackdrop === undefined) continue
-            const b = p.glassBackdrop
-            for (let q = root; q; q = q.parent) if (q === b) return null
-            return b
-        }
-        return null
-    }
-    onParentChanged: backdrop = findBackdrop()
-    Component.onCompleted: backdrop = findBackdrop()
-    readonly property bool lensing: !!backdrop && visible && width > 0 && height > 0 && !filled
+    // What's behind, bent as through a thick slab (shaders/glasslens.frag):
+    // every piece of glass that has a backdrop to bend. A window offers its
+    // content (AppWindow), a shell surface the desktop under it, drawn again
+    // inside it (the shell's DesktopBackdrop); Backdrops finds the nearest,
+    // and glass never bends itself. Off with Reduce Transparency or without
+    // a GPU; then the compositor's blur is what's behind.
+    property var backdropEntry: { Backdrops.entries; return Backdrops.find(root) }
+    onParentChanged: backdropEntry = Qt.binding(() => { Backdrops.entries; return Backdrops.find(root) })
+    readonly property var backdrop: backdropEntry?.texture ?? null
+    readonly property bool lensing: !!backdrop && !!root.Window.window && visible && width > 0 && height > 0 && !filled
         && !Theme.reduceTransparency && GraphicsInfo.api !== GraphicsInfo.Software
-    readonly property real lensMargin: 16
-    property rect lensRect: Qt.rect(0, 0, 0, 0)
+    // Where this glass is in the backdrop's texture. Followed every frame
+    // while it bends, so it stays put through moves, springs and scaling.
+    property point lensOrigin: Qt.point(0, 0)
     function placeLens() {
-        if (!lensing) return
-        const p = root.mapToItem(backdrop, 0, 0)
-        lensRect = Qt.rect(p.x - lensMargin, p.y - lensMargin, width + 2 * lensMargin, height + 2 * lensMargin)
+        if (!lensing || !backdropEntry.item) return
+        const p = root.mapToItem(backdropEntry.item, 0, 0)
+        const o = Qt.point(p.x - backdrop.sourceRect.x, p.y - backdrop.sourceRect.y)
+        if (o.x !== lensOrigin.x || o.y !== lensOrigin.y) lensOrigin = o
     }
-    onXChanged: placeLens()
-    onYChanged: placeLens()
-    onWidthChanged: placeLens()
-    onHeightChanged: placeLens()
-    onLensingChanged: placeLens()
-    Connections {
-        target: root.Window.window
-        enabled: root.lensing
-        function onWidthChanged() { Qt.callLater(root.placeLens) }
-        function onHeightChanged() { Qt.callLater(root.placeLens) }
-    }
+    FrameAnimation { running: root.lensing; onTriggered: root.placeLens() }
+    onLensingChanged: { Backdrops.use(backdrop, root, lensing); placeLens() }
+    onBackdropChanged: Backdrops.use(backdrop, root, lensing)
+    Component.onDestruction: Backdrops.use(null, root, false)
 
     readonly property real r: Math.min(radius, width / 2, height / 2)
     readonly property real band: Math.min(lens, r * 0.45)
@@ -129,27 +116,25 @@ Item {
         Behavior on shadowOpacity { NumberAnimation { duration: 160 } }
     }
     // What's behind, through the glass.
-    ShaderEffectSource {
-        id: lensSource
-        visible: false
-        sourceItem: root.lensing ? root.backdrop : null
-        sourceRect: root.lensRect
-        live: true
-        hideSource: false
-    }
-    ShaderEffect {
+    // Made only while it bends: a shader with no texture to sample stalls
+    // the OpenGL renderer.
+    Loader {
         anchors.fill: parent
-        visible: root.lensing
-        property variant source: lensSource
-        property size size: Qt.size(width, height)
-        property real radius: root.r
-        property real bevel: Math.min(18, Math.min(width, height) * 0.32)
-        property real strength: Math.min(14, Math.min(width, height) * 0.22)
-        property real dome: 0.05
-        property real dispersion: 0.18
-        property real blur: 1.6
-        property real margin: root.lensMargin
-        fragmentShader: Qt.resolvedUrl("shaders/glasslens.frag.qsb")
+        active: root.lensing
+        sourceComponent: ShaderEffect {
+            property variant source: root.backdrop
+            property size size: Qt.size(width, height)
+            property real radius: root.r
+            property real bevel: Math.min(18, Math.min(width, height) * 0.32)
+            property real strength: Math.min(14, Math.min(width, height) * 0.22)
+            property real dome: 0.05
+            property real dispersion: 0.18
+            property real blur: 1.6
+            property point origin: root.lensOrigin
+            property size texSize: root.backdrop ? Qt.size(root.backdrop.sourceRect.width || root.backdropEntry.item.width,
+                                                          root.backdrop.sourceRect.height || root.backdropEntry.item.height) : Qt.size(1, 1)
+            fragmentShader: Qt.resolvedUrl("shaders/glasslens.frag.qsb")
+        }
     }
     Rectangle {
         anchors.fill: parent

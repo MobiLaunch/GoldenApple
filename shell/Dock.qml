@@ -189,6 +189,8 @@ PanelWindow {
     // icon is dragged, when the whole surface follows the pointer.
     mask: Region { item: dock.dragging ? dragZone : shelf }
     Item { id: dragZone; anchors.fill: parent }
+    // What the shelf's glass bends: the desktop under it.
+    DesktopBackdrop { surface: dock; namespace: "gg-dock" }
     Item {
         id: ground
         anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
