@@ -124,20 +124,28 @@ Item {
     // passive handler: it never takes a click or a hover from the controls.
     HoverHandler { id: pointer }
 
-    // The shadow falls only outside the glass. MultiEffect draws its source
-    // too, so the shape is masked back out: without that, on a GPU, a solid
-    // white panel sat under every pane of glass.
-    Rectangle { id: shadowShape; anchors.fill: parent; radius: root.r; color: "#ffffff"; visible: false; layer.enabled: true }
-    MultiEffect {
-        anchors.fill: shadowShape; source: shadowShape; autoPaddingEnabled: true
-        visible: root.material.shadowOpacity > 0
-        maskEnabled: true; maskSource: shadowShape; maskInverted: true
-        shadowEnabled: true
-        shadowColor: root.shadow.a > 0 ? root.shadow : "#000000"
-        shadowOpacity: root.material.shadowOpacity + (root.pressed ? -0.06 : root.hovered ? 0.05 : 0)
-        shadowBlur: root.role === "control" ? 0.5 : 1.0
-        shadowVerticalOffset: root.material.shadowY * (root.pressed ? 0.4 : root.hovered ? 1.3 : 1)
-        Behavior on shadowOpacity { NumberAnimation { duration: 140 } }
+    // The shadow falls only outside the glass, so the glass stays see-through:
+    // one pass of shaders/glassshadow.frag (a blurred rounded rectangle with
+    // the glass cut out). It was a MultiEffect over a layer, an offscreen
+    // texture and several blur passes for every control. Not drawn by Qt's
+    // software renderer (no shaders), as before.
+    ShaderEffect {
+        id: shadowEffect
+        readonly property real drop: root.material.shadowY * (root.pressed ? 0.4 : root.hovered ? 1.3 : 1)
+        property real blurPx: (root.role === "control" ? 0.5 : 1.0) * 32 / 3
+        property real pad: Math.ceil(blurPx * 3 + Math.abs(drop))
+        x: -pad; y: -pad
+        width: root.width + 2 * pad; height: root.height + 2 * pad
+        visible: root.material.shadowOpacity > 0 && GraphicsInfo.api !== GraphicsInfo.Software
+        property size size: Qt.size(width, height)
+        property size glass: Qt.size(root.width, root.height)
+        property real radius: root.r
+        property real sigma: blurPx
+        property real offsetY: drop
+        property real strength: root.material.shadowOpacity + (root.pressed ? -0.06 : root.hovered ? 0.05 : 0)
+        property color color: root.shadow.a > 0 ? root.shadow : "#000000"
+        Behavior on strength { NumberAnimation { duration: 140 } }
+        fragmentShader: Qt.resolvedUrl("shaders/glassshadow.frag.qsb")
     }
     // What's behind, through the glass.
     // Made only while it bends: a shader with no texture to sample stalls

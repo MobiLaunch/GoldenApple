@@ -184,7 +184,13 @@ Item {
     // that's always shown (the Dock) kept the windows it saw at login.
     readonly property bool following: includeWindows && Prefs.glassWindows && shown && Backdrops.used(texture)
     onFollowingChanged: if (following) Hyprland.refreshToplevels()
-    Timer { interval: 100; repeat: true; running: bd.following; onTriggered: Hyprland.refreshToplevels() }
+    // Ten times a second while a window is under the surface (it may be being
+    // dragged), twice a second otherwise; one ask serves every surface.
+    Timer {
+        interval: bd.windowIds.length > 0 ? 100 : 500
+        repeat: true; running: bd.following
+        onTriggered: Backdrops.askWindows(() => Hyprland.refreshToplevels())
+    }
     Timer { id: refreshSoon; interval: 16; onTriggered: Hyprland.refreshToplevels() }
     Connections {
         target: Hyprland

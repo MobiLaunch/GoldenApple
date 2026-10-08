@@ -22,6 +22,16 @@ QtObject {
     // anyway, so it looks the same, and each redraw of one (a scroll, a
     // window moving under the Dock) fills a quarter of the pixels.
     readonly property real resolution: 0.5
+    // When the shell last asked Hyprland where the windows are: the list is
+    // one for the whole shell, so a surface that asked just now answers for
+    // all of them (DesktopBackdrop).
+    property real windowsAskedAt: 0
+    function askWindows(refresh) {
+        const now = Date.now()
+        if (now - windowsAskedAt < 90) return
+        windowsAskedAt = now
+        refresh()
+    }
     function textureSize(w, h, dpr) {
         const s = resolution * (dpr > 0 ? dpr : 1)
         return Qt.size(Math.max(1, Math.ceil(w * s)), Math.max(1, Math.ceil(h * s)))
