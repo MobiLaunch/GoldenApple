@@ -13,11 +13,23 @@ from pathlib import Path
 import signal
 import sys
 
-from PySide6.QtCore import QCoreApplication, QLockFile, QStandardPaths, QTimer, QUrl
-from PySide6.QtGui import QGuiApplication
-from PySide6.QtNetwork import QLocalServer, QLocalSocket
-from PySide6.QtQml import QQmlApplicationEngine
-from PySide6.QtWebEngineQuick import QtWebEngineQuick
+try:
+    from PySide6.QtCore import QCoreApplication, QLockFile, QStandardPaths, QTimer, QUrl
+    from PySide6.QtGui import QGuiApplication
+    from PySide6.QtNetwork import QLocalServer, QLocalSocket
+    from PySide6.QtQml import QQmlApplicationEngine
+    from PySide6.QtWebEngineQuick import QtWebEngineQuick
+except ImportError as exc:
+    # PySide only says "could not import module 'PySide6.QtWebEngineCore'";
+    # find out why and say it (launch.sh shows the first line, exit 3).
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from diagnose import diagnose
+    print(f"ImportError: {exc}", file=sys.stderr)
+    summary, details = diagnose()
+    print("WEB-CANT-START: " + summary, file=sys.stderr)
+    for line in details:
+        print("  " + line, file=sys.stderr)
+    raise SystemExit(3)
 
 from backend import BrowserBackend, profile_key
 

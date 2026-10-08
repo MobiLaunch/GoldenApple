@@ -366,4 +366,18 @@ if ! grep -RqsF 'archisosearchuuid=%ARCHISO_UUID%' "$PROFILE/syslinux" "$PROFILE
   exit 1
 fi
 mkarchiso -v -w "$WORK/build" -o "$OUT" "$PROFILE"
+
+# Web runs on PySide6's Qt WebEngine. When Arch updates Qt before PySide6 is
+# rebuilt for it (or a package is missing), the import fails and Web can't
+# start at all ("could not import module 'PySide6.QtWebEngineCore'"). Check
+# the image's own Python can load it, so such an ISO never ships.
+root="$WORK/build/x86_64/airootfs"
+if [[ -x "$root/usr/bin/python3" ]]; then
+  say "checking Web's Qt WebEngine loads in the image"
+  if ! chroot "$root" /usr/bin/python3 -c 'import PySide6.QtWebEngineQuick, PySide6.QtWebEngineCore' 2>/dev/null; then
+    echo "Web can't start in this image: Qt WebEngine doesn't load."
+    chroot "$root" /usr/bin/python3 /usr/share/golden-gate/apps/browser/diagnose.py || true
+    exit 1
+  fi
+fi
 say "done: $(ls -1 "$OUT"/*.iso | tail -1)"

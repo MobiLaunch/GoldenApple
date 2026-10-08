@@ -108,7 +108,13 @@ case "$status" in
         ;;
 esac
 logger -t gg-web "Web failed (exit $status); see $log" 2>/dev/null || :
+# Exit 3: Qt WebEngine wouldn't load; browser.py worked out why and what
+# fixes it (an update, a missing package, a pip copy in the way).
+why=
+if [ "$status" = 3 ]; then
+    why=$(grep 'WEB-CANT-START: ' "$log" 2>/dev/null | tail -n 1 | sed 's/^WEB-CANT-START: //')
+fi
 if command -v notify-send >/dev/null 2>&1; then
-    notify-send "Web couldn't start" "Details: $log" 2>/dev/null || :
+    notify-send "Web couldn't start" "${why:-Details: $log}" 2>/dev/null || :
 fi
 exit "$status"
