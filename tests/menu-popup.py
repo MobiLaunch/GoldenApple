@@ -53,6 +53,12 @@ with tempfile.TemporaryDirectory() as t:
 
 popup = (ROOT / "shell/components/MenuPopup.qml").read_text()
 check("visible: (open || vanish.running) && !reopening" in popup, "the surface goes away while it's put right")
+backdrop = (ROOT / "shell/components/DesktopBackdrop.qml").read_text()
+check("sourceItem: bd.settled && Backdrops.used(texture) ? bd : null" in backdrop,
+      "a surface's backdrop texture waits for its new window to settle (the mapFromGlobal crash)")
+glass = (ROOT / "apps/lib/Glass.qml").read_text()
+check("e.item.mapFromItem(null, s0.x, s0.y)" in glass and "root.parent.mapToItem(e.item" not in glass,
+      "the lens maps through the scene, never into another window")
 check("onPlaceChanged: if (open && visible) reopen()" in popup, "a move while up reopens it")
 check("items: menu.shown" in popup and "shape(items) === shape(shown)" in popup,
       "what's shown is fixed while up; new rows reopen it, refreshed actions don't")

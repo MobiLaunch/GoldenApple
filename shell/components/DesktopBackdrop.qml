@@ -27,6 +27,21 @@ Item {
     property point at: Qt.point(0, 0)        // the surface's top-left on its screen
     property var fixedAt: null               // given instead (a popup: its parent's place and its anchor)
     property bool placed: false
+    // Quickshell deletes a surface's window each time it hides and makes a
+    // new one each time it shows, moving everything in it across. A texture
+    // drawing an item through that move could keep the deleted window, and
+    // the glass asking it where things are crashed Quickshell (a segfault in
+    // QWindow::mapFromGlobal, after "Cannot use same item on different
+    // windows"). So the texture lets go the moment the surface hides and
+    // takes hold again only once the new window has settled.
+    property bool settled: false
+    readonly property bool up: surface.visible
+    onUpChanged: {
+        settled = false
+        if (up) settle.restart()
+        else settle.stop()
+    }
+    Timer { id: settle; interval: 32; onTriggered: bd.settled = bd.up && !!bd.Window.window }
     readonly property var screen: surface.screen
     readonly property bool shown: surface.visible && !Theme.reduceTransparency && GraphicsInfo.api !== GraphicsInfo.Software
 
@@ -134,7 +149,7 @@ Item {
         id: texture
         parent: bd.parent
         visible: false
-        sourceItem: Backdrops.used(texture) ? bd : null
+        sourceItem: bd.settled && Backdrops.used(texture) ? bd : null
         live: true
         sourceRect: Qt.rect(bd.at.x, bd.at.y, bd.surface.width, bd.surface.height)
         textureSize: Backdrops.textureSize(bd.surface.width, bd.surface.height, Screen.devicePixelRatio)
@@ -214,5 +229,5 @@ Item {
         function onWidthChanged() { relocate.restart() }
         function onHeightChanged() { relocate.restart() }
     }
-    Component.onCompleted: locate()
+    Component.onCompleted: { locate(); if (up) settle.restart() }
 }

@@ -97,7 +97,12 @@ Item {
         watchAncestors(root.parent)
         watchAncestors(e.item)
         for (const f of ancestorTransforms) { f.x; f.y; f.xScale; f.yScale; f.angle; f.origin }
-        const p = root.parent.mapToItem(e.item, root.x, root.y)
+        // Through the scene, not straight to the backdrop's item: mapping
+        // between two items asks the other one's window to convert, and a
+        // menu's backdrop could still name a window already deleted, which
+        // crashed Quickshell. Both are in this window when it's right.
+        const s0 = root.parent.mapToItem(null, root.x, root.y)
+        const p = e.item.mapFromItem(null, s0.x, s0.y)
         const s = e.texture.sourceRect
         return Qt.point(p.x - s.x, p.y - s.y)
     }
