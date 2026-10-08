@@ -31,14 +31,16 @@ has a preview.
 ## Shape
 
 - App icons use a superellipse with n = 5, drawn full bleed; the Dock adds the shadow.
-- Radii: menu 14, menu item 8, window 22, floating sidebar 16, CC module 32
-  (capsule), toolbar pill 18, Dock 28.
+- Radii: menu 14, menu item 8, window 22 (an edge-to-edge sidebar takes the
+  window's corners), Control Center panel 22 and its tiles 14, toolbar
+  pill 18, Dock 28.
 - Hyprland windows use `rounding_power = 3.4` for continuous corners.
 
 ## Windows
 
-- **Floating sidebar.** Inset 8px from the window edges, glass, with the traffic
-  lights inside it.
+- **Edge-to-edge sidebar.** Full height and flush with the window's edge, glass,
+  rounded only by the window's corners, a hairline where the content begins,
+  with the traffic lights inside it. The window's content is solid.
 - **No toolbar background.** Controls are glass pills floating over content.
   Content scrolls under them, and a *scroll-edge effect* (blur + fade) appears
   only once scrolled.

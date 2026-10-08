@@ -59,20 +59,54 @@
 - [ ] Files: column and gallery views, tags, smart folders, undo
 - [ ] Branding package (`golden-gate-branding`: os-release)
 
-## 0.6: from the branch audit (2026-10-07)
+## 0.6: from the audits (2026-10-07)
 
-Done: no silent overwrites (rename, Notes, Calendar, disks), one account
-made once at install, honest Setup finishing and Software Update results
-with rollback, acknowledged preferences, location consent, lasting alarms,
-a background keyring, Text Size and scroll bars in the native UI, a Glass
-transparency slider, menu-bar overflow, path-bar folding, a Utilities folder,
-and ⌘W/⌘Q told apart.
+What the fixes cover, and how far that has been shown. "Tested" means a
+unit or preview-harness test in `tests/` (run in CI) with the service
+stood in for; none of it has yet been through a clean install on real
+hardware, which is the acceptance step still to come.
+
+Tested:
+
+- [x] Renames never replace: `renameat2(RENAME_NOREPLACE)`, or a hard link /
+      reserved directory where that's missing, else refused (Files, Notes)
+- [x] Notes: a note changed elsewhere is saved beside it, never over it;
+      titles rename through one locked helper; Recently Deleted keeps
+      every note and its origin under one lock
+- [x] Calendar: a damaged store is never written over; Restore puts back
+      only a copy that passes the same check, and keeps each damaged copy
+- [x] Clock: alarms and the timer are reported only once systemd took them
+      and they're saved; a unit is turned off again if saving fails; a
+      cancelled, paused or restarted timer's firing says nothing; a timer
+      lost with the user's service manager is set again
+- [x] Software Update: staged first, then applied as a transaction that puts
+      the previous version back if a step fails (packages it added and
+      services it turned on stay); Liquid Glass is turned off, with a
+      notice, when the plugin wasn't built for the installed Hyprland
+- [x] Settings: preferences change key by key under a lock (two windows keep
+      both changes), are applied to the session only once saved, and a
+      damaged file is refused rather than replaced
+- [x] Displays: a new scale reverts after 15 s unless kept, through a
+      watchdog of its own, so closing Settings doesn't keep it
+- [x] Setup: the installer takes over from Hello (and Hello comes back if it
+      can't start); the region's formats show in Language & Region; what
+      was put off is listed under Finish Setting Up until it's done
+- [x] Golden Gate UI: edge-to-edge sidebars; window contents solid by
+      default (the Transparency slider moves the glass); Control Center
+      grouped in one panel, as in Big Sur; » lists every hidden menu;
+      long path names shortened in the middle; Close and Quit told apart
+      (document apps keep running without a window)
+
+To verify on real hardware: the HyprGlass plugin against each Hyprland
+release, the display watchdog under a real compositor, an update and its
+rollback on an installed system, and a clean install end to end.
 
 Still to do:
 
-- [ ] Edge-to-edge sidebars (a design decision for every app at once)
-- [ ] One grouped Control Center panel (today: modules over the wallpaper,
-      a deliberate HyprGlass choice)
+- [ ] Global app menus: today an app gets Window and Help (the desktop gets
+      Files' menus); an action registry, then the appmenu D-Bus bridge
+- [ ] Layout at large Text Size and in longer languages: toolbars, menus and
+      Control Center keep fixed widths (Control Center's text stops at 115%)
 - [ ] Printing and PDF; backup and recovery; full account management
 - [ ] Per-app privacy permissions; accessibility beyond motion,
       transparency and text size (screen reader validation, zoom, keys)
