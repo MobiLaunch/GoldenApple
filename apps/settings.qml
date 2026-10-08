@@ -60,7 +60,14 @@ ShellRoot {
                 id: navFlick
                 y: 40; width: parent.width; height: parent.height - 40
                 // Keep the chosen pane's row in view (Keyboard, Trackpad sit below the fold).
+                // Opened straight into a pane, the rows aren't laid out when the
+                // chosen one asks: it's kept, and asked again as the list settles.
+                property Item chosenRow: null
+                onContentHeightChanged: if (chosenRow) ensure(chosenRow)
+                onHeightChanged: if (chosenRow) ensure(chosenRow)
                 function ensure(row) {
+                    chosenRow = row
+                    if (height <= 0 || contentHeight <= height) return
                     const top = row.mapToItem(nav, 0, 0).y
                     if (top < contentY) contentY = Math.max(0, top - 8)
                     else if (top + row.height > contentY + height) contentY = Math.min(contentHeight - height, top + row.height - height + 8)

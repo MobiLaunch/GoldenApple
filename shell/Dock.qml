@@ -239,7 +239,9 @@ PanelWindow {
             if (!appId) continue
             if (entries.some((e) => windowsFor(e).includes(t))) continue
             const entry = entryForWindow(appId)
-            if (out.some((e) => e.id === entry.id)) continue
+            // (Found only by the guess or its StartupWMClass, a kept app's
+            // window showed a second icon here, and no dot on the kept one.)
+            if (entries.some((e) => e.id === entry.id) || out.some((e) => e.id === entry.id)) continue
             out.push(entry)
         }
         return out
@@ -281,6 +283,7 @@ PanelWindow {
         return ToplevelManager.toplevels.values.filter((t) => {
             const id = (t.appId ?? "").toLowerCase()
             return id === appId || id === bare || (!!startup && id === startup)
+                || (!!id && dock.entryForWindow(t.appId).id === entry.id)
         })
     }
     // A window of this app parked by the yellow light (shell.qml) or ⌘H, to bring back.

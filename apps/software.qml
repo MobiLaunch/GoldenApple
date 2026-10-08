@@ -985,7 +985,7 @@ ShellRoot {
                                     width: 74; height: 74; anchors.horizontalCenter: parent.horizontalCenter; radius: 18
                                     color: Theme.dark ? "#1f2430" : "#eef1f5"
                                     border { width: 1; color: Theme.separator }
-                                    Symbol { anchors.centerIn: parent; name: "folder"; size: 28; tone: Theme.accent }
+                                    Symbol { anchors.centerIn: parent; name: "folder"; size: 28; tone: "accent" }
                                 }
                                 Text { anchors.horizontalCenter: parent.horizontalCenter; text: "Applications"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.fs(11) } }
                             }

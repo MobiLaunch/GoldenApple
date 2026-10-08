@@ -10,6 +10,7 @@ import Quickshell.Services.UPower
 import QtQuick
 import "ui/theme"
 import "components"
+import "ui/paths.js" as Paths
 
 Scope {
     id: root
@@ -64,9 +65,14 @@ Scope {
         onCompleted: (result) => {
             if (!session.locked) return
             if (result === PamResult.Success) { if (pam.active) pam.abort(); root.surfaces.forEach((s) => s.unlock()); return }
-            if (result === PamResult.Failed || result === PamResult.MaxTries) root.surfaces.forEach((s) => s.fingerFailed())
             listenAgain.restart()
         }
+        // Each finger that doesn't match (pam_fprintd says so as an error
+        // message): the field shakes then, not only once three have missed.
+        // Its "Verification timed out" is an error too, but nobody touched
+        // the reader then: no shake every half minute on an idle lock screen.
+        onPamMessage: if (touch.messageIsError && session.locked && !/timed? ?out/i.test(touch.message))
+            root.surfaces.forEach((s) => s.fingerFailed())
     }
     // The reader is asked again after a try (or a timeout), while locked.
     Timer { id: listenAgain; interval: 700; onTriggered: if (session.locked && root.touchId && !touch.active) touch.start() }
@@ -79,7 +85,7 @@ Scope {
             LockSurface {
                 id: surface
                 anchors.fill: parent
-                wallpaper: "file://" + root.wallpaper
+                wallpaper: Paths.fileUrl(root.wallpaper)
                 message: Prefs.lockMessage
                 touchId: root.touchId
                 userName: root.realName || (root.user ? root.user.charAt(0).toUpperCase() + root.user.slice(1) : "Golden User")

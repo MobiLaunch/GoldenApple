@@ -54,10 +54,14 @@ Singleton {
     property real now: Date.now()
     Timer { interval: 15000; repeat: true; running: battery.present; onTriggered: battery.now = Date.now() }
     readonly property bool calculating: smoothed <= 0 || now - changedAt < 60000
-    // "3:25 remaining", "1:10 until full", "Calculating…", "Fully charged".
+    // "3:25 remaining", "1:10 until full", "Calculating…", "Fully charged",
+    // "Not charging" (on power but held back: a charge limit, or too warm;
+    // there's no estimate then, so it said Calculating… for ever).
     readonly property string timeText: {
         if (!present) return ""
         if (full) return "Fully charged"
+        // (UPower can still say discharging for a moment after the plug goes in.)
+        if (onPower && !charging) return now - changedAt < 60000 ? "Calculating…" : "Not charging"
         if (calculating) return "Calculating…"
         const m = Math.round(smoothed / 60)
         const t = Math.floor(m / 60) + ":" + String(m % 60).padStart(2, "0")

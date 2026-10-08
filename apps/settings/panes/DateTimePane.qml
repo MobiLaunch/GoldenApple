@@ -10,6 +10,10 @@ Pane {
     property string zone: ""
     property var zones: []
     property bool h24: false
+    // The date and time under Time zone, kept current while the pane is open
+    // (it was the moment the pane opened, in the locale's terse short form).
+    property date now: new Date()
+    Timer { interval: 5000; repeat: true; running: pane.visible; onTriggered: pane.now = new Date() }
     Component.onCompleted: {
         sys.sh("timedatectl show -p NTP --value 2>/dev/null || echo; timedatectl show -p Timezone --value 2>/dev/null || readlink /etc/localtime | sed 's|.*zoneinfo/||'", (o) => { const l = o.split("\n"); ntp = l[0] === "yes"; zone = l[1] ?? "" })
         sys.sh("timedatectl list-timezones 2>/dev/null || awk '!/^#/ {print $3}' /usr/share/zoneinfo/zone1970.tab 2>/dev/null | sort -u", (o) => zones = o.split("\n").filter((z) => z.includes("/")))
@@ -23,7 +27,7 @@ Pane {
         }
         SetRow {
             title: "Time zone"
-            subtitle: new Date().toLocaleString(Qt.locale(), Locale.ShortFormat)
+            subtitle: Qt.formatDateTime(pane.now, "dddd d MMMM yyyy, " + (pane.h24 ? "HH:mm" : "h:mm AP"))
             PopUpButton {
                 width: 130
                 menuParent: pane.nav.overlay

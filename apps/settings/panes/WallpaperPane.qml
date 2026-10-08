@@ -9,6 +9,7 @@ import QtQuick
 import "../../lib"
 import "../../lib/theme"
 import ".."
+import "../../lib/paths.js" as Paths
 
 Pane {
     id: pane
@@ -55,7 +56,9 @@ Pane {
     // copied into them first.
     function choose(path) {
         error = ""
-        if (system.includes(path) || path.startsWith(userWalls + "/")) {
+        // Already one of your wallpapers (or in ~/Pictures/Wallpapers): used
+        // where it is. Copying it too listed the same picture twice.
+        if (system.includes(path) || yours.includes(path) || path.startsWith(userWalls + "/")) {
             sys.setPref(["wallpaper"], path)
             return
         }
@@ -105,7 +108,7 @@ Pane {
                 Behavior on opacity { NumberAnimation { duration: 120 } }
             }
             RoundedImage {
-                anchors.fill: parent; radius: 8; source: "file://" + tile.path
+                anchors.fill: parent; radius: 8; source: Paths.fileUrl(tile.path)
                 opacity: pane.busy === tile.path ? 0.45 : 1      // being copied into your wallpapers
                 Behavior on opacity { NumberAnimation { duration: 120 } }
             }
@@ -130,7 +133,7 @@ Pane {
         SetRow {
             title: pane.title(pane.current)
             subtitle: "Current wallpaper"
-            RoundedImage { width: 160; height: 100; radius: 8; source: "file://" + pane.current }
+            RoundedImage { width: 160; height: 100; radius: 8; source: Paths.fileUrl(pane.current) }
         }
         SetRow {
             objectName: "chooseWallpaper"

@@ -17,6 +17,7 @@ import Quickshell.Wayland
 import Quickshell.Hyprland
 import QtQuick
 import "../ui/theme"
+import "../ui/paths.js" as Paths
 
 Item {
     id: bd
@@ -43,7 +44,7 @@ Item {
     Image {
         id: wallpaper
         anchors.fill: parent
-        source: "file://" + Prefs.wallpaper
+        source: Paths.fileUrl(Prefs.wallpaper)
         sourceSize: Qt.size(bd.width, bd.height)
         fillMode: Image.PreserveAspectCrop
         asynchronous: true

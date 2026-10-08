@@ -34,18 +34,21 @@ Item {
         : role === "sidebar" ? Theme.glassSidebar
         : role === "dock" ? Theme.glassDock
         : Theme.glassRegular
+    // While the app or shell closes, the theme's materials go before the glass
+    // does: every read below falls back (nothing drawn) rather than logging a
+    // TypeError for each property of each piece of glass.
     readonly property bool clearMaterial: role === "clear"
-    property color tint: material.tint
-    property color rim: material.rim
-    property color rimLow: material.rimLow
-    property color shine: material.shine
-    property color edge: material.edge
+    property color tint: (material?.tint ?? "transparent")
+    property color rim: (material?.rim ?? "transparent")
+    property color rimLow: (material?.rimLow ?? "transparent")
+    property color shine: (material?.shine ?? "transparent")
+    property color edge: (material?.edge ?? "transparent")
     property bool filled: false
     property bool pressed: false
     property bool hovered: false
     // Width of the lens band; never more than a little under half the radius,
     // so a small control's band doesn't fill it.
-    property real lens: material.lens
+    property real lens: (material?.lens ?? 0)
     property color shadow: "transparent"                // a darker contact shadow (knobs)
     default property alias content: body.data
 
@@ -55,8 +58,28 @@ Item {
     // inside it (the shell's DesktopBackdrop); Backdrops finds the nearest,
     // and glass never bends itself. Off with Reduce Transparency or without
     // a GPU; then the compositor's blur is what's behind.
-    property var backdropEntry: { Backdrops.entries; return Backdrops.find(root) }
-    onParentChanged: { backdropEntry = Qt.binding(() => { Backdrops.entries; return Backdrops.find(root) }); if (lensing) gatherTransforms() }
+    // Looked up again, once things settle, whenever a backdrop comes or goes
+    // or the glass or anything above it moves to a new parent. (A binding
+    // straight over find() was re-entered while a pop-up menu moved itself
+    // onto the window's overlay as it was made: a binding loop.)
+    property var backdropEntry: null
+    // Watched once made: read while the pieces above are still being made, a
+    // parent still to be set (a pop-up menu's, onto the overlay) was a loop.
+    property bool made: false
+    readonly property var backdropKey: {
+        if (!made) return []
+        const chain = [Backdrops.entries]
+        for (let p = root.parent; p; p = p.parent) chain.push(p)
+        return chain
+    }
+    // (The look-up waits for the next turn; glass gone by then, a closed
+    // notification's, is left alone.)
+    readonly property var lookup: ({ gone: false })
+    onBackdropKeyChanged: { const l = lookup; Qt.callLater(() => { if (!l.gone) root.findBackdrop() }) }
+    function findBackdrop() {
+        backdropEntry = Backdrops.find(root)
+        if (lensing) gatherTransforms()
+    }
     readonly property var backdrop: backdropEntry?.texture ?? null
     readonly property bool lensing: !!backdrop && !!root.Window.window && visible && width > 0 && height > 0 && !filled
         && !Theme.reduceTransparency && GraphicsInfo.api !== GraphicsInfo.Software
@@ -95,15 +118,18 @@ Item {
     onLensingChanged: { Backdrops.use(backdrop, root, lensing); if (lensing) gatherTransforms() }
     onBackdropEntryChanged: if (lensing) gatherTransforms()
     onBackdropChanged: Backdrops.use(backdrop, root, lensing)
-    Component.onDestruction: Backdrops.use(null, root, false)
+    Component.onCompleted: made = true
+    Component.onDestruction: { lookup.gone = true; Backdrops.use(null, root, false) }
 
     readonly property real r: Math.min(radius, width / 2, height / 2)
     readonly property real band: Math.min(lens, r * 0.45)
     // The style's floor, raised toward Reduce Transparency's by the Glass
     // slider (clear … solid).
     readonly property real minAlpha: {
-        const base = Theme.reduceTransparency ? material.reduced : Theme.glassStyle === "tinted" ? material.tinted : 0
-        return base + (Math.max(base, material.reduced) - base) * Math.max(0, Math.min(1, Theme.glassSolidity))
+        // Without a GPU nothing bends or blurs what's behind, and glass at its
+        // usual tint left a menu's text over a sharp, readable desktop.
+        const base = Theme.reduceTransparency || GraphicsInfo.api === GraphicsInfo.Software ? (material?.reduced ?? 0) : Theme.glassStyle === "tinted" ? (material?.tinted ?? 0) : 0
+        return base + (Math.max(base, (material?.reduced ?? 0)) - base) * Math.max(0, Math.min(1, Theme.glassSolidity))
     }
     // Over bent content the tint thins a little, so the bending shows
     // through it while what's on the glass stays easy to read.
@@ -131,18 +157,18 @@ Item {
     // software renderer (no shaders), as before.
     ShaderEffect {
         id: shadowEffect
-        readonly property real drop: root.material.shadowY * (root.pressed ? 0.4 : root.hovered ? 1.3 : 1)
+        readonly property real drop: (root.material?.shadowY ?? 0) * (root.pressed ? 0.4 : root.hovered ? 1.3 : 1)
         property real blurPx: (root.role === "control" ? 0.5 : 1.0) * 32 / 3
         property real pad: Math.ceil(blurPx * 3 + Math.abs(drop))
         x: -pad; y: -pad
         width: root.width + 2 * pad; height: root.height + 2 * pad
-        visible: root.material.shadowOpacity > 0 && GraphicsInfo.api !== GraphicsInfo.Software
+        visible: (root.material?.shadowOpacity ?? 0) > 0 && GraphicsInfo.api !== GraphicsInfo.Software
         property size size: Qt.size(width, height)
         property size glass: Qt.size(root.width, root.height)
         property real radius: root.r
         property real sigma: blurPx
         property real offsetY: drop
-        property real strength: root.material.shadowOpacity + (root.pressed ? -0.06 : root.hovered ? 0.05 : 0)
+        property real strength: (root.material?.shadowOpacity ?? 0) + (root.pressed ? -0.06 : root.hovered ? 0.05 : 0)
         property color color: root.shadow.a > 0 ? root.shadow : "#000000"
         Behavior on strength { NumberAnimation { duration: 140 } }
         fragmentShader: Qt.resolvedUrl("shaders/glassshadow.frag.qsb")

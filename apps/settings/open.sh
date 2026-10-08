@@ -5,20 +5,23 @@
 # switches to the pane; otherwise a new one opens there.
 here=$(cd "$(dirname "$0")/.." && pwd)
 case "${1:-}" in
-  ""|wifi|bluetooth|network|battery|general|intelligence|accessibility|appearance|dock|displays|wallpaper|focus|sound|privacy|users|keyboard|trackpad|about|update|storage|datetime|language|finishsetup) pane=${1:-} ;;
+  # Every pane and sub-page in settings.qml opens as itself (tests/settings-open.py).
+  ""|wifi|bluetooth|network|battery|general|intelligence|accessibility|appearance|controlcenter|dock|menubar|displays|spotlight|wallpaper|notifications|focus|sound|lockscreen|touchid|privacy|users|keyboard|trackpad|about|update|storage|datetime|language|finishsetup) pane=${1:-} ;;
   wwan|vpn) pane=network ;;
   power) pane=battery ;;
   system|info-overview|info|about-page) pane=about ;;
   display|color|night-light) pane=displays ;;
   background) pane=wallpaper ;;
-  notifications) pane=focus ;;
-  privacy|location|diagnostics|security) pane=privacy ;;
-  user-accounts|users) pane=users ;;
-  mouse|touchpad|trackpad) pane=trackpad ;;
-  universal-access|accessibility) pane=accessibility ;;
-  datetime|date-time) pane=datetime ;;
-  region|language) pane=language ;;
+  location|diagnostics|security) pane=privacy ;;
+  fingerprint) pane=touchid ;;
+  screensaver|lock-screen) pane=lockscreen ;;
+  user-accounts) pane=users ;;
+  mouse|touchpad) pane=trackpad ;;
+  universal-access) pane=accessibility ;;
+  date-time) pane=datetime ;;
+  region) pane=language ;;
   multitasking|ubuntu) pane=dock ;;
+  sharing|apps|default-apps) pane=general ;;
   -*) pane= ;;
   *)
     # Keep the user inside CitronOS. Unknown legacy panel names land on

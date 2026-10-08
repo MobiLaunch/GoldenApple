@@ -29,9 +29,11 @@ PanelWindow {
 
     // A module opens into its detail view in place, as on the Mac: the Wi-Fi
     // networks, the paired Bluetooth devices, the sound outputs.
-    property string detail: ""          // "" | "wifi" | "bluetooth" | "sound"
+    property string detail: ""          // "" | "wifi" | "bluetooth" | "sound" | "mirroring"
     property var networks: []           // [{ ssid, signal, secure, active }]
     function showDetail(kind) {
+        // Anything else (asked over IPC) had an empty "No Outputs" panel.
+        if (!["", "wifi", "bluetooth", "sound", "mirroring"].includes(kind)) return
         detail = kind
         // Keep the last networks on screen while rescanning, so the list
         // doesn't collapse and regrow under the pointer.

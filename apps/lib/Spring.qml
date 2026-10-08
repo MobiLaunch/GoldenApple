@@ -7,8 +7,9 @@ import "theme"
 
 NumberAnimation {
     property QtObject spring: Theme.snappy
-    duration: Theme.reduceMotion ? 0 : spring.duration
+    // (The spring is gone for a moment while the app closes.)
+    duration: Theme.reduceMotion || !spring ? 0 : spring.duration
     easing.type: Easing.BezierSpline
-    easing.bezierCurve: spring.curve
+    easing.bezierCurve: spring ? spring.curve : []
 }
 

@@ -1,5 +1,7 @@
-// An image clipped to a rounded rectangle in any renderer (the path is filled
-// with the image's texture), with a hairline edge and a grey tile while loading.
+// An image clipped to a rounded rectangle (the path is filled with the image's
+// texture), with a hairline edge and a grey tile while loading. Qt's software
+// renderer can't fill a path with a texture (it drew a blank white tile), so
+// without a GPU the picture is drawn as it is, square cornered.
 import QtQuick
 import QtQuick.Shapes
 import "theme"
@@ -10,6 +12,7 @@ Item {
     property real radius: 8
     property int fillMode: Image.PreserveAspectCrop
     readonly property alias status: img.status
+    readonly property bool shapes: GraphicsInfo.api !== GraphicsInfo.Software
 
     Rectangle {
         anchors.fill: parent
@@ -24,19 +27,20 @@ Item {
         fillMode: ri.fillMode
         sourceSize: Qt.size(Math.ceil(ri.width * 2), Math.ceil(ri.height * 2))
         asynchronous: true
+        clip: true
         smooth: true; mipmap: true
     }
     // The image as drawn (fill mode applied), as a texture the size of this item.
     ShaderEffectSource {
         id: tex
         width: ri.width; height: ri.height
-        sourceItem: img
-        hideSource: true
+        sourceItem: ri.shapes ? img : null
+        hideSource: ri.shapes
         visible: false
     }
     Shape {
         anchors.fill: parent
-        visible: img.status === Image.Ready
+        visible: ri.shapes && img.status === Image.Ready
         preferredRendererType: Shape.CurveRenderer
         ShapePath {
             strokeColor: "transparent"

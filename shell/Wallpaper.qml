@@ -6,6 +6,7 @@ import Quickshell.Wayland
 import Quickshell.Hyprland
 import QtQuick
 import "components"
+import "ui/paths.js" as Paths
 
 PanelWindow {
     id: wall
@@ -24,7 +25,7 @@ PanelWindow {
 
     Image {
         anchors.fill: parent
-        source: "file://" + wall.path
+        source: Paths.fileUrl(wall.path)
         sourceSize: Qt.size(wall.width, wall.height)
         fillMode: Image.PreserveAspectCrop
         asynchronous: true

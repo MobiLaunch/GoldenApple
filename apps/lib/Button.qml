@@ -16,6 +16,9 @@ Item {
     property string text
     property string symbol
     property bool prominent: false
+    // Disabled, a default button is drawn as a plain one (as on the Mac):
+    // faded accent with white text all but disappeared on a light window.
+    readonly property bool lit: prominent && enabled
     property bool destructive: false
     // Destructive wins: a prominent destructive button (Erase, Delete) is red,
     // never the accent blue that says "safe default".
@@ -30,7 +33,7 @@ Item {
         role: "control"
         // The default button is stained with the accent (red if it destroys
         // something); the others are plain glass.
-        tint: b.prominent ? (b.destructive ? b.red : Theme.accent) : material.tint
+        tint: b.lit ? (b.destructive ? b.red : Theme.accent) : (material?.tint ?? "transparent")
         pressed: ma.pressed
         hovered: ma.containsMouse
         shadow: Theme.dark ? "#40000000" : "#1a000000"
@@ -41,11 +44,11 @@ Item {
         spacing: 6
         scale: ma.pressed && !Theme.reduceMotion ? 0.975 : 1
         Behavior on scale { enabled: !Theme.reduceMotion; NumberAnimation { duration: 85; easing.type: Easing.OutCubic } }
-        Symbol { visible: !!b.symbol; anchors.verticalCenter: parent.verticalCenter; name: b.symbol; size: 14; tone: b.prominent ? "white" : "auto" }
+        Symbol { visible: !!b.symbol; anchors.verticalCenter: parent.verticalCenter; name: b.symbol; size: 14; tone: b.lit ? "white" : "auto" }
         Text {
             anchors.verticalCenter: parent.verticalCenter
             text: b.text
-            color: b.prominent ? "#ffffff" : b.destructive ? b.red : Theme.label
+            color: b.lit ? "#ffffff" : b.destructive ? b.red : Theme.label
             font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: b.prominent ? Font.DemiBold : Font.Medium }
         }
     }

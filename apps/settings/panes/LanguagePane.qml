@@ -37,8 +37,11 @@ Pane {
 
     function localeLabel(value) {
         const base = baseLocale(value)
-        if (!base || base === "C" || base === "POSIX")
+        if (!base)
             return value
+        // The plain computer locale (C.UTF-8, often all a fresh Arch has).
+        if (base === "C" || base === "POSIX")
+            return "English (Basic)"
         const locale = Qt.locale(base)
         const language = locale.nativeLanguageName || base
         const territory = locale.nativeTerritoryName

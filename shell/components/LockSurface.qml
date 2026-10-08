@@ -253,7 +253,9 @@ Item {
                         GradientStop { position: 0; color: "#a5aab5" }
                         GradientStop { position: 1; color: "#7c818c" }
                     }
-                    visible: photo.status !== Image.Ready
+                    // (Without a GPU a path can't be filled with the picture, so the
+                    // initials stay.)
+                    visible: photo.status !== Image.Ready || GraphicsInfo.api === GraphicsInfo.Software
                     Text {
                         anchors.centerIn: parent
                         text: root.initials
@@ -274,7 +276,7 @@ Item {
                 }
                 Shape {
                     anchors.fill: parent
-                    visible: photo.status === Image.Ready
+                    visible: photo.status === Image.Ready && GraphicsInfo.api !== GraphicsInfo.Software
                     preferredRendererType: Shape.CurveRenderer
                     ShapePath {
                         strokeWidth: 0; strokeColor: "transparent"

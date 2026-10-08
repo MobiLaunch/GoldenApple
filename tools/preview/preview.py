@@ -181,6 +181,8 @@ FIXTURES: list[tuple[str, str, object]] = [
     (r"nmcli -t -f ACTIVE,SSID dev wifi", "Golden Gate\n", 0),
     (r"nmcli -t -f IN-USE,SIGNAL,SECURITY,SSID device wifi list",
      "*:86:WPA2:Golden Gate\n :64::Bay Area Guest\n :58:WPA2:Ferry Building\n :41:WPA3:Alcatraz-5G\n", 0),
+    (r"nmcli -t -f IN-USE,SSID,SIGNAL,SECURITY device wifi list",
+     "*:Golden Gate:86:WPA2\n :Bay Area Guest:64:\n :Ferry Building:58:WPA2\n :Alcatraz-5G:41:WPA3\n", 0),
     (r"nmcli -t -f TYPE,STATE d(ev(ice)?)?", "wifi:connected\nethernet:unavailable\n", 0),
     (r"golden-gate/airdrop\.json", '{"enabled": true, "mode": "everyone"}\n', 0),
     (r"bluetoothctl show", "Controller AA:BB:CC:DD:EE:FF golden-gate [default]\n\tPowered: yes\n", 0),
@@ -197,7 +199,7 @@ FAKE_TOOLS = {
     "getent": 'case "$1" in passwd) echo "jordan:x:1000:1000:Jordan Avery:/home/jordan:/bin/bash";; group) echo "wheel:x:998:jordan";; esac',
     "hostname": "echo golden-gate",
     "hostnamectl": "echo golden-gate",
-    "nmcli": 'case "$*" in *radio*) echo enabled;; *IN-USE*|*SIGNAL*) printf "*:86:WPA2:Golden Gate\\n :64::Bay Area Guest\\n :58:WPA2:Ferry Building\\n";; '
+    "nmcli": 'case "$*" in *radio*) echo enabled;; *IN-USE,SSID*) printf "*:Golden Gate:86:WPA2\\n :Bay Area Guest:64:\\n :Ferry Building:58:WPA2\\n";; *IN-USE*|*SIGNAL*) printf "*:86:WPA2:Golden Gate\\n :64::Bay Area Guest\\n :58:WPA2:Ferry Building\\n";; '
              '*TYPE,STATE*) printf "wifi:connected\\nethernet:unavailable\\n";; *ACTIVE,SSID*) printf "yes:Golden Gate\\nno:Bay Area Guest\\n";; *) ;; esac',
     "gsettings": 'case "$1 $3" in "get color-scheme") echo "$GG_PREVIEW_SCHEME";; "get accent-color") echo "\x27blue\x27";; esac',
     "bluetoothctl": 'case "$1" in show) printf "Controller AA:BB:CC:DD:EE:FF golden-gate [default]\\n\\tPowered: yes\\n";; devices) printf "Device AA:BB:CC:00:11:22 AirPods Pro\\n";; esac',

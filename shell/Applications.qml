@@ -14,6 +14,7 @@ import Quickshell.Hyprland
 import QtQuick
 import QtQuick.Effects
 import "ui/theme"
+import "ui/paths.js" as Paths
 import "components"
 
 PanelWindow {
@@ -178,7 +179,7 @@ PanelWindow {
         Image {
             id: wall
             anchors.fill: parent
-            source: "file://" + Prefs.wallpaper
+            source: Paths.fileUrl(Prefs.wallpaper)
             sourceSize: Qt.size(Math.max(1, apps.width / 4), Math.max(1, apps.height / 4))
             fillMode: Image.PreserveAspectCrop
             asynchronous: true

@@ -114,6 +114,7 @@ Item {
                 }
             }
             ListView {
+                id: fileList
                 anchors { left: parent.left; right: parent.right; top: pathBar.bottom; bottom: parent.bottom; topMargin: 6; margins: 4 }
                 clip: true
                 boundsBehavior: Flickable.StopAtBounds
@@ -159,7 +160,7 @@ Item {
                     TapHandler { onDoubleTapped: if (fileIsDir) chooser.enter(filePath) }
                 }
             }
-            Scroller { flickable: files }
+            Scroller { flickable: fileList }
         }
 
         Row {

@@ -116,7 +116,9 @@ ShellRoot {
 
         Component.onCompleted: {
             helper.call("hello", {}, (r) => {
-                if (!r.ok) return
+                // Without the helper's settings LCode still opens (on its
+                // defaults) rather than showing no window at all.
+                if (!r.ok) { ide.helloDone = true; return }
                 ide.applySettings(r)
                 ide.xvfbInstalled = r.xvfb
                 ide.helloDone = true

@@ -7,6 +7,7 @@ import Quickshell.Io
 import Quickshell.Wayland
 import QtQuick
 import "components"
+import "ui/paths.js" as Paths
 
 PanelWindow {
     anchors { top: true; bottom: true; left: true; right: true }
@@ -17,7 +18,7 @@ PanelWindow {
     LockSurface {
         id: surface
         anchors.fill: parent
-        wallpaper: "file://" + Prefs.wallpaper
+        wallpaper: Paths.fileUrl(Prefs.wallpaper)
         message: Prefs.lockMessage
         login: Quickshell.env("GG_LOCK_PREVIEW") === "login"
         battery: 0.82
