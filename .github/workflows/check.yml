@@ -445,6 +445,8 @@ jobs:
           QT_QPA_PLATFORM: offscreen
       - name: The menu bar has a background and Files' menus on the desktop
         run: python tests/menu-bar.py
+      - name: "Wallpaper: any picture or photo, from Settings or Photos"
+        run: python tests/wallpaper.py
         env:
           QT_QPA_PLATFORM: offscreen
       - name: Privacy indicators show who uses the microphone, camera, screen and location

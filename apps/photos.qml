@@ -77,15 +77,7 @@ ShellRoot {
                 ToolbarButton {
                     id: moreBtn
                     round: true; symbol: "ellipsis"
-                    onClicked: menu.popup(moreBtn, 0, height + 6, app.viewing >= 0 || app.selected >= 0 ? [
-                        { text: "Open With Default App", action: () => Qt.openUrlExternally(Paths.fileUrl(app.focusItem.path)) },
-                        { text: "Show in Files", action: () => Quickshell.execDetached(["gg-files", "--select", app.focusItem.path]) },
-                        { text: "Copy Path", action: () => Quickshell.clipboardText = app.focusItem.path },
-                        { text: "Edit with Citron Intelligence…", enabled: app.focusItem.kind !== "video",
-                          action: () => Quickshell.execDetached(["gg-intelligence", "--photo", app.focusItem.path]) },
-                        { separator: true },
-                        { text: "Delete " + (app.focusItem.kind === "video" ? "Video" : "Photo"), action: () => app.trash(app.focusItem) },
-                    ] : [
+                    onClicked: menu.popup(moreBtn, 0, height + 6, app.viewing >= 0 || app.selected >= 0 ? app.itemMenu(app.focusItem) : [
                         { text: "Show Oldest First", checked: app.oldestFirst, action: () => app.oldestFirst = true },
                         { text: "Show Newest First", checked: !app.oldestFirst, action: () => app.oldestFirst = false },
                         { separator: true },
@@ -233,6 +225,41 @@ ShellRoot {
                 if (viewing >= shown.length) viewing = shown.length - 1
             }
             function rescan() { scanner.running = true }
+
+            // A photo's menu: the toolbar's … and a right-click on it.
+            function itemMenu(it) {
+                if (!it) return []
+                return [
+                    { text: "Set as Wallpaper", enabled: it.kind !== "video", action: () => setWallpaper(it) },
+                    { separator: true },
+                    { text: "Open With Default App", action: () => Qt.openUrlExternally(Paths.fileUrl(it.path)) },
+                    { text: "Show in Files", action: () => Quickshell.execDetached(["gg-files", "--select", it.path]) },
+                    { text: "Copy Path", action: () => Quickshell.clipboardText = it.path },
+                    { text: "Edit with Citron Intelligence…", enabled: it.kind !== "video",
+                      action: () => Quickshell.execDetached(["gg-intelligence", "--photo", it.path]) },
+                    { separator: true },
+                    { text: "Delete " + (it.kind === "video" ? "Video" : "Photo"), action: () => trash(it) },
+                ]
+            }
+            // The photo, copied into your wallpapers (so it stays the wallpaper
+            // if it's deleted here) and made the wallpaper; the desktop changes
+            // at once. Said when it's done, or why not.
+            property string notice: ""
+            function setWallpaper(it) {
+                if (!it || it.kind === "video" || wallpaperSetter.running) return
+                wallpaperSetter.command = ["python3", Qt.resolvedUrl("lib/set-wallpaper.py").toString().replace("file://", ""), it.path]
+                wallpaperSetter.running = true
+            }
+            Process {
+                id: wallpaperSetter
+                property string err: ""
+                stderr: StdioCollector { onStreamFinished: wallpaperSetter.err = text.trim() }
+                onExited: (code) => {
+                    app.notice = code === 0 ? "Set as your wallpaper" : (wallpaperSetter.err.split("\n").pop() || "The photo couldn't be made the wallpaper")
+                    noticeTimer.restart()
+                }
+            }
+            Timer { id: noticeTimer; interval: 2600; onTriggered: app.notice = "" }
             function open(i) { selected = i; viewing = i }
 
             FileView {
@@ -353,6 +380,13 @@ ShellRoot {
                         onTapped: { app.selected = tile.index; app.forceActiveFocus() }
                         onDoubleTapped: app.open(tile.index)
                     }
+                    TapHandler {
+                        acceptedButtons: Qt.RightButton
+                        onTapped: (point) => {
+                            app.selected = tile.index
+                            menu.popup(tile, point.position.x, point.position.y, app.itemMenu(tile.modelData))
+                        }
+                    }
                 }
                 Text {
                     anchors.centerIn: parent
@@ -385,6 +419,28 @@ ShellRoot {
                 canNext: app.viewing + 1 < app.shown.length
                 onPrevious: app.viewing--
                 onNext: app.viewing++
+                TapHandler {
+                    acceptedButtons: Qt.RightButton
+                    onTapped: (point) => menu.popup(viewer, point.position.x, point.position.y, app.itemMenu(app.focusItem))
+                }
+            }
+
+            // Set as Wallpaper: done, or why not.
+            Glass {
+                objectName: "photosNotice"
+                role: "regular"
+                anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: 22 }
+                width: noticeText.implicitWidth + 32; height: 36; radius: 18
+                opacity: app.notice ? 1 : 0
+                visible: opacity > 0
+                Behavior on opacity { NumberAnimation { duration: 160 } }
+                Text {
+                    id: noticeText
+                    anchors.centerIn: parent
+                    text: app.notice
+                    color: Theme.label
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: Font.DemiBold }
+                }
             }
         }
 

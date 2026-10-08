@@ -56,7 +56,7 @@ Item {
     // and glass never bends itself. Off with Reduce Transparency or without
     // a GPU; then the compositor's blur is what's behind.
     property var backdropEntry: { Backdrops.entries; return Backdrops.find(root) }
-    onParentChanged: backdropEntry = Qt.binding(() => { Backdrops.entries; return Backdrops.find(root) })
+    onParentChanged: { backdropEntry = Qt.binding(() => { Backdrops.entries; return Backdrops.find(root) }); if (lensing) gatherTransforms() }
     readonly property var backdrop: backdropEntry?.texture ?? null
     readonly property bool lensing: !!backdrop && !!root.Window.window && visible && width > 0 && height > 0 && !filled
         && !Theme.reduceTransparency && GraphicsInfo.api !== GraphicsInfo.Software
@@ -73,21 +73,27 @@ Item {
         root.x; root.y
         watchAncestors(root.parent)
         watchAncestors(e.item)
+        for (const f of ancestorTransforms) { f.x; f.y; f.xScale; f.yScale; f.angle; f.origin }
         const p = root.parent.mapToItem(e.item, root.x, root.y)
         const s = e.texture.sourceRect
         return Qt.point(p.x - s.x, p.y - s.y)
     }
     function watchAncestors(item) {
-        for (let p = item; p; p = p.parent) {
-            p.x; p.y; p.width; p.height; p.scale; p.rotation
-            const t = p.transform
-            for (let i = 0; t && i < t.length; i++) {
-                const f = t[i]
-                f.x; f.y; f.xScale; f.yScale; f.angle; f.origin
-            }
-        }
+        for (let p = item; p; p = p.parent) { p.x; p.y; p.width; p.height; p.scale; p.rotation }
     }
-    onLensingChanged: Backdrops.use(backdrop, root, lensing)
+    // The Translate, Scale and Rotation transforms above the glass and the
+    // backdrop: gathered when it starts bending (or moves to a new parent),
+    // as an item's list of transforms can't be watched, only what's in it.
+    property var ancestorTransforms: []
+    function gatherTransforms() {
+        const list = []
+        for (const start of [root.parent, backdropEntry?.item ?? null])
+            for (let p = start; p; p = p.parent)
+                for (let i = 0; i < (p.transform?.length ?? 0); i++) list.push(p.transform[i])
+        ancestorTransforms = list
+    }
+    onLensingChanged: { Backdrops.use(backdrop, root, lensing); if (lensing) gatherTransforms() }
+    onBackdropEntryChanged: if (lensing) gatherTransforms()
     onBackdropChanged: Backdrops.use(backdrop, root, lensing)
     Component.onDestruction: Backdrops.use(null, root, false)
 
