@@ -40,19 +40,22 @@ Item {
             id: w
             property string content
             property string what
+            property var done: null
             stdinEnabled: true
             stderr: StdioCollector { id: werr }
             onStarted: { write(w.content); stdinEnabled = false }
             onExited: (code) => {
                 if (code !== 0) sys.failed(w.what, werr.text.trim() || "the file couldn't be written")
+                if (w.done) w.done(code === 0)
                 w.destroy()
             }
         }
     }
     // Every preference file is replaced whole and atomically (write-file.py),
     // and a failure is reported, never assumed away.
-    function writeFile(path, text, what) {
-        const w = writeComp.createObject(sys, { command: ["python3", writer, path], content: text, what: what ?? path.split("/").pop() })
+    function writeFile(path, text, what, done) {
+        const w = writeComp.createObject(sys, { command: ["python3", writer, path], content: text,
+                                                what: what ?? path.split("/").pop(), done: done ?? null })
         w.running = true
     }
     function writeJson(file, obj) { writeFile(gg + "/" + file, JSON.stringify(obj, null, 1) + "\n", file) }

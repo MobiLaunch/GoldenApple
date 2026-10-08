@@ -50,9 +50,14 @@ Pane {
 
     // A change is tried live, then kept only when you say so: without an
     // answer in 15 seconds it goes back (a display you can't read can't be
-    // confirmed). Only kept changes are written to displays.conf.
+    // confirmed). The going-back is a watchdog process of its own
+    // (display-watchdog.py), so closing Settings, leaving the pane or a crash
+    // doesn't keep a change nobody confirmed. Keep Changes ends it only once
+    // displays.conf is saved; if saving fails, the change goes back too.
+    readonly property string watchdog: decodeURIComponent(Qt.resolvedUrl("../display-watchdog.py").toString().replace("file://", ""))
     property var previous: []           // the rules to go back to
     property var pending: []            // the rules being tried
+    property string trial: ""           // the watchdog's token
     property int countdown: 0
     property string scaleError: ""
     function apply(rules, done) {
@@ -76,6 +81,8 @@ Pane {
                 monitors = now
                 previous = before
                 pending = tryRules
+                trial = String(Date.now())
+                Quickshell.execDetached(["python3", watchdog, "arm", trial, "15"].concat(before))
                 countdown = 15
                 revertTimer.restart()
             })
@@ -83,23 +90,32 @@ Pane {
     }
     function keep() {
         revertTimer.stop()
-        const rules = pending
-        pending = []
-        previous = []
+        const rules = pending, token = trial
         // displays.conf: this computer's rules, one per display, the others kept.
         const f = sys.config + "/hypr/golden-gate/displays.conf"
         sys.run(["cat", f], (text) => {
             const names = rules.map((r) => r.split(",")[0])
             const kept = text.split("\n").filter((l) => l.trim() && !names.some((n) => l.startsWith("monitor = " + n + ",")))
-            sys.writeFile(f, kept.concat(rules.map((r) => "monitor = " + r)).join("\n") + "\n", "displays.conf")
+            sys.writeFile(f, kept.concat(rules.map((r) => "monitor = " + r)).join("\n") + "\n", "displays.conf", (ok) => {
+                if (!ok) {
+                    revert()
+                    scaleError = "The new display settings couldn't be saved, so the previous ones were put back."
+                    return
+                }
+                sys.run(["python3", watchdog, "keep", token])
+                pending = []
+                previous = []
+                trial = ""
+            })
         })
     }
     function revert() {
         revertTimer.stop()
-        const rules = previous
+        const token = trial
         pending = []
         previous = []
-        if (rules.length) apply(rules, () => refresh())
+        trial = ""
+        if (token) sys.run(["python3", watchdog, "revert", token], () => refresh())
     }
     Timer {
         id: revertTimer
