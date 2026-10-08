@@ -18,12 +18,16 @@ import "notes/md.js" as Md
 ShellRoot {
     AppWindow {
         id: win
-        // Closing (or quitting) saves the note being written first; a save
-        // that fails keeps Notes open.
-        closeAction: () => {
-            if (editor.flush()) Qt.quit()
-            else if (!editor.saveError) editor.quitAfterRename = true    // quit once the rename lands
+        // Closing puts the window away (Notes keeps running, as on the Mac);
+        // quitting ends it. Either saves the note being written first, and a
+        // save that fails keeps the window open.
+        documentApp: true
+        function whenSaved(then) {
+            if (editor.flush()) then()
+            else if (!editor.saveError) editor.afterRename = then         // once the rename lands
         }
+        closeAction: () => whenSaved(() => win.putAway())
+        quitAction: () => whenSaved(() => Qt.quit())
         title: "Notes"
         implicitWidth: Math.min(1120, (Quickshell.screens[0]?.width ?? 1280) - 80)
         implicitHeight: Math.min(720, (Quickshell.screens[0]?.height ?? 900) - 150)

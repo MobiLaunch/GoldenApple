@@ -955,9 +955,13 @@ ShellRoot {
                     clip: true
                     // A deep folder doesn't crop names: the disk and this folder
                     // stay, with as many folders before it as fit, and the rest
-                    // fold into "…", whose menu opens any of them.
+                    // fold into "…", whose menu opens any of them. A very long
+                    // name is shortened in the middle, as in Finder: this
+                    // folder's to half the bar, any other's to 160 px.
                     FontMetrics { id: crumbMetrics; font { family: Theme.fontUi; pixelSize: Theme.fs(11) } }
-                    function crumbWidth(c, i) { return crumbMetrics.advanceWidth(c.name) + 12 + 4 + 10 + 1 + (i > 0 ? 12 : 0) }
+                    function nameLimit(i) { return i === files.crumbs.length - 1 ? Math.max(80, width / 2) : Math.min(160, Math.max(60, width / 4)) }
+                    function nameWidth(c, i) { return Math.min(crumbMetrics.advanceWidth(c.name), nameLimit(i)) }
+                    function crumbWidth(c, i) { return nameWidth(c, i) + 12 + 4 + 10 + 1 + (i > 0 ? 12 : 0) }
                     readonly property var shown: {
                         const cs = files.crumbs
                         const all = cs.map((c, i) => ({ c: c, i: i }))
@@ -1007,6 +1011,8 @@ ShellRoot {
                                         Text {
                                             anchors.verticalCenter: parent.verticalCenter
                                             text: crumb.c.name
+                                            width: crumb.folded ? implicitWidth : Math.min(implicitWidth, crumbBox.nameLimit(crumb.index))
+                                            elide: Text.ElideMiddle
                                             color: !crumb.folded && crumb.index === files.crumbs.length - 1 ? Theme.label : Theme.secondaryLabel
                                             font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
                                         }

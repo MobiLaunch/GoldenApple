@@ -15,7 +15,13 @@ ShellRoot {
         implicitHeight: 650
         minimumSize: Qt.size(560, 380)
         background: Theme.contentBg
-        closeAction: () => editor.requestAction(() => Qt.quit())
+        // Closing the window closes its document (asking about unsaved
+        // changes) and puts it away; TextEdit keeps running, as on the Mac,
+        // and opens with a new document when it's opened again.
+        documentApp: true
+        closeAction: () => editor.requestAction(() => { editor.newDocument(); win.putAway() })
+        quitAction: () => editor.requestAction(() => Qt.quit())
+        onOpenRequested: (p) => editor.requestAction(() => editor.openPath(p))
 
         toolbarLeft: [
             ToolbarButton { round: true; symbol: "doc"; enabled: !editor.loading && !editor.saving; onClicked: editor.requestAction(() => editor.newDocument()) },

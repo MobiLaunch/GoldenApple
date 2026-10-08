@@ -132,6 +132,22 @@ class FilesDisks(unittest.TestCase):
         self.assertEqual(names[-1], "Print")
         self.assertIn("…", names)
 
+    def test_a_very_long_name_is_shortened_not_cropped(self):
+        deep = self.home / ("Quarterly Report Drafts and Reviews for the Board Meeting " * 3).strip() / ("An Extremely Long Folder Name " * 6).strip()
+        deep.mkdir(parents=True)
+        self.call("navigate", str(deep), True)
+        self.assertTrue(self.wait_for(lambda: self.value("crumbs") and self.value("crumbs")[-1]["path"] == str(deep)))
+        QTest.qWait(150)
+        row = self.root.findChild(QObject, "filesCrumbs")
+        box = row.parentItem()
+        self.assertEqual(row.property("x"), 0, "the disk still shows: nothing pushed off the start")
+        self.assertLessEqual(row.property("implicitWidth"), box.property("width") + 1, "the whole path fits the bar")
+        texts = [t for t in self.walk(row) if t.metaObject().className().startswith("QQuickText")]
+        self.assertEqual(texts[0].property("text"), "CitronOS")
+        last = texts[-1]
+        self.assertEqual(last.property("text"), deep.name, "the full name, shown shortened")
+        self.assertTrue(last.property("truncated"), "shortened in the middle, not cropped")
+
     @staticmethod
     def walk(item):
         out, stack = [], [item]

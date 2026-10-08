@@ -23,7 +23,7 @@ Item {
     property var taken: []              // paths of other notes (new notes' first names avoid them)
     property string root: ""            // the Notes folder (renames go through notes/trash.py)
     property string notice: ""          // a save that went to a new note, and why
-    property bool quitAfterRename: false
+    property var afterRename: null       // run once a rename in progress has landed and the note is saved
     signal saved(string path, string newPath, string title, string preview)
     signal menuRequested(var items, Item item, real x, real y)
 
@@ -167,7 +167,7 @@ Item {
                 }
             }
         }
-        onExited: if (ed.quitAfterRename && ed.flush()) Qt.quit()
+        onExited: if (ed.afterRename && ed.flush()) { const then = ed.afterRename; ed.afterRename = null; then() }
     }
     FileView {
         id: writer

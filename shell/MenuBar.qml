@@ -152,10 +152,14 @@ PanelWindow {
     // Room on the bar: the status items on the right come first (they're
     // what you check); the app's menus get what's left. The app's name is
     // shortened with an ellipsis past what fits, and menus that don't fit
-    // move into » (the first of them opens from there).
+    // move into »: a menu of their titles, each opening its own menu beside
+    // it (by pointer, or Down/Right/Return).
     FontMetrics { id: titleMetrics; font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.Medium } }
     FontMetrics { id: appMetrics; font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.Bold } }
-    readonly property real leftRoom: bar.width - statusRow.implicitWidth - 40
+    // On a very narrow screen the status items give way too, keeping the
+    // logo, the app's name (at least 40 px) and » on the bar.
+    readonly property real statusRoom: Math.max(0, Math.min(statusRow.implicitWidth, bar.width - 26 - 24 - 40 - 56))
+    readonly property real leftRoom: bar.width - statusRoom - 40
     readonly property real appNatural: appMetrics.advanceWidth(bar.appName) + 18
     readonly property int titlesShown: {
         const reserve = 26 + Math.min(appNatural, 120)                  // the logo, and the name at least this wide
@@ -207,184 +211,192 @@ PanelWindow {
             objectName: "menuBarOverflow"
             readonly property var hidden: bar.titles.slice(bar.titlesShown)
             visible: hidden.length > 0
-            highlighted: barMenu.open && hidden.includes(bar.openTitle) || windowMenu.open && hidden.includes("Window")
-            onClicked: bar.openMenu(hidden[0])
+            highlighted: barMenu.open && (bar.openTitle === "»" || hidden.includes(bar.openTitle)) || windowMenu.open && hidden.includes("Window")
+            onClicked: bar.openMenu("»")
             Component.onCompleted: if (visible && hidden.includes("Window")) bar.windowItem = overflowItem
             onHiddenChanged: if (hidden.includes("Window")) bar.windowItem = overflowItem
             BarText { text: "»"; dark: bar.darkLeft }
         }
     }
 
-    RowLayout {
-        id: statusRow
+    // The status items, clipped from the left when there isn't room for all
+    // (the clock and Control Center, on the right, always stay).
+    Item {
         anchors { right: parent.right; rightMargin: 8; verticalCenter: parent.verticalCenter }
-        spacing: 1
-        // Recording the screen (⇧⌘5): stop, as on the Mac.
-        BarItem {
-            visible: bar.screenshots?.recording ?? false
-            onClicked: bar.screenshots.stopRecording()
-            Rectangle {
-                implicitWidth: 17; implicitHeight: 17; radius: 8.5
-                color: "transparent"
-                border { width: 1.4; color: bar.darkRight ? "#d6000000" : "#ffffff" }
-                Rectangle { anchors.centerIn: parent; width: 6.5; height: 6.5; radius: 1.2; color: bar.darkRight ? "#d6000000" : "#ffffff" }
-            }
-        }
-        // Now Playing (Control Center settings): the playing track's title.
-        BarItem {
-            id: nowPlaying
-            readonly property var player: Mpris.players.values.find((p) => p.isPlaying) ?? null
-            // The first to go on a narrow bar.
-            visible: Prefs.barNowPlaying && !!player && bar.width >= 1000
-            onClicked: bar.controlCenter.toggle()
-            RowLayout {
-                spacing: 5
-                Symbol { name: "music"; size: 14; tone: bar.darkRight ? "dark" : "white" }
-                BarText {
-                    Layout.maximumWidth: 180
-                    text: nowPlaying.player?.trackTitle ?? ""
-                    elide: Text.ElideRight
-                    dark: bar.darkRight
-                }
-            }
-        }
-        // Focus: the moon while Do Not Disturb is on.
-        BarItem {
-            visible: Prefs.barFocus && Prefs.focusDnd
-            onClicked: bar.controlCenter.toggle()
-            Symbol { name: "moon"; size: 15; tone: bar.darkRight ? "dark" : "white" }
-        }
-        BarItem {
-            visible: Prefs.barBattery && UPower.displayDevice.isLaptopBattery
-            // Drawn in the bar's ink (dark over a light wallpaper), red when low
-            // and not charging.
-            RowLayout {
-                id: battery
-                readonly property color ink: bar.darkRight ? "#000000" : "#ffffff"
-                readonly property real level: UPower.displayDevice.percentage
-                readonly property bool charging: UPower.displayDevice.state === UPowerDeviceState.Charging
-                    || UPower.displayDevice.state === UPowerDeviceState.FullyCharged
-                spacing: 1
-                BarText {
-                    visible: Prefs.barBatteryPercent
-                    Layout.rightMargin: 4
-                    text: Math.round(battery.level * 100) + "%"
-                    dark: bar.darkRight
-                }
+        width: bar.statusRoom
+        height: statusRow.implicitHeight
+        clip: width < statusRow.implicitWidth
+        RowLayout {
+            id: statusRow
+            anchors { right: parent.right; verticalCenter: parent.verticalCenter }
+            spacing: 1
+            // Recording the screen (⇧⌘5): stop, as on the Mac.
+            BarItem {
+                visible: bar.screenshots?.recording ?? false
+                onClicked: bar.screenshots.stopRecording()
                 Rectangle {
-                    implicitWidth: 25; implicitHeight: 12; radius: 4
-                    color: "transparent"; border.width: 1.2
-                    border.color: Qt.rgba(battery.ink.r, battery.ink.g, battery.ink.b, 0.45)
-                    Rectangle {
-                        x: 2.5; y: 2.5; height: parent.height - 5; radius: 1.8
-                        color: battery.level <= 0.1 && !battery.charging ? Theme.accentRed : battery.ink
-                        width: Math.max(1.5, (parent.width - 5) * battery.level)
+                    implicitWidth: 17; implicitHeight: 17; radius: 8.5
+                    color: "transparent"
+                    border { width: 1.4; color: bar.darkRight ? "#d6000000" : "#ffffff" }
+                    Rectangle { anchors.centerIn: parent; width: 6.5; height: 6.5; radius: 1.2; color: bar.darkRight ? "#d6000000" : "#ffffff" }
+                }
+            }
+            // Now Playing (Control Center settings): the playing track's title.
+            BarItem {
+                id: nowPlaying
+                readonly property var player: Mpris.players.values.find((p) => p.isPlaying) ?? null
+                // The first to go on a narrow bar.
+                visible: Prefs.barNowPlaying && !!player && bar.width >= 1000
+                onClicked: bar.controlCenter.toggle()
+                RowLayout {
+                    spacing: 5
+                    Symbol { name: "music"; size: 14; tone: bar.darkRight ? "dark" : "white" }
+                    BarText {
+                        Layout.maximumWidth: 180
+                        text: nowPlaying.player?.trackTitle ?? ""
+                        elide: Text.ElideRight
+                        dark: bar.darkRight
                     }
                 }
-                Rectangle { implicitWidth: 1.8; implicitHeight: 4.5; color: Qt.rgba(battery.ink.r, battery.ink.g, battery.ink.b, 0.45) }
             }
-        }
-        // Bluetooth and Sound (Control Center settings), each opening its
-        // Control Center list.
-        BarItem {
-            visible: Prefs.barBluetooth && !!Bluetooth.defaultAdapter
-            Symbol {
-                name: "bluetooth"; size: 15; tone: bar.darkRight ? "dark" : "white"
-                opacity: (Bluetooth.defaultAdapter?.enabled ?? false) ? 1 : 0.35
+            // Focus: the moon while Do Not Disturb is on.
+            BarItem {
+                visible: Prefs.barFocus && Prefs.focusDnd
+                onClicked: bar.controlCenter.toggle()
+                Symbol { name: "moon"; size: 15; tone: bar.darkRight ? "dark" : "white" }
             }
-            onClicked: {
-                if (!bar.controlCenter.open) bar.controlCenter.toggle()
-                bar.controlCenter.showDetail("bluetooth")
+            BarItem {
+                visible: Prefs.barBattery && UPower.displayDevice.isLaptopBattery
+                // Drawn in the bar's ink (dark over a light wallpaper), red when low
+                // and not charging.
+                RowLayout {
+                    id: battery
+                    readonly property color ink: bar.darkRight ? "#000000" : "#ffffff"
+                    readonly property real level: UPower.displayDevice.percentage
+                    readonly property bool charging: UPower.displayDevice.state === UPowerDeviceState.Charging
+                        || UPower.displayDevice.state === UPowerDeviceState.FullyCharged
+                    spacing: 1
+                    BarText {
+                        visible: Prefs.barBatteryPercent
+                        Layout.rightMargin: 4
+                        text: Math.round(battery.level * 100) + "%"
+                        dark: bar.darkRight
+                    }
+                    Rectangle {
+                        implicitWidth: 25; implicitHeight: 12; radius: 4
+                        color: "transparent"; border.width: 1.2
+                        border.color: Qt.rgba(battery.ink.r, battery.ink.g, battery.ink.b, 0.45)
+                        Rectangle {
+                            x: 2.5; y: 2.5; height: parent.height - 5; radius: 1.8
+                            color: battery.level <= 0.1 && !battery.charging ? Theme.accentRed : battery.ink
+                            width: Math.max(1.5, (parent.width - 5) * battery.level)
+                        }
+                    }
+                    Rectangle { implicitWidth: 1.8; implicitHeight: 4.5; color: Qt.rgba(battery.ink.r, battery.ink.g, battery.ink.b, 0.45) }
+                }
             }
-        }
-        BarItem {
-            id: soundItem
-            readonly property var sink: Pipewire.defaultAudioSink
-            visible: Prefs.barSound && !!sink
-            PwObjectTracker { objects: [soundItem.sink] }
-            Symbol {
-                name: (soundItem.sink?.audio?.muted ?? false) || (soundItem.sink?.audio?.volume ?? 1) === 0 ? "speaker" : "speaker-wave"
-                size: 15; tone: bar.darkRight ? "dark" : "white"
+            // Bluetooth and Sound (Control Center settings), each opening its
+            // Control Center list.
+            BarItem {
+                visible: Prefs.barBluetooth && !!Bluetooth.defaultAdapter
+                Symbol {
+                    name: "bluetooth"; size: 15; tone: bar.darkRight ? "dark" : "white"
+                    opacity: (Bluetooth.defaultAdapter?.enabled ?? false) ? 1 : 0.35
+                }
+                onClicked: {
+                    if (!bar.controlCenter.open) bar.controlCenter.toggle()
+                    bar.controlCenter.showDetail("bluetooth")
+                }
             }
-            onClicked: {
-                if (!bar.controlCenter.open) bar.controlCenter.toggle()
-                bar.controlCenter.showDetail("sound")
+            BarItem {
+                id: soundItem
+                readonly property var sink: Pipewire.defaultAudioSink
+                visible: Prefs.barSound && !!sink
+                PwObjectTracker { objects: [soundItem.sink] }
+                Symbol {
+                    name: (soundItem.sink?.audio?.muted ?? false) || (soundItem.sink?.audio?.volume ?? 1) === 0 ? "speaker" : "speaker-wave"
+                    size: 15; tone: bar.darkRight ? "dark" : "white"
+                }
+                onClicked: {
+                    if (!bar.controlCenter.open) bar.controlCenter.toggle()
+                    bar.controlCenter.showDetail("sound")
+                }
             }
-        }
-        BarItem {
-            visible: Prefs.barWifi && bar.wifiState !== "none"
-            Symbol {
-                name: "wifi"; size: 16; tone: bar.darkRight ? "dark" : "white"
-                opacity: bar.wifiState === "connected" ? 1 : 0.35
+            BarItem {
+                visible: Prefs.barWifi && bar.wifiState !== "none"
+                Symbol {
+                    name: "wifi"; size: 16; tone: bar.darkRight ? "dark" : "white"
+                    opacity: bar.wifiState === "connected" ? 1 : 0.35
+                }
+                onClicked: {
+                    if (!bar.controlCenter.open) bar.controlCenter.toggle()
+                    bar.controlCenter.showDetail("wifi")
+                }
             }
-            onClicked: {
-                if (!bar.controlCenter.open) bar.controlCenter.toggle()
-                bar.controlCenter.showDetail("wifi")
+            BarItem { visible: Prefs.barSpotlight; Symbol { name: "search"; size: 15; tone: bar.darkRight ? "dark" : "white" } onClicked: bar.spotlight.toggle() }
+            BarItem {
+                visible: Prefs.barCitron
+                Accessible.name: "Citron Intelligence"
+                Shared.Symbol { name: "wand"; size: 15; tone: bar.darkRight ? "dark" : "white" }
+                onClicked: Quickshell.execDetached(["gg-intelligence"])
             }
-        }
-        BarItem { visible: Prefs.barSpotlight; Symbol { name: "search"; size: 15; tone: bar.darkRight ? "dark" : "white" } onClicked: bar.spotlight.toggle() }
-        BarItem {
-            visible: Prefs.barCitron
-            Accessible.name: "Citron Intelligence"
-            Shared.Symbol { name: "wand"; size: 15; tone: bar.darkRight ? "dark" : "white" }
-            onClicked: Quickshell.execDetached(["gg-intelligence"])
-        }
-        // Privacy: a dot while an app uses the microphone (yellow), camera
-        // (green) or screen (purple), an arrow while one is given your location
-        // (blue). Each grows in and out; Control Center names the apps.
-        BarItem {
-            visible: privacyRow.width > 0.5
-            onClicked: bar.controlCenter.toggle()
-            Row {
-                id: privacyRow
-                spacing: 0
-                Repeater {
-                    model: ["location", "screen", "camera", "mic"]
-                    delegate: Item {
-                        required property string modelData
-                        readonly property bool on: Privacy[modelData].length > 0
-                        width: on ? (modelData === "location" ? 15 : 12) : 0
-                        height: 16
-                        clip: true
-                        Behavior on width { enabled: !Prefs.reduceMotion; NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
-                        Accessible.name: Privacy.names[modelData] + " in use"
-                        // Location: the Mac's filled arrow.
-                        Canvas {
-                            visible: parent.modelData === "location"
-                            anchors.centerIn: parent
-                            width: 11; height: 11
-                            scale: parent.on ? 1 : 0.4
-                            Behavior on scale { enabled: !Prefs.reduceMotion; NumberAnimation { duration: 260; easing.type: Easing.OutBack } }
-                            onPaint: {
-                                const c = getContext("2d")
-                                c.reset()
-                                c.fillStyle = Privacy.colors.location
-                                c.beginPath(); c.moveTo(10.5, 0.5); c.lineTo(0.5, 4.8); c.lineTo(5.2, 5.8); c.lineTo(6.2, 10.5); c.closePath(); c.fill()
+            // Privacy: a dot while an app uses the microphone (yellow), camera
+            // (green) or screen (purple), an arrow while one is given your location
+            // (blue). Each grows in and out; Control Center names the apps.
+            BarItem {
+                visible: privacyRow.width > 0.5
+                onClicked: bar.controlCenter.toggle()
+                Row {
+                    id: privacyRow
+                    spacing: 0
+                    Repeater {
+                        model: ["location", "screen", "camera", "mic"]
+                        delegate: Item {
+                            required property string modelData
+                            readonly property bool on: Privacy[modelData].length > 0
+                            width: on ? (modelData === "location" ? 15 : 12) : 0
+                            height: 16
+                            clip: true
+                            Behavior on width { enabled: !Prefs.reduceMotion; NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+                            Accessible.name: Privacy.names[modelData] + " in use"
+                            // Location: the Mac's filled arrow.
+                            Canvas {
+                                visible: parent.modelData === "location"
+                                anchors.centerIn: parent
+                                width: 11; height: 11
+                                scale: parent.on ? 1 : 0.4
+                                Behavior on scale { enabled: !Prefs.reduceMotion; NumberAnimation { duration: 260; easing.type: Easing.OutBack } }
+                                onPaint: {
+                                    const c = getContext("2d")
+                                    c.reset()
+                                    c.fillStyle = Privacy.colors.location
+                                    c.beginPath(); c.moveTo(10.5, 0.5); c.lineTo(0.5, 4.8); c.lineTo(5.2, 5.8); c.lineTo(6.2, 10.5); c.closePath(); c.fill()
+                                }
+                            }
+                            Rectangle {
+                                visible: parent.modelData !== "location"
+                                anchors.centerIn: parent
+                                width: 7; height: 7; radius: 3.5
+                                color: Privacy.colors[parent.modelData]
+                                border { width: 0.5; color: Qt.rgba(0, 0, 0, 0.18) }
+                                scale: parent.on ? 1 : 0.2
+                                Behavior on scale { enabled: !Prefs.reduceMotion; NumberAnimation { duration: 260; easing.type: Easing.OutBack } }
                             }
                         }
-                        Rectangle {
-                            visible: parent.modelData !== "location"
-                            anchors.centerIn: parent
-                            width: 7; height: 7; radius: 3.5
-                            color: Privacy.colors[parent.modelData]
-                            border { width: 0.5; color: Qt.rgba(0, 0, 0, 0.18) }
-                            scale: parent.on ? 1 : 0.2
-                            Behavior on scale { enabled: !Prefs.reduceMotion; NumberAnimation { duration: 260; easing.type: Easing.OutBack } }
-                        }
                     }
                 }
             }
-        }
-        BarItem {
-            highlighted: bar.controlCenter.open
-            onClicked: bar.controlCenter.toggle()
-            Symbol { name: "control-center"; size: 16; tone: bar.darkRight ? "dark" : "white" }
-        }
-        BarItem {
-            highlighted: bar.notifications?.centerOpen ?? false
-            onClicked: if (bar.notifications) bar.notifications.centerOpen = !bar.notifications.centerOpen
-            SystemClock { id: clock; precision: Prefs.clockSeconds ? SystemClock.Seconds : SystemClock.Minutes }
-            BarText { text: Qt.formatDateTime(clock.date, bar.clockFormat); dark: bar.darkRight }
+            BarItem {
+                highlighted: bar.controlCenter.open
+                onClicked: bar.controlCenter.toggle()
+                Symbol { name: "control-center"; size: 16; tone: bar.darkRight ? "dark" : "white" }
+            }
+            BarItem {
+                highlighted: bar.notifications?.centerOpen ?? false
+                onClicked: if (bar.notifications) bar.notifications.centerOpen = !bar.notifications.centerOpen
+                SystemClock { id: clock; precision: Prefs.clockSeconds ? SystemClock.Seconds : SystemClock.Minutes }
+                BarText { text: Qt.formatDateTime(clock.date, bar.clockFormat); dark: bar.darkRight }
+            }
         }
     }
 
@@ -460,10 +472,10 @@ PanelWindow {
             : key === "Window" ? windowMenu.open : barMenu.open && openTitle === key
         systemMenu.open = !wasOpen && key === "system"
         appMenu.open = !wasOpen && key === "app"
-        if (key === "Window" && !wasOpen) tileTarget = activeAddress()
+        if ((key === "Window" || key === "»") && !wasOpen) tileTarget = activeAddress()
         windowMenu.open = !wasOpen && key === "Window"
         const item = titleItems().find((i) => i.modelData === key)
-            ?? (overflowItem.hidden.includes(key) ? overflowItem : null)
+            ?? (key === "»" || overflowItem.hidden.includes(key) ? overflowItem : null)
         if (!wasOpen && item && key !== "Window") {
             openTitle = key
             barMenuX = item.x + titlesRow.x
@@ -565,6 +577,7 @@ PanelWindow {
     function files(path) { Quickshell.execDetached(["gg-files", path]) }
     function emptyTrash() { Trash.empty() }
     function menuItems(title) {
+        if (title === "»") return overflowItem.hidden.map((t) => ({ label: t, submenu: t === "Window" ? windowMenu.items : bar.menuItems(t) }))
         if (title === "File") return [
             { label: "New Files Window", shortcut: "⌘N", action: () => bar.files(bar.home) },
             { label: "New Folder on Desktop", action: () => Quickshell.execDetached(["sh", "-c",
@@ -613,6 +626,7 @@ PanelWindow {
     }
     MenuPopup {
         id: barMenu
+        objectName: "menuBarMenu"
         instant: true
         anchor.window: bar
         anchor.rect.x: bar.barMenuX + 8

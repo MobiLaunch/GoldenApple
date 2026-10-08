@@ -1,7 +1,9 @@
 // A CitronOS app window, drawn by the app as on the Mac: frameless, rounded,
 // with traffic lights, a 52 px toolbar row to drag it by, edges to resize from,
-// and optionally a sidebar floating 8 px inside the window (and a trailing one,
-// for inspectors, on the right).
+// and optionally a sidebar running edge to edge down the window's left side
+// (and a trailing one, for inspectors, on the right), as Golden Gate draws
+// them: full height, flush with the window's edge, rounded only by the
+// window's own corners, a hairline where the content begins.
 //
 // The sidebar is Liquid Glass for real: the window leaves that area transparent
 // and Hyprland blurs the desktop behind it (decoration:blur), so it takes on
@@ -29,22 +31,29 @@ FloatingWindow {
     property bool resizable: true
     property bool fullSizeContent: false  // content runs under the toolbar (Weather's sky)
     // Closing and quitting, as on the Mac: the red button and ⌘W close this
-    // window (closeAction; a one-window app ends with its window), ⌘Q quits
-    // the app (quitAction). An app with documents sets them to ask about
-    // unsaved changes first; quitAction defaults to closeAction, so a check
-    // made on close is made on quit too.
+    // window (closeAction), ⌘Q quits the app (quitAction). A single-window
+    // utility (Calculator, Settings) ends with its window. A document app
+    // (documentApp: Notes, TextEdit) keeps running with its window put away
+    // (putAway), and opening it again from the Dock, Launchpad or Spotlight
+    // brings the window back (reopen, over IPC: `qs -p APP ipc call app
+    // reopen`). An app with documents sets the actions to ask about unsaved
+    // changes first; quitAction defaults to closeAction, so a check made on
+    // close is made on quit too.
     property var quitAction: null
     property var closeAction: null        // close button and ⌘W: a function (one of several windows); quits without
+    property bool documentApp: false
+    signal reopened()
+    signal openRequested(string path)     // a document app asked to open a file while running
     // ⌘[ and ⌘] (keyd sends Alt+Left/Right): Back and Forward, for apps with history.
     signal backRequested()
     signal forwardRequested()
     readonly property real toolbarHeight: Theme.sizeToolbar
-    readonly property real inset: 8
+    readonly property real inset: 0       // sidebars are edge to edge
     readonly property bool active: win._backingWindow ? win._backingWindow.active : true
     // The content column starts right of the sidebar.
-    readonly property real contentX: sidebarWidth > 0 ? inset + sidebarWidth : 0
+    readonly property real contentX: sidebarWidth > 0 ? sidebarWidth : 0
     // The content column ends left of the trailing sidebar.
-    readonly property real contentWidth: width - contentX - (trailingSidebarWidth > 0 ? trailingSidebarWidth + inset : 0)
+    readonly property real contentWidth: width - contentX - (trailingSidebarWidth > 0 ? trailingSidebarWidth : 0)
     default property alias content: contentArea.data
     property alias toolbarLeft: leftRow.data
     property alias toolbarRight: rightRow.data
@@ -121,8 +130,16 @@ FloatingWindow {
 
     // The Mac's window keys. keyd turns ⌘Q and ⌘W into Ctrl+Q and Ctrl+W, and
     // ⌘[ ⌘] into Alt+Left and Alt+Right.
-    function closeWindow() { if (closeAction) closeAction(); else Qt.quit() }
-    function quitApp() { if (quitAction) quitAction(); else closeWindow() }
+    function closeWindow() { if (closeAction) closeAction(); else if (documentApp) putAway(); else Qt.quit() }
+    function quitApp() { if (quitAction) quitAction(); else if (documentApp && !closeAction) Qt.quit(); else closeWindow() }
+    function putAway() { visible = false }
+    function reopen() { visible = true; reopened() }
+    IpcHandler {
+        target: "app"
+        enabled: win.documentApp
+        function reopen(): void { win.reopen() }
+        function open(path: string): void { win.reopen(); win.openRequested(path) }
+    }
     Shortcut { sequence: "Ctrl+Q"; onActivated: win.quitApp() }
     Shortcut { sequence: "Ctrl+W"; onActivated: win.closeWindow() }
     Shortcut { sequence: "Alt+Left"; onActivated: win.backRequested() }
@@ -132,24 +149,15 @@ FloatingWindow {
         id: frame
         anchors.fill: parent
 
-        // The window body: opaque everywhere except under the floating sidebar.
-        Shape {
-            anchors.fill: parent
-            visible: win.sidebarWidth > 0 || win.trailingSidebarWidth > 0
-            preferredRendererType: Shape.CurveRenderer
-            ShapePath {
-                fillColor: win.background
-                strokeColor: "transparent"
-                fillRule: ShapePath.OddEvenFill
-                PathRectangle { x: 0; y: 0; width: frame.width; height: frame.height; radius: Theme.radiusWindow }
-                PathRectangle { x: win.inset; y: win.inset; width: win.sidebarWidth; height: frame.height - 2 * win.inset; radius: Theme.radiusSidebar }
-                PathRectangle { x: frame.width - win.inset - win.trailingSidebarWidth; y: win.inset; width: win.trailingSidebarWidth; height: frame.height - 2 * win.inset; radius: Theme.radiusSidebar }
-            }
-        }
+        // The window body: opaque everywhere except under the sidebars, which
+        // are glass (the compositor blurs the desktop behind them).
         Rectangle {
-            anchors.fill: parent
-            visible: win.sidebarWidth <= 0 && win.trailingSidebarWidth <= 0
-            radius: Theme.radiusWindow
+            x: win.contentX
+            width: win.contentWidth; height: parent.height
+            topLeftRadius: win.sidebarWidth > 0 ? 0 : Theme.radiusWindow
+            bottomLeftRadius: topLeftRadius
+            topRightRadius: win.trailingSidebarWidth > 0 ? 0 : Theme.radiusWindow
+            bottomRightRadius: topRightRadius
             color: win.background
         }
 
@@ -158,32 +166,42 @@ FloatingWindow {
             anchors.fill: parent
         }
 
-        // Floating glass sidebar.
+        // Glass sidebar, edge to edge.
         Rectangle {
             id: sidebarGlass
             visible: win.sidebarWidth > 0
-            x: win.inset; y: win.inset
-            width: win.sidebarWidth; height: parent.height - 2 * win.inset
-            radius: Theme.radiusSidebar
+            width: win.sidebarWidth; height: parent.height
+            topLeftRadius: Theme.radiusWindow
+            bottomLeftRadius: Theme.radiusWindow
             color: Theme.reduceTransparency ? Qt.rgba(Theme.sidebarBg.r, Theme.sidebarBg.g, Theme.sidebarBg.b, 1) : Theme.sidebarBg
-            border { width: 1; color: Theme.dark ? "#1affffff" : "#80ffffff" }
+            // Where the content begins: a hairline, as on the Mac.
+            Rectangle {
+                anchors { right: parent.right; top: parent.top; bottom: parent.bottom }
+                width: 1
+                color: Theme.dark ? "#59000000" : "#1a000000"
+            }
             Item {
                 id: sidebarArea
-                anchors { fill: parent; topMargin: win.toolbarHeight - win.inset; leftMargin: 8; rightMargin: 8; bottomMargin: 8 }
+                anchors { fill: parent; topMargin: win.toolbarHeight; leftMargin: 10; rightMargin: 10; bottomMargin: 8 }
             }
         }
 
         // Trailing glass sidebar (inspectors), the mirror of the leading one.
         Rectangle {
             visible: win.trailingSidebarWidth > 0
-            x: parent.width - win.inset - win.trailingSidebarWidth; y: win.inset
-            width: win.trailingSidebarWidth; height: parent.height - 2 * win.inset
-            radius: Theme.radiusSidebar
+            x: parent.width - win.trailingSidebarWidth
+            width: win.trailingSidebarWidth; height: parent.height
+            topRightRadius: Theme.radiusWindow
+            bottomRightRadius: Theme.radiusWindow
             color: sidebarGlass.color
-            border { width: 1; color: sidebarGlass.border.color }
+            Rectangle {
+                anchors { left: parent.left; top: parent.top; bottom: parent.bottom }
+                width: 1
+                color: Theme.dark ? "#59000000" : "#1a000000"
+            }
             Item {
                 id: trailingArea
-                anchors { fill: parent; topMargin: win.toolbarHeight - win.inset; leftMargin: 8; rightMargin: 8; bottomMargin: 8 }
+                anchors { fill: parent; topMargin: win.toolbarHeight; leftMargin: 10; rightMargin: 10; bottomMargin: 8 }
             }
         }
 
@@ -220,7 +238,7 @@ FloatingWindow {
             }
             Row {
                 id: sideRow
-                x: win.sidebarWidth > 0 ? win.inset + win.sidebarWidth - width - 8 : lights.x + lights.width + 16
+                x: win.sidebarWidth > 0 ? win.sidebarWidth - width - 10 : lights.x + lights.width + 16
                 anchors.verticalCenter: parent.verticalCenter
                 spacing: 8
             }

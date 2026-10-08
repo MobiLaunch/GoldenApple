@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Closing and quitting are told apart (apps/lib/AppWindow.qml): ⌘W and the
 red button run the window's closeAction, ⌘Q its quitAction; an app that
-only guards closing (unsaved changes) is guarded on quit too. TextEdit,
+only guards closing (unsaved changes) is guarded on quit too. A document
+app (Notes, TextEdit) keeps running with its window put away, and opening
+it again brings the window back; a utility ends with its window. TextEdit,
 Notes and LCode's windows wire theirs to save or ask first."""
 import os
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
@@ -55,15 +57,28 @@ QMetaObject.invokeMethod(w2, "quitApp")
 if log(w2) != ["asked"]:
     failures.append(f"a close guard also guards quitting: {log(w2)}")
 
+view3, c3, w3 = window('documentApp: true; visible: true; onReopened: log = log.concat(["reopened"]); onOpenRequested: (p) => log = log.concat([p])')
+QMetaObject.invokeMethod(w3, "closeWindow")
+if w3.property("visible") is not False:
+    failures.append("a document app's window is put away on close, the app still running")
+QMetaObject.invokeMethod(w3, "reopen")
+if w3.property("visible") is not True or log(w3) != ["reopened"]:
+    failures.append(f"opening it again brings the window back: {w3.property('visible')} {log(w3)}")
+ipc = next((h for h in w3.findChildren(QObject) if h.property("target") == "app"), None)
+if ipc is None or ipc.property("enabled") is not True:
+    failures.append("a document app answers `ipc call app reopen`")
+
 src = (ROOT / "apps/lib/AppWindow.qml").read_text()
 if 'sequence: "Ctrl+Q"; onActivated: win.quitApp()' not in src or 'sequence: "Ctrl+W"; onActivated: win.closeWindow()' not in src:
     failures.append("⌘Q and ⌘W reach quitApp and closeWindow")
 for f, needle in (("apps/textedit.qml", "editor.requestAction"), ("apps/notes.qml", "editor.flush()"),
+                  ("apps/notes.qml", "documentApp: true"), ("apps/textedit.qml", "documentApp: true"),
+                  ("apps/desktop/org.goldengate.Notes.desktop", "ipc call app reopen"), ("apps/textedit/open.sh", "ipc call app open"),
                   ("apps/lcode/SettingsWindow.qml", "quitHandler"), ("apps/lcode/Workspace.qml", "app.quitHandler = win.requestClose")):
     if needle not in (ROOT / f).read_text():
         failures.append(f"{f} guards closing ({needle})")
 for f in failures:
     print("FAIL:", f)
 if not failures:
-    print("Windows: ⌘W closes, ⌘Q quits, and unsaved work is asked about either way")
+    print("Windows: ⌘W closes, ⌘Q quits, document apps keep running without a window, and unsaved work is asked about either way")
 sys.exit(1 if failures else 0)

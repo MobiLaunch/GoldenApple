@@ -23,9 +23,24 @@ PopupWindow {
     // right and below for the shadow, and takes input only on the menu.
     readonly property real menuWidth: list.width
     readonly property real menuHeight: list.implicitHeight
-    implicitWidth: menuWidth + 24
-    implicitHeight: menuHeight + 28
-    mask: Region { item: list }
+    // Room for a submenu beside its row, sized before the menu opens (a
+    // popup surface resized while open is dismissed); input only on what shows.
+    readonly property real subRoom: items.some((it) => it && it.submenu) ? 300 : 0
+    readonly property real subDepth: {
+        let y = list.pad, deepest = 0
+        for (const it of items) {
+            if (it && it.submenu)
+                deepest = Math.max(deepest, y + it.submenu.reduce((h, s) => h + list.rowHeight(s), 0) + 2 * list.pad)
+            y += list.rowHeight(it)
+        }
+        return deepest
+    }
+    implicitWidth: menuWidth + subRoom + 24
+    implicitHeight: Math.max(menuHeight, subDepth) + 28
+    mask: Region {
+        item: list
+        Region { item: list.sub && list.sub.visible ? list.sub : null }
+    }
 
     onOpenChanged: if (open) {
         vanish.stop()
