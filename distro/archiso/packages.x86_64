@@ -9,6 +9,9 @@ xdg-desktop-portal-hyprland
 xdg-desktop-portal-gtk
 polkit-gnome
 gnome-keyring
+# Touch ID: fingerprint readers (libfprint's drivers), used by the lock screen
+# and, if chosen, sudo and system password prompts (Settings › Touch ID & Password).
+fprintd
 libsecret
 plymouth
 sddm

@@ -47,6 +47,11 @@ install_extras() {
     printf '%%wheel ALL=(ALL:ALL) ALL\n' > "$R/etc/sudoers.d/20-golden-wheel"
     chmod 440 "$R/etc/sudoers.d/20-golden-wheel"
   fi
+  # Touch ID (Settings › Touch ID & Password): the lock screen's fingerprint
+  # PAM service, and the polkit action for its sudo/system-prompt switch.
+  install -Dm644 "$REPO/distro/archiso/overlay/etc/pam.d/gg-touchid" "$R/etc/pam.d/gg-touchid"
+  install -Dm644 "$REPO/distro/archiso/overlay/usr/share/polkit-1/actions/org.goldengate.touchid.policy" \
+    "$R/usr/share/polkit-1/actions/org.goldengate.touchid.policy"
 
   # Account creation happens before the new user has ever logged in. Install a
   # root-owned shared runtime plus a CitronOS /etc/skel so useradd produces a

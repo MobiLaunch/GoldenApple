@@ -21,6 +21,8 @@ Item {
     property int avatarTry: 0
     property url wallpaper
     property string hint: ""            // shown under the field after three wrong tries
+    property bool touchId: false        // a finger on the reader unlocks too (LockScreen.qml)
+    property string notice: ""          // for a moment under the field ("Try Again" after a finger)
     property string message: ""         // Settings → Lock Screen: "Show message when locked"
     property bool login: false          // the login window: awake from the start
     property bool busy: false
@@ -52,6 +54,16 @@ Item {
         flash.restart()
         field.input.forceActiveFocus()
     }
+    // A finger that didn't match: the field shakes and says so, keeping
+    // whatever has been typed.
+    function fingerFailed() {
+        wake()
+        shake.restart()
+        flash.restart()
+        notice = "Try Again"
+        noticeTimer.restart()
+    }
+    Timer { id: noticeTimer; interval: 2200; onTriggered: root.notice = "" }
     function reset() {
         leaving.stop()
         field.text = ""
@@ -309,7 +321,7 @@ Item {
                         anchors { left: parent.left; right: go.left; leftMargin: 7; rightMargin: 6; verticalCenter: parent.verticalCenter }
                         height: 28
                         password: true
-                        placeholder: root.busy ? "" : "Enter Password"
+                        placeholder: root.busy ? "" : root.touchId ? "Touch ID or Enter Password" : "Enter Password"
                         foreground: "white"
                         placeholderColor: "#bfffffff"
                         color: "transparent"
@@ -365,8 +377,9 @@ Item {
             Text {
                 anchors.horizontalCenter: parent.horizontalCenter
                 height: 16
-                text: root.failures >= 3 && root.hint ? root.hint
-                    : root.awake ? "" : (root.login ? "" : "Press any key or click to unlock")
+                text: root.notice ? root.notice
+                    : root.failures >= 3 && root.hint ? root.hint
+                    : root.awake ? "" : (root.login ? "" : root.touchId ? "Touch ID or press any key to unlock" : "Press any key or click to unlock")
                 color: "#d9ffffff"
                 opacity: text ? 1 : 0
                 Behavior on opacity { NumberAnimation { duration: 175 } }

@@ -35,10 +35,41 @@ Scope {
         id: pam
         config: "login"
         onCompleted: (result) => {
-            if (result === PamResult.Success) root.surfaces.forEach((s) => s.unlock());
+            if (result === PamResult.Success) { touch.abort(); root.surfaces.forEach((s) => s.unlock()) }
             else root.surfaces.forEach((s) => s.fail());
         }
     }
+
+    // Touch ID: while locked, a finger on the reader unlocks too, beside the
+    // password. It's a PAM service of its own (/etc/pam.d/gg-touchid, only
+    // pam_fprintd), listening again after each try. Only with a finger
+    // enrolled (Settings › Touch ID & Password) and "Unlock with Touch ID" on.
+    property bool touchId: false
+    Process {
+        id: fingers
+        command: ["fprintd-list", root.user]
+        stdout: StdioCollector { onStreamFinished: root.touchId = Prefs.touchIdUnlock && /^\s*-\s*#\d+:/m.test(text) }
+    }
+    Connections {
+        target: session
+        function onLockedChanged() {
+            if (session.locked) { root.touchId = false; if (Prefs.touchIdUnlock) fingers.running = true }
+            else { root.touchId = false; touch.abort() }
+        }
+    }
+    onTouchIdChanged: if (touchId && session.locked && !touch.active) touch.start()
+    PamContext {
+        id: touch
+        config: "gg-touchid"
+        onCompleted: (result) => {
+            if (!session.locked) return
+            if (result === PamResult.Success) { if (pam.active) pam.abort(); root.surfaces.forEach((s) => s.unlock()); return }
+            if (result === PamResult.Failed || result === PamResult.MaxTries) root.surfaces.forEach((s) => s.fingerFailed())
+            listenAgain.restart()
+        }
+    }
+    // The reader is asked again after a try (or a timeout), while locked.
+    Timer { id: listenAgain; interval: 700; onTriggered: if (session.locked && root.touchId && !touch.active) touch.start() }
 
     WlSessionLock {
         id: session
@@ -50,6 +81,7 @@ Scope {
                 anchors.fill: parent
                 wallpaper: "file://" + root.wallpaper
                 message: Prefs.lockMessage
+                touchId: root.touchId
                 userName: root.realName || (root.user ? root.user.charAt(0).toUpperCase() + root.user.slice(1) : "Golden User")
                 // ~/.face, else the picture AccountsService keeps for the account.
                 avatars: ["file://" + root.home + "/.face", "file:///var/lib/AccountsService/icons/" + root.user]

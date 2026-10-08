@@ -58,7 +58,8 @@ with tempfile.TemporaryDirectory() as t:
         check(b.lightness() < a.lightness() - 8, f"awake: the wallpaper dims ({a.name()} → {b.name()})")
 
 lock = (ROOT / "shell/LockScreen.qml").read_text()
-check("PamResult.Success) root.surfaces.forEach((s) => s.unlock())" in lock, "the right password plays the unlock animation")
+check(re.search(r"PamResult\.Success\)[^\n]*root\.surfaces\.forEach\(\(s\) => s\.unlock\(\)\)", lock) is not None,
+      "the right password plays the unlock animation")
 check("onUnlocked: session.locked = false" in lock, "the session is released when the animation ends")
 surface = (ROOT / "shell/components/LockSurface.qml").read_text()
 check("field.forceActiveFocus()" not in surface, "focus goes to the password's text, not the field around it")

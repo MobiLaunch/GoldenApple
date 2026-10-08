@@ -158,6 +158,7 @@ ShellRoot {
                 [3, "focus", "Focus", "moon", "#5e5ce6", "FocusPane", "do not disturb notifications"],
                 [3, "sound", "Sound", "speaker-wave", "#ff2d55", "SoundPane", "volume output input speakers microphone mute"],
                 [4, "lockscreen", "Lock Screen", "lock", "#1d1d1f", "LockScreenPane", "screen saver display off sleep require password lock message idle"],
+                [4, "touchid", "Touch ID & Password", "touchid", "#ff375f", "TouchIdPane", "fingerprint finger reader biometric unlock sudo fprintd"],
                 [4, "privacy", "Privacy & Security", "shield", "#0a84ff", "PrivacyPane", "location analytics crash diagnostics"],
                 [4, "users", "Users & Groups", "people", "#0a84ff", "UsersPane", "account password admin"],
                 [5, "keyboard", "Keyboard", "keyboard", "#8e8e93", "KeyboardPane", "key repeat layout input source"],

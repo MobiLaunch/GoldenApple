@@ -186,6 +186,7 @@ var PANES = [
     ["controlcenter", "Control Center", "menu bar items battery percentage bluetooth sound now playing"],
     ["notifications", "Notifications", "alerts banners badges sounds previews"],
     ["lockscreen", "Lock Screen", "screen saver display off sleep require password lock message"],
+    ["touchid", "Touch ID & Password", "fingerprint finger reader biometric unlock sudo"],
     ["spotlight", "Spotlight", "search results categories"],
     ["displays", "Displays", "brightness resolution night shift scale monitor"],
     ["wallpaper", "Wallpaper", "background desktop picture"],

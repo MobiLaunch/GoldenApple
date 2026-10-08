@@ -451,6 +451,8 @@ jobs:
         run: python tests/menu-bar.py
       - name: "Wallpaper: any picture or photo, from Settings or Photos"
         run: python tests/wallpaper.py
+      - name: "Touch ID: fingerprints in Settings, the lock screen, and sudo when chosen"
+        run: python tests/touchid.py
         env:
           QT_QPA_PLATFORM: offscreen
       - name: Privacy indicators show who uses the microphone, camera, screen and location

@@ -101,6 +101,8 @@ export const symbols = {
   gear: S(`<path d="${gear(12, 12, 9, 7.2, 8, 0.45)}"/><circle cx="12" cy="12" r="3"/>`, ' stroke-width="1.6"'),
   power: S(`<path d="M12 3.5v8M7 6.3a7.5 7.5 0 1 0 10 0"/>`, ' stroke-width="1.9"'),
   lock: S(`<rect x="5" y="10.5" width="14" height="10" rx="2.2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/>`),
+  // Touch ID (Settings › Touch ID & Password): a fingerprint's ridges.
+  touchid: S(`<path d="M4.6 9.6a7.6 7.6 0 0 1 14.8 0"/><path d="M7.6 20.2c-1.3-2.1-1.9-4.7-1.9-7.7a6.3 6.3 0 0 1 12.6 0v.8"/><path d="M9.1 12.3a2.9 2.9 0 0 1 5.8 0c0 3.1-.6 5.8-1.9 8.2"/><path d="M12 12.4c0 3.6-.8 6.4-2.2 8.6"/><path d="M18.1 16.6c-.3 1.5-.8 2.8-1.4 3.9"/>`, ' stroke-width="1.6"'),
   sparkles: S(`<path d="M10 3.5l1.6 4.6 4.6 1.6-4.6 1.6L10 16l-1.6-4.7-4.6-1.6 4.6-1.6zM17.5 14l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z" fill="currentColor" stroke-width="1"/>`),
   bell: S(`<path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 2h-15zM10 20.5a2 2 0 0 0 4 0"/>`),
   xmark: S(`<path d="M6 6l12 12M18 6L6 18"/>`, ' stroke-width="2"'),

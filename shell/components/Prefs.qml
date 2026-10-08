@@ -18,6 +18,8 @@ Singleton {
     // Shell glass bends live captures of the windows under it (DesktopBackdrop);
     // off ("glassWindows": false), it bends only the wallpaper.
     readonly property bool glassWindows: data.glassWindows ?? true
+    // Settings › Touch ID & Password: a finger unlocks the lock screen.
+    readonly property bool touchIdUnlock: data.touchId?.unlock ?? true
     readonly property real dockSize: data.dock?.size ?? 54
     readonly property bool dockIndicators: data.dock?.indicators ?? true
     readonly property bool animateLaunch: (data.dock?.animateLaunch ?? true) && !reduceMotion

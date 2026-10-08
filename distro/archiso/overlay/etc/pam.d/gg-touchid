@@ -1,0 +1,8 @@
+#%PAM-1.0
+# Touch ID on the lock screen (shell/LockScreen.qml): a finger on the reader
+# unlocks, beside the password (which goes through "login" as before). Only
+# a fingerprint is asked for here, so this never accepts or asks for a
+# password. After a restart the password is needed to log in (SDDM), as on
+# the Mac.
+auth      required  pam_fprintd.so max-tries=3 timeout=30
+account   required  pam_unix.so

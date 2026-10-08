@@ -163,6 +163,11 @@ qmlRegisterType(ScriptModel, "Quickshell", 1, 0, "ScriptModel")
 # (pattern over the command line, stdout, exit code). First match wins;
 # "hang" never exits, like `gsettings monitor`.
 FIXTURES: list[tuple[str, str, object]] = [
+    # Touch ID: a laptop's reader with one finger enrolled; Touch ID off for sudo.
+    (r"fprintd-list", "found 1 devices\nDevice at /net/reactivated/Fprint/Device/0\n"
+     "Using device /net/reactivated/Fprint/Device/0\n"
+     "Fingerprints for user jordan on Goodix MOC Fingerprint Sensor (press):\n - #0: right-index-finger\n", 0),
+    (r"touchid-helper\.py status", json.dumps({"admin": False, "reader": True}), 0),
     (r"intelligence/helper\.py", json.dumps({"ok": True, "config": {"enabled": False,
         "textModel": "gemini-3.8-flash", "imageModel": "gemini-3.1-flash-image"},
         "hasKey": False, "environmentKey": False, "warning": ""}), 0),
