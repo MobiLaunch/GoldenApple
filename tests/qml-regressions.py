@@ -42,12 +42,12 @@ for forbidden in ("dockMagnification", "dockMagnifiedSize", "pointerTargetX", "s
         errors.append(f"shell/Dock.qml: removed magnification path reintroduced: {forbidden}")
 
 control_center = (root / "shell" / "ControlCenter.qml").read_text(encoding="utf-8")
-# macOS 26's layout: separate glass controls on a four-column grid, Now
+# Big Sur's layout: one glass panel of tiles on a four-column grid, Now
 # Playing, the two sliders, and Edit Controls.
 for required in ("component Capsule", "component Circle", "component SliderTile", "id: nowPlaying",
                  'title: "Display"', 'title: "Sound"', "Edit Controls", "function span(n)"):
     if required not in control_center:
-        errors.append(f"shell/ControlCenter.qml: the macOS 26 control grid is missing {required!r}")
+        errors.append(f"shell/ControlCenter.qml: the Control Center grid is missing {required!r}")
 # Real GPUs make the light clear tint a bright white bar; the Dock keeps its
 # smoked graphite material, now a role in the design tokens.
 theme_qml = (root / "apps" / "lib" / "theme" / "Theme.qml").read_text(encoding="utf-8")

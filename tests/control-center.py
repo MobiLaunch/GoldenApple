@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Control Center, as in macOS 26, through the preview harness: separate glass
-controls on a four-column grid. In dark mode with Wi-Fi on, the Wi-Fi
-capsule's disc is the accent blue and the Dark Mode circle is solid white;
-the Display and Sound tiles carry white slider fills."""
+"""Control Center, grouped as in Big Sur, through the preview harness: one
+panel of glass holding tiles on a four-column grid, Wi-Fi, Bluetooth and
+AirDrop sharing one. In dark mode with Wi-Fi on, the Wi-Fi disc is the
+accent blue and the Dark Mode toggle's disc is solid white; the Display and
+Sound tiles carry white slider fills."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -34,40 +35,38 @@ with tempfile.TemporaryDirectory() as tmp:
         # The panel's grid starts 14 px inside the panel at the screen's top right.
         x0 = img.width() - 10 - 4 - (4 * 68 + 3 * 12 + 28) + 14
         y0 = 8 + 24 + 14
-        wifi = img.pixelColor(x0 + 13 + 21 - 8, y0 + 34)            # the disc, beside its glyph
+        # Wi-Fi: the first row of the shared tile (4 px inset), its disc 8 px in.
+        wifi = img.pixelColor(x0 + 4 + 8 + 5, y0 + 4 + 23)
         check(wifi.blue() > 200 and wifi.red() < 80, f"Wi-Fi's disc is the accent while on, got {wifi.name()}")
-        row3 = y0 + 2 * (68 + 12) + 68 + 12
-        dark = img.pixelColor(x0 + 12, row3 + 34)                    # the Dark Mode circle, off its glyph
-        check(dark.lightness() > 240, f"the Dark Mode circle is white while on, got {dark.name()}")
-        display = y0 + 3 * (68 + 12) + 68 + 12
+        # Dark Mode: right of the shared tile, under Focus; its disc off the glyph.
+        right = x0 + 2 * 68 + 12 + 12
+        dark = img.pixelColor(right + 34 - 12, y0 + 68 + 12 + 8 + 16)
+        check(dark.lightness() > 240, f"the Dark Mode disc is white while on, got {dark.name()}")
+        # Display: below the shared tile (two rows) and the small toggles.
+        display = y0 + (2 * 68 + 12) + 12 + 68 + 12
         fill = sum(1 for x in range(x0 + 60, x0 + 200, 3) if img.pixelColor(x, display + 74 - 19 - 3).lightness() > 235)
         check(fill > 30, f"the Display tile's slider is filled white, found {fill}")
-
-# No card behind the controls: HyprGlass turns anything on the surface more
-# opaque than its threshold into glass, so the panel is bare geometry and
-# its shadow's stacked layers, like each control's own shadow, stay under it.
+        # The panel is glass between the tiles too: the wallpaper there is
+        # blurred and tinted, not bare.
+        between = img.pixelColor(x0 + 2 * 68 + 12 + 6, y0 + 40)
+        check(between.alpha() == 255, "the panel is drawn between the tiles")
+# One panel of glass: HyprGlass turns anything on the surface more opaque than
+# its threshold into glass, so the panel's tint (both appearances) sits above
+# it and the backdrop is blurred behind the whole panel.
 import re
 qml = (ROOT / "shell/ControlCenter.qml").read_text()
 threshold = re.search(r"gg-controlcenter=([\d.]+)", (ROOT / "compositor/hyprland/hyprglass-sync.sh").read_text())
 check(threshold is not None, "HyprGlass has a Control Center threshold")
 line = float(threshold.group(1)) if threshold else 0.0
-check(0.2 <= line <= 0.3, f"the threshold sits above the controls' shadows and below their glass, got {line}")
-check(re.search(r"Item \{\s*id: panel", qml) is not None, "the panel is geometry, not glass (no card behind the controls)")
-tint = re.search(r"component Module: Glass \{.*?tint: Theme\.dark \? Qt\.rgba\(([^)]*)\) : Qt\.rgba\(([^)]*)\)", qml, re.S)
-check(tint is not None, "the controls' glass tint is found")
+check(0.2 <= line <= 0.3, f"the threshold sits under the panel's glass, got {line}")
+tint = re.search(r'objectName: "ccPanel".*?tint: Theme\.dark \? Qt\.rgba\(([^)]*)\) : Qt\.rgba\(([^)]*)\)', qml, re.S)
+check(tint is not None, "the panel is one piece of glass behind the controls")
 if tint:
     for mode, args in (("dark", tint.group(1)), ("light", tint.group(2))):
         alpha = float(args.split(",")[-1])
-        check(alpha > line, f"{mode} controls ({alpha:.2f} opaque) stay above the glass threshold, so the backdrop is blurred behind them")
-m = re.search(r"model: (\d+)\s*Rectangle \{.{0,400}?opacity: Theme\.dark \? ([\d.]+) : ([\d.]+)", qml, re.S)
-check(m is not None, "the shadow behind the controls is found")
-if m:
-    layers = int(m.group(1))
-    for a in (float(m.group(2)), float(m.group(3))):
-        total = 1 - (1 - a) ** layers
-        check(total < line, f"the shadow stays under HyprGlass's glass threshold (reaches {total:.3f})")
-
+        check(alpha > line, f"{mode}: the panel ({alpha:.2f} opaque) stays above the glass threshold")
+check('objectName: "ccConnectivity"' in qml and qml.count("bare: true") == 3, "Wi-Fi, Bluetooth and AirDrop share one tile")
 if failures:
     print("\n".join("FAIL " + f for f in failures), file=sys.stderr)
     raise SystemExit(1)
-print("Control Center: the macOS 26 grid draws (capsules, circles, sliders)")
+print("Control Center: one glass panel of tiles, as in Big Sur (shared connectivity tile, toggles, sliders, Now Playing)")

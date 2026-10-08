@@ -196,7 +196,8 @@ var PANES = [
     ["keyboard", "Keyboard", "shortcuts layout input sources key repeat"],
     ["trackpad", "Trackpad & Mouse", "mouse scrolling tap click pointer speed"],
     ["datetime", "Date & Time", "clock time zone"],
-    ["language", "Language & Region", "locale region format"]
+    ["language", "Language & Region", "locale region format"],
+    ["finishsetup", "Finish Setting Up", "setup later deferred time zone formats location"]
 ]
 
 function settings(text) {
