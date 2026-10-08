@@ -25,11 +25,14 @@ Item {
             y: Math.max(60, (view.height - height) / 2 - 20)
             spacing: 12
 
+            // A phone (CitronOS's own drawing, lib/assets/phone.png; drawn from design/phone.svg).
             Image {
+                objectName: "phonePicture"
                 anchors.horizontalCenter: parent.horizontalCenter
-                width: 96; height: 96
-                source: Quickshell.iconPath("org.goldengate.Messages", "internet-chat")
-                sourceSize: Qt.size(192, 192)
+                width: 150; height: 210
+                source: Qt.resolvedUrl("../lib/assets/phone.png")
+                sourceSize: Qt.size(300, 420)
+                smooth: true; mipmap: true
             }
             Text {
                 width: parent.width

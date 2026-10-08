@@ -164,7 +164,7 @@ PanelWindow {
             // The device: its glyph in a soft disc that floats a little.
             Item {
                 anchors.horizontalCenter: parent.horizontalCenter
-                width: 96; height: 96
+                width: 96; height: phonePicture.visible ? 144 : 96
                 Rectangle {
                     id: halo
                     anchors.centerIn: parent
@@ -183,8 +183,26 @@ PanelWindow {
                         NumberAnimation { from: 0.6; to: 0; duration: 955; easing.type: Easing.OutCubic }
                     }
                 }
+                // An iPhone: CitronOS's own drawing of a phone (ui/assets/phone.png, from design/phone.svg),
+                // floating, until it's connected.
+                Image {
+                    id: phonePicture
+                    visible: !!nearby.device && nearby.device.kind === "phone" && nearby.phase !== "connected"
+                    anchors.centerIn: parent
+                    width: 100; height: 140
+                    source: Qt.resolvedUrl("ui/assets/phone.png")
+                    sourceSize: Qt.size(200, 280)
+                    smooth: true; mipmap: true
+                    SequentialAnimation on anchors.verticalCenterOffset {
+                        running: phonePicture.visible && nearby.shown && nearby.phase === "" && !Theme.reduceMotion
+                        loops: Animation.Infinite
+                        NumberAnimation { from: 0; to: -4; duration: 1220; easing.type: Easing.InOutSine }
+                        NumberAnimation { from: -4; to: 0; duration: 1220; easing.type: Easing.InOutSine }
+                    }
+                }
                 Rectangle {
                     id: disc
+                    visible: !phonePicture.visible
                     anchors.centerIn: parent
                     width: 84; height: 84; radius: 42
                     gradient: Gradient {
