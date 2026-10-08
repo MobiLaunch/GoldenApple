@@ -463,6 +463,8 @@ jobs:
         run: python tests/mail-connect.py
       - name: "Web says why Qt WebEngine won't load, and what fixes it"
         run: python tests/web-diagnose.py
+      - name: "AirPlay Receiver: the code, who's mirroring, Stop, and its settings"
+        run: python tests/airplay-receiver.py
       - name: "Battery level and time left; alert sounds and the charging chime"
         run: python tests/battery-sounds.py
         env:

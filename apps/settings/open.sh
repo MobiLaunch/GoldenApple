@@ -6,7 +6,7 @@
 here=$(cd "$(dirname "$0")/.." && pwd)
 case "${1:-}" in
   # Every pane and sub-page in settings.qml opens as itself (tests/settings-open.py).
-  ""|wifi|bluetooth|network|battery|general|intelligence|accessibility|appearance|controlcenter|dock|menubar|displays|spotlight|wallpaper|notifications|focus|sound|lockscreen|touchid|privacy|users|keyboard|trackpad|about|update|storage|datetime|language|finishsetup) pane=${1:-} ;;
+  ""|wifi|bluetooth|network|battery|general|intelligence|accessibility|appearance|controlcenter|dock|menubar|displays|spotlight|wallpaper|notifications|focus|sound|lockscreen|touchid|privacy|users|keyboard|trackpad|about|update|storage|datetime|language|airplay|finishsetup) pane=${1:-} ;;
   wwan|vpn) pane=network ;;
   power) pane=battery ;;
   system|info-overview|info|about-page) pane=about ;;
@@ -22,6 +22,7 @@ case "${1:-}" in
   region) pane=language ;;
   multitasking|ubuntu) pane=dock ;;
   sharing|apps|default-apps) pane=general ;;
+  screen-mirroring|mirroring|uxplay) pane=airplay ;;
   -*) pane= ;;
   *)
     # Keep the user inside CitronOS. Unknown legacy panel names land on

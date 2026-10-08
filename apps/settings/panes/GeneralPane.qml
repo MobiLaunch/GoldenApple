@@ -17,4 +17,7 @@ Pane {
         SetRow { title: "Date & Time"; symbol: "clock"; symbolTint: "#0a84ff"; chevron: true; onClicked: pane.nav.push("datetime") }
         SetRow { title: "Language & Region"; symbol: "globe"; symbolTint: "#0a84ff"; chevron: true; onClicked: pane.nav.push("language") }
     }
+    Group {
+        SetRow { title: "AirPlay Receiver"; symbol: "airplay"; symbolTint: "#0a84ff"; chevron: true; onClicked: pane.nav.push("airplay") }
+    }
 }

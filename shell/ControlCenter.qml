@@ -38,14 +38,51 @@ PanelWindow {
         // Keep the last networks on screen while rescanning, so the list
         // doesn't collapse and regrow under the pointer.
         if (kind === "wifi") scanProc.running = true
-        if (kind === "mirroring") airplayProbe.running = true
+        if (kind === "mirroring") { airplayProbe.running = true; if (!castBrowse.running) castBrowse.running = true }
     }
-    // AirPlay Receiver: the gg-airplay user service (UxPlay) lets an iPhone,
-    // iPad or Mac mirror to this computer.
+    // AirPlay Receiver: the gg-airplay user service (UxPlay, under
+    // apps/mirroring/airplay.py) lets an iPhone, iPad or Mac mirror to this
+    // computer. Its state file says who's mirroring, or the code a device
+    // that's asking has to type.
     property bool airplayOn: false
+    property var airplay: ({})
+    readonly property bool mirroring: airplayOn && airplay.connected === true
     function setAirplay(on) {
         airplayOn = on
         Quickshell.execDetached(["systemctl", "--user", on ? "enable" : "disable", "--now", "gg-airplay.service"])
+    }
+    // Stop: the receiver starts again at once, without the device.
+    function stopMirroring() { Quickshell.execDetached(["systemctl", "--user", "restart", "gg-airplay.service"]) }
+    FileView {
+        path: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/gg-airplay.json"
+        printErrors: false
+        watchChanges: true
+        onFileChanged: reload()
+        onLoaded: { try { cc.airplay = JSON.parse(text()) } catch (e) { cc.airplay = ({}) } }
+        onLoadFailed: cc.airplay = ({})
+    }
+    // Displays this computer can mirror to: Google Cast (Chromecast, Google
+    // TV) devices on the network, found over mDNS; Miracast displays are
+    // found by Network Displays itself, which does the mirroring.
+    property var castDevices: []
+    Process {
+        id: castBrowse
+        command: ["sh", "-c", "command -v avahi-browse >/dev/null && timeout 4 avahi-browse -rtp _googlecast._tcp 2>/dev/null"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const seen = {}, out = []
+                for (const line of text.split("\n")) {
+                    const f = line.split(";")
+                    if (f[0] !== "=" || f.length < 10) continue
+                    const name = (f[9].match(/"fn=([^"]*)"/) ?? [])[1] ?? f[3].replace(/\\032/g, " ")
+                    const model = (f[9].match(/"md=([^"]*)"/) ?? [])[1] ?? ""
+                    if (!name || seen[name]) continue
+                    seen[name] = true
+                    out.push({ name: name, model: model })
+                }
+                cc.castDevices = out.sort((a, b) => a.name.localeCompare(b.name))
+            }
+        }
     }
     readonly property var sinks: Pipewire.nodes.values.filter((n) => n.isSink && !n.isStream && n.audio)
     readonly property var btDevices: (Bluetooth.defaultAdapter?.devices.values ?? []).filter((d) => d.paired || d.connected)
@@ -277,6 +314,35 @@ PanelWindow {
         Accessible.name: capsule.title
     }
 
+    // A row in Screen Mirroring's detail (a device, Stop, Other Displays).
+    component MirrorRow: Rectangle {
+        id: mrow
+        property string symbol
+        property string title
+        property string subtitle
+        property bool active: false
+        property bool clickable: true
+        signal clicked()
+        width: parent.width; height: subtitle ? 44 : 34; radius: 9
+        color: !clickable ? "transparent" : mrowArea.pressed ? Theme.selection : mrowArea.containsMouse ? Theme.menuHighlight : "transparent"
+        Rectangle {
+            id: mrowIcon
+            anchors { left: parent.left; leftMargin: 6; verticalCenter: parent.verticalCenter }
+            width: 26; height: 26; radius: 13
+            color: mrow.active ? Theme.accent : Theme.dark ? "#26ffffff" : "#14000000"
+            Symbol { anchors.centerIn: parent; name: mrow.symbol; size: 13; tone: mrow.active ? "white" : "auto" }
+        }
+        Column {
+            anchors { left: mrowIcon.right; leftMargin: 9; right: parent.right; rightMargin: 8; verticalCenter: parent.verticalCenter }
+            Text { width: parent.width; text: mrow.title; elide: Text.ElideRight; color: Theme.label; font { family: Theme.fontUi; pixelSize: cc.cs(13) } }
+            Text {
+                visible: !!mrow.subtitle
+                width: parent.width; text: mrow.subtitle; elide: Text.ElideRight
+                color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: cc.cs(10) }
+            }
+        }
+        MouseArea { id: mrowArea; anchors.fill: parent; hoverEnabled: true; enabled: mrow.clickable; onClicked: mrow.clicked() }
+    }
     // One toggle, one square tile: its disc fills (white over dark glass, the
     // accent in light mode) while it's on, and its name is under it.
     component Circle: Module {
@@ -570,7 +636,7 @@ PanelWindow {
             columns: 4
             spacing: cc.gap
             Circle { icon: "stage"; name: "Mission Control"; onActivated: cc.ipc("missioncontrol toggle") }
-            Circle { icon: "mirror"; name: "Screen Mirroring"; on: cc.airplayOn; onActivated: cc.showDetail("mirroring") }
+            Circle { icon: "mirror"; name: cc.mirroring ? (cc.airplay.device || "Mirroring") : "Screen Mirroring"; on: cc.airplayOn; onActivated: cc.showDetail("mirroring") }
             Repeater {
                 model: cc.extras
                 Circle {
@@ -748,9 +814,11 @@ PanelWindow {
         }
         Rectangle { Layout.fillWidth: true; Layout.bottomMargin: 4; height: 0.5; color: Theme.separator }
 
-        // Screen Mirroring: this computer as an AirPlay receiver, and mirroring
-        // it to a Miracast or Chromecast TV.
+        // Screen Mirroring, as on the Mac: this computer as an AirPlay
+        // receiver (who's mirroring, the code a device asking has to type,
+        // Stop), then the displays this computer can mirror to.
         Column {
+            objectName: "mirroringDetail"
             visible: cc.detail === "mirroring"
             Layout.fillWidth: true
             spacing: 2
@@ -768,11 +836,16 @@ PanelWindow {
                     anchors { left: airplayIcon.right; leftMargin: 9; right: airplaySwitch.left; rightMargin: 8; verticalCenter: parent.verticalCenter }
                     Text { text: "AirPlay Receiver"; color: Theme.label; font { family: Theme.fontUi; pixelSize: cc.cs(13) } }
                     Text {
+                        objectName: "airplayStatus"
                         width: parent.width
-                        text: "Mirror your iPhone or iPad here"
+                        text: !cc.airplayOn ? "Mirror your iPhone, iPad or Mac here"
+                            : cc.mirroring ? (cc.airplay.device || "A device") + " is mirroring"
+                            : cc.airplay.pinPending ? "Code for " + (cc.airplay.device || "your device") + ": " + cc.airplay.pin
+                            : cc.airplay.running === false ? "Starting…"
+                            : "Ready for iPhone, iPad and Mac"
                         elide: Text.ElideRight
-                        color: Theme.secondaryLabel
-                        font { family: Theme.fontUi; pixelSize: cc.cs(10) }
+                        color: cc.airplay.pinPending && cc.airplayOn ? Theme.label : Theme.secondaryLabel
+                        font { family: Theme.fontUi; pixelSize: cc.cs(10); weight: cc.airplay.pinPending && cc.airplayOn ? Font.DemiBold : Font.Normal }
                     }
                 }
                 Shared.Switch {
@@ -782,25 +855,53 @@ PanelWindow {
                     onToggled: cc.setAirplay(!cc.airplayOn)
                 }
             }
-            Rectangle {
-                width: parent.width; height: 34; radius: 9
-                color: tvArea.pressed ? Theme.selection : tvArea.containsMouse ? Theme.menuHighlight : "transparent"
-                Row {
-                    anchors { left: parent.left; leftMargin: 6; verticalCenter: parent.verticalCenter }
-                    spacing: 9
-                    Rectangle {
-                        width: 26; height: 26; radius: 13
-                        color: Theme.dark ? "#26ffffff" : "#14000000"
-                        Symbol { anchors.centerIn: parent; name: "mirror"; size: 13; tone: "auto" }
-                    }
-                    Text { anchors.verticalCenter: parent.verticalCenter; text: "Mirror to a TV or Display…"; color: Theme.label; font { family: Theme.fontUi; pixelSize: cc.cs(13) } }
-                }
-                MouseArea {
-                    id: tvArea
-                    anchors.fill: parent
-                    hoverEnabled: true
+            // The code, large, while a device asks for it.
+            Text {
+                visible: cc.airplayOn && cc.airplay.pinPending === true && !!cc.airplay.pin
+                width: parent.width
+                horizontalAlignment: Text.AlignHCenter
+                text: String(cc.airplay.pin ?? "").split("").join(" ")
+                color: Theme.label
+                font { family: Theme.fontDisplay; pixelSize: cc.cs(28); weight: Font.DemiBold; letterSpacing: 2 }
+            }
+            MirrorRow {
+                objectName: "stopMirroring"
+                visible: cc.mirroring
+                symbol: "xmark"
+                title: "Stop Mirroring"
+                subtitle: cc.airplay.device ? "Disconnect " + cc.airplay.device : ""
+                onClicked: cc.stopMirroring()
+            }
+            Rectangle { width: parent.width; height: 0.5; color: Theme.separator }
+            Text {
+                leftPadding: 6; topPadding: 6; bottomPadding: 2
+                text: "Mirror This Computer To"
+                color: Theme.secondaryLabel
+                font { family: Theme.fontUi; pixelSize: cc.cs(11); weight: Font.DemiBold }
+            }
+            Repeater {
+                model: cc.castDevices
+                delegate: MirrorRow {
+                    required property var modelData
+                    symbol: "tv"
+                    title: modelData.name
+                    subtitle: modelData.model || "Google Cast"
                     onClicked: { cc.open = false; cc.run("gnome-network-displays") }
                 }
+            }
+            Text {
+                visible: cc.castDevices.length === 0
+                leftPadding: 6; bottomPadding: 4
+                width: parent.width
+                text: castBrowse.running ? "Looking for displays…" : "No Google Cast displays found"
+                color: Theme.secondaryLabel
+                font { family: Theme.fontUi; pixelSize: cc.cs(11) }
+            }
+            MirrorRow {
+                symbol: "mirror"
+                title: "Other Displays…"
+                subtitle: "Miracast TVs and adapters"
+                onClicked: { cc.open = false; cc.run("gnome-network-displays") }
             }
         }
 
@@ -882,7 +983,7 @@ PanelWindow {
             color: settingsArea.pressed ? Theme.selection : settingsArea.containsMouse ? Theme.menuHighlight : "transparent"
             Text {
                 anchors { left: parent.left; leftMargin: 8; verticalCenter: parent.verticalCenter }
-                text: cc.detail === "mirroring" ? "Display Settings…" : detailView.title.replace(" Output", "") + " Settings…"
+                text: cc.detail === "mirroring" ? "AirPlay Settings…" : detailView.title.replace(" Output", "") + " Settings…"
                 color: Theme.label
                 font { family: Theme.fontUi; pixelSize: cc.cs(13) }
             }
@@ -891,7 +992,7 @@ PanelWindow {
                 anchors.fill: parent
                 hoverEnabled: true
                 onClicked: {
-                    const pane = ({ wifi: "wifi", bluetooth: "bluetooth", sound: "sound", mirroring: "displays" })[cc.detail]
+                    const pane = ({ wifi: "wifi", bluetooth: "bluetooth", sound: "sound", mirroring: "airplay" })[cc.detail]
                     cc.open = false
                     cc.run("gg-settings " + pane)
                 }

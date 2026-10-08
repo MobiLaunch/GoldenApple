@@ -178,6 +178,7 @@ ShellRoot {
                 storage: { title: "Storage", file: "StoragePane", parent: "general", symbol: "drive", tint: "#8e8e93", words: "disk drive space capacity available used" },
                 datetime: { title: "Date & Time", file: "DateTimePane", parent: "general", symbol: "clock", tint: "#0a84ff", words: "date time timezone clock automatic ntp 24 hour" },
                 finishsetup: { title: "Finish Setting Up", file: "FinishSetupPane", symbol: "gear", tint: "#ff9f0a", words: "setup deferred time zone formats location finish later" },
+                airplay: { title: "AirPlay Receiver", file: "AirPlayPane", parent: "general", symbol: "airplay", tint: "#0a84ff", words: "airplay receiver screen mirroring iphone ipad mac mirror code pin uxplay" },
                 language: { title: "Language & Region", file: "LanguagePane", parent: "general", symbol: "globe", tint: "#0a84ff", words: "language locale region measurement format" },
             })
             readonly property var groups: [1, 2, 3, 4, 5].map((g) => panes.filter((p) => p.group === g))
