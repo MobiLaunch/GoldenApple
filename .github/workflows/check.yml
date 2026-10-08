@@ -36,7 +36,7 @@ jobs:
           grep -q 'qs -c golden-gate' compositor/hyprland/hyprland.conf
           grep -q 'gg-apply-preferences' compositor/hyprland/hyprland.conf
           grep -q 'systemd-detect-virt --vm' compositor/hyprland/hyprglass-sync.sh
-          grep -q 'glass_opacity 0.48' compositor/hyprland/hyprglass-sync.sh
+          grep -q 'glass_opacity 0.58' compositor/hyprland/hyprglass-sync.sh
           grep -q 'id: panel' shell/ControlCenter.qml
           grep -q 'Qt.RightButton' shell/Wallpaper.qml
           grep -q 'Qt.RightButton' shell/Dock.qml
