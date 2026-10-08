@@ -168,6 +168,10 @@ for kind, effects in (("windowrule", WINDOW_EFFECTS), ("layerrule", LAYER_EFFECT
             else:
                 check(word in effects, f"{kind}: unknown effect {word!r} in {rule!r}")
 
+# Shell menus get no compositor blur: blur_popups covers a popup's whole
+# surface, which is bigger than the menu, so it showed as a box round it.
+check(not re.search(r"^layerrule = .*blur_popups", conf, re.M), "shell menus have no compositor blur box round them (no blur_popups)")
+
 # What shell glass bends is never drawn in the surface itself, only into its
 # texture: toggled with the texture, it could show for a frame as a box of
 # wallpaper (or plain blue) filling a menu popup's spare room round the menu.
