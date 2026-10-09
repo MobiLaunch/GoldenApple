@@ -34,6 +34,7 @@ Item {
     }
     Glass {
         id: pill
+        objectName: "segmentedSelectionPill"
         y: 2; height: parent.height - 4
         readonly property Item target: rep.count ? rep.itemAt(seg.current) : null
         width: target ? target.width : 0
