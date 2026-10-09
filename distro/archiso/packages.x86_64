@@ -45,6 +45,7 @@ wireless-regdb
 # Services the shell talks to
 pipewire
 pipewire-pulse
+libpulse  # pactl integration for CitronPods output routing
 wireplumber
 networkmanager
 bluez
