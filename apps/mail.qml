@@ -811,11 +811,46 @@ ShellRoot {
                     }
                 }
 
+                // Adjustable column boundary; a narrow drag target retains
+                // an unobtrusive hairline until the pointer reaches it.
+                Item {
+                    id: mailDivider
+                    objectName: "mailSplitDivider"
+                    visible: !mail.compactReading
+                    width: 7
+                    height: parent.height
+                    Rectangle {
+                        anchors.centerIn: parent
+                        width: splitDrag.containsMouse ? 3 : 1
+                        height: parent.height
+                        color: splitDrag.containsMouse ? Theme.accent : Theme.separator
+                        Behavior on width { NumberAnimation { duration: Theme.reduceMotion ? 0 : 100 } }
+                    }
+                    MouseArea {
+                        id: splitDrag
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.SplitHCursor
+                        property real startX: 0
+                        property real startWidth: 0
+                        onPressed: (mouse) => {
+                            startX = mapToItem(mail, mouse.x, mouse.y).x
+                            startWidth = mail.preferredListWidth
+                        }
+                        onPositionChanged: (mouse) => {
+                            if (!pressed) return
+                            const currentX = mapToItem(mail, mouse.x, mouse.y).x
+                            mail.preferredListWidth = Math.max(304,
+                                Math.min(mail.width - 350, startWidth + currentX - startX))
+                        }
+                    }
+                }
+
                 Rectangle {
                     id: readingPane
                     objectName: "mailReadingPane"
                     visible: !mail.compactReading || !!mail.selectedUid
-                    width: mail.compactReading ? mail.width : mail.width - messageListPane.width
+                    width: mail.compactReading ? mail.width : mail.width - messageListPane.width - mailDivider.width
                     height: parent.height
                     color: Theme.contentBg
 
