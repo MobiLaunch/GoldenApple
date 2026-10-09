@@ -125,6 +125,25 @@ LCode Workspace, which could break QML parsing. Its content is clipped and
 constrained when inspector motion reduces the available toolbar width.
 Guard checks prevent the invalid binding from returning.
 
+**Keyboard-aware navigator:** Arrow Up/Down roves through project entries;
+Right expands a collapsed folder or steps into its children, while Left
+collapses the folder or moves to its parent. A thin accent outline marks
+*keyboard focus* separately from the editor's selected file. The navigator no
+longer writes over Workspace's live `selectedPath` binding, so the selection
+continues tracking the active editor even after a pointer click. The active
+navigator icon also shows its checked state.
+
+**Inspector context changes:** The file and App Designer inspectors gently
+crossfade while immediately handing input to the incoming pane. Switching from
+a three-tab design component to a plain, two-tab component clamps the selected
+tab to Layout if Actions was active, preventing an empty inspector. File, design
+selection, and inspector-tab changes reset the pane to its heading.
+
+**Finder sort headings:** List-view column headers now show subtle hover and
+press states and a pointing cursor; the actively sorted column has stronger
+text contrast. Shared sidebar rows expose their selection and press action to
+accessibility services, and toolbar toggles announce their checked state.
+
 The acceptance boundary remains the same: connected GUI/native-preview
 checks must run before these interactions can be called verified on a real
 Wayland/Hyprland installation.
