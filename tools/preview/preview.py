@@ -547,6 +547,8 @@ def main() -> int:
     ap.add_argument("--size", default="1440x900")
     ap.add_argument("--wait", type=int, default=900, help="ms to settle before each step")
     ap.add_argument("--crop", default="", help="x,y,w,h of the screenshot to keep")
+    ap.add_argument("--mail-fixture", choices=["", "inbox", "reading", "compose", "drafts"],
+                    default="", help="render a signed-in Mail layout without using a real account")
     ap.add_argument("--require-object", default="",
                     help="fail when a required loaded QML objectName is absent (catches empty Loader panes)")
     ap.add_argument("--expect-menu", default="",
@@ -600,6 +602,10 @@ def main() -> int:
     window = engine.rootObjects()[0]
 
     steps = list(a.do)
+    # Render fully configured Mail instead of testing setup mode exclusively.
+    # The fixture is installed after initial asynchronous account checks settle.
+    if a.mail_fixture:
+        steps.append("@mail-fixture")
     if a.notify:
         steps.insert(0, "@notify")
 
@@ -651,7 +657,44 @@ def main() -> int:
             finish()                # the last step (or the start) has already had its wait
             return
         s = steps.pop(0)
-        if s == "@notify":
+        if s == "@mail-fixture":
+            mail = window.findChild(QObject, "mailApp")
+            if mail is None:
+                print("preview: Mail fixture requested but Mail app is unavailable", file=sys.stderr)
+                app.exit(7)
+                return
+            inbox = [
+                {"uid": "51", "from": 'Emma Rivera <emma@example.net>',
+                 "subject": "Design review — final notes", "date": "Fri, 09 Oct 2026 09:12:00 -0500",
+                 "unread": True},
+                {"uid": "50", "from": "Alex Chen <alex@example.net>",
+                 "subject": "Photos from the weekend", "date": "Thu, 08 Oct 2026 15:30:00 -0500",
+                 "unread": False},
+                {"uid": "49", "from": "Team Support <help@example.net>",
+                 "subject": "Your latest invoice", "date": "Wed, 07 Oct 2026 12:25:00 -0500",
+                 "unread": False},
+            ]
+            mail.setProperty("configured", True)
+            mail.setProperty("account", "jordan@example.net")
+            mail.setProperty("messages", inbox)
+            if a.mail_fixture in ("reading",):
+                mail.setProperty("selectedUid", "51")
+                mail.setProperty("selectedMessage", {
+                    "uid": "51", "from": inbox[0]["from"],
+                    "subject": inbox[0]["subject"], "to": "jordan@example.net",
+                    "date": inbox[0]["date"],
+                    "body": "Hello Jordan,\\n\\nHere are the final design notes. "
+                            "The updated layout includes a flexible reading pane, consistent spacing, "
+                            "and clearer message hierarchy.\\n\\nThanks,\\nEmma"
+                })
+            elif a.mail_fixture in ("drafts", "compose"):
+                mail.setProperty("composeTo", "sam@example.net")
+                mail.setProperty("composeSubject", "Checking in")
+                mail.setProperty("composeBody", "Hi Sam,\\n\\nI wanted to check in about next week.")
+                mail.setProperty("draftReady", True)
+                mail.setProperty("selectedFolder", "drafts")
+                mail.setProperty("composing", a.mail_fixture == "compose")
+        elif s == "@notify":
             preview.notify({"id": 1, "appName": "Messages", "appIcon": "org.goldengate.Messages",
                             "desktopEntry": "org.goldengate.Messages", "summary": "Sam",
                             "body": "Ferry at 6? I'll grab a table outside."})
