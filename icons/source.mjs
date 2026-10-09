@@ -379,6 +379,16 @@ export const apps = {
      <circle cx="50" cy="51" r="27" fill="none" stroke="#fff" stroke-opacity=".55" stroke-width="1.4"/>
      <ellipse cx="41" cy="33" rx="10" ry="4.5" fill="#fff" fill-opacity=".5" transform="rotate(-20 41 33)"/></g>`),
 
+  // Archive Utility: an embossed ZIP package with a central zipper.
+  archive: app("archive", "#0a84ff", lin("archive-bg", "#5ac8fa", "#0b67d8")
+      + lin("archive-body", "#e6edf7", "#9aaecb"),
+    `<rect class="bg" fill="url(#archive-bg)" width="100" height="100"/>
+     <rect x="24" y="27" width="52" height="54" rx="11" fill="url(#archive-body)" stroke="#edf6ff" stroke-width="2"/>
+     <path d="M24 44h52" stroke="#647b9b" stroke-width="2"/>
+     <path d="M45 27v41" stroke="#4f6786" stroke-width="4.5" stroke-dasharray="5 4"/>
+     <rect x="39" y="58" width="12" height="14" rx="3" fill="#4678ab" stroke="#d9ecff" stroke-width="2"/>
+     <path d="M45 61v7" stroke="#eaf6ff" stroke-width="2.4" stroke-linecap="round"/>`),
+
   // Disk Utility: a drive and a stethoscope, as the Mac's.
   diskutility: app("diskutility", "#8e8e93", lin("diskutility-bg", "#f4f5f8", "#c6cbd3")
       + lin("diskutility-drive", "#fbfbfd", "#a7aeb8") + lin("diskutility-face", "#e9ecf0", "#c3c8d0"),
