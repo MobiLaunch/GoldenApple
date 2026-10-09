@@ -378,6 +378,9 @@ chmod +x "$BIN/gg-settings" "$BIN/gg-software" "$BIN/gg-mac-open" "$BIN/gg-files
 for f in "$REPO"/apps/desktop/*.desktop; do
   sed "s#@APPS@#$APPS_RUN#g" "$f" > "$DATA/applications/$(basename "$f")"
 done
+# Existing installs may have the old launcher even though the repository
+# no longer ships it. Remove that one owned desktop file, not vendor apps.
+rm -f "$DATA/applications/org.goldengate.Intelligence.desktop"
 # Hide Ghostty's upstream launcher without colliding with its package-owned
 # /usr/share/applications entry. /usr/local/share takes precedence system-wide;
 # user installs can safely shadow it in their own XDG data directory.
