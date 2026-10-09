@@ -117,6 +117,7 @@ const appNames = {
   lcode: ["org.goldengate.LCode", "lcode"],
   intelligence: ["org.goldengate.Intelligence"],
   diskutility: ["org.goldengate.DiskUtility", "gnome-disks"],
+  archive: ["org.goldengate.ArchiveUtility", "package-x-generic", "file-roller", "org.gnome.FileRoller"],
   airdrop: ["org.goldengate.AirDrop", "localsend", "localsend_app", "org.localsend.localsend_app"],
   passwords: ["org.goldengate.Passwords", "seahorse", "org.gnome.seahorse.Application", "dialog-password"],
 };
