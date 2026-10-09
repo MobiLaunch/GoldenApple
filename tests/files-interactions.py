@@ -144,6 +144,30 @@ class Interactions(unittest.TestCase):
         APP.processEvents()
         self.assertFalse(self.eval('quickLook.visible'))
 
+    def test_finder_grid_list_crossfade_leaves_only_active_view_interactive(self):
+        grid=self.root.findChild(QObject,"filesGridView")
+        listing=self.root.findChild(QObject,"filesListView")
+        self.assertIsNotNone(grid)
+        self.assertIsNotNone(listing)
+        self.eval('Theme.reduceMotion=false; view="grid"')
+        QTest.qWait(155)
+        self.assertTrue(grid.property("enabled"))
+        self.assertFalse(listing.property("enabled"))
+        self.eval('view="list"')
+        # The outgoing view can remain painted briefly; it must immediately
+        # relinquish input, drag targets and scrollbar ownership.
+        self.assertFalse(grid.property("enabled"))
+        self.assertTrue(listing.property("enabled"))
+        QTest.qWait(170)
+        self.assertFalse(grid.property("visible"))
+        self.assertTrue(listing.property("visible"))
+        self.assertAlmostEqual(listing.property("opacity"),1.0,delta=0.03)
+        self.eval('Theme.reduceMotion=true; view="grid"')
+        APP.processEvents()
+        self.assertFalse(listing.property("visible"))
+        self.assertAlmostEqual(grid.property("opacity"),1.0,delta=0.03)
+        self.assertTrue(grid.property("enabled"))
+
     def test_range_toggle_all_and_clear_on_navigation(self):
         self.eval('view="list"; select(entries[0])')
         QTest.keyClick(self.root,Qt.Key_Down,Qt.ShiftModifier)
