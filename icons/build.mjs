@@ -191,8 +191,11 @@ const specialFolders = {
 const emboss = (folder, sym) => {
   const [, attrs, body] = sym.match(/<svg([^>]*)>([\s\S]*)<\/svg>/);
   const own = attrs.replace(/\s(xmlns|viewBox)="[^"]*"/g, "");
+  // OrchardKit fills are normalized in an arbitrary source coordinate space.
+  // Hard-coding 0 0 24 24 clips their paths completely from Finder folders.
+  const viewBox = (attrs.match(/\bviewBox="([^"]+)"/) || [])[1] ?? "0 0 24 24";
   const glyph = (dy, color, opacity) =>
-    `<svg x="34" y="${41 + dy}" width="32" height="32" viewBox="0 0 24 24" opacity="${opacity}"${own.replace(/currentColor/g, color)}>${body.replace(/currentColor/g, color)}</svg>`;
+    `<svg x="34" y="${41 + dy}" width="32" height="32" viewBox="${viewBox}" opacity="${opacity}"${own.replace(/currentColor/g, color)}>${body.replace(/currentColor/g, color)}</svg>`;
   return folder.replace(/<\/svg>\s*$/, `${glyph(0.9, "#ffffff", 0.5)}${glyph(0, "#2b7fca", 0.85)}</svg>`);
 };
 if (places.folder != null)
