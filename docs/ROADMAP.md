@@ -71,6 +71,10 @@ for the source-backed status, this Dock lifecycle batch and acceptance gates.
 - [x] Finder Favorites/volumes sidebar: roving keyboard focus and focus/selection distinction
 - [x] Finder path bar: keyboard-accessible breadcrumbs, active focus and subtle press feedback
 - [x] Settings search suggestions: motion-aware reveal/dismissal and row highlight
+- [x] Reference-based Golden Gate Control Center: separate glass cards, circular actions and vertical level capsules
+- [x] Expanded Display/Now Playing controls, short-screen scrolling and coalesced brightness writes
+- [x] Eight-column Launchpad with round search, wallpaper cover and the live menu bar/Dock above it
+- [x] Spotlight search and results use rounded clear glass and capsule selection
 - [x] TOTP verification-code countdown stays within 1–30 seconds at fractional rollover
 - [x] Empty Trash Escape closes the shared sheet instead of overriding its visibility binding
 - [x] Modal sheet outside-click isolation and reentrant close/open focus restoration
@@ -158,7 +162,7 @@ Tested:
       was put off is listed under Finish Setting Up until it's done
 - [x] Golden Gate UI: edge-to-edge sidebars; window contents solid by
       default (the Transparency slider moves the glass); Control Center
-      grouped in one panel, as in Big Sur; » lists every hidden menu;
+      uses Golden Gate glass circles/capsules and separate rounded cards; » lists every hidden menu;
       long path names shortened in the middle; Close and Quit told apart
       (document apps keep running without a window)
 

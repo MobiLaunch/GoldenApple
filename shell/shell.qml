@@ -188,6 +188,7 @@ ShellRoot {
             Applications {
                 id: applicationsPanel
                 screen: perScreen.modelData
+                dock: screenDock
                 Component.onCompleted: root.launchpads = root.launchpads.concat([applicationsPanel])
                 Component.onDestruction: root.launchpads = root.launchpads.filter((l) => l !== applicationsPanel)
             }
@@ -202,6 +203,7 @@ ShellRoot {
                 id: menuBar
                 screen: perScreen.modelData; controlCenter: cc; spotlight: spotlightPanel; session: sessionDialog; notifications: notificationCenter
                 screenshots: screenshotTool
+                applications: applicationsPanel
                 Component.onCompleted: root.menuBars = root.menuBars.concat([menuBar])
                 Component.onDestruction: root.menuBars = root.menuBars.filter((m) => m !== menuBar)
             }

@@ -20,8 +20,9 @@ QML = '''import QtQuick
 import "../apps/lib" as GG
 import "../apps/lib/theme"
 Rectangle {
-    width: 520; height: 370; color: Theme.windowBg
+    width: 620; height: 370; color: Theme.windowBg
     property int actions: 0
+    property real level: 0.5
     function dark() { Theme.dark = true }
     function reduce() { Theme.reduceMotion = true }
     function standardMotion() { Theme.reduceMotion = false }
@@ -41,6 +42,11 @@ Rectangle {
     GG.TextField { objectName: "field"; x: 30; y: 295; placeholder: "Regular field"; width: 240 }
     GG.TextField { objectName: "searchField"; x: 290; y: 75; placeholder: "Search"; width: 205; search: true }
     GG.SpringValue { objectName: "spring" }
+    GG.LevelSlider {
+        objectName: "levelSlider"; x: 536; y: 24; width: 66; height: 210
+        value: parent.level; label: "Brightness"; expandable: true
+        onMoved: (value) => parent.level = value
+    }
     GG.SidebarRow { objectName: "sidebarRow"; x: 300; y: 185; width: 180; text: "Inbox"; symbol: "envelope"; selected: true }
     GG.ProgressBar { objectName: "progress"; x: 300; y: 240; width: 180; value: 0.42 }
     GG.EmptyState { objectName: "emptyState"; x: 300; y: 270; width: 190; height: 80; title: "Nothing Here"; text: "Shared empty state" }
@@ -112,6 +118,40 @@ class Controls(unittest.TestCase):
         self.assertTrue(sw.property('keyboardPressed'))
         QTest.qWait(125)
         self.assertFalse(sw.property('keyboardPressed'))
+    def test_level_slider_keyboard_preserves_external_binding(self):
+        slider = self.control('levelSlider')
+        self.root.setProperty('level', 0.4)
+        self.key(slider, Qt.Key_Up)
+        self.assertAlmostEqual(self.root.property('level'), 0.45)
+        self.root.setProperty('level', 0.2)
+        self.assertAlmostEqual(slider.property('value'), 0.2,
+                               msg='another surface can still update the system level')
+        QTest.keyClick(self.view, Qt.Key_End)
+        self.assertEqual(self.root.property('level'), 1.0)
+        QTest.keyClick(self.view, Qt.Key_Home)
+        self.assertEqual(self.root.property('level'), 0.0)
+        expanded = QSignalSpy(slider.expanded)
+        QTest.keyClick(self.view, Qt.Key_Return)
+        self.assertEqual(expanded.count(), 1)
+        self.assertEqual(self.root.property('level'), 0.0)
+        slider.setProperty('enabled', False)
+        QTest.keyClick(self.view, Qt.Key_Up)
+        self.assertEqual(self.root.property('level'), 0.0)
+    def test_level_slider_direct_drag_and_reduced_motion_fill(self):
+        slider = self.control('levelSlider')
+        QTest.mousePress(self.view, Qt.LeftButton, pos=QPoint(566, 209))
+        QTest.mouseMove(self.view, QPoint(566, 109))
+        self.assertAlmostEqual(self.root.property('level'), 1 - 85 / 210, delta=0.02)
+        QTest.mouseRelease(self.view, Qt.LeftButton, pos=QPoint(566, 109))
+        self.root.setProperty('level', 0.9)
+        QTest.qWait(20)
+        self.root.reduce()
+        fill = slider.findChild(QObject, 'levelSliderFill')
+        self.assertAlmostEqual(fill.property('height'), 208 * 0.9, delta=0.1)
+        self.root.setProperty('level', 0.0)
+        self.assertEqual(fill.property('height'), 0.0)
+        self.root.setProperty('level', 1.0)
+        self.assertEqual(fill.property('height'), 208.0)
     def test_slider_endpoints_steps_and_narrow_size(self):
         sl = self.control('slider')
         self.key(sl, Qt.Key_End); self.assertEqual(sl.property('value'), 1)
@@ -311,6 +351,11 @@ class Controls(unittest.TestCase):
         clear = search.findChild(QObject, 'searchClearButton')
         self.assertIsNotNone(clear)
         self.assertTrue(clear.property('shown'))
+        QTest.qWait(25)
+        self.root.reduce()
+        self.assertEqual(clear.property('opacity'), 1.0,
+                         'Reduce Motion stops the appearance immediately, even with unchanged text')
+        self.root.standardMotion()
         # The clear affordance fades into view; click its actual scene centre
         # after the transition, not a hard-coded coordinate mid-animation.
         QTest.qWait(155)

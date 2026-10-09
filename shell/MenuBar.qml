@@ -25,6 +25,7 @@ PanelWindow {
     property var session                // SessionDialog: Restart, Shut Down and Log Out ask first
     property var notifications          // the clock opens Notification Center
     property var screenshots            // while recording the screen, a stop button
+    property var applications           // Launchpad preserves the live menu bar
 
     // Wi-Fi as the Mac shows it: no item without a Wi-Fi adapter (a wired PC or
     // a VM), a dimmed fan when Wi-Fi is off or not joined to a network, the
@@ -60,7 +61,8 @@ PanelWindow {
     WlrLayershell.namespace: "gg-menubar"
     // What its glass bends: the desktop under it.
     DesktopBackdrop { surface: bar; namespace: "gg-menubar" }
-    WlrLayershell.layer: WlrLayer.Top
+    // Launchpad keeps the actual menu bar and Dock above its wallpaper.
+    WlrLayershell.layer: applications?.visible ? WlrLayer.Overlay : WlrLayer.Top
 
     // Liquid Glass (docs/LIQUID-GLASS.md). With its background on (the
     // default), a frosted band in the appearance's colours, as the Mac's menu

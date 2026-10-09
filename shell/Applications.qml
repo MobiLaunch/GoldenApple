@@ -1,6 +1,6 @@
 // Launchpad: every app on pages of large icons over the blurred desktop, as on
 // the Mac. The wallpaper blurs and dims behind a small search field; the
-// icons sit in a 7 × 5 grid (fewer columns on narrow screens) with page dots
+// icons sit in an 8 × 5 grid (fewer columns on narrow screens) with page dots
 // below. Swipe, scroll, or press ← → to change pages; type to search; Return
 // opens the first result; Escape or a click on empty space closes. It zooms
 // in as it opens and back out as it closes. CitronOS's own apps come first,
@@ -20,6 +20,8 @@ import "components"
 PanelWindow {
     id: apps
     property bool open: false
+    property var dock: null
+    objectName: "launchpad"
     property real contextX: 0
     property real contextY: 0
     property var contextItems: []
@@ -55,10 +57,12 @@ PanelWindow {
     visible: open || fade.running
     anchors { top: true; bottom: true; left: true; right: true }
     exclusionMode: ExclusionMode.Ignore
-    WlrLayershell.layer: WlrLayer.Overlay
+    // Menu bar and Dock are promoted above this surface while it is shown.
+    WlrLayershell.layer: WlrLayer.Top
     WlrLayershell.keyboardFocus: open ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
     WlrLayershell.namespace: "gg-applications"
     color: "transparent"
+    DesktopBackdrop { surface: apps; namespace: "gg-applications"; includeWindows: false }
     Item { id: closedMask; width: 0; height: 0; visible: false }
     mask: Region { item: apps.open ? backdrop : closedMask }
 
@@ -157,16 +161,19 @@ PanelWindow {
         return kept.slice(0, ownCount).concat(folders, kept.slice(ownCount))
     }
 
-    // Grid metrics, from the screen: Launchpad's 7 × 5 with generous margins.
-    readonly property int columns: Math.max(4, Math.min(7, Math.floor((width - 160) / 150)))
-    readonly property int rows: Math.max(3, Math.min(5, Math.floor((height - 220) / 150)))
+    // Reference proportions: eight columns on a desktop, compact round search,
+    // and space below the page dots for the real Dock rather than a duplicate.
+    readonly property real outerInset: Math.max(32, width * 0.1)
+    readonly property real bottomClearance: (dock?.baseSize ?? 54) + 66
+    readonly property int columns: Math.max(2, Math.min(8, Math.floor((width - 2 * outerInset) / 140)))
+    readonly property int rows: Math.max(2, Math.min(5, Math.floor(gridHeight / 124)))
     readonly property int perPage: columns * rows
     readonly property int pageCount: Math.max(1, Math.ceil(entries.length / perPage))
-    readonly property real gridWidth: Math.min(width - 2 * Math.max(60, width * 0.1), columns * 190)
-    readonly property real gridHeight: height - 120 - 90
+    readonly property real gridWidth: Math.max(0, width - 2 * outerInset)
+    readonly property real gridHeight: Math.max(0, height - 118 - bottomClearance)
     readonly property real cellW: gridWidth / columns
     readonly property real cellH: gridHeight / rows
-    readonly property real iconSize: Math.round(Math.min(cellW * 0.6, cellH * 0.62, 112))
+    readonly property real iconSize: Math.round(Math.max(24, Math.min(cellW * 0.7, cellH * 0.74, 100)))
 
     // ------------------------------------------------------------ backdrop
     // The desktop, blurred and dimmed, as Launchpad shows it.
@@ -183,7 +190,9 @@ PanelWindow {
             sourceSize: Qt.size(Math.max(1, apps.width / 4), Math.max(1, apps.height / 4))
             fillMode: Image.PreserveAspectCrop
             asynchronous: true
-            visible: false
+            // Keep a painted fallback below the blur effect. Without GPU
+            // effects, Launchpad must still cover desktop widgets/windows.
+            visible: true
         }
         MultiEffect {
             anchors.fill: parent
@@ -193,9 +202,10 @@ PanelWindow {
             blurMax: 48
             saturation: 0.1
             autoPaddingEnabled: false
+            visible: GraphicsInfo.api !== GraphicsInfo.Software
         }
         // Dim enough that white labels read over the brightest wallpaper.
-        Rectangle { anchors.fill: parent; color: Theme.dark ? "#78000000" : "#6b000000" }
+        Rectangle { anchors.fill: parent; color: Theme.dark ? "#55000000" : "#4d000000" }
         MouseArea {
             anchors.fill: parent
             onClicked: apps.dismiss()
@@ -207,19 +217,21 @@ PanelWindow {
     }
 
     // --------------------------------------------------------------- search
-    Rectangle {
+    Glass {
         id: searchBox
-        anchors { horizontalCenter: parent.horizontalCenter; top: parent.top; topMargin: 64 }
-        width: 236; height: 30; radius: 9
-        color: Qt.rgba(1, 1, 1, search.input.activeFocus ? 0.28 : 0.22)
-        border { width: 0.5; color: Qt.rgba(1, 1, 1, 0.34) }
+        objectName: "launchpadSearch"
+        anchors { horizontalCenter: parent.horizontalCenter; top: parent.top; topMargin: 56 }
+        width: Math.min(280, apps.width - 48); height: 38; radius: height / 2
+        role: "clear"
+        tint: Qt.rgba(0.18, 0.19, 0.27, search.input.activeFocus ? 0.3 : 0.24)
         opacity: backdrop.opacity
+        enabled: apps.open && !apps.folder
         TextField {
             id: search
-            anchors { fill: parent; leftMargin: 4; rightMargin: 6 }
+            anchors { fill: parent; leftMargin: 12; rightMargin: 12 }
             search: true
             bare: true
-            placeholder: "Search"
+            placeholder: "Search Applications"
             foreground: "#ffffff"
             placeholderColor: Qt.rgba(1, 1, 1, 0.78)
             input.selectedTextColor: "#ffffff"
@@ -238,7 +250,7 @@ PanelWindow {
     // ---------------------------------------------------------------- pages
     ListView {
         id: pages
-        anchors { top: searchBox.bottom; topMargin: 48; horizontalCenter: parent.horizontalCenter }
+        anchors { top: searchBox.bottom; topMargin: 24; horizontalCenter: parent.horizontalCenter }
         width: apps.width
         height: apps.gridHeight
         orientation: ListView.Horizontal
@@ -254,9 +266,10 @@ PanelWindow {
         // open folder dims the page behind it.
         opacity: backdrop.opacity * (apps.folder ? 0.1 : 1)
         Behavior on opacity { enabled: !fade.running; NumberAnimation { duration: Theme.reduceMotion ? 1 : 190; easing.type: Easing.OutCubic } }
-        interactive: !apps.folder
+        interactive: apps.open && !apps.folder
+        enabled: apps.open && !apps.folder
         scale: apps.open || Theme.reduceMotion ? 1 : 1.08
-        Behavior on scale { NumberAnimation { duration: 280; easing.type: Easing.OutCubic } }
+        Behavior on scale { enabled: !Theme.reduceMotion; NumberAnimation { duration: 225; easing.type: Easing.OutCubic } }
 
         delegate: Item {
             id: page
@@ -324,7 +337,7 @@ PanelWindow {
                             elide: Text.ElideRight
                             color: "#ffffff"
                             style: Text.Raised; styleColor: "#8c000000"
-                            font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.Medium }
+                            font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.Normal }
                         }
                         MouseArea {
                             id: area
@@ -370,7 +383,7 @@ PanelWindow {
         visible: !!apps.folder
         onClicked: apps.folder = null
     }
-    Rectangle {
+    Glass {
         id: folderPanel
         readonly property int cols: Math.min(apps.folder ? Math.max(3, Math.min(6, Math.ceil(Math.sqrt(apps.folder.apps.length * 1.6)))) : 4, apps.columns)
         readonly property int count: apps.folder ? apps.folder.apps.length : 0
@@ -380,13 +393,14 @@ PanelWindow {
         width: cols * cell + 56
         height: Math.min(apps.height - 220, Math.ceil(count / cols) * (apps.iconSize * 0.8 + 52) + 48)
         radius: 36
-        color: Theme.dark ? Qt.rgba(0.16, 0.16, 0.18, 0.55) : Qt.rgba(1, 1, 1, 0.22)
-        border { width: 0.5; color: Qt.rgba(1, 1, 1, 0.26) }
+        role: "clear"
+        tint: Qt.rgba(0.16, 0.17, 0.24, 0.48)
         visible: opacity > 0
+        enabled: apps.open && !!apps.folder
         opacity: apps.folder ? backdrop.opacity : 0
         scale: apps.folder || Theme.reduceMotion ? 1 : 0.86
         Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 175; easing.type: Easing.OutCubic } }
-        Behavior on scale { NumberAnimation { duration: 225; easing.type: Easing.OutBack; easing.overshoot: 1.1 } }
+        Behavior on scale { enabled: !Theme.reduceMotion; NumberAnimation { duration: 225; easing.type: Easing.OutBack; easing.overshoot: 1.1 } }
         MouseArea { anchors.fill: parent }        // clicks inside stay inside
 
         Text {
@@ -449,17 +463,28 @@ PanelWindow {
 
     // ------------------------------------------------------------ page dots
     Row {
-        visible: apps.pageCount > 1
-        anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: 46 }
+        objectName: "launchpadPages"
+        visible: backdrop.opacity > 0
+        anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: apps.bottomClearance - 20 }
         spacing: 10
         opacity: backdrop.opacity
+        enabled: apps.open && !apps.folder
         Repeater {
             model: apps.pageCount
             delegate: Rectangle {
                 required property int index
                 width: 7; height: 7; radius: 3.5
+                activeFocusOnTab: apps.open && !apps.folder
+                Accessible.role: Accessible.Button
+                Accessible.name: "Page " + (index + 1)
+                Accessible.checked: index === pages.currentIndex
+                Accessible.onPressAction: pages.currentIndex = index
+                Keys.onSpacePressed: pages.currentIndex = index
+                Keys.onReturnPressed: pages.currentIndex = index
+                Keys.onLeftPressed: pages.flip(-1)
+                Keys.onRightPressed: pages.flip(1)
                 color: index === pages.currentIndex ? "#ffffff" : Qt.rgba(1, 1, 1, 0.38)
-                Behavior on color { ColorAnimation { duration: 140 } }
+                Behavior on color { ColorAnimation { duration: Theme.reduceMotion ? 0 : 140 } }
                 MouseArea { anchors { fill: parent; margins: -6 } onClicked: pages.currentIndex = parent.index }
             }
         }

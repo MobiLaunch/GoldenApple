@@ -42,8 +42,8 @@ for forbidden in ("dockMagnification", "dockMagnifiedSize", "pointerTargetX", "s
         errors.append(f"shell/Dock.qml: removed magnification path reintroduced: {forbidden}")
 
 control_center = (root / "shell" / "ControlCenter.qml").read_text(encoding="utf-8")
-# Big Sur's layout: one glass panel of tiles on a four-column grid, Now
-# Playing, the two sliders, and Edit Controls.
+# Golden Gate's layout: independent circular/capsule controls and rounded
+# glass cards, Now Playing, the two vertical sliders, and Edit Controls.
 for required in ("component Capsule", "component Circle", "component SliderTile", "id: nowPlaying",
                  'title: "Display"', 'title: "Sound"', "Edit Controls", "function span(n)"):
     if required not in control_center:

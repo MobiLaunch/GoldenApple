@@ -98,6 +98,7 @@ PanelWindow {
     property var contextItems: []
 
     function openEntry(entry) {
+        if (applications?.open) applications.dismiss()
         const parked = minimizedFor(entry)
         const wins = windowsFor(entry)
         if (parked) restore(parked)
@@ -122,7 +123,7 @@ PanelWindow {
             menu.push("-")
             for (let i = 0; i < wins.length; i++) {
                 const win = wins[i]
-                menu.push({ label: win.title || entry.name || "Window", action: () => win.activate() })
+                menu.push({ label: win.title || entry.name || "Window", action: () => { if (applications?.open) applications.dismiss(); win.activate() } })
             }
         }
         menu.push("-")
@@ -189,7 +190,7 @@ PanelWindow {
     exclusiveZone: Prefs.dockSize + 22
     color: "transparent"
     WlrLayershell.namespace: "gg-dock"
-    WlrLayershell.layer: WlrLayer.Top
+    WlrLayershell.layer: applications?.visible ? WlrLayer.Overlay : WlrLayer.Top
     // Touch-style shelf: only the shelf itself takes input, except while an
     // icon is dragged, when the whole surface follows the pointer.
     mask: Region { item: dock.dragging ? dragZone : shelf }
@@ -555,6 +556,7 @@ PanelWindow {
                     dock.showEntryMenu(tile.modelData, tile, mouse.x, mouse.y)
                     return
                 }
+                if (dock.applications?.open) dock.applications.dismiss()
                 const parked = dock.minimizedFor(tile.modelData)
                 if (parked) dock.restore(parked)
                 else if (tile.wins.length) tile.wins[0].activate()
@@ -729,8 +731,10 @@ PanelWindow {
                             }
                             if (place.modelData.action === "applications")
                                 dock.openApplications()
-                            else
+                            else {
+                                if (dock.applications?.open) dock.applications.dismiss()
                                 Quickshell.execDetached(place.modelData.exec)
+                            }
                         }
                     }
                 }

@@ -50,11 +50,21 @@ Rectangle {
         id: clearButton
         objectName: "searchClearButton"
         readonly property bool shown: tf.search && !tf.password && !!input.text
+        property bool ready: false
+        function syncOpacity(animate = true) {
+            if (!ready) return
+            clearOpacityTween.stop()
+            const target = shown ? 1 : 0
+            if (!animate || Theme.reduceMotion) opacity = target
+            else { clearOpacityTween.to = target; clearOpacityTween.start() }
+        }
+        onShownChanged: syncOpacity()
+        Component.onCompleted: { ready = true; syncOpacity(false) }
         x: tf.width - width - (tf.bare ? 0 : 4)
         anchors.verticalCenter: parent.verticalCenter
         width: 24
         height: Math.max(20, tf.height - 4)
-        opacity: shown ? 1 : 0
+        opacity: 0
         visible: opacity > 0
         z: 2
         activeFocusOnTab: shown && tf.enabled
@@ -64,25 +74,18 @@ Rectangle {
         Keys.onSpacePressed: (event) => { if (!event.isAutoRepeat) tf.clearSearch() }
         Keys.onReturnPressed: tf.clearSearch()
         FocusRing { }
-        Behavior on opacity {
-            enabled: !Theme.reduceMotion
-            NumberAnimation {
-                id: clearOpacityTween
-                duration: 110
-                easing.type: Easing.OutCubic
-            }
+        NumberAnimation {
+            id: clearOpacityTween
+            target: clearButton; property: "opacity"
+            duration: 110
+            easing.type: Easing.OutCubic
         }
         Connections {
             target: Theme
             function onReduceMotionChanged() {
                 if (!Theme.reduceMotion) return
-                // Disabling a Behavior alone can strand a running animation
-                // at an intermediate value. Explicitly stop the tween and
-                // reassert the declarative visibility binding in the same frame.
-                clearOpacityTween.stop()
-                clearButton.opacity = Qt.binding(function() {
-                    return clearButton.shown ? 1 : 0
-                })
+                // Standalone animation: Qt can actually stop it mid-flight.
+                clearButton.syncOpacity(false)
             }
         }
         Rectangle {

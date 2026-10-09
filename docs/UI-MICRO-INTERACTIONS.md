@@ -282,6 +282,44 @@ The acceptance boundary remains the same: connected GUI/native-preview
 checks must run before these interactions can be called verified on a real
 Wayland/Hyprland installation.
 
+## Golden Gate shell restoration (2026-10-09)
+
+The supplied Launchpad and Control Center references replace the earlier
+Big Sur box. Control Center now paints separate canonical glass modules:
+circular actions, a pill-shaped Focus control, rounded connectivity/mirroring
+and Now Playing cards, and vertical brightness/volume capsules. Its Wayland
+surface stays fixed; a viewport scrolls additional controls on shorter screens.
+Display and Now Playing expand into larger controls while existing network,
+audio-output, mirroring and Focus workflows remain available.
+
+`apps/lib/LevelSlider.qml` keeps external value bindings intact. Pointer input
+updates the fill directly in a stationary hit area; keys and accessibility
+change the level in five-percent steps. Return or the disclosure opens controls.
+Its standalone fill animation can stop immediately for Reduce Motion.
+The search clear affordance also uses a standalone animation: toggling
+Reduce Motion stops an unchanged, partially revealed affordance immediately
+without Qt's non-root-animation warning.
+Brightness commands are coalesced at 40 ms, with a 240 ms idle preference save,
+so every pointer event does not start two system processes. An old brightness
+probe cannot replace a level chosen during the current interaction.
+
+Launchpad adapts up to eight columns and five rows, with a round search field,
+page indicators above the real Dock, and wallpaper covering desktop widgets
+even without effects. The actual menu bar and Dock sit in a higher layer for
+the duration of Launchpad's presentation. Opening a Dock destination dismisses
+Launchpad. Search and folders use the shared glass, with a readable dark tint
+behind white text in the fallback renderer. Spotlight has a taller round
+search capsule and pill-shaped result selection.
+
+Validation: `tests/control-center.py` loads production QML with isolated
+services and checks shapes, level-keyboard/external-state behavior, expanded
+views, short-screen scrolling, dismissal/reopening and Launchpad shell layers.
+`tests/native-controls.py` exercises level dragging, endpoints and mid-flight
+Reduce Motion. Existing Focus, Utilities grouping, running-app Dock, menu,
+symbol and QML regressions still apply. Headless previews establish geometry
+and behavior; actual GPU refraction, Hyprland layer focus and physical touch
+remain installed-device acceptance work.
+
 ## Real-device acceptance checklist
 
 1. With a trackpad, sweep quickly across a row of Dock icons: labels should
@@ -299,6 +337,12 @@ Wayland/Hyprland installation.
 7. Repeat on a real GPU with both Light/Dark and tinted/clear Liquid Glass.
    The headless software renderer cannot certify real refraction, compositing,
    physical touch input, or stable timing on installed hardware.
+8. In Launchpad, confirm the menu bar and Dock stay above the grid during both
+   entry and exit. Open a Dock app and verify Launchpad dismisses. At short
+   display heights, scroll Control Center to Edit Controls and every extra.
+9. Drag brightness/volume, change the same level from another app, and use
+   keyboard arrows/Home/End. The fill must track actual state. Expand Display
+   and Now Playing; Escape returns from details and closes the main controls.
 
 **Current status:** Code is committed, with offscreen and source-level
 regressions added to CI. New commits are not called hardware-validated until

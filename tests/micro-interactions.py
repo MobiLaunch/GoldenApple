@@ -45,7 +45,8 @@ check("apps/lib/TextField.qml", [
     "enabled: !Theme.reduceMotion",
     "id: clearOpacityTween",
     "clearOpacityTween.stop()",
-    "clearButton.opacity = Qt.binding(function() {",
+    "target: clearButton; property: \"opacity\"",
+    "clearButton.syncOpacity(false)",
 ], "search fields offer accessible clear buttons and Escape without dismissing windows")
 
 check("apps/lib/PopUpButton.qml", [
@@ -162,7 +163,7 @@ check("shell/Notifications.qml", [
 ], "notification dismissal and stack transitions avoid unintended motion")
 
 check("shell/ControlCenter.qml", [
-    "Behavior on color { ColorAnimation { duration: Prefs.reduceMotion ? 0 : 120 } }",
+    "Behavior on tint { ColorAnimation { duration: Prefs.reduceMotion ? 0 : 120 } }",
     "Behavior on x { enabled: !Prefs.reduceMotion; NumberAnimation { duration: 225;",
 ], "Control Center respects reduced motion while changing modules")
 

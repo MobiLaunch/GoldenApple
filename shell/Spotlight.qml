@@ -13,10 +13,11 @@ import "spotlight/answers.js" as Answers
 PanelWindow {
     id: spot
     property bool open: false
+    objectName: "spotlight"
     function toggle() { open = !open; if (open) { input.text = ""; Qt.callLater(() => input.input.forceActiveFocus()) } }
 
     visible: open || closeTimer.running
-    onOpenChanged: if (!open) closeTimer.restart()
+    onOpenChanged: { if (open) closeTimer.stop(); else closeTimer.restart() }
     Timer { id: closeTimer; interval: Prefs.reduceMotion ? 1 : 150 }
     anchors { top: true; bottom: true; left: true; right: true }
     exclusionMode: ExclusionMode.Ignore
@@ -131,9 +132,11 @@ PanelWindow {
     MouseArea { anchors.fill: parent; onClicked: spot.open = false }
 
     ColumnLayout {
+        objectName: "spotlightContent"
         anchors { horizontalCenter: parent.horizontalCenter; top: parent.top; topMargin: parent.height * 0.22 }
         width: Math.min(680, parent.width - 32)
         spacing: 10
+        enabled: spot.open
         opacity: spot.open ? 1 : 0
         scale: spot.open ? 1 : 0.975
         Behavior on opacity { NumberAnimation { duration: Prefs.reduceMotion ? 1 : 140; easing.type: Easing.OutCubic } }
@@ -141,14 +144,15 @@ PanelWindow {
 
         Glass {
             Layout.fillWidth: true
-            Layout.preferredHeight: 56
-            role: "regular"
-            radius: 28
+            objectName: "spotlightSearch"
+            Layout.preferredHeight: 64
+            role: "clear"
+            radius: 32
             // One capsule, as in macOS 26: the glass is the field, with no
             // second ring inside it.
             TextField {
                 id: input
-                anchors { fill: parent; leftMargin: 18; rightMargin: 18 }
+                anchors { fill: parent; leftMargin: 24; rightMargin: 22 }
                 search: true
                 bare: true
                 glyphSize: 20
@@ -168,8 +172,8 @@ PanelWindow {
             Layout.preferredHeight: Math.min(list.contentHeight + 16, Math.max(60, spot.height * 0.78 - 90))
             // The results grow and shrink with what you type instead of jumping.
             Behavior on Layout.preferredHeight { enabled: resultsPanel.visible && !Prefs.reduceMotion; Spring { spring: Theme.snappy } }
-            role: "regular"
-            radius: 24
+            role: "clear"
+            radius: 28
             ListView {
                 id: list
                 anchors { fill: parent; margins: 8 }
@@ -197,8 +201,8 @@ PanelWindow {
                     }
                     Rectangle {
                         anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
-                        height: 44; radius: 12
-                        color: row.current ? Theme.accent : "transparent"
+                        height: 44; radius: height / 2
+                        color: row.current ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.88) : "transparent"
                         Behavior on color { ColorAnimation { duration: Prefs.reduceMotion ? 1 : 80 } }
                         RowLayout {
                             anchors { fill: parent; leftMargin: 12; rightMargin: 12 }
