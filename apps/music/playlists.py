@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Safe local Music playlist editing. Existing M3U/M3U8 files are supported.
 
-Commands: list, create, rename, delete, add, remove, move, duplicate.
+Commands: list, deleted, restore, create, rename, delete, add, remove, move, duplicate.
 Mutations accept one JSON object on stdin and return the latest playlist view.
 Playlist files stay in the user's Music/Playlists folder, and the audio files
 themselves are never modified or removed.
@@ -71,6 +71,41 @@ def available(name, except_path=None):
             raise ValueError("A playlist with that name already exists.")
 
 
+def deleted_folder():
+    return folder() / ".Deleted"
+
+
+def deleted_records():
+    root = deleted_folder()
+    if root.is_symlink():
+        raise ValueError("Deleted playlist directory must not be a symlink.")
+    if not root.is_dir():
+        return []
+    records = []
+    for path in root.iterdir():
+        match = re.fullmatch(r"(.+\.m3u8?)\.(\d{13,20})\.bak", path.name, re.IGNORECASE)
+        if not match or path.is_symlink() or not path.is_file():
+            continue
+        records.append({"path": str(path), "name": Path(match.group(1)).stem,
+                        "filename": match.group(1), "deletedAt": int(match.group(2)) // 1000000,
+                        "revision": revision(path)})
+    return sorted(records, key=lambda item: item["deletedAt"], reverse=True)
+
+
+def deleted_path(value):
+    if not isinstance(value, str):
+        raise ValueError("Choose a deleted playlist.")
+    path = Path(value)
+    root = deleted_folder()
+    if root.is_symlink() or not path.is_absolute() or path.parent != root:
+        raise ValueError("That deleted playlist is outside the library.")
+    if not re.fullmatch(r".+\.m3u8?\.\d{13,20}\.bak", path.name, re.IGNORECASE):
+        raise ValueError("That is not a recoverable playlist archive.")
+    if not path.is_file() or path.is_symlink():
+        raise ValueError("The deleted playlist is missing or unsafe to restore.")
+    return path
+
+
 def candidates():
     root = folder()
     if not root.is_dir():
@@ -138,10 +173,23 @@ def atomic_text(path, text, replace=False):
             stream.flush()
             os.fsync(stream.fileno())
         if replace and path.exists():
-            # Preserve original external metadata/comments as a recovery copy.
+            # Make a fresh exclusive backup; a .bak symlink must never redirect
+            # the copy onto a file outside the Music directory.
             backup = path.with_name(path.name + ".bak")
-            shutil.copy2(path, backup, follow_symlinks=False)
-        os.replace(temp, path)
+            if backup.exists() or backup.is_symlink():
+                backup = path.with_name(path.name + "." + str(time.time_ns()) + ".bak")
+            with open(path, "rb") as original:
+                backup_fd = os.open(backup, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+                with os.fdopen(backup_fd, "wb") as recovery:
+                    shutil.copyfileobj(original, recovery)
+                    recovery.flush()
+                    os.fsync(recovery.fileno())
+        if replace:
+            os.replace(temp, path)
+        else:
+            # Publish an entirely new playlist without ever replacing
+            # another process's newly created file.
+            os.link(temp, path)
     finally:
         Path(temp).unlink(missing_ok=True)
 
@@ -169,6 +217,32 @@ def checked_track(value):
 def execute(command, data):
     if command == "list":
         return {"playlists":view()}
+    if command == "deleted":
+        return {"deleted":deleted_records()}
+    if command == "restore":
+        source = deleted_path(data.get("path"))
+        if data.get("expected") != revision(source):
+            raise ValueError("This deleted playlist changed. Reopen Recently Deleted.")
+        filename = re.fullmatch(r"(.+\.m3u8?)\.\d{13,20}\.bak",
+                                source.name, re.IGNORECASE).group(1)
+        base = Path(filename).stem
+        extension = Path(filename).suffix
+        target = folder() / filename
+        if target.exists() or target.is_symlink() or any(
+                p.stem.casefold() == base.casefold() for p in candidates()):
+            # A name conflict never overwrites an active playlist.
+            for n in range(1, 1001):
+                postfix = " Restored" if n == 1 else " Restored " + str(n)
+                stem = base[:80-len(postfix)].rstrip() + postfix
+                target = folder() / (stem + extension)
+                if not (target.exists() or target.is_symlink()) and not any(
+                        p.stem.casefold() == stem.casefold() for p in candidates()):
+                    break
+            else:
+                raise ValueError("Could not find an unused name for the restored playlist.")
+        os.link(source, target)
+        source.unlink()
+        return {"playlist":str(target), "playlists":view(), "deleted":deleted_records()}
     if command == "create":
         name = validate_name(data.get("name"))
         available(name)
@@ -182,11 +256,14 @@ def execute(command, data):
         raise ValueError("This playlist changed in another window. Reload before editing.")
     if command == "delete":
         # Move to a recoverable folder rather than permanently destroying lists.
-        trash = folder() / ".Deleted"
+        trash = deleted_folder()
+        if trash.is_symlink():
+            raise ValueError("Deleted playlist directory must not be a symbolic link.")
         trash.mkdir(mode=0o700, exist_ok=True)
         destination = trash / (path.name + "." + str(time.time_ns()) + ".bak")
-        os.replace(path, destination)
-        return {"playlists":view()}
+        os.link(path, destination)
+        path.unlink()
+        return {"playlists":view(), "deleted":deleted_records()}
     if command == "rename":
         name = validate_name(data.get("name"))
         available(name, except_path=path)
@@ -194,7 +271,8 @@ def execute(command, data):
         if new != path:
             if new.exists() or new.is_symlink():
                 raise ValueError("A file already exists at the new playlist name.")
-            os.rename(path, new)
+            os.link(path, new)
+            path.unlink()
         return {"playlist":str(new), "playlists":view()}
     if command == "duplicate":
         base = validate_name(path.stem + " Copy")
@@ -240,11 +318,14 @@ def main():
     if len(sys.argv) != 2:
         return output(False, error="Choose a playlist operation.")
     cmd = sys.argv[1]
-    if cmd not in ("list","create","rename","delete","add","remove","move","duplicate"):
+    if cmd not in ("list","deleted","restore","create","rename","delete","add","remove","move","duplicate"):
         return output(False, error="Unknown playlist operation.")
     try:
         if cmd == "list":
             return output(True, **execute(cmd, {}))
+        if cmd == "deleted":
+            with locked():
+                return output(True, **execute(cmd, {}))
         request = json.load(sys.stdin)
         if not isinstance(request, dict):
             raise ValueError("Invalid playlist request.")
