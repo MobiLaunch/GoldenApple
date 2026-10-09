@@ -118,3 +118,6 @@ gst-plugins-base
 gst-plugins-good
 gst-plugins-bad
 gst-libav
+
+# Compile Golden Gate's unified font/symbol assets on installation
+nodejs
