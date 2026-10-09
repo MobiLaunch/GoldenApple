@@ -40,6 +40,22 @@ with tempfile.TemporaryDirectory() as tmp:
         # even when the optional BlueFerry daemon is unavailable.
         ("messages-onboarding", ["app", "apps/messages.qml",
                                   "--require-object", "messagesOnboarding"]),
+        # Mail's setup form alone cannot catch pane collisions after login.
+        ("mail-inbox-wide", ["app", "apps/mail.qml", "--size", "1120x740",
+                             "--mail-fixture", "inbox",
+                             "--require-object", "mailMessageListPane"]),
+        ("mail-reader-wide", ["app", "apps/mail.qml", "--size", "1120x740",
+                              "--mail-fixture", "reading",
+                              "--require-object", "mailMessageReader"]),
+        ("mail-reader-compact", ["app", "apps/mail.qml", "--size", "840x620",
+                                 "--mail-fixture", "reading",
+                                 "--require-object", "mailReadingPane"]),
+        ("mail-compose", ["app", "apps/mail.qml", "--size", "900x680",
+                          "--mail-fixture", "compose",
+                          "--require-object", "mailComposerPane"]),
+        ("mail-drafts", ["app", "apps/mail.qml", "--size", "900x680",
+                         "--mail-fixture", "drafts",
+                         "--require-object", "mailDraftsPane"]),
     ]
     for name, args in targets:
         proc = subprocess.run([sys.executable, str(PREVIEW), *args, "--wait", "300", "-o", f"{tmp}/{name}.png"],
