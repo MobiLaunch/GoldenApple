@@ -22,6 +22,9 @@ from html.parser import HTMLParser
 
 CONFIG = pathlib.Path(os.environ.get("XDG_CONFIG_HOME", pathlib.Path.home() / ".config")) / "golden-gate/mail.json"
 DRAFT = pathlib.Path(os.environ.get("XDG_STATE_HOME", pathlib.Path.home() / ".local/state")) / "golden-gate/mail-draft.json"
+MAIL_META = CONFIG.with_name("mail-categories.json")
+MAIL_BADGE = pathlib.Path(os.environ.get("XDG_STATE_HOME", pathlib.Path.home() / ".local/state")) / "golden-gate/mail-badges.json"
+CATEGORIES = ("primary", "transactions", "updates", "promotions")
 
 
 def draft_fields(data: object) -> dict[str, str]:
@@ -69,6 +72,125 @@ def atomic_json(path: pathlib.Path, data: dict[str, object]) -> None:
             os.unlink(name)
         except FileNotFoundError:
             pass
+
+
+def load_mail_meta() -> dict[str, object]:
+    try:
+        data = json.loads(MAIL_META.read_text(encoding="utf-8"))
+        return data if isinstance(data, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+
+def classify_mail(sender: str, subject: str) -> str:
+    """Conservative smart classification, never represented as IMAP folders."""
+    sender = sender.lower()
+    subject = subject.lower()
+    if any(x in sender or x in subject for x in (
+            "receipt", "invoice", "payment", "order confirmation",
+            "shipped", "delivery", "transaction", "billing")):
+        return "transactions"
+    if any(x in sender or x in subject for x in (
+            "unsubscribe", "newsletter", "weekly digest", "product update",
+            "release notes", "status update", "security alert")):
+        return "updates"
+    if any(x in sender or x in subject for x in (
+            "promotion", "limited time", "special offer", "coupon",
+            "discount", "sale ends", "promo", "save today")):
+        return "promotions"
+    return "primary"
+
+
+def annotate_messages(messages: list[dict[str, object]], account: str) -> None:
+    meta = load_mail_meta()
+    custom = meta.get(account, {})
+    if not isinstance(custom, dict):
+        custom = {}
+    labels = custom.get("labels", {})
+    vips = custom.get("vips", [])
+    if not isinstance(labels, dict):
+        labels = {}
+    if not isinstance(vips, list):
+        vips = []
+    vip_addresses = {str(x).lower() for x in vips}
+    for message in messages:
+        uid = str(message["uid"])
+        manual = labels.get(uid)
+        message["category"] = manual if manual in CATEGORIES else classify_mail(
+            str(message.get("from", "")), str(message.get("subject", "")))
+        message["vip"] = any(address in str(message.get("from", "")).lower()
+                             for address in vip_addresses if "@" in address)
+
+
+def cmd_category(uid: str, category: str) -> int:
+    """Local smart category override for a real IMAP message in this account."""
+    if not re.fullmatch(r"[0-9]{1,20}", uid) or category not in CATEGORIES:
+        return emit(False, error="Invalid message or category.")
+    try:
+        cfg, _ = configured()
+        account = str(cfg.get("email") or "")
+        data = load_mail_meta()
+        record = data.get(account, {})
+        if not isinstance(record, dict):
+            record = {}
+        labels = record.get("labels", {})
+        if not isinstance(labels, dict):
+            labels = {}
+        labels[uid] = category
+        record["labels"] = labels
+        data[account] = record
+        atomic_json(MAIL_META, data)
+        return emit(True, uid=uid, category=category)
+    except Exception as exc:
+        return emit(False, error=str(exc))
+
+
+def cmd_vip(address: str, on: bool) -> int:
+    address = address.strip().lower()
+    if not re.fullmatch(r"[^\\s@<>]{1,100}@[^\\s@<>]{1,200}", address):
+        return emit(False, error="Choose a valid email address.")
+    try:
+        cfg, _ = configured()
+        account = str(cfg.get("email") or "")
+        data = load_mail_meta()
+        record = data.get(account, {})
+        if not isinstance(record, dict):
+            record = {}
+        entries = record.get("vips", [])
+        values = {str(x).lower() for x in entries} if isinstance(entries, list) else set()
+        if on:
+            values.add(address)
+        else:
+            values.discard(address)
+        record["vips"] = sorted(values)
+        data[account] = record
+        atomic_json(MAIL_META, data)
+        return emit(True, address=address, vip=on)
+    except Exception as exc:
+        return emit(False, error=str(exc))
+
+
+def cmd_flag(uid: str, on: bool) -> int:
+    """Flag on the IMAP server (\\Flagged), rather than drawing a fake star."""
+    if not re.fullmatch(r"[0-9]{1,20}", uid):
+        return emit(False, error="Invalid message.")
+    try:
+        cfg, password = configured()
+        client = imap_client(cfg, password)
+        try:
+            if client.select("INBOX")[0] != "OK":
+                raise RuntimeError("Inbox could not be opened.")
+            typ, _ = client.uid("store", uid, "+FLAGS" if on else "-FLAGS", "(\\Flagged)")
+            if typ != "OK":
+                raise RuntimeError("The server did not save the Important flag.")
+            return emit(True, uid=uid, flagged=on)
+        finally:
+            try:
+                client.logout()
+            except Exception:
+                pass
+    except Exception as exc:
+        return emit(False, error=friendly(exc, load_config()))
 
 
 def load_config() -> dict[str, object]:
@@ -377,6 +499,7 @@ def parse_header_items(fetched, expected: set[str]) -> dict[str, dict[str, objec
             "from": clean_address(msg.get("From")),
             "date": decode_header(msg.get("Date")),
             "unread": "\\Seen" not in meta,
+            "flagged": "\\Flagged" in meta,
         }
     return result
 
@@ -414,8 +537,14 @@ def cmd_list() -> int:
                     if single_typ != "OK":
                         continue
                     found.update(parse_header_items(single_items, {uid}))
-            return emit(True, messages=[found[uid] for uid in reversed(uids) if uid in found],
-                        account=str(cfg.get("email") or ""))
+            result = [found[uid] for uid in reversed(uids) if uid in found]
+            account = str(cfg.get("email") or "")
+            annotate_messages(result, account)
+            # Persist a local badge count for the Dock even when Mail closes.
+            # The value is refreshed only after a successful inbox fetch.
+            atomic_json(MAIL_BADGE, {"account": account,
+                                     "unread": sum(bool(m["unread"]) for m in result)})
+            return emit(True, messages=result, account=account)
         finally:
             try:
                 client.logout()
@@ -503,6 +632,12 @@ def main() -> int:
         return cmd_read(sys.argv[2])
     if cmd == "send":
         return cmd_send()
+    if cmd == "category" and len(sys.argv) == 4:
+        return cmd_category(sys.argv[2], sys.argv[3])
+    if cmd == "vip" and len(sys.argv) == 4 and sys.argv[3] in ("true", "false"):
+        return cmd_vip(sys.argv[2], sys.argv[3] == "true")
+    if cmd == "flag" and len(sys.argv) == 4 and sys.argv[3] in ("true", "false"):
+        return cmd_flag(sys.argv[2], sys.argv[3] == "true")
     return 2
 
 
