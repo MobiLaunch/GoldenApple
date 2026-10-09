@@ -65,10 +65,25 @@ Rectangle {
         Keys.onReturnPressed: tf.clearSearch()
         FocusRing { }
         Behavior on opacity {
-            // If Reduce Motion is switched on mid-fade, cancel the running
-            // tween instead of letting the old 110 ms animation finish.
             enabled: !Theme.reduceMotion
-            NumberAnimation { duration: 110; easing.type: Easing.OutCubic }
+            NumberAnimation {
+                id: clearOpacityTween
+                duration: 110
+                easing.type: Easing.OutCubic
+            }
+        }
+        Connections {
+            target: Theme
+            function onReduceMotionChanged() {
+                if (!Theme.reduceMotion) return
+                // Disabling a Behavior alone can strand a running animation
+                // at an intermediate value. Explicitly stop the tween and
+                // reassert the declarative visibility binding in the same frame.
+                clearOpacityTween.stop()
+                clearButton.opacity = Qt.binding(function() {
+                    return clearButton.shown ? 1 : 0
+                })
+            }
         }
         Rectangle {
             anchors.centerIn: parent
