@@ -139,7 +139,7 @@ windowcontrols > button:active > image {
 windowcontrols > button.close { background: radial-gradient(circle closest-side, var(--gg-tl-close) 91%, rgba(0, 0, 0, 0.14) 93%, rgba(0, 0, 0, 0.14) 97%, transparent 100%); }
 windowcontrols > button.minimize { background: radial-gradient(circle closest-side, var(--gg-tl-minimize) 91%, rgba(0, 0, 0, 0.14) 93%, rgba(0, 0, 0, 0.14) 97%, transparent 100%); }
 windowcontrols > button.maximize { background: radial-gradient(circle closest-side, var(--gg-tl-zoom) 91%, rgba(0, 0, 0, 0.14) 93%, rgba(0, 0, 0, 0.14) 97%, transparent 100%); }
-windowcontrols:hover > button > image { color: rgba(0, 0, 0, 0.55); }
+windowcontrols:hover > button > image { color: rgba(0, 0, 0, 0.70); }
 windowcontrols > button:active { filter: brightness(0.82); }
 window:backdrop windowcontrols:not(:hover) > button,
 windowcontrols > button:disabled { background: radial-gradient(circle closest-side, var(--gg-tl-inactive) 93%, rgba(0, 0, 0, 0.08) 95%, rgba(0, 0, 0, 0.08) 97%, transparent 100%); opacity: 1; }
