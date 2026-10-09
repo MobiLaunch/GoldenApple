@@ -207,6 +207,22 @@ The rectangle appears directly under the cursor with no lag or bounce, and
 it is removed immediately on release. QML regression contracts and native
 Files tests cover the modifier cases and inactive grid.
 
+**Dialog continuity:** Shared document sheets absorb clicks on their
+backdrop even when dismissal is forbidden, rather than allowing the click to
+trigger a control underneath. A close callback that opens a replacement sheet
+retains the original focus origin and keeps focus inside the new sheet until
+the final dismissal. Files' Get Info now uses this common sheet rather than
+an unguarded floating rectangle, including small-screen scrolling and Escape
+dismissal. Copy Path acknowledges success with a brief "Copied" label that
+resets on close or reopening.
+
+**Quick Look keyboard ownership:** Opening Quick Look moves keyboard focus
+to its card. Left/Up and Right/Down still change Files' selection underneath,
+then return focus to the preview; Return opens the item and Space/Escape
+dismiss it. The preview stays in place during repeated navigation instead of
+forcing the user to click Finder between files. Native interaction tests cover
+navigation, focus retention and dismissal.
+
 The acceptance boundary remains the same: connected GUI/native-preview
 checks must run before these interactions can be called verified on a real
 Wayland/Hyprland installation.
