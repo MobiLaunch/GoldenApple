@@ -74,6 +74,8 @@ for the source-backed status, this Dock lifecycle batch and acceptance gates.
 - [x] Reference-based Golden Gate Control Center: separate glass cards, circular actions and vertical level capsules
 - [x] Expanded Display/Now Playing controls, short-screen scrolling and coalesced brightness writes
 - [x] Eight-column Launchpad with round search, wallpaper cover and the live menu bar/Dock above it
+- [x] Reference-proportioned Launchpad with one fade, stable live chrome/catalog, and throttled wheel paging
+- [x] Control Center connectivity, Focus, mirroring and media use true semicircular-ended horizontal pills
 - [x] Spotlight search and results use rounded clear glass and capsule selection
 - [x] TOTP verification-code countdown stays within 1–30 seconds at fractional rollover
 - [x] Empty Trash Escape closes the shared sheet instead of overriding its visibility binding

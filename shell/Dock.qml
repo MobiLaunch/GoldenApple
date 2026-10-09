@@ -190,7 +190,9 @@ PanelWindow {
     exclusiveZone: Prefs.dockSize + 22
     color: "transparent"
     WlrLayershell.namespace: "gg-dock"
-    WlrLayershell.layer: applications?.visible ? WlrLayer.Overlay : WlrLayer.Top
+    // Keep a stable layer: changing it when Launchpad opens remaps the shelf
+    // and replays the compositor's entrance animation on a live Dock.
+    WlrLayershell.layer: WlrLayer.Overlay
     // Touch-style shelf: only the shelf itself takes input, except while an
     // icon is dragged, when the whole surface follows the pointer.
     mask: Region { item: dock.dragging ? dragZone : shelf }

@@ -2,8 +2,8 @@
 // the Mac. The wallpaper blurs and dims behind a small search field; the
 // icons sit in an 8 × 5 grid (fewer columns on narrow screens) with page dots
 // below. Swipe, scroll, or press ← → to change pages; type to search; Return
-// opens the first result; Escape or a click on empty space closes. It zooms
-// in as it opens and back out as it closes. CitronOS's own apps come first,
+// opens the first result; Escape or a click on empty space closes. A single
+// fade reveals it without scaling the desktop. CitronOS's own apps come first,
 // in the Dock's order, then everything else alphabetically. System apps
 // without a CitronOS icon gather in an Other folder, as on the Mac, so the
 // grid stays in one style; a search still finds them.
@@ -25,6 +25,49 @@ PanelWindow {
     property real contextX: 0
     property real contextY: 0
     property var contextItems: []
+    property real reveal: 0
+    property var sessionCatalog: []
+    property var sessionHome: []
+    property alias query: search.text
+    property real wheelRemainder: 0
+    function finishDismissal() {
+        if (open) return
+        search.text = ""
+        folder = null
+    }
+    function syncReveal() {
+        fade.stop()
+        if (Theme.reduceMotion) { reveal = open ? 1 : 0; finishDismissal() }
+        else { fade.to = open ? 1 : 0; fade.start() }
+    }
+    onOpenChanged: {
+        if (open) {
+            // Freeze this opening's catalog. An asynchronous icon scan or an
+            // installation cannot rebuild the grid underneath an entrance.
+            sessionCatalog = catalog
+            sessionHome = homeEntries
+        }
+        syncReveal()
+    }
+    NumberAnimation {
+        id: fade
+        target: apps; property: "reveal"
+        duration: 180; easing.type: Easing.OutCubic
+        onFinished: apps.finishDismissal()
+    }
+    Connections { target: Theme; function onReduceMotionChanged() { apps.syncReveal() } }
+    Timer { id: wheelGate; interval: 390 }
+    function pageWheel(event) {
+        event.accepted = true
+        if (wheelGate.running || !open || folder) return
+        const pixel = event.pixelDelta.x || event.pixelDelta.y
+        const angle = event.angleDelta.x || event.angleDelta.y
+        wheelRemainder -= pixel || angle
+        if (Math.abs(wheelRemainder) < (pixel ? 35 : 60)) return
+        pages.flip(wheelRemainder > 0 ? 1 : -1)
+        wheelRemainder = 0
+        wheelGate.restart()
+    }
 
     function showAppMenu(entry, item, localX, localY) {
         const point = item.mapToItem(backdrop, localX, localY)
@@ -44,17 +87,19 @@ PanelWindow {
     // methods can make the layer surface visible without changing our `open`
     // state, which leaves the launcher fully transparent and non-interactive.
     function present() {
+        if (open) return
+        pages.cancelFlick()
         pages.currentIndex = 0
         pages.positionViewAtBeginning()
         open = true
         console.info("Launchpad opened; visible desktop entries:", entries.length)
-        Qt.callLater(() => search.input.forceActiveFocus())
+        Qt.callLater(() => { if (apps.open) search.input.forceActiveFocus() })
     }
-    function dismiss() { open = false; search.text = ""; folder = null }
+    function dismiss() { appMenu.open = false; pages.cancelFlick(); wheelRemainder = 0; wheelGate.stop(); open = false }
     function toggle() { open ? dismiss() : present() }
     function launch(entry) { entry.execute(); dismiss() }
 
-    visible: open || fade.running
+    visible: open || reveal > 0
     anchors { top: true; bottom: true; left: true; right: true }
     exclusionMode: ExclusionMode.Ignore
     // Menu bar and Dock are promoted above this surface while it is shown.
@@ -122,12 +167,10 @@ PanelWindow {
     }
 
     property var folder: null           // the open folder, or null
-    readonly property var matches: {
-        const q = search.text.trim().toLowerCase()
+    readonly property var catalog: {
         const list = [...DesktopEntries.applications.values].filter((e) => {
             if (!e || !e.name || e.noDisplay) return false
-            if (!q) return true
-            return [e.name, e.genericName, e.comment, e.keywords].map((s) => String(s ?? "")).join(" ").toLowerCase().includes(q)
+            return true
         })
         const rank = (e) => { const i = firstParty.indexOf(e.id); return i < 0 ? 1000 : i }
         // One tile per app: the same app can be listed twice (a user copy of a
@@ -136,14 +179,19 @@ PanelWindow {
         return list.sort((a, b) => rank(a) - rank(b) || String(a.name).localeCompare(String(b.name)))
             .filter((e) => { const k = String(e.name).toLowerCase(); if (seen[k]) return false; seen[k] = true; return true })
     }
+    readonly property var matches: {
+        const q = search.text.trim().toLowerCase()
+        const list = apps.open || apps.reveal > 0 ? sessionCatalog : catalog
+        return q ? list.filter(e => [e.name, e.genericName, e.comment, e.keywords]
+            .map(s => String(s ?? "")).join(" ").toLowerCase().includes(q)) : list
+    }
     // The grid: a search lists every match; otherwise the Other folder sits
     // after CitronOS's own apps.
-    readonly property var entries: {
-        if (search.text.trim()) return matches
+    readonly property var homeEntries: {
         // An app that repeats an icon already on the grid (Foot Client and
         // Foot Server beside Foot) joins the folder too.
         const icons = {}, kept = [], others = [], utilities = []
-        for (const e of matches) {
+        for (const e of catalog) {
             const icon = String(e.icon ?? "")
             const own = String(e.id).startsWith("org.goldengate.")
             if (scanned && utility(e)) utilities.push(e)
@@ -156,38 +204,44 @@ PanelWindow {
         else kept.push(...utilities)
         if (others.length >= 2) folders.push({ isFolder: true, name: "Other", apps: others, id: "folder:other" })
         else kept.push(...others)
-        if (!folders.length) return matches
+        if (!folders.length) return catalog
         const ownCount = kept.filter((e) => firstParty.indexOf(e.id) >= 0).length
         return kept.slice(0, ownCount).concat(folders, kept.slice(ownCount))
     }
+    readonly property var entries: search.text.trim() ? matches
+        : apps.open || apps.reveal > 0 ? sessionHome : homeEntries
 
     // Reference proportions: eight columns on a desktop, compact round search,
     // and space below the page dots for the real Dock rather than a duplicate.
-    readonly property real outerInset: Math.max(32, width * 0.1)
-    readonly property real bottomClearance: (dock?.baseSize ?? 54) + 66
-    readonly property int columns: Math.max(2, Math.min(8, Math.floor((width - 2 * outerInset) / 140)))
-    readonly property int rows: Math.max(2, Math.min(5, Math.floor(gridHeight / 124)))
+    readonly property real layoutScale: Math.max(0.6, Math.min(1.15, width / 1536,
+        (height - (dock?.baseSize ?? 54)) / (998 - 54)))
+    readonly property real bottomClearance: (dock?.baseSize ?? 54) + 65 * layoutScale
+    readonly property real gridTop: 116 * layoutScale
+    readonly property int columns: Math.max(2, Math.min(8, Math.floor((width - 48) / (146.25 * layoutScale))))
+    readonly property int rows: Math.max(1, Math.min(5, Math.floor((height - gridTop - bottomClearance - 26 * layoutScale) / (146 * layoutScale))))
     readonly property int perPage: columns * rows
     readonly property int pageCount: Math.max(1, Math.ceil(entries.length / perPage))
-    readonly property real gridWidth: Math.max(0, width - 2 * outerInset)
-    readonly property real gridHeight: Math.max(0, height - 118 - bottomClearance)
+    readonly property real gridWidth: Math.min(width - 48, columns * 146.25 * layoutScale)
+    readonly property real gridHeight: rows * cellH
     readonly property real cellW: gridWidth / columns
-    readonly property real cellH: gridHeight / rows
-    readonly property real iconSize: Math.round(Math.max(24, Math.min(cellW * 0.7, cellH * 0.74, 100)))
+    readonly property real cellH: 146 * layoutScale
+    readonly property real iconSize: Math.round(100 * layoutScale)
 
     // ------------------------------------------------------------ backdrop
     // The desktop, blurred and dimmed, as Launchpad shows it.
     Item {
         id: backdrop
         anchors.fill: parent
-        opacity: apps.open ? 1 : 0
-        Behavior on opacity { NumberAnimation { id: fade; duration: Theme.reduceMotion ? 1 : 225; easing.type: Easing.OutCubic } }
+        opacity: apps.reveal
+        // Cache the stationary wallpaper/effect; the entrance composites one
+        // texture instead of re-running the full-screen blur each frame.
+        layer.enabled: GraphicsInfo.api !== GraphicsInfo.Software
 
         Image {
             id: wall
             anchors.fill: parent
             source: Paths.fileUrl(Prefs.wallpaper)
-            sourceSize: Qt.size(Math.max(1, apps.width / 4), Math.max(1, apps.height / 4))
+            sourceSize: Qt.size(Math.max(1, apps.width / 2), Math.max(1, apps.height / 2))
             fillMode: Image.PreserveAspectCrop
             asynchronous: true
             // Keep a painted fallback below the blur effect. Without GPU
@@ -200,19 +254,16 @@ PanelWindow {
             blurEnabled: true
             blur: 1.0
             blurMax: 48
-            saturation: 0.1
+            saturation: 0
             autoPaddingEnabled: false
             visible: GraphicsInfo.api !== GraphicsInfo.Software
         }
         // Dim enough that white labels read over the brightest wallpaper.
-        Rectangle { anchors.fill: parent; color: Theme.dark ? "#55000000" : "#4d000000" }
+        Rectangle { anchors.fill: parent; color: "#24000000" }
         MouseArea {
             anchors.fill: parent
             onClicked: apps.dismiss()
-            onWheel: (w) => {
-                const d = Math.abs(w.angleDelta.x) > Math.abs(w.angleDelta.y) ? -w.angleDelta.x : -w.angleDelta.y
-                if (Math.abs(d) >= 60) pages.flip(d > 0 ? 1 : -1)
-            }
+            onWheel: (w) => apps.pageWheel(w)
         }
     }
 
@@ -220,8 +271,8 @@ PanelWindow {
     Glass {
         id: searchBox
         objectName: "launchpadSearch"
-        anchors { horizontalCenter: parent.horizontalCenter; top: parent.top; topMargin: 56 }
-        width: Math.min(280, apps.width - 48); height: 38; radius: height / 2
+        anchors { horizontalCenter: parent.horizontalCenter; top: parent.top; topMargin: 51 * apps.layoutScale }
+        width: Math.min(244 * apps.layoutScale, apps.width - 48); height: 40 * apps.layoutScale; radius: height / 2
         role: "clear"
         tint: Qt.rgba(0.18, 0.19, 0.27, search.input.activeFocus ? 0.3 : 0.24)
         opacity: backdrop.opacity
@@ -235,8 +286,8 @@ PanelWindow {
             foreground: "#ffffff"
             placeholderColor: Qt.rgba(1, 1, 1, 0.78)
             input.selectedTextColor: "#ffffff"
-            input.font.pixelSize: Theme.fs(13)
-            onTextChanged: { pages.currentIndex = 0; pages.positionViewAtBeginning() }
+            input.font.pixelSize: Theme.fs(Math.max(11, 13 * apps.layoutScale))
+            onTextChanged: { if (apps.open) { pages.cancelFlick(); pages.currentIndex = 0; pages.positionViewAtBeginning() } }
             input.Keys.onEscapePressed: apps.folder ? apps.folder = null : search.text ? search.text = "" : apps.dismiss()
             input.Keys.onReturnPressed: {
                 const first = apps.entries[0]
@@ -250,7 +301,8 @@ PanelWindow {
     // ---------------------------------------------------------------- pages
     ListView {
         id: pages
-        anchors { top: searchBox.bottom; topMargin: 24; horizontalCenter: parent.horizontalCenter }
+        objectName: "launchpadGrid"
+        anchors { top: parent.top; topMargin: apps.gridTop; horizontalCenter: parent.horizontalCenter }
         width: apps.width
         height: apps.gridHeight
         orientation: ListView.Horizontal
@@ -258,18 +310,16 @@ PanelWindow {
         highlightRangeMode: ListView.StrictlyEnforceRange
         highlightMoveDuration: Theme.reduceMotion ? 0 : 380
         boundsBehavior: Flickable.StopAtBounds
-        clip: false
+        clip: true
+        cacheBuffer: 0
         model: apps.pageCount
         function flip(step) { currentIndex = Math.max(0, Math.min(count - 1, currentIndex + step)) }
 
-        // Opening zooms the icons in from a little larger, as on the Mac. An
-        // open folder dims the page behind it.
-        opacity: backdrop.opacity * (apps.folder ? 0.1 : 1)
-        Behavior on opacity { enabled: !fade.running; NumberAnimation { duration: Theme.reduceMotion ? 1 : 190; easing.type: Easing.OutCubic } }
+        property real folderOpacity: apps.folder ? 0.1 : 1
+        Behavior on folderOpacity { NumberAnimation { duration: Theme.reduceMotion ? 0 : 140 } }
+        opacity: apps.reveal * folderOpacity
         interactive: apps.open && !apps.folder
         enabled: apps.open && !apps.folder
-        scale: apps.open || Theme.reduceMotion ? 1 : 1.08
-        Behavior on scale { enabled: !Theme.reduceMotion; NumberAnimation { duration: 225; easing.type: Easing.OutCubic } }
 
         delegate: Item {
             id: page
@@ -277,7 +327,7 @@ PanelWindow {
             width: pages.width
             height: pages.height
             // Clicks between the icons close Launchpad, like the backdrop.
-            MouseArea { anchors.fill: parent; onClicked: apps.dismiss() }
+            MouseArea { anchors.fill: parent; onClicked: apps.dismiss(); onWheel: (w) => apps.pageWheel(w) }
             Grid {
                 anchors.horizontalCenter: parent.horizontalCenter
                 columns: apps.columns
@@ -288,6 +338,7 @@ PanelWindow {
                     delegate: Item {
                         id: cell
                         required property var modelData
+                        objectName: "launchpadCell:" + modelData.id
                         width: apps.cellW
                         height: apps.cellH
                         readonly property bool isFolder: !!cell.modelData.isFolder
@@ -318,16 +369,17 @@ PanelWindow {
                         }
                         Image {
                             id: icon
-                            anchors { horizontalCenter: parent.horizontalCenter; top: parent.top; topMargin: (apps.cellH - apps.iconSize - 26) / 2 }
+                            objectName: "launchpadIcon:" + cell.modelData.id
+                            anchors { horizontalCenter: parent.horizontalCenter; top: parent.top; topMargin: 10 * apps.layoutScale }
                             width: apps.iconSize; height: apps.iconSize
                             opacity: cell.isFolder ? 0 : 1
                             source: cell.isFolder ? "" : Quickshell.iconPath(cell.modelData.icon, "application-x-executable")
                             sourceSize: Qt.size(apps.iconSize * 2, apps.iconSize * 2)
                             smooth: true; mipmap: true
+                            asynchronous: true
                             scale: area.pressed && !Theme.reduceMotion ? 0.92 : 1
-                            Behavior on scale { NumberAnimation { duration: 90; easing.type: Easing.OutCubic } }
-                            layer.enabled: area.pressed
-                            layer.effect: MultiEffect { brightness: -0.3 }
+                            Behavior on scale { enabled: !Theme.reduceMotion; NumberAnimation { duration: 90; easing.type: Easing.OutCubic } }
+                            // No offscreen layer allocated on each press.
                         }
                         Text {
                             anchors { horizontalCenter: parent.horizontalCenter; top: icon.bottom; topMargin: 8 }
@@ -337,7 +389,7 @@ PanelWindow {
                             elide: Text.ElideRight
                             color: "#ffffff"
                             style: Text.Raised; styleColor: "#8c000000"
-                            font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.Normal }
+                            font { family: Theme.fontUi; pixelSize: Theme.fs(Math.max(11, 13 * apps.layoutScale)); weight: Font.Normal }
                         }
                         MouseArea {
                             id: area
@@ -397,9 +449,10 @@ PanelWindow {
         tint: Qt.rgba(0.16, 0.17, 0.24, 0.48)
         visible: opacity > 0
         enabled: apps.open && !!apps.folder
-        opacity: apps.folder ? backdrop.opacity : 0
+        property real folderReveal: apps.folder ? 1 : 0
+        opacity: apps.reveal * folderReveal
         scale: apps.folder || Theme.reduceMotion ? 1 : 0.86
-        Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 175; easing.type: Easing.OutCubic } }
+        Behavior on folderReveal { NumberAnimation { duration: Theme.reduceMotion ? 0 : 175; easing.type: Easing.OutCubic } }
         Behavior on scale { enabled: !Theme.reduceMotion; NumberAnimation { duration: 225; easing.type: Easing.OutBack; easing.overshoot: 1.1 } }
         MouseArea { anchors.fill: parent }        // clicks inside stay inside
 
@@ -465,7 +518,7 @@ PanelWindow {
     Row {
         objectName: "launchpadPages"
         visible: backdrop.opacity > 0
-        anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: apps.bottomClearance - 20 }
+        anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: apps.bottomClearance }
         spacing: 10
         opacity: backdrop.opacity
         enabled: apps.open && !apps.folder

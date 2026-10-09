@@ -286,8 +286,10 @@ Wayland/Hyprland installation.
 
 The supplied Launchpad and Control Center references replace the earlier
 Big Sur box. Control Center now paints separate canonical glass modules:
-circular actions, a pill-shaped Focus control, rounded connectivity/mirroring
-and Now Playing cards, and vertical brightness/volume capsules. Its Wayland
+circular actions, individual Wi-Fi/Bluetooth/AirDrop pills, wide Focus and
+Now Playing pills, a Mirroring pill, and vertical brightness/volume capsules.
+The horizontal controls use radius = height / 2; there is no square
+connectivity container. Its Wayland
 surface stays fixed; a viewport scrolls additional controls on shorter screens.
 Display and Now Playing expand into larger controls while existing network,
 audio-output, mirroring and Focus workflows remain available.
@@ -303,17 +305,32 @@ Brightness commands are coalesced at 40 ms, with a 240 ms idle preference save,
 so every pointer event does not start two system processes. An old brightness
 probe cannot replace a level chosen during the current interaction.
 
-Launchpad adapts up to eight columns and five rows, with a round search field,
+Launchpad uses the reference's 244 × 40 search field, 146-pixel row pitch and
+100-pixel icon canvases at 1536 × 998, scaling the grid for the available
+height above the live Dock. Eight columns/five rows fit 1280 × 720 and
+1366 × 768 as well. It has a round search field,
 page indicators above the real Dock, and wallpaper covering desktop widgets
-even without effects. The actual menu bar and Dock sit in a higher layer for
-the duration of Launchpad's presentation. Opening a Dock destination dismisses
+even without effects. The actual menu bar and Dock stay in the Overlay layer;
+opening Launchpad never remaps them or repeats the Dock entrance.
+Opening a Dock destination dismisses
 Launchpad. Search and folders use the shared glass, with a readable dark tint
 behind white text in the fallback renderer. Spotlight has a taller round
 search capsule and pill-shaped result selection.
 
+Only one 180 ms QML fade reveals Launchpad. Its grid does not zoom; wallpaper
+blur is cached as a stationary texture. Hyprland's matching layers have
+`no_anim on`, avoiding a second whole-surface popin over the QML animations.
+The catalog is frozen for each opening, so icon scans cannot rearrange it
+during the fade. Dismissal clears the query/folder after the fade, not during
+it. Wheel bursts change one page at a time; keyboard and dragging still work.
+
 Validation: `tests/control-center.py` loads production QML with isolated
 services and checks shapes, level-keyboard/external-state behavior, expanded
 views, short-screen scrolling, dismissal/reopening and Launchpad shell layers.
+The launcher fixture loads only the real launcher/Dock/menu bar, with no
+Weather or Maps. Tests cover reference coordinates, laptop grids, stationary
+icon/delegate geometry during the fade, catalog stability, wheel bursts,
+query preservation during dismissal and Reduce Motion interruption.
 `tests/native-controls.py` exercises level dragging, endpoints and mid-flight
 Reduce Motion. Existing Focus, Utilities grouping, running-app Dock, menu,
 symbol and QML regressions still apply. Headless previews establish geometry
@@ -340,6 +357,9 @@ remain installed-device acceptance work.
 8. In Launchpad, confirm the menu bar and Dock stay above the grid during both
    entry and exit. Open a Dock app and verify Launchpad dismisses. At short
    display heights, scroll Control Center to Edit Controls and every extra.
+   Restart the shell after updating, then verify the compositor has loaded
+   the new `no_anim` layer rule. Check five rapid open/close cycles and wheel
+   bursts on the installed GPU; there should be one fade and no desktop zoom.
 9. Drag brightness/volume, change the same level from another app, and use
    keyboard arrows/Home/End. The fill must track actual state. Expand Display
    and Now Playing; Escape returns from details and closes the main controls.

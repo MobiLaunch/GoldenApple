@@ -62,7 +62,7 @@ PanelWindow {
     // What its glass bends: the desktop under it.
     DesktopBackdrop { surface: bar; namespace: "gg-menubar" }
     // Launchpad keeps the actual menu bar and Dock above its wallpaper.
-    WlrLayershell.layer: applications?.visible ? WlrLayer.Overlay : WlrLayer.Top
+    WlrLayershell.layer: WlrLayer.Overlay
 
     // Liquid Glass (docs/LIQUID-GLASS.md). With its background on (the
     // default), a frosted band in the appearance's colours, as the Mac's menu
