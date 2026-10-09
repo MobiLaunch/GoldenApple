@@ -30,7 +30,7 @@ ShellRoot {
 
         toolbarItems: [
             Row {
-                x: win.contentX + 12
+                x: Math.max(win.contentX + 12, win.toolbarSafeX)
                 anchors.verticalCenter: parent.verticalCenter
                 spacing: 8
 
