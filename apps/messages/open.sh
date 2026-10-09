@@ -3,6 +3,9 @@
 # diagnostic output when QML fails. A desktop-file launch otherwise hides
 # the error completely and appears to do nothing.
 set -u
+# Startup diagnostics can contain phone numbers or contact names.
+# Keep log files private to this account.
+umask 077
 apps=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 state="${XDG_STATE_HOME:-$HOME/.local/state}"
 mkdir -p "$state"
