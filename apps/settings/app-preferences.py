@@ -141,21 +141,34 @@ def toggle_login(desktop_id, on):
     if not ID.fullmatch(desktop_id) or type(on) is not bool:
         raise ValueError("Invalid login-item request.")
     path = LOGIN / desktop_id
-    if on and not path.is_file():
-        app = available().get(desktop_id)
-        if not app:
-            raise ValueError("This application is not installed or available.")
-        source = Path(app["source"])
+    if path.is_symlink():
+        raise ValueError("Refusing to overwrite a linked login item.")
+
+    existing = config(path)
+    # A per-user Hidden=true override for a system login item is often only
+    # two lines long. Flipping that stub to Hidden=false would *not* restore
+    # Exec=, so the UI would claim enabled while nothing actually starts.
+    if on and (not existing.has_section(GROUP) or
+               not existing[GROUP].get("Exec", "") and
+               existing[GROUP].get("DBusActivatable", "false").lower() != "true"):
+        source = next((base / "autostart" / desktop_id
+                       for base in SYSTEM_CONFIG
+                       if (base / "autostart" / desktop_id).is_file()), None)
+        if source is None:
+            app = available().get(desktop_id)
+            if not app:
+                raise ValueError("This application is not installed or available.")
+            source = Path(app["source"])
         atomic(path, source.read_text(encoding="utf-8"))
-    else:
-        row = config(path)
-        if not row.has_section(GROUP):
-            row.add_section(GROUP)
-        row[GROUP]["Hidden"] = "false" if on else "true"
-        from io import StringIO
-        out = StringIO()
-        row.write(out)
-        atomic(path, out.getvalue())
+        return
+
+    if not existing.has_section(GROUP):
+        existing.add_section(GROUP)
+    existing[GROUP]["Hidden"] = "false" if on else "true"
+    from io import StringIO
+    out = StringIO()
+    existing.write(out)
+    atomic(path, out.getvalue())
 
 
 def main(args):
