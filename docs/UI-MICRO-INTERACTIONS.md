@@ -144,6 +144,23 @@ press states and a pointing cursor; the actively sorted column has stronger
 text contrast. Shared sidebar rows expose their selection and press action to
 accessibility services, and toolbar toggles announce their checked state.
 
+**Finder's keyboard-first browsing:** Typing a filename prefix selects the
+next matching entry without filtering the folder, moving files, or changing
+the search bar. A repeated single character cycles through matching entries,
+and an unmatched prefix can restart from the newest character. The passive
+"Jump to" cue fades after 950 ms. Arrow keys clear that prefix; Home/End and
+Page Up/Down navigate the grid or list, including Shift range selection.
+Typing never intercepts an open document sheet, Get Info dialog, transfer
+conflict or Quick Look. Escape on the Empty Trash sheet uses its close action
+rather than changing a bound visibility flag.
+
+**Menu-bar stability:** A title switch explicitly hides the previous popup
+before changing the anchor and item geometry. That avoids relying on delayed
+reactive reevaluation to unmap the old menu surface. The screenshot regression
+and geometry guard remain in CI. The separate Music playlist regression found
+filenames sorted by the extension instead of the displayed playlist name;
+sorting now uses the playlist stem.
+
 The acceptance boundary remains the same: connected GUI/native-preview
 checks must run before these interactions can be called verified on a real
 Wayland/Hyprland installation.
