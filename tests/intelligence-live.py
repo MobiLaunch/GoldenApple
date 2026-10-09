@@ -101,7 +101,7 @@ class LiveProtocol(unittest.TestCase):
         opener = (ROOT / "apps/intelligence/open.sh").read_text()
         bindings = (ROOT / "compositor/hyprland/hyprland.conf").read_text()
         self.assertIn('target: "citron"', qml)
-        self.assertIn("objectName: \"citronVoiceBubble\"", qml)
+        self.assertIn("objectName: \"citronSystemOverlay\"", qml)
         self.assertIn("voiceProc.running = false", qml)
         self.assertIn("source: \"VoiceAssistant.qml\"", shell)
         self.assertIn('ipc call citron "$mode"', opener)
