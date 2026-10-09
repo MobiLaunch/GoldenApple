@@ -62,6 +62,18 @@ check("apps/lib/MenuList.qml", [
     "duration: Theme.reduceMotion ? 0 : 65",
 ], "menu hover highlight fades without resizing popup surfaces")
 
+check("apps/lib/PopupMenu.qml", [
+    "vanish.stop()",
+    "vanish.action = null",
+    "box.cancelPending()",
+], "reopening a popover does not execute a previously chosen action")
+
+check("apps/lib/MenuList.qml", [
+    "function cancelPending() {",
+    "if (flash.running) flash.stop()",
+    "Keys.onEscapePressed: { cancelPending(); dismissed() }",
+], "Escape cancels menu actions pending the selection flash")
+
 check("apps/lib/AppWindow.qml", [
     "An inactive window gently recedes without dimming its document.",
     "opacity: win.active ? 0 : 1",

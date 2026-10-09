@@ -19,7 +19,7 @@ nonanimated presentation:
 | Push/toolbar buttons | A 90 ms pressed state on keyboard/accessible activation matches pointer press | State change stays available; no travel |
 | Segmented picker | Short hover highlight, compress label slightly on press, spring selection pill | Selection snaps directly |
 | Sidebar row | Pressed background compresses minimally, selected symbol gains emphasis | No animated scale |
-| Menus | Hover selection washes in over 65 ms, without changing popup dimensions | Highlight appears instantly |
+| Menus | Hover selection washes in over 65 ms, without changing popup dimensions; Escape and click-away cancel pending selections | Highlight appears instantly |
 | Inactive app window | A faint 180 ms toolbar tint changes visual hierarchy | Tint changes instantly |
 | Dock labels | Deliberate 300 ms pointer dwell before reveal; leave/press cancels pending tooltip | Tooltip appears without scale motion |
 | App switcher | Panel settles gently; selection follows current app | Panel appears in place, selection snaps |
@@ -35,7 +35,8 @@ always-on effects, or geometry-changing menu animations.
 ## Verification
 
 - `python tests/native-controls.py`: offscreen Qt keyboard feedback, disabled
-  controls, segmented selection with Reduce Motion, and existing widgets.
+  controls, segmented selection with Reduce Motion, pending-menu-action cancellation,
+  and existing widgets.
 - `python tests/micro-interactions.py`: shell and shared-control behavior
   contracts, including honoring Reduce Motion.
 - `python tests/dock-motion.py`: Dock launch bounces and notification badges.
