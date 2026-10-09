@@ -72,6 +72,12 @@ ShellRoot {
                     SidebarRow { symbolTone: "auto"; selectedSymbolTone: "red"; selectedTextColor: Theme.label; selectedFill: Theme.selection; symbol: "music"; text: "Songs"; selected: app.page === "songs"; onClicked: app.go("songs") }
                     Heading { text: "Playlists" }
                     SidebarRow {
+                        symbol: "trash"; text: "Recently Deleted"
+                        symbolTone: "auto"; selectedSymbolTone: "red"
+                        selectedTextColor: Theme.label; selectedFill: Theme.selection
+                        onClicked: app.openDeletedPlaylists()
+                    }
+                    SidebarRow {
                         symbol: "plus"; text: "New Playlist…"
                         symbolTone: "auto"; selectedSymbolTone: "red"
                         selectedTextColor: Theme.label; selectedFill: Theme.selection
@@ -167,6 +173,17 @@ ShellRoot {
                 musicLib.mutatePlaylist(playlistNameMode, request)
             }
 
+            function openDeletedPlaylists() {
+                deletedSheet.visible = true
+                musicLib.refreshDeleted()
+            }
+
+            function restorePlaylist(item) {
+                if (!item || musicLib.playlistBusy) return
+                musicLib.mutatePlaylist("restore",
+                    {path:item.path, expected:item.revision})
+            }
+
             function openPlaylistManager() {
                 const selected = musicLib.playlists.find(p => p.path === app.arg?.path)
                 if (!selected) { musicLib.playlistError = "Choose a playlist to manage."; return }
@@ -257,6 +274,10 @@ ShellRoot {
                                 app.arg = selected
                             if (app.managePath === musicLib.playlistRequest.path)
                                 app.managePath = selected.path
+                            if (musicLib.playlistRequest.command === "restore") {
+                                deletedSheet.visible = false
+                                app.go("playlist", selected)
+                            }
                             if (musicLib.playlistRequest.command === "create") {
                                 app.go("playlist", selected)
                                 if (app.pendingTrack?.path) {
@@ -717,6 +738,112 @@ ShellRoot {
                         text: "Done"
                         enabled: !musicLib.playlistBusy
                         onClicked: managerSheet.visible = false
+                    }
+                }
+            }
+
+            Glass {
+                id: deletedSheet
+                objectName: "musicRecentlyDeletedPlaylists"
+                parent: win.overlay
+                visible: false
+                anchors.centerIn: parent
+                width: Math.min(510, parent.width - 30)
+                height: Math.min(485, parent.height - 32)
+                radius: 20
+                tint: Theme.glassRegular.tint
+                z: 125
+                Column {
+                    anchors { fill: parent; margins: 18 }
+                    spacing: 12
+                    Text {
+                        text: "Recently Deleted Playlists"
+                        color: Theme.label
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(18); weight: Font.DemiBold }
+                    }
+                    Text {
+                        width: parent.width
+                        wrapMode: Text.WordWrap
+                        text: "Restore a playlist without changing any music files. If its name is already in use, Music restores it with a new name."
+                        color: Theme.secondaryLabel
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                    }
+                    Flickable {
+                        id: deletedScroller
+                        width: parent.width
+                        height: Math.max(80, parent.height - 150)
+                        clip: true
+                        boundsBehavior: Flickable.StopAtBounds
+                        contentHeight: deletedRows.implicitHeight
+                        Column {
+                            id: deletedRows
+                            width: deletedScroller.width
+                            spacing: 8
+                            Text {
+                                width: parent.width
+                                visible: !musicLib.deletedBusy && musicLib.deletedPlaylists.length === 0
+                                text: "There are no deleted playlists."
+                                color: Theme.secondaryLabel
+                                font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                            }
+                            Text {
+                                visible: musicLib.deletedBusy
+                                text: "Checking for deleted playlists…"
+                                color: Theme.secondaryLabel
+                                font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                            }
+                            Repeater {
+                                model: musicLib.deletedPlaylists
+                                delegate: Rectangle {
+                                    id: deletedRow
+                                    required property var modelData
+                                    width: deletedRows.width
+                                    height: 54
+                                    radius: 9
+                                    color: Theme.dark ? "#14ffffff" : "#08000000"
+                                    Column {
+                                        anchors { left: parent.left; leftMargin: 12; right: restoreButton.left
+                                                  rightMargin: 8; verticalCenter: parent.verticalCenter }
+                                        spacing: 2
+                                        Text {
+                                            width: parent.width
+                                            text: deletedRow.modelData.name
+                                            elide: Text.ElideRight
+                                            color: Theme.label
+                                            font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: Font.DemiBold }
+                                        }
+                                        Text {
+                                            width: parent.width
+                                            text: "Deleted " + Qt.formatDateTime(new Date(deletedRow.modelData.deletedAt), "MMM d, yyyy h:mm AP")
+                                            elide: Text.ElideRight
+                                            color: Theme.secondaryLabel
+                                            font { family: Theme.fontUi; pixelSize: Theme.fs(10) }
+                                        }
+                                    }
+                                    Button {
+                                        id: restoreButton
+                                        anchors { right: parent.right; rightMargin: 8; verticalCenter: parent.verticalCenter }
+                                        text: "Restore"
+                                        enabled: !musicLib.playlistBusy && !musicLib.deletedBusy
+                                        onClicked: app.restorePlaylist(deletedRow.modelData)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    Row {
+                        anchors.right: parent.right
+                        spacing: 8
+                        Button {
+                            text: "Refresh"
+                            enabled: !musicLib.deletedBusy && !musicLib.playlistBusy
+                            onClicked: musicLib.refreshDeleted()
+                        }
+                        Button {
+                            text: "Done"
+                            enabled: !musicLib.playlistBusy
+                            onClicked: deletedSheet.visible = false
+                        }
                     }
                 }
             }
