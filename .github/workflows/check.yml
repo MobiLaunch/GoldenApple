@@ -124,6 +124,10 @@ jobs:
           test -x "$root/usr/local/bin/gg-files"
           test -x "$root/usr/local/bin/gg-archive"
           test -f "$root/usr/share/golden-gate/apps/archive/helper.py"
+          test -f "$root/usr/share/golden-gate/apps/settings/app-preferences.py"
+          test -f "$root/usr/share/golden-gate/apps/settings/panes/DockAppsPane.qml"
+          test -f "$root/usr/share/golden-gate/apps/settings/panes/LoginItemsPane.qml"
+          test -f "$root/usr/share/golden-gate/apps/settings/panes/DefaultAppsPane.qml"
           test -f "$root/usr/share/applications/org.goldengate.ArchiveUtility.desktop"
           test -x "$root/usr/local/bin/gg-intelligence"
           test -f "$root/usr/share/golden-gate/ui/intelligence/helper.py"
@@ -264,6 +268,10 @@ jobs:
         run: python tests/archive-utility.py
       - name: Messages media provider security and WebRTC / FaceTime link contracts
         run: python tests/messages-media.py
+      - name: System Settings real window, pointer and Dock persistence
+        run: python tests/settings-connectivity.py
+      - name: Default Apps and Login Items respect real XDG state
+        run: python tests/settings-app-preferences.py
       - name: Window restore stays onscreen and rejects stale window IDs
         run: python tests/tile-layout.py
       - name: Files' backend (drag and drop, Trash, Recents)
