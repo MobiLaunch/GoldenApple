@@ -155,9 +155,11 @@ conflict or Quick Look. Escape on the Empty Trash sheet uses its close action
 rather than changing a bound visibility flag.
 
 **Menu-bar stability:** A title switch explicitly hides the previous popup
-before changing the anchor and item geometry. That avoids relying on delayed
-reactive reevaluation to unmap the old menu surface. The screenshot regression
-and geometry guard remain in CI. The separate Music playlist regression found
+before changing the anchor and item geometry. The displayed menu rows now live
+in an independent snapshot instead of a QML binding to the incoming rows:
+otherwise both sides of the shape comparison always matched, and a menu could
+resize while still mapped. The screenshot regression and geometry guard remain
+in CI. The separate Music playlist regression found
 filenames sorted by the extension instead of the displayed playlist name;
 sorting now uses the playlist stem.
 
