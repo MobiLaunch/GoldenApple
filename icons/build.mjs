@@ -48,6 +48,9 @@ const orchardKeys = {
   moon: "moon", play: "play", pause: "pause",
   house: "house", bell: "bell", plus: "plus", minus: "minus",
   folder: "folder", lock: "lock", clock: "clock", cloud: "cloud",
+  globe: "globe", headphones: "headphones", gear: "settings",
+  trash: "trash-2", download: "download", share: "share-2",
+  list: "list", grid: "grid-2x2",
 };
 const unifiedSymbols = { ...baseSymbols };
 for (const [key, orchardKey] of Object.entries(orchardKeys))
