@@ -525,6 +525,8 @@ def main() -> int:
     ap.add_argument("--crop", default="", help="x,y,w,h of the screenshot to keep")
     ap.add_argument("--require-object", default="",
                     help="fail when a required loaded QML objectName is absent (catches empty Loader panes)")
+    ap.add_argument("--expect-menu", default="",
+                    help="assert that the menu bar actually shows this menu after IPC steps")
     ap.add_argument("-v", "--verbose", action="store_true")
     a = ap.parse_args()
 
@@ -578,6 +580,37 @@ def main() -> int:
         steps.insert(0, "@notify")
 
     def finish():
+        if a.expect_menu:
+            # Inspect the *live* QML model, not pixels from a translucent
+            # software-rendered popup. Preview screenshots may vary when the
+            # compositor settles; the wrong menu or stale reopened surface
+            # must still fail deterministically.
+            bar = window.findChild(QObject, "globalMenuBar")
+            popup = window.findChild(QObject, "menuBarMenu")
+            rows = popup.property("shown") if popup else []
+            if hasattr(rows, "toVariant"):
+                rows = rows.toVariant()
+            first = rows[0] if isinstance(rows, list) and rows else None
+            if hasattr(first, "toVariant"):
+                first = first.toVariant()
+            first_label = first.get("label", first.get("text", "")) if isinstance(first, dict) else ""
+            expected_first = {"File": "New Files Window", "Edit": "Undo",
+                              "View": "Edit Widgets…", "Go": "Recents",
+                              "Help": "Search"}
+            good = bool(bar and popup and
+                        bar.property("openTitle") == a.expect_menu and
+                        popup.property("open") and popup.property("visible") and
+                        not popup.property("reopening") and
+                        first_label == expected_first.get(a.expect_menu, first_label))
+            if not good:
+                print("preview: menu mismatch after IPC steps: expected="
+                      + repr(a.expect_menu) + ", title="
+                      + repr(bar.property("openTitle") if bar else None)
+                      + ", open=" + repr(popup.property("open") if popup else None)
+                      + ", first=" + repr(first_label), file=sys.stderr)
+                app.exit(4)
+                return
+            print("preview: active menu " + a.expect_menu + " — " + first_label)
         if a.require_object:
             obj = window.findChild(QObject, a.require_object)
             height = obj.property("height") if obj else None
