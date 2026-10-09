@@ -190,6 +190,8 @@ ShellRoot {
                 datetime: { title: "Date & Time", file: "DateTimePane", parent: "general", symbol: "clock", tint: "#0a84ff", words: "date time timezone clock automatic ntp 24 hour" },
                 finishsetup: { title: "Finish Setting Up", file: "FinishSetupPane", symbol: "gear", tint: "#ff9f0a", words: "setup deferred time zone formats location finish later" },
                 dockapps: { title: "Add to Dock", file: "DockAppsPane", parent: "dock", symbol: "apps", tint: "#487bd9", words: "applications install launcher add dock pin reorder" },
+                defaultapps: { title: "Default Applications", file: "DefaultAppsPane", parent: "general", symbol: "apps", tint: "#497bd9", words: "default browser email pictures text documents zip archive handlers xdg mime" },
+                loginitems: { title: "Login Items", file: "LoginItemsPane", parent: "general", symbol: "apps", tint: "#858890", words: "startup automatic login launch applications start sign in" },
                 airplay: { title: "AirPlay Receiver", file: "AirPlayPane", parent: "general", symbol: "airplay", tint: "#0a84ff", words: "airplay receiver screen mirroring iphone ipad mac mirror code pin uxplay" },
                 language: { title: "Language & Region", file: "LanguagePane", parent: "general", symbol: "globe", tint: "#0a84ff", words: "language locale region measurement format" },
             })
