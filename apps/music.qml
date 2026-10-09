@@ -405,19 +405,47 @@ ShellRoot {
                     x: 8; y: 44; width: parent.width - 16; height: parent.height - 52
                     clip: true
                     readonly property int pos: audio.order.indexOf(audio.index)
-                    model: audio.order.slice(pos + 1).map((i) => ({ i: i, t: audio.queue[i] }))
+                    model: audio.futureOrder().map((i) => ({ i: i, t: audio.queue[i] }))
                     delegate: Item {
                         required property var modelData
                         width: ListView.view.width; height: 44
                         Rectangle { anchors.fill: parent; radius: 8; color: Theme.dark ? "#ffffff" : "#000000"; opacity: qh.hovered ? 0.05 : 0 }
                         Artwork { x: 6; anchors.verticalCenter: parent.verticalCenter; width: 32; height: 32; radius: 4; maskColor: queuePanel.color; source: modelData.t.art }
                         Column {
-                            x: 46; anchors.verticalCenter: parent.verticalCenter; width: parent.width - 52
+                            x: 46; anchors.verticalCenter: parent.verticalCenter; width: parent.width - 150
                             Text { width: parent.width; elide: Text.ElideRight; text: modelData.t.title; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.fs(13) } }
                             Text { width: parent.width; elide: Text.ElideRight; text: modelData.t.artist; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.fs(12) } }
                         }
+                        Row {
+                            anchors { right: parent.right; rightMargin: 4; verticalCenter: parent.verticalCenter }
+                            spacing: 0
+                            ToolbarButton {
+                                symbol: "chevron-up"
+                                Accessible.name: "Move track earlier in queue"
+                                enabled: audio.order.indexOf(modelData.i) > audio.order.indexOf(audio.index) + 1
+                                onClicked: audio.moveUpcoming(modelData.i, -1)
+                            }
+                            ToolbarButton {
+                                symbol: "chevron-down"
+                                Accessible.name: "Move track later in queue"
+                                enabled: audio.order.indexOf(modelData.i) < audio.order.length - 1
+                                onClicked: audio.moveUpcoming(modelData.i, 1)
+                            }
+                            ToolbarButton {
+                                symbol: "trash"
+                                Accessible.name: "Remove track from queue"
+                                onClicked: audio.removeUpcoming(modelData.i)
+                            }
+                        }
                         HoverHandler { id: qh }
-                        TapHandler { onTapped: { audio.index = modelData.i; audio.load() } }
+                        TapHandler {
+                            onTapped: {
+                                // Transport selection is intentional, not performed when
+                                // pressing one of the nested queue-management controls.
+                                if (!qh.hovered) return
+                            }
+                            onDoubleTapped: { audio.index = modelData.i; audio.load() }
+                        }
                     }
                     Text {
                         visible: parent.count === 0
