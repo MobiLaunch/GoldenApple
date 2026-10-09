@@ -68,12 +68,14 @@ ShellRoot {
                 ToolbarButton {
                     round: true
                     symbol: "cloud"
+                    checked: cal.calDavConfigured
                     Accessible.name: "CalDAV calendar sync and account"
                     onClicked: cal.openCalDav()
                 }
                 ToolbarButton {
                     round: true
                     symbol: "bell"
+                    checked: cal.remindersEnabled
                     enabled: !cal.remindersPending
                     Accessible.name: cal.remindersEnabled ? "Turn Calendar reminders off" : "Turn Calendar reminders on"
                     onClicked: cal.toggleReminders()
@@ -218,6 +220,7 @@ ShellRoot {
             property string viewMode: "month"
             property var events: []
             property bool loading: true
+            property bool reloadPending: false
             property string error: ""
             property bool broken: false         // the store can't be read: nothing is saved over it
             property bool canRestore: false
@@ -415,11 +418,23 @@ ShellRoot {
             }
 
             function reload() {
-                if (!loadProc.running)
-                    loadProc.running = true
+                if (loadProc.running) {
+                    reloadPending = true
+                    return
+                }
+                loadProc.running = true
             }
 
             Component.onCompleted: { reload(); reminderStatus.running = true; calDavStatus.running = true }
+
+            // keyd translates the Mac Command key into Ctrl for app shortcuts.
+            Shortcut { sequence: "Ctrl+1"; onActivated: cal.changeView("day") }
+            Shortcut { sequence: "Ctrl+2"; onActivated: cal.changeView("week") }
+            Shortcut { sequence: "Ctrl+3"; onActivated: cal.changeView("month") }
+            Shortcut { sequence: "Ctrl+T"; onActivated: cal.goToday() }
+            Shortcut { sequence: "Ctrl+N"; onActivated: cal.openAdd() }
+
+
 
             function toggleReminders() {
                 if (remindersPending) return
@@ -631,7 +646,13 @@ ShellRoot {
                         }
                     }
                 }
-                onExited: cal.loading = false
+                onExited: {
+                    cal.loading = false
+                    if (cal.reloadPending) {
+                        cal.reloadPending = false
+                        Qt.callLater(() => cal.reload())
+                    }
+                }
             }
 
             Process {
