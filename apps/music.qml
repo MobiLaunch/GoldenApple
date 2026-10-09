@@ -119,7 +119,11 @@ ShellRoot {
             property var pendingTrack: null
             property string managePath: ""
             readonly property var managedPlaylist: musicLib.playlists.find(p => p.path === managePath) || null
-            readonly property var managedTracks: managedPlaylist ? musicLib.playlistTracks(managedPlaylist) : []
+            readonly property var managedEntries: managedPlaylist
+                ? managedPlaylist.paths.map((path, i) => ({
+                    path:path, index:i,
+                    track:musicLib.tracks.find(t => t.path === path) || null
+                })) : []
             property bool deletingPlaylist: false
 
             function go(p, a) {
@@ -254,8 +258,7 @@ ShellRoot {
                                 if (app.pendingTrack?.path) {
                                     const track = app.pendingTrack
                                     app.pendingTrack = null
-                                    Qt.callLater(() => musicLib.mutatePlaylist("add",
-                                        {path:selected.path, expected:selected.revision, track:track.path}))
+                                    musicLib.postCreateAdd = {path:selected.path, expected:selected.revision, track:track.path}
                                 }
                             }
                         }
@@ -462,6 +465,302 @@ ShellRoot {
                         }
                     }
                     Button { text: "Quit Without Saving"; visible: audio.saveFailed; onClicked: Qt.quit() }
+                }
+            }
+
+            Glass {
+                id: nameSheet
+                objectName: "musicPlaylistNameSheet"
+                parent: win.overlay
+                visible: false
+                anchors.centerIn: parent
+                width: Math.min(430, parent.width - 32)
+                height: 204
+                radius: 20
+                tint: Theme.glassRegular.tint
+                z: 105
+                Column {
+                    anchors { fill: parent; margins: 18 }
+                    spacing: 14
+                    Text {
+                        text: app.playlistNameMode === "create" ? "New Playlist" : "Rename Playlist"
+                        color: Theme.label
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(18); weight: Font.DemiBold }
+                    }
+                    TextField {
+                        id: playlistNameField
+                        width: parent.width
+                        placeholder: "Playlist name"
+                        text: app.playlistDraftName
+                        onTextChanged: app.playlistDraftName = text
+                        onAccepted: app.savePlaylistName()
+                    }
+                    Text {
+                        width: parent.width
+                        text: musicLib.playlistError || "Playlists are saved to your Music/Playlists folder."
+                        color: musicLib.playlistError ? "#ff453a" : Theme.secondaryLabel
+                        wrapMode: Text.WordWrap
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+                    }
+                    Row {
+                        anchors.right: parent.right
+                        spacing: 8
+                        Button { text: "Cancel"; onClicked: nameSheet.visible = false }
+                        Button {
+                            text: app.playlistNameMode === "create" ? "Create" : "Rename"
+                            prominent: true
+                            enabled: !musicLib.playlistBusy && app.playlistDraftName.trim().length > 0
+                            onClicked: app.savePlaylistName()
+                        }
+                    }
+                }
+            }
+
+            Glass {
+                id: pickerSheet
+                objectName: "musicAddToPlaylist"
+                parent: win.overlay
+                visible: false
+                anchors.centerIn: parent
+                width: Math.min(440, parent.width - 30)
+                height: Math.min(450, parent.height - 40)
+                radius: 20
+                tint: Theme.glassRegular.tint
+                z: 105
+                Column {
+                    anchors { fill: parent; margins: 18 }
+                    spacing: 12
+                    Text {
+                        width: parent.width
+                        text: "Add to Playlist"
+                        color: Theme.label
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(18); weight: Font.DemiBold }
+                    }
+                    Text {
+                        width: parent.width
+                        text: app.pendingTrack?.title || ""
+                        elide: Text.ElideRight
+                        color: Theme.secondaryLabel
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                    }
+                    Flickable {
+                        width: parent.width
+                        height: Math.max(90, parent.height - 144)
+                        clip: true
+                        boundsBehavior: Flickable.StopAtBounds
+                        contentHeight: pickerRows.implicitHeight
+                        Column {
+                            id: pickerRows
+                            width: parent.width
+                            spacing: 7
+                            Repeater {
+                                model: musicLib.playlists
+                                delegate: Button {
+                                    required property var modelData
+                                    width: pickerRows.width
+                                    text: modelData.name
+                                    enabled: !musicLib.playlistBusy && !modelData.error
+                                    onClicked: app.addSelectedTrack(modelData)
+                                }
+                            }
+                            Text {
+                                visible: musicLib.playlists.length === 0
+                                width: parent.width
+                                text: "No playlists yet. Create one to organize your music."
+                                wrapMode: Text.WordWrap
+                                color: Theme.secondaryLabel
+                                font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                            }
+                        }
+                    }
+                    Row {
+                        anchors.right: parent.right
+                        spacing: 8
+                        Button { text: "Cancel"; onClicked: { pickerSheet.visible = false; app.pendingTrack = null } }
+                        Button {
+                            text: "New Playlist…"
+                            onClicked: {
+                                pickerSheet.visible = false
+                                app.openPlaylistName("create")
+                            }
+                        }
+                    }
+                }
+            }
+
+            Glass {
+                id: managerSheet
+                objectName: "musicPlaylistEditor"
+                parent: win.overlay
+                visible: false
+                anchors.centerIn: parent
+                width: Math.min(540, parent.width - 28)
+                height: Math.min(540, parent.height - 32)
+                radius: 20
+                tint: Theme.glassRegular.tint
+                z: 105
+                Column {
+                    anchors { fill: parent; margins: 18 }
+                    spacing: 12
+                    Text {
+                        width: parent.width
+                        text: app.managedPlaylist?.name || "Edit Playlist"
+                        elide: Text.ElideRight
+                        color: Theme.label
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(18); weight: Font.DemiBold }
+                    }
+                    Row {
+                        spacing: 8
+                        Button {
+                            text: "Rename"
+                            enabled: !!app.managedPlaylist && !musicLib.playlistBusy
+                            onClicked: app.openPlaylistName("rename", app.managedPlaylist)
+                        }
+                        Button {
+                            text: "Duplicate"
+                            enabled: !!app.managedPlaylist && !musicLib.playlistBusy
+                            onClicked: app.playlistEdit("duplicate")
+                        }
+                        Button {
+                            text: "Delete"
+                            destructive: true
+                            enabled: !!app.managedPlaylist && !musicLib.playlistBusy
+                            onClicked: deletePlaylistConfirm.visible = true
+                        }
+                    }
+                    Text {
+                        width: parent.width
+                        text: "Move songs up or down, or remove them. Audio files are never deleted."
+                        wrapMode: Text.WordWrap
+                        color: Theme.secondaryLabel
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+                    }
+                    ListView {
+                        id: playlistEditorList
+                        width: parent.width
+                        height: Math.max(80, parent.height - 172)
+                        model: app.managedEntries
+                        clip: true
+                        boundsBehavior: Flickable.StopAtBounds
+                        spacing: 4
+                        delegate: Rectangle {
+                            id: playlistEntry
+                            required property var modelData
+                            width: playlistEditorList.width
+                            height: 42
+                            radius: 8
+                            color: Theme.dark ? "#14ffffff" : "#08000000"
+                            Text {
+                                x: 8
+                                width: parent.width - 128
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: (playlistEntry.modelData.index + 1) + ". " +
+                                    (playlistEntry.modelData.track?.title || playlistEntry.modelData.path.split("/").pop() + " (Missing)")
+                                elide: Text.ElideRight
+                                color: Theme.label
+                                font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                            }
+                            Row {
+                                anchors { right: parent.right; rightMargin: 6; verticalCenter: parent.verticalCenter }
+                                spacing: 0
+                                ToolbarButton {
+                                    symbol: "chevron-up"
+                                    Accessible.name: "Move song up"
+                                    enabled: !musicLib.playlistBusy && playlistEntry.modelData.index > 0
+                                    onClicked: app.playlistEdit("move",
+                                        {index:playlistEntry.modelData.index, to:playlistEntry.modelData.index - 1})
+                                }
+                                ToolbarButton {
+                                    symbol: "chevron-down"
+                                    Accessible.name: "Move song down"
+                                    enabled: !musicLib.playlistBusy && playlistEntry.modelData.index < app.managedEntries.length - 1
+                                    onClicked: app.playlistEdit("move",
+                                        {index:playlistEntry.modelData.index, to:playlistEntry.modelData.index + 1})
+                                }
+                                ToolbarButton {
+                                    symbol: "trash"
+                                    Accessible.name: "Remove song from playlist"
+                                    enabled: !musicLib.playlistBusy
+                                    onClicked: app.playlistEdit("remove",{index:playlistEntry.modelData.index})
+                                }
+                            }
+                        }
+                    }
+                    Button {
+                        text: "Done"
+                        enabled: !musicLib.playlistBusy
+                        onClicked: managerSheet.visible = false
+                    }
+                }
+            }
+
+            Glass {
+                id: deletePlaylistConfirm
+                objectName: "musicDeletePlaylistConfirm"
+                parent: win.overlay
+                visible: false
+                anchors.centerIn: parent
+                width: Math.min(400, parent.width - 30)
+                height: 180
+                radius: 20
+                tint: Theme.glassRegular.tint
+                z: 115
+                Column {
+                    anchors { fill: parent; margins: 18 }
+                    spacing: 14
+                    Text {
+                        text: "Delete Playlist?"
+                        color: Theme.label
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(18); weight: Font.DemiBold }
+                    }
+                    Text {
+                        width: parent.width
+                        text: "The playlist moves into Playlists/.Deleted so it can be recovered. Your songs stay on disk."
+                        wrapMode: Text.WordWrap
+                        color: Theme.secondaryLabel
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                    }
+                    Row {
+                        anchors.right: parent.right
+                        spacing: 8
+                        Button { text: "Cancel"; onClicked: deletePlaylistConfirm.visible = false }
+                        Button {
+                            text: "Delete Playlist"
+                            destructive: true
+                            enabled: !musicLib.playlistBusy
+                            onClicked: {
+                                if (app.playlistEdit("delete"))
+                                    deletePlaylistConfirm.visible = false
+                            }
+                        }
+                    }
+                }
+            }
+
+            Rectangle {
+                id: playlistNotice
+                visible: !!musicLib.playlistError
+                anchors { left: parent.left; right: parent.right; margins: 18
+                          bottom: miniPlayer.top; bottomMargin: playbackNotice.visible ? playbackNotice.height + 12 : 8 }
+                height: Math.max(46, playlistNoticeText.implicitHeight + 18)
+                radius: 10
+                color: Theme.contentBg
+                border { width: 1; color: "#ff453a" }
+                z: 90
+                Text {
+                    id: playlistNoticeText
+                    anchors { left: parent.left; leftMargin: 10; right: noticeDismiss.left
+                              rightMargin: 10; verticalCenter: parent.verticalCenter }
+                    text: musicLib.playlistError
+                    color: Theme.label
+                    wrapMode: Text.WordWrap
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                }
+                Button {
+                    id: noticeDismiss
+                    text: "Dismiss"
+                    anchors { right: parent.right; rightMargin: 8; verticalCenter: parent.verticalCenter }
+                    onClicked: musicLib.playlistError = ""
                 }
             }
 
