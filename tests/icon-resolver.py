@@ -112,6 +112,21 @@ class ResolverTests(unittest.TestCase):
         result = self.resolver.sync()
         self.assertNotIn("org.example.Unknown", result)
 
+    def test_genuine_mac_app_icons_qualify_without_whitesur(self):
+        icons = Path(self.tmp.name) / "data/golden-gate/mac-icons"
+        icons.mkdir(parents=True)
+        icon = icons / "iina.png"
+        icon.write_bytes(b"\x89PNG\r\n\x1a\n" + b"png-image-data")
+        (self.apps / "gg-mac-iina.desktop").write_text(
+            "[Desktop Entry]\nName=IINA\nType=Application\nExec=gg-mac-open iina\n"
+            f"Icon={icon}\n")
+        result = self.resolver.sync()
+        self.assertIn("gg-mac-iina", result)
+        self.assertEqual(result["gg-mac-iina"]["source"], "NativeMacApp")
+        icon.write_bytes(b"not-a-png")
+        result = self.resolver.sync()
+        self.assertNotIn("gg-mac-iina", result)
+
     def test_hidden_and_generic_apps_never_leak(self):
         (self.apps / "org.example.Secret.desktop").write_text(
             "[Desktop Entry]\nName=Secret\nType=Application\nExec=secret\n"
@@ -133,6 +148,8 @@ class ResolverTests(unittest.TestCase):
         self.assertIn("launchpad-icons.json", dock)
         self.assertIn('["gg-icon-resolver", "bootstrap" if action == "install" else "sync", app_id]', store)
         self.assertIn("gg-icon-resolver watch", hypr)
+        self.assertIn('["gg-icon-resolver", "sync", "gg-mac-" + token]',
+                      (ROOT / "apps/software/macapps.py").read_text())
         self.assertIn('icon-resolver.py', install)
         self.assertIn('gg-icon-resolver', install)
 
