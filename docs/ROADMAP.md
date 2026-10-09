@@ -63,7 +63,10 @@
 - [x] Calendar: event editing/duplication; validated daily, weekly, monthly and yearly repeat rules
 - [x] Calendar: occurrence-specific edit/move/skip, opt-in background event reminders
 - [x] Calendar: read-only CalDAV collection sync with credentials in Secret Service
-- [ ] Calendar: skipped-date manager, two-way CalDAV, invitations and complex remote recurrence
+- [x] Calendar: Changed Dates manager for restoring edited/skipped occurrences
+- [x] Calendar: Month, Week and Day views with matching navigation and agendas
+- [x] Calendar: opt-in background CalDAV refresh with account-disconnect race protection
+- [ ] Calendar: two-way CalDAV, invitations, complex recurrence, multi-calendar discovery
 - [x] Focus: timed Do Not Disturb, weekly/overnight schedule, allowed apps,
       critical-alert opt-in and shared expiry status in Settings/Control Center
 - [ ] Focus: named profiles, people exceptions and app/context automation

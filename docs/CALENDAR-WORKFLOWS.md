@@ -25,8 +25,10 @@ The interface includes a Changed Dates manager for restoring previously moved
 or skipped dates independently of the full recurring series. Deleting a repeated event asks
 whether to skip one date or delete its full series. Event reminders and
 read-only CalDAV collection sync are provided in separate subsystems.
-Two-way CalDAV, invitations, complex server recurrences and day/week views
-are still not implemented.
+Calendar provides Month, Week and Day views with shared recurrence projection.
+Day and Week show scrollable agendas, moved instances and read-only remote
+items. Two-way CalDAV, invitations and complex server recurrences are still
+not implemented.
 
 Validation: tests/calendar-store.py checks backend persistence and stale edit
 protection, tests/calendar-recurrence.mjs exercises the exact production
