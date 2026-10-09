@@ -9,6 +9,7 @@ themselves are never modified or removed.
 from __future__ import annotations
 
 import contextlib
+import errno
 import fcntl
 import hashlib
 import json
@@ -164,6 +165,30 @@ def locked():
             fcntl.flock(fd, fcntl.LOCK_UN)
 
 
+def publish_exclusively(source, dest):
+    """Create without clobbering on hard-link and non-hard-link filesystems.
+
+    A hard link gives atomic visibility. On filesystems without hard-link
+    support (some removable disks), copy to an exclusive target and remove
+    it on error, keeping the original until the write is successful.
+    """
+    try:
+        os.link(source, dest)
+        return
+    except OSError as exc:
+        if exc.errno not in (errno.EPERM, errno.EOPNOTSUPP, errno.EMLINK):
+            raise
+    fd = os.open(dest, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    try:
+        with os.fdopen(fd, "wb") as target, open(source, "rb") as original:
+            shutil.copyfileobj(original, target)
+            target.flush()
+            os.fsync(target.fileno())
+    except Exception:
+        Path(dest).unlink(missing_ok=True)
+        raise
+
+
 def atomic_text(path, text, replace=False):
     fd, temp = tempfile.mkstemp(prefix=".playlist-", suffix=".tmp", dir=path.parent)
     try:
@@ -189,7 +214,7 @@ def atomic_text(path, text, replace=False):
         else:
             # Publish an entirely new playlist without ever replacing
             # another process's newly created file.
-            os.link(temp, path)
+            publish_exclusively(temp, path)
     finally:
         Path(temp).unlink(missing_ok=True)
 
@@ -240,7 +265,7 @@ def execute(command, data):
                     break
             else:
                 raise ValueError("Could not find an unused name for the restored playlist.")
-        os.link(source, target)
+        publish_exclusively(source, target)
         source.unlink()
         return {"playlist":str(target), "playlists":view(), "deleted":deleted_records()}
     if command == "create":
@@ -261,7 +286,7 @@ def execute(command, data):
             raise ValueError("Deleted playlist directory must not be a symbolic link.")
         trash.mkdir(mode=0o700, exist_ok=True)
         destination = trash / (path.name + "." + str(time.time_ns()) + ".bak")
-        os.link(path, destination)
+        publish_exclusively(path, destination)
         path.unlink()
         return {"playlists":view(), "deleted":deleted_records()}
     if command == "rename":
@@ -271,7 +296,7 @@ def execute(command, data):
         if new != path:
             if new.exists() or new.is_symlink():
                 raise ValueError("A file already exists at the new playlist name.")
-            os.link(path, new)
+            publish_exclusively(path, new)
             path.unlink()
         return {"playlist":str(new), "playlists":view()}
     if command == "duplicate":
