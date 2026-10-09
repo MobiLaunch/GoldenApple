@@ -3,6 +3,8 @@
 
     helper.py list            {"ok", "events", "invalid"} or {"ok": false, "broken": true, …}
     helper.py add  < EVENT    add {"title", "date": YYYY-MM-DD, "time": "" | HH:MM, "calendar"}
+    helper.py edit ID < EVENT  save changes only if the original is current
+    helper.py duplicate ID    make a separately editable copy
     helper.py delete ID
     helper.py restore         put the last good copy back after the store broke
 
@@ -201,6 +203,74 @@ def main() -> int:
         except OSError as exc:
             return emit(False, error=f"The event could not be saved ({exc.strerror or exc}).")
         return emit(True, event=row)
+
+    if command == "edit" and len(sys.argv) == 3:
+        target = sys.argv[2]
+        try:
+            event = json.load(sys.stdin)
+        except ValueError:
+            return emit(False, error="The edited event could not be read.")
+        if not isinstance(event, dict) or not isinstance(event.get("expected"), dict):
+            return emit(False, error="Reopen this event before editing it.")
+        expected = event["expected"]
+        if expected.get("id") != target:
+            return emit(False, error="Reopen this event before editing it.")
+        changes = {
+            "title": str(event.get("title") or "").strip(),
+            "date": str(event.get("date") or "").strip(),
+            "time": str(event.get("time") or "").strip(),
+            "calendar": str(event.get("calendar") or "Home").strip(),
+        }
+        problem = check(changes)
+        if problem:
+            return emit(False, error=problem)
+        try:
+            with locked():
+                events = load()
+                matches = [i for i, item in enumerate(events)
+                           if isinstance(item, dict) and item.get("id") == target]
+                if len(matches) != 1:
+                    return emit(False, error="That event is missing or has an ambiguous identity. Refresh Calendar.")
+                index = matches[0]
+                old = events[index]
+                fields = (("title", None), ("date", None), ("time", ""),
+                          ("calendar", "Home"))
+                if any(old.get(key, default) != expected.get(key, default)
+                       for key, default in fields):
+                    return emit(False, conflict=True,
+                                error="This event changed in another window. Close the editor and reopen it to see the latest version.")
+                edited = {**old, **changes}
+                events[index] = edited
+                events.sort(key=sort_key)
+                save(events)
+        except Broken as exc:
+            return broken(exc)
+        except OSError as exc:
+            return emit(False, error=f"The edited event could not be saved ({exc.strerror or exc}).")
+        return emit(True, event=edited)
+
+    if command == "duplicate" and len(sys.argv) == 3:
+        target = sys.argv[2]
+        try:
+            with locked():
+                events = load()
+                matches = [item for item in events
+                           if isinstance(item, dict) and item.get("id") == target]
+                if len(matches) != 1:
+                    return emit(False, error="That event is missing or has an ambiguous identity. Refresh Calendar.")
+                source = matches[0]
+                if check(source):
+                    return emit(False, error="That event is damaged and cannot be duplicated.")
+                copied = {**source, "id": uuid.uuid4().hex,
+                          "title": ("Copy of " + source["title"])[:500]}
+                events.append(copied)
+                events.sort(key=sort_key)
+                save(events)
+        except Broken as exc:
+            return broken(exc)
+        except OSError as exc:
+            return emit(False, error=f"The event could not be duplicated ({exc.strerror or exc}).")
+        return emit(True, event=copied)
 
     if command == "delete" and len(sys.argv) == 3:
         target = sys.argv[2]

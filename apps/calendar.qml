@@ -108,7 +108,7 @@ ShellRoot {
                         Column {
                             x: 20
                             anchors.verticalCenter: parent.verticalCenter
-                            width: parent.width - 58
+                            width: parent.width - 120
                             spacing: 2
 
                             Text {
@@ -127,9 +127,24 @@ ShellRoot {
                         }
 
                         ToolbarButton {
+                            anchors { right: parent.right; rightMargin: 66; verticalCenter: parent.verticalCenter }
+                            round: true
+                            symbol: "copy"
+                            enabled: !cal.broken && !duplicateProc.running
+                            onClicked: cal.duplicateEvent(modelData.id)
+                        }
+                        ToolbarButton {
+                            anchors { right: parent.right; rightMargin: 36; verticalCenter: parent.verticalCenter }
+                            round: true
+                            symbol: "pencil"
+                            enabled: !cal.broken
+                            onClicked: cal.openEdit(modelData)
+                        }
+                        ToolbarButton {
                             anchors { right: parent.right; rightMargin: 6; verticalCenter: parent.verticalCenter }
                             round: true
                             symbol: "trash"
+                            enabled: !cal.broken && !deleteProc.running
                             onClicked: cal.deleteEvent(modelData.id)
                         }
                     }
@@ -164,6 +179,8 @@ ShellRoot {
             property string draftDate: Qt.formatDate(selectedDate, "yyyy-MM-dd")
             property string draftTime: ""
             property string draftCalendar: "Home"
+            property string editingId: ""
+            property var editingOriginal: ({})
 
             readonly property string selectedKey: Qt.formatDate(selectedDate, "yyyy-MM-dd")
             readonly property var selectedEvents: events.filter((event) => event.date === selectedKey)
@@ -199,15 +216,44 @@ ShellRoot {
                 draftTitle = ""
                 draftDate = selectedKey
                 draftTime = ""
+                draftCalendar = "Home"
+                editingId = ""
+                editingOriginal = ({})
+                addDialog.visible = true
+                Qt.callLater(() => titleField.input.forceActiveFocus())
+            }
+
+            function openEdit(event) {
+                if (broken || addProc.running || !event || !event.id)
+                    return
+                editingId = event.id
+                editingOriginal = {
+                    id: event.id, title: event.title, date: event.date,
+                    time: event.time || "", calendar: event.calendar || "Home"
+                }
+                draftTitle = editingOriginal.title
+                draftDate = editingOriginal.date
+                draftTime = editingOriginal.time
+                draftCalendar = editingOriginal.calendar
                 addDialog.visible = true
                 Qt.callLater(() => titleField.input.forceActiveFocus())
             }
 
             function addEvent() {
-                if (!draftTitle.trim() || broken)
+                if (!draftTitle.trim() || broken || addProc.running)
                     return
+                addProc.command = editingId
+                    ? ["python3", helper, "edit", editingId]
+                    : ["python3", helper, "add"]
                 addProc.stdinEnabled = true
                 addProc.running = true
+            }
+
+            function duplicateEvent(id) {
+                if (broken || duplicateProc.running)
+                    return
+                duplicateProc.command = ["python3", helper, "duplicate", id]
+                duplicateProc.running = true
             }
 
             function deleteEvent(id) {
@@ -277,11 +323,27 @@ ShellRoot {
                         title: cal.draftTitle.trim(),
                         date: cal.draftDate,
                         time: cal.draftTime.trim(),
-                        calendar: cal.draftCalendar
+                        calendar: cal.draftCalendar,
+                        expected: cal.editingOriginal
                     }))
                     stdinEnabled = false
                 }
                 onExited: stdinEnabled = true
+            }
+
+            Process {
+                id: duplicateProc
+                stdout: StdioCollector {
+                    onStreamFinished: {
+                        try {
+                            const r = JSON.parse(text)
+                            if (r.ok) cal.reload()
+                            else cal.error = r.error ?? "The event could not be duplicated."
+                        } catch (e) {
+                            cal.error = "The event could not be duplicated."
+                        }
+                    }
+                }
             }
 
             Process {
@@ -491,7 +553,7 @@ ShellRoot {
                     spacing: 12
 
                     Text {
-                        text: "New Event"
+                        text: cal.editingId ? "Edit Event" : "New Event"
                         color: Theme.label
                         font { family: Theme.fontUi; pixelSize: Theme.fs(18); weight: Font.DemiBold }
                     }
@@ -531,11 +593,11 @@ ShellRoot {
                     Row {
                         anchors.right: parent.right
                         spacing: 8
-                        Button { text: "Cancel"; onClicked: addDialog.visible = false }
+                        Button { text: "Cancel"; enabled: !addProc.running; onClicked: addDialog.visible = false }
                         Button {
-                            text: "Add"
+                            text: cal.editingId ? "Save Changes" : "Add"
                             prominent: true
-                            enabled: cal.draftTitle.trim().length > 0
+                            enabled: !addProc.running && cal.draftTitle.trim().length > 0
                             onClicked: cal.addEvent()
                         }
                     }

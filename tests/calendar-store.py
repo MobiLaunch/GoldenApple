@@ -145,5 +145,55 @@ class CalendarStore(unittest.TestCase):
         self.assertIn(bad, stored, "still in the file after a save")
 
 
+    def test_edit_reorders_and_preserves_identity(self):
+        old = self.add("Review", time="09:15")["event"]
+        other = self.add("Unchanged", date="2026-10-08")["event"]
+        edited = {"title": "Review updated", "date": "2026-10-09",
+                  "time": "17:20", "calendar": "Work", "expected": old}
+        response = self.helper("edit", old["id"], event=edited)
+        self.assertTrue(response["ok"], response)
+        self.assertEqual(response["event"]["id"], old["id"])
+        rows = self.helper("list")["events"]
+        self.assertEqual([e["title"] for e in rows], ["Unchanged", "Review updated"])
+        self.assertIn(other, rows)
+        self.assertEqual(rows[1]["calendar"], "Work")
+
+    def test_edit_refuses_stale_and_invalid_changes(self):
+        old = self.add("Before")["event"]
+        first = {"title": "First", "date": old["date"], "time": "",
+                 "calendar": "Home", "expected": old}
+        self.assertTrue(self.helper("edit", old["id"], event=first)["ok"])
+        second = dict(first, title="Second")
+        stale = self.helper("edit", old["id"], event=second)
+        self.assertFalse(stale["ok"])
+        self.assertTrue(stale["conflict"])
+        self.assertFalse(self.helper("edit", old["id"], event=dict(first, expected={}))["ok"])
+        self.assertFalse(self.helper("edit", "missing", event=dict(first, expected={"id": "missing"}))["ok"])
+        self.assertFalse(self.helper("edit", old["id"], event=dict(first, date="2026-02-30"))["ok"])
+        self.assertEqual([r["title"] for r in self.helper("list")["events"]], ["First"])
+
+    def test_duplicate_gets_own_identity_and_can_be_edited(self):
+        old = self.add("Dentist", time="09:00")["event"]
+        new = self.helper("duplicate", old["id"])
+        self.assertTrue(new["ok"], new)
+        copy = new["event"]
+        self.assertNotEqual(copy["id"], old["id"])
+        self.assertEqual(copy["title"], "Copy of Dentist")
+        self.assertEqual((copy["date"], copy["time"]), (old["date"], old["time"]))
+        self.assertTrue(self.helper("edit", copy["id"], event={
+            "expected": copy, "title": "Second visit", "date": copy["date"],
+            "time": copy["time"], "calendar": copy["calendar"]})["ok"])
+        self.assertEqual(set(r["title"] for r in self.helper("list")["events"]),
+                         {"Dentist", "Second visit"})
+        self.assertFalse(self.helper("duplicate", "missing")["ok"])
+
+    def test_edit_and_duplicate_do_not_replace_damaged_store(self):
+        old = self.add("Kept")["event"]
+        self.store.write_text("[broken")
+        payload = {**old, "expected": old, "title": "Changed"}
+        self.assertTrue(self.helper("edit", old["id"], event=payload)["broken"])
+        self.assertTrue(self.helper("duplicate", old["id"])["broken"])
+        self.assertEqual(self.store.read_text(), "[broken")
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
