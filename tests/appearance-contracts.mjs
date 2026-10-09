@@ -13,13 +13,15 @@ const names = ["chevron-left", "chevron-right", "search", "wifi", "bluetooth", "
 test("OrchardKit Xcode artboards are normalized into usable Qt SVG glyphs", () => {
   const build = text("icons/build.mjs");
   assert.match(build, /import \{ orchardSymbols \} from "\.\/orchard-symbols\.mjs"/);
+  const namedForGoldenGate = { "settings": "gear", "trash-2": "trash", "share-2": "share", "grid-2x2": "grid" };
   for (const name of names) {
+    const key = namedForGoldenGate[name] ?? name;
     const svg = orchardSymbols[name];
     assert.ok(svg?.includes("<path"), name + " must have a drawable contour");
     assert.ok(!svg.includes('id="Notes"') && !svg.includes("3300 2200"), name + " must not ship a template artboard");
     assert.ok(/viewBox="[-.\d ]+"/.test(svg), name + " needs an explicit viewBox");
-    assert.ok(has("apps/lib/assets/symbols/" + name + ".svg"), "missing app asset for " + name);
-    assert.ok(has("shell/assets/symbols/" + name + ".svg"), "missing shell asset for " + name);
+    assert.ok(has("apps/lib/assets/symbols/" + key + ".svg"), "missing app asset for " + name);
+    assert.ok(has("shell/assets/symbols/" + key + ".svg"), "missing shell asset for " + name);
   }
   assert.match(build, /const unifiedSymbols = \{ \.\.\.baseSymbols \}/);
 });
