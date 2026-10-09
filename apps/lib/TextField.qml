@@ -65,7 +65,10 @@ Rectangle {
         Keys.onReturnPressed: tf.clearSearch()
         FocusRing { }
         Behavior on opacity {
-            NumberAnimation { duration: Theme.reduceMotion ? 0 : 110; easing.type: Easing.OutCubic }
+            // If Reduce Motion is switched on mid-fade, cancel the running
+            // tween instead of letting the old 110 ms animation finish.
+            enabled: !Theme.reduceMotion
+            NumberAnimation { duration: 110; easing.type: Easing.OutCubic }
         }
         Rectangle {
             anchors.centerIn: parent
