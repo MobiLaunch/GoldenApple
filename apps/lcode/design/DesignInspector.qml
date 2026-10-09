@@ -32,6 +32,13 @@ Flickable {
     readonly property var variable: doc && sel.kind === "variable" ? Design.variable(doc, sel.id) : null
     readonly property var namedColor: doc && sel.kind === "color" ? (doc.colors.find((c) => c.name === sel.id) || null) : null
     readonly property bool plain: !!(info && info.plain)
+    // Switching from a three-tab component to one with only Attributes and
+    // Layout must not leave the inspector on a hidden Actions page.
+    onPlainChanged: if (plain && tab > 1) tab = 1
+    // A new selection or inspector tab should start at its heading, not at
+    // the previous selection's scroll offset (which can look like a blank pane).
+    onSelChanged: contentY = 0
+    onTabChanged: contentY = 0
 
     Component.onCompleted: if (backend) backend.call("symbols", {}, (r) => { if (r.ok) insp.symbolNames = r.symbols })
 
