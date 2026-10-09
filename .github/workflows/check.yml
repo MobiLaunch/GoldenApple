@@ -15,6 +15,10 @@ jobs:
       - run: npm install --no-package-lock
       - name: Rebuild tokens and icons
         run: npm run build
+      - name: Verify desktop archive associations
+        run: |
+          grep -q 'MimeType=application/zip' apps/desktop/org.goldengate.ArchiveUtility.desktop
+          grep -q 'application/zip=org.goldengate.ArchiveUtility.desktop' scripts/install.sh
       - name: Generated design files are up to date
         # OrchardKit glyphs are assembled at install time by icons/build.mjs.
         # Source templates are committed, while per-tone files are generated.
@@ -118,6 +122,9 @@ jobs:
           test -x "$root/usr/local/bin/gg-install"
           test -x "$root/usr/local/bin/gg-software"
           test -x "$root/usr/local/bin/gg-files"
+          test -x "$root/usr/local/bin/gg-archive"
+          test -f "$root/usr/share/golden-gate/apps/archive/helper.py"
+          test -f "$root/usr/share/applications/org.goldengate.ArchiveUtility.desktop"
           test -x "$root/usr/local/bin/gg-intelligence"
           test -f "$root/usr/share/golden-gate/ui/intelligence/helper.py"
           test -f "$root/usr/share/applications/org.goldengate.Intelligence.desktop"
@@ -253,6 +260,8 @@ jobs:
         run: python tests/titlebars.py
       - name: Window › Move & Resize tiles inside the usable area
         run: python tests/tiling.py
+      - name: Archive Utility ZIP/TAR safety, collisions and Files handoff
+        run: python tests/archive-utility.py
       - name: Window restore stays onscreen and rejects stale window IDs
         run: python tests/tile-layout.py
       - name: Files' backend (drag and drop, Trash, Recents)
