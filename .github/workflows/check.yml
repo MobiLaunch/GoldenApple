@@ -15,12 +15,16 @@ jobs:
       - run: npm install --no-package-lock
       - name: Rebuild tokens and icons
         run: npm run build
-      - name: Generated files are up to date
-        run: git diff --exit-code
+      - name: Generated design files are up to date
+        # OrchardKit glyphs are assembled at install time by icons/build.mjs.
+        # Source templates are committed, while per-tone files are generated.
+        run: git diff --exit-code -- . ':!shell/assets/symbols/**' ':!apps/lib/assets/symbols/**' ':!icons/GoldenGate/symbolic/actions/**' ':!prototype/assets/icons.js'
       - name: Lint shell scripts
         run: find scripts distro apps themes compositor -type f -name "*.sh" -print0 | xargs -0 -n1 bash -n
       - name: Calendar recurrence contracts
         run: node tests/calendar-recurrence.mjs
+      - name: Verify OrchardKit symbols, Golden Gate typography and charging indicator
+        run: node --test tests/appearance-contracts.mjs
       - name: Desktop window positioning and Dock motion contracts
         run: node --test tests/window-placement.mjs
       - name: Guard the login and glass paths
