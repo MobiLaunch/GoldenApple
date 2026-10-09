@@ -310,6 +310,9 @@ class Interactions(unittest.TestCase):
 
     def test_path_bar_breadcrumb_keyboard_activation(self):
         self.eval('navigate(home + "/Downloads")')
+        # The path bar must not disappear during an asynchronous refresh:
+        # that would shift the content and detach the keyboard-focused crumb.
+        self.assertTrue(self.eval('pathBar.visible'))
         QTest.qWait(180)
         visible_path=self.eval('crumbBox.shown[crumbBox.shown.length - 2].c.path')
         self.assertEqual(visible_path,str(self.home))
