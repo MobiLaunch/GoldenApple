@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import contextlib
 import fcntl
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -78,6 +79,10 @@ def candidates():
                    and p.is_file() and not p.is_symlink()), key=lambda p:p.name.casefold())
 
 
+def revision(path):
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
 def parse_playlist(path):
     """Retain EXTINF and unknown directives with their following track."""
     rows = []
@@ -103,7 +108,7 @@ def view():
             rows, _ = parse_playlist(item)
             playlists.append({"path":str(item), "name":item.stem,
                               "paths":[r["path"] for r in rows],
-                              "count":len(rows)})
+                              "count":len(rows), "revision":revision(item)})
         except (OSError, UnicodeError):
             # Corrupt or unreadable user playlists are not changed or hidden.
             playlists.append({"path":str(item), "name":item.stem,
@@ -168,9 +173,13 @@ def execute(command, data):
         name = validate_name(data.get("name"))
         available(name)
         path = folder() / (name + ".m3u8")
+        if path.exists() or path.is_symlink():
+            raise ValueError("A playlist file already exists at that path.")
         atomic_text(path, "#EXTM3U\n")
         return {"playlist":str(path), "playlists":view()}
     path = playlist_path(data.get("path"))
+    if data.get("expected") is not None and data["expected"] != revision(path):
+        raise ValueError("This playlist changed in another window. Reload before editing.")
     if command == "delete":
         # Move to a recoverable folder rather than permanently destroying lists.
         trash = folder() / ".Deleted"
@@ -183,6 +192,8 @@ def execute(command, data):
         available(name, except_path=path)
         new = folder() / (name + path.suffix)
         if new != path:
+            if new.exists() or new.is_symlink():
+                raise ValueError("A file already exists at the new playlist name.")
             os.rename(path, new)
         return {"playlist":str(new), "playlists":view()}
     if command == "duplicate":
@@ -198,6 +209,8 @@ def execute(command, data):
                 n += 1
         new = folder() / (name + ".m3u8")
         # Original playlist contents remain byte-for-byte unchanged.
+        if new.exists() or new.is_symlink():
+            raise ValueError("A file already exists at the new playlist name.")
         atomic_text(new, path.read_text(encoding="utf-8-sig"))
         return {"playlist":str(new), "playlists":view()}
     rows, trailing = parse_playlist(path)
