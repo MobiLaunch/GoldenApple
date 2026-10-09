@@ -128,7 +128,7 @@ Column {
     Text {
         width: parent.width
         wrapMode: Text.Wrap
-        text: "Summon the Liquid Glass voice bubble with ⇧⌘Space. The microphone is only active while the bubble is open and unmuted. Audio streams to Gemini Live; Citron does not save recordings."
+        text: "Summon the prismatic Citron overlay with ⇧⌘Space. Its microphone starts only when you choose the mic button. Audio streams to Gemini Live; Citron does not save recordings."
         color: Theme.secondaryLabel
         font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
     }
