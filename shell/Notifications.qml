@@ -187,7 +187,10 @@ Scope {
             root.now = Date.now()
             n.closed.connect(() => {
                 root.dropBanner(n)
+                // The server may remove the tracked item after emitting
+                // closed. Re-evaluate after that event-loop turn as well.
                 root.badgeEpoch++
+                Qt.callLater(() => root.badgeEpoch++)
             })
             root.badgeEpoch++
             if (root.allowedDuringFocus(n) && !root.centerOpen && choice.banners) root.banners = [n].concat(root.banners.filter((b) => b !== n)).slice(0, 4)
