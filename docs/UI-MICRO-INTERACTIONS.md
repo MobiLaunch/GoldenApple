@@ -223,6 +223,25 @@ dismiss it. The preview stays in place during repeated navigation instead of
 forcing the user to click Finder between files. Native interaction tests cover
 navigation, focus retention and dismissal.
 
+**Finder keyboard destinations:** The Favorites and volumes sidebar now
+supports Up/Down and Home/End roving focus across sections; focus is outlined
+independently from the currently selected location, and activation remains a
+separate Return/Space action. Deeply scrolled destinations move into view as
+focus changes. Path-bar breadcrumbs are actual focusable controls with
+Return/Space and screen-reader press support, a slight press compression and
+Reduce Motion support. Collapsed breadcrumb groups open their menu from the
+keyboard rather than being mouse-only.
+
+**Settings search continuity:** The suggestions overlay stays mounted through
+a short fade but releases interaction immediately when the search loses focus.
+Results now tint in softly as keyboard or pointer selection changes, with
+zero scale/opacity travel when Reduce Motion is enabled.
+
+**Verification-code timing:** A CI failure exposed a fractional-second
+rollover where a valid six-digit verification code could appear with 0 seconds
+remaining. Whole-second modulo now reports 1–30 seconds throughout the valid
+window. A boundary regression covers 29.999, 30 and 59.999 seconds.
+
 The acceptance boundary remains the same: connected GUI/native-preview
 checks must run before these interactions can be called verified on a real
 Wayland/Hyprland installation.
