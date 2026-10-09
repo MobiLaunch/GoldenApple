@@ -275,6 +275,9 @@ PanelWindow {
         Shared.TactileFeedback { id: feedback; objectName: mod.objectName + "Motion"; pressed: mod.pressed; enabled: mod.enabled }
         radius: Math.min(32, height / 2)
         role: "regular"
+        // Wide per-module shadows were clipped by the rectangular scroller
+        // and left hard, blocky bands behind the rounded controls.
+        shadowEnabled: false
         // A slightly thicker smoked slab improves separation over wallpaper
         // and makes the smaller controls legible at every brightness level.
         // Keep every module on the same material; no extra full-panel shader.
