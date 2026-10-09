@@ -38,9 +38,10 @@ SOURCES = CACHE / "icon-packs/whitesur"
 LICENSE_PATH = SOURCES / "COPYING"
 INDEX = SOURCES / "index.json"
 # Verified open-source upstream, pinned to a release instead of tracking master.
-UPSTREAM = "https://codeload.github.com/vinceliuice/WhiteSur-icon-theme/tar.gz/refs/tags/2026-09-10"
+UPSTREAM_COMMIT = "73d8040da51a9ed74e47c7366e7e9ff437601a5c"
+UPSTREAM = "https://codeload.github.com/vinceliuice/WhiteSur-icon-theme/tar.gz/" + UPSTREAM_COMMIT
 SOURCE_URL = "https://github.com/vinceliuice/WhiteSur-icon-theme"
-VERSION = "2026-09-10"
+VERSION = "2026-09-10@" + UPSTREAM_COMMIT
 ID = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9._-]{0,190}$")
 SAFE_ART = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9._+@-]{0,190}\.svg$")
 GENERIC = {"application-x-executable", "application-default-icon", "application-x-desktop",
