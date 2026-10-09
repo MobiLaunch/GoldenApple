@@ -471,6 +471,14 @@ def _install(token: str, log: list[str], fail) -> int:
     }
     save_records(data)
     archive.unlink(missing_ok=True)
+    # This .app brought its own ICNS-derived PNG: register that authentic Mac
+    # artwork with Launchpad and Dock immediately after writing its launcher.
+    if shutil.which("gg-icon-resolver"):
+        try:
+            subprocess.run(["gg-icon-resolver", "sync", "gg-mac-" + token],
+                           capture_output=True, text=True, timeout=12)
+        except (OSError, subprocess.TimeoutExpired):
+            pass
     log.append(f"installed in {target}")
     emit("done", id=token, progress=1.0, path=str(target), arch=sorted(arches))
     return 0
