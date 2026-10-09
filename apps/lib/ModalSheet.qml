@@ -31,8 +31,12 @@ Item {
         shown = false
         closed()
         const origin = returnFocus
-        returnFocus = null
-        if (origin && origin.visible && origin.enabled) origin.forceActiveFocus()
+        // A close callback may have opened a new sheet immediately. Returning
+        // focus to the old trigger must not steal it from that new dialog.
+        if (!shown) {
+            returnFocus = null
+            if (origin && origin.visible && origin.enabled) origin.forceActiveFocus()
+        }
     }
 
     Rectangle {
@@ -46,8 +50,10 @@ Item {
         }
         MouseArea {
             anchors.fill: parent
-            enabled: sheet.shown && sheet.dismissible
-            onClicked: sheet.close()
+            // Always absorb outside clicks while shown; a non-dismissible
+            // confirmation cannot expose destructive controls behind it.
+            enabled: sheet.shown
+            onClicked: if (sheet.dismissible) sheet.close()
         }
     }
 
