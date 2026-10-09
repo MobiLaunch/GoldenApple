@@ -18,6 +18,12 @@ nonanimated presentation:
 | Liquid Glass | Press contraction, pointer illumination, rim and lift | No travel animations; feedback appears immediately |
 | Push/toolbar buttons | A 90 ms pressed state on keyboard/accessible activation matches pointer press | State change stays available; no travel |
 | Segmented picker | Short hover highlight, compress label slightly on press, spring selection pill | Selection snaps directly |
+| Search input | Right-side clear affordance and Escape clears without closing a dialog | Clear button fades without animation |
+| Pop-up selector | The capsule remains pressed while its menu is visible | Selection is instant; no squash |
+| Slider | Track subtly thickens on hover; keyboard changes ease to a new value while drag stays direct | Values and fill move immediately |
+| Overlay scrollbar | Thumb brightens and track expands on deliberate hover | No width or fade transitions |
+| Switch / checkbox | Space, Return and accessibility get the same pressed state as mouse activation | State changes immediately |
+| Focus outline | Two low-cost accent strokes improve contrast on busy backgrounds | Instant focus indication |
 | Sidebar row | Pressed background compresses minimally, selected symbol gains emphasis | No animated scale |
 | Menus | Hover selection washes in over 65 ms, without changing popup dimensions; Escape and click-away cancel pending selections | Highlight appears instantly |
 | Inactive app window | A faint 180 ms toolbar tint changes visual hierarchy | Tint changes instantly |

@@ -35,6 +35,49 @@ check("apps/lib/ToolbarButton.qml", [
     "Timer { id: keyRelease; interval: 90;",
 ], "toolbar buttons have tactile keyboard feedback")
 
+check("apps/lib/TextField.qml", [
+    'objectName: "searchClearButton"',
+    'Accessible.name: "Clear search"',
+    "function clearSearch() {",
+    "Keys.onEscapePressed: (event) => {",
+    "event.accepted = false",
+    "duration: Theme.reduceMotion ? 0 : 110",
+], "search fields offer accessible clear buttons and Escape without dismissing windows")
+
+check("apps/lib/PopUpButton.qml", [
+    "readonly property bool expanded: menu.visible",
+    "pressed: ma.pressed || menu.visible",
+    "if (!enabled || !menuParent || !options.length || menu.visible) return",
+], "pop-up selectors remain pressed while menus are open")
+
+check("apps/lib/Slider.qml", [
+    "enabled: !Theme.reduceMotion && !ma.pressed",
+    "height: ma.containsMouse && sl.enabled ? 5 : 4",
+    "enabled: sl.enabled",
+], "sliders animate keyboard changes but track pointer position without lag")
+
+check("apps/lib/Scroller.qml", [
+    "Behavior on width { enabled: !Theme.reduceMotion;",
+    "Behavior on color { ColorAnimation { duration: Theme.reduceMotion ? 0 : 100 } }",
+], "macOS overlay scrollbars widen gently and stop animating for Reduce Motion")
+
+check("apps/lib/FocusRing.qml", [
+    "Gentle two-tone focus halo",
+    "Theme.dark ? 0.23 : 0.16",
+], "focus halo remains visible without heavy GPU effects")
+
+check("apps/lib/Switch.qml", [
+    "property bool keyboardPressed: false",
+    "readonly property bool active: ma.pressed || sw.keyboardPressed",
+    "Accessible.onPressAction: flip(true)",
+], "switch keyboard toggling stretches the knob like pointer interaction")
+
+check("apps/lib/Checkbox.qml", [
+    "Accessible.checked: box.checked",
+    "property bool keyboardPressed: false",
+    "enabled: box.enabled",
+], "checkbox keyboard feedback and accessible state remain correct")
+
 check("apps/lib/Segmented.qml", [
     'objectName: "segmentedSelectionPill"',
     "Behavior on x { enabled: !Theme.reduceMotion;",
