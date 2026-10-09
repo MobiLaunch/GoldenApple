@@ -280,8 +280,9 @@ def main() -> int:
         except Broken as exc:
             return broken(exc)
         good = [e for e in events if not check(e)]
+        extra = {"remoteError": remote_error} if remote_error else {}
         return emit(True, events=sorted(good + remote, key=sort_key),
-                    invalid=len(events) - len(good), remoteError=remote_error)
+                    invalid=len(events) - len(good), **extra)
 
     if command == "add":
         try:
