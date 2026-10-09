@@ -33,6 +33,10 @@ def icon_for(path: pathlib.Path, mime: str, folder: bool | None = None) -> str:
         return "audio-x-generic"
     if mime in {"application/pdf"}:
         return "application-pdf"
+    if mime in {"application/zip", "application/x-zip-compressed", "application/x-tar",
+                "application/gzip", "application/x-gzip", "application/x-bzip2",
+                "application/x-xz", "application/x-gtar"}:
+        return "package-x-generic"
     if mime.startswith("text/") or mime in {"application/json", "application/xml"}:
         return "text-x-generic"
     if os.access(path, os.X_OK):
