@@ -76,7 +76,7 @@ Pane {
                 }
             }
             Shared.Button {
-                text: "Open Intelligence"
+                text: "Summon Citron"
                 onClicked: appLaunch.startDetached()
             }
         }
