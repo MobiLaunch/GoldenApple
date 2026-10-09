@@ -172,7 +172,7 @@ Item {
         property real pad: Math.ceil(blurPx * 3 + Math.abs(drop))
         x: -pad; y: -pad
         width: root.width + 2 * pad; height: root.height + 2 * pad
-        visible: (root.material?.shadowOpacity ?? 0) > 0 && GraphicsInfo.api !== GraphicsInfo.Software
+        visible: root.shadowEnabled && (root.material?.shadowOpacity ?? 0) > 0 && GraphicsInfo.api !== GraphicsInfo.Software
         property size size: Qt.size(width, height)
         property size glass: Qt.size(root.width, root.height)
         property real radius: root.r
