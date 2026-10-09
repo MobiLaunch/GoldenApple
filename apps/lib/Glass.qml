@@ -50,6 +50,11 @@ Item {
     // so a small control's band doesn't fill it.
     property real lens: (material?.lens ?? 0)
     property color shadow: "transparent"                // a darker contact shadow (knobs)
+    // Large shader shadows inside a small Wayland PopupWindow are clipped by
+    // the rectangular surface, producing the dark, blocky drop-shadow edges.
+    // Popups and Control Center modules disable their individual shadows and
+    // retain the glass thickness, specular rim and soft backdrop refraction.
+    property bool shadowEnabled: true
     default property alias content: body.data
 
     // What's behind, bent as through a thick slab (shaders/glasslens.frag):
