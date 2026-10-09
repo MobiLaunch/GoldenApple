@@ -177,6 +177,7 @@ class Interactions(unittest.TestCase):
         self.assertTrue(self.eval('typeSelect("a")'))
         self.assertEqual(self.eval('selectedEntry.name'),"a.txt")
         self.assertEqual(self.eval('typeAhead'),"a")
+        QTest.qWait(165)  # allow the 120 ms opacity transition to paint
         cue=self.root.findChild(QObject,"filesTypeAheadCue")
         self.assertIsNotNone(cue)
         self.assertTrue(cue.property('visible'))
