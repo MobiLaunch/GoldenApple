@@ -42,7 +42,8 @@ check("apps/lib/TextField.qml", [
     "function clearSearch() {",
     "Keys.onEscapePressed: (event) => {",
     "event.accepted = false",
-    "duration: Theme.reduceMotion ? 0 : 110",
+    "enabled: !Theme.reduceMotion",
+    "NumberAnimation { duration: 110; easing.type: Easing.OutCubic }",
 ], "search fields offer accessible clear buttons and Escape without dismissing windows")
 
 check("apps/lib/PopUpButton.qml", [
