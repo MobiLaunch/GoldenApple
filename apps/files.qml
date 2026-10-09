@@ -610,6 +610,10 @@ ShellRoot {
                 else list.positionViewAtIndex(i, ListView.Contain)
             }
             function moveSelection(step, modifiers) {
+                // An arrow or page gesture ends the unfinished name prefix,
+                // so the next typed letter starts a new search.
+                typeAheadDwell.stop()
+                typeAhead = ""
                 selectAtIndex(selectedIndex < 0 ? 0 : selectedIndex + step, modifiers)
             }
             function typeSelect(letter) {
@@ -684,8 +688,11 @@ ShellRoot {
                     typeAhead = ""
                     clearSelection()
                 }
-                else if (!ctrl && (event.key === Qt.Key_Home || event.key === Qt.Key_End))
+                else if (!ctrl && (event.key === Qt.Key_Home || event.key === Qt.Key_End)) {
+                    typeAheadDwell.stop()
+                    typeAhead = ""
                     selectAtIndex(event.key === Qt.Key_Home ? 0 : entries.length - 1, event.modifiers)
+                }
                 else if (!ctrl && (event.key === Qt.Key_PageUp || event.key === Qt.Key_PageDown)) {
                     const rows = view === "grid" ? Math.max(1, Math.floor(grid.height / grid.cellHeight))
                         : Math.max(1, Math.floor(list.height / 36))
