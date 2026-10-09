@@ -131,6 +131,41 @@ ShellRoot {
                 anchors.fill: parent; clip: true
                 contentHeight: placesColumn.height + 8
                 boundsBehavior: Flickable.StopAtBounds
+                activeFocusOnTab: true
+                // Roving arrow-key focus crosses Favorites and mounted volumes.
+                // Only pressing a row activates it; browsing the sidebar does
+                // not change the open folder or lose the document selection.
+                function navigableRows() {
+                    const out = []
+                    for (let i = 0; i < favoriteRows.count; i++) {
+                        const item = favoriteRows.itemAt(i)
+                        if (item && item.visible && item.enabled) out.push(item)
+                    }
+                    for (let i = 0; i < volumeRows.count; i++) {
+                        const item = volumeRows.itemAt(i)
+                        if (item && item.visible && item.enabled) out.push(item)
+                    }
+                    return out
+                }
+                function focusRow(step, edge) {
+                    const rows = navigableRows()
+                    if (!rows.length) return
+                    let index = rows.findIndex((r) => r.activeFocus)
+                    if (index < 0) index = rows.findIndex((r) => r.selected)
+                    const next = edge === "first" ? 0 : edge === "last" ? rows.length - 1
+                        : Math.max(0, Math.min(rows.length - 1, index < 0 ? (step < 0 ? rows.length - 1 : 0) : index + step))
+                    rows[next].forceActiveFocus()
+                    ensureVisible(rows[next])
+                }
+                Keys.onPressed: (event) => {
+                    if (event.modifiers & (Qt.ControlModifier | Qt.MetaModifier | Qt.AltModifier)) return
+                    if (event.key === Qt.Key_Down) focusRow(1)
+                    else if (event.key === Qt.Key_Up) focusRow(-1)
+                    else if (event.key === Qt.Key_Home) focusRow(0, "first")
+                    else if (event.key === Qt.Key_End) focusRow(0, "last")
+                    else return
+                    event.accepted = true
+                }
                 function ensureVisible(row) {
                     if (!row.activeFocus) return
                     if (row.y < contentY) contentY = Math.max(0, row.y - 8)
@@ -149,6 +184,7 @@ ShellRoot {
                 Item { width: 1; height: 6 }
 
                 Repeater {
+                    id: favoriteRows
                     model: files.locations
                     delegate: SidebarRow {
                         id: place
@@ -186,6 +222,7 @@ ShellRoot {
                 }
                 Item { width: 1; height: 4; visible: files.volumes.length > 0 }
                 Repeater {
+                    id: volumeRows
                     model: files.volumes
                     delegate: SidebarRow {
                         id: volumeRow
