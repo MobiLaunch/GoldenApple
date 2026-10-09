@@ -264,7 +264,7 @@ def key_candidates(entry):
     return out
 
 
-def sync(*, network=False):
+def sync(*, network=False, app_id=""):
     if network:
         try:
             bootstrap()
@@ -312,7 +312,8 @@ def sync(*, network=False):
     if not MANIFEST.is_file() or MANIFEST.read_bytes() != payload:
         atomic_write(MANIFEST, payload)
     emit(event="synced", visible=len(selected), matchedOpenSource=copied,
-         hidden=max(0, len(app_entries())-len(selected)), manifest=str(MANIFEST))
+         hidden=max(0, len(app_entries())-len(selected)), manifest=str(MANIFEST),
+         requested=app_id, matched=app_id in selected if app_id else None)
     return selected
 
 
@@ -365,17 +366,17 @@ def main(args):
     CACHE.mkdir(parents=True, exist_ok=True)
     with (CACHE / ".icon-resolver.lock").open("a") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
-        if args == ["sync"]:
-            sync()
-        elif args == ["bootstrap"]:
-            sync(network=True)
+        if args and args[0] == "sync" and len(args) <= 2:
+            sync(app_id=args[1] if len(args) == 2 else "")
+        elif args and args[0] == "bootstrap" and len(args) <= 2:
+            sync(network=True, app_id=args[1] if len(args) == 2 else "")
         elif args == ["watch"]:
             # Do not hold the same lock while sleeping: store installers also
             # need to sync. The watcher sync uses the same atomic manifest.
             fcntl.flock(lock, fcntl.LOCK_UN)
             watch()
         else:
-            emit(error="usage: icon-resolver.py sync|bootstrap|watch")
+            emit(error="usage: icon-resolver.py sync|bootstrap [APP_ID]|watch")
             return 2
     return 0
 
