@@ -59,6 +59,10 @@
 - [x] LCode project tree: keyboard arrow traversal, expand/collapse and durable editor selection binding
 - [x] LCode file/design inspector context crossfade, selection scroll reset and Actions-tab clamp
 - [x] Finder list headings: tactile sort feedback and active-column contrast
+- [x] Files: type-to-select with 950 ms jump cue, repeated-letter cycling, Home/End/Page navigation
+- [x] Empty Trash Escape closes the shared sheet instead of overriding its visibility binding
+- [x] Menu-bar title switches unmap the previous surface before changing its anchor or geometry
+- [x] Music playlists sort by displayed names; regression restores deterministic duplicate order
 - [x] Screen-reader selected sidebar rows, press actions and checked toolbar controls
 - [x] Files grid/list fade with viewport continuity and hidden-scrollbar input safety
 - [x] Prevent duplicate toolbar visibility bindings; constrain activity content in narrow windows
