@@ -6,7 +6,8 @@ import importlib.util
 import os
 from pathlib import Path
 import unittest
-from PySide6.QtCore import Qt, QUrl
+from PySide6.QtCore import QEvent, Qt, QUrl
+from PySide6.QtGui import QKeyEvent
 from PySide6.QtTest import QTest
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -220,6 +221,65 @@ class GoldenGateControls(harness.Harness):
         self.eval(apps, 'present()')
         QTest.qWait(400)
         self.assertTrue(self.root.grabWindow().save(str(target / 'launchpad.png')))
+
+    def test_launchpad_keyboard_pages_search_and_single_activation(self):
+        apps = self.desktop('tests/fixtures/launch-surfaces.qml', 'launchpad')
+        self.eval(apps, 'present(); sessionHome=Array.from({length:90}, (_,i)=>({id:"fixture."+i,name:"App "+i,icon:"org.goldengate.Files",execute:()=>{contextX++}})); sessionCatalog=sessionHome')
+        QTest.qWait(220)
+        self.root.requestActivate()
+        QTest.keyClick(self.root, Qt.Key_Down)
+        self.assertTrue(self.find('launchpadCell:fixture.0').property('activeFocus'))
+        QTest.keyClick(self.root, Qt.Key_Down)
+        self.assertEqual(apps.property('focusIndex'), apps.property('columns'))
+        # Navigate across the lazy page boundary, then back to the first tile.
+        QTest.keyClick(self.root, Qt.Key_End)
+        QTest.qWait(450)
+        self.assertTrue(self.find('launchpadCell:fixture.89').property('activeFocus'))
+        self.assertEqual(self.find('launchpadGrid').property('currentIndex'), 2)
+        QTest.keyClick(self.root, Qt.Key_Home)
+        QTest.qWait(450)
+        self.assertTrue(self.find('launchpadCell:fixture.0').property('activeFocus'))
+        # Offscreen QTest.keyClick does not apply a keyboard layout to text.
+        harness.APP.sendEvent(self.root, QKeyEvent(QEvent.KeyPress, Qt.Key_A, Qt.ShiftModifier, 'A'))
+        harness.APP.sendEvent(self.root, QKeyEvent(QEvent.KeyRelease, Qt.Key_A, Qt.ShiftModifier, 'A'))
+        self.assertEqual(apps.property('query'), 'A')
+        QTest.keyClick(self.root, Qt.Key_Escape)
+        self.assertEqual(apps.property('query'), '')
+        self.assertTrue(apps.property('open'))
+        QTest.keyClick(self.root, Qt.Key_Down)
+        QTest.keyClick(self.root, Qt.Key_Return)
+        self.assertEqual(apps.property('contextX'), 1)
+        self.assertFalse(apps.property('open'))
+        QTest.qWait(220)
+        self.eval(apps, 'present()')
+        QTest.qWait(220)
+        QTest.keyClick(self.root, Qt.Key_Escape)
+        self.assertFalse(apps.property('open'))
+
+    def test_launchpad_folder_escape_restores_origin_and_scrolls_focus(self):
+        apps = self.desktop('tests/fixtures/launch-surfaces.qml', 'launchpad')
+        self.eval(apps, 'present(); sessionHome=[{id:"folder:test",name:"Test Folder",isFolder:true,apps:Array.from({length:24},(_,i)=>({id:"folderapp."+i,name:"Folder App "+i,icon:"org.goldengate.Files",execute:()=>{contextX++}}))}]')
+        QTest.qWait(220)
+        self.root.requestActivate()
+        QTest.keyClick(self.root, Qt.Key_Down)
+        QTest.keyClick(self.root, Qt.Key_Return)
+        QTest.qWait(250)
+        self.assertTrue(self.find('launchpadFolderCell:folderapp.0').property('activeFocus'))
+        QTest.keyClick(self.root, Qt.Key_Right)
+        self.assertTrue(self.find('launchpadFolderCell:folderapp.1').property('activeFocus'))
+        QTest.keyClick(self.root, Qt.Key_End)
+        last = self.find('launchpadFolderCell:folderapp.23')
+        self.assertTrue(last.property('activeFocus'))
+        self.assertTrue(self.eval(last, 'mapToItem(parent.parent,0,0).y + height <= parent.parent.height'))
+        QTest.keyClick(self.root, Qt.Key_Escape)
+        QTest.qWait(220)
+        self.assertTrue(apps.property('open'))
+        self.assertTrue(self.find('launchpadCell:folder:test').property('activeFocus'))
+        QTest.keyClick(self.root, Qt.Key_Return)
+        QTest.qWait(220)
+        QTest.keyClick(self.root, Qt.Key_Space)
+        self.assertEqual(apps.property('contextX'), 1)
+        self.assertFalse(apps.property('open'))
 
 
 if __name__ == '__main__':

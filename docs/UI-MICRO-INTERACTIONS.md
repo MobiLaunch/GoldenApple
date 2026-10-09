@@ -284,6 +284,20 @@ Wayland/Hyprland installation.
 
 ## Golden Gate shell restoration (2026-10-09)
 
+Launchpad now supports arrow-key navigation through icons and across pages,
+Home/End, Enter/Space activation and typing from a focused icon to search.
+Opening a folder moves focus inside it; Escape closes the folder and restores
+its original grid icon. Keyboard focus scrolls folder icons into view. Escape
+clears a search first, then closes Launchpad on the next press; the shared
+search field and its parent no longer both act on the same Escape event.
+Fixture checks exercise these interactions with the production QML.
+
+The Files breadcrumb keyboard check follows both QObject ownership and the
+Qt visual tree, so it can find Repeater delegates on current Qt. It verifies
+navigation from Downloads to the parent folder, rather than reactivating the
+current path. The previous CI failure was a test lookup issue; the breadcrumb
+was already present and usable.
+
 The supplied Launchpad and Control Center references replace the earlier
 Big Sur box. Control Center now paints separate canonical glass modules:
 circular actions, individual Wi-Fi/Bluetooth/AirDrop pills, wide Focus and

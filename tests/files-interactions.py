@@ -73,6 +73,18 @@ class Interactions(unittest.TestCase):
         self.assertFalse(e.hasError(),e.error().toString())
         return v.toVariant() if hasattr(v,"toVariant") else v
 
+    def find(self, name):
+        # Repeater delegates belong to the visual tree; QObject.findChild
+        # alone misses their controls on recent Qt versions.
+        stack=[self.root]; seen=set()
+        while stack:
+            obj=stack.pop()
+            if obj in seen: continue
+            seen.add(obj)
+            if obj.objectName()==name: return obj
+            stack.extend(obj.children())
+            if hasattr(obj,"childItems"): stack.extend(obj.childItems())
+
     def tearDown(self):
         self.root.deleteLater(); self.engine.deleteLater()
         APP.processEvents(); APP.sendPostedEvents(None,QEvent.DeferredDelete)
@@ -297,8 +309,11 @@ class Interactions(unittest.TestCase):
         self.assertEqual(self.eval('path'),before)
 
     def test_path_bar_breadcrumb_keyboard_activation(self):
-        visible_path=self.eval('crumbBox.shown[crumbBox.shown.length - 1].c.path')
-        crumb=self.root.findChild(QObject,"filesCrumb:"+visible_path)
+        self.eval('navigate(home + "/Downloads")')
+        QTest.qWait(180)
+        visible_path=self.eval('crumbBox.shown[crumbBox.shown.length - 2].c.path')
+        self.assertEqual(visible_path,str(self.home))
+        crumb=self.find("filesCrumb:"+visible_path)
         self.assertIsNotNone(crumb)
         crumb.forceActiveFocus()
         self.assertTrue(crumb.property('activeFocus'))

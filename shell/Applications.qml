@@ -1,8 +1,9 @@
 // Launchpad: every app on pages of large icons over the blurred desktop, as on
 // the Mac. The wallpaper blurs and dims behind a small search field; the
 // icons sit in an 8 × 5 grid (fewer columns on narrow screens) with page dots
-// below. Swipe, scroll, or press ← → to change pages; type to search; Return
-// opens the first result; Escape or a click on empty space closes. A single
+// below. Swipe or scroll to change pages; Down enters the icon grid and arrows
+// move focus. Type to search; Return opens the result or focused icon. Escape
+// clears search/closes a folder first, then closes Launchpad. A single
 // fade reveals it without scaling the desktop. CitronOS's own apps come first,
 // in the Dock's order, then everything else alphabetically. System apps
 // without a CitronOS icon gather in an Other folder, as on the Mac, so the
@@ -13,6 +14,7 @@ import Quickshell.Wayland
 import Quickshell.Hyprland
 import QtQuick
 import QtQuick.Effects
+import "ui" as Shared
 import "ui/theme"
 import "ui/paths.js" as Paths
 import "components"
@@ -29,6 +31,51 @@ PanelWindow {
     property var sessionCatalog: []
     property var sessionHome: []
     property alias query: search.text
+    property int focusIndex: 0
+    property int pendingFocus: -1
+    property int focusTries: 0
+    property int folderIndex: 0
+    function focusCell(index) {
+        if (!open || folder || !entries.length) return
+        focusIndex = Math.max(0, Math.min(entries.length - 1, index))
+        pendingFocus = focusIndex
+        focusTries = 0
+        pages.currentIndex = Math.floor(focusIndex / perPage)
+        tryCellFocus()
+    }
+    function tryCellFocus() {
+        if (pendingFocus < 0) return
+        const page = pages.itemAtIndex(Math.floor(pendingFocus / perPage))
+        const cell = page?.cellAt(pendingFocus % perPage)
+        if (cell) { cell.forceActiveFocus(); pendingFocus = -1 }
+        else if (++focusTries > 40) pendingFocus = -1
+    }
+    Timer {
+        interval: 16; repeat: true
+        running: apps.pendingFocus >= 0 && apps.open && !apps.folder
+        onTriggered: apps.tryCellFocus()
+    }
+    function focusFolderCell(index) {
+        if (!open || !folder?.apps.length) return
+        folderIndex = Math.max(0, Math.min(folder.apps.length - 1, index))
+        const cell = folderTiles.itemAt(folderIndex)
+        if (cell) {
+            cell.forceActiveFocus()
+            const top = cell.y
+            if (top < folderScroll.contentY) folderScroll.contentY = top
+            else if (top + cell.height > folderScroll.contentY + folderScroll.height)
+                folderScroll.contentY = top + cell.height - folderScroll.height
+        }
+    }
+    function escapeGrid() {
+        if (query) { query = ""; search.input.forceActiveFocus() }
+        else dismiss()
+    }
+    function beginSearch(text) {
+        pendingFocus = -1
+        query = text
+        search.input.forceActiveFocus()
+    }
     property real wheelRemainder: 0
     function finishDismissal() {
         if (open) return
@@ -91,11 +138,12 @@ PanelWindow {
         pages.cancelFlick()
         pages.currentIndex = 0
         pages.positionViewAtBeginning()
+        focusIndex = 0
         open = true
         console.info("Launchpad opened; visible desktop entries:", entries.length)
         Qt.callLater(() => { if (apps.open) search.input.forceActiveFocus() })
     }
-    function dismiss() { appMenu.open = false; pages.cancelFlick(); wheelRemainder = 0; wheelGate.stop(); open = false }
+    function dismiss() { pendingFocus = -1; appMenu.open = false; pages.cancelFlick(); wheelRemainder = 0; wheelGate.stop(); open = false }
     function toggle() { open ? dismiss() : present() }
     function launch(entry) { entry.execute(); dismiss() }
 
@@ -167,6 +215,15 @@ PanelWindow {
     }
 
     property var folder: null           // the open folder, or null
+    onFolderChanged: {
+        pendingFocus = -1
+        if (!open) return
+        Qt.callLater(() => {
+            if (!apps.open) return
+            if (apps.folder) { folderPanel.forceActiveFocus(); apps.focusFolderCell(0) }
+            else apps.focusCell(apps.focusIndex)
+        })
+    }
     readonly property var catalog: {
         const list = [...DesktopEntries.applications.values].filter((e) => {
             if (!e || !e.name || e.noDisplay) return false
@@ -287,14 +344,17 @@ PanelWindow {
             placeholderColor: Qt.rgba(1, 1, 1, 0.78)
             input.selectedTextColor: "#ffffff"
             input.font.pixelSize: Theme.fs(Math.max(11, 13 * apps.layoutScale))
-            onTextChanged: { if (apps.open) { pages.cancelFlick(); pages.currentIndex = 0; pages.positionViewAtBeginning() } }
-            input.Keys.onEscapePressed: apps.folder ? apps.folder = null : search.text ? search.text = "" : apps.dismiss()
+            onTextChanged: { if (apps.open) { apps.pendingFocus = -1; apps.focusIndex = 0; pages.cancelFlick(); pages.currentIndex = 0; pages.positionViewAtBeginning() } }
+            // TextField consumes Escape while clearing a query. Handle the
+            // remaining empty-search Escape on its parent, once only.
+            Keys.onEscapePressed: apps.escapeGrid()
             input.Keys.onReturnPressed: {
                 const first = apps.entries[0]
                 if (first) first.isFolder ? apps.folder = first : apps.launch(first)
             }
             input.Keys.onRightPressed: (e) => { if (!search.text) pages.flip(1); else e.accepted = false }
             input.Keys.onLeftPressed: (e) => { if (!search.text) pages.flip(-1); else e.accepted = false }
+            input.Keys.onDownPressed: apps.focusCell(pages.currentIndex * apps.perPage)
         }
     }
 
@@ -313,6 +373,11 @@ PanelWindow {
         clip: true
         cacheBuffer: 0
         model: apps.pageCount
+        onCurrentIndexChanged: {
+            if (currentIndex < 0) return
+            if (Math.floor(apps.focusIndex / apps.perPage) !== currentIndex)
+                apps.focusIndex = Math.min(apps.entries.length - 1, currentIndex * apps.perPage)
+        }
         function flip(step) { currentIndex = Math.max(0, Math.min(count - 1, currentIndex + step)) }
 
         property real folderOpacity: apps.folder ? 0.1 : 1
@@ -324,6 +389,7 @@ PanelWindow {
         delegate: Item {
             id: page
             required property int index
+            function cellAt(i) { return pageTiles.itemAt(i) }
             width: pages.width
             height: pages.height
             // Clicks between the icons close Launchpad, like the backdrop.
@@ -332,13 +398,43 @@ PanelWindow {
                 anchors.horizontalCenter: parent.horizontalCenter
                 columns: apps.columns
                 Repeater {
+                    id: pageTiles
                     // A ScriptModel keeps each tile alive while the list
                     // changes around it (an app installing while open).
                     model: ScriptModel { values: apps.entries.slice(page.index * apps.perPage, (page.index + 1) * apps.perPage) }
                     delegate: Item {
                         id: cell
                         required property var modelData
+                        required property int index
                         objectName: "launchpadCell:" + modelData.id
+                        readonly property int absoluteIndex: page.index * apps.perPage + index
+                        activeFocusOnTab: activeFocus || absoluteIndex === apps.focusIndex
+                        onActiveFocusChanged: if (activeFocus) apps.focusIndex = absoluteIndex
+                        function activate() { if (isFolder) apps.folder = modelData; else apps.launch(modelData) }
+                        Accessible.role: Accessible.Button
+                        Accessible.name: modelData.name
+                        Accessible.description: isFolder ? "Folder, " + modelData.apps.length + " applications" : "Application"
+                        Accessible.onPressAction: activate()
+                        Keys.onLeftPressed: apps.focusCell(absoluteIndex - 1)
+                        Keys.onRightPressed: apps.focusCell(absoluteIndex + 1)
+                        Keys.onUpPressed: apps.focusCell(absoluteIndex - apps.columns)
+                        Keys.onDownPressed: apps.focusCell(absoluteIndex + apps.columns)
+                        Keys.onEscapePressed: apps.escapeGrid()
+                        Keys.onReturnPressed: activate()
+                        Keys.onEnterPressed: activate()
+                        Keys.onSpacePressed: (event) => { if (!event.isAutoRepeat) activate() }
+                        Keys.onPressed: (event) => {
+                            if (event.key === Qt.Key_Home || event.key === Qt.Key_End) {
+                                apps.focusCell(event.key === Qt.Key_Home ? 0 : apps.entries.length - 1)
+                                event.accepted = true
+                            } else if (event.key === Qt.Key_Menu || (event.key === Qt.Key_F10 && event.modifiers === Qt.ShiftModifier)) {
+                                if (!isFolder) apps.showAppMenu(modelData, cell, icon.x + icon.width / 2, icon.y + icon.height)
+                                event.accepted = true
+                            } else if (event.text && event.text.charCodeAt(0) >= 32 && !(event.modifiers & (Qt.ControlModifier | Qt.AltModifier | Qt.MetaModifier))) {
+                                apps.beginSearch(event.text)
+                                event.accepted = true
+                            }
+                        }
                         width: apps.cellW
                         height: apps.cellH
                         readonly property bool isFolder: !!cell.modelData.isFolder
@@ -381,6 +477,13 @@ PanelWindow {
                             Behavior on scale { enabled: !Theme.reduceMotion; NumberAnimation { duration: 90; easing.type: Easing.OutCubic } }
                             // No offscreen layer allocated on each press.
                         }
+                        Shared.FocusRing {
+                            anchors { fill: icon; margins: 3 }
+                            radius: width * 0.24
+                            opacity: cell.activeFocus ? 1 : 0
+                            scale: 1
+                            border.color: "#ffffff"
+                        }
                         Text {
                             anchors { horizontalCenter: parent.horizontalCenter; top: icon.bottom; topMargin: 8 }
                             width: Math.min(apps.cellW - 10, apps.iconSize + 36)
@@ -396,6 +499,7 @@ PanelWindow {
                             anchors { fill: icon; margins: -8; bottomMargin: -30 }
                             acceptedButtons: Qt.LeftButton | Qt.RightButton
                             onClicked: (mouse) => {
+                                cell.forceActiveFocus()
                                 if (cell.isFolder) { if (mouse.button === Qt.LeftButton) apps.folder = cell.modelData }
                                 else if (mouse.button === Qt.RightButton) apps.showAppMenu(cell.modelData, cell, mouse.x, mouse.y)
                                 else apps.launch(cell.modelData)
@@ -437,6 +541,8 @@ PanelWindow {
     }
     Glass {
         id: folderPanel
+        objectName: "launchpadFolder"
+        Keys.onEscapePressed: apps.folder = null
         readonly property int cols: Math.min(apps.folder ? Math.max(3, Math.min(6, Math.ceil(Math.sqrt(apps.folder.apps.length * 1.6)))) : 4, apps.columns)
         readonly property int count: apps.folder ? apps.folder.apps.length : 0
         readonly property real cell: Math.min(150, apps.cellW)
@@ -464,6 +570,7 @@ PanelWindow {
             font { family: Theme.fontDisplay; pixelSize: 30; weight: Font.DemiBold }
         }
         Flickable {
+            id: folderScroll
             anchors { fill: parent; margins: 24 }
             contentHeight: folderGrid.height
             clip: true
@@ -473,10 +580,31 @@ PanelWindow {
                 anchors.horizontalCenter: parent.horizontalCenter
                 columns: folderPanel.cols
                 Repeater {
+                    id: folderTiles
                     model: ScriptModel { values: apps.folder ? apps.folder.apps : [] }
                     delegate: Item {
                         id: fcell
                         required property var modelData
+                        required property int index
+                        objectName: "launchpadFolderCell:" + modelData.id
+                        activeFocusOnTab: activeFocus || index === apps.folderIndex
+                        onActiveFocusChanged: if (activeFocus) apps.folderIndex = index
+                        Accessible.role: Accessible.Button
+                        Accessible.name: modelData.name
+                        Accessible.onPressAction: apps.launch(modelData)
+                        Keys.onLeftPressed: apps.focusFolderCell(index - 1)
+                        Keys.onRightPressed: apps.focusFolderCell(index + 1)
+                        Keys.onUpPressed: apps.focusFolderCell(index - folderPanel.cols)
+                        Keys.onDownPressed: apps.focusFolderCell(index + folderPanel.cols)
+                        Keys.onPressed: (event) => {
+                            if (event.key === Qt.Key_Home || event.key === Qt.Key_End) {
+                                apps.focusFolderCell(event.key === Qt.Key_Home ? 0 : folderPanel.count - 1)
+                                event.accepted = true
+                            }
+                        }
+                        Keys.onReturnPressed: apps.launch(modelData)
+                        Keys.onEnterPressed: apps.launch(modelData)
+                        Keys.onSpacePressed: (event) => { if (!event.isAutoRepeat) apps.launch(modelData) }
                         width: folderPanel.cell
                         height: apps.iconSize * 0.8 + 52
                         Image {
@@ -499,11 +627,19 @@ PanelWindow {
                             style: Text.Raised; styleColor: "#8c000000"
                             font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: Font.Medium }
                         }
+                        Shared.FocusRing {
+                            anchors { fill: ficon; margins: 3 }
+                            radius: width * 0.24
+                            opacity: fcell.activeFocus ? 1 : 0
+                            scale: 1
+                            border.color: "#ffffff"
+                        }
                         MouseArea {
                             id: farea
                             anchors { fill: ficon; margins: -8; bottomMargin: -28 }
                             acceptedButtons: Qt.LeftButton | Qt.RightButton
                             onClicked: (mouse) => {
+                                fcell.forceActiveFocus()
                                 if (mouse.button === Qt.RightButton) apps.showAppMenu(fcell.modelData, fcell, mouse.x, mouse.y)
                                 else apps.launch(fcell.modelData)
                             }
