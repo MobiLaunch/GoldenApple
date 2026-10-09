@@ -104,8 +104,8 @@ class LiveProtocol(unittest.TestCase):
         self.assertIn("objectName: \"citronVoiceBubble\"", qml)
         self.assertIn("voiceProc.running = false", qml)
         self.assertIn("source: \"VoiceAssistant.qml\"", shell)
-        self.assertIn("ipc call citron toggle", opener)
-        self.assertIn("gg-intelligence --voice", bindings)
+        self.assertIn('ipc call citron "$mode"', opener)
+        self.assertIn("ipc call citron toggle", bindings)
 
 
 
