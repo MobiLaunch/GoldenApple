@@ -17,8 +17,9 @@ SPEC.loader.exec_module(mail)
 
 
 class FakeIMAP:
-    def __init__(self, reject_batch=False):
+    def __init__(self, reject_batch=False, count=3):
         self.reject_batch = reject_batch
+        self.count = count
         self.calls = []
         self.closed = False
 
@@ -29,7 +30,7 @@ class FakeIMAP:
     def uid(self, command, *args):
         self.calls.append((command, *args))
         if command == "search":
-            return "OK", [b"1 2 3"]
+            return "OK", [b" ".join(str(n).encode() for n in range(1, self.count + 1))]
         assert command == "fetch"
         sequence = args[0]
         if self.reject_batch and "," in sequence:
@@ -41,7 +42,7 @@ class FakeIMAP:
             msg["From"] = "Test User " + number + " <person@example.org>"
             msg["Date"] = "Fri, 09 Oct 2026 10:05:00 -0500"
             msg["Subject"] = "Subject " + number
-            flags = r"\\Seen" if number == "2" else ""
+            flags = r"\Seen" if number == "2" else ""
             meta = f"7 (UID {number} FLAGS ({flags}) BODY[HEADER.FIELDS (SUBJECT FROM DATE)] {{123}}".encode()
             parts.append((meta, msg.as_bytes()))
             parts.append(b")")
@@ -78,6 +79,19 @@ class MailLayoutTests(unittest.TestCase):
         self.assertEqual([r["uid"] for r in rows], ["3", "2", "1"])
         self.assertFalse(rows[1]["unread"])
 
+    def test_eighty_messages_need_only_four_batch_fetches(self):
+        server = FakeIMAP(count=80)
+        stream = io.StringIO()
+        with patch.object(mail, "configured", return_value=({"email": "me@example.org"}, "secret")), \
+             patch.object(mail, "imap_client", return_value=server), \
+             contextlib.redirect_stdout(stream):
+            self.assertEqual(mail.cmd_list(), 0)
+        payload = json.loads(stream.getvalue())
+        self.assertTrue(payload["ok"])
+        self.assertEqual(len(payload["messages"]), 80)
+        self.assertEqual(payload["messages"][0]["uid"], "80")
+        self.assertEqual(len([c for c in server.calls if c[0] == "fetch"]), 4)
+
     def test_parser_never_misattributes_other_uids(self):
         server = FakeIMAP()
         _, parts = server.uid("fetch", "1,2,3", "(UID FLAGS BODY.PEEK[HEADER.FIELDS (SUBJECT FROM DATE)])")
@@ -97,6 +111,9 @@ class MailLayoutTests(unittest.TestCase):
         self.assertIn("anchors { fill: parent; leftMargin: 28;", qml)
         self.assertIn("top: composeFields.bottom; bottom: composeActions.top", qml)
         self.assertNotIn("parent.height - 118", qml)
+        self.assertIn('objectName: "mailSetupScroller"', qml)
+        self.assertIn('function leaveMessage()', qml)
+        self.assertIn('text: "Try Again"', qml)
         self.assertIn("win.toolbarLeadingEnd", qml)
 
     def test_search_unread_reply_and_saved_drafts_have_handlers(self):
