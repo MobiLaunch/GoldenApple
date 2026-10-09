@@ -262,5 +262,28 @@ class CalendarStore(unittest.TestCase):
         self.assertTrue(self.helper("occurrence-skip",source["id"],"2026-10-21",
                                     event={"expected":current})["broken"])
 
+
+    def test_caldav_cache_keeps_remote_items_separate_and_read_only(self):
+        mine = self.add("My local event")["event"]
+        cache = self.store.parent / "caldav-events.json"
+        remote = dict(id="caldav-123", title="Remote meeting", date="2026-10-07",
+                      time="12:00", calendar="CalDAV", repeat="never", until="",
+                      reminder=-1, remote=True)
+        cache.write_text(json.dumps([remote]))
+        listed = self.helper("list")
+        self.assertTrue(listed["ok"], listed)
+        self.assertEqual([e["title"] for e in listed["events"]],
+                         ["My local event", "Remote meeting"])
+        self.assertFalse(self.helper("delete", remote["id"])["ok"])
+        self.assertEqual(json.loads(cache.read_text()), [remote])
+        self.assertEqual(self.helper("list")["events"][0]["id"], mine["id"])
+        cache.write_text("{damaged")
+        listed = self.helper("list")
+        self.assertTrue(listed["ok"])
+        self.assertIn("CalDAV cache", listed["remoteError"])
+        self.assertEqual([e["title"] for e in listed["events"]], ["My local event"])
+        self.assertEqual(cache.read_text(), "{damaged")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
