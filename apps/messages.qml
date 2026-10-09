@@ -46,6 +46,7 @@ ShellRoot {
                     visible: !!app.current && !app.composing
                     anchors.verticalCenter: parent.verticalCenter
                     size: 24
+                    photoPath: app.current?.photo_path || app.current?.contact_photo_path || ""
                     name: app.current ? app.current.name : ""
                     group: !!app.current && app.current.is_group
                 }
@@ -106,6 +107,7 @@ ShellRoot {
                                 Avatar {
                                     anchors { horizontalCenter: parent.horizontalCenter; top: parent.top; topMargin: 8 }
                                     size: 54; name: modelData.name; group: modelData.is_group
+                                    photoPath: modelData.photo_path || modelData.contact_photo_path || ""
                                     Rectangle {
                                         visible: modelData.unread
                                         anchors { right: parent.right; top: parent.top }
@@ -657,7 +659,7 @@ ShellRoot {
                             Row {
                                 anchors { left: parent.left; leftMargin: 8; verticalCenter: parent.verticalCenter }
                                 spacing: 9
-                                Avatar { size: 28; name: modelData.name; anchors.verticalCenter: parent.verticalCenter }
+                                Avatar { size: 28; name: modelData.name; photoPath: modelData.photo_path || ""; anchors.verticalCenter: parent.verticalCenter }
                                 Column {
                                     anchors.verticalCenter: parent.verticalCenter
                                     Text { text: modelData.name; color: pick.hovered ? "#ffffff" : Theme.label; font { family: Theme.fontUi; pixelSize: Theme.fs(13) } }
