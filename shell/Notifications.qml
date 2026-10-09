@@ -43,6 +43,9 @@ Scope {
             } catch (e) { root.mailUnread = 0 }
         }
     }
+    // FileView may be created before Mail's first login/refresh. A light
+    // fallback rescan makes new badges appear without requiring a shell restart.
+    Timer { interval: 30000; running: true; repeat: true; onTriggered: mailBadges.reload() }
     property bool centerOpen: false
     property bool controlCenterOpen: false   // banners step aside for Control Center
     property real now: Date.now()
@@ -65,7 +68,7 @@ Scope {
         const active = list.filter((n) => {
             if (!Prefs.notifyApp(keyOf(n)).badges) return false
             const raw = [n.desktopEntry, n.appName, ownerOf(n), keyOf(n)]
-                .map((x) => String(x || "").toLowerCase().replace(/\\.desktop$/, ""))
+                .map((x) => String(x || "").toLowerCase().replace(/\.desktop$/, ""))
             return raw.some((value) => aliases.includes(value) ||
                 aliases.includes(value.split(".").pop()))
         }).length
