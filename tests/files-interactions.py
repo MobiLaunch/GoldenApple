@@ -172,6 +172,50 @@ class Interactions(unittest.TestCase):
         self.assertEqual(self.eval('selectedPath'), selected,
                          'switching layout must not change file selection')
 
+    def test_grid_marquee_selects_intersecting_icons_and_modifier_combinations(self):
+        self.eval('view="grid"; grid.forceLayout()')
+        APP.processEvents()
+        bg=self.root.findChild(QObject,"filesMarqueeBackground")
+        self.assertIsNotNone(bg)
+        self.assertTrue(bg.property("enabled"))
+        result=self.eval('''(() => {
+            const a = grid.itemAtIndex(0)
+            const b = grid.itemAtIndex(1)
+            if (!a || !b) return false
+            const p0 = a.mapToItem(grid, 0, 0)
+            const p1 = b.mapToItem(grid, 0, 0)
+            marqueeBackground.startX = p0.x + 4
+            marqueeBackground.startY = p0.y + 4
+            marqueeBackground.originalPaths = []
+            marqueeBackground.modifiers = 0
+            marqueeBackground.applyRectangle(p1.x + b.width - 4, p1.y + b.height - 4)
+            return true
+        })()''')
+        self.assertTrue(result, "grid cells should be instantiated for selection")
+        self.assertEqual(self.eval('selectedPaths.length'),2)
+        self.assertEqual(self.eval('selectedPaths[0]'),self.eval('entries[0].path'))
+        # Control removes selected hits; Shift adds without losing the old set.
+        self.eval('marqueeBackground.originalPaths = [entries[0].path]; marqueeBackground.modifiers = Qt.ControlModifier')
+        self.eval('marqueeBackground.applyRectangle(marqueeBackground.lastX, marqueeBackground.lastY)')
+        self.assertEqual(self.eval('selectedPaths.length'),1)
+        self.assertEqual(self.eval('selectedPaths[0]'),self.eval('entries[1].path'))
+        self.eval('marqueeBackground.modifiers = Qt.ShiftModifier')
+        self.eval('marqueeBackground.applyRectangle(marqueeBackground.lastX, marqueeBackground.lastY)')
+        self.assertEqual(self.eval('selectedPaths.length'),2)
+        self.assertEqual(self.eval('query'),"", "marquee must not filter the directory")
+
+    def test_marquee_is_disabled_for_hidden_grid_or_active_operations(self):
+        bg=self.root.findChild(QObject,"filesMarqueeBackground")
+        self.eval('view="grid"')
+        APP.processEvents()
+        self.assertTrue(bg.property('enabled'))
+        self.eval('view="list"')
+        APP.processEvents()
+        self.assertFalse(bg.property('enabled'))
+        self.eval('view="grid"; loading=true')
+        APP.processEvents()
+        self.assertFalse(bg.property('enabled'))
+
     def test_type_to_select_matches_prefix_without_filtering_directory(self):
         count=self.eval('entries.length')
         self.assertTrue(self.eval('typeSelect("a")'))
