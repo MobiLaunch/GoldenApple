@@ -264,9 +264,13 @@ PanelWindow {
     // Schedule exactly one wakeup for the next phase transition. Polling at
     // 25ms during a close kept waking the QML scene while the shelf was
     // animating and was particularly visible as dropped frames on a live GPU.
-    onRunningIdsChanged: scheduleRecentExpiry()
-    onRunningRecordsChanged: scheduleRecentExpiry()
-    onDragIdChanged: scheduleRecentExpiry()
+    // Defer scheduling until QML has finished processing all changes to
+    // records and ids. In particular a single-shot Timer cannot be restarted
+    // reliably *inside its own onTriggered* by a synchronous property signal:
+    // Qt may finish that trigger by stopping the newly armed interval.
+    onRunningIdsChanged: Qt.callLater(dock.scheduleRecentExpiry)
+    onRunningRecordsChanged: Qt.callLater(dock.scheduleRecentExpiry)
+    onDragIdChanged: Qt.callLater(dock.scheduleRecentExpiry)
     function scheduleRecentExpiry() {
         recentExpiry.stop()
         const now = Date.now()
@@ -326,7 +330,12 @@ PanelWindow {
         id: recentExpiry
         objectName: "dockRecentExpiry"
         repeat: false
-        onTriggered: dock.expireRecent()
+        onTriggered: {
+            dock.expireRecent()
+            // A recent icon advances through TWO deadlines: hold -> leaving,
+            // then leaving -> removed. Rearm only after this callback returns.
+            Qt.callLater(dock.scheduleRecentExpiry)
+        }
     }
     function entryForWindow(appId) {
         const lower = appId.toLowerCase()
