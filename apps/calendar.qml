@@ -953,7 +953,7 @@ ShellRoot {
                 visible: false
                 anchors.centerIn: parent
                 width: Math.min(480, parent.width - 32)
-                height: cal.calDavConfigured ? 250 : 335
+                height: Math.min(parent.height - 24, cal.calDavConfigured ? 305 : 385)
                 radius: 22
                 tint: Theme.glassRegular.tint
                 z: 120
@@ -1042,7 +1042,7 @@ ShellRoot {
                 visible: false
                 anchors.centerIn: parent
                 width: Math.min(460, parent.width - 30)
-                height: 420
+                height: Math.min(470, parent.height - 24)
                 radius: 22
                 tint: Theme.glassRegular.tint
                 z: 120
