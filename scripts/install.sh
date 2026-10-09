@@ -90,6 +90,8 @@ install_extras() {
   printf '#!/bin/sh\nexec sh /usr/share/golden-gate/apps/lcode/open.sh "$@"\n' > "$BIN/gg-lcode"
   printf '#!/bin/sh\nexec sh /usr/share/golden-gate/apps/airdrop/share.sh "$@"\n' > "$BIN/gg-airdrop"
   printf '#!/bin/sh\nexec sh /usr/share/golden-gate/apps/intelligence/open.sh "$@"\n' > "$BIN/gg-intelligence"
+  printf '#!/bin/sh\nexec bash /usr/share/golden-gate/apps/citronpods/install-engine.sh "$@"\n' > "$BIN/gg-install-citronpods"
+  printf '#!/bin/sh\nexec sh /usr/share/golden-gate/apps/citronpods/ctl.sh "$@"\n' > "$BIN/gg-citronpods"
   chmod 755 "$BIN/gg-intelligence"
   printf '#!/bin/sh\nexec qs -n -p /usr/share/golden-gate/apps/diskutility.qml "$@"\n' > "$BIN/gg-disk-utility"
   chmod 755 "$BIN/gg-disk-utility"
