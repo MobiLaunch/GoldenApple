@@ -63,6 +63,15 @@ PanelWindow {
         open = false
         voiceProc.running = false
         aiService.cancel()
+        if (imageResults.length) cleanup.send({action:"discard", images:imageResults})
+        imageResults = []
+        history = []
+        answer = ""
+        responseNote = ""
+        responseOpen = false
+        selectedPhoto = ""
+        tool = "ask"
+        writingSource.text = ""
         voiceMode = false
         soundLevel = 0
         youSaid = ""
@@ -77,6 +86,8 @@ PanelWindow {
     function show(kind) {
         if (!open) present()
         if (["ask", "writing", "image", "edit"].includes(kind)) tool = kind
+        if (tool === "writing" && !writingSource.text)
+            writingSource.text = Quickshell.clipboardText || ""
         Qt.callLater(() => textEntry.forceActiveFocus())
     }
     function startVoice() {
@@ -108,6 +119,9 @@ PanelWindow {
             responseNote = "Choose a photo first."
             return
         }
+        if (imageResults.length) cleanup.send({action:"discard", images:imageResults})
+        imageResults = []
+        answer = ""
         const request = { task: task, prompt: q }
         if (task === "ask") {
             request.history = history.slice(-16)
@@ -201,6 +215,7 @@ PanelWindow {
 
     // Reuses the existing keyring-backed Gemini service. Requests are sent on
     // stdin, never through a background HTTP server or a separate app window.
+    AI.Service { id: cleanup }
     AI.Service {
         id: aiService
         onCompleted: (action, result) => {
@@ -357,7 +372,12 @@ PanelWindow {
                             font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
                             MouseArea {
                                 anchors.fill: parent
-                                onClicked: citron.aiServiceBusy ? aiService.cancel() : Quickshell.clipboardText = citron.answer
+                                onClicked: {
+                    if (citron.aiServiceBusy) {
+                        aiService.cancel()
+                        citron.responseNote = "Request cancelled."
+                    } else Quickshell.clipboardText = citron.answer
+                }
                             }
                         }
                     }
