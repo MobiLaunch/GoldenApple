@@ -178,6 +178,20 @@ require("apps/files.qml", [
     "cursorShape: Qt.PointingHandCursor",
     "onClicked: { parent.forceActiveFocus(); parent.sort() }",
 ])
+require("apps/files.qml", [
+    'objectName: "filesMarqueeBackground"',
+    'objectName: "filesMarqueeHighlight"',
+    'z: -1',
+    'preventStealing: true',
+    'function selectionBetween(x0, y0, x1, y1) {',
+    'const item = grid.itemAtIndex(i)',
+    'item.mapToItem(grid, 0, 0)',
+    'if (modifiers & Qt.ControlModifier)',
+    'else if (modifiers & Qt.ShiftModifier)',
+    'files.setSelection(paths, paths[paths.length - 1] ?? "")',
+    'files.selectionAnchor = files.selectedPath',
+    'visible: marqueeBackground.dragging && grid.activeView',
+])
 if "nav.selectedPath =" in (ROOT / "apps/lcode/Navigator.qml").read_text(encoding="utf-8"):
     failures.append("Navigator must not imperatively overwrite Workspace's selectedPath binding")
 
