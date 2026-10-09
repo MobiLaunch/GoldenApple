@@ -3,6 +3,7 @@
 // The owner confirms each moved value; a binding to the real system level
 // stays intact when volume/brightness is changed from another surface.
 import QtQuick
+import QtQuick.Effects
 import "theme"
 
 Item {
@@ -87,7 +88,9 @@ Item {
         objectName: "levelSliderVisual"
         anchors.fill: parent
         radius: level.radius
-        role: "clear"
+        role: "regular"
+        tint: Theme.dark ? "#b0242832" : "#d5e5e7ee"
+        lens: 14
         pressed: drag.pressed
         hovered: hover.hovered && level.enabled
         pressScale: 1
@@ -118,6 +121,20 @@ Item {
         // A standalone animation can be interrupted immediately; an animation
         // nested in Behavior cannot be stopped as a root animation in Qt.
         NumberAnimation { id: fillAnimation; target: fillClip; property: "height"; duration: 105; easing.type: Easing.OutCubic }
+        // Small, diffuse specular bloom behind the still-sharp indicator.
+        // Blur only a tiny 28px glyph, never the whole volume slider or
+        // backdrop texture. This reads as frosted glass without softening
+        // the accessible icon that tells users what the control does.
+        Symbol {
+            anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: 18 }
+            name: level.symbol
+            size: Math.min(30, level.width * 0.4)
+            tone: level.shownValue > 0.25 ? "dark" : "white"
+            color: level.symbolColor
+            opacity: 0.26
+            layer.enabled: GraphicsInfo.api !== GraphicsInfo.Software && !Theme.reduceTransparency
+            layer.effect: MultiEffect { blurEnabled: true; blur: 0.33; blurMax: 6 }
+        }
         Symbol {
             anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: 18 }
             name: level.symbol
