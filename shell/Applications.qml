@@ -1,13 +1,8 @@
-// Launchpad: every app on pages of large icons over the blurred desktop, as on
-// the Mac. The wallpaper blurs and dims behind a small search field; the
-// icons sit in an 8 × 5 grid (fewer columns on narrow screens) with page dots
-// below. Swipe or scroll to change pages; Down enters the icon grid and arrows
-// move focus. Type to search; Return opens the result or focused icon. Escape
-// clears search/closes a folder first, then closes Launchpad. A single
-// fade reveals it without scaling the desktop. CitronOS's own apps come first,
-// in the Dock's order, then everything else alphabetically. System apps
-// without a CitronOS icon gather in an Other folder, as on the Mac, so the
-// grid stays in one style; a search still finds them.
+// Launchpad: show ONLY apps with approved native GoldenGate or licensed open-source
+// macOS-style app icons. Unmatched applications remain installed and discoverable
+// from Files, Terminal, and other desktop app pickers, never in Launchpad.
+// Installed apps become visible after the resolver publishes its manifest.
+// The grid is snapshotted on opening to preserve seamless entry animations.
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
@@ -188,51 +183,46 @@ PanelWindow {
         "org.goldengate.TextEdit", "org.goldengate.LCode", "org.goldengate.AirDrop", "org.goldengate.Passwords", "org.goldengate.Software", "org.goldengate.Settings",
         "org.goldengate.Terminal", "org.goldengate.DiskUtility"
     ]
-    // Utilities, as on the Mac: CitronOS's own (Terminal, Disk Utility) and
-    // other apps that say they're system tools (their desktop file's
-    // Categories), whatever their icon. Apps you installed stay on the grid.
-    readonly property var firstPartyUtilities: ["org.goldengate.Terminal", "org.goldengate.DiskUtility"]
+    // Launchpad is an APPROVED-icon surface, not a list of all executables.
+    // A newly installed app qualifies only when gg-icon-resolver recognizes
+    // its actual GoldenGate or open-source macOS-style art. Unknown icons and
+    // apps with generic fallbacks stay available from search/menu, NOT here.
+    // The manifest is updated atomically after installation or icon sync.
+    readonly property var firstPartyUtilities: ["org.goldengate.Terminal", "org.goldengate.DiskUtility", "org.goldengate.ArchiveUtility"]
     readonly property var utilityCategories: ["System", "Settings", "DesktopSettings", "HardwareSettings", "Monitor",
         "TerminalEmulator", "PackageManager", "Security", "Filesystem", "Archiving", "Compression", "Accessibility"]
-    function utility(e) {
-        if (firstPartyUtilities.includes(e.id)) return true
-        if (String(e.id).startsWith("org.goldengate.") || userApps[e.id]) return false
-        const cats = [...(e.categories ?? [])].map(String)
-        return cats.some((c) => utilityCategories.includes(c)) || (grouped(e) && cats.includes("Utility"))
-    }
-    // Icon names the CitronOS theme draws itself, and the desktop files of
-    // apps you installed (Flatpak, or your own): both stay on the grid.
-    property var customIcons: ({})
-    property var userApps: ({})
-    property bool scanned: false
-    Process {
-        running: true
-        command: ["sh", "-c", `
-            IFS=:
-            for d in "\${XDG_DATA_HOME:-$HOME/.local/share}" \${XDG_DATA_DIRS:-/usr/local/share:/usr/share}; do
-              for f in "$d"/icons/GoldenGate/*/apps/*; do [ -e "$f" ] && echo "icon \${f##*/}"; done
-            done
-            for d in "$HOME/.local/share/applications" "$HOME/.local/share/flatpak/exports/share/applications" /var/lib/flatpak/exports/share/applications; do
-              for f in "$d"/*.desktop; do [ -e "$f" ] && echo "app \${f##*/}"; done
-            done`]
-        stdout: StdioCollector {
-            onStreamFinished: {
-                const icons = {}, user = {}
-                for (const line of text.split("\n")) {
-                    const name = line.slice(line.indexOf(" ") + 1)
-                    if (line.startsWith("icon ")) icons[name.replace(/\.(png|svg)$/, "")] = true
-                    else if (line.startsWith("app ")) user[name.replace(/\.desktop$/, "")] = true
-                }
-                apps.customIcons = icons
-                apps.userApps = user
-                apps.scanned = true
-            }
+    property var approvedIcons: ({})
+    property bool iconCatalogReady: false
+    FileView {
+        id: approvedIconFile
+        path: (Quickshell.env("XDG_CACHE_HOME") || Quickshell.env("HOME") + "/.cache")
+              + "/golden-gate/launchpad-icons.json"
+        printErrors: false
+        watchChanges: true
+        onFileChanged: reload()
+        onLoaded: {
+            try {
+                const data = JSON.parse(text())
+                apps.approvedIcons = data.version === 1 && data.apps && typeof data.apps === "object" ? data.apps : ({})
+            } catch (e) { apps.approvedIcons = ({}) }
+            apps.iconCatalogReady = true
         }
     }
-    function grouped(e) {
-        if (!scanned || String(e.id).startsWith("org.goldengate.") || userApps[e.id]) return false
-        const icon = String(e.icon ?? "")
-        return icon.startsWith("/") || !customIcons[icon]
+    function hasApprovedIcon(entry) {
+        const id = String(entry.id ?? "")
+        if (id.startsWith("org.goldengate.")) return firstParty.includes(id)
+        return !!approvedIcons[id]?.icon
+    }
+    function iconFor(entry) {
+        const path = approvedIcons[String(entry.id ?? "")]?.icon
+        // Restrict to resolver-provided local art, not arbitrary vendor URLs.
+        if (path && String(path).startsWith("/")) return "file://" + encodeURI(path)
+        return Quickshell.iconPath(entry.icon, "application-x-executable")
+    }
+    function utility(entry) {
+        if (firstPartyUtilities.includes(entry.id)) return true
+        if (String(entry.id).startsWith("org.goldengate.")) return false
+        return [...(entry.categories ?? [])].map(String).some((cat) => utilityCategories.includes(cat))
     }
 
     property var folder: null           // the open folder, or null
@@ -247,15 +237,13 @@ PanelWindow {
     }
     readonly property var catalog: {
         const list = [...DesktopEntries.applications.values].filter((e) => {
-            if (!e || !e.name || e.noDisplay) return false
+            if (!e || !e.name || e.noDisplay || !hasApprovedIcon(e)) return false
             return true
         })
         const rank = (e) => { const i = firstParty.indexOf(e.id); return i < 0 ? 1000 : i }
-        // One tile per app: the same app can be listed twice (a user copy of a
-        // system entry, a wrapper beside the real thing); the first one wins.
         const seen = {}
         return list.sort((a, b) => rank(a) - rank(b) || String(a.name).localeCompare(String(b.name)))
-            .filter((e) => { const k = String(e.name).toLowerCase(); if (seen[k]) return false; seen[k] = true; return true })
+            .filter((e) => { const k = String(e.id).toLowerCase(); if (seen[k]) return false; seen[k] = true; return true })
     }
     readonly property var matches: {
         const q = search.text.trim().toLowerCase()
@@ -263,28 +251,19 @@ PanelWindow {
         return q ? list.filter(e => [e.name, e.genericName, e.comment, e.keywords]
             .map(s => String(s ?? "")).join(" ").toLowerCase().includes(q)) : list
     }
-    // The grid: a search lists every match; otherwise the Other folder sits
-    // after CitronOS's own apps.
+    // A Utilities folder contains only approved, system-style icons. There is
+    // NO "Other" folder: unmatched apps must never leak into Launchpad even
+    // when the user searches or an app gets installed while Launchpad is open.
     readonly property var homeEntries: {
-        // An app that repeats an icon already on the grid (Foot Client and
-        // Foot Server beside Foot) joins the folder too.
-        const icons = {}, kept = [], others = [], utilities = []
+        const kept = [], utilities = []
         for (const e of catalog) {
-            const icon = String(e.icon ?? "")
-            const own = String(e.id).startsWith("org.goldengate.")
-            if (scanned && utility(e)) utilities.push(e)
-            else if (grouped(e) || (!own && icons[icon])) others.push(e)
-            else { kept.push(e); icons[icon] = true }
+            if (utility(e)) utilities.push(e)
+            else kept.push(e)
         }
-        // A folder of one is just that app.
-        const folders = []
-        if (utilities.length >= 2) folders.push({ isFolder: true, name: "Utilities", apps: utilities, id: "folder:utilities" })
-        else kept.push(...utilities)
-        if (others.length >= 2) folders.push({ isFolder: true, name: "Other", apps: others, id: "folder:other" })
-        else kept.push(...others)
-        if (!folders.length) return catalog
-        const ownCount = kept.filter((e) => firstParty.indexOf(e.id) >= 0).length
-        return kept.slice(0, ownCount).concat(folders, kept.slice(ownCount))
+        if (utilities.length < 2) return kept.concat(utilities)
+        const folder = { isFolder: true, name: "Utilities", apps: utilities, id: "folder:utilities" }
+        const ownCount = kept.filter((e) => firstParty.includes(e.id)).length
+        return kept.slice(0, ownCount).concat([folder], kept.slice(ownCount))
     }
     readonly property var entries: search.text.trim() ? matches
         : apps.open || apps.reveal > 0 ? sessionHome : homeEntries
@@ -481,7 +460,7 @@ PanelWindow {
                                     delegate: Image {
                                         required property var modelData
                                         width: apps.iconSize * 0.22; height: width
-                                        source: Quickshell.iconPath(modelData.icon, "application-x-executable")
+                                        source: apps.iconFor(modelData)
                                         sourceSize: Qt.size(width * 2, height * 2)
                                         smooth: true; mipmap: true
                                     }
@@ -494,7 +473,7 @@ PanelWindow {
                             anchors { horizontalCenter: parent.horizontalCenter; top: parent.top; topMargin: 10 * apps.layoutScale }
                             width: apps.iconSize; height: apps.iconSize
                             opacity: cell.isFolder ? 0 : 1
-                            source: cell.isFolder ? "" : Quickshell.iconPath(cell.modelData.icon, "application-x-executable")
+                            source: cell.isFolder ? "" : apps.iconFor(cell.modelData)
                             sourceSize: Qt.size(apps.iconSize * 2, apps.iconSize * 2)
                             smooth: true; mipmap: true
                             asynchronous: true
