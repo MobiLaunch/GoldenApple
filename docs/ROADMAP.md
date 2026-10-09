@@ -60,6 +60,7 @@
       Get Info, transfer progress/cancellation and Keep Both/Skip conflicts
 - [x] Files: sortable list headings and per-folder view/sort preferences
 - [x] Files: Undo Rename and Undo New Folder (an empty, unchanged folder only)
+- [x] Calendar: event editing/duplication; validated daily, weekly, monthly and yearly repeat rules
 - [x] Focus: timed Do Not Disturb, weekly/overnight schedule, allowed apps,
       critical-alert opt-in and shared expiry status in Settings/Control Center
 - [ ] Focus: named profiles, people exceptions and app/context automation
@@ -127,7 +128,7 @@ Still to do:
 - [ ] Network configuration (hidden/enterprise Wi-Fi, VPN, proxy, DNS);
       display resolution, arrangement and rotation
 - [ ] Disk encryption at install; migration at Setup
-- [ ] Mail (folders, attachments, drafts), Calendar (editing, recurrence,
-      CalDAV), Photos editing; Music playlist creation/editing, queue reordering
+- [ ] Mail (folders, attachments, drafts), Calendar (CalDAV, invitations,
+      occurrence exceptions), Photos editing; Music playlist creation/editing, queue reordering
       and removal, and library folder preferences
 - [ ] Translated UI (formats already follow the region; the apps are English)

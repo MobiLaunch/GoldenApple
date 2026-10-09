@@ -5,6 +5,7 @@
     helper.py add  < EVENT    add {"title", "date": YYYY-MM-DD, "time": "" | HH:MM, "calendar"}
     helper.py edit ID < EVENT  save changes only if the original is current
     helper.py duplicate ID    make a separately editable copy
+    Supports never/daily/weekly/monthly/yearly, optional inclusive end date
     helper.py delete ID
     helper.py restore         put the last good copy back after the store broke
 
@@ -31,6 +32,9 @@ ROOT = pathlib.Path(os.environ.get("XDG_DATA_HOME", pathlib.Path.home() / ".loca
 PATH = ROOT / "events.json"
 BACKUP = ROOT / "events.json.bak"
 LOCK = ROOT / ".events.lock"
+
+
+REPEATS = frozenset(("never", "daily", "weekly", "monthly", "yearly"))
 
 
 class Broken(Exception):
@@ -64,6 +68,21 @@ def check(event: dict) -> str:
     calendar = event.get("calendar", "Home")
     if not isinstance(calendar, str) or not calendar.strip() or len(calendar) > 64:
         return "Choose a calendar."
+    repeat = event.get("repeat", "never")
+    if not isinstance(repeat, str) or repeat not in REPEATS:
+        return "Repeat must be Never, Daily, Weekly, Monthly, or Yearly."
+    until = event.get("until", "")
+    if until:
+        if not isinstance(until, str) or len(until) != 10:
+            return "Enter a repeat end date as YYYY-MM-DD, or leave it empty."
+        try:
+            datetime.date.fromisoformat(until)
+        except ValueError:
+            return "Enter a real repeat end date as YYYY-MM-DD."
+        if repeat == "never":
+            return "Choose a repeat interval before setting an end date."
+        if until < date:
+            return "The repeat end date must not be before the first event."
     return ""
 
 
@@ -187,6 +206,8 @@ def main() -> int:
             "date": str(event.get("date") or "").strip(),
             "time": str(event.get("time") or "").strip(),
             "calendar": str(event.get("calendar") or "Home").strip(),
+            "repeat": str(event.get("repeat", "never")).strip().lower(),
+            "until": str(event.get("until", "")).strip(),
         }
         problem = check(row)
         if problem:
@@ -220,6 +241,8 @@ def main() -> int:
             "date": str(event.get("date") or "").strip(),
             "time": str(event.get("time") or "").strip(),
             "calendar": str(event.get("calendar") or "Home").strip(),
+            "repeat": str(event.get("repeat", "never")).strip().lower(),
+            "until": str(event.get("until", "")).strip(),
         }
         problem = check(changes)
         if problem:
@@ -234,7 +257,7 @@ def main() -> int:
                 index = matches[0]
                 old = events[index]
                 fields = (("title", None), ("date", None), ("time", ""),
-                          ("calendar", "Home"))
+                          ("calendar", "Home"), ("repeat", "never"), ("until", ""))
                 if any(old.get(key, default) != expected.get(key, default)
                        for key, default in fields):
                     return emit(False, conflict=True,

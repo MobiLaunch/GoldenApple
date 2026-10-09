@@ -19,6 +19,8 @@ jobs:
         run: git diff --exit-code
       - name: Lint shell scripts
         run: find scripts distro apps themes compositor -type f -name "*.sh" -print0 | xargs -0 -n1 bash -n
+      - name: Calendar recurrence contracts
+        run: node tests/calendar-recurrence.mjs
       - name: Guard the login and glass paths
         run: |
           grep -q 'id: applicationsPanel' shell/shell.qml

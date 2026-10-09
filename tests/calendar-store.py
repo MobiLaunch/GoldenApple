@@ -34,8 +34,9 @@ class CalendarStore(unittest.TestCase):
                            capture_output=True, text=True, env={**os.environ, "XDG_DATA_HOME": str(self.data)})
         return json.loads(p.stdout)
 
-    def add(self, title, date="2026-10-07", time="", calendar="Home"):
-        return self.helper("add", event={"title": title, "date": date, "time": time, "calendar": calendar})
+    def add(self, title, date="2026-10-07", time="", calendar="Home", repeat="never", until=""):
+        return self.helper("add", event={"title": title, "date": date, "time": time, "calendar": calendar,
+                                         "repeat": repeat, "until": until})
 
     def test_missing_is_empty(self):
         self.assertEqual(self.helper("list"), {"ok": True, "events": [], "invalid": 0})
@@ -194,6 +195,34 @@ class CalendarStore(unittest.TestCase):
         self.assertTrue(self.helper("edit", old["id"], event=payload)["broken"])
         self.assertTrue(self.helper("duplicate", old["id"])["broken"])
         self.assertEqual(self.store.read_text(), "[broken")
+
+    def test_recurrence_validation_and_backward_compatibility(self):
+        for repeat in ("never", "daily", "weekly", "monthly", "yearly"):
+            self.assertTrue(self.add("Accepted", repeat=repeat)["ok"], repeat)
+        for repeat in ("sometimes", "monthlyy", ""):
+            self.assertFalse(self.add("Rejected", repeat=repeat)["ok"], repeat)
+        self.assertTrue(self.add("Inclusive", repeat="weekly", until="2026-10-21")["ok"])
+        for until in ("not a date", "2026-10-06", "2026-02-30"):
+            self.assertFalse(self.add("Invalid", repeat="daily", until=until)["ok"], until)
+        self.assertFalse(self.add("No repeat", until="2026-11-01")["ok"])
+        old = {"id": "prior-version", "title": "Old", "date": "2026-10-07",
+               "time": "", "calendar": "Home"}
+        self.store.write_text(json.dumps([old]))
+        self.assertTrue(self.helper("list")["ok"])
+        self.assertEqual(self.helper("list")["events"][0], old)
+
+    def test_recurrence_edits_reject_stale_snapshot(self):
+        old = self.add("Every week", repeat="weekly", until="2026-10-31")["event"]
+        update = {**old, "expected": old, "repeat": "monthly", "until": "2027-01-01"}
+        self.assertTrue(self.helper("edit", old["id"], event=update)["ok"])
+        stale = {**old, "expected": old, "title": "Stale edit"}
+        r = self.helper("edit", old["id"], event=stale)
+        self.assertTrue(r.get("conflict"), r)
+        self.assertEqual(self.helper("list")["events"][0]["repeat"], "monthly")
+        copy = self.helper("duplicate", old["id"])["event"]
+        self.assertEqual((copy["repeat"], copy["until"]), ("monthly", "2027-01-01"))
+        self.assertNotEqual(copy["id"], old["id"])
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
