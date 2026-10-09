@@ -349,6 +349,38 @@ def cmd_status() -> int:
         return emit(False, error=str(exc), account=email_addr)
 
 
+def parse_header_items(fetched, expected: set[str]) -> dict[str, dict[str, object]]:
+    """Read UID FETCH responses without assuming IMAP returns the same order.
+
+    UID FETCH always includes UID in server responses, even when FLAGS and
+    partial header fields are requested. Do not associate emails with the
+    wrong message if the server reorders the batch.
+    """
+    result: dict[str, dict[str, object]] = {}
+    for part in fetched or []:
+        if not isinstance(part, tuple) or len(part) < 2:
+            continue
+        meta_bytes, raw = part[:2]
+        if not isinstance(meta_bytes, (bytes, bytearray)) or not isinstance(raw, bytes):
+            continue
+        match = re.search(rb"\\bUID\\s+(\\d+)\\b", meta_bytes, re.I)
+        if not match:
+            continue
+        uid = match.group(1).decode("ascii")
+        if uid not in expected or uid in result:
+            continue
+        meta = meta_bytes.decode("utf-8", errors="replace")
+        msg = email.message_from_bytes(raw, policy=email.policy.default)
+        result[uid] = {
+            "uid": uid,
+            "subject": decode_header(msg.get("Subject")) or "(No Subject)",
+            "from": clean_address(msg.get("From")),
+            "date": decode_header(msg.get("Date")),
+            "unread": "\\\\Seen" not in meta,
+        }
+    return result
+
+
 def cmd_list() -> int:
     try:
         cfg, password = configured()
@@ -360,33 +392,30 @@ def cmd_list() -> int:
             typ, data = client.uid("search", None, "ALL")
             if typ != "OK":
                 raise RuntimeError("Inbox could not be searched.")
-            uids = (data[0] or b"").split()[-80:]
-            rows: list[dict[str, object]] = []
-            for uid in reversed(uids):
-                typ, fetched = client.uid(
-                    "fetch",
-                    uid,
-                    "(FLAGS BODY.PEEK[HEADER.FIELDS (SUBJECT FROM DATE)])",
-                )
-                if typ != "OK" or not fetched:
-                    continue
-                raw = b""
-                meta = ""
-                for part in fetched:
-                    if isinstance(part, tuple):
-                        meta = part[0].decode("utf-8", errors="replace")
-                        raw += part[1]
-                msg = email.message_from_bytes(raw, policy=email.policy.default)
-                rows.append(
-                    {
-                        "uid": uid.decode(),
-                        "subject": decode_header(msg.get("Subject")) or "(No Subject)",
-                        "from": clean_address(msg.get("From")),
-                        "date": decode_header(msg.get("Date")),
-                        "unread": "\\Seen" not in meta,
-                    }
-                )
-            return emit(True, messages=rows, account=str(cfg.get("email") or ""))
+            uids = [s.decode("ascii") for s in (data[0] or b"").split()[-80:]]
+            # Previous releases issued 80 sequential network requests, leaving
+            # the Mail UI waiting after a successful login. Fetch in groups
+            # of at most 25 UIDs, and gracefully retry unsupported batches.
+            # Use BODY.PEEK so listing mail does not mark it as read.
+            found: dict[str, dict[str, object]] = {}
+            spec = "(UID FLAGS BODY.PEEK[HEADER.FIELDS (SUBJECT FROM DATE)])"
+            for i in range(0, len(uids), 25):
+                group = uids[i:i + 25]
+                typ, fetched = client.uid("fetch", ",".join(group), spec)
+                if typ == "OK":
+                    found.update(parse_header_items(fetched, set(group)))
+                # Some non-standard IMAP providers reject UID sets. Retry
+                # only the entries absent from the batch rather than dropping
+                # them or silently claiming the inbox is empty.
+                for uid in group:
+                    if uid in found:
+                        continue
+                    single_typ, single_items = client.uid("fetch", uid, spec)
+                    if single_typ != "OK":
+                        continue
+                    found.update(parse_header_items(single_items, {uid}))
+            return emit(True, messages=[found[uid] for uid in reversed(uids) if uid in found],
+                        account=str(cfg.get("email") or ""))
         finally:
             try:
                 client.logout()
