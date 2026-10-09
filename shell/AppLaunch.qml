@@ -20,6 +20,7 @@ import Quickshell.Hyprland
 import Quickshell.Wayland
 import QtQuick
 import "ui/theme"
+import "ui/WindowGeometry.js" as WindowGeometry
 import "components"
 
 PanelWindow {
@@ -41,17 +42,21 @@ PanelWindow {
     property var dock: null                  // this screen's Dock: where a closing window goes back to
     // Last window size per app, so the card aims for the right frame next time.
     // CitronOS's own apps start out known: their windows have a fixed size.
-    property var sizes: ({ "org.goldengate.Web": { w: 1160, h: 760 }, "org.goldengate.Calculator": { w: 229, h: 405 }, "org.goldengate.Weather": { w: 1100, h: 860 }, "org.goldengate.Music": { w: 1180, h: 760 }, "org.goldengate.Notes": { w: 1120, h: 720 }, "org.goldengate.Photos": { w: 1180, h: 780 }, "org.goldengate.Maps": { w: 1280, h: 800 }, "org.goldengate.Settings": { w: 780, h: 700 } })
+    property var sizes: ({ "org.goldengate.Web": { w: 1180, h: 780 }, "org.goldengate.Calculator": { w: 229, h: 405 }, "org.goldengate.Weather": { w: 1100, h: 860 }, "org.goldengate.Music": { w: 1180, h: 760 }, "org.goldengate.Notes": { w: 1120, h: 720 }, "org.goldengate.Photos": { w: 1180, h: 780 }, "org.goldengate.Maps": { w: 1280, h: 800 }, "org.goldengate.Settings": { w: 780, h: 700 } })
     // Apps whose window isn't the usual window colour (Calculator is always dark).
     readonly property var windowColors: ({ "org.goldengate.Calculator": "#24292d", "org.goldengate.Weather": "#a4bcd2" })
 
-    // Where the window will appear: Hyprland centres new windows in the space the
-    // menu bar and Dock leave free.
+    // Aim the launch card at the SAME initial frame as the compositor.
+    // Previously the card used a different "usable center" calculation, then
+    // jumped when Hyprland reported the real rectangle. That read as a small
+    // sideways hiccup just before the opening handoff.
     function estimate(e) {
         const size = sizes[e?.id] ?? { w: Math.min(960, width * 0.62), h: Math.min(640, height * 0.62) }
-        const top = Theme.sizeMenubar, bottom = Theme.sizeDockIcon + 22
-        const s = { w: Math.min(size.w, width - 20), h: Math.min(size.h, height - top - bottom - 20) }
-        return Qt.rect(Math.round((width - s.w) / 2), Math.round(top + (height - top - bottom - s.h) / 2), s.w, s.h)
+        const dockSize = e?.id === "org.goldengate.Web" ? Math.max(100, Prefs.dockSize) : Prefs.dockSize
+        const w = WindowGeometry.fitWidth(size.w, width)
+        const h = WindowGeometry.fitHeight(size.h, height, dockSize, Theme.sizeMenubar)
+        return Qt.rect(Math.round((width - w) / 2),
+            Math.round((height - h) / 2 - WindowGeometry.CENTER_BIAS), w, h)
     }
 
     function launch(e, r) {
