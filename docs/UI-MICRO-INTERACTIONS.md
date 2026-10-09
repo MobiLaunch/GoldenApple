@@ -305,6 +305,14 @@ Now Playing pills, a Mirroring pill, and vertical brightness/volume capsules.
 The horizontal controls use radius = height / 2; there is no square
 connectivity container. Its Wayland
 surface stays fixed; a viewport scrolls additional controls on shorter screens.
+The compact grid caps its unit at 56 px with 10 px gaps: its carrier is
+282 px wide instead of 368 px, circles are 56 px across, connectivity/Focus
+pills are 44 px tall and level capsules are 56 × 152 px. Now Playing is
+76 px tall. Titles fit horizontally and secondary text elides as needed.
+Pills and circular actions squash slightly on press and bounce to 102.5%
+on release/keyboard activation, then settle within 335 ms. Reduce Motion
+stops an active bounce immediately. Only visual transforms move; the grid
+does not resize during interaction.
 Display and Now Playing expand into larger controls while existing network,
 audio-output, mirroring and Focus workflows remain available.
 
@@ -312,6 +320,12 @@ audio-output, mirroring and Focus workflows remain available.
 updates the fill directly in a stationary hit area; keys and accessibility
 change the level in five-percent steps. Return or the disclosure opens controls.
 Its standalone fill animation can stop immediately for Reduce Motion.
+The slider's painted glass stretches vertically by up to 5.5% when pulled
+past an endpoint (4% at the endpoint), with a small opposing horizontal
+compression. Release settles over 280 ms. The drag area stays outside the
+transformed glass, so midpoint mapping and external value bindings remain
+accurate. Keyboard endpoint changes get the same restrained settle; Reduce
+Motion suppresses the stretch and cancels a settle in progress.
 The search clear affordance also uses a standalone animation: toggling
 Reduce Motion stops an unchanged, partially revealed affordance immediately
 without Qt's non-root-animation warning.
@@ -331,8 +345,17 @@ Launchpad. Search and folders use the shared glass, with a readable dark tint
 behind white text in the fallback renderer. Spotlight has a taller round
 search capsule and pill-shaped result selection.
 
-Only one 180 ms QML fade reveals Launchpad. Its grid does not zoom; wallpaper
-blur is cached as a stationary texture. Hyprland's matching layers have
+Launchpad keeps its transparent Wayland window mapped between openings,
+with hidden content, an empty input region and no keyboard focus while
+closed. This preserves render resources rather than recreating the window
+at each entrance. Two preparation frames at 0.1% opacity upload icons and
+prepare the backdrop before one 150 ms fade; closing/reducing motion cancels
+that preparation. Its grid does not zoom. Wallpaper blur is cached at a
+quarter of each screen dimension, rather than allocating a full-resolution
+blur layer. Launchpad is excluded from HyprGlass's layer list: its wallpaper
+already supplies the blur, and a second full-screen glass mask added both
+render work and a threshold transition during the fade. Its search and folder
+retain canonical QML glass. Hyprland's matching layers have
 `no_anim on`, avoiding a second whole-surface popin over the QML animations.
 The catalog is frozen for each opening, so icon scans cannot rearrange it
 during the fade. Dismissal clears the query/folder after the fade, not during

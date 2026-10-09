@@ -34,6 +34,7 @@ def check(cond: bool, what: str) -> None:
 sync = SYNC.read_text()
 names = re.search(r'layers:namespaces "([^"]+)"', sync).group(1).split(",")
 thresholds = dict(p.split("=") for p in re.search(r'layers:namespace_mask_thresholds "([^"]+)"', sync).group(1).split(","))
+check("gg-applications" not in names, "Launchpad's blurred wallpaper is never a full-screen glass lens")
 for qml in sorted((ROOT / "shell").glob("*.qml")):
     text = qml.read_text()
     glassy = re.search(r"\bGlass\s*\{|component \w+: Glass", text) is not None or "HyprGlass" in text

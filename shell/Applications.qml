@@ -28,6 +28,8 @@ PanelWindow {
     property real contextY: 0
     property var contextItems: []
     property real reveal: 0
+    readonly property bool showing: open || reveal > 0
+    property int warmFrames: 0
     property var sessionCatalog: []
     property var sessionHome: []
     property alias query: search.text
@@ -84,8 +86,24 @@ PanelWindow {
     }
     function syncReveal() {
         fade.stop()
+        warmFrames = 0
         if (Theme.reduceMotion) { reveal = open ? 1 : 0; finishDismissal() }
+        else if (open && reveal === 0) {
+            // Upload icons and prepare the blur before the visible fade.
+            // One faint frame permits rendering without flashing the grid.
+            reveal = 0.001
+            warmFrames = 2
+        }
         else { fade.to = open ? 1 : 0; fade.start() }
+    }
+    FrameAnimation {
+        running: apps.warmFrames > 0
+        onTriggered: {
+            if (--apps.warmFrames === 0 && apps.open && !Theme.reduceMotion) {
+                fade.to = 1
+                fade.start()
+            }
+        }
     }
     onOpenChanged: {
         if (open) {
@@ -99,7 +117,7 @@ PanelWindow {
     NumberAnimation {
         id: fade
         target: apps; property: "reveal"
-        duration: 180; easing.type: Easing.OutCubic
+        duration: 150; easing.type: Easing.OutCubic
         onFinished: apps.finishDismissal()
     }
     Connections { target: Theme; function onReduceMotionChanged() { apps.syncReveal() } }
@@ -147,7 +165,10 @@ PanelWindow {
     function toggle() { open ? dismiss() : present() }
     function launch(entry) { entry.execute(); dismiss() }
 
-    visible: open || reveal > 0
+    // Keep the Wayland window and its render resources alive. Unmapping it
+    // on every close recreated the scene graph during the next entrance.
+    // Closed content draws nothing and the empty mask passes all input through.
+    visible: true
     anchors { top: true; bottom: true; left: true; right: true }
     exclusionMode: ExclusionMode.Ignore
     // Menu bar and Dock are promoted above this surface while it is shown.
@@ -289,16 +310,18 @@ PanelWindow {
     Item {
         id: backdrop
         anchors.fill: parent
+        visible: apps.showing
         opacity: apps.reveal
         // Cache the stationary wallpaper/effect; the entrance composites one
         // texture instead of re-running the full-screen blur each frame.
         layer.enabled: GraphicsInfo.api !== GraphicsInfo.Software
+        layer.textureSize: Qt.size(Math.max(1, Math.ceil(width / 4)), Math.max(1, Math.ceil(height / 4)))
 
         Image {
             id: wall
             anchors.fill: parent
             source: Paths.fileUrl(Prefs.wallpaper)
-            sourceSize: Qt.size(Math.max(1, apps.width / 2), Math.max(1, apps.height / 2))
+            sourceSize: Qt.size(Math.max(1, apps.width / 4), Math.max(1, apps.height / 4))
             fillMode: Image.PreserveAspectCrop
             asynchronous: true
             // Keep a painted fallback below the blur effect. Without GPU
@@ -328,6 +351,7 @@ PanelWindow {
     Glass {
         id: searchBox
         objectName: "launchpadSearch"
+        visible: apps.showing
         anchors { horizontalCenter: parent.horizontalCenter; top: parent.top; topMargin: 51 * apps.layoutScale }
         width: Math.min(244 * apps.layoutScale, apps.width - 48); height: 40 * apps.layoutScale; radius: height / 2
         role: "clear"
@@ -362,6 +386,7 @@ PanelWindow {
     ListView {
         id: pages
         objectName: "launchpadGrid"
+        visible: apps.showing
         anchors { top: parent.top; topMargin: apps.gridTop; horizontalCenter: parent.horizontalCenter }
         width: apps.width
         height: apps.gridHeight

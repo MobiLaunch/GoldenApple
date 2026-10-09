@@ -5,7 +5,7 @@
 import QtQuick
 import "theme"
 
-Glass {
+Item {
     id: level
     property real value: 0.5
     property string label: "Level"
@@ -17,13 +17,18 @@ Glass {
 
     implicitWidth: 76
     implicitHeight: 164
-    radius: width / 2
-    role: "clear"
-    pressed: drag.pressed
-    hovered: hover.hovered && enabled
-    // The pointer's coordinate space stays fixed during a drag.
-    pressScale: 1
-    lift: 0
+    readonly property real radius: width / 2
+    readonly property bool pressed: drag.pressed
+    property real tension: 0
+    readonly property real visualXScale: Theme.reduceMotion ? 1 : 1 - tension * 0.4
+    readonly property real visualYScale: Theme.reduceMotion ? 1 : 1 + tension
+    function releaseStretch() {
+        relax.stop()
+        if (Theme.reduceMotion || !enabled) tension = 0
+        else relax.start()
+    }
+    NumberAnimation { id: relax; target: level; property: "tension"; to: 0; duration: 280; easing.type: Easing.OutBack; easing.overshoot: 1.1 }
+    onEnabledChanged: if (!enabled) { relax.stop(); tension = 0 }
     activeFocusOnTab: true
     opacity: enabled ? 1 : 0.45
     readonly property real shownValue: Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 0
@@ -42,8 +47,20 @@ Glass {
         if (!enabled || !Number.isFinite(v)) return
         v = Math.max(0, Math.min(1, v))
         if (v !== shownValue) moved(v)
+        if (!drag.pressed && (v >= 0.99 || v <= 0.01) && !Theme.reduceMotion) {
+            tension = 0.035
+            releaseStretch()
+        }
     }
-    function fromY(y) { if (height > 0) set(1 - y / height) }
+    function fromY(y) {
+        if (height <= 0 || !enabled) return
+        const v = Math.max(0, Math.min(1, 1 - y / height))
+        set(v)
+        if (!Theme.reduceMotion) {
+            const overscroll = Math.max(0, -y, y - height) / height
+            tension = Math.min(0.055, 0.012 + 0.028 * Math.pow(Math.abs(2 * v - 1), 8) + overscroll * 0.08)
+        }
+    }
     function expand() { if (enabled && expandable) expanded() }
 
     Accessible.role: Accessible.Slider
@@ -62,32 +79,51 @@ Glass {
         else if (event.key === Qt.Key_End) { set(1); event.accepted = true }
     }
 
-    Item {
-        id: fillClip
-        objectName: "levelSliderFill"
-        x: 1
-        width: Math.max(0, level.width - 2)
-        height: 0
-        y: level.height - 1 - height
-        clip: true
-        Component.onCompleted: { level.fillReady = true; level.syncFill(false) }
-        Rectangle {
-            width: fillClip.width
-            height: Math.max(0, level.height - 2)
-            y: fillClip.height - height
-            radius: width / 2
-            color: "#fafaff"
+    // Only the painted capsule stretches. The drag area, value mapping and
+    // layout remain fixed, including when the pointer pulls past an endpoint.
+    Glass {
+        id: visual
+        objectName: "levelSliderVisual"
+        anchors.fill: parent
+        radius: level.radius
+        role: "clear"
+        pressed: drag.pressed
+        hovered: hover.hovered && level.enabled
+        pressScale: 1
+        lift: 0
+        transform: Scale {
+            origin.x: level.width / 2
+            origin.y: level.shownValue >= 0.5 ? level.height : 0
+            xScale: level.visualXScale
+            yScale: level.visualYScale
         }
-    }
-    // A standalone animation can be interrupted immediately; an animation
-    // nested in Behavior cannot be stopped as a root animation in Qt.
-    NumberAnimation { id: fillAnimation; target: fillClip; property: "height"; duration: 105; easing.type: Easing.OutCubic }
-    Symbol {
-        anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: 18 }
-        name: level.symbol
-        size: Math.min(30, level.width * 0.4)
-        tone: level.shownValue > 0.25 ? "dark" : "white"
-        color: level.symbolColor
+        Item {
+            id: fillClip
+            objectName: "levelSliderFill"
+            x: 1
+            width: Math.max(0, level.width - 2)
+            height: 0
+            y: level.height - 1 - height
+            clip: true
+            Component.onCompleted: { level.fillReady = true; level.syncFill(false) }
+            Rectangle {
+                width: fillClip.width
+                height: Math.max(0, level.height - 2)
+                y: fillClip.height - height
+                radius: width / 2
+                color: "#fafaff"
+            }
+        }
+        // A standalone animation can be interrupted immediately; an animation
+        // nested in Behavior cannot be stopped as a root animation in Qt.
+        NumberAnimation { id: fillAnimation; target: fillClip; property: "height"; duration: 105; easing.type: Easing.OutCubic }
+        Symbol {
+            anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: 18 }
+            name: level.symbol
+            size: Math.min(30, level.width * 0.4)
+            tone: level.shownValue > 0.25 ? "dark" : "white"
+            color: level.symbolColor
+        }
     }
     MouseArea {
         id: drag
@@ -95,8 +131,10 @@ Glass {
         enabled: level.enabled
         acceptedButtons: Qt.LeftButton
         onPressedChanged: if (pressed) level.syncFill(false)
-        onPressed: (mouse) => { level.forceActiveFocus(); level.fromY(mouse.y) }
+        onPressed: (mouse) => { relax.stop(); level.forceActiveFocus(); level.fromY(mouse.y) }
         onPositionChanged: (mouse) => { if (pressed) level.fromY(mouse.y) }
+        onReleased: level.releaseStretch()
+        onCanceled: level.releaseStretch()
     }
     TapHandler {
         enabled: level.enabled && level.expandable
@@ -134,6 +172,8 @@ Glass {
         target: Theme
         function onReduceMotionChanged() {
             if (!Theme.reduceMotion) return
+            relax.stop()
+            level.tension = 0
             level.syncFill(false)
         }
     }

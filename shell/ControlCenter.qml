@@ -226,8 +226,8 @@ PanelWindow {
     // ---------------------------------------------------------- the grid
     // Golden Gate: individual glass circles, capsules and rounded cards.
     // The fixed Wayland surface stays unchanged while its content scrolls.
-    readonly property real unit: Math.min(76, Math.max(48, (width - 64) / 4))
-    readonly property real gap: 12
+    readonly property real unit: Math.min(56, Math.max(48, (width - 64) / 4))
+    readonly property real gap: 10
     function span(n) { return n * unit + (n - 1) * gap }
     // Control Center is a fixed grid of modules, as on the Mac: its text
     // follows Text Size only a little (up to 115%), so labels never crowd
@@ -265,6 +265,13 @@ PanelWindow {
     // second material implementation obscures its refraction.
     component Module: Glass {
         id: mod
+        function bounce() { feedback.tap() }
+        pressScale: 1
+        transform: [
+            Scale { origin.x: mod.width / 2; origin.y: mod.height / 2; xScale: feedback.xScale; yScale: feedback.yScale },
+            Translate { y: mod.lift }
+        ]
+        Shared.TactileFeedback { id: feedback; objectName: mod.objectName + "Motion"; pressed: mod.pressed; enabled: mod.enabled }
         radius: Math.min(32, height / 2)
         role: "clear"
         tint: Theme.dark ? Qt.rgba(0.22, 0.22, 0.26, pressed ? 0.62 : hovered ? 0.53 : 0.46)
@@ -281,9 +288,10 @@ PanelWindow {
         transform: Scale { origin.x: glyph.width / 2; origin.y: glyph.height / 2; xScale: glyph.pop; yScale: glyph.pop }
         SequentialAnimation {
             id: popAnim
-            NumberAnimation { target: glyph; property: "pop"; to: 1.22; duration: 110; easing.type: Easing.OutQuad }
-            NumberAnimation { target: glyph; property: "pop"; to: 1; duration: 365; easing.type: Easing.OutBack; easing.overshoot: 2.2 }
+            NumberAnimation { target: glyph; property: "pop"; to: 1.12; duration: 90; easing.type: Easing.OutQuad }
+            NumberAnimation { target: glyph; property: "pop"; to: 1; duration: 210; easing.type: Easing.OutBack; easing.overshoot: 1.1 }
         }
+        Connections { target: Prefs; function onReduceMotionChanged() { if (Prefs.reduceMotion) { popAnim.stop(); glyph.pop = 1 } } }
     }
 
     // The round icon at the start of a capsule: blue while it's on.
@@ -309,20 +317,24 @@ PanelWindow {
         property var toggleAction: null
         property bool toggleOnSpace: false
         signal activated()
+        function trigger(toggle = false) {
+            bounce()
+            if (toggle && toggleAction) toggleAction()
+            else activated()
+        }
         activeFocusOnTab: true
         Keys.onSpacePressed: (event) => {
             if (event.isAutoRepeat) return
-            if (toggleOnSpace && toggleAction) toggleAction()
-            else activated()
+            trigger(toggleOnSpace)
         }
-        Keys.onReturnPressed: activated()
-        Keys.onEnterPressed: activated()
+        Keys.onReturnPressed: trigger()
+        Keys.onEnterPressed: trigger()
         Shared.FocusRing { visible: capsule.activeFocus }
         width: cc.span(2); height: cc.unit
         pressed: capTap.pressed
         hovered: capTap.containsMouse
         radius: height / 2
-        IconDisc { id: capDisc; x: 12; anchors.verticalCenter: parent.verticalCenter; icon: capsule.icon; on: capsule.on; size: Math.min(42, capsule.height - 20) }
+        IconDisc { id: capDisc; x: 8; anchors.verticalCenter: parent.verticalCenter; icon: capsule.icon; on: capsule.on; size: Math.min(32, capsule.height - 12) }
         Column {
             anchors { left: capDisc.right; leftMargin: 9; right: parent.right; rightMargin: 10; verticalCenter: parent.verticalCenter }
             // A module's own name is never cut off ("Bluetoo…"): it shrinks
@@ -335,7 +347,7 @@ PanelWindow {
                 fontSizeMode: Text.HorizontalFit
                 minimumPixelSize: 9
                 elide: Text.ElideRight
-                font { family: Theme.fontUi; pixelSize: cc.cs(13); weight: Font.DemiBold }
+                font { family: Theme.fontUi; pixelSize: cc.cs(12); weight: Font.DemiBold }
             }
             Text {
                 width: parent.width
@@ -343,7 +355,7 @@ PanelWindow {
                 text: capsule.subtitle
                 color: Theme.secondaryLabel
                 elide: Text.ElideRight
-                font { family: Theme.fontUi; pixelSize: cc.cs(11) }
+                font { family: Theme.fontUi; pixelSize: cc.cs(10) }
             }
         }
         MouseArea {
@@ -352,15 +364,15 @@ PanelWindow {
             hoverEnabled: true
             onClicked: (m) => {
                 const onDisc = m.x < capDisc.x + capDisc.width + 4
-                if (onDisc && capsule.toggleAction) capsule.toggleAction()
-                else capsule.activated()
+                capsule.forceActiveFocus()
+                capsule.trigger(onDisc)
             }
         }
         Accessible.role: Accessible.Button
         Accessible.name: capsule.title
         Accessible.description: capsule.subtitle + (toggleOnSpace ? "; Space toggles, Return opens controls" : "")
         Accessible.checked: capsule.on
-        Accessible.onPressAction: activated()
+        Accessible.onPressAction: trigger()
     }
 
     // A row in Screen Mirroring's detail (a device, Stop, Other Displays).
@@ -397,21 +409,23 @@ PanelWindow {
         id: circle
         property string icon
         property string name
+        property string scope: "main"
         property bool on: false
         property string badge: ""
         signal activated()
+        function trigger() { circleDisc.bounce(); activated() }
         width: cc.unit; height: cc.unit + 24
         activeFocusOnTab: true
         Accessible.role: Accessible.Button
         Accessible.name: name
         Accessible.checked: on
-        Accessible.onPressAction: activated()
-        Keys.onSpacePressed: (event) => { if (!event.isAutoRepeat) activated() }
-        Keys.onReturnPressed: activated()
-        Keys.onEnterPressed: activated()
+        Accessible.onPressAction: trigger()
+        Keys.onSpacePressed: (event) => { if (!event.isAutoRepeat) trigger() }
+        Keys.onReturnPressed: trigger()
+        Keys.onEnterPressed: trigger()
         Module {
             id: circleDisc
-            objectName: "ccCircle:" + circle.name
+            objectName: "ccCircle:" + (circle.scope === "main" ? "" : circle.scope + ":") + circle.name
             width: cc.unit; height: cc.unit; radius: width / 2
             pressed: circleTap.pressed
             hovered: circleTap.containsMouse
@@ -419,7 +433,7 @@ PanelWindow {
                 : Theme.dark ? "#75484852" : "#75f0f0f6"
             PopSymbol {
                 anchors.centerIn: parent
-                name: circle.icon; size: 26; on: circle.on
+                name: circle.icon; size: 22; on: circle.on
                 tone: circle.on ? (Theme.dark ? "dark" : "white") : "auto"
             }
             Shared.FocusRing { visible: circle.activeFocus }
@@ -438,7 +452,7 @@ PanelWindow {
             color: Theme.dark ? "#65656b" : "#8e8e93"
             Text { anchors.centerIn: parent; text: circle.badge; color: "#ffffff"; font.pixelSize: 14 }
         }
-        MouseArea { id: circleTap; anchors.fill: parent; hoverEnabled: true; onClicked: { circle.forceActiveFocus(); circle.activated() } }
+        MouseArea { id: circleTap; anchors.fill: parent; hoverEnabled: true; onClicked: { circle.forceActiveFocus(); circle.trigger() } }
     }
 
     component SliderTile: Shared.LevelSlider {
@@ -466,7 +480,7 @@ PanelWindow {
             delegate: Item {
                 required property var modelData
                 objectName: "ccTransport:" + (transport.large ? "expanded:" : "compact:") + modelData.icon
-                width: transport.large ? 48 : 40; height: width
+                width: transport.large ? 48 : 32; height: width
                 enabled: modelData.enabled
                 opacity: enabled ? 1 : 0.3
                 activeFocusOnTab: true
@@ -646,7 +660,7 @@ PanelWindow {
         Module {
             id: nowPlaying
             objectName: "ccNowPlaying"
-            width: cc.span(4); height: 88; radius: height / 2
+            width: cc.span(4); height: 76; radius: height / 2
             activeFocusOnTab: true
             Accessible.role: Accessible.Button
             Accessible.name: "Now Playing"
@@ -656,8 +670,8 @@ PanelWindow {
             Keys.onReturnPressed: cc.showDetail("media")
             // Behind the transport: opening details never swallows Play.
             MouseArea { anchors.fill: parent; onClicked: cc.showDetail("media") }
-            Shared.RoundedImage { x: 16; y: 16; width: 56; height: 56; radius: 18; source: cc.player?.trackArtUrl ?? "" }
-            Symbol { x: 33; y: 33; visible: !cc.player?.trackArtUrl; name: "music"; size: 22; tone: "auto" }
+            Shared.RoundedImage { x: 12; y: 18; width: 40; height: 40; radius: 12; source: cc.player?.trackArtUrl ?? "" }
+            Symbol { x: 22; y: 28; visible: !cc.player?.trackArtUrl; name: "music"; size: 20; tone: "auto" }
             Item {
                 x: parent.width - 44; y: 10; width: 28; height: 28
                 activeFocusOnTab: true
@@ -673,12 +687,12 @@ PanelWindow {
                 Shared.FocusRing { }
             }
             Text {
-                x: 86; y: 24; width: parent.width - 226
+                x: 62; y: 14; width: parent.width - 110
                 text: cc.player?.trackTitle || "Not Playing"; elide: Text.ElideRight
                 color: Theme.label; font { family: Theme.fontUi; pixelSize: cc.cs(14); weight: Font.DemiBold }
             }
             Text {
-                x: 86; y: 45; width: parent.width - 226
+                x: 62; y: 37; width: parent.width - 176
                 text: cc.player?.trackArtist || "Music"; elide: Text.ElideRight
                 color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: cc.cs(11) }
             }
@@ -820,7 +834,7 @@ PanelWindow {
             Shared.LevelSlider {
                 objectName: "ccExpandedLevel"
                 anchors.horizontalCenter: parent.horizontalCenter
-                width: 94; height: 238
+                width: 80; height: 204
                 label: cc.detail === "display" ? "Display brightness" : "Sound volume"
                 symbol: cc.detail === "display" ? "sun-max" : "speaker-wave"
                 symbolColor: cc.detail === "display" ? "#ffd45c" : "#25c9df"
@@ -834,9 +848,9 @@ PanelWindow {
             Row {
                 visible: cc.detail === "display"
                 anchors.horizontalCenter: parent.horizontalCenter
-                spacing: 28
-                Circle { icon: "contrast"; name: "Dark Mode"; on: Theme.dark; onActivated: cc.setDarkMode() }
-                Circle { icon: "sun"; name: "Night Shift"; on: cc.nightShift; onActivated: cc.setNightShift() }
+                spacing: 18
+                Circle { scope: "display"; icon: "contrast"; name: "Dark Mode"; on: Theme.dark; onActivated: cc.setDarkMode() }
+                Circle { scope: "display"; icon: "sun"; name: "Night Shift"; on: cc.nightShift; onActivated: cc.setNightShift() }
             }
             Text {
                 visible: cc.detail === "sound"
