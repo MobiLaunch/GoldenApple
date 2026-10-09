@@ -184,6 +184,22 @@ if "nav.selectedPath =" in (ROOT / "apps/lcode/Navigator.qml").read_text(encodin
 if 'visible: rightEdge - leftEdge > 220' in (ROOT / 'apps/lcode/Workspace.qml').read_text(encoding='utf-8'):
     failures.append("LCode activity toolbar has two competing visible bindings")
 
+require("apps/files.qml", [
+    'property string typeAhead: ""',
+    "function typeSelect(letter) {",
+    "const cycling = typeAhead === char",
+    "typeAheadDwell.restart()",
+    "function selectAtIndex(index, modifiers) {",
+    "event.key === Qt.Key_Home || event.key === Qt.Key_End",
+    "event.key === Qt.Key_PageUp || event.key === Qt.Key_PageDown",
+    'objectName: "filesTypeAheadCue"',
+    "Keys.onEscapePressed: confirmEmpty.close()",
+])
+require("shell/MenuBar.qml", [
+    'barMenu.open && !wasOpen && key !== "Window"',
+    '&& openTitle !== key) barMenu.reopen()',
+])
+
 if failures:
     print("\n".join("FAIL " + failure for failure in failures), file=sys.stderr)
     raise SystemExit(1)
