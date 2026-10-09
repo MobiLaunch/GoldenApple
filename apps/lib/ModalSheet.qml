@@ -15,6 +15,7 @@ Item {
     property real panelHeight: content.childrenRect.height + 40
     property bool dismissible: true
     property Item returnFocus: null
+    property bool closing: false
     default property alias content: content.data
     readonly property alias panel: panel
     signal closed()
@@ -22,18 +23,24 @@ Item {
     function open() {
         if (shown) return
         const active = sheet.Window.window?.activeFocusItem
-        returnFocus = active && active !== panel ? active : null
+        // A closed() listener can immediately open a replacement sheet.
+        // Retain the original trigger instead of capturing the transient
+        // focus while the old panel is being disabled.
+        if (!closing)
+            returnFocus = active && active !== panel ? active : null
         shown = true
         panel.forceActiveFocus()
     }
     function close() {
         if (!shown) return
         shown = false
+        closing = true
         closed()
-        const origin = returnFocus
+        closing = false
         // A close callback may have opened a new sheet immediately. Returning
-        // focus to the old trigger must not steal it from that new dialog.
+        // focus to the old trigger must not steal it from the new dialog.
         if (!shown) {
+            const origin = returnFocus
             returnFocus = null
             if (origin && origin.visible && origin.enabled) origin.forceActiveFocus()
         }
