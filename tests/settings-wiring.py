@@ -26,7 +26,7 @@ required = {
     "DateTimePane.qml": ["timedatectl"],
     "DisplaysPane.qml": ['setPref(["display", "brightness"]', 'setPref(["display", "nightShift"]', 'setPref(["display", "warmth"]'],
     "DockPane.qml": ['set("size"', 'set("animateLaunch"', 'set("indicators"'],
-    "FocusPane.qml": ['setPref(["focus", "dnd"]'],
+    "FocusPane.qml": ['sys.run(["gg-pref", "focus." + key', 'sys.prefs = sys.setIn(sys.prefs, ["focus"]', 'FocusState { id: status', 'function setSchedule('],
     "KeyboardPane.qml": ["setInput("],
     "PrivacyPane.qml": ["setPrivacy("],
     "SoundPane.qml": ["wpctl"],
