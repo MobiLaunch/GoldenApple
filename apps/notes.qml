@@ -45,7 +45,8 @@ ShellRoot {
             // Over the list: the folder and how many notes it has.
             Column {
                 // Past the traffic lights and sidebar buttons while the sidebar is hidden.
-                x: win.sidebarWidth > 0 ? app.listX + 16 : 176
+                x: Math.max(win.sidebarWidth > 0 ? app.listX + 16 : 176,
+                    win.toolbarLeadingEnd)
                 anchors.verticalCenter: parent.verticalCenter
                 Text {
                     text: app.folderTitle
