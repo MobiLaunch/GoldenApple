@@ -62,6 +62,18 @@ ShellRoot {
                 visible: mail.configured
                 anchors { right: parent.right; rightMargin: 14; verticalCenter: parent.verticalCenter }
                 spacing: 8
+                ToolbarPill {
+                    visible: !mail.composing && mail.selectedMessage.uid === mail.selectedUid && !!mail.selectedUid
+                    ToolbarButton {
+                        text: "Reply"
+                        enabled: !!mail.address(mail.selectedMessage.from)
+                        onClicked: mail.reply()
+                    }
+                    ToolbarButton {
+                        text: "Forward"
+                        onClicked: mail.forward()
+                    }
+                }
                 ToolbarButton {
                     round: true; symbol: "arrow-clockwise"
                     enabled: !mail.loading && !mail.sending && !mail.composing
@@ -94,7 +106,7 @@ ShellRoot {
                     width: parent.width; text: "Inbox"; symbol: "download"
                     selected: mail.selectedFolder === "inbox" && !mail.composing
                     badge: mail.unreadCount ? String(mail.unreadCount) : ""
-                    onClicked: { mail.selectedFolder = "inbox"; mail.composing = false }
+                    onClicked: { mail.selectedFolder = "inbox"; mail.composing = false; mail.selectedUid = "" }
                 }
                 SidebarRow {
                     width: parent.width; text: "Drafts"; symbol: "doc"
@@ -121,7 +133,7 @@ ShellRoot {
                     text: mail.account || "Mail Account"
                     symbol: "envelope"
                     selected: false
-                    onClicked: { mail.selectedFolder = "inbox"; mail.composing = false }
+                    onClicked: { mail.selectedFolder = "inbox"; mail.composing = false; mail.selectedUid = "" }
                 }
             }
         ]
@@ -157,6 +169,7 @@ ShellRoot {
             property real preferredListWidth: 336
             readonly property bool compactReading: width < 700
             property string queuedUid: ""
+            property string readError: ""
             readonly property var filteredMessages: {
                 const q = query.trim().toLocaleLowerCase()
                 return messages.filter((m) => {
@@ -342,6 +355,7 @@ ShellRoot {
             function read(uid) {
                 if (!uid) return
                 selectedUid = uid
+                readError = ""
                 if (selectedMessage.uid !== uid) selectedMessage = ({})
                 if (readProc.running) {
                     queuedUid = uid
@@ -483,10 +497,12 @@ ShellRoot {
                                     return copy
                                 })
                             } else {
-                                mail.error = r.error ?? "The message could not be opened."
+                                mail.readError = r.error ?? "The message could not be opened."
+                                mail.error = mail.readError
                             }
                         } catch (e) {
-                            mail.error = "The message could not be opened."
+                            mail.readError = "The message could not be opened."
+                            mail.error = mail.readError
                         }
                     }
                 }
@@ -893,10 +909,30 @@ ShellRoot {
                         text: "Choose a message in your inbox to read it here."
                     }
                     ProgressBar {
-                        visible: !!mail.selectedUid && mail.selectedMessage.uid !== mail.selectedUid
+                        visible: !!mail.selectedUid && !mail.readError &&
+                                 mail.selectedMessage.uid !== mail.selectedUid
                         anchors.centerIn: parent
                         width: Math.min(230, parent.width - 50)
                         indeterminate: true
+                    }
+                    Column {
+                        visible: !!mail.selectedUid && !!mail.readError
+                        anchors.centerIn: parent
+                        width: Math.min(390, parent.width - 50)
+                        spacing: 12
+                        Text {
+                            width: parent.width
+                            text: mail.readError
+                            wrapMode: Text.WordWrap
+                            horizontalAlignment: Text.AlignHCenter
+                            color: Theme.secondaryLabel
+                            font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
+                        }
+                        Button {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            text: "Try Again"
+                            onClicked: mail.read(mail.selectedUid)
+                        }
                     }
                     Flickable {
                         id: messageReader
