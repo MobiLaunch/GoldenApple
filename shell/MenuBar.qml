@@ -294,17 +294,15 @@ PanelWindow {
                         text: Battery.percent + "%"
                         dark: bar.darkRight
                     }
-                    Rectangle {
-                        implicitWidth: 25; implicitHeight: 12; radius: 4
-                        color: "transparent"; border.width: 1.2
-                        border.color: Qt.rgba(battery.ink.r, battery.ink.g, battery.ink.b, 0.45)
-                        Rectangle {
-                            x: 2.5; y: 2.5; height: parent.height - 5; radius: 1.8
-                            color: battery.level <= 0.1 && !battery.charging ? Theme.accentRed : battery.ink
-                            width: Math.max(1.5, (parent.width - 5) * battery.level)
-                        }
+                    BatteryGlyph {
+                        objectName: "menuBarBatteryGlyph"
+                        level: battery.level
+                        charging: battery.charging
+                        full: Battery.full
+                        ink: battery.ink
+                        reduceMotion: Prefs.reduceMotion
+                        Layout.alignment: Qt.AlignVCenter
                     }
-                    Rectangle { implicitWidth: 1.8; implicitHeight: 4.5; color: Qt.rgba(battery.ink.r, battery.ink.g, battery.ink.b, 0.45) }
                 }
             }
             // Bluetooth and Sound (Control Center settings), each opening its
