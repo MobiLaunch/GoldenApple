@@ -222,6 +222,10 @@ ShellRoot {
             property bool editingOccurrence: false
             property string editingDate: ""
             property var pendingEdit: ({})
+            property string resetOccurrenceDate: ""
+            property var resetOriginal: ({})
+            property string exceptionsMessage: ""
+            readonly property var pendingSeries: events.find(e => e.id === pendingEdit.id) || ({})
 
             readonly property string selectedKey: Qt.formatDate(selectedDate, "yyyy-MM-dd")
             readonly property var selectedEvents: Recurrence.occurrencesOn(events, selectedKey)
@@ -341,6 +345,15 @@ ShellRoot {
                 skipProc.command = ["python3", helper, "occurrence-skip", deleteTarget, deleteOccurrence]
                 skipProc.stdinEnabled = true
                 skipProc.running = true
+            }
+
+            function resetOccurrence(date) {
+                if (resetProc.running || !pendingSeries.id) return
+                resetOccurrenceDate = date
+                resetOriginal = JSON.parse(JSON.stringify(pendingSeries))
+                resetProc.command = ["python3", helper, "occurrence-reset", pendingSeries.id, date]
+                resetProc.stdinEnabled = true
+                resetProc.running = true
             }
 
             function restore() {
@@ -562,6 +575,26 @@ ShellRoot {
                         } catch (e) {
                             cal.error = "The event could not be duplicated."
                         }
+                    }
+                }
+            }
+
+            Process {
+                id: resetProc
+                stdinEnabled: true
+                onStarted: {
+                    write(JSON.stringify({expected: cal.resetOriginal}))
+                    stdinEnabled = false
+                }
+                onExited: stdinEnabled = true
+                stdout: StdioCollector {
+                    onStreamFinished: {
+                        let r = null
+                        try { r = JSON.parse(text) } catch (e) {}
+                        if (r?.ok) {
+                            cal.exceptionsMessage = "Restored " + cal.resetOccurrenceDate + "."
+                            cal.reload()
+                        } else cal.exceptionsMessage = r?.error ?? "This date could not be restored."
                     }
                 }
             }
@@ -1003,13 +1036,94 @@ ShellRoot {
             }
 
             Glass {
+                id: exceptionsSheet
+                objectName: "calendarExceptionManager"
+                parent: win.overlay
+                visible: false
+                anchors.centerIn: parent
+                width: Math.min(460, parent.width - 30)
+                height: 420
+                radius: 22
+                tint: Theme.glassRegular.tint
+                z: 120
+                Column {
+                    anchors { fill: parent; margins: 18 }
+                    spacing: 10
+                    Text {
+                        text: "Changed Dates"
+                        color: Theme.label
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(18); weight: Font.DemiBold }
+                    }
+                    Text {
+                        width: parent.width
+                        text: "Restore a date to the original repeating event. Other dates are untouched."
+                        wrapMode: Text.WordWrap
+                        color: Theme.secondaryLabel
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                    }
+                    Flickable {
+                        id: exceptionList
+                        width: parent.width
+                        height: 264
+                        clip: true
+                        boundsBehavior: Flickable.StopAtBounds
+                        contentHeight: exceptionRows.implicitHeight
+                        Column {
+                            id: exceptionRows
+                            width: exceptionList.width
+                            spacing: 6
+                            Repeater {
+                                model: Object.keys(cal.pendingSeries.exceptions || {}).sort()
+                                delegate: Rectangle {
+                                    id: exRow
+                                    required property string modelData
+                                    readonly property var change: (cal.pendingSeries.exceptions || {})[modelData]
+                                    width: parent.width
+                                    height: 54
+                                    radius: 8
+                                    color: Theme.dark ? "#16ffffff" : "#09000000"
+                                    Text {
+                                        anchors { left: parent.left; leftMargin: 10; verticalCenter: parent.verticalCenter }
+                                        width: parent.width - 104
+                                        text: exRow.modelData + (exRow.change ? " → " + exRow.change.date : " · Skipped")
+                                        elide: Text.ElideRight
+                                        color: Theme.label
+                                        font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                                    }
+                                    Button {
+                                        anchors { right: parent.right; rightMargin: 8; verticalCenter: parent.verticalCenter }
+                                        text: "Restore"
+                                        enabled: !resetProc.running
+                                        onClicked: cal.resetOccurrence(exRow.modelData)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    Text {
+                        width: parent.width
+                        visible: !!cal.exceptionsMessage
+                        text: cal.exceptionsMessage
+                        wrapMode: Text.WordWrap
+                        color: Theme.secondaryLabel
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+                    }
+                    Button {
+                        text: "Close"
+                        enabled: !resetProc.running
+                        onClicked: exceptionsSheet.visible = false
+                    }
+                }
+            }
+
+            Glass {
                 id: editScope
                 objectName: "calendarEditScope"
                 parent: win.overlay
                 visible: false
                 anchors.centerIn: parent
                 width: 390
-                height: 180
+                height: Object.keys(cal.pendingSeries.exceptions || {}).length ? 226 : 180
                 radius: 22
                 tint: Theme.glassRegular.tint
                 z: 110
@@ -1024,9 +1138,18 @@ ShellRoot {
                     Text {
                         width: parent.width
                         wrapMode: Text.WordWrap
-                        text: "Change only this date, or update every event in the series?"
+                        text: "Change only this date, update the series, or restore a previously changed date?"
                         color: Theme.secondaryLabel
                         font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                    }
+                    Button {
+                        visible: Object.keys(cal.pendingSeries.exceptions || {}).length > 0
+                        text: "Manage Changed Dates…"
+                        onClicked: {
+                            editScope.visible = false
+                            cal.exceptionsMessage = ""
+                            exceptionsSheet.visible = true
+                        }
                     }
                     Row {
                         anchors.right: parent.right
