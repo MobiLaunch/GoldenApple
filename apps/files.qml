@@ -247,6 +247,14 @@ ShellRoot {
             property string selectedPath: ""
             property var selectedPaths: []
             property string selectionAnchor: ""
+            // Finder-style type-to-select. This buffer is ephemeral: it never
+            // alters the toolbar search query or the directory listing.
+            property string typeAhead: ""
+            Timer {
+                id: typeAheadDwell
+                interval: 950
+                onTriggered: files.typeAhead = ""
+            }
             readonly property string selectedName: selectedEntry?.name ?? ""
             readonly property bool selectedFolder: selectedEntry?.folder ?? false
             property string view: "grid"
@@ -336,7 +344,12 @@ ShellRoot {
             onSortKeyChanged: rememberView()
             onDescendingChanged: rememberView()
             onShowHiddenChanged: rememberView()
-            onPathChanged: { clearSelection(); if (prefsReady) { restoreView(); rememberView() } }
+            onPathChanged: {
+                typeAheadDwell.stop()
+                typeAhead = ""
+                clearSelection()
+                if (prefsReady) { restoreView(); rememberView() }
+            }
             function clearSelection() { selectedPaths = []; selectedPath = ""; selectionAnchor = "" }
             function setSelection(paths, primary) {
                 selectedPaths = Array.from(new Set(paths))
@@ -589,12 +602,40 @@ ShellRoot {
             // (keyd sends ⌘ shortcuts as Ctrl, and ⌘↑ ⌘↓ as Ctrl+Home/End.)
             readonly property int selectedIndex: entries.findIndex((e) => e.path === selectedPath)
             readonly property var selectedEntry: selectedIndex >= 0 ? entries[selectedIndex] : null
-            function moveSelection(step, modifiers) {
+            function selectAtIndex(index, modifiers) {
                 if (!entries.length) return
-                const i = selectedIndex < 0 ? 0 : Math.max(0, Math.min(entries.length - 1, selectedIndex + step))
+                const i = Math.max(0, Math.min(entries.length - 1, index))
                 select(entries[i], modifiers)
                 if (view === "grid") grid.positionViewAtIndex(i, GridView.Contain)
                 else list.positionViewAtIndex(i, ListView.Contain)
+            }
+            function moveSelection(step, modifiers) {
+                selectAtIndex(selectedIndex < 0 ? 0 : selectedIndex + step, modifiers)
+            }
+            function typeSelect(letter) {
+                if (!entries.length || editDialog.shown || confirmEmpty.shown
+                    || infoDialog.visible || !!conflict || quickLook.open) return false
+                const char = letter.toLocaleLowerCase()
+                // Repeating a single character cycles through matching names;
+                // a multi-character sequence narrows the prefix instead.
+                const cycling = typeAhead === char
+                let prefix = cycling ? char : typeAhead + char
+                function find(from, query) {
+                    for (let n = 0; n < entries.length; n++) {
+                        const i = (from + n) % entries.length
+                        if (entries[i].name.toLocaleLowerCase().startsWith(query)) return i
+                    }
+                    return -1
+                }
+                let i = find(cycling ? Math.max(0, selectedIndex + 1) : 0, prefix)
+                if (i < 0 && typeAhead && !cycling) {
+                    prefix = char
+                    i = find(Math.max(0, selectedIndex + 1), prefix)
+                }
+                typeAhead = prefix
+                typeAheadDwell.restart()
+                if (i >= 0) selectAtIndex(i, 0)
+                return true
             }
             function rename() {
                 if (!selectedEntry || selectedPaths.length !== 1 || inTrash || inComputer || busy) return
@@ -638,12 +679,26 @@ ShellRoot {
                     if (selectedPaths.length && !inTrash && !inComputer) runOperation(["trash"].concat(selectedPaths), "trash")
                 } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
                     if (!quickLook.open) rename()
-                } else if (event.key === Qt.Key_Escape) clearSelection()
-                else if (event.key === Qt.Key_Left && view === "grid") moveSelection(-1, event.modifiers)
-                else if (event.key === Qt.Key_Right && view === "grid") moveSelection(1, event.modifiers)
-                else if (event.key === Qt.Key_Up) moveSelection(-columns, event.modifiers)
-                else if (event.key === Qt.Key_Down) moveSelection(columns, event.modifiers)
-                else return
+                } else if (event.key === Qt.Key_Escape) {
+                    typeAheadDwell.stop()
+                    typeAhead = ""
+                    clearSelection()
+                }
+                else if (!ctrl && (event.key === Qt.Key_Home || event.key === Qt.Key_End))
+                    selectAtIndex(event.key === Qt.Key_Home ? 0 : entries.length - 1, event.modifiers)
+                else if (!ctrl && (event.key === Qt.Key_PageUp || event.key === Qt.Key_PageDown)) {
+                    const rows = view === "grid" ? Math.max(1, Math.floor(grid.height / grid.cellHeight))
+                        : Math.max(1, Math.floor(list.height / 36))
+                    moveSelection((event.key === Qt.Key_PageDown ? 1 : -1) * rows * columns, event.modifiers)
+                }
+                else if (!ctrl && event.key === Qt.Key_Left && view === "grid") moveSelection(-1, event.modifiers)
+                else if (!ctrl && event.key === Qt.Key_Right && view === "grid") moveSelection(1, event.modifiers)
+                else if (!ctrl && event.key === Qt.Key_Up) moveSelection(-columns, event.modifiers)
+                else if (!ctrl && event.key === Qt.Key_Down) moveSelection(columns, event.modifiers)
+                else if (!(event.modifiers & (Qt.ControlModifier | Qt.AltModifier | Qt.MetaModifier))
+                    && event.text.length === 1 && event.text.trim().length === 1) {
+                    if (!typeSelect(event.text)) return
+                } else return
                 event.accepted = true
             }
 
@@ -1586,6 +1641,37 @@ ShellRoot {
 
             PopupMenu { id: menu; parent: win.overlay }
 
+            // Small, passive keyboard-search cue: visible for one short beat,
+            // with no search panel and no changes to the actual folder query.
+            Rectangle {
+                id: typeAheadCue
+                objectName: "filesTypeAheadCue"
+                parent: win.overlay
+                anchors { right: parent.right; rightMargin: 22; bottom: parent.bottom; bottomMargin: 40 }
+                z: 85
+                enabled: false
+                width: Math.min(Math.max(100, cueLabel.implicitWidth + 24), Math.max(0, parent.width - 44))
+                height: 34
+                radius: 13
+                color: Theme.windowBg
+                border { width: 1; color: Theme.separator }
+                opacity: files.typeAhead ? 1 : 0
+                visible: opacity > 0.001
+                Behavior on opacity {
+                    NumberAnimation { duration: Theme.reduceMotion ? 0 : 120; easing.type: Easing.OutCubic }
+                }
+                Text {
+                    id: cueLabel
+                    anchors.centerIn: parent
+                    text: "Jump to  " + files.typeAhead
+                    color: Theme.label
+                    elide: Text.ElideRight
+                    width: Math.max(0, parent.width - 24)
+                    horizontalAlignment: Text.AlignHCenter
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: Font.Medium }
+                }
+            }
+
             // Empty Trash asks first, as on the Mac.
             ModalSheet {
                 id: confirmEmpty
@@ -1598,7 +1684,7 @@ ShellRoot {
                     if (confirmEmpty.shown) emptyButton.forceActiveFocus()
                 })
                 onClosed: files.forceActiveFocus()
-                Keys.onEscapePressed: visible = false
+                Keys.onEscapePressed: confirmEmpty.close()
                 Column {
                     id: confirmColumn
                     anchors { left: parent.left; right: parent.right; top: parent.top }
