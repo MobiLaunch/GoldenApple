@@ -14,6 +14,25 @@ import "components"
 PanelWindow {
     id: dock
     property bool liveSession: false
+    // Same curated app art as Launchpad, so an open-source-matched app does not
+    // switch back to its plain Linux icon in the Dock after installation.
+    property var approvedIcons: ({})
+    FileView {
+        path: (Quickshell.env("XDG_CACHE_HOME") || Quickshell.env("HOME") + "/.cache")
+              + "/golden-gate/launchpad-icons.json"
+        printErrors: false
+        watchChanges: true
+        onFileChanged: reload()
+        onLoaded: {
+            try { const data = JSON.parse(text()); dock.approvedIcons = data.apps || ({}) }
+            catch (e) { dock.approvedIcons = ({}) }
+        }
+    }
+    function iconForApp(entry) {
+        const path = approvedIcons[String(entry?.id ?? "")]?.icon
+        if (path && String(path).startsWith("/")) return "file://" + encodeURI(path)
+        return Quickshell.iconPath(entry?.icon ?? "", "application-x-executable")
+    }
     // Keep in Dock / Remove from Dock, dragging and Launchpad's Add to Dock all
     // edit the one list in desktop.json (dock.pinned), through Prefs.
     readonly property var keptIds: Prefs.keptInDock
@@ -456,7 +475,7 @@ PanelWindow {
             property real activationLift: 0
             y: tile.height - height + launchOffset - activationLift
             z: Math.round(width * 10)
-            source: tile.calendar ? calBlank.source : Quickshell.iconPath(tile.modelData.icon, "application-x-executable")
+            source: tile.calendar ? calBlank.source : dock.iconForApp(tile.modelData)
             sourceSize: Qt.size(dock.baseSize * 2, dock.baseSize * 2)
             smooth: true; mipmap: true
             // Pressed, the icon darkens and settles a few percent, without
