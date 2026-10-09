@@ -36,7 +36,8 @@ Rectangle {
     GG.Segmented { objectName: "segments"; x: 30; y: 185; options: ["Auto", "Light", "Dark"] }
     GG.PopUpButton { objectName: "popupButton"; x: 30; y: 240; options: ["Small", "Medium", "Large"]; menuParent: parent }
     GG.ToolbarButton { objectName: "toolbar"; x: 300; y: 130; text: "Edit" }
-    GG.TextField { objectName: "field"; x: 30; y: 295; placeholder: "Search"; width: 240 }
+    GG.TextField { objectName: "field"; x: 30; y: 295; placeholder: "Regular field"; width: 240 }
+    GG.TextField { objectName: "searchField"; x: 290; y: 295; placeholder: "Search"; width: 205; search: true }
     GG.SpringValue { objectName: "spring" }
     GG.SidebarRow { objectName: "sidebarRow"; x: 300; y: 185; width: 180; text: "Inbox"; symbol: "envelope"; selected: true }
     GG.ProgressBar { objectName: "progress"; x: 300; y: 240; width: 180; value: 0.42 }
@@ -198,6 +199,39 @@ class Controls(unittest.TestCase):
         self.assertEqual(spy.count(),0)
         QTest.mouseClick(self.view,Qt.LeftButton,pos=QPoint(315,198))
         self.assertEqual(spy.count(),0)
+
+    def test_search_clear_affordance_and_escape(self):
+        search = self.control('searchField')
+        regular = self.control('field')
+        search.setProperty('text', 'macOS magic')
+        APP.processEvents()
+        clear = search.findChild(QObject, 'searchClearButton')
+        self.assertIsNotNone(clear)
+        self.assertTrue(clear.property('shown'))
+        # Mouse and keyboard clear the query without dismissing its parent.
+        QTest.mouseClick(self.view, Qt.LeftButton, pos=QPoint(479, 308))
+        self.assertEqual(search.property('text'), '')
+        search.setProperty('text', 'another query')
+        editor = search.property('input')
+        editor.forceActiveFocus()
+        QTest.keyClick(self.view, Qt.Key_Escape)
+        APP.processEvents()
+        self.assertEqual(search.property('text'), '')
+        self.assertTrue(self.view.isVisible())
+        # Plain fields preserve Escape for their dialog/window to handle.
+        regular.setProperty('text', 'draft')
+        reg_editor = regular.property('input')
+        reg_editor.forceActiveFocus()
+        QTest.keyClick(self.view, Qt.Key_Escape)
+        self.assertEqual(regular.property('text'), 'draft')
+        search.setProperty('text', 'quiet')
+        self.root.reduce()
+        clear = search.findChild(QObject, 'searchClearButton')
+        APP.processEvents()
+        self.assertAlmostEqual(clear.property('opacity'), 1.0, delta=0.02)
+        search.setProperty('text', '')
+        APP.processEvents()
+        self.assertAlmostEqual(clear.property('opacity'), 0.0, delta=0.02)
 
     def test_reduce_motion_stops_spring(self):
         spring = self.control('spring')
