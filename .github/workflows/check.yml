@@ -556,6 +556,8 @@ jobs:
           QT_QUICK_BACKEND: software
       - name: "Mail drafts: persistence, private permissions and damaged-file protection"
         run: python tests/mail-drafts.py
+      - name: Smart Mail categories, real Important flags and reactive Dock badges
+        run: python tests/mail-categories-badges.py
       - name: "Web downloads: completed, cancelled, interrupted and paused states"
         run: python tests/browser-downloads.py
         env:
