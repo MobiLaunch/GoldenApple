@@ -162,8 +162,8 @@ Item {
     // software renderer (no shaders), as before.
     ShaderEffect {
         id: shadowEffect
-        readonly property real drop: (root.material?.shadowY ?? 0) * (root.pressed ? 0.4 : root.hovered ? 1.3 : 1)
-        property real blurPx: (root.role === "control" ? 0.5 : 1.0) * 32 / 3
+        readonly property real drop: (root.material?.shadowY ?? 0) * (root.pressed ? 0.55 : root.hovered ? 1.10 : 1)
+        property real blurPx: root.role === "control" ? 10 : root.role === "menu" ? 20 : root.role === "dock" ? 19 : 17
         property real pad: Math.ceil(blurPx * 3 + Math.abs(drop))
         x: -pad; y: -pad
         width: root.width + 2 * pad; height: root.height + 2 * pad
@@ -173,7 +173,7 @@ Item {
         property real radius: root.r
         property real sigma: blurPx
         property real offsetY: drop
-        property real strength: (root.material?.shadowOpacity ?? 0) + (root.pressed ? -0.06 : root.hovered ? 0.05 : 0)
+        property real strength: Math.max(0, (root.material?.shadowOpacity ?? 0) + (root.pressed ? -0.04 : root.hovered ? 0.025 : 0))
         property color color: root.shadow.a > 0 ? root.shadow : "#000000"
         Behavior on strength { NumberAnimation { duration: Theme.reduceMotion ? 0 : 140 } }
         fragmentShader: Qt.resolvedUrl("shaders/glassshadow.frag.qsb")
