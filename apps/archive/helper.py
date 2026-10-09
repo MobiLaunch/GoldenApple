@@ -83,8 +83,16 @@ def members(path: Path) -> list[tuple[str, bool, int, object]]:
                 raise ArchiveError("Archive contains too many files.")
             for item in items:
                 name = item.filename if kind == "zip" else item.name
-                parts = safe_name(name.rstrip("/"))
                 is_dir = item.is_dir() if kind == "zip" else item.isdir()
+                # tar -czf archive.tar.gz . creates a harmless "./" root
+                # and "./file" members. Treat that prefix as local (not ".."),
+                # while still rejecting traversal in every other segment.
+                name = name.replace("\\", "/")
+                while name.startswith("./"):
+                    name = name[2:]
+                if not name.rstrip("/") and is_dir:
+                    continue
+                parts = safe_name(name.rstrip("/"))
                 if kind == "zip":
                     mode = (item.external_attr >> 16) & 0xFFFF
                     file_type = stat.S_IFMT(mode)
