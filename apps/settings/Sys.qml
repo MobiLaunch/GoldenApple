@@ -180,7 +180,19 @@ Item {
     function setWindow(key, value) {
         if (!windowKeywords[key]) return
         setRecord("windows", key, value, (ok) => {
-            if (ok) applyLive(["hyprctl", "keyword", windowKeywords[key], typeof value === "boolean" ? String(value).toLowerCase() : String(value)], "windows.conf")
+            if (ok) {
+                // machine.conf contains the optional windows.conf snapshot.
+                // Refresh it after each saved change so a Hyprland reload
+                // keeps the user's choices without ever sourcing a missing
+                // windows.conf from the main configuration.
+                const setup = sys.config + "/hypr/golden-gate/machine-conf.sh"
+                const generated = sys.config + "/hypr/golden-gate/machine.conf"
+                run(["sh", setup, generated], (out, code) => {
+                    if (code !== 0) sys.notApplied("machine.conf", out || "Could not update session defaults.")
+                })
+                applyLive(["hyprctl", "keyword", windowKeywords[key],
+                    typeof value === "boolean" ? String(value).toLowerCase() : String(value)], "windows.conf")
+            }
         })
     }
 
