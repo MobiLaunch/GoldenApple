@@ -347,7 +347,24 @@ PanelWindow {
             BarItem {
                 visible: Prefs.barCitron
                 Accessible.name: "Citron Intelligence"
-                Shared.Symbol { name: "wand"; size: 15; tone: bar.darkRight ? "dark" : "white" }
+                // A tiny static counterpart to the system's prismatic orb.
+                // Never run expensive blur shaders in the always-visible menu bar.
+                Rectangle {
+                    width: 16; height: 16; radius: 8
+                    color: "#080a0f"
+                    border { width: 0.8; color: bar.darkRight ? "#667d93" : "#a0b6ca" }
+                    Rectangle {
+                        x: 2; y: 7; width: 12; height: 3; radius: 1.5
+                        gradient: Gradient {
+                            orientation: Gradient.Horizontal
+                            GradientStop { position: 0; color: "#314c85" }
+                            GradientStop { position: 0.32; color: "#a9cfff" }
+                            GradientStop { position: 0.52; color: "#fff0c4" }
+                            GradientStop { position: 0.73; color: "#f3a5bb" }
+                            GradientStop { position: 1; color: "#536bb4" }
+                        }
+                    }
+                }
                 onClicked: Quickshell.execDetached(["qs", "-c", "golden-gate", "ipc", "call", "citron", "ask"])
             }
             // Privacy: a dot while an app uses the microphone (yellow), camera
