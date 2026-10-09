@@ -24,6 +24,7 @@ Rectangle {
     property int actions: 0
     function dark() { Theme.dark = true }
     function reduce() { Theme.reduceMotion = true }
+    function standardMotion() { Theme.reduceMotion = false }
     function showMenu() { menu.popup(button, 0, 30, [
         {text: "First", action: () => actions++}, {separator: true},
         {text: "Disabled", enabled: false}, {text: "Last", action: () => actions += 10}
@@ -53,6 +54,7 @@ class Controls(unittest.TestCase):
         self.root = c.create()
         self.assertIsNotNone(self.root, '\n'.join(e.toString() for e in c.errors()))
         self.view.setContent(url, c, self.root)
+        self.root.standardMotion()
         self.view.show()
         self.view.requestActivate()
         QTest.qWait(30)
@@ -130,6 +132,48 @@ class Controls(unittest.TestCase):
         self.assertEqual(spy.count(), 1)
         self.assertAlmostEqual(self.control('progress').property('value'), 0.42, places=2)
         self.assertEqual(self.control('emptyState').property('title'), 'Nothing Here')
+
+    def test_keyboard_and_accessibility_controls_have_tactile_feedback(self):
+        # Pointer presses already light up Liquid Glass; keyboard actions must
+        # do the same and then clear their feedback without altering layout.
+        for name in ('button','toolbar'):
+            obj=self.control(name)
+            spy=QSignalSpy(obj.clicked)
+            self.key(obj,Qt.Key_Space)
+            self.assertEqual(spy.count(),1,name)
+            self.assertTrue(obj.property('keyboardPressed'),name)
+            QTest.qWait(135)
+            self.assertFalse(obj.property('keyboardPressed'),name)
+            self.key(obj,Qt.Key_Return)
+            self.assertEqual(spy.count(),2,name)
+            obj.setProperty('enabled',False)
+            self.key(obj,Qt.Key_Space)
+            self.assertEqual(spy.count(),2,'disabled controls must never activate')
+
+    def test_segmented_selection_snaps_with_reduce_motion(self):
+        seg=self.control('segments')
+        pill=seg.findChild(QObject,'segmentedSelectionPill')
+        self.assertIsNotNone(pill,'selected glass capsule should be inspectable')
+        self.root.reduce()
+        seg.setProperty('current',2)
+        APP.processEvents()
+        at_end=pill.property('x')
+        seg.setProperty('current',0)
+        APP.processEvents()
+        self.assertGreater(at_end, pill.property('x'))
+        self.assertAlmostEqual(pill.property('x'),2,delta=1,
+                               msg='Reduce Motion must move selection instantly')
+        QTest.qWait(80)
+        self.assertAlmostEqual(pill.property('x'),2,delta=1)
+
+    def test_disabled_sidebar_ignores_keyboard_and_pointer_activation(self):
+        row=self.control('sidebarRow')
+        spy=QSignalSpy(row.clicked)
+        row.setProperty('enabled',False)
+        self.key(row,Qt.Key_Space)
+        self.assertEqual(spy.count(),0)
+        QTest.mouseClick(self.view,Qt.LeftButton,pos=QPoint(315,198))
+        self.assertEqual(spy.count(),0)
 
     def test_reduce_motion_stops_spring(self):
         spring = self.control('spring')
