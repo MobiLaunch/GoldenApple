@@ -219,6 +219,33 @@ require("shell/MenuBar.qml", [
     '&& openTitle !== key) barMenu.reopen()',
 ])
 
+require("apps/lib/ModalSheet.qml", [
+    "property bool closing: false",
+    "if (!closing)",
+    "closing = true",
+    "closing = false",
+    "enabled: sheet.shown",
+    "onClicked: if (sheet.dismissible) sheet.close()",
+])
+require("apps/files.qml", [
+    'objectName: "filesInfo"',
+    "infoDialog.open()",
+    "infoDialog.close()",
+    "property bool pathCopied: false",
+    'text: infoDialog.pathCopied ? "Copied" : "Copy Path"',
+    "onClicked: infoDialog.copyPath()",
+    "onNavigateRequested: (delta) => {",
+    "quickLook.focusPreview()",
+])
+require("apps/files/QuickLook.qml", [
+    "signal navigateRequested(int delta)",
+    "function focusPreview() {",
+    "Keys.onPressed: (event) => {",
+    "look.navigateRequested(-1)",
+    "look.navigateRequested(1)",
+    "look.openRequested(look.entry)",
+])
+
 if failures:
     print("\n".join("FAIL " + failure for failure in failures), file=sys.stderr)
     raise SystemExit(1)
