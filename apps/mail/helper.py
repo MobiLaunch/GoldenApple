@@ -545,8 +545,13 @@ def cmd_list() -> int:
             # Persist a local badge count for the Dock even when Mail closes.
             # The value is refreshed only after a successful inbox fetch.
             unread_uids = [str(m["uid"]) for m in result if m["unread"]]
-            atomic_json(MAIL_BADGE, {"account": account, "unread": len(unread_uids),
-                                     "uids": unread_uids})
+            try:
+                atomic_json(MAIL_BADGE, {"account": account, "unread": len(unread_uids),
+                                         "uids": unread_uids})
+            except OSError:
+                # Badges are optional; never fail a successful IMAP inbox
+                # because this session's local state directory is unavailable.
+                pass
             return emit(True, messages=result, account=account)
         finally:
             try:
