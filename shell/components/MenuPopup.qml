@@ -28,6 +28,9 @@ PopupWindow {
     // again a moment later, with the new items, where it now belongs.
     property var shown: items
     property bool reopening: false
+    // Ignore a delayed focus-clear from the OLD surface during menu switching.
+    // The new popup grabs focus again as soon as its new surface appears.
+    property bool suppressClear: false
     visible: (open || vanish.running) && !reopening
     color: "transparent"
     function shape(list) {
@@ -43,7 +46,14 @@ PopupWindow {
     onPlaceChanged: if (open && visible) reopen()
     function reopen() {
         reopening = true
+        suppressClear = true
+        clearGrace.restart()
         reopenTimer.restart()
+    }
+    Timer {
+        id: clearGrace
+        interval: 240
+        onTriggered: menu.suppressClear = false
     }
     Timer {
         id: reopenTimer
@@ -78,6 +88,8 @@ PopupWindow {
     }
 
     onOpenChanged: if (open) {
+        clearGrace.stop()
+        suppressClear = false
         reopenTimer.stop()
         reopening = false
         shown = items

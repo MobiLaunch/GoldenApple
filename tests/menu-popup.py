@@ -60,6 +60,8 @@ glass = (ROOT / "apps/lib/Glass.qml").read_text()
 check("e.item.mapFromItem(null, s0.x, s0.y)" in glass and "root.parent.mapToItem(e.item" not in glass,
       "the lens maps through the scene, never into another window")
 check("onPlaceChanged: if (open && visible) reopen()" in popup, "a move while up reopens it")
+check("property bool suppressClear: false" in popup and "clearGrace.restart()" in popup,
+      "menu switching suppresses late clears from the prior popup surface")
 check("items: menu.shown" in popup and "shape(items) === shape(shown)" in popup,
       "what's shown is fixed while up; new rows reopen it, refreshed actions don't")
 for f in sorted((ROOT / "shell").rglob("*.qml")):
@@ -67,7 +69,8 @@ for f in sorted((ROOT / "shell").rglob("*.qml")):
     for menu in re.findall(r"MenuPopup \{\s*\n\s*id: (\w+)", text):
         grab = re.search(r"windows: \[" + menu + r"\]\s*\n\s*active: (.*)\n\s*onCleared: (.*)", text)
         if grab:
-            check(f"!{menu}.reopening" in grab.group(1) and f"!{menu}.reopening" in grab.group(2),
+            check(f"!{menu}.reopening" in grab.group(1) and f"!{menu}.reopening" in grab.group(2) and
+                  f"!{menu}.suppressClear" in grab.group(2),
                   f"{f.name} {menu}: its focus grab waits out a reopen")
 
 shell = (ROOT / "shell/shell.qml").read_text()

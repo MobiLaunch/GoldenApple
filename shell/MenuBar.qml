@@ -434,7 +434,7 @@ PanelWindow {
     HyprlandFocusGrab {
         windows: [systemMenu]
         active: systemMenu.open && !systemMenu.reopening
-        onCleared: if (!systemMenu.reopening) systemMenu.open = false
+        onCleared: if (!systemMenu.reopening && !systemMenu.suppressClear) systemMenu.open = false
     }
 
     // The app's own menu, under its name: Hide and Quit for the app in front
@@ -466,7 +466,7 @@ PanelWindow {
     HyprlandFocusGrab {
         windows: [appMenu]
         active: appMenu.open && !appMenu.reopening
-        onCleared: if (!appMenu.reopening) appMenu.open = false
+        onCleared: if (!appMenu.reopening && !appMenu.suppressClear) appMenu.open = false
     }
 
     // Window: the Mac's Window menu with Sequoia's Move & Resize, for the window
@@ -571,7 +571,7 @@ PanelWindow {
     HyprlandFocusGrab {
         windows: [windowMenu]
         active: windowMenu.open && !windowMenu.reopening
-        onCleared: if (!windowMenu.reopening) windowMenu.open = false
+        onCleared: if (!windowMenu.reopening && !windowMenu.suppressClear) windowMenu.open = false
     }
 
     // Menus after the app's name. An app's own menus need the appmenu bridge.
@@ -654,7 +654,7 @@ PanelWindow {
     HyprlandFocusGrab {
         windows: [batteryMenu]
         active: batteryMenu.open && !batteryMenu.reopening
-        onCleared: if (!batteryMenu.reopening) batteryMenu.open = false
+        onCleared: if (!batteryMenu.reopening && !batteryMenu.suppressClear) batteryMenu.open = false
     }
     MenuPopup {
         id: barMenu
@@ -668,6 +668,6 @@ PanelWindow {
     HyprlandFocusGrab {
         windows: [barMenu]
         active: barMenu.open && !barMenu.reopening
-        onCleared: if (!barMenu.reopening) barMenu.open = false
+        onCleared: if (!barMenu.reopening && !barMenu.suppressClear) barMenu.open = false
     }
 }
