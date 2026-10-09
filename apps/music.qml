@@ -591,6 +591,14 @@ ShellRoot {
                         color: Theme.secondaryLabel
                         font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
                     }
+                    Text {
+                        width: parent.width
+                        visible: !!musicLib.playlistError
+                        text: musicLib.playlistError
+                        wrapMode: Text.WordWrap
+                        color: "#ff453a"
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+                    }
                     Flickable {
                         width: parent.width
                         height: Math.max(90, parent.height - 144)
@@ -683,6 +691,14 @@ ShellRoot {
                         color: Theme.secondaryLabel
                         font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
                     }
+                    Text {
+                        width: parent.width
+                        visible: !!musicLib.playlistError
+                        text: musicLib.playlistError
+                        wrapMode: Text.WordWrap
+                        color: "#ff453a"
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+                    }
                     ListView {
                         id: playlistEditorList
                         width: parent.width
@@ -767,6 +783,14 @@ ShellRoot {
                         text: "Restore a playlist without changing any music files. If its name is already in use, Music restores it with a new name."
                         color: Theme.secondaryLabel
                         font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                    }
+                    Text {
+                        width: parent.width
+                        visible: !!musicLib.playlistError
+                        text: musicLib.playlistError
+                        wrapMode: Text.WordWrap
+                        color: "#ff453a"
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
                     }
                     Flickable {
                         id: deletedScroller
