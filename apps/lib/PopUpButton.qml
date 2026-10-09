@@ -21,7 +21,7 @@ Item {
     Keys.onDownPressed: openMenu()
     FocusRing {}
     function openMenu() {
-        if (!enabled || !menuParent || !options.length) return
+        if (!enabled || !menuParent || !options.length || menu.visible) return
         forceActiveFocus()
         menu.popup(pop, 0, pop.height + 4, options.map((o, i) => ({
             text: o,
@@ -35,8 +35,8 @@ Item {
         anchors.fill: parent
         radius: 7
         role: "control"
-        pressed: ma.pressed
-        hovered: ma.containsMouse
+        pressed: ma.pressed || menu.visible
+        hovered: ma.containsMouse && pop.enabled
         shadow: Theme.dark ? "#40000000" : "#14000000"
     }
     Text {
@@ -49,12 +49,17 @@ Item {
     }
     Symbol {
         anchors { right: parent.right; rightMargin: 7; verticalCenter: parent.verticalCenter }
-        name: "chevron-updown"; tone: "auto"; size: 11; opacity: 0.8
+        name: "chevron-updown"; tone: "auto"; size: 11
+        opacity: menu.visible ? 1 : 0.8
+        scale: !Theme.reduceMotion && menu.visible ? 0.9 : 1
+        Behavior on scale { enabled: !Theme.reduceMotion; NumberAnimation { duration: 125; easing.type: Easing.OutCubic } }
+        Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 0 : 110 } }
     }
     MouseArea {
         id: ma
         anchors.fill: parent
         hoverEnabled: true
+        enabled: pop.enabled
         onClicked: pop.openMenu()
     }
     PopupMenu { id: menu; parent: pop.menuParent ?? pop; menuWidth: Math.max(220, pop.width) }

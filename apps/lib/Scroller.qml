@@ -23,13 +23,13 @@ Item {
     readonly property bool inside: parent === flickable
     x: flickable ? (inside ? 0 : flickable.x) + flickable.width - width - 2 : 0
     y: flickable ? (inside ? 0 : flickable.y) + 2 : 0
-    width: wide ? 11 : 9
+    width: wide ? 12 : 9
     height: flickable ? flickable.height - 4 : 0
     z: (flickable && !inside ? flickable.z : 0) + 1
     visible: needed
     opacity: needed && (Theme.alwaysShowScrollbars || active || wide) ? 1 : 0
-    Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : (s.opacity > 0 ? 320 : 120) } }
-    Behavior on width { NumberAnimation { duration: 120 } }
+    Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 0 : (s.opacity > 0 ? 300 : 115) } }
+    Behavior on width { enabled: !Theme.reduceMotion; NumberAnimation { duration: 125; easing.type: Easing.OutCubic } }
     Accessible.role: Accessible.ScrollBar
 
     Connections {
@@ -45,7 +45,7 @@ Item {
         radius: width / 2
         color: Theme.dark ? "#14ffffff" : "#0d000000"
         opacity: s.wide || Theme.alwaysShowScrollbars ? 1 : 0
-        Behavior on opacity { NumberAnimation { duration: 120 } }
+        Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 0 : 120 } }
     }
     Rectangle {
         id: knob
@@ -56,11 +56,13 @@ Item {
         y: (s.height - height) * (ratio < 1 ? pos / (1 - ratio) : 0)
         radius: width / 2
         color: Theme.dark ? (s.wide ? "#a6ffffff" : "#80ffffff") : (s.wide ? "#80000000" : "#59000000")
+        Behavior on color { ColorAnimation { duration: Theme.reduceMotion ? 0 : 100 } }
     }
     HoverHandler { id: hover }
     MouseArea {
         id: drag
         anchors.fill: parent
+        enabled: s.needed
         property real grab: -1
         onPressed: (m) => {
             if (m.y >= knob.y && m.y <= knob.y + knob.height) { grab = m.y - knob.y; return }

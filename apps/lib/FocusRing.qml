@@ -6,6 +6,13 @@ Rectangle {
     radius: Math.min(width, height) / 2
     color: "transparent"
     border { width: 2; color: Theme.accent }
+    // Gentle two-tone focus halo without a GPU blur or a layout change.
+    Rectangle {
+        anchors { fill: parent; margins: -2 }
+        radius: parent.radius + 2
+        color: "transparent"
+        border { width: 2; color: Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, Theme.dark ? 0.23 : 0.16) }
+    }
     visible: opacity > 0
     opacity: parent.activeFocus && parent.enabled ? 1 : 0
     scale: parent.activeFocus && parent.enabled && !Theme.reduceMotion ? 1 : 0.985

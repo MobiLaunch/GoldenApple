@@ -40,9 +40,17 @@ Item {
         id: track
         x: sl.inset; width: sl.travel
         anchors.verticalCenter: parent.verticalCenter
-        height: 4; radius: 2
+        height: ma.containsMouse && sl.enabled ? 5 : 4; radius: height / 2
+        Behavior on height { enabled: !Theme.reduceMotion; NumberAnimation { duration: 100; easing.type: Easing.OutCubic } }
         color: Theme.dark ? "#3dffffff" : "#1f000000"
-        Rectangle { width: track.width * sl.shownValue; height: parent.height; radius: 2; color: Theme.accent }
+        Rectangle {
+            width: track.width * sl.shownValue; height: parent.height
+            radius: height / 2; color: Theme.accent
+            Behavior on width {
+                enabled: !Theme.reduceMotion && !ma.pressed
+                NumberAnimation { duration: 105; easing.type: Easing.OutCubic }
+            }
+        }
         Repeater {
             model: sl.steps > 0 ? sl.steps + 1 : 0
             delegate: Rectangle {
@@ -73,6 +81,7 @@ Item {
         id: ma
         anchors.fill: parent
         hoverEnabled: true
+        enabled: sl.enabled
         onPressed: (m) => { sl.forceActiveFocus(); sl.set((m.x - sl.inset) / sl.travel) }
         onPositionChanged: (m) => { if (pressed) sl.set((m.x - sl.inset) / sl.travel) }
     }
