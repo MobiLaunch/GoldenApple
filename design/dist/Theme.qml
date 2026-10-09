@@ -5,8 +5,8 @@ import QtQuick
 QtObject {
     property bool dark: false
 
-    readonly property string fontUi: "SF Pro Text"
-    readonly property string fontDisplay: "SF Pro Display"
+    readonly property string fontUi: "Golden Gate UI"
+    readonly property string fontDisplay: "Golden Gate Display"
     readonly property real textCaption2: 10
     readonly property real textCaption: 11
     readonly property real textFootnote: 12
