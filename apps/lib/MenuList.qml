@@ -24,6 +24,9 @@ Glass {
     signal back()                       // Left in a submenu
 
     role: "menu"
+    // Keep the refractive rounded glass rim, but do not render the large
+    // shader shadow: Wayland popup surfaces clip it to a hard rectangle.
+    shadowEnabled: false
     radius: Theme.radiusMenu
     width: Math.max(minimumWidth, Math.min(maximumWidth, widest + 2 * pad))
     // Height from the items, not the column: a popup surface needs its size
