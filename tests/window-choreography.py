@@ -246,6 +246,44 @@ require("apps/files/QuickLook.qml", [
     "look.openRequested(look.entry)",
 ])
 
+
+require("apps/files.qml", [
+    "function navigableRows() {",
+    "id: favoriteRows",
+    "id: volumeRows",
+    "function focusRow(step, edge) {",
+    "rows[next].forceActiveFocus()",
+    "ensureVisible(rows[next])",
+    'event.key === Qt.Key_Down',
+    'event.key === Qt.Key_Up',
+    'event.key === Qt.Key_Home',
+    'event.key === Qt.Key_End',
+    'objectName: crumb.folded ? "filesCrumbsFolded" : "filesCrumb:" + crumb.c.path',
+    "Keys.onReturnPressed: crumbButton.activate()",
+    "Keys.onSpacePressed: (event) => {",
+    "Accessible.onPressAction: crumbButton.activate()",
+])
+require("apps/lib/SidebarRow.qml", [
+    "row.activeFocus && row.enabled ? 1 : 0",
+])
+require("apps/settings.qml", [
+    "readonly property bool expanded: app.matches.length > 0 && search.input.activeFocus",
+    "enabled: expanded",
+    "scale: expanded || Theme.reduceMotion ? 1 : 0.984",
+    "NumberAnimation { duration: Theme.reduceMotion ? 0 : (suggestions.expanded ? 145 : 100);",
+])
+require("apps/passwords/helper.py", [
+    "def code_remaining(at: float, period: int) -> int:",
+    'return period - (int(at) % period)',
+    '"remaining": code_remaining(now, spec["period"])',
+])
+require("tests/passwords-app.py", [
+    "H.code_remaining(at, 30) == expected",
+    "(29.999, 1)",
+    "(30, 30)",
+])
+
+
 if failures:
     print("\n".join("FAIL " + failure for failure in failures), file=sys.stderr)
     raise SystemExit(1)
