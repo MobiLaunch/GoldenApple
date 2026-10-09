@@ -62,7 +62,7 @@ jobs:
           grep -q -- '--disable-gpu' apps/browser/launch.sh
           grep -q 'rendererRestarts' apps/browser/Browser.qml
           grep -q 'visible: pane.joining === networkBlock.modelData.ssid' apps/settings/panes/WifiPane.qml
-          grep -q 'fontUi: "SF Pro Text"' apps/lib/theme/Theme.qml
+          grep -q 'fontUi: "Golden Gate UI"' apps/lib/theme/Theme.qml
           grep -q 'import QtWebEngine' apps/browser/Browser.qml
           grep -q 'Search or enter website name' apps/browser/Browser.qml
           grep -q 'WebEngineProfile' apps/browser/Browser.qml
@@ -262,6 +262,8 @@ jobs:
         run: python tests/tiling.py
       - name: Archive Utility ZIP/TAR safety, collisions and Files handoff
         run: python tests/archive-utility.py
+      - name: Messages media provider security and WebRTC / FaceTime link contracts
+        run: python tests/messages-media.py
       - name: Window restore stays onscreen and rejects stale window IDs
         run: python tests/tile-layout.py
       - name: Files' backend (drag and drop, Trash, Recents)
