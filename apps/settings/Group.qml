@@ -21,9 +21,20 @@ Rectangle {
     Rectangle {
         y: group.title ? 30 : 0
         width: parent.width; height: col.height
-        radius: 12
-        color: Theme.dark ? "#0dffffff" : "#08000000"
-        border { width: 0.5; color: Theme.dark ? "#14ffffff" : "#0d000000" }
+        radius: 14
+        color: Theme.dark ? "#2b2b30" : "#f2f3f6"
+        border { width: 0.75; color: Theme.dark ? "#39ffffff" : "#ffffffff" }
+        // Shallow material only: the surface borrows Golden Gate's bright
+        // leading-edge highlight without allocating a backdrop shader for
+        // each settings group, so scrolling dozens of rows stays cheap.
+        Rectangle {
+            anchors { fill: parent; margins: 1 }
+            radius: 13
+            gradient: Gradient {
+                GradientStop { position: 0; color: Theme.dark ? "#0dffffff" : "#aaffffff" }
+                GradientStop { position: 1; color: Theme.dark ? "#02000000" : "#00ffffff" }
+            }
+        }
         Column {
             id: col
             width: parent.width
