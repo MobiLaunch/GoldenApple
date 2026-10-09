@@ -171,6 +171,13 @@ def totp(secret: str, at: float | None = None, digits: int = 6, period: int = 30
     return str(value % (10 ** digits)).zfill(digits)
 
 
+def code_remaining(at: float, period: int) -> int:
+    # Using int(period - fractional_seconds) can round to zero during the
+    # final fractional second, while the current code is still valid.
+    # Use the same whole-second counter as TOTP to guarantee 1..period.
+    return period - (int(at) % period)
+
+
 def valid_totp(text: str) -> bool:
     try:
         spec = totp_parse(text)
@@ -429,7 +436,7 @@ def cmd_codes() -> int:
         except (ValueError, TypeError, base64.binascii.Error):
             continue
         out.append({"id": item_id, "code": code, "period": spec["period"],
-                    "remaining": spec["period"] - (int(now) % spec["period"])})
+                    "remaining": code_remaining(now, spec["period"])})
     return emit(True, codes=out)
 
 
