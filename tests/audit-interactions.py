@@ -153,7 +153,7 @@ class Interactions(unittest.TestCase):
         search.setProperty("text", "volume")
         self.eval(search, "input.forceActiveFocus()")
         QTest.keyClick(self.root, Qt.Key_Down)
-        QTest.qWait(10)
+        QTest.qWait(190)  # Let the 145 ms suggestion enter animation finish.
         self.assertEqual(p.property("selectedMatch"), 0)
         self.assertTrue(self.root.findChild(QObject, "settingsSuggestions").property("visible"))
         QTest.keyClick(self.root, Qt.Key_Return)
