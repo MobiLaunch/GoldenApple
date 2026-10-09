@@ -808,7 +808,7 @@ PanelWindow {
         focus: cc.detail !== ""
         Keys.onEscapePressed: { cc.detail = ""; stage.contentY = 0 }
 
-        readonly property string title: ({ wifi: "Wi-Fi", bluetooth: "Bluetooth", sound: "Sound Output", mirroring: "Screen Mirroring", focus: "Focus", display: "Display", media: "Now Playing" })[cc.detail] ?? ""
+        readonly property string title: ({ wifi: "Wi-Fi", bluetooth: "Bluetooth", sound: "Sound Output", mirroring: "Screen Mirroring", focus: "Focus", display: "Display", media: "Now Playing", airpods: "AirPods" })[cc.detail] ?? ""
         readonly property bool hasSwitch: cc.detail === "wifi" || cc.detail === "bluetooth"
         readonly property bool on: cc.detail === "wifi" ? cc.wifiOn : (Bluetooth.defaultAdapter?.enabled ?? false)
 
