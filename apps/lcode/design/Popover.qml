@@ -49,6 +49,7 @@ Item {
     Item {
         id: panel
         objectName: "designPopoverPanel"
+        enabled: pop.shown
         width: Math.min(pop.panelWidth, Math.max(0, pop.width - 16))
         height: Math.min(pop.panelHeight, Math.max(0, pop.height - 16))
         opacity: pop.shown ? 1 : 0

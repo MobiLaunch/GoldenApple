@@ -55,6 +55,8 @@ Item {
         id: panel
         objectName: "sharedSheetPanel"
         focus: true
+        // Keep the exit fade visible while making every child immediately inert.
+        enabled: sheet.shown
         width: Math.min(sheet.panelWidth, Math.max(0, sheet.width - 32))
         height: Math.min(sheet.panelHeight, Math.max(0, sheet.height - Theme.sizeToolbar - 12))
         x: (parent.width - width) / 2

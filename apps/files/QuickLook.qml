@@ -70,6 +70,7 @@ Item {
     Rectangle {
         id: card
         objectName: "quickLookCard"
+        enabled: look.open
         readonly property real maxW: look.width - 120
         readonly property real maxH: look.height - 110
         // A picture sits this far inside the card, so its square corners stay
