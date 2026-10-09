@@ -67,6 +67,9 @@ install_extras() {
   rm -rf "$SHARE/ui" "$SHARE/apps"
   cp -a "$REPO/apps/lib" "$SHARE/ui"
   cp -a "$REPO/apps" "$SHARE/apps"
+  # The Qt6 daemon is installed separately from source once, but the OS owns
+  # its service, UI, Settings and command-line bridge on every normal update.
+  install -Dm644 "$REPO/apps/citronpods/citronpods-daemon.service"     "$R/usr/lib/systemd/user/citronpods-daemon.service"
   rm -rf "$SHARE/apps/lib"
   ln -s ../ui "$SHARE/apps/lib"
   rm -rf "$SHARE/apps/desktop"
