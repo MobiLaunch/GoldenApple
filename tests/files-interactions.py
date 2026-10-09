@@ -281,6 +281,30 @@ class Interactions(unittest.TestCase):
         QTest.keyClick(self.root,Qt.Key_PageUp)
         self.assertTrue(self.eval('selectedIndex >= 0'))
 
+    def test_sidebar_keyboard_roving_keeps_current_folder(self):
+        sidebar=self.root.findChild(QObject,"filesSidebarScroll")
+        self.assertIsNotNone(sidebar)
+        before=self.eval('path')
+        self.eval('favoriteRows.itemAt(0).forceActiveFocus()')
+        self.assertTrue(self.eval('favoriteRows.itemAt(0).activeFocus'))
+        QTest.keyClick(self.root,Qt.Key_Down)
+        self.assertTrue(self.eval('favoriteRows.itemAt(1).activeFocus'))
+        self.assertEqual(self.eval('path'),before)
+        QTest.keyClick(self.root,Qt.Key_End)
+        self.assertTrue(self.eval('favoriteRows.itemAt(favoriteRows.count - 1).activeFocus'))
+        QTest.keyClick(self.root,Qt.Key_Home)
+        self.assertTrue(self.eval('favoriteRows.itemAt(0).activeFocus'))
+        self.assertEqual(self.eval('path'),before)
+
+    def test_path_bar_breadcrumb_keyboard_activation(self):
+        crumb=self.root.findChild(QObject,"filesCrumb:"+str(self.home))
+        self.assertIsNotNone(crumb)
+        crumb.forceActiveFocus()
+        self.assertTrue(crumb.property('activeFocus'))
+        QTest.keyClick(self.root,Qt.Key_Return)
+        self.assertEqual(self.eval('path'),str(self.home))
+        self.assertTrue(self.eval('pathBar.visible'))
+
     def test_range_toggle_all_and_clear_on_navigation(self):
         self.eval('view="list"; select(entries[0])')
         QTest.keyClick(self.root,Qt.Key_Down,Qt.ShiftModifier)
