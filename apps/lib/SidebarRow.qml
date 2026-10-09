@@ -33,6 +33,9 @@ Item {
     Rectangle {
         anchors { fill: parent; leftMargin: 2; rightMargin: 2 }
         radius: 7
+        // Keyboard focus is distinct from selection: the document can remain
+        // selected while the user roves over other sidebar destinations.
+        border { width: row.activeFocus && row.enabled ? 1 : 0; color: Theme.accent }
         color: row.selected
             ? row.selectedFill
             : hover.hovered
