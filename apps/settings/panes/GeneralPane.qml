@@ -12,6 +12,8 @@ Pane {
         SetRow { title: "About"; symbol: "info"; symbolTint: "#8e8e93"; chevron: true; onClicked: pane.nav.push("about") }
         SetRow { title: "Software Update"; symbol: "arrow-clockwise"; symbolTint: "#8e8e93"; chevron: true; onClicked: pane.nav.push("update") }
         SetRow { title: "Storage"; symbol: "drive"; symbolTint: "#8e8e93"; chevron: true; onClicked: pane.nav.push("storage") }
+        SetRow { title: "Default Applications"; symbol: "apps"; symbolTint: "#487bd9"; chevron: true; onClicked: pane.nav.push("defaultapps") }
+        SetRow { title: "Login Items"; symbol: "apps"; symbolTint: "#8e8e93"; chevron: true; onClicked: pane.nav.push("loginitems") }
     }
     Group {
         SetRow { title: "Date & Time"; symbol: "clock"; symbolTint: "#0a84ff"; chevron: true; onClicked: pane.nav.push("datetime") }
