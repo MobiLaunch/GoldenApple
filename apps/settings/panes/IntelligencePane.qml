@@ -65,7 +65,7 @@ Pane {
             width: parent.width
             wrapMode: Text.Wrap
             color: Theme.secondaryLabel
-            text: pane.panelError || "Open the app separately or retry this pane. Check the Quickshell log for details."
+            text: pane.panelError || "The system overlay is independent of this Settings component. Check the Quickshell log for details."
         }
         Row {
             spacing: 8
