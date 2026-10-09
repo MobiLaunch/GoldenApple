@@ -17,7 +17,12 @@ Item {
     property var tracks: []          // {path, mtime, title, artist, album, albumArtist, track, year, seconds, art}
     property var albums: []          // {key, title, artist, year, art, tracks, added}
     property var artists: []         // {name, albums, art}
-    property var playlists: []       // {name, path, paths}
+    property var playlists: []       // {name, path, paths, revision}
+    property string playlistError: ""
+    property bool playlistBusy: false
+    property var playlistRequest: ({})
+    readonly property string playlistHelper: decodeURIComponent(Qt.resolvedUrl("playlists.py").toString().replace("file://", ""))
+    signal playlistOperationDone(var result)
     property bool scanning: scanProc.running
     property bool loaded: false
 
@@ -71,29 +76,72 @@ Item {
     }
     Component.onCompleted: rescan()
 
-    // Playlists: m3u files, paths relative to the playlist or absolute.
+    function refreshPlaylists() {
+        if (!playlistBusy && !listProc.running) listProc.running = true
+    }
+
+    function mutatePlaylist(command, data) {
+        if (playlistBusy || listProc.running) {
+            playlistError = "Music is updating playlists; please retry when finished."
+            return false
+        }
+        playlistRequest = Object.assign({}, data, {command:command})
+        playlistError = ""
+        playlistBusy = true
+        updateProc.command = ["python3", playlistHelper, command]
+        updateProc.stdinEnabled = true
+        updateProc.running = true
+        return true
+    }
+
     Process {
         id: listProc
         running: true
-        command: ["sh", "-c", "for f in \"$1\"/Playlists/*.m3u \"$1\"/Playlists/*.m3u8; do [ -f \"$f\" ] || continue; printf '#GG %s\\n' \"$f\"; cat \"$f\"; echo; done", "sh", lib.musicDir]
+        command: ["python3", lib.playlistHelper, "list"]
         stdout: StdioCollector {
             onStreamFinished: {
-                const lists = []
-                let cur = null
-                for (const raw of text.split("\n")) {
-                    const line = raw.trim()
-                    if (line.startsWith("#GG ")) {
-                        const p = line.slice(4)
-                        cur = { path: p, name: p.split("/").pop().replace(/\.m3u8?$/, ""), paths: [] }
-                        lists.push(cur)
-                    } else if (cur && line && !line.startsWith("#")) {
-                        cur.paths.push(line.startsWith("/") ? line : cur.path.replace(/[^/]+$/, "") + line)
-                    }
-                }
-                lib.playlists = lists
+                let r = null
+                try { r = JSON.parse(text) } catch (e) {}
+                if (r?.ok && Array.isArray(r.playlists)) {
+                    lib.playlists = r.playlists
+                    lib.playlistError = ""
+                } else lib.playlistError = r?.error || "Couldn't read the playlists directory."
             }
         }
     }
-    function playlistTracks(p) { return p.paths.map((x) => tracks.find((t) => t.path === x)).filter((t) => t) }
-}
+    Process {
+        id: updateProc
+        stdinEnabled: true
+        onStarted: {
+            write(JSON.stringify(lib.playlistRequest))
+            stdinEnabled = false
+        }
+        stdout: StdioCollector {
+            onStreamFinished: {
+                let r = null
+                try { r = JSON.parse(text) } catch (e) {}
+                if (r?.ok && Array.isArray(r.playlists)) {
+                    lib.playlists = r.playlists
+                    lib.playlistError = ""
+                    lib.playlistOperationDone(r)
+                } else {
+                    lib.playlistError = r?.error || "Couldn't update this playlist."
+                    lib.refreshAfterMutation = true
+                }
+            }
+        }
+        onExited: {
+            lib.playlistBusy = false
+            stdinEnabled = true
+            if (lib.refreshAfterMutation) {
+                lib.refreshAfterMutation = false
+                Qt.callLater(() => lib.refreshPlaylists())
+            }
+        }
+    }
+    property bool refreshAfterMutation: false
 
+    function playlistTracks(p) {
+        return (p?.paths || []).map(x => tracks.find(t => t.path === x)).filter(t => t)
+    }
+}
