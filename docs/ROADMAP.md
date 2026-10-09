@@ -56,6 +56,10 @@
 - [x] Notification Center, Mission Control, switcher and Control Center transition polish
 - [x] LCode debug console, Find bar and editor tab micro-choreography
 - [x] LCode Navigator 125 ms page crossfades and scroll-to-selected document tabs
+- [x] LCode project tree: keyboard arrow traversal, expand/collapse and durable editor selection binding
+- [x] LCode file/design inspector context crossfade, selection scroll reset and Actions-tab clamp
+- [x] Finder list headings: tactile sort feedback and active-column contrast
+- [x] Screen-reader selected sidebar rows, press actions and checked toolbar controls
 - [x] Files grid/list fade with viewport continuity and hidden-scrollbar input safety
 - [x] Prevent duplicate toolbar visibility bindings; constrain activity content in narrow windows
 - [x] LCode activity view: animated inspector-safe layout, no narrow-toolbar collision
