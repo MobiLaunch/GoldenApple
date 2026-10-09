@@ -125,6 +125,8 @@ class Interactions(unittest.TestCase):
         self.eval('quickLook.open=false')
         self.assertFalse(surface.property('enabled'),
                          'Quick Look must release mouse input before its exit fade completes')
+        self.assertFalse(card.property('enabled'),
+                         'Quick Look close and Open controls must also be inert during exit')
         QTest.qWait(230)
         self.assertFalse(self.eval('quickLook.visible'))
 

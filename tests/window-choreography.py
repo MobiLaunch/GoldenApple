@@ -64,6 +64,40 @@ require("apps/files.qml", [
     "if (confirmEmpty.shown) emptyButton.forceActiveFocus()",
 ])
 
+require("apps/lcode/Workspace.qml", [
+    "property bool debugMotionReady: false",
+    "property real presentedDebugHeight: showDebug",
+    "enabled: win.debugMotionReady && !Theme.reduceMotion && !win.debugResizing",
+    "height: Math.max(0, parent.height - win.presentedDebugHeight)",
+    "y: parent.height - win.presentedDebugHeight",
+    "resizeCoordinateSpace: editorDock",
+])
+require("apps/lcode/DebugArea.qml", [
+    "property Item resizeCoordinateSpace: null",
+    "mapToItem(debug.resizeCoordinateSpace || debug, m.x, m.y).y",
+    "startY = next",
+])
+require("apps/lcode/EditorArea.qml", [
+    "id: tabTap; onTapped: area.current = tab.index",
+    "scale: !Theme.reduceMotion && tabTap.pressed ? 0.985 : 1",
+    "visible: height > 0.5",
+    "NumberAnimation { duration: 170; easing.type: Easing.OutCubic }",
+])
+require("apps/files/QuickLook.qml", [
+    "visible: look.open || card.opacity > 0.001",
+    "objectName: \"quickLookCard\"",
+    "enabled: look.open",
+    "objectName: \"quickLookHitArea\"",
+    "status === Image.Ready ? 1 : 0",
+    "Theme.reduceMotion ? 1 : 0.972",
+])
+require("apps/lib/ModalSheet.qml", [
+    "enabled: sheet.shown",
+])
+require("apps/lcode/design/Popover.qml", [
+    "enabled: pop.shown",
+])
+
 if failures:
     print("\n".join("FAIL " + failure for failure in failures), file=sys.stderr)
     raise SystemExit(1)

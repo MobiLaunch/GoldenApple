@@ -67,6 +67,20 @@ sheet animate together; the sheet remains mounted for its short exit fade,
 but it stops intercepting input on dismissal. A remembered focus origin is
 restored on close. Escape and click-away respect dismissibility.
 
+**LCode's console** docks from the editor's bottom seam. The editor height
+and the console's visible edge follow the same 205 ms eased boundary;
+physical dragging bypasses animation so the divider stays under the pointer.
+The resize handle measures movement in the stationary editor coordinate
+space, preventing drag-feedback jitter. Find/Replace opens with a short 170 ms
+content reflow; tabs tint and compress very slightly on interaction.
+
+**Files Quick Look** now grows only ~2.8% rather than bouncing in, morphs
+between preview aspect ratios, and fades loaded images into the card. A
+temporary "Preparing Preview" label keeps large images from appearing blank.
+Preview controls and document-sheet buttons stop accepting input as soon as
+dismissal begins, even while the exit fade remains visible. No second action
+can slip through during the transition.
+
 **Design popovers** scale and fade in on the side of their source with room
 available, and restore focus on dismissal. If reopened during a fade, the
 animation is retargeted instead of spawning a stale second surface.

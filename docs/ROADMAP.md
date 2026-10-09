@@ -54,6 +54,9 @@
 - [x] Canonical attached modal sheets for Files and LCode, with exit fade and focus return
 - [x] Design popovers preserve focus and adapt their entrance to screen edges
 - [x] Notification Center, Mission Control, switcher and Control Center transition polish
+- [x] LCode debug console, Find bar and editor tab micro-choreography
+- [x] Files Quick Look aspect morph and image fade-in, with inert exit surfaces
+- [x] Modal and popover contents disable input immediately on dismissal
 - [x] Offscreen native-control regressions and source contracts in CI
 - [ ] Installed-GPU motion/blur tests with physical trackpad and pointer
 - [ ] Screen-reader acceptance, localized large-text overflow, slow-GPU frame profiling

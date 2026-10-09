@@ -232,6 +232,8 @@ class Controls(unittest.TestCase):
         self.assertAlmostEqual(panel.property('scale'),1.0,delta=0.02)
         QTest.keyClick(self.view,Qt.Key_Escape)
         self.assertFalse(sheet.property('shown'))
+        self.assertFalse(panel.property('enabled'),
+                         'fading sheet must not accept another command')
         QTest.qWait(220)
         self.assertFalse(sheet.property('visible'),
                          'dismissed sheet should stop blocking the content once fade ends')
@@ -260,6 +262,7 @@ class Controls(unittest.TestCase):
         QTest.qWait(275)
         self.assertTrue(sheet.property('shown'))
         self.assertTrue(sheet.property('visible'))
+        self.assertTrue(panel.property('enabled'))
         self.assertAlmostEqual(panel.property('scale'),1.0,delta=0.02)
         self.root.dismissSheet()
 
