@@ -9,6 +9,7 @@ import "../lib/theme"
 
 Item {
     id: view
+    objectName: "messagesOnboarding"
     property var pairing
     property bool installed: true
     readonly property var p: pairing
