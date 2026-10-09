@@ -274,9 +274,13 @@ PanelWindow {
         ]
         Shared.TactileFeedback { id: feedback; objectName: mod.objectName + "Motion"; pressed: mod.pressed; enabled: mod.enabled }
         radius: Math.min(32, height / 2)
-        role: "clear"
-        tint: Theme.dark ? Qt.rgba(0.22, 0.22, 0.26, pressed ? 0.62 : hovered ? 0.53 : 0.46)
-                         : Qt.rgba(0.94, 0.94, 0.98, pressed ? 0.62 : hovered ? 0.56 : 0.46)
+        role: "regular"
+        // A slightly thicker smoked slab improves separation over wallpaper
+        // and makes the smaller controls legible at every brightness level.
+        // Keep every module on the same material; no extra full-panel shader.
+        lens: 13
+        tint: Theme.dark ? Qt.rgba(0.17, 0.18, 0.23, pressed ? 0.83 : hovered ? 0.76 : 0.71)
+                         : Qt.rgba(0.94, 0.95, 0.98, pressed ? 0.87 : hovered ? 0.80 : 0.75)
         Behavior on tint { ColorAnimation { duration: Prefs.reduceMotion ? 0 : 120 } }
     }
 
