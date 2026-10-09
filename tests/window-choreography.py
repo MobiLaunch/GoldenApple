@@ -71,6 +71,9 @@ require("apps/lcode/Workspace.qml", [
     "height: Math.max(0, parent.height - win.presentedDebugHeight)",
     "y: parent.height - win.presentedDebugHeight",
     "resizeCoordinateSpace: editorDock",
+    "Math.min(win.width - 150, win.contentX + win.contentWidth - 12)",
+    "opacity: room >= 260 ? 1 : 0",
+    "enabled: room >= 260",
 ])
 require("apps/lcode/DebugArea.qml", [
     "property Item resizeCoordinateSpace: null",

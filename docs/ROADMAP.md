@@ -55,6 +55,7 @@
 - [x] Design popovers preserve focus and adapt their entrance to screen edges
 - [x] Notification Center, Mission Control, switcher and Control Center transition polish
 - [x] LCode debug console, Find bar and editor tab micro-choreography
+- [x] LCode activity view: animated inspector-safe layout, no narrow-toolbar collision
 - [x] Files Quick Look aspect morph and image fade-in, with inert exit surfaces
 - [x] Modal and popover contents disable input immediately on dismissal
 - [x] Offscreen native-control regressions and source contracts in CI

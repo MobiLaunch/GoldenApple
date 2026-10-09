@@ -72,7 +72,10 @@ and the console's visible edge follow the same 205 ms eased boundary;
 physical dragging bypasses animation so the divider stays under the pointer.
 The resize handle measures movement in the stationary editor coordinate
 space, preventing drag-feedback jitter. Find/Replace opens with a short 170 ms
-content reflow; tabs tint and compress very slightly on interaction.
+content reflow; tabs tint and compress very slightly on interaction. The
+toolbar activity capsule follows the animated inspector boundary, but yields
+gracefully when the workspace is too narrow, instead of painting over adjacent
+scheme and inspection controls.
 
 **Files Quick Look** now grows only ~2.8% rather than bouncing in, morphs
 between preview aspect ratios, and fades loaded images into the card.
