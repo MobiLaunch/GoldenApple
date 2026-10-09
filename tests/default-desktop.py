@@ -40,6 +40,7 @@ for app_id in sorted(set(pinned_ids)):
 
 # Core first-party apps must remain native CitronOS identities.
 required_ids = {
+    "org.goldengate.ArchiveUtility",
     "org.goldengate.Calculator",
     "org.goldengate.Calendar",
     "org.goldengate.Clock",
@@ -90,7 +91,7 @@ for path in sorted(desktop_dir.glob("*.desktop")):
 
 # Single-file native launchers must receive local filesystem paths, not plural
 # URI lists their shell wrappers do not parse.
-for desktop_name in ("org.goldengate.Files.desktop", "org.goldengate.TextEdit.desktop",
+for desktop_name in ("org.goldengate.ArchiveUtility.desktop", "org.goldengate.Files.desktop", "org.goldengate.TextEdit.desktop",
                      "org.goldengate.Photos.desktop", "org.goldengate.Music.desktop"):
     data = (desktop_dir / desktop_name).read_text(encoding="utf-8")
     exec_line = next((line for line in data.splitlines() if line.startswith("Exec=")), "")
@@ -104,6 +105,8 @@ if "StartupWMClass=com.mitchellh.ghostty" not in terminal:
 install = (root / "scripts/install.sh").read_text(encoding="utf-8")
 for mime, app_id in {
     "inode/directory": "org.goldengate.Files.desktop",
+    "application/zip": "org.goldengate.ArchiveUtility.desktop",
+    "application/x-tar": "org.goldengate.ArchiveUtility.desktop",
     "text/plain": "org.goldengate.TextEdit.desktop",
     "text/markdown": "org.goldengate.TextEdit.desktop",
     "application/json": "org.goldengate.TextEdit.desktop",
