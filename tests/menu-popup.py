@@ -51,6 +51,10 @@ with tempfile.TemporaryDirectory() as t:
                      if abs(edit.pixelColor(x, y).lightness() - switched.pixelColor(x, y).lightness()) > 24)
         check(differ < 60, f"File then Edit leaves Edit's menu open where Edit opens ({differ} pixels differ)")
 
+bar = (ROOT / "shell/MenuBar.qml").read_text()
+check('barMenu.open && !wasOpen && key !== "Window"' in bar
+      and '&& openTitle !== key) barMenu.reopen()' in bar,
+      "switching menu titles unmaps the prior popup before geometry can change")
 popup = (ROOT / "shell/components/MenuPopup.qml").read_text()
 check("visible: (open || vanish.running) && !reopening" in popup, "the surface goes away while it's put right")
 backdrop = (ROOT / "shell/components/DesktopBackdrop.qml").read_text()
