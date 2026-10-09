@@ -234,7 +234,7 @@ button.suggested-action:hover, button.default:hover {
 button.suggested-action:active { filter: brightness(0.9); }
 button.destructive-action, button.destructive-action:hover { color: var(--gg-red); }
 button.opaque { color: #ffffff; box-shadow: none; }
-button.osd, .osd button { background: rgba(0, 0, 0, 0.55); color: #ffffff; box-shadow: none; }
+button.osd, .osd button { background: rgba(0, 0, 0, 0.70); color: #ffffff; box-shadow: none; }
 
 /* Segmented controls: linked buttons and toggle groups */
 .linked:not(.vertical):not(.search):not(.entry-combo) {
