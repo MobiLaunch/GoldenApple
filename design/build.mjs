@@ -142,7 +142,7 @@ function material(name, m) {
   // Settings › Appearance › Glass: 0 clear … 1 solid (desktop.json glassSolidity).
   q.push(`    property real glassSolidity: 0`);
   q.push(`    property real textScale: 1`,
-    `    function fs(n) { return n > 24 ? n : Math.round(n * Math.max(1, Math.min(1.5, textScale))) }`,
+    `    function fs(n) { return n > 24 ? n : Math.round(Math.max(12, n) * Math.max(1, Math.min(1.5, textScale))) }`,
     `    // Control heights follow the text: fh(26) for a 26 px control.`,
     `    function fh(n) { return Math.round(n * (1 + (Math.max(1, Math.min(1.5, textScale)) - 1) * 0.8)) }`);
   q.push(`    readonly property color accent: ({ blue: accentBlue, teal: accentBlue, purple: accentPurple, pink: accentPink, red: accentRed, orange: accentOrange, yellow: accentYellow, green: accentGreen, slate: accentGraphite })[accentName] ?? accentBlue`);
@@ -225,7 +225,7 @@ function qmlColor(c) {
       "thumbnail-bg-color": c.contentBg, "thumbnail-fg-color": c.label,
       "shade-color": c.separator,
       "border-color": c.separator,
-      "dim-opacity": "62%",
+      "dim-opacity": "78%",
       "window-radius": `${t.radius.window}px`,
       "gg-label": c.label, "gg-secondary-label": c.secondaryLabel, "gg-tertiary-label": c.tertiaryLabel,
       "gg-separator": c.separator, "gg-fill": c.fill, "gg-selection": c.selection,
@@ -300,10 +300,10 @@ function qmlColor(c) {
     "    }",
     "    shadow {",
     "        enabled = true",
-    "        range = 30",
-    "        render_power = 4",
-    "        color = rgba(00000045)",
-    "        offset = 0 10",
+    "        range = 46",
+    "        render_power = 2",
+    "        color = rgba(00000034)",
+    "        offset = 0 9",
     "    }",
     "}",
     ""
