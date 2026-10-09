@@ -112,5 +112,85 @@ class Playlists(unittest.TestCase):
         self.assertEqual([p["name"] for p in dupe["playlists"]],["Evening","Evening Copy"])
 
 
+    def test_recently_deleted_lists_restore_byte_exact_and_preserves_tracks(self):
+        made = self.call("create", {"name":"Keep My Playlist"})
+        p = Path(made["playlist"])
+        original = "#EXTM3U\n#EXTINF:134,A band - Unique Song\n../Track One.mp3\n"
+        p.write_text(original, encoding="utf-8")
+        deleted = self.call("delete", {"path":str(p)})
+        self.assertTrue(deleted["ok"], deleted)
+        self.assertEqual(len(deleted["deleted"]), 1)
+        item = self.call("deleted")["deleted"][0]
+        self.assertEqual(item["name"], "Keep My Playlist")
+        self.assertEqual(item["filename"], "Keep My Playlist.m3u8")
+        self.assertGreater(item["deletedAt"], 0)
+        restored = self.call("restore", {"path":item["path"], "expected":item["revision"]})
+        self.assertTrue(restored["ok"], restored)
+        self.assertEqual(Path(restored["playlist"]).read_text(), original)
+        self.assertEqual(restored["deleted"], [])
+        self.assertEqual(restored["playlists"][0]["paths"], [str(self.song)])
+        self.assertTrue(self.song.exists())
+
+    def test_restore_conflict_uses_safe_name_and_does_not_overwrite(self):
+        created = self.call("create", {"name":"Play Me"})
+        self.call("delete", {"path":created["playlist"]})
+        deleted = self.call("deleted")["deleted"][0]
+        original = self.call("create", {"name":"Play Me"})
+        original_bytes = Path(original["playlist"]).read_bytes()
+        revived = self.call("restore", {"path":deleted["path"], "expected":deleted["revision"]})
+        self.assertTrue(revived["ok"], revived)
+        self.assertEqual(Path(original["playlist"]).read_bytes(), original_bytes)
+        self.assertEqual(Path(revived["playlist"]).name, "Play Me Restored.m3u8")
+        self.assertEqual(len(revived["playlists"]), 2)
+        self.assertEqual(self.call("deleted")["deleted"], [])
+
+    def test_restore_rejects_stale_edits_and_unsafe_archives(self):
+        made = self.call("create", {"name":"Protected"})
+        self.call("delete", {"path":made["playlist"]})
+        item = self.call("deleted")["deleted"][0]
+        changed = self.call("restore", {"path":item["path"], "expected":"wrong"})
+        self.assertFalse(changed["ok"])
+        self.assertTrue(Path(item["path"]).exists())
+        outside = Path(self.temp.name)/"dangerous.m3u8.1234567890123456789.bak"
+        outside.write_text("#EXTM3U\n")
+        self.assertFalse(self.call("restore", {"path":str(outside), "expected":"x"})["ok"])
+        link = self.lists/".Deleted"/"Fake.m3u8.1234567890123456789.bak"
+        link.symlink_to(outside)
+        self.assertFalse(self.call("restore", {"path":str(link), "expected":"x"})["ok"])
+        self.assertEqual(outside.read_text(), "#EXTM3U\n")
+
+    def test_backup_symlink_is_not_followed_and_second_backup_is_kept(self):
+        created = self.call("create", {"name":"Backup Safe"})
+        playlist = Path(created["playlist"])
+        external = Path(self.temp.name)/"outside.txt"
+        external.write_text("do not touch")
+        backup = playlist.with_name(playlist.name + ".bak")
+        backup.symlink_to(external)
+        first = self.call("add", {
+            "path":str(playlist), "expected":created["playlists"][0]["revision"],
+            "track":str(self.song)})
+        self.assertTrue(first["ok"], first)
+        second = self.call("add", {
+            "path":str(playlist), "expected":first["playlists"][0]["revision"],
+            "track":str(self.song2)})
+        self.assertTrue(second["ok"], second)
+        self.assertEqual(external.read_text(), "do not touch")
+        backups = list(self.lists.glob("Backup Safe.m3u8.*.bak"))
+        self.assertEqual(len(backups), 2)
+        self.assertEqual(len({p.name for p in backups}), 2)
+        self.assertTrue(all(p.is_file() for p in backups))
+
+    def test_symlinked_deleted_directory_blocks_deletion(self):
+        created = self.call("create", {"name":"Stay"})
+        external = Path(self.temp.name)/"target"
+        external.mkdir()
+        (self.lists/".Deleted").symlink_to(external, target_is_directory=True)
+        response = self.call("delete", {"path":created["playlist"]})
+        self.assertFalse(response["ok"])
+        self.assertTrue(Path(created["playlist"]).is_file())
+        self.assertEqual(list(external.iterdir()), [])
+        self.assertFalse(self.call("deleted")["ok"])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
