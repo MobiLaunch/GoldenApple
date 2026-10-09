@@ -13,6 +13,7 @@ import json
 import os
 from pathlib import Path, PurePosixPath
 import re
+import signal
 import shutil
 import stat
 import sys
@@ -30,6 +31,14 @@ TAR_ENDINGS = (".tar.gz", ".tgz", ".tar.xz", ".txz", ".tar.bz2", ".tbz2", ".tbz"
 
 class ArchiveError(Exception):
     pass
+
+def _cancel(_signum, _frame):
+    # Raise normally so the extractor's finally block removes the staging
+    # directory; an interrupted archive is never published as a valid folder.
+    raise ArchiveError("Archive operation cancelled. No files were installed.")
+
+
+signal.signal(signal.SIGTERM, _cancel)
 
 
 def emit(event: str, **detail: object) -> None:
