@@ -96,7 +96,7 @@ ShellRoot {
                     onClicked: {
                         files.dialogMode = "new"
                         files.dialogText = "untitled folder"
-                        editDialog.visible = true
+                        editDialog.open()
                         Qt.callLater(() => dialogField.input.forceActiveFocus())
                     }
                 }
@@ -574,7 +574,7 @@ ShellRoot {
                 if (!selectedEntry || selectedPaths.length !== 1 || inTrash || inComputer || busy) return
                 dialogMode = "rename"
                 dialogText = selectedName
-                editDialog.visible = true
+                editDialog.open()
                 Qt.callLater(() => dialogField.input.forceActiveFocus())
             }
             // ⇧⌘. shows the files whose names start with a dot, as on the Mac.
@@ -648,7 +648,7 @@ ShellRoot {
                 const names = selectedEntries.filter((e) => e.trashName).map((e) => e.trashName)
                 if (names.length) runOperation(["put-back"].concat(names), "put-back")
             }
-            function askEmptyTrash() { confirmEmpty.visible = true }
+            function askEmptyTrash() { confirmEmpty.open() }
             // An item in Recents, shown where it lives.
             function showInFolder(entry) {
                 initialSelect = entry.path
@@ -726,7 +726,7 @@ ShellRoot {
                     { text: "New Folder", enabled: !special && !busy, action: () => {
                         dialogMode = "new"
                         dialogText = "untitled folder"
-                        editDialog.visible = true
+                        editDialog.open()
                         Qt.callLater(() => dialogField.input.forceActiveFocus())
                     }},
                     { separator: true },
@@ -768,7 +768,7 @@ ShellRoot {
                     runOperation(["mkdir", path, name], "mkdir")
                 else if (dialogMode === "rename" && selectedPath)
                     runOperation(["rename", selectedPath, name], "rename")
-                editDialog.visible = false
+                editDialog.close()
             }
 
             Component.onCompleted: if (prefsReady) reload()
@@ -1519,21 +1519,19 @@ ShellRoot {
             PopupMenu { id: menu; parent: win.overlay }
 
             // Empty Trash asks first, as on the Mac.
-            Glass {
+            ModalSheet {
                 id: confirmEmpty
+                objectName: "filesEmptyTrashSheet"
                 parent: win.overlay
-                visible: false
-                anchors.centerIn: parent
-                width: 300
-                height: confirmColumn.implicitHeight + 40
-                radius: 22
-                tint: Theme.glassRegular.tint
+                panelWidth: 300
+                panelHeight: confirmColumn.implicitHeight + 40
                 z: 110
-                onVisibleChanged: if (visible) emptyButton.forceActiveFocus(); else files.forceActiveFocus()
+                onShownChanged: if (shown) emptyButton.forceActiveFocus()
+                onClosed: files.forceActiveFocus()
                 Keys.onEscapePressed: visible = false
                 Column {
                     id: confirmColumn
-                    anchors { left: parent.left; right: parent.right; top: parent.top; margins: 20 }
+                    anchors { left: parent.left; right: parent.right; top: parent.top }
                     spacing: 10
                     Symbol { anchors.horizontalCenter: parent.horizontalCenter; name: "trash"; size: 34; tone: "auto" }
                     Text {
@@ -1555,14 +1553,14 @@ ShellRoot {
                     Row {
                         anchors.horizontalCenter: parent.horizontalCenter
                         spacing: 8
-                        Button { width: 122; text: "Cancel"; onClicked: confirmEmpty.visible = false }
+                        Button { width: 122; text: "Cancel"; onClicked: confirmEmpty.close() }
                         Button {
                             id: emptyButton
                             width: 122
                             text: "Empty Trash"
                             prominent: true
                             destructive: true
-                            onClicked: { confirmEmpty.visible = false; files.runOperation(["empty-trash"], "empty-trash") }
+                            onClicked: { confirmEmpty.close(); files.runOperation(["empty-trash"], "empty-trash") }
                         }
                     }
                 }
@@ -1585,20 +1583,17 @@ ShellRoot {
                 }
             }
 
-            Glass {
+            ModalSheet {
                 id: editDialog
+                objectName: "filesEditSheet"
                 parent: win.overlay
-                visible: false
-                anchors.centerIn: parent
-                width: 380
-                height: 150
-                radius: 22
-                tint: Theme.glassRegular.tint
+                panelWidth: 380
+                panelHeight: 150
                 z: 110
-                onVisibleChanged: if (!visible) files.forceActiveFocus()
+                onClosed: files.forceActiveFocus()
 
                 Column {
-                    anchors { fill: parent; margins: 18 }
+                    anchors.fill: parent
                     spacing: 12
 
                     Text {
@@ -1613,13 +1608,13 @@ ShellRoot {
                         text: files.dialogText
                         placeholder: "Name"
                         onAccepted: files.submitDialog()
-                        input.Keys.onEscapePressed: editDialog.visible = false
+                        input.Keys.onEscapePressed: editDialog.close()
                     }
 
                     Row {
                         anchors.right: parent.right
                         spacing: 8
-                        Button { text: "Cancel"; onClicked: editDialog.visible = false }
+                        Button { text: "Cancel"; onClicked: editDialog.close() }
                         Button {
                             text: files.dialogMode === "rename" ? "Rename" : "Create"
                             prominent: true
