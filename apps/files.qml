@@ -1606,11 +1606,24 @@ ShellRoot {
                 panelWidth: 460
                 panelHeight: infoContent.implicitHeight + 40
                 z: 110
+                property bool pathCopied: false
+                Timer { id: copiedPathReset; interval: 1400; onTriggered: infoDialog.pathCopied = false }
+                function copyPath() {
+                    const location = files.info.path ?? ""
+                    if (!location) return
+                    Quickshell.clipboardText = location
+                    pathCopied = true
+                    copiedPathReset.restart()
+                }
                 // The old Get Info card had no backdrop hit barrier and
                 // could leak clicks to Finder underneath while it was open.
-                onShownChanged: if (shown) Qt.callLater(() => {
-                    if (infoDialog.shown) infoClose.forceActiveFocus()
-                })
+                onShownChanged: {
+                    copiedPathReset.stop()
+                    pathCopied = false
+                    if (shown) Qt.callLater(() => {
+                        if (infoDialog.shown) infoClose.forceActiveFocus()
+                    })
+                }
                 onClosed: files.forceActiveFocus()
                 Column {
                     id: infoContent
@@ -1635,7 +1648,11 @@ ShellRoot {
                     }
                     Row {
                         spacing: 8
-                        Button { text: "Copy Path"; onClicked: Quickshell.clipboardText = files.info.path ?? "" }
+                        Button {
+                            objectName: "filesCopyPath"
+                            text: infoDialog.pathCopied ? "Copied" : "Copy Path"
+                            onClicked: infoDialog.copyPath()
+                        }
                         Button { id: infoClose; text: "Done"; prominent: true; onClicked: infoDialog.close() }
                     }
                 }
