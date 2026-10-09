@@ -81,6 +81,9 @@ with tempfile.TemporaryDirectory(prefix="gg-dock-lifecycle-") as folder:
     found = {o.objectName(): o for o in objects(root) if o.objectName()}
     fixture, dock, launcher = (found[n] for n in ("dockLifecycleFixture", "testDock", "testLauncher"))
     row = found["dockRow"]
+    expiry = found["dockRecentExpiry"]
+    assert expiry.property("repeat") is False, "the Dock must not poll recent-app state"
+    assert not expiry.property("running"), "no cleanup timer while all apps are active"
     evaluate(fixture, "pin([])")
     evaluate(fixture, "windows(['test.alpha', 'test.beta'])")
     wait_for(lambda: len(plain(dock.property("runningIds"))) == 2)
@@ -99,10 +102,12 @@ with tempfile.TemporaryDirectory(prefix="gg-dock-lifecycle-") as folder:
     if os.environ.get("GG_DOCK_LIFECYCLE_SHOT"):
         root.grabWindow().save(os.environ["GG_DOCK_LIFECYCLE_SHOT"])
     evaluate(fixture, "windows(['test.beta'])")
+    assert expiry.property("running"), "closing a window should arm one deferred cleanup"
     QTest.qWait(300)
     assert slot("test.alpha") == alpha and slot("test.beta") == beta
     assert abs(row.property("width") - full_width) < 0.1, "recent hold must not resize the shelf"
     wait_for(lambda: plain(dock.property("runningRecords"))["test.alpha"]["phase"] == "leaving")
+    assert expiry.property("running"), "leaving phase needs one final removal deadline"
     widths = []
     for _ in range(6):
         widths.append(row.property("width"))
@@ -116,6 +121,7 @@ with tempfile.TemporaryDirectory(prefix="gg-dock-lifecycle-") as folder:
     evaluate(fixture, "windows(['test.beta'])")
     wait_for(lambda: "test.alpha" not in plain(dock.property("runningIds")))
     assert slot("test.beta") == beta and dock.property("baseSize") == icon_size
+    assert not expiry.property("running"), "cleanup should sleep after the last recent app is gone"
     assert abs(full_width - row.property("width") - (icon_size + 6)) < 0.1
 
     # The final app's divider must collapse with its slot, with no trailing snap.
