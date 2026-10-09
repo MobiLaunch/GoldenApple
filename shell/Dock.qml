@@ -324,6 +324,7 @@ PanelWindow {
     }
     Timer {
         id: recentExpiry
+        objectName: "dockRecentExpiry"
         repeat: false
         onTriggered: dock.expireRecent()
     }
