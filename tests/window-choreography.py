@@ -106,6 +106,40 @@ require("apps/lcode/design/Popover.qml", [
     "enabled: pop.shown",
 ])
 
+require("apps/lcode/Navigator.qml", [
+    "opacity: nav.page === 0 ? 1 : 0",
+    "enabled: nav.page === 0",
+    'objectName: "navigatorFindPage"',
+    'objectName: "navigatorIssuesPage"',
+    'objectName: "navigatorReportsPage"',
+    "NumberAnimation { duration: Theme.reduceMotion ? 0 : 125;",
+])
+require("apps/lcode/EditorArea.qml", [
+    "tabs.positionViewAtIndex(area.current, ListView.Contain)",
+    "add: Transition {",
+    "remove: Transition {",
+    "displaced: Transition {",
+    "duration: Theme.reduceMotion ? 0 : 145;",
+])
+require("apps/files.qml", [
+    'function switchView(next) {',
+    'after.positionViewAtIndex(keepSelection,',
+    'after.contentY = after.originY + fraction * newRange',
+    'objectName: "filesGridView"',
+    'objectName: "filesListView"',
+    'enabled: activeView',
+    'duration: Theme.reduceMotion ? 0 : 125;',
+])
+require("apps/lib/Scroller.qml", [
+    "needed && !!flickable && flickable.visible && flickable.enabled",
+])
+require("apps/lcode/Workspace.qml", [
+    'visible: opacity > 0.001',
+    "Math.min(win.width - 150, win.contentX + win.contentWidth - 12)",
+])
+if 'visible: rightEdge - leftEdge > 220' in (ROOT / 'apps/lcode/Workspace.qml').read_text(encoding='utf-8'):
+    failures.append("LCode activity toolbar has two competing visible bindings")
+
 if failures:
     print("\n".join("FAIL " + failure for failure in failures), file=sys.stderr)
     raise SystemExit(1)
