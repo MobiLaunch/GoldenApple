@@ -13,6 +13,7 @@ import http.server
 import io
 import json
 import os
+import shutil
 from pathlib import Path
 import pwd
 import subprocess
@@ -182,6 +183,18 @@ class GoldenUpdate(unittest.TestCase):
         self.assertEqual(version["branch"], BRANCH)
         self.assertTrue((STAGE / "usr/share/golden-gate/apps/settings/golden_update.py").exists())
         self.assertTrue((STAGE / "usr/share/polkit-1/actions/org.goldengate.update.policy").exists())
+        # A Settings OTA update must rebuild the shared OrchardKit symbols:
+        # its GitHub archive can contain older, checked-in generated icons.
+        # Checking both targets catches a fresh shell with old app icons.
+        if shutil.which("node"):
+            for icon in (
+                STAGE / "usr/share/golden-gate/ui/assets/symbols/wifi.svg",
+                STAGE / "etc/skel/.config/quickshell/golden-gate/assets/symbols/wifi.svg",
+            ):
+                self.assertTrue(icon.exists(), str(icon))
+                self.assertNotIn('viewBox="0 0 24 24"', icon.read_text(),
+                                 "OTA installed the old symbol instead of rebuilding it")
+
         self.assertFalse((STAGE / "etc/sudoers.d/10-golden-live").exists())
         self.assertFalse(golden_update.check()["available"])
         if USER:
