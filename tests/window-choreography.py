@@ -165,6 +165,19 @@ require("apps/lcode/design/DesignInspector.qml", [
 require("apps/lcode/Inspector.qml", [
     "onPathChanged: contentY = 0",
 ])
+require("apps/lib/SidebarRow.qml", [
+    "Accessible.selected: row.selected",
+    "Accessible.onPressAction: if (row.enabled) row.clicked()",
+])
+require("apps/lib/ToolbarButton.qml", [
+    "Accessible.checked: button.checked",
+])
+require("apps/files.qml", [
+    "id: sortArea",
+    "hoverEnabled: true",
+    "cursorShape: Qt.PointingHandCursor",
+    "onClicked: { parent.forceActiveFocus(); parent.sort() }",
+])
 if "nav.selectedPath =" in (ROOT / "apps/lcode/Navigator.qml").read_text(encoding="utf-8"):
     failures.append("Navigator must not imperatively overwrite Workspace's selectedPath binding")
 
