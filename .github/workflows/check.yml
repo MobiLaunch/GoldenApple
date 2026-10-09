@@ -276,6 +276,8 @@ jobs:
         run: python tests/settings-app-preferences.py
       - name: Licensed macOS-style application icon selection and Launchpad allowlist
         run: python tests/icon-resolver.py
+      - name: Shell-only intelligence, privacy, shadow and contrast contracts
+        run: python tests/intelligence-shell-visuals.py
       - name: Window restore stays onscreen and rejects stale window IDs
         run: python tests/tile-layout.py
       - name: Files' backend (drag and drop, Trash, Recents)
