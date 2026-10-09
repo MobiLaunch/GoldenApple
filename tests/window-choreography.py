@@ -37,7 +37,9 @@ require("apps/lib/ModalSheet.qml", [
     "default property alias content: content.data",
     "const active = sheet.Window.window?.activeFocusItem",
     "if (origin && origin.visible && origin.enabled) origin.forceActiveFocus()",
-    "enabled: sheet.shown && sheet.dismissible",
+    "enabled: sheet.shown",
+    "onClicked: if (sheet.dismissible) sheet.close()",
+    "if (!shown) {",
     "if (!shown) return",
     "signal closed()",
     "sheet.shown || Theme.reduceMotion ? 1 : 0.985",
@@ -61,6 +63,9 @@ require("apps/files.qml", [
     "confirmEmpty.close()",
     "editDialog.open()",
     "editDialog.close()",
+    'objectName: "filesInfo"',
+    "infoDialog.open()",
+    "infoDialog.close()",
     "if (confirmEmpty.shown) emptyButton.forceActiveFocus()",
 ])
 
