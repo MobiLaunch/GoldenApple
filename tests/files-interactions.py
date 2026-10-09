@@ -344,10 +344,14 @@ class Interactions(unittest.TestCase):
         QTest.qWait(30)
         self.assertTrue(self.root.findChild(QObject,"filesInfo").property("visible"))
         self.assertEqual(self.eval('info.path'),str(self.home/"a.txt"))
+        self.eval('infoDialog.copyPath()')
+        self.assertTrue(self.eval('infoDialog.pathCopied'))
+        self.assertEqual(self.eval('Quickshell.clipboardText'),str(self.home/"a.txt"))
         self.assertTrue(self.eval('infoDialog.shown'))
         self.assertIsNotNone(self.root.findChild(QObject,'sharedSheetPanel'))
         self.eval('infoDialog.close()')
         self.assertFalse(self.eval('infoDialog.shown'))
+        self.assertFalse(self.eval('infoDialog.pathCopied'))
         self.assertTrue(self.files.hasActiveFocus())
 
     def test_undo_shortcut_updates_creation_identity_after_rename(self):
