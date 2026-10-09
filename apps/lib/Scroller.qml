@@ -64,7 +64,11 @@ Item {
     MouseArea {
         id: drag
         anchors.fill: parent
-        enabled: s.needed
+        // Automatic scrollbars are painted-over content, not permanent hit
+        // targets. An invisible bar must not steal clicks from items beneath
+        // it. Hover intent or an active scroll can reveal it again.
+        enabled: s.needed && s.visible
+            && (Theme.alwaysShowScrollbars || s.active || hover.hovered || pressed)
         property real grab: -1
         onPressed: (m) => {
             if (m.y >= knob.y && m.y <= knob.y + knob.height) { grab = m.y - knob.y; return }
