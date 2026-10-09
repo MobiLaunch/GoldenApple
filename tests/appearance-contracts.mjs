@@ -6,7 +6,9 @@ import { orchardSymbols } from "../icons/orchard-symbols.mjs";
 
 const text = (f) => readFileSync(new URL("../" + f, import.meta.url), "utf8");
 const has = (f) => existsSync(new URL("../" + f, import.meta.url));
-const names = ["chevron-left", "chevron-right", "search", "wifi", "bluetooth", "moon", "play", "pause"];
+const names = ["chevron-left", "chevron-right", "search", "wifi", "bluetooth", "moon", "play", "pause",
+  "house", "bell", "plus", "minus", "folder", "lock", "clock", "cloud",
+  "globe", "headphones", "settings", "trash-2", "download", "share-2", "list", "grid-2x2"];
 
 test("OrchardKit Xcode artboards are normalized into usable Qt SVG glyphs", () => {
   const build = text("icons/build.mjs");
