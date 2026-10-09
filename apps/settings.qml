@@ -160,6 +160,7 @@ ShellRoot {
                 // group, id, title, symbol, colour, file, words to search by
                 [1, "wifi", "Wi-Fi", "wifi", "#0a84ff", "WifiPane", "wireless network internet join"],
                 [1, "bluetooth", "Bluetooth", "bluetooth", "#0a84ff", "BluetoothPane", "devices headphones keyboard mouse pair"],
+                [1, "airpods", "AirPods", "headphones", "#0a84ff", "CitronPodsPane", "CitronPods AirPods battery case noise cancellation anc transparency adaptive conversation awareness ear detection"],
                 [1, "network", "Network", "globe", "#0a84ff", "NetworkPane", "ethernet ip address vpn"],
                 [1, "battery", "Battery", "power", "#34c759", "BatteryPane", "energy power charge low power mode"],
                 [2, "general", "General", "gear", "#8e8e93", "GeneralPane", "about software update storage date time language region"],
