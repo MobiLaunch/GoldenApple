@@ -52,8 +52,7 @@ ShellRoot {
                 }
                 Text {
                     anchors.verticalCenter: parent.verticalCenter
-                    text: mail.composing ? "New Message" :
-                          mail.selectedFolder === "drafts" ? "Drafts" : "Inbox"
+                    text: mail.composing ? "New Message" : mail.mailboxTitle
                     color: Theme.label
                     font { family: Theme.fontUi; pixelSize: Theme.fs(14); weight: Font.DemiBold }
                 }
@@ -118,6 +117,47 @@ ShellRoot {
                         mail.leaveMessage()
                     }
                 }
+                Text {
+                    x: 12; width: parent.width - 24; height: 24
+                    verticalAlignment: Text.AlignBottom
+                    text: "SMART MAILBOXES"; color: Theme.secondaryLabel
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(11); weight: Font.DemiBold; letterSpacing: 0.7 }
+                }
+                Repeater {
+                    model: [
+                        { id: "unread", title: "Unread", icon: "envelope" },
+                        { id: "flagged", title: "Flagged", icon: "star" },
+                        { id: "vip", title: "VIP", icon: "person" }
+                    ]
+                    delegate: SidebarRow {
+                        required property var modelData
+                        width: parent.width; text: modelData.title; symbol: modelData.icon
+                        selected: mail.selectedFolder === modelData.id && !mail.composing
+                        badge: mail.folderCount(modelData.id) ? String(mail.folderCount(modelData.id)) : ""
+                        onClicked: { mail.selectedFolder = modelData.id; mail.composing = false; mail.leaveMessage() }
+                    }
+                }
+                Text {
+                    x: 12; width: parent.width - 24; height: 24
+                    verticalAlignment: Text.AlignBottom
+                    text: "CATEGORIES"; color: Theme.secondaryLabel
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(11); weight: Font.DemiBold; letterSpacing: 0.7 }
+                }
+                Repeater {
+                    model: [
+                        { id: "primary", title: "Primary", icon: "envelope" },
+                        { id: "transactions", title: "Transactions", icon: "credit-card" },
+                        { id: "updates", title: "Updates", icon: "bell" },
+                        { id: "promotions", title: "Promotions", icon: "tag" }
+                    ]
+                    delegate: SidebarRow {
+                        required property var modelData
+                        width: parent.width; text: modelData.title; symbol: modelData.icon
+                        selected: mail.selectedFolder === modelData.id && !mail.composing
+                        badge: mail.folderCount(modelData.id) ? String(mail.folderCount(modelData.id)) : ""
+                        onClicked: { mail.selectedFolder = modelData.id; mail.composing = false; mail.leaveMessage() }
+                    }
+                }
                 Rectangle {
                     width: parent.width - 20; x: 10; height: 1
                     color: Theme.separator
@@ -173,11 +213,58 @@ ShellRoot {
             readonly property var filteredMessages: {
                 const q = query.trim().toLocaleLowerCase()
                 return messages.filter((m) => {
+                    if (selectedFolder === "unread" && !m.unread) return false
+                    if (selectedFolder === "flagged" && !m.flagged) return false
+                    if (selectedFolder === "vip" && !m.vip) return false
+                    if (["primary", "transactions", "updates", "promotions"].includes(selectedFolder)
+                        && m.category !== selectedFolder) return false
                     if (unreadOnly && !m.unread) return false
                     return !q || [m.from, m.subject, m.date].some((value) =>
                         String(value || "").toLocaleLowerCase().includes(q))
                 })
             }
+            readonly property string mailboxTitle: ({
+                inbox:"Inbox", unread:"Unread", flagged:"Flagged", vip:"VIP",
+                primary:"Primary", transactions:"Transactions", updates:"Updates",
+                promotions:"Promotions", drafts:"Drafts"
+            })[selectedFolder] || "Inbox"
+            function folderCount(folder) {
+                return messages.filter((m) => folder === "unread" ? m.unread :
+                    folder === "flagged" ? m.flagged : folder === "vip" ? m.vip :
+                    m.category === folder).length
+            }
+            function patchMessage(uid, values) {
+                messages = messages.map((m) => String(m.uid) === String(uid) ?
+                    Object.assign({}, m, values) : m)
+            }
+            function toggleFlag(uid, nextValue) {
+                if (!uid || flagProc.running) return
+                pendingFlagUid = String(uid)
+                pendingFlag = nextValue
+                flagProc.command = ["python3", helper, "flag", pendingFlagUid, String(nextValue)]
+                flagProc.running = true
+            }
+            function setCategory(uid, category) {
+                if (!uid || categoryProc.running) return
+                pendingCategoryUid = String(uid)
+                pendingCategory = category
+                categoryProc.command = ["python3", helper, "category", pendingCategoryUid, category]
+                categoryProc.running = true
+            }
+            function toggleVip(sender, value) {
+                if (vipProc.running) return
+                pendingVipAddress = address(sender)
+                pendingVip = value
+                if (!pendingVipAddress) { error = "This sender has no email address."; return }
+                vipProc.command = ["python3", helper, "vip", pendingVipAddress, String(value)]
+                vipProc.running = true
+            }
+            property string pendingFlagUid: ""
+            property bool pendingFlag: false
+            property string pendingCategoryUid: ""
+            property string pendingCategory: ""
+            property string pendingVipAddress: ""
+            property bool pendingVip: false
             function senderName(sender) {
                 const text = String(sender || "Unknown Sender")
                 return text.replace(/\s*<[^>]+>\s*$/, "").replace(/^"|"$/g, "").trim() || text
@@ -515,6 +602,43 @@ ShellRoot {
             }
 
             Process {
+                id: flagProc
+                stdout: StdioCollector { id: flagOutput }
+                onExited: (code) => {
+                    try {
+                        const r = JSON.parse(flagOutput.text)
+                        if (code === 0 && r.ok) mail.patchMessage(mail.pendingFlagUid, {flagged: mail.pendingFlag})
+                        else mail.error = r.error || "Could not update Important."
+                    } catch (e) { mail.error = "Could not update Important." }
+                }
+            }
+            Process {
+                id: categoryProc
+                stdout: StdioCollector { id: categoryOutput }
+                onExited: (code) => {
+                    try {
+                        const r = JSON.parse(categoryOutput.text)
+                        if (code === 0 && r.ok) mail.patchMessage(mail.pendingCategoryUid, {category: mail.pendingCategory})
+                        else mail.error = r.error || "Could not update category."
+                    } catch (e) { mail.error = "Could not update category." }
+                }
+            }
+            Process {
+                id: vipProc
+                stdout: StdioCollector { id: vipOutput }
+                onExited: (code) => {
+                    try {
+                        const r = JSON.parse(vipOutput.text)
+                        if (code === 0 && r.ok) {
+                            mail.messages = mail.messages.map((m) =>
+                                mail.address(m.from).toLowerCase() === mail.pendingVipAddress ?
+                                    Object.assign({}, m, {vip: mail.pendingVip}) : m)
+                        } else mail.error = r.error || "Could not update VIP."
+                    } catch (e) { mail.error = "Could not update VIP." }
+                }
+            }
+
+            Process {
                 id: sendProc
                 command: ["python3", mail.helper, "send"]
                 stdinEnabled: true
@@ -732,7 +856,7 @@ ShellRoot {
                             y: 13
                             spacing: 3
                             Text {
-                                text: "Inbox"
+                                text: mail.mailboxTitle
                                 color: Theme.label
                                 font { family: Theme.fontDisplay; pixelSize: Theme.fs(23); weight: Font.Bold }
                             }
@@ -827,10 +951,22 @@ ShellRoot {
                                 }
                                 Text {
                                     width: parent.width - 10
-                                    text: mail.account
+                                    text: messageEntry.modelData.category ? messageEntry.modelData.category[0].toUpperCase() +
+                                          messageEntry.modelData.category.slice(1) : mail.account
                                     elide: Text.ElideRight
                                     color: Theme.secondaryLabel
                                     font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+                                }
+                            }
+                            Text {
+                                anchors { right: parent.right; rightMargin: 13; bottom: parent.bottom; bottomMargin: 11 }
+                                text: messageEntry.modelData.flagged ? "★" : "☆"
+                                color: messageEntry.modelData.flagged ? "#ffab33" : Theme.secondaryLabel
+                                font { family: Theme.fontUi; pixelSize: Theme.fs(17) }
+                                MouseArea {
+                                    anchors.fill: parent
+                                    onClicked: mail.toggleFlag(messageEntry.modelData.uid,
+                                        !messageEntry.modelData.flagged)
                                 }
                             }
                             Rectangle {
@@ -1018,6 +1154,40 @@ ShellRoot {
                                 color: Theme.label
                                 lineHeight: 1.3
                                 font { family: Theme.fontUi; pixelSize: Theme.fs(14) }
+                            }
+                            Row {
+                                spacing: 8
+                                Button {
+                                    text: mail.messages.find((m) => String(m.uid) === String(mail.selectedUid))?.flagged
+                                        ? "★ Important" : "☆ Mark Important"
+                                    onClicked: {
+                                        const item = mail.messages.find((m) => String(m.uid) === String(mail.selectedUid))
+                                        if (item) mail.toggleFlag(item.uid, !item.flagged)
+                                    }
+                                }
+                                Button {
+                                    text: mail.messages.find((m) => String(m.uid) === String(mail.selectedUid))?.vip
+                                        ? "Remove VIP" : "Add VIP"
+                                    onClicked: {
+                                        const item = mail.messages.find((m) => String(m.uid) === String(mail.selectedUid))
+                                        if (item) mail.toggleVip(item.from, !item.vip)
+                                    }
+                                }
+                            }
+                            Row {
+                                spacing: 8
+                                Text {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: "Category"; color: Theme.secondaryLabel
+                                    font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                                }
+                                PopUpButton {
+                                    options: ["Primary", "Transactions", "Updates", "Promotions"]
+                                    current: Math.max(0, ["primary", "transactions", "updates", "promotions"]
+                                        .indexOf(mail.messages.find((m) => String(m.uid) === String(mail.selectedUid))?.category || "primary"))
+                                    onPicked: (i) => mail.setCategory(mail.selectedUid,
+                                        ["primary", "transactions", "updates", "promotions"][i])
+                                }
                             }
                             Row {
                                 spacing: 8
