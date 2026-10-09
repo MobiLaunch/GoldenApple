@@ -24,7 +24,7 @@ Item {
     x: flickable ? (inside ? 0 : flickable.x) + flickable.width - width - 2 : 0
     y: flickable ? (inside ? 0 : flickable.y) + 2 : 0
     width: wide ? 12 : 9
-    height: flickable ? flickable.height - 4 : 0
+    height: flickable ? Math.max(0, flickable.height - 4) : 0
     z: (flickable && !inside ? flickable.z : 0) + 1
     visible: needed && !!flickable && flickable.visible && flickable.enabled
     opacity: needed && (Theme.alwaysShowScrollbars || active || wide) ? 1 : 0
@@ -52,8 +52,10 @@ Item {
         readonly property real ratio: s.flickable ? Math.min(1, s.flickable.visibleArea.heightRatio) : 1
         readonly property real pos: s.flickable ? Math.max(0, Math.min(1 - ratio, s.flickable.visibleArea.yPosition)) : 0
         x: 2; width: parent.width - 4
-        height: Math.max(24, s.height * ratio)
-        y: (s.height - height) * (ratio < 1 ? pos / (1 - ratio) : 0)
+        // A short inspector is allowed to have a short scrollbar, not a
+        // 24px thumb that overflows its own track or gets a negative y.
+        height: Math.min(s.height, Math.max(24, s.height * ratio))
+        y: Math.max(0, s.height - height) * (ratio < 1 ? pos / (1 - ratio) : 0)
         radius: width / 2
         color: Theme.dark ? (s.wide ? "#a6ffffff" : "#80ffffff") : (s.wide ? "#80000000" : "#59000000")
         Behavior on color { ColorAnimation { duration: Theme.reduceMotion ? 0 : 100 } }
@@ -77,7 +79,7 @@ Item {
             const f = s.flickable
             const travel = Math.max(1, s.height - knob.height)
             const p = Math.max(0, Math.min(1, (m.y - grab) / travel))
-            f.contentY = f.originY + p * (f.contentHeight - f.height)
+            f.contentY = f.originY + p * Math.max(0, f.contentHeight - f.height)
         }
         onReleased: grab = -1
     }
