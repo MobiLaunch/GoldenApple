@@ -274,8 +274,8 @@ function qmlColor(c) {
     `    animation = layersOut, 1, 2, smooth, fade`,
     `    animation = fade, 1, 2, smooth`,
     `    animation = workspaces, 1, ${ds("smooth")}, smooth, slide`,
-    // The yellow light parks windows on special:minimized; they sink and fade.
-    `    animation = specialWorkspace, 1, ${ds("window")}, window, slidefadevert 30%`,
+    // Minimizing uses the real compositor texture, with restrained downward\n    // movement and fade. Avoid a fake Dock icon snapshot and fullscreen jump.
+    `    animation = specialWorkspace, 1, 3, window, slidefadevert 18%`,
     "}",
     "",
     // The Liquid Glass compositor material (docs/LIQUID-GLASS.md): a deep
