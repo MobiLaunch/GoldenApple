@@ -130,6 +130,27 @@ class Interactions(unittest.TestCase):
         QTest.qWait(230)
         self.assertFalse(self.eval('quickLook.visible'))
 
+    def test_quick_look_arrow_browsing_retains_keyboard_focus(self):
+        self.eval('select(entries.find(e => e.name === "a.txt")); quickLook.open=true')
+        QTest.qWait(45)
+        card=self.root.findChild(QObject,'quickLookCard')
+        self.assertIsNotNone(card)
+        self.assertTrue(card.hasActiveFocus(), 'preview needs its own keyboard focus')
+        before=self.eval('selectedIndex')
+        QTest.keyClick(self.root,Qt.Key_Right)
+        self.assertEqual(self.eval('selectedIndex'),min(before+1,self.eval('entries.length')-1))
+        self.assertTrue(self.eval('quickLook.open'))
+        self.assertTrue(card.hasActiveFocus(), 'selection move must not steal focus from Quick Look')
+        QTest.keyClick(self.root,Qt.Key_Left)
+        self.assertEqual(self.eval('selectedIndex'),before)
+        QTest.keyClick(self.root,Qt.Key_Escape)
+        self.assertFalse(self.eval('quickLook.open'))
+        self.assertTrue(self.files.hasActiveFocus())
+        self.eval('quickLook.open=true')
+        QTest.qWait(45)
+        QTest.keyClick(self.root,Qt.Key_Space)
+        self.assertFalse(self.eval('quickLook.open'))
+
     def test_quick_look_reduce_motion_avoids_pop_and_preview_remains_navigable(self):
         self.eval('Theme.reduceMotion=true; select(entries[0]); quickLook.open=true')
         card=self.root.findChild(QObject,'quickLookCard')
