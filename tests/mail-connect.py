@@ -132,6 +132,7 @@ def main() -> int:
     (fakebin / "secret-tool").write_text("#!/bin/sh\nf=\"$FAKE_KEYRING\"\ncase \"$1\" in store) cat > \"$f\";; lookup) cat \"$f\" 2>/dev/null || exit 1;; esac\n")
     (fakebin / "secret-tool").chmod(0o755)
     env = dict(os.environ, SSL_CERT_FILE=str(cert), XDG_CONFIG_HOME=str(tmp / "config"),
+               XDG_STATE_HOME=str(tmp / "state"),
                FAKE_KEYRING=str(tmp / "keyring"), PATH=f"{fakebin}:{os.environ['PATH']}")
 
     def setup(**over: object) -> dict:
