@@ -90,7 +90,7 @@ Item {
         prefs = setIn(prefs, path, value)
         const key = path.join(".")
         run(["gg-pref", key, JSON.stringify(value)], (out, code) => { if (code !== 0) sys.failed("desktop.json", key) })
-        if (path[0] === "glass" || path[0] === "glassSolidity" || path[0] === "reduceTransparency") {
+        if (path[0] === "glass" || path[0] === "glassWindows" || path[0] === "glassSolidity" || path[0] === "reduceTransparency") {
             glassDirty = true
             glassSync.restart()
         }
