@@ -635,7 +635,7 @@ PanelWindow {
             { label: "Search", action: () => bar.spotlight.toggle() },
             "-",
             { label: "Keyboard Shortcuts", action: () => Hyprland.dispatch("exec gg-settings keyboard") },
-            { label: "Ask Citron…", action: () => Quickshell.execDetached(["gg-intelligence"]) }
+            { label: "Ask Citron…", action: () => Quickshell.execDetached(["qs", "-c", "golden-gate", "ipc", "call", "citron", "ask"]) }
         ]
         return []
     }
