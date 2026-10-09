@@ -152,31 +152,20 @@ Item { width: 1000; height: 780; Loader { source: "../apps/textedit.qml" } }''')
         self.assertEqual(doc.property("error"), "Permission denied")
         self.assertFalse(doc.property("loading"))
 
-    def test_ask_page_chats(self):
-        # Ask Anything had no field to type into; it's a chat now: Return
-        # sends, the exchange appears, the composer clears.
-        self.load('''import QtQuick
-Item { width: 1100; height: 820; Loader { source: "../apps/intelligence.qml" } }''')
-        QTest.qWait(80)
-        composer = self.root.findChild(QObject, "citronComposer")
-        chat = self.root.findChild(QObject, "citronChat")
-        self.assertIsNotNone(composer); self.assertIsNotNone(chat)
-        self.fake.reply = {"ok": True, "text": "A citrus fruit.", "images": [], "truncated": False}
-
-        def key(k, mods=Qt.NoModifier):
-            # Straight to the field: the app's window isn't a real one here.
-            for kind in (QEvent.KeyPress, QEvent.KeyRelease):
-                QCoreApplication.sendEvent(composer, QKeyEvent(kind, k, mods, "\r"))
-
-        composer.setProperty("text", "What is a lemon?")
-        composer.setProperty("cursorPosition", 16)
-        key(Qt.Key_Return, Qt.ShiftModifier); QTest.qWait(30)
-        self.assertEqual(chat.property("count"), 0, "Shift+Return is a new line, not a send")
-        self.assertEqual(composer.property("text"), "What is a lemon?\n")
-        composer.setProperty("text", "What is a lemon?")
-        key(Qt.Key_Return); QTest.qWait(150)
-        self.assertEqual(chat.property("count"), 2)
-        self.assertEqual(composer.property("text"), "")
+    def test_intelligence_is_an_integrated_system_overlay(self):
+        # Replaces the obsolete standalone chat-window test. Text requests
+        # use the exact existing AI.Service backend from within the shell.
+        self.assertFalse((ROOT / "apps/intelligence.qml").exists())
+        self.assertFalse((ROOT / "apps/desktop/org.goldengate.Intelligence.desktop").exists())
+        qml = (ROOT / "shell/VoiceAssistant.qml").read_text()
+        self.assertIn('id: aiService', qml)
+        self.assertIn('AI.Service', qml)
+        self.assertIn('objectName: "citronSystemPrompt"', qml)
+        self.assertIn('request.history = history.slice(-16)', qml)
+        self.assertIn('request.mode = "rewrite"', qml)
+        self.assertIn('aiService.send(request)', qml)
+        self.assertIn('citron.responseOpen = true', qml)
+        self.assertIn('imageSave.open()', qml)
 
 if __name__ == "__main__":
     unittest.main()
