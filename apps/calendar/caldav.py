@@ -94,9 +94,8 @@ def secret_tool(*args, value=None):
     return proc.stdout.rstrip("\r\n")
 
 
-def decode_start(raw, fields):
+def decode_start(raw, params):
     """Convert DTSTART to the signed-in machine's local calendar day/time."""
-    name, params = fields
     all_day = params.get("VALUE") == "DATE" or bool(re.fullmatch(r"\d{8}", raw))
     if all_day:
         date = dt.datetime.strptime(raw, "%Y%m%d").date()
@@ -171,7 +170,7 @@ def parse_ics(ics):
             unsupported += 1
             continue
         try:
-            date, time = decode_start(*reversed(row["DTSTART"]))
+            date, time = decode_start(*row["DTSTART"])
             freq, until = "never", ""
             if "RRULE" in row:
                 parts = {}
