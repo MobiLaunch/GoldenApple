@@ -509,7 +509,17 @@ ShellRoot {
                 onPaired: { app.reload(); app.refreshStatus() }
                 onForgotten: { app.threads = []; app.currentKey = "" }
             }
-            Component.onCompleted: { pairing.start(); app.reload(); app.refreshStatus() }
+            // Probe the optional BlueFerry bridge first. Launching its CLI
+            // before availability is known leaves two failed Process jobs
+            // pending on machines without BlueFerry and can appear as a
+            // permanently blank/loading Messages window.
+            Connections {
+                target: bridge
+                function onCheckedChanged() {
+                    if (bridge.checked && bridge.available) pairing.start()
+                }
+            }
+            Component.onCompleted: { app.reload(); app.refreshStatus() }
             Timer { interval: 15000; running: app.connected; repeat: true; onTriggered: app.refreshStatus() }
             Timer {
                 id: suggest
