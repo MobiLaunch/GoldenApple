@@ -132,7 +132,13 @@ Item {
     // -------------------------------------------------------------- project
     Item {
         id: projectPage
-        visible: nav.page === 0
+        opacity: nav.page === 0 ? 1 : 0
+        visible: opacity > 0.001
+        enabled: nav.page === 0
+        z: nav.page === 0 ? 1 : 0
+        Behavior on opacity {
+            NumberAnimation { duration: Theme.reduceMotion ? 0 : 125; easing.type: Easing.OutCubic }
+        }
         anchors { fill: parent; topMargin: strip.height + 10 }
 
         SidebarRow {
@@ -231,7 +237,14 @@ Item {
 
     // ----------------------------------------------------------------- find
     Item {
-        visible: nav.page === 1
+        objectName: "navigatorFindPage"
+        opacity: nav.page === 1 ? 1 : 0
+        visible: opacity > 0.001
+        enabled: nav.page === 1
+        z: nav.page === 1 ? 1 : 0
+        Behavior on opacity {
+            NumberAnimation { duration: Theme.reduceMotion ? 0 : 125; easing.type: Easing.OutCubic }
+        }
         anchors { fill: parent; topMargin: strip.height + 12 }
 
         Row {
@@ -324,7 +337,14 @@ Item {
 
     // --------------------------------------------------------------- issues
     Item {
-        visible: nav.page === 2
+        objectName: "navigatorIssuesPage"
+        opacity: nav.page === 2 ? 1 : 0
+        visible: opacity > 0.001
+        enabled: nav.page === 2
+        z: nav.page === 2 ? 1 : 0
+        Behavior on opacity {
+            NumberAnimation { duration: Theme.reduceMotion ? 0 : 125; easing.type: Easing.OutCubic }
+        }
         anchors { fill: parent; topMargin: strip.height + 12 }
         EmptyState {
             anchors.fill: parent
@@ -386,7 +406,14 @@ Item {
 
     // -------------------------------------------------------------- reports
     Item {
-        visible: nav.page === 3
+        objectName: "navigatorReportsPage"
+        opacity: nav.page === 3 ? 1 : 0
+        visible: opacity > 0.001
+        enabled: nav.page === 3
+        z: nav.page === 3 ? 1 : 0
+        Behavior on opacity {
+            NumberAnimation { duration: Theme.reduceMotion ? 0 : 125; easing.type: Easing.OutCubic }
+        }
         anchors { fill: parent; topMargin: strip.height + 12 }
         EmptyState {
             anchors.fill: parent
