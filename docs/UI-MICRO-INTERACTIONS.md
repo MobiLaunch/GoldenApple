@@ -173,6 +173,17 @@ alias directly had triggered a Python QQuickTextInput* converter error.
 The separate Music playlist regression found filenames sorted by their
 extensions instead of their displayed names; Music now sorts by the stem.
 
+**Finder grid marquee:** Dragging from empty grid space now paints a
+slim accent-outlined selection rectangle over matching icons. Shift extends
+the existing selection, Control toggles the intersecting icons, and an
+unmodified drag replaces it. The hit area stays behind actual icon delegates,
+so file dragging and folder DropAreas retain their own input route. The
+marquee uses live delegate geometry and only selects instantiated cells;
+it does not silently select out-of-view files or start destructive operations.
+The rectangle appears directly under the cursor with no lag or bounce, and
+it is removed immediately on release. QML regression contracts and native
+Files tests cover the modifier cases and inactive grid.
+
 The acceptance boundary remains the same: connected GUI/native-preview
 checks must run before these interactions can be called verified on a real
 Wayland/Hyprland installation.
