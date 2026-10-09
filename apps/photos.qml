@@ -30,7 +30,7 @@ ShellRoot {
         ]
         toolbarItems: [
             Row {
-                x: win.sidebarWidth > 0 ? win.contentX + 12 : 130
+                x: Math.max(win.contentX + 12, win.toolbarLeadingEnd)
                 anchors.verticalCenter: parent.verticalCenter
                 spacing: 10
                 ToolbarButton {
