@@ -131,7 +131,7 @@ class ResolverTests(unittest.TestCase):
         self.assertNotIn('name: "Other"', launch)
         self.assertIn("launchpad-icons.json", launch)
         self.assertIn("launchpad-icons.json", dock)
-        self.assertIn('["gg-icon-resolver", "bootstrap"', store)
+        self.assertIn('["gg-icon-resolver", "bootstrap" if action == "install" else "sync"]', store)
         self.assertIn("gg-icon-resolver watch", hypr)
         self.assertIn('icon-resolver.py', install)
         self.assertIn('gg-icon-resolver', install)
