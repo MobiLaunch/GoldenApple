@@ -16,6 +16,7 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
+import re
 import subprocess
 import sys
 
@@ -66,15 +67,39 @@ def rect(layout: str, window: dict, usable: tuple) -> tuple[int, int, int, int]:
     return round(x), round(y), round(w), round(h)
 
 
+def restored_rect(saved: list, usable: tuple) -> tuple[int, int, int, int]:
+    """Keep the original window geometry reachable after a display change.
+
+    Unlike a normal tile, Restore preserves as much of the saved size/position
+    as possible. If an external monitor was unplugged or scaling changed, the
+    traffic-light toolbar must still be on this monitor.
+    """
+    ax, ay, aw, ah = usable
+    x, y, w, h = saved
+    w = max(1, min(int(w), max(1, round(aw))))
+    h = max(1, min(int(h), max(1, round(ah))))
+    x = max(round(ax), min(round(x), round(ax + aw - w)))
+    y = max(round(ay), min(round(y), round(ay + ah - h)))
+    return x, y, w, h
+
+
 def main(argv: list[str]) -> int:
     if not argv or argv[0] not in (*LAYOUTS, "center", "restore"):
         print(__doc__.strip(), file=sys.stderr)
         return 2
     layout = argv[0]
+    if len(argv) > 2:
+        return 2
+    target_address = argv[1].lower() if len(argv) > 1 else ""
+    # The address becomes part of a Hyprland batch command; reject everything
+    # except compositor-issued hexadecimal window IDs (never interpolate input).
+    if target_address and not re.fullmatch(r"0x[0-9a-f]+", target_address):
+        return 2
     try:
         window = json.loads(hyprctl("-j", "activewindow") or "{}")
-        if len(argv) > 1:
-            window = next((c for c in json.loads(hyprctl("-j", "clients") or "[]") if c.get("address") == argv[1]), window)
+        if target_address:
+            window = next((c for c in json.loads(hyprctl("-j", "clients") or "[]")
+                           if str(c.get("address", "")).lower() == target_address), {})
         monitors = json.loads(hyprctl("-j", "monitors") or "[]")
     except ValueError:
         return 1
@@ -92,7 +117,7 @@ def main(argv: list[str]) -> int:
     if layout == "restore":
         if address not in saved:
             return 0
-        x, y, w, h = saved.pop(address)
+        x, y, w, h = restored_rect(saved.pop(address), area(monitor))
     else:
         x, y, w, h = rect(layout, window, area(monitor))
         # Remember where it was before its first tile, for Return to Previous Size.
