@@ -10,6 +10,8 @@ import Quickshell.Io
 import Quickshell.Wayland
 import QtQuick
 import QtQuick.Effects
+import QtQuick.Dialogs
+import "ui/intelligence" as AI
 import "ui/theme"
 import "components"
 import "ui" as Shared
@@ -19,7 +21,16 @@ PanelWindow {
     property bool open: false
     property bool micMuted: false
     property bool everReady: false
-    property string phase: "connecting"
+    property string phase: "idle"
+    property bool voiceMode: false
+    property string tool: "ask"
+    property string selectedPhoto: ""
+    property string answer: ""
+    property var imageResults: []
+    property var history: []
+    property string responseNote: ""
+    property bool responseOpen: false
+    property string toolTitle: tool === "writing" ? "Writing Tools" : tool === "image" ? "Create an Image" : tool === "edit" ? "Edit a Photo" : "Ask Citron"
     property string errorText: ""
     property string youSaid: ""
     property string citronSaid: ""
@@ -27,25 +38,31 @@ PanelWindow {
     readonly property string helper: decodeURIComponent(
         Qt.resolvedUrl("ui/intelligence/live.py").toString().replace("file://", ""))
     // What the orb does: it listens, thinks while connecting, speaks.
-    readonly property string orbMode: phase === "error" ? "error" : micMuted ? "muted"
+    readonly property string orbMode: aiService.busy ? "thinking" : !voiceMode ? "idle"
+        : phase === "error" ? "error" : micMuted ? "muted"
         : phase === "connecting" ? "thinking" : phase === "speaking" ? "speaking" : "listening"
 
     function present() {
         if (open) { textEntry.forceActiveFocus(); return }
         open = true
-        phase = "connecting"
+        phase = "idle"
+        voiceMode = false
         everReady = false
         errorText = ""
         micMuted = false
         soundLevel = 0
         youSaid = ""
         citronSaid = ""
-        voiceProc.running = true
+        responseNote = ""
+        textEntry.text = ""
+        Qt.callLater(() => textEntry.forceActiveFocus())
     }
     function dismiss() {
         if (!open) return
         open = false
         voiceProc.running = false
+        aiService.cancel()
+        voiceMode = false
         soundLevel = 0
         youSaid = ""
         citronSaid = ""
@@ -56,6 +73,52 @@ PanelWindow {
         textEntry.text = ""
     }
     function toggle() { if (open) dismiss(); else present() }
+    function show(kind) {
+        if (!open) present()
+        if (["ask", "writing", "image", "edit"].includes(kind)) tool = kind
+        Qt.callLater(() => textEntry.forceActiveFocus())
+    }
+    function startVoice() {
+        if (voiceMode) return
+        voiceMode = true
+        phase = "connecting"
+        errorText = ""
+        everReady = false
+        micMuted = false
+        voiceProc.running = true
+    }
+    function chooseTool(kind) {
+        if (aiService.busy || !["ask", "writing", "image", "edit"].includes(kind)) return
+        tool = kind
+        responseOpen = false
+        responseNote = ""
+        textEntry.text = ""
+        Qt.callLater(() => textEntry.forceActiveFocus())
+    }
+    function sendAI() {
+        const q = textEntry.text.trim()
+        if (!q || aiService.busy) return
+        const task = tool
+        if (task === "writing" && !writingSource.text.trim()) {
+            responseNote = "Paste or type the text you want to rewrite."
+            return
+        }
+        if (task === "edit" && !selectedPhoto) {
+            responseNote = "Choose a photo first."
+            return
+        }
+        const request = { task: task, prompt: q }
+        if (task === "ask") {
+            request.history = history.slice(-16)
+            if (selectedPhoto) request.imagePath = selectedPhoto
+        } else if (task === "writing") {
+            request.text = writingSource.text
+            request.mode = "rewrite"
+        } else if (task === "edit") request.imagePath = selectedPhoto
+        responseNote = ""
+        responseOpen = true
+        aiService.send(request)
+    }
     function retry() {
         voiceProc.running = false
         phase = "connecting"
@@ -65,11 +128,14 @@ PanelWindow {
     }
     function sendText() {
         const text = textEntry.text.trim()
-        if (!text || !voiceProc.running || !everReady) return
-        voiceProc.write(JSON.stringify({ action: "text", text: text }) + "\n")
-        textEntry.text = ""
+        if (!text) return
+        if (voiceMode && voiceProc.running && everReady) {
+            voiceProc.write(JSON.stringify({ action: "text", text: text }) + "\n")
+            textEntry.text = ""
+        } else sendAI()
     }
     function toggleMic() {
+        if (!voiceMode) { startVoice(); return }
         if (phase === "error") { retry(); return }
         if (!voiceProc.running || !everReady) return
         micMuted = !micMuted
@@ -116,8 +182,54 @@ PanelWindow {
         function toggle(): void { citron.toggle() }
         function open(): void { citron.present() }
         function close(): void { citron.dismiss() }
+        function show(kind: string): void { citron.show(kind) }
+        function ask(): void { citron.show("ask") }
+        function writing(): void { citron.show("writing") }
+        function image(): void { citron.show("image") }
+        function edit(): void { citron.show("edit") }
     }
 
+    // Reuses the existing keyring-backed Gemini service. Requests are sent on
+    // stdin, never through a background HTTP server or a separate app window.
+    AI.Service {
+        id: aiService
+        onCompleted: (action, result) => {
+            if (!result.ok) { citron.responseNote = result.error || "Couldn't complete that request."; citron.responseOpen = true; return }
+            if (action === "export") {
+                citron.responseNote = "Saved: " + result.savedPath
+                return
+            }
+            if (action !== "generate") return
+            citron.answer = result.text || ""
+            citron.imageResults = result.images || []
+            citron.responseOpen = true
+            citron.responseNote = result.truncated ? "The answer may be incomplete." : ""
+            if (citron.tool === "ask") {
+                citron.history = citron.history.concat([
+                    { role: "user", text: textEntry.text.trim() },
+                    { role: "model", text: citron.answer }
+                ]).slice(-20)
+            }
+            textEntry.text = ""
+        }
+    }
+    FileDialog {
+        id: photoPicker
+        title: "Choose a photo"
+        fileMode: FileDialog.OpenFile
+        nameFilters: ["Images (*.png *.jpg *.jpeg *.webp *.heic)"]
+        onAccepted: citron.selectedPhoto = decodeURIComponent(String(selectedFile).replace(/^file:\/\//, ""))
+    }
+    FileDialog {
+        id: imageSave
+        title: "Save Generated Image"
+        fileMode: FileDialog.SaveFile
+        onAccepted: {
+            if (!citron.imageResults.length) return
+            aiService.send({action:"export", source: citron.imageResults[0],
+                destination: decodeURIComponent(String(selectedFile).replace(/^file:\/\//, ""))})
+        }
+    }
     Process {
         id: voiceProc
         command: ["python3", citron.helper]
