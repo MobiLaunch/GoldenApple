@@ -56,6 +56,8 @@ check('barMenu.open && !wasOpen && key !== "Window"' in bar
       and '&& openTitle !== key) barMenu.reopen()' in bar,
       "switching menu titles unmaps the prior popup before geometry can change")
 popup = (ROOT / "shell/components/MenuPopup.qml").read_text()
+check("property var shown: []" in popup and "property var shown: items" not in popup,
+      "displayed rows are an independent snapshot, never a live binding to incoming items")
 check("visible: (open || vanish.running) && !reopening" in popup, "the surface goes away while it's put right")
 backdrop = (ROOT / "shell/components/DesktopBackdrop.qml").read_text()
 check("sourceItem: bd.settled && Backdrops.used(texture) ? bd : null" in backdrop,
