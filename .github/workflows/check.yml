@@ -21,6 +21,8 @@ jobs:
         run: find scripts distro apps themes compositor -type f -name "*.sh" -print0 | xargs -0 -n1 bash -n
       - name: Calendar recurrence contracts
         run: node tests/calendar-recurrence.mjs
+      - name: Desktop window positioning and Dock motion contracts
+        run: node --test tests/window-placement.mjs
       - name: Guard the login and glass paths
         run: |
           grep -q 'id: applicationsPanel' shell/shell.qml
@@ -247,6 +249,8 @@ jobs:
         run: python tests/titlebars.py
       - name: Window › Move & Resize tiles inside the usable area
         run: python tests/tiling.py
+      - name: Window restore stays onscreen and rejects stale window IDs
+        run: python tests/tile-layout.py
       - name: Files' backend (drag and drop, Trash, Recents)
         run: python tests/files-helper.py
       - name: "Files transfers: cancellation, conflicts, clipboard, Undo and view persistence"
