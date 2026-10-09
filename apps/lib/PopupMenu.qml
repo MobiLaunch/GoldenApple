@@ -51,9 +51,11 @@ Item {
 
     NumberAnimation {
         id: appear
-        target: box; property: "scale"; from: Theme.reduceMotion ? 1 : 0.9; to: 1
-        duration: Theme.reduceMotion ? 0 : Theme.popover.duration
-        easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.popover.curve
+        // App menus must react to the pointer, not take half a second to
+        // spring into place. Grow in subtly without altering popup geometry.
+        target: box; property: "scale"; from: Theme.reduceMotion ? 1 : 0.975; to: 1
+        duration: Theme.reduceMotion ? 0 : 170
+        easing.type: Easing.OutCubic
     }
     SequentialAnimation {
         id: vanish

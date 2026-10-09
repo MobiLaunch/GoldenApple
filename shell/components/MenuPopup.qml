@@ -112,9 +112,11 @@ PopupWindow {
 
     NumberAnimation {
         id: appear
-        target: list; property: "scale"; from: 0.9; to: 1
-        duration: Theme.popover.duration
-        easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.popover.curve
+        // Only the menu content scales: PopupWindow's configured surface
+        // remains stationary and retains its measured dimensions.
+        target: list; property: "scale"; from: 0.975; to: 1
+        duration: 170
+        easing.type: Easing.OutCubic
     }
 
     SequentialAnimation {
