@@ -71,6 +71,7 @@ BRANCH_RE = re.compile(r"^(?!.*\.\.)[A-Za-z0-9_./-]{1,200}$")
 MANAGED = [
     "hypr/hyprland.conf", "hypr/hypridle.conf", "hypr/golden-gate/motion.conf",
     "hypr/golden-gate/report-config-errors.sh", "hypr/golden-gate/machine-conf.sh",
+    "hypr/golden-gate/windows.conf",
     "gtk-4.0/gtk.css", "gtk-3.0/gtk.css", "fontconfig/conf.d/60-golden-gate.conf",
     "ghostty/config",
 ]
