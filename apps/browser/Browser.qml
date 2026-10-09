@@ -3,15 +3,23 @@ import QtQuick.Window
 import QtQuick.Layouts
 import QtWebEngine
 import "../lib"
+import "../lib/WindowGeometry.js" as WindowGeometry
 import "../lib/theme"
 
 Window {
     id: root
     objectName: "browserWindow"
-    width: 1180
-    height: 780
-    minimumWidth: 720
-    minimumHeight: 480
+    // Match native Golden Gate window placement. Browser.qml is a Qt Window,
+    // not the Quickshell AppWindow, so constrain its first requested size too.
+    // Use a generous 100px Dock size here to stay safe with larger user docks.
+    readonly property real _maxLaunchWidth: WindowGeometry.maximumWidth(Screen.width)
+    readonly property real _maxLaunchHeight: WindowGeometry.maximumHeight(Screen.height, 100, 30)
+    width: Math.min(1180, _maxLaunchWidth)
+    height: Math.min(780, _maxLaunchHeight)
+    maximumWidth: _maxLaunchWidth
+    maximumHeight: _maxLaunchHeight
+    minimumWidth: Math.min(720, _maxLaunchWidth)
+    minimumHeight: Math.min(480, _maxLaunchHeight)
     visible: true
     flags: Qt.Window | Qt.FramelessWindowHint
     color: Theme.dark ? "#1d1d20" : "#f5f5f7"
