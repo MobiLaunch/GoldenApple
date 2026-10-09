@@ -372,6 +372,9 @@ ShellRoot {
                 menu.popup(item, x, y, [
                     { text: t.starred ? "Unpin" : "Pin", action: () => bridge.call("set_thread_starred", { thread_key: t.key, starred: !t.starred }, () => app.reload()) },
                     { text: "Mark as Read", enabled: !!t.unread, action: () => app.markRead(t) },
+                    { text: "Contact Info", action: () => app.showContactCard(t) },
+                    { text: "Start Video Meeting", action: () => app.createVideoCall() },
+                    { text: "Join FaceTime Link…", action: () => app.faceTimeDialog = true },
                     { separator: true },
                     { text: "Delete Conversation…", destructive: true, action: () => app.confirmDelete = t }
                 ])
@@ -655,7 +658,7 @@ ShellRoot {
                 id: composer
                 visible: app.connected && (!!app.current || app.composing)
                 anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
-                height: visible ? Math.max(54, draftBox.height + 20) : 0
+                height: visible ? Math.max(54, draftBox.height + (app.mediaPath ? 80 : 0) + 20) : 0
                 readonly property bool canReply: app.composing ? !!(app.recipient || to.text.trim()) : !!app.current && app.current.reply_ready
 
                 Text {
@@ -674,10 +677,21 @@ ShellRoot {
                     role: "control"
                     anchors { left: parent.left; leftMargin: 16; right: parent.right; rightMargin: 16; verticalCenter: parent.verticalCenter }
                     height: Math.min(120, Math.max(34, draft.input.contentHeight + 16))
+                    anchors.verticalCenter: undefined
+                    anchors { bottom: parent.bottom; bottomMargin: 10 }
                     radius: 17
+                    ToolbarButton {
+                        id: attachButton
+                        anchors { left: parent.left; leftMargin: 3; verticalCenter: parent.verticalCenter }
+                        symbol: "plus"
+                        round: true
+                        enabled: !app.sending
+                        onClicked: app.pickMedia()
+                        Accessible.name: "Add photo or video"
+                    }
                     TextField {
                         id: draft
-                        anchors { left: parent.left; leftMargin: 12; right: sendButton.left; rightMargin: 6; verticalCenter: parent.verticalCenter }
+                        anchors { left: attachButton.right; leftMargin: 4; right: sendButton.left; rightMargin: 6; verticalCenter: parent.verticalCenter }
                         bare: true
                         placeholder: app.composing ? "Message" : "iMessage"
                         input.wrapMode: TextInput.Wrap
@@ -690,10 +704,55 @@ ShellRoot {
                         anchors { right: parent.right; rightMargin: 4; bottom: parent.bottom; bottomMargin: 4 }
                         width: 26; height: 26; radius: 13
                         color: Theme.accentBlue
-                        scale: draft.text.trim() ? 1 : 0
+                        scale: draft.text.trim() || app.mediaPath ? 1 : 0
                         Behavior on scale { Spring { spring: Theme.snappy } }
                         Symbol { anchors.centerIn: parent; name: "arrow-up"; size: 13; tone: "white" }
                         TapHandler { onTapped: app.send() }
+                    }
+                }
+                Rectangle {
+                    id: mediaPreview
+                    visible: !!app.mediaPath
+                    anchors { left: draftBox.left; right: draftBox.right; bottom: draftBox.top; bottomMargin: 8 }
+                    height: 66
+                    radius: 14
+                    color: Theme.fill
+                    border.color: Theme.separator
+                    clip: true
+                    Image {
+                        id: selectedImage
+                        visible: app.mediaInfo.type === "image"
+                        x: 6; y: 6; width: 54; height: 54
+                        source: visible && app.mediaPath ? "file://" + app.mediaPath : ""
+                        fillMode: Image.PreserveAspectCrop
+                        asynchronous: true
+                        sourceSize.width: 160; sourceSize.height: 160
+                    }
+                    Symbol {
+                        visible: app.mediaInfo.type !== "image"
+                        x: 15; y: 18; name: "film"; size: 27; tone: "gray"
+                    }
+                    Column {
+                        anchors { left: parent.left; leftMargin: 68; right: removeMedia.left; rightMargin: 8; verticalCenter: parent.verticalCenter }
+                        spacing: 3
+                        Text {
+                            width: parent.width
+                            text: app.mediaInfo.name || app.mediaPath.split("/").pop()
+                            elide: Text.ElideMiddle
+                            color: Theme.label
+                            font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: Font.DemiBold }
+                        }
+                        Text {
+                            text: app.mediaInfo.type === "video" ? "Video attachment" : "Photo attachment"
+                            color: Theme.secondaryLabel
+                            font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+                        }
+                    }
+                    ToolbarButton {
+                        id: removeMedia
+                        anchors { right: parent.right; rightMargin: 6; verticalCenter: parent.verticalCenter }
+                        symbol: "xmark"; round: true
+                        onClicked: { app.mediaPath = ""; app.mediaInfo = ({}) }
                     }
                 }
             }
@@ -724,6 +783,68 @@ ShellRoot {
                     bridge.call("delete_threads", { thread_keys: [t.key] }, () => app.reload())
                 }
                 onCancelled: app.confirmDelete = null
+            }
+
+            ContactCard {
+                id: details
+                anchors.fill: parent
+                onMessageRequested: { if (app.current) app.open(app.current); else app.newMessage() }
+                onVideoRequested: app.createVideoCall()
+                onFaceTimeRequested: {
+                    app.faceTimeDialog = true
+                    Qt.callLater(() => faceTimeInput.input.forceActiveFocus())
+                }
+                onCopyRequested: (value) => app.copy(value)
+            }
+
+            Item {
+                visible: app.faceTimeDialog
+                anchors.fill: parent
+                z: 80
+                Rectangle {
+                    anchors.fill: parent
+                    color: "#66000000"
+                    TapHandler { onTapped: app.faceTimeDialog = false }
+                }
+                Glass {
+                    anchors.centerIn: parent
+                    role: "menu"
+                    width: Math.min(390, parent.width - 32)
+                    height: 205
+                    radius: 24
+                    Column {
+                        anchors { fill: parent; margins: 22 }
+                        spacing: 12
+                        Text {
+                            text: "Join a FaceTime Call"
+                            color: Theme.label
+                            font { family: Theme.fontDisplay; pixelSize: Theme.fs(19); weight: Font.DemiBold }
+                        }
+                        Text {
+                            width: parent.width
+                            wrapMode: Text.WordWrap
+                            text: "Paste an invitation made on an Apple device. The host must admit you."
+                            color: Theme.secondaryLabel
+                            font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                        }
+                        TextField {
+                            id: faceTimeInput
+                            width: parent.width
+                            placeholder: "https://facetime.apple.com/…"
+                        }
+                        Row {
+                            anchors.right: parent.right
+                            spacing: 8
+                            Button { text: "Cancel"; onClicked: app.faceTimeDialog = false }
+                            Button {
+                                text: "Join in Web"
+                                prominent: true
+                                enabled: faceTimeInput.text.trim() !== ""
+                                onClicked: app.joinFaceTimeLink()
+                            }
+                        }
+                    }
+                }
             }
 
             // Errors appear briefly over the composer.
