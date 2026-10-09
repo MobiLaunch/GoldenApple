@@ -7,6 +7,8 @@ commits a completed directory atomically only after successful validation.
 """
 from __future__ import annotations
 
+import ctypes
+import errno
 import json
 import os
 from pathlib import Path, PurePosixPath
@@ -121,6 +123,29 @@ def unique_destination(folder: Path, name: str) -> Path:
     raise ArchiveError("There are too many similarly named extracted folders.")
 
 
+def publish_directory_exclusively(source: Path, target: Path) -> None:
+    """Linux renameat2 RENAME_NOREPLACE: atomically fail on name collision.
+
+    os.rename would silently overwrite an existing empty folder. Since this
+    utility is for Linux, refuse unsafe filesystems instead of risking data.
+    """
+    libc = ctypes.CDLL(None, use_errno=True)
+    func = getattr(libc, "renameat2", None)
+    if func is None:
+        raise ArchiveError("This system cannot safely publish the extracted folder.")
+    func.argtypes = [ctypes.c_int, ctypes.c_char_p, ctypes.c_int,
+                     ctypes.c_char_p, ctypes.c_uint]
+    func.restype = ctypes.c_int
+    at_fdcwd = -100
+    if func(at_fdcwd, os.fsencode(source), at_fdcwd,
+            os.fsencode(target), 1) == 0:
+        return
+    error = ctypes.get_errno()
+    if error == errno.EEXIST:
+        raise FileExistsError(str(target))
+    raise ArchiveError(f"Could not safely create destination folder: {os.strerror(error)}")
+
+
 def inspect(path: Path) -> None:
     records = members(path)
     shown = [{"name": name, "folder": folder, "size": size} for name, folder, size, _ in records[:5000]]
@@ -170,7 +195,7 @@ def extract(path: Path, destination: Path | None = None) -> None:
             try:
                 if dest.exists() or dest.is_symlink():
                     continue
-                os.rename(stage, dest)
+                publish_directory_exclusively(stage, dest)
                 emit("done", ok=True, mode="extract", destination=str(dest), count=len(records))
                 return
             except FileExistsError:
