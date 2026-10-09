@@ -196,7 +196,16 @@ def pack_index():
         obj = json.loads(INDEX.read_text(encoding="utf-8"))
         if obj.get("version") != VERSION:
             return {}
-        return obj.get("icons", {})
+        icons = obj.get("icons", {})
+        if not isinstance(icons, dict):
+            return {}
+        # The installed index is a cache, not an executable manifest: reject
+        # entries that point outside its own validated SVG directory.
+        return {key: value for key, value in icons.items()
+                if ID.fullmatch(str(key)) and isinstance(value, dict)
+                and value.get("file") == key + ".svg"
+                and isinstance(value.get("sha256"), str)
+                and re.fullmatch(r"[0-9a-f]{64}", value["sha256"])}
     except (OSError, ValueError, AttributeError):
         return {}
 
@@ -282,7 +291,10 @@ def sync(*, network=False):
         if match:
             path = SOURCES / "svg" / upstream[match]["file"]
             try:
-                if path.is_file() and safe_art(path.read_bytes()):
+                if path.is_file():
+                    art = path.read_bytes()
+                    if not safe_art(art) or hashlib.sha256(art).hexdigest() != upstream[match]["sha256"]:
+                        continue
                     selected[app_id] = {"icon": str(path), "source": "WhiteSur", "matched": match}
                     copied += 1
                     continue
@@ -307,11 +319,15 @@ def sync(*, network=False):
 def watch():
     """inotify desktop install directories, with a slow fallback re-scan."""
     sync(network=True)
+    last_bootstrap = time.monotonic()
     libc = ctypes.CDLL(None, use_errno=True)
     init = libc.inotify_init1
     init.argtypes = [ctypes.c_int]
     init.restype = ctypes.c_int
     fd = init(os.O_NONBLOCK | os.O_CLOEXEC)
+    if fd >= 0:
+        libc.inotify_add_watch.argtypes = [ctypes.c_int, ctypes.c_char_p, ctypes.c_uint32]
+        libc.inotify_add_watch.restype = ctypes.c_int
     dirs = data_dirs()
     last_dirs = set()
     try:
@@ -332,7 +348,14 @@ def watch():
                     time.sleep(0.6)  # installers frequently write multiple .desktop files
             else:
                 time.sleep(60)
-            sync()
+            # An offline first boot is normal. Retry the *pinned* open-source
+            # source periodically when the connection appears, without making
+            # any network calls in the interactive Launchpad thread.
+            if not INDEX.is_file() and time.monotonic() - last_bootstrap >= 300:
+                sync(network=True)
+                last_bootstrap = time.monotonic()
+            else:
+                sync()
     finally:
         if fd >= 0:
             os.close(fd)
