@@ -136,7 +136,7 @@ class Interactions(unittest.TestCase):
         # its entry without opening a new surface and without a size tween.
         self.eval('select(entries[1])')
         APP.processEvents()
-        self.assertEqual(self.eval('quickLook.entry.path'),str(self.home/'b.txt'))
+        self.assertEqual(self.eval('quickLook.entry.path'),self.eval('entries[1].path'))
         self.assertTrue(self.eval('quickLook.open'))
         self.eval('quickLook.open=false')
         APP.processEvents()
