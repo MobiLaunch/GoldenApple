@@ -141,11 +141,11 @@ Pane {
             delegate: SetRow {
                 id: appRow
                 required property string modelData
-                required property int index
+                readonly property int pinIndex: pane.pinned.indexOf(modelData)
                 title: modelData.split(".").pop().replace(/([a-z])([A-Z])/g, "$1 $2")
                 image: Quickshell.iconPath(modelData, true)
-                Button { text: "↑"; enabled: appRow.index > 0; onClicked: pane.moveApp(appRow.index, -1) }
-                Button { text: "↓"; enabled: appRow.index < pane.pinned.length - 1; onClicked: pane.moveApp(appRow.index, 1) }
+                Button { text: "↑"; enabled: appRow.pinIndex > 0; onClicked: pane.moveApp(appRow.pinIndex, -1) }
+                Button { text: "↓"; enabled: appRow.pinIndex < pane.pinned.length - 1; onClicked: pane.moveApp(appRow.pinIndex, 1) }
                 Button { text: "Remove"; onClicked: pane.removeApp(appRow.modelData) }
             }
         }
