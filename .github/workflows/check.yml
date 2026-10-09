@@ -261,6 +261,8 @@ jobs:
           QT_QUICK_BACKEND: software
       - name: "Music: saved queues and MPRIS on a private D-Bus session"
         run: python tests/music-workflow.py
+      - name: "Music: playlists survive edits, detect conflicts and never delete songs"
+        run: python tests/music-playlists.py
       - name: "Music UI: paused restore, local WAV playback, navigation, errors and keyboard controls"
         run: python tests/music-ui.py
         env:
