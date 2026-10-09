@@ -30,6 +30,7 @@ Item {
         anchors { left: parent.left; leftMargin: 16; verticalCenter: parent.verticalCenter }
         size: 40
         name: row.thread.name || ""
+        photoPath: row.thread.photo_path || row.thread.contact_photo_path || ""
         group: !!row.thread.is_group
     }
     Text {
