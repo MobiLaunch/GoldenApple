@@ -138,6 +138,19 @@ class Playback(unittest.TestCase):
         component=QQmlComponent(self.engine,QUrl.fromLocalFile(str(ROOT/'apps/music.qml')))
         while component.isLoading():QTest.qWait(10)
         self.assertFalse(component.isError(),'\n'.join(e.toString() for e in component.errors()))
+    def test_playlist_recovery_and_edit_controls_are_wired(self):
+        qml=(ROOT/'apps/music.qml').read_text()
+        library=(ROOT/'apps/music/Library.qml').read_text()
+        for value in ('objectName: "musicRecentlyDeletedPlaylists"',
+                      'onClicked: app.restorePlaylist(deletedRow.modelData)',
+                      'onClicked: app.openDeletedPlaylists()',
+                      'objectName: "musicPlaylistEditor"',
+                      'Quickshell.execDetached(["gg-files", "--select", app.managedPlaylist.path])',
+                      'text: "Refresh Playlists"'):
+            self.assertIn(value,qml)
+        self.assertIn('command: ["python3", lib.playlistHelper, "deleted"]',library)
+        self.assertIn('lib.deletedPlaylists = r.deleted',library)
+
     def test_local_playback_error_and_retry(self):
         self.load()
         self.eval('audio.playList([{path:"/missing/audio-test.wav",title:"Missing",artist:"",album:"",art:""}],0)')
