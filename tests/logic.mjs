@@ -433,7 +433,9 @@ test('Calendar view switching, month-end clamping and week/day navigation', () =
     'checked: cal.viewMode === "month"', 'checked: cal.viewMode === "week"',
     'checked: cal.viewMode === "day"', 'id: agendaRow',
     'visible: cal.viewMode === "month"',
-    'model: agendaDay.dayEvents', 'cal.requestEdit(eventTile.modelData)'
+    'model: agendaDay.dayEvents', 'cal.requestEdit(eventTile.modelData)',
+    'sequence: "Ctrl+1"', 'sequence: "Ctrl+2"', 'sequence: "Ctrl+3"',
+    'sequence: "Ctrl+T"', 'sequence: "Ctrl+N"'
   ]) assert.ok(src.includes(marker), marker);
   const c = context('apps/calendar.qml', ['changeView', 'shiftRange'], {
     viewMode:'month', selectedDate:new Date(2026, 9, 31),
@@ -452,6 +454,19 @@ test('Calendar view switching, month-end clamping and week/day navigation', () =
   assert.equal(c.selectedDate.getDate(),6);
   c.changeView('not-a-view');
   assert.equal(c.viewMode,'day','ignore unknown view');
+});
+
+test('Calendar refresh requests queue behind an active load', () => {
+  const loadProc={running:true};
+  const c=context('apps/calendar.qml',['reload'],{loadProc,reloadPending:false});
+  c.reload();
+  assert.equal(c.reloadPending,true,'a concurrent reload is not silently lost');
+  loadProc.running=false;
+  c.reload();
+  assert.equal(loadProc.running,true,'an idle refresh starts immediately');
+  const source=readFileSync(new URL('../apps/calendar.qml',import.meta.url),'utf8');
+  assert.ok(source.includes('if (cal.reloadPending)'), 'onExited drains pending refresh');
+  assert.ok(source.includes('Qt.callLater(() => cal.reload())'), 'refresh is not restarted during onExited');
 });
 
 test('Files drops: move within Files, copy from other apps, Trash, never into itself', () => {
