@@ -116,7 +116,7 @@ Item {
                 symbol: modelData.symbol
                 symbolSize: 15
                 tone: nav.page === index ? "accent" : "auto"
-                checked: false
+                checked: nav.page === index
                 Accessible.name: modelData.tip
                 onClicked: nav.page = index
             }
