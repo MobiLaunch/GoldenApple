@@ -47,7 +47,7 @@ ShellRoot {
                     ToolbarButton {
                         symbol: "chevron-left"
                         text: "Inbox"
-                        onClicked: mail.selectedUid = ""
+                        onClicked: mail.leaveMessage()
                     }
                 }
                 Text {
@@ -85,7 +85,7 @@ ShellRoot {
                     visible: !mail.composing
                     width: Math.max(112, Math.min(220, win.width * 0.20))
                     height: 32; search: true
-                    placeholder: "Search Mail"
+                    placeholder: "Search Recent Mail"
                     text: mail.query
                     onTextChanged: mail.query = text
                 }
@@ -106,7 +106,7 @@ ShellRoot {
                     width: parent.width; text: "Inbox"; symbol: "download"
                     selected: mail.selectedFolder === "inbox" && !mail.composing
                     badge: mail.unreadCount ? String(mail.unreadCount) : ""
-                    onClicked: { mail.selectedFolder = "inbox"; mail.composing = false; mail.selectedUid = "" }
+                    onClicked: { mail.selectedFolder = "inbox"; mail.composing = false; mail.leaveMessage() }
                 }
                 SidebarRow {
                     width: parent.width; text: "Drafts"; symbol: "doc"
@@ -115,7 +115,7 @@ ShellRoot {
                     onClicked: {
                         mail.selectedFolder = "drafts"
                         mail.composing = false
-                        mail.selectedUid = ""
+                        mail.leaveMessage()
                     }
                 }
                 Rectangle {
@@ -133,7 +133,7 @@ ShellRoot {
                     text: mail.account || "Mail Account"
                     symbol: "envelope"
                     selected: false
-                    onClicked: { mail.selectedFolder = "inbox"; mail.composing = false; mail.selectedUid = "" }
+                    onClicked: { mail.selectedFolder = "inbox"; mail.composing = false; mail.leaveMessage() }
                 }
             }
         ]
@@ -352,6 +352,12 @@ ShellRoot {
                 listProc.running = true
             }
 
+            function leaveMessage() {
+                selectedUid = ""
+                queuedUid = ""
+                selectedMessage = ({})
+                readError = ""
+            }
             function read(uid) {
                 if (!uid) return
                 selectedUid = uid
@@ -458,7 +464,7 @@ ShellRoot {
                             if (r.ok) {
                                 mail.messages = r.messages ?? []
                                 if (mail.selectedUid && !mail.messages.some((m) => m.uid === mail.selectedUid)) {
-                                    mail.selectedUid = ""
+                                    mail.leaveMessage()
                                     mail.selectedMessage = ({})
                                 }
                                 mail.account = r.account ?? mail.account
@@ -832,6 +838,12 @@ ShellRoot {
                                 x: 5; y: 23; width: 7; height: 7; radius: 3.5
                                 color: Theme.accent
                             }
+                            activeFocusOnTab: true
+                            Accessible.role: Accessible.ListItem
+                            Accessible.name: mail.senderName(messageEntry.modelData.from) +
+                                ", " + (messageEntry.modelData.subject || "No Subject")
+                            Keys.onReturnPressed: mail.read(String(messageEntry.modelData.uid))
+                            Keys.onSpacePressed: mail.read(String(messageEntry.modelData.uid))
                             HoverHandler { id: messageHover }
                             TapHandler { onTapped: mail.read(String(messageEntry.modelData.uid)) }
                         }
@@ -944,6 +956,10 @@ ShellRoot {
                         contentHeight: readerContents.implicitHeight + 30
                         boundsBehavior: Flickable.StopAtBounds
                         onVisibleChanged: if (visible) contentY = 0
+                        Connections {
+                            target: mail
+                            function onSelectedUidChanged() { messageReader.contentY = 0 }
+                        }
                         Column {
                             id: readerContents
                             width: parent.width
@@ -1182,8 +1198,8 @@ ShellRoot {
                     horizontalAlignment: Text.AlignHCenter
                     wrapMode: Text.WordWrap
                     text: mail.error
-                    color: "#ff453a"
-                    font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+                    color: Theme.dark ? "#ff9188" : "#a51c17"
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
                 }
             }
         }
