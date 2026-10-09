@@ -43,6 +43,8 @@ ShellRoot {
                     { text: "Clear Queue", enabled: audio.queue.length > 0, action: () => audio.clearQueue() },
                     { separator: true },
                     { text: "New Playlist…", action: () => app.openPlaylistName("create") },
+                    { text: "Recently Deleted Playlists…", action: () => app.openDeletedPlaylists() },
+                    { text: "Refresh Playlists", action: () => musicLib.refreshPlaylists() },
                     { text: "Manage This Playlist…", enabled: app.page === "playlist", action: () => app.openPlaylistManager() },
                     { separator: true },
                     { text: "Retry System Media Controls", enabled: !systemMedia.available, action: () => systemMedia.retry() },
@@ -676,6 +678,12 @@ ShellRoot {
                             text: "Duplicate"
                             enabled: !!app.managedPlaylist && !musicLib.playlistBusy
                             onClicked: app.playlistEdit("duplicate")
+                        }
+                        Button {
+                            text: "Show in Files"
+                            enabled: !!app.managedPlaylist
+                            onClicked: if (app.managedPlaylist)
+                                Quickshell.execDetached(["gg-files", "--select", app.managedPlaylist.path])
                         }
                         Button {
                             text: "Delete"
