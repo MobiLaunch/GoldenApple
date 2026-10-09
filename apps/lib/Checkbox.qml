@@ -7,10 +7,12 @@ Item {
     activeFocusOnTab: true
     Accessible.role: Accessible.CheckBox
     Accessible.name: box.text
-    Accessible.onPressAction: if (box.enabled) box.toggle()
-    Keys.onSpacePressed: (event) => { if (!event.isAutoRepeat && box.enabled) box.toggle() }
-    Keys.onReturnPressed: if (box.enabled) box.toggle()
-    Keys.onEnterPressed: if (box.enabled) box.toggle()
+    Accessible.checkable: true
+    Accessible.checked: box.checked
+    Accessible.onPressAction: box.toggle(true)
+    Keys.onSpacePressed: (event) => { if (!event.isAutoRepeat) box.toggle(true) }
+    Keys.onReturnPressed: (event) => { if (!event.isAutoRepeat) box.toggle(true) }
+    Keys.onEnterPressed: (event) => { if (!event.isAutoRepeat) box.toggle(true) }
 
     property bool checked: false
     property string text: ""
@@ -22,11 +24,14 @@ Item {
     implicitHeight: Math.max(20, copy.implicitHeight)
     height: implicitHeight
 
-    function toggle() {
+    property bool keyboardPressed: false
+    function toggle(feedback) {
         if (!enabled) return
+        if (feedback) { keyboardPressed = true; keyRelease.restart() }
         checked = !checked
         toggled(checked)
     }
+    Timer { id: keyRelease; interval: 90; onTriggered: box.keyboardPressed = false }
 
     FocusRing {}
 
@@ -39,7 +44,7 @@ Item {
         color: box.checked ? Theme.accent : (Theme.dark ? "#26ffffff" : "#ffffff")
         border.width: box.checked ? 0 : 1
         border.color: Theme.dark ? "#4dffffff" : "#40000000"
-        scale: !Theme.reduceMotion && ma.pressed ? 0.94 : !Theme.reduceMotion && ma.containsMouse ? 1.025 : 1
+        scale: !Theme.reduceMotion && (ma.pressed || box.keyboardPressed) ? 0.94 : !Theme.reduceMotion && ma.containsMouse ? 1.025 : 1
         Behavior on scale { enabled: !Theme.reduceMotion; NumberAnimation { duration: 85; easing.type: Easing.OutCubic } }
         Behavior on color { ColorAnimation { duration: Theme.reduceMotion ? 1 : 110 } }
 
@@ -87,6 +92,7 @@ Item {
         id: ma
         anchors.fill: parent
         hoverEnabled: true
+        enabled: box.enabled
         onClicked: {
             box.forceActiveFocus()
             box.toggle()

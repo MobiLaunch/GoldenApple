@@ -14,19 +14,26 @@ Item {
     Accessible.role: Accessible.CheckBox
     Accessible.checkable: true
     Accessible.checked: checked
-    Accessible.onPressAction: flip()
+    Accessible.onPressAction: flip(true)
     FocusRing { visible: sw.activeFocus && sw.enabled && sw.enabled_ }
     activeFocusOnTab: enabled && enabled_
 
-    function flip() { if (!enabled || !enabled_) return; checked = !checked; toggled(checked) }
-    Keys.onSpacePressed: (event) => { if (!event.isAutoRepeat) flip() }
+    property bool keyboardPressed: false
+    function flip(feedback) {
+        if (!enabled || !enabled_) return
+        if (feedback) { keyboardPressed = true; keyRelease.restart() }
+        checked = !checked
+        toggled(checked)
+    }
+    Timer { id: keyRelease; interval: 90; onTriggered: sw.keyboardPressed = false }
+    Keys.onSpacePressed: (event) => { if (!event.isAutoRepeat) flip(true) }
 
     Rectangle {
         id: track
         anchors.fill: parent
         radius: height / 2
         color: sw.checked ? Theme.accent : (Theme.dark ? "#3dffffff" : "#29000000")
-        Behavior on color { ColorAnimation { duration: 175 } }
+        Behavior on color { ColorAnimation { duration: Theme.reduceMotion ? 0 : 175 } }
         border { width: sw.activeFocus ? 3 : 0; color: Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.45) }
         Rectangle {
             anchors.fill: parent
@@ -38,7 +45,7 @@ Item {
     }
     Glass {
         id: knob
-        readonly property bool active: ma.pressed
+        readonly property bool active: ma.pressed || sw.keyboardPressed
         height: parent.height - 4 + (active ? 6 : 0)
         width: height + (active ? 10 : 0)
         radius: height / 2
@@ -48,7 +55,7 @@ Item {
         tint: Qt.rgba(1, 1, 1, 0.14)
         lens: 5
         Behavior on x { enabled: !Theme.reduceMotion; Spring { spring: Theme.snappy } }
-        scale: !Theme.reduceMotion && ma.containsMouse && !ma.pressed ? 1.025 : 1
+        scale: !Theme.reduceMotion && ma.containsMouse && !knob.active ? 1.025 : 1
         Behavior on scale { enabled: !Theme.reduceMotion; NumberAnimation { duration: 90; easing.type: Easing.OutCubic } }
         Behavior on width { enabled: !Theme.reduceMotion; Spring { spring: Theme.snappy } }
         Behavior on height { enabled: !Theme.reduceMotion; Spring { spring: Theme.snappy } }
