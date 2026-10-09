@@ -291,18 +291,19 @@ class Interactions(unittest.TestCase):
         self.assertTrue(self.eval('favoriteRows.itemAt(1).activeFocus'))
         self.assertEqual(self.eval('path'),before)
         QTest.keyClick(self.root,Qt.Key_End)
-        self.assertTrue(self.eval('favoriteRows.itemAt(favoriteRows.count - 1).activeFocus'))
+        self.assertTrue(self.eval('placesFlick.navigableRows()[placesFlick.navigableRows().length - 1].activeFocus'))
         QTest.keyClick(self.root,Qt.Key_Home)
         self.assertTrue(self.eval('favoriteRows.itemAt(0).activeFocus'))
         self.assertEqual(self.eval('path'),before)
 
     def test_path_bar_breadcrumb_keyboard_activation(self):
-        crumb=self.root.findChild(QObject,"filesCrumb:"+str(self.home))
+        visible_path=self.eval('crumbBox.shown[crumbBox.shown.length - 1].c.path')
+        crumb=self.root.findChild(QObject,"filesCrumb:"+visible_path)
         self.assertIsNotNone(crumb)
         crumb.forceActiveFocus()
         self.assertTrue(crumb.property('activeFocus'))
         QTest.keyClick(self.root,Qt.Key_Return)
-        self.assertEqual(self.eval('path'),str(self.home))
+        self.assertEqual(self.eval('path'),visible_path)
         self.assertTrue(self.eval('pathBar.visible'))
 
     def test_range_toggle_all_and_clear_on_navigation(self):
