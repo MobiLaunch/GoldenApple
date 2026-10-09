@@ -63,7 +63,9 @@ check("apps/lib/Slider.qml", [
 check("apps/lib/Scroller.qml", [
     "Behavior on width { enabled: !Theme.reduceMotion;",
     "Behavior on color { ColorAnimation { duration: Theme.reduceMotion ? 0 : 100 } }",
-], "macOS overlay scrollbars widen gently and stop animating for Reduce Motion")
+    "height: Math.min(s.height, Math.max(24, s.height * ratio))",
+    "y: Math.max(0, s.height - height)",
+], "macOS overlay scrollbars widen gently and fit inside tiny inspector panels")
 
 check("apps/lib/FocusRing.qml", [
     "Gentle two-tone focus halo",
