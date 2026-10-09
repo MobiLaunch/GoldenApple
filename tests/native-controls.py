@@ -80,6 +80,12 @@ class Controls(unittest.TestCase):
         box = self.control('checkbox')
         self.key(box, Qt.Key_Space)
         self.assertTrue(box.property('checked'))
+        self.assertTrue(box.property('keyboardPressed'))
+        QTest.qWait(125)
+        self.assertFalse(box.property('keyboardPressed'))
+        box.setProperty('enabled',False)
+        self.key(box,Qt.Key_Space)
+        self.assertTrue(box.property('checked'), 'disabled checkbox cannot toggle')
     def test_disabled_switch_drag_and_keyboard(self):
         sw = self.control('switch'); spy = QSignalSpy(sw.toggled)
         QTest.mousePress(self.view, Qt.LeftButton, pos=QPoint(253, 40))
@@ -90,6 +96,9 @@ class Controls(unittest.TestCase):
         sw.setProperty('enabled_', True)
         self.key(sw, Qt.Key_Space)
         self.assertTrue(sw.property('checked'))
+        self.assertTrue(sw.property('keyboardPressed'))
+        QTest.qWait(125)
+        self.assertFalse(sw.property('keyboardPressed'))
     def test_slider_endpoints_steps_and_narrow_size(self):
         sl = self.control('slider')
         self.key(sl, Qt.Key_End); self.assertEqual(sl.property('value'), 1)
@@ -145,10 +154,12 @@ class Controls(unittest.TestCase):
     def test_popup_keyboard(self):
         pop = self.control('popupButton')
         self.key(pop, Qt.Key_Space)
+        self.assertTrue(pop.property('expanded'), 'popup stays highlighted while its menu is open')
         QTest.keyClick(self.view, Qt.Key_Down)
         QTest.keyClick(self.view, Qt.Key_Return)
         QTest.qWait(500)
         self.assertEqual(pop.property('current'), 1)
+        self.assertFalse(pop.property('expanded'))
     def test_shared_sidebar_progress_and_empty_state(self):
         row = self.control('sidebarRow')
         self.assertIsNotNone(row)
