@@ -9,10 +9,10 @@ Item {
     activeFocusOnTab: true
     Accessible.role: Accessible.Button
     Accessible.name: button.text || button.symbol
-    Accessible.onPressAction: if (button.enabled) { button.clicked() }
-    Keys.onSpacePressed: (event) => { if (!event.isAutoRepeat && button.enabled) { button.clicked() } }
-    Keys.onReturnPressed: if (button.enabled) { button.clicked() }
-    Keys.onEnterPressed: if (button.enabled) { button.clicked() }
+    Accessible.onPressAction: button.activate()
+    Keys.onSpacePressed: (event) => { if (!event.isAutoRepeat) button.activate() }
+    Keys.onReturnPressed: button.activate()
+    Keys.onEnterPressed: button.activate()
     FocusRing {}
     property string symbol
     property string text
@@ -22,12 +22,21 @@ Item {
     property string tone: "auto"
     property color glassColor: Theme.glassControl.tint
     signal clicked()
+    property bool keyboardPressed: false
+    function activate() {
+        if (!enabled) return
+        keyboardPressed = true
+        keyRelease.restart()
+        clicked()
+    }
+    Timer { id: keyRelease; interval: 90; onTriggered: button.keyboardPressed = false }
     readonly property bool both: !!symbol && !!text && !round
 
     implicitHeight: round ? 36 : 30
     implicitWidth: round ? 36 : Math.max(34, (label.visible ? label.implicitWidth + 20 : 0) + (both ? symbolSize + 6 : 0))
     opacity: enabled ? 1 : 0.35
-    scale: !Theme.reduceMotion && tap.pressed ? 0.965 : !Theme.reduceMotion && hover.hovered && button.enabled ? 1.018 : 1
+    scale: !Theme.reduceMotion && (tap.pressed || keyboardPressed) ? 0.965
+        : !Theme.reduceMotion && hover.hovered && button.enabled ? 1.012 : 1
     Behavior on scale { enabled: !Theme.reduceMotion; NumberAnimation { duration: 85; easing.type: Easing.OutCubic } }
 
     // Round buttons carry their own Liquid Glass; pill buttons share the pill's.
@@ -43,7 +52,7 @@ Item {
         radius: height / 2
         role: "control"
         tint: button.glassColor
-        pressed: tap.pressed
+        pressed: tap.pressed || button.keyboardPressed
         hovered: hover.hovered && button.enabled
     }
     Rectangle {
@@ -51,8 +60,9 @@ Item {
         visible: !button.round
         radius: height / 2
         color: Theme.dark ? "#ffffff" : "#000000"
-        opacity: button.checked ? 0.12 : tap.pressed ? 0.1 : hover.hovered && button.enabled ? 0.06 : 0
-        Behavior on opacity { NumberAnimation { duration: 120 } }
+        opacity: button.checked ? 0.12 : (tap.pressed || button.keyboardPressed) ? 0.1
+            : hover.hovered && button.enabled ? 0.06 : 0
+        Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 0 : 110 } }
     }
     Rectangle {
         anchors.fill: parent

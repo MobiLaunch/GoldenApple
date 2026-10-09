@@ -24,8 +24,9 @@ Item {
     activeFocusOnTab: true
     Accessible.role: Accessible.Button
     Accessible.name: text
-    Keys.onSpacePressed: clicked()
-    Keys.onReturnPressed: clicked()
+    Keys.onSpacePressed: (event) => { if (!event.isAutoRepeat && row.enabled) clicked() }
+    Keys.onReturnPressed: if (row.enabled) clicked()
+    Keys.onEnterPressed: if (row.enabled) clicked()
 
     Rectangle {
         anchors { fill: parent; leftMargin: 2; rightMargin: 2 }
@@ -35,7 +36,9 @@ Item {
             : hover.hovered
                 ? (Theme.dark ? "#12ffffff" : "#0a000000")
                 : "transparent"
-        Behavior on color { ColorAnimation { duration: Theme.reduceMotion ? 1 : 90 } }
+        scale: !Theme.reduceMotion && tap.pressed ? 0.985 : 1
+        Behavior on scale { enabled: !Theme.reduceMotion; NumberAnimation { duration: 95; easing.type: Easing.OutCubic } }
+        Behavior on color { ColorAnimation { duration: Theme.reduceMotion ? 0 : 105 } }
     }
 
     Loader {
@@ -60,7 +63,7 @@ Item {
         size: 16
         tone: row.selected ? row.selectedSymbolTone : row.symbolTone
         color: row.selected ? row.selectedSymbolColor : row.symbolColor
-        scale: !Theme.reduceMotion && tap.pressed ? 0.92 : 1
+        scale: !Theme.reduceMotion && tap.pressed ? 0.92 : !Theme.reduceMotion && row.selected ? 1.05 : 1
         Behavior on scale { NumberAnimation { duration: Theme.reduceMotion ? 1 : 70; easing.type: Easing.OutCubic } }
     }
 
@@ -90,6 +93,6 @@ Item {
         }
     }
 
-    HoverHandler { id: hover }
-    TapHandler { id: tap; onTapped: { row.forceActiveFocus(); row.clicked() } }
+    HoverHandler { id: hover; enabled: row.enabled }
+    TapHandler { id: tap; enabled: row.enabled; onTapped: { row.forceActiveFocus(); row.clicked() } }
 }

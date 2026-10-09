@@ -42,8 +42,8 @@ Item {
         filled: !Theme.dark
         tint: Theme.dark ? "#59636366" : "#ffffffff"
         lens: 4
-        Behavior on x { Spring { spring: Theme.snappy } }
-        Behavior on width { Spring { spring: Theme.snappy } }
+        Behavior on x { enabled: !Theme.reduceMotion; Spring { spring: Theme.snappy } }
+        Behavior on width { enabled: !Theme.reduceMotion; Spring { spring: Theme.snappy } }
         shadow: "#1f000000"
     }
     Row {
@@ -56,16 +56,28 @@ Item {
                 required property var modelData
                 required property int index
                 width: Math.max(56, label.implicitWidth + 24); height: row.height
+                Rectangle {
+                    anchors { fill: parent; margins: 2 }
+                    radius: height / 2
+                    color: Theme.dark ? "#ffffff" : "#000000"
+                    opacity: index !== seg.current && segArea.containsMouse && seg.enabled ? 0.065 : 0
+                    Behavior on opacity {
+                        enabled: !Theme.reduceMotion
+                        NumberAnimation { duration: 95; easing.type: Easing.OutCubic }
+                    }
+                }
                 Text {
                     id: label
                     anchors.centerIn: parent
                     text: modelData
                     color: Theme.label
-                    opacity: segArea.pressed ? 0.55 : 1
-                    Behavior on opacity { NumberAnimation { duration: 100 } }
+                    opacity: segArea.pressed ? 0.65 : 1
+                    scale: !Theme.reduceMotion && segArea.pressed ? 0.96 : 1
+                    Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 0 : 80 } }
+                    Behavior on scale { enabled: !Theme.reduceMotion; NumberAnimation { duration: 90; easing.type: Easing.OutCubic } }
                     font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: index === seg.current ? Font.DemiBold : Font.Normal }
                 }
-                MouseArea { id: segArea; anchors.fill: parent; onClicked: { seg.forceActiveFocus(); seg.pick(index) } }
+                MouseArea { id: segArea; anchors.fill: parent; hoverEnabled: true; onClicked: { seg.forceActiveFocus(); seg.pick(index) } }
             }
         }
     }

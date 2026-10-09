@@ -144,9 +144,9 @@ Item {
     // back (macOS 27); under the pointer it lifts a pixel. Transforms, so
     // callers can still animate `scale` and `y`.
     property real pressScale: pressed ? Math.max(0.94, 1 - 5 / Math.max(1, Math.max(width, height))) : 1
-    Behavior on pressScale { Spring { spring: root.pressed ? Theme.snappy : Theme.bouncy } }
+    Behavior on pressScale { enabled: !Theme.reduceMotion; Spring { spring: root.pressed ? Theme.snappy : Theme.bouncy } }
     property real lift: hovered && !pressed && !Theme.reduceMotion ? -1 : 0
-    Behavior on lift { Spring { spring: Theme.snappy } }
+    Behavior on lift { enabled: !Theme.reduceMotion; Spring { spring: Theme.snappy } }
     transform: [
         Scale { origin.x: root.width / 2; origin.y: root.height / 2; xScale: root.pressScale; yScale: root.pressScale },
         Translate { y: root.lift }
@@ -175,7 +175,7 @@ Item {
         property real offsetY: drop
         property real strength: (root.material?.shadowOpacity ?? 0) + (root.pressed ? -0.06 : root.hovered ? 0.05 : 0)
         property color color: root.shadow.a > 0 ? root.shadow : "#000000"
-        Behavior on strength { NumberAnimation { duration: 140 } }
+        Behavior on strength { NumberAnimation { duration: Theme.reduceMotion ? 0 : 140 } }
         fragmentShader: Qt.resolvedUrl("shaders/glassshadow.frag.qsb")
     }
     // What's behind, through the glass.
@@ -203,7 +203,7 @@ Item {
         anchors.fill: parent
         radius: root.r
         color: root.filled ? (Theme.dark ? "#e6ffffff" : "#f2ffffff") : root.shownTint
-        Behavior on color { ColorAnimation { duration: 155 } }
+        Behavior on color { ColorAnimation { duration: Theme.reduceMotion ? 0 : 155 } }
     }
     // The interaction glow: the glass lights up under the pointer.
     Rectangle {
@@ -211,7 +211,7 @@ Item {
         radius: root.r
         color: "#ffffff"
         opacity: root.pressed ? 0.16 : root.hovered ? 0.07 : 0
-        Behavior on opacity { NumberAnimation { duration: 140 } }
+        Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 0 : 140 } }
     }
     // Light catch along the top.
     Rectangle {
@@ -267,7 +267,7 @@ Item {
         anchors.fill: parent
         visible: opacity > 0
         opacity: pointer.hovered && !root.filled && !Theme.reduceTransparency ? 1 : 0
-        Behavior on opacity { NumberAnimation { duration: 190; easing.type: Easing.OutCubic } }
+        Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 0 : 190; easing.type: Easing.OutCubic } }
         preferredRendererType: Shape.CurveRenderer
         ShapePath {
             strokeColor: "transparent"
@@ -286,7 +286,7 @@ Item {
     // 27 draws on the far side, and inside that the slab's inner face
     // catching the light, which gives the glass its thickness.
     property real rimGain: pointer.hovered || hovered ? 1.2 : 1
-    Behavior on rimGain { NumberAnimation { duration: 140 } }
+    Behavior on rimGain { NumberAnimation { duration: Theme.reduceMotion ? 0 : 140 } }
     Shape {
         anchors.fill: parent
         preferredRendererType: Shape.CurveRenderer
