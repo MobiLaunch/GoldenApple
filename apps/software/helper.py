@@ -365,11 +365,19 @@ def transaction(action: str, app_id: str) -> int:
             emit("progress", id=app_id, action=action, progress=0.96,
                  message="Matching Golden Gate application icons…")
             try:
-                check = subprocess.run(["gg-icon-resolver", "bootstrap" if action == "install" else "sync"],
+                check = subprocess.run(["gg-icon-resolver", "bootstrap" if action == "install" else "sync", app_id],
                                        capture_output=True, text=True, timeout=65)
-                if check.returncode != 0:
+                status = {}
+                for line in check.stdout.splitlines():
+                    try:
+                        value = json.loads(line)
+                        if value.get("event") == "synced":
+                            status = value
+                    except json.JSONDecodeError:
+                        pass
+                if check.returncode != 0 or status.get("matched") is False:
                     emit("icon-warning", id=app_id,
-                         message="App installed; a compatible macOS-style icon is not available yet.")
+                         message="Installed successfully. No matching macOS-style icon exists yet, so the app is hidden from Launchpad.")
             except (OSError, subprocess.TimeoutExpired):
                 emit("icon-warning", id=app_id,
                      message="App installed; icon matching will retry in the background.")
