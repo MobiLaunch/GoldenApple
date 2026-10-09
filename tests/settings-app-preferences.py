@@ -82,6 +82,10 @@ class ApplicationPreferences(unittest.TestCase):
         self.assertFalse(next(x for x in result["rows"] if x["id"] == "org.test.Background.desktop")["enabled"])
         override = self.config / "autostart/org.test.Background.desktop"
         self.assertIn("Hidden = true", override.read_text())
+        code, result = self.run_helper("toggle-login", "org.test.Background.desktop", "true")
+        self.assertEqual(code, 0, result)
+        self.assertTrue(next(x for x in result["rows"] if x["id"] == "org.test.Background.desktop")["enabled"])
+        self.assertIn("Exec=helper", override.read_text(), "re-enabling a system item must restore its launch command")
         code, result = self.run_helper("toggle-login", "org.test.Editor.desktop", "true")
         self.assertEqual(code, 0, result)
         added = self.config / "autostart/org.test.Editor.desktop"
