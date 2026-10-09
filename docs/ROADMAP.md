@@ -63,6 +63,10 @@
 - [x] LCode file/design inspector context crossfade, selection scroll reset and Actions-tab clamp
 - [x] Finder list headings: tactile sort feedback and active-column contrast
 - [x] Files: type-to-select with 950 ms jump cue, repeated-letter cycling, Home/End/Page navigation
+- [x] Finder Favorites/volumes sidebar: roving keyboard focus and focus/selection distinction
+- [x] Finder path bar: keyboard-accessible breadcrumbs, active focus and subtle press feedback
+- [x] Settings search suggestions: motion-aware reveal/dismissal and row highlight
+- [x] TOTP verification-code countdown stays within 1–30 seconds at fractional rollover
 - [x] Empty Trash Escape closes the shared sheet instead of overriding its visibility binding
 - [x] Modal sheet outside-click isolation and reentrant close/open focus restoration
 - [x] Files Get Info adopts shared sheet, small-window scroll and Copy Path confirmation
