@@ -197,6 +197,7 @@ ShellRoot {
             property string mediaPath: ""
             property var mediaInfo: ({})
             property bool mediaReady: false
+            property bool mediaSettingsOpen: false
             property string mediaReason: "Media needs a configured iMessage attachment relay."
             property bool faceTimeDialog: false
             property string videoInvite: ""
@@ -373,6 +374,7 @@ ShellRoot {
                     { text: t.starred ? "Unpin" : "Pin", action: () => bridge.call("set_thread_starred", { thread_key: t.key, starred: !t.starred }, () => app.reload()) },
                     { text: "Mark as Read", enabled: !!t.unread, action: () => app.markRead(t) },
                     { text: "Contact Info", action: () => app.showContactCard(t) },
+                    { text: "Media Relay Settings…", action: () => app.mediaSettingsOpen = true },
                     { text: "Start Video Meeting", action: () => app.createVideoCall() },
                     { text: "Join FaceTime Link…", action: () => app.faceTimeDialog = true },
                     { separator: true },
@@ -419,6 +421,30 @@ ShellRoot {
                         app.mediaReady = !!r.ok && !!r.ready
                         app.mediaReason = r.reason || r.error || "Configure the iMessage media relay before sending."
                     } catch (e) { app.mediaReady = false }
+                }
+            }
+            Process {
+                id: saveMediaSettings
+                command: ["python3", app.mediaHelper, "configure"]
+                stdinEnabled: true
+                stdout: StdioCollector { id: mediaConfigOut }
+                onStarted: {
+                    write(JSON.stringify({url: mediaServer.text.trim(), password: mediaPassword.text}))
+                    stdinEnabled = false
+                }
+                onExited: (code) => {
+                    stdinEnabled = true
+                    try {
+                        const r = JSON.parse(mediaConfigOut.text)
+                        if (code !== 0 || !r.ok) {
+                            app.error = r.error || "Cannot save media relay settings."
+                            return
+                        }
+                        app.mediaReady = true
+                        app.mediaSettingsOpen = false
+                        mediaPassword.text = ""
+                        app.error = "Media relay configured. Attachments can now be submitted through your Mac."
+                    } catch (e) { app.error = "Media relay settings could not be saved." }
                 }
             }
             Process {
@@ -743,10 +769,17 @@ ShellRoot {
                             font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: Font.DemiBold }
                         }
                         Text {
-                            text: app.mediaInfo.type === "video" ? "Video attachment" : "Photo attachment"
+                            text: !app.mediaReady ? "Media relay not configured — tap Setup" :
+                                app.mediaInfo.type === "video" ? "Video attachment" : "Photo attachment"
                             color: Theme.secondaryLabel
                             font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
                         }
+                    }
+                    Button {
+                        visible: !app.mediaReady
+                        anchors { right: removeMedia.left; rightMargin: 4; verticalCenter: parent.verticalCenter }
+                        text: "Setup"
+                        onClicked: app.mediaSettingsOpen = true
                     }
                     ToolbarButton {
                         id: removeMedia
@@ -841,6 +874,72 @@ ShellRoot {
                                 prominent: true
                                 enabled: faceTimeInput.text.trim() !== ""
                                 onClicked: app.joinFaceTimeLink()
+                            }
+                        }
+                    }
+                }
+            }
+
+            Item {
+                visible: app.mediaSettingsOpen
+                anchors.fill: parent
+                z: 82
+                Rectangle {
+                    anchors.fill: parent
+                    color: "#66000000"
+                    TapHandler { onTapped: app.mediaSettingsOpen = false }
+                }
+                Glass {
+                    anchors.centerIn: parent
+                    role: "menu"
+                    width: Math.min(420, parent.width - 36)
+                    height: 305
+                    radius: 24
+                    Column {
+                        anchors { fill: parent; margins: 22 }
+                        spacing: 11
+                        Text {
+                            text: "iMessage Media Relay"
+                            color: Theme.label
+                            font { family: Theme.fontDisplay; pixelSize: Theme.fs(20); weight: Font.DemiBold }
+                        }
+                        Text {
+                            width: parent.width
+                            wrapMode: Text.WordWrap
+                            text: "BlueFerry cannot send photo or video attachments. To enable them, connect a BlueBubbles server on a Mac you control. Your photo/video is uploaded to that Mac."
+                            color: Theme.secondaryLabel
+                            font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                        }
+                        Text {
+                            text: "Server URL (HTTPS)"
+                            color: Theme.secondaryLabel
+                            font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+                        }
+                        TextField {
+                            id: mediaServer
+                            width: parent.width
+                            placeholder: "https://your-mac.example"
+                        }
+                        Text {
+                            text: "Server Password"
+                            color: Theme.secondaryLabel
+                            font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+                        }
+                        TextField {
+                            id: mediaPassword
+                            width: parent.width
+                            password: true
+                            placeholder: "BlueBubbles API password"
+                        }
+                        Row {
+                            anchors.right: parent.right
+                            spacing: 8
+                            Button { text: "Cancel"; onClicked: app.mediaSettingsOpen = false }
+                            Button {
+                                text: "Save Relay"
+                                prominent: true
+                                enabled: mediaServer.text.trim() !== "" && mediaPassword.text !== "" && !saveMediaSettings.running
+                                onClicked: saveMediaSettings.running = true
                             }
                         }
                     }
