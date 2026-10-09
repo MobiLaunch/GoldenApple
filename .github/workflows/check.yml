@@ -130,6 +130,9 @@ jobs:
           test -f "$root/usr/share/applications/org.goldengate.Mail.desktop"
           test -f "$root/usr/share/applications/org.goldengate.Messages.desktop"
           test -f "$root/usr/share/applications/org.goldengate.Clock.desktop"
+          test -f "$root/usr/share/golden-gate/apps/music/Mpris.qml"
+          test -f "$root/usr/share/golden-gate/apps/music/mpris.py"
+          test -f "$root/usr/share/golden-gate/apps/music/session.py"
           test -f "$root/usr/share/applications/org.goldengate.TextEdit.desktop"
           test -f "$root/usr/share/applications/org.goldengate.Terminal.desktop"
           test -f "$root/usr/share/applications/org.goldengate.LCode.desktop"
@@ -198,8 +201,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: sudo apt-get update && sudo apt-get install -y libegl1 libopengl0 xvfb libx11-6 libxtst6
-      - run: python -m pip install PySide6-Essentials==6.11.2
+      - run: sudo apt-get update && sudo apt-get install -y libegl1 libopengl0 xvfb libx11-6 libxtst6 dbus libpulse0
+      - run: python -m pip install PySide6-Essentials==6.11.2 PySide6-Addons==6.11.2 dbus-next==0.2.3
       - name: Compile native Python helpers
         run: python -m compileall -q apps tests
       - name: Guard known QML parser regressions
@@ -251,6 +254,13 @@ jobs:
         run: python tests/focus-policy.py
       - name: "Focus UI: saved state, app exceptions, keyboard access and notification delivery"
         run: python tests/focus-ui.py
+        env:
+          QT_QPA_PLATFORM: offscreen
+          QT_QUICK_BACKEND: software
+      - name: "Music: saved queues and MPRIS on a private D-Bus session"
+        run: python tests/music-workflow.py
+      - name: "Music UI: paused restore, local WAV playback, navigation, errors and keyboard controls"
+        run: python tests/music-ui.py
         env:
           QT_QPA_PLATFORM: offscreen
           QT_QUICK_BACKEND: software

@@ -10,7 +10,7 @@ Item {
     property var player
     signal showQueue()
     signal openAlbum(var track)
-    width: 580; height: 46
+    width: 580; height: Theme.fh(46)
 
     readonly property color glass: Theme.dark ? "#f22a2a2d" : "#f5fbfbfd"
 
@@ -27,6 +27,16 @@ Item {
     component Btn: Item {
         id: b
         property string symbol
+        property string label: symbol
+        activeFocusOnTab: enabled
+        Accessible.role: Accessible.Button
+        Accessible.name: label
+        Accessible.onPressAction: if (enabled) clicked()
+        Keys.onSpacePressed: (event) => { if (enabled && !event.isAutoRepeat) clicked() }
+        Keys.onReturnPressed: if (enabled) clicked()
+        Keys.onEnterPressed: if (enabled) clicked()
+        FocusRing {}
+        opacity: enabled ? 1 : 0.35
         property real size: 15
         property bool on: false
         property bool dim: false
@@ -39,19 +49,19 @@ Item {
             opacity: b.dim && !b.on ? 0.45 : bh.hovered ? 1 : 0.85
         }
         HoverHandler { id: bh }
-        MouseArea { anchors.fill: parent; onClicked: b.clicked() }
+        MouseArea { anchors.fill: parent; onClicked: { b.forceActiveFocus(); b.clicked() } }
     }
 
     Row {
         id: transport
         x: 14; height: parent.height
         spacing: 0
-        Btn { symbol: "shuffle"; size: 13; dim: true; on: bar.player.shuffle; onClicked: bar.player.shuffle = !bar.player.shuffle }
-        Btn { symbol: "backward"; onClicked: bar.player.previous() }
-        Btn { symbol: bar.player.playing ? "pause" : "play"; size: 19; onClicked: bar.player.toggle() }
-        Btn { symbol: "forward"; onClicked: bar.player.next() }
+        Btn { label: "Shuffle"; symbol: "shuffle"; size: 13; dim: true; on: bar.player.shuffle; onClicked: bar.player.shuffle = !bar.player.shuffle }
+        Btn { label: "Previous Track"; enabled: !!bar.player.current; symbol: "backward"; onClicked: bar.player.previous() }
+        Btn { label: bar.player.playing ? "Pause" : "Play"; enabled: !!bar.player.current; symbol: bar.player.playing ? "pause" : "play"; size: 19; onClicked: bar.player.toggle() }
+        Btn { label: "Next Track"; enabled: bar.player.canNext; symbol: "forward"; onClicked: bar.player.next() }
         Btn {
-            symbol: "repeat"; size: 13; dim: true; on: bar.player.repeat !== "off"
+            label: "Repeat: " + bar.player.repeat; symbol: "repeat"; size: 13; dim: true; on: bar.player.repeat !== "off"
             onClicked: bar.player.repeat = bar.player.repeat === "off" ? "all" : bar.player.repeat === "all" ? "one" : "off"
             Text {
                 visible: bar.player.repeat === "one"
@@ -106,6 +116,19 @@ Item {
         // Progress: a hairline under the song; click or drag to seek.
         Item {
             id: progress
+            activeFocusOnTab: enabled && visible
+            enabled: bar.player.seekable
+            Accessible.role: Accessible.Slider
+            Accessible.name: "Playback Position"
+            Accessible.onIncreaseAction: bar.player.seek(bar.player.position + 5)
+            Accessible.onDecreaseAction: bar.player.seek(bar.player.position - 5)
+            FocusRing {}
+            Keys.onLeftPressed: bar.player.seek(bar.player.position - 5)
+            Keys.onRightPressed: bar.player.seek(bar.player.position + 5)
+            Keys.onPressed: (event) => {
+                if (event.key === Qt.Key_Home) { bar.player.seek(0); event.accepted = true }
+                else if (event.key === Qt.Key_End) { bar.player.seek(bar.player.duration); event.accepted = true }
+            }
             visible: !!bar.player.current && !bar.player.current.radio
             x: 0; width: parent.width; height: 8
             anchors.bottom: parent.bottom; anchors.bottomMargin: 0
@@ -127,34 +150,32 @@ Item {
         id: tools
         anchors { right: parent.right; rightMargin: 12 }
         height: parent.height
-        Btn { symbol: "list"; onClicked: bar.showQueue() }
-        Btn { symbol: bar.player.muted || bar.player.volume === 0 ? "speaker" : "speaker-wave"; onClicked: volumePop.visible = !volumePop.visible }
+        Btn { label: "Playing Next"; symbol: "list"; onClicked: bar.showQueue() }
+        Btn { label: "Volume"; symbol: bar.player.muted || bar.player.volume === 0 ? "speaker" : "speaker-wave"; onClicked: { volumePop.visible = !volumePop.visible; if (volumePop.visible) vol.forceActiveFocus() } }
     }
 
     // Volume
     Rectangle {
         id: volumePop
         visible: false
+        Keys.onEscapePressed: { visible = false; bar.forceActiveFocus() }
         anchors { right: parent.right; bottom: parent.top; bottomMargin: 8 }
         width: 200; height: 36; radius: 18
         color: bar.glass
         border { width: 0.5; color: Theme.dark ? "#26ffffff" : "#1a000000" }
-        Symbol { x: 12; anchors.verticalCenter: parent.verticalCenter; name: "speaker"; size: 12 }
-        Item {
+        ToolbarButton {
+            x: 2; width: 28; height: 30; anchors.verticalCenter: parent.verticalCenter
+            symbol: bar.player.muted ? "speaker" : "speaker-wave"; symbolSize: 12
+            Accessible.name: bar.player.muted ? "Unmute" : "Mute"
+            onClicked: bar.player.muted = !bar.player.muted
+        }
+        Slider {
             id: vol
-            x: 32; width: parent.width - 64; height: parent.height
-            Rectangle { anchors.verticalCenter: parent.verticalCenter; width: parent.width; height: 4; radius: 2; color: Theme.dark ? "#33ffffff" : "#1f000000" }
-            Rectangle { anchors.verticalCenter: parent.verticalCenter; width: parent.width * bar.player.volume; height: 4; radius: 2; color: Theme.dark ? "#ffffff" : "#8c000000" }
-            Rectangle {
-                x: parent.width * bar.player.volume - 7; anchors.verticalCenter: parent.verticalCenter
-                width: 14; height: 14; radius: 7; color: "#ffffff"
-                border { width: 0.5; color: "#33000000" }
-            }
-            MouseArea {
-                anchors.fill: parent
-                onPressed: (m) => bar.player.volume = Math.max(0, Math.min(1, m.x / width))
-                onPositionChanged: (m) => { if (pressed) bar.player.volume = Math.max(0, Math.min(1, m.x / width)) }
-            }
+            x: 32; width: parent.width - 64
+            anchors.verticalCenter: parent.verticalCenter
+            Accessible.name: "Playback Volume"
+            value: bar.player.volume
+            onMoved: (value) => { bar.player.muted = false; bar.player.volume = value }
         }
         Symbol { anchors { right: parent.right; rightMargin: 10; verticalCenter: parent.verticalCenter } name: "speaker-wave"; size: 13 }
     }

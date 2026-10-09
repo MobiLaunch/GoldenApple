@@ -73,6 +73,7 @@ qt6-webengine
 pyside6
 python
 python-websockets
+python-dbus-next
 ghostty
 sudo
 

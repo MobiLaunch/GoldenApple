@@ -17,6 +17,7 @@ ShellRoot {
     AppWindow {
         id: win
         onBackRequested: app.back()
+        closeAction: () => audio.requestClose()
         title: "Music"
         implicitWidth: Math.min(1180, (Quickshell.screens[0]?.width ?? 1280) - 80)
         implicitHeight: Math.min(760, (Quickshell.screens[0]?.height ?? 900) - 150)
@@ -31,6 +32,19 @@ ShellRoot {
                 round: true; symbol: "chevron-left"
                 visible: app.history.length > 0 && (app.page === "album" || app.page === "playlist")
                 onClicked: app.back()
+            },
+            ToolbarButton {
+                id: playbackOptions
+                symbol: "ellipsis"; round: true
+                Accessible.name: "Playback Options"
+                onClicked: songMenuPopup.popup(playbackOptions, 0, height, [
+                    { text: "Restore Queue on Next Launch", checked: audio.rememberPlayback, action: () => audio.rememberPlayback = !audio.rememberPlayback },
+                    { text: "Forget Saved Queue", action: () => audio.forgetSavedQueue() },
+                    { text: "Clear Queue", enabled: audio.queue.length > 0, action: () => audio.clearQueue() },
+                    { separator: true },
+                    { text: "Retry System Media Controls", enabled: !systemMedia.available, action: () => systemMedia.retry() },
+                    { text: "Retry Saving Queue", action: () => audio.save() }
+                ])
             }
         ]
 
@@ -104,7 +118,7 @@ ShellRoot {
             }
             function openAlbum(a) { go("album", a) }
             function openRequestedTrack() {
-                if (requestedOpened || !requestedPath || !musicLib.loaded)
+                if (requestedOpened || !requestedPath || !musicLib.loaded || !audio.sessionReady)
                     return
                 const i = musicLib.tracks.findIndex((t) => t.path === requestedPath)
                 if (i < 0)
@@ -154,7 +168,22 @@ ShellRoot {
             }
 
             Library { id: musicLib }
-            Player { id: audio }
+            Player {
+                id: audio
+                onSessionReadyChanged: app.openRequestedTrack()
+                onCloseReady: Qt.quit()
+            }
+            Mpris {
+                id: systemMedia
+                player: audio
+                onRaiseRequested: win.reopen()
+                onQuitRequested: audio.requestClose()
+                onOpenRequested: (path) => {
+                    const i = musicLib.tracks.findIndex(t => t.path === path)
+                    if (i >= 0) audio.playList(musicLib.tracks, i)
+                    else audio.playList([{ path: path, title: path.split("/").pop(), artist: "", album: "", art: "", seconds: 0 }], 0)
+                }
+            }
             Connections {
                 target: musicLib
                 function onLoadedChanged() { app.openRequestedTrack() }
@@ -258,7 +287,7 @@ ShellRoot {
             Rectangle {
                 id: queuePanel
                 visible: app.queueOpen
-                anchors { right: parent.right; top: parent.top; bottom: parent.bottom; margins: 8; topMargin: win.toolbarHeight; bottomMargin: 74 }
+                anchors { right: parent.right; top: parent.top; bottom: parent.bottom; margins: 8; topMargin: win.toolbarHeight; bottomMargin: miniPlayer.height + 28 + (playbackNotice.visible ? playbackNotice.height + 8 : 0) }
                 width: 300
                 radius: 16
                 color: Theme.dark ? "#f22a2a2d" : "#f7fbfbfd"
@@ -298,7 +327,47 @@ ShellRoot {
                 }
             }
 
+            Rectangle {
+                id: playbackNotice
+                readonly property string message: audio.error || audio.sessionNotice || systemMedia.error
+                visible: !!message
+                anchors { left: parent.left; right: parent.right; margins: 20; bottom: miniPlayer.top; bottomMargin: 8 }
+                height: noticeText.implicitHeight + noticeButtons.height + 22
+                radius: 10; color: Theme.contentBg
+                border { width: 1; color: Theme.separator }
+                Text {
+                    id: noticeText
+                    anchors { left: parent.left; right: parent.right; top: parent.top; margins: 10 }
+                    text: playbackNotice.message; wrapMode: Text.Wrap
+                    color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                    Accessible.role: Accessible.StaticText
+                }
+                Row {
+                    id: noticeButtons
+                    anchors { right: parent.right; bottom: parent.bottom; margins: 8 }
+                    spacing: 8
+                    Button {
+                        text: "Retry"
+                        onClicked: {
+                            if (audio.error) audio.play()
+                            else if (audio.sessionNotice) { audio.sessionNotice = ""; audio.save() }
+                            else systemMedia.retry()
+                        }
+                    }
+                    Button {
+                        text: "Dismiss"
+                        onClicked: {
+                            if (audio.error) audio.error = ""
+                            else if (audio.sessionNotice) audio.sessionNotice = ""
+                            else systemMedia.error = ""
+                        }
+                    }
+                    Button { text: "Quit Without Saving"; visible: audio.saveFailed; onClicked: Qt.quit() }
+                }
+            }
+
             MiniPlayer {
+                id: miniPlayer
                 anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: 14 }
                 width: Math.min(600, parent.width - 40)
                 player: audio

@@ -109,6 +109,12 @@ To verify on real hardware: the HyprGlass plugin against each Hyprland
 release, the display watchdog under a real compositor, an update and its
 rollback on an installed system, and a clean install end to end.
 
+Music now publishes local playback to MPRIS, restores queues paused with a
+saved position, and reports playback and save failures with recovery actions.
+See [Music workflows](MUSIC-WORKFLOWS.md) for controls and validation boundaries.
+Verify physical media keys, audible output, and Control Center on the installed
+desktop; the live MPRIS contract runs on a private session bus in CI.
+
 Still to do:
 
 - [ ] Global app menus: today an app gets Window and Help (the desktop gets
@@ -122,5 +128,6 @@ Still to do:
       display resolution, arrangement and rotation
 - [ ] Disk encryption at install; migration at Setup
 - [ ] Mail (folders, attachments, drafts), Calendar (editing, recurrence,
-      CalDAV), Photos editing, MPRIS for Music
+      CalDAV), Photos editing; Music playlist creation/editing, queue reordering
+      and removal, and library folder preferences
 - [ ] Translated UI (formats already follow the region; the apps are English)
