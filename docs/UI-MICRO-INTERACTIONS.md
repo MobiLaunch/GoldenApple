@@ -11,7 +11,7 @@
 - The menu bar battery now has a real measured green fill and lightning symbol
   when charging, a restrained opacity pulse, no pulse once fully charged, and
   instant rendering under Reduce Motion. Percentage remains firmware-derived.
-- The shared icon generator uses 24 normalized OrchardKit/Open Symbols
+- The shared icon generator uses 52 normalized OrchardKit/Open Symbols
   Lucide regular-size glyphs, not Xcode template artboards. They are exposed
   consistently through Qt/Quickshell assets, GTK symbolic icons, and the web
   prototype. Custom local symbol overrides remain supported.
