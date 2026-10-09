@@ -660,7 +660,7 @@ PanelWindow {
     HyprlandFocusGrab {
         windows: [dockMenu]
         active: dockMenu.open && !dockMenu.reopening
-        onCleared: if (!dockMenu.reopening) dockMenu.open = false
+        onCleared: if (!dockMenu.reopening && !dockMenu.suppressClear) dockMenu.open = false
     }
 
 }

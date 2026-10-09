@@ -289,7 +289,7 @@ Scope {
         HyprlandFocusGrab {
             windows: [widgetMenu]
             active: widgetMenu.open && !widgetMenu.reopening
-            onCleared: if (!widgetMenu.reopening) widgetMenu.open = false
+            onCleared: if (!widgetMenu.reopening && !widgetMenu.suppressClear) widgetMenu.open = false
         }
     }
 
