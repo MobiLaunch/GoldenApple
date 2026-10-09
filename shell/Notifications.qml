@@ -55,7 +55,9 @@ Scope {
     // iPhone messages, so its notifications belong to Messages.
     readonly property var owners: ({ "blueferry": "org.goldengate.Messages", "io.weirdware.blueferry": "org.goldengate.Messages" })
     function ownerOf(n) {
-        return owners[(n.desktopEntry || "").toLowerCase()] || owners[(n.appName || "").toLowerCase()] || ""
+        const desktopId = String(n.desktopEntry || "").toLowerCase().replace(/\.desktop$/, "")
+        const app = String(n.appName || "").toLowerCase()
+        return owners[desktopId] || owners[app] || ""
     }
     function countFor(appId, startupClass) {
         // Pull in a notifyable QML property. Updating badgeEpoch below forces
