@@ -227,6 +227,8 @@ ShellRoot {
             property bool remindersPending: false
             property bool calDavConfigured: false
             property bool calDavPending: false
+            property bool calDavAuto: false
+            property string calDavLastSync: ""
             property string calDavUrl: ""
             property string calDavUsername: ""
             property string calDavPassword: ""
@@ -443,6 +445,26 @@ ShellRoot {
                 calDavDisconnect.running = true
             }
 
+            function toggleCalDavAuto() {
+                if (calDavPending || !calDavConfigured) return
+                calDavPending = true
+                calDavAutoProc.command = ["python3", calDavHelper,
+                                          calDavAuto ? "stop-auto" : "start-auto"]
+                calDavAutoProc.running = true
+            }
+
+            Timer {
+                interval: 60000
+                running: cal.calDavConfigured
+                repeat: true
+                onTriggered: {
+                    // A background service may have updated the cache while
+                    // the window was open. Refresh without interrupting edits.
+                    if (!addDialog.visible && !exceptionsSheet.visible && !editScope.visible)
+                        cal.reload()
+                }
+            }
+
             Process {
                 id: calDavStatus
                 command: ["python3", cal.calDavHelper, "status"]
@@ -452,6 +474,8 @@ ShellRoot {
                         try { r = JSON.parse(text) } catch (e) {}
                         if (r?.ok) {
                             cal.calDavConfigured = !!r.configured
+                            cal.calDavAuto = !!r.autoEnabled
+                            cal.calDavLastSync = r.lastSync || ""
                             if (r.configured) {
                                 cal.calDavUrl = r.url || ""
                                 cal.calDavUsername = r.username || ""
@@ -494,7 +518,26 @@ ShellRoot {
                         if (r?.ok) {
                             cal.calDavMessage = "Synced " + r.count + " event(s)" + (r.skipped ? "; " + r.skipped + " unsupported event(s) were skipped." : ".")
                             cal.reload()
+                            calDavStatus.running = true
                         } else cal.calDavMessage = r?.error ?? "CalDAV sync failed. Existing events were kept."
+                    }
+                }
+            }
+
+            Process {
+                id: calDavAutoProc
+                onExited: cal.calDavPending = false
+                stdout: StdioCollector {
+                    onStreamFinished: {
+                        let r = null
+                        try { r = JSON.parse(text) } catch (e) {}
+                        if (r?.ok) {
+                            cal.calDavAuto = !!r.autoEnabled
+                            cal.calDavMessage = r.autoEnabled
+                                ? "Automatic read-only refresh is enabled (every 15 minutes)."
+                                : "Automatic refresh is off. Your downloaded events are kept."
+                        } else cal.calDavMessage = r?.error ?? "Could not change automatic refresh."
+                        calDavStatus.running = true
                     }
                 }
             }
@@ -509,6 +552,8 @@ ShellRoot {
                         try { r = JSON.parse(text) } catch (e) {}
                         if (r?.ok) {
                             cal.calDavConfigured = false
+                            cal.calDavAuto = false
+                            cal.calDavLastSync = ""
                             cal.calDavUrl = ""
                             cal.calDavUsername = ""
                             cal.calDavPassword = ""
@@ -1114,7 +1159,7 @@ ShellRoot {
                 visible: false
                 anchors.centerIn: parent
                 width: Math.min(480, parent.width - 32)
-                height: Math.min(parent.height - 24, cal.calDavConfigured ? 305 : 385)
+                height: Math.min(parent.height - 24, cal.calDavConfigured ? 380 : 385)
                 radius: 22
                 tint: Theme.glassRegular.tint
                 z: 120
@@ -1164,6 +1209,29 @@ ShellRoot {
                         wrapMode: Text.WrapAnywhere
                         color: Theme.secondaryLabel
                         font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                    }
+                    Text {
+                        width: parent.width
+                        visible: cal.calDavConfigured
+                        text: cal.calDavLastSync ? "Last imported: " + cal.calDavLastSync : "Not synchronized yet"
+                        color: Theme.secondaryLabel
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+                    }
+                    Row {
+                        width: parent.width
+                        visible: cal.calDavConfigured
+                        spacing: 10
+                        Button {
+                            text: cal.calDavAuto ? "Turn Off Auto Refresh" : "Turn On Auto Refresh"
+                            enabled: !cal.calDavPending
+                            onClicked: cal.toggleCalDavAuto()
+                        }
+                        Text {
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: "Every 15 minutes"
+                            color: Theme.secondaryLabel
+                            font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+                        }
                     }
                     Text {
                         width: parent.width; wrapMode: Text.WordWrap
