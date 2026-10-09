@@ -384,9 +384,15 @@ PanelWindow {
         // had keyboard focus. This keeps restored windows on the screen clicked.
         const monitor = Hyprland.monitorFor(dock.screen)
         const ws = monitor?.activeWorkspace?.id ?? Hyprland.focusedWorkspace?.id ?? 1
-        const address = t.address ? "0x" + t.address.replace(/^0x/, "") : t.lastIpcObject?.address
-        if (address) Hyprland.dispatch(`movetoworkspace ${ws},address:${address}`)
+        const rawAddress = t.address ?? t.lastIpcObject?.address ?? ""
+        const address = rawAddress ? "0x" + String(rawAddress).replace(/^0x/, "") : ""
         if (monitor?.name) Hyprland.dispatch(`focusmonitor ${monitor.name}`)
+        if (address) {
+            Hyprland.dispatch(`movetoworkspace ${ws},address:${address}`)
+            // Moving a parked window back does not necessarily raise it over
+            // other floating windows. A Dock click means "bring to front".
+            Hyprland.dispatch(`focuswindow address:${address}`)
+        }
     }
     // One app in the Dock: icon, running dot, badge, tooltip, launch bounce.
     component AppTile: Item {
@@ -417,6 +423,11 @@ PanelWindow {
         // The icon bounces while the app opens, until its first window shows
         // (or eight seconds pass), and while it asks for attention.
         property bool launching: false
+        // Activating an already-open window gets a tiny acknowledgment, not
+        // the full launch bounce. This never changes the Dock's slot geometry.
+        function pulseActivation() {
+            if (!Prefs.reduceMotion && !hopping) activatePulse.restart()
+        }
         readonly property bool opening: dock.launcher?.state_ === "opening" && (dock.launcher.entry?.id ?? "") === (modelData.id ?? "")
         readonly property bool hopping: (launching || opening || dock.wantsAttention(modelData)) && !Prefs.reduceMotion
         onWinsChanged: if (wins.length) launching = false
@@ -430,7 +441,8 @@ PanelWindow {
             width: dock.baseSize; height: dock.baseSize
             x: 0
             property real launchOffset: 0
-            y: tile.height - height + launchOffset
+            property real activationLift: 0
+            y: tile.height - height + launchOffset - activationLift
             z: Math.round(width * 10)
             source: tile.calendar ? calBlank.source : Quickshell.iconPath(tile.modelData.icon, "application-x-executable")
             sourceSize: Qt.size(dock.baseSize * 2, dock.baseSize * 2)
@@ -443,6 +455,19 @@ PanelWindow {
             layer.enabled: gpu && tipArea.pressed
             layer.effect: MultiEffect { brightness: -0.28 }
             opacity: !gpu && tipArea.pressed ? 0.7 : 1
+            // Brief 5–8px response when an existing window is focused or
+            // restored. No continuous scaling or extra GPU texture.
+            SequentialAnimation {
+                id: activatePulse
+                NumberAnimation { target: icon; property: "activationLift"; to: Math.max(4, Math.round(dock.baseSize * 0.12)); duration: 90; easing.type: Easing.OutQuad }
+                NumberAnimation { target: icon; property: "activationLift"; to: 0; duration: 165; easing.type: Easing.OutBack }
+            }
+            Connections {
+                target: Prefs
+                function onReduceMotionChanged() {
+                    if (Prefs.reduceMotion) { activatePulse.stop(); icon.activationLift = 0 }
+                }
+            }
             // A hop is thrown up and falls back as under gravity (out, then in);
             // the last one always lands.
             SequentialAnimation on launchOffset {
@@ -580,8 +605,8 @@ PanelWindow {
                 }
                 if (dock.applications?.open) dock.applications.dismiss()
                 const parked = dock.minimizedFor(tile.modelData)
-                if (parked) dock.restore(parked)
-                else if (tile.wins.length) tile.wins[0].activate()
+                if (parked) { dock.restore(parked); tile.pulseActivation() }
+                else if (tile.wins.length) { tile.wins[0].activate(); tile.pulseActivation() }
                 else if (dock.launcher?.enabled && Prefs.animateLaunch) {
                     dock.retainForLaunch(tile.modelData)
                     tile.launching = true
