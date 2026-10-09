@@ -7,7 +7,7 @@
  * variant, and only the fixed Apple colours are literal.
  */
 
-* { font-family: "Inter Variable", "Inter", sans-serif; }
+* { font-family: "Golden Gate UI", "Inter Variable", "Inter", sans-serif; }
 @define-color theme_selected_bg_color #007aff;
 @define-color theme_selected_fg_color #ffffff;
 
