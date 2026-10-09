@@ -298,7 +298,9 @@ PanelWindow {
         }
         for (const id of ids) {
             if (!active.includes(id) && next[id]?.phase === "active")
-                next[id] = { entry: next[id].entry, phase: "recent", deadline: now + recentHoldMs }
+                next[id] = Prefs.dockShowRecents
+                    ? { entry: next[id].entry, phase: "recent", deadline: now + recentHoldMs }
+                    : { entry: next[id].entry, phase: "leaving", deadline: now + (Prefs.reduceMotion ? 0 : departureMs + 50) }
         }
         runningRecords = next
         if (ids.join("\n") !== runningIds.join("\n")) runningIds = ids
