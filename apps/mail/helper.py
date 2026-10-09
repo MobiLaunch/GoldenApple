@@ -544,8 +544,9 @@ def cmd_list() -> int:
             annotate_messages(result, account)
             # Persist a local badge count for the Dock even when Mail closes.
             # The value is refreshed only after a successful inbox fetch.
-            atomic_json(MAIL_BADGE, {"account": account,
-                                     "unread": sum(bool(m["unread"]) for m in result)})
+            unread_uids = [str(m["uid"]) for m in result if m["unread"]]
+            atomic_json(MAIL_BADGE, {"account": account, "unread": len(unread_uids),
+                                     "uids": unread_uids})
             return emit(True, messages=result, account=account)
         finally:
             try:
@@ -570,7 +571,20 @@ def cmd_read(uid: str) -> int:
                 raise RuntimeError("The message could not be downloaded.")
             raw = next((part[1] for part in fetched if isinstance(part, tuple)), b"")
             msg = email.message_from_bytes(raw, policy=email.policy.default)
-            client.uid("store", uid, "+FLAGS", "(\\Seen)")
+            saved, _ = client.uid("store", uid, "+FLAGS", "(\\Seen)")
+            if saved == "OK":
+                # Keep the Dock badge in sync as a user reads mail. Decrement
+                # only when the UID was in the last successful unread snapshot.
+                try:
+                    data = json.loads(MAIL_BADGE.read_text(encoding="utf-8"))
+                    if data.get("account") == str(cfg.get("email") or ""):
+                        pending = [str(i) for i in data.get("uids", [])]
+                        if uid in pending:
+                            pending.remove(uid)
+                            atomic_json(MAIL_BADGE, {"account": data["account"],
+                                                     "unread": len(pending), "uids": pending})
+                except (OSError, ValueError, TypeError):
+                    pass
             return emit(
                 True,
                 message={
