@@ -112,7 +112,8 @@ def candidates():
     if not root.is_dir():
         return []
     return sorted((p for p in root.iterdir() if p.suffix.lower() in (".m3u", ".m3u8")
-                   and p.is_file() and not p.is_symlink()), key=lambda p:p.name.casefold())
+                   and p.is_file() and not p.is_symlink()),
+                  key=lambda p: (p.stem.casefold(), p.suffix.casefold(), p.name.casefold()))
 
 
 def revision(path):
