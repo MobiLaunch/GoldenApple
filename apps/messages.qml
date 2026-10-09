@@ -2,13 +2,15 @@
 // CitronOS Messages: iMessage and SMS through your iPhone, as Messages on
 // the Mac shows them. The iPhone is connected over Bluetooth by BlueFerry
 // (github.com/erikwb/blueferry): messages come over MAP, contacts over PBAP,
-// and group details from the iPhone's notifications (ANCS). No Apple ID, Mac
-// relay or cloud service is involved. BlueFerry can't carry attachments,
-// reactions, typing indicators or read receipts, so Messages doesn't offer them.
+// and group details from notifications (ANCS). The standard Bluetooth path
+// remains text-only. Media has a separate, OPTIONAL BlueBubbles Mac relay;
+// FaceTime web links and Jitsi-compatible video calls use a real WebRTC browser.
+// Never claim that Bluetooth MAP delivered a photo or an Apple FaceTime call.
 import Quickshell
 import Quickshell.Io
 import QtQuick
 import QtQuick.Shapes
+import QtQuick.Dialogs
 import "lib"
 import "lib/theme"
 import "messages"
@@ -53,13 +55,14 @@ ShellRoot {
                     color: Theme.label
                     font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.DemiBold }
                 }
+                TapHandler { onTapped: app.showContactCard() }
             },
             ToolbarButton {
                 visible: app.connected && !!app.current && !app.composing
                 anchors { right: parent.right; rightMargin: 14; verticalCenter: parent.verticalCenter }
                 round: true
                 symbol: "info"
-                onClicked: app.threadMenu(this, 0, height + 6)
+                onClicked: app.showContactCard()
             }
         ]
 
@@ -191,6 +194,15 @@ ShellRoot {
             property var suggestions: []
             property bool sending: false
             property string error: ""
+            property string mediaPath: ""
+            property var mediaInfo: ({})
+            property bool mediaReady: false
+            property string mediaReason: "Media needs a configured iMessage attachment relay."
+            property bool faceTimeDialog: false
+            property string videoInvite: ""
+            property var cardThread: null
+            readonly property string mediaHelper: Qt.resolvedUrl("messages/media.py").toString().replace("file://", "")
+            readonly property string videoHelper: Qt.resolvedUrl("messages/call-links.py").toString().replace("file://", "")
             property var pendingGroupSend: null
             property bool unlocking: false
             property bool unlockFailed: false
@@ -250,6 +262,8 @@ ShellRoot {
             function open(thread) {
                 composing = false
                 currentKey = thread.key
+                mediaPath = ""
+                mediaInfo = ({})
                 draft.text = ""
                 if (thread.unread) markRead(thread)
                 Qt.callLater(() => draft.input.forceActiveFocus())
@@ -257,6 +271,8 @@ ShellRoot {
             function markRead(thread) { bridge.call("mark_thread_read", { thread_key: thread.key }, () => app.reload()) }
             function newMessage() {
                 composing = true
+                mediaPath = ""
+                mediaInfo = ({})
                 recipient = ""; recipientName = ""
                 to.text = ""
                 suggestions = []
@@ -269,9 +285,55 @@ ShellRoot {
                 suggestions = []
                 Qt.callLater(() => draft.input.forceActiveFocus())
             }
+            function directAddress(t) {
+                if (!t || t.is_group) return ""
+                const list = t.recipients || []
+                if (list.length === 1) return String(list[0])
+                const ms = (t.messages || []).slice().reverse()
+                const incoming = ms.find((m) => !m.outgoing && !!m.handle)
+                return String(incoming?.handle || t.reply_address || t.reply_to || t.address || "")
+            }
+            function showContactCard(thread) {
+                cardThread = thread || current
+                if (!cardThread) return
+                details.address = directAddress(cardThread)
+                details.contact = cardThread
+                details.shown = true
+            }
+            function pickMedia() { if (!sending) attachmentPicker.open() }
+            function attach(path) {
+                mediaPath = path
+                mediaInfo = ({})
+                inspectMedia.command = ["python3", mediaHelper, "inspect", path]
+                inspectMedia.running = true
+            }
+            function sendMedia() {
+                const t = current
+                const address = composing ? (recipient || to.text.trim()) : directAddress(t)
+                if (!address || (!composing && t?.is_group)) {
+                    error = "Choose one contact's phone number or email. Group media is not supported yet."
+                    return
+                }
+                if (!mediaReady) {
+                    error = mediaReason + " Your photo or video has not been sent."
+                    return
+                }
+                sending = true
+                mediaSender.command = ["python3", mediaHelper, "send", mediaPath, address, draft.text.trim()]
+                mediaSender.running = true
+            }
+            function createVideoCall() {
+                callHelper.command = ["python3", videoHelper, "create"]
+                callHelper.running = true
+            }
+            function joinFaceTimeLink() {
+                callHelper.command = ["python3", videoHelper, "join", faceTimeInput.text.trim()]
+                callHelper.running = true
+            }
             function send() {
                 const body = draft.text.trim()
-                if (!body || sending) return
+                if ((!body && !mediaPath) || sending) return
+                if (mediaPath) { sendMedia(); return }
                 if (composing) {
                     const address = recipient || to.text.trim()
                     if (!address) return
@@ -336,6 +398,68 @@ ShellRoot {
                     : label + " " + Qt.formatTime(d, "h:mm AP")
             }
 
+            FileDialog {
+                id: attachmentPicker
+                title: "Add Photos or Videos"
+                fileMode: FileDialog.OpenFile
+                nameFilters: ["Photos and Videos (*.jpg *.jpeg *.png *.gif *.heic *.webp *.mp4 *.mov *.m4v *.webm)"]
+                onAccepted: app.attach(decodeURIComponent(String(selectedFile).replace(/^file:\/\//, "")))
+            }
+            Process {
+                id: mediaStatus
+                running: true
+                command: ["python3", app.mediaHelper, "status"]
+                stdout: StdioCollector { id: mediaStatusOut }
+                onExited: {
+                    try {
+                        const r = JSON.parse(mediaStatusOut.text)
+                        app.mediaReady = !!r.ok && !!r.ready
+                        app.mediaReason = r.reason || r.error || "Configure the iMessage media relay before sending."
+                    } catch (e) { app.mediaReady = false }
+                }
+            }
+            Process {
+                id: inspectMedia
+                stdout: StdioCollector { id: inspectedMediaOut }
+                onExited: (code) => {
+                    try {
+                        const r = JSON.parse(inspectedMediaOut.text)
+                        if (!r.ok) { app.error = r.error; app.mediaPath = ""; return }
+                        app.mediaInfo = r
+                    } catch (e) { app.error = "Could not inspect the selected attachment."; app.mediaPath = "" }
+                }
+            }
+            Process {
+                id: mediaSender
+                stdout: StdioCollector { id: mediaSendOut }
+                onExited: (code) => {
+                    app.sending = false
+                    try {
+                        const r = JSON.parse(mediaSendOut.text)
+                        if (code !== 0 || !r.ok) { app.error = r.error || "The relay rejected the attachment."; return }
+                        app.mediaPath = ""; app.mediaInfo = ({})
+                        draft.text = ""
+                        app.error = "Media accepted by BlueBubbles. Final delivery depends on Apple Messages; it may not appear in BlueFerry history."
+                        app.composing = false
+                    } catch (e) { app.error = "The media relay did not confirm the transfer." }
+                }
+            }
+            Process {
+                id: callHelper
+                stdout: StdioCollector { id: callOutput }
+                onExited: (code) => {
+                    try {
+                        const r = JSON.parse(callOutput.text)
+                        if (code !== 0 || !r.ok) { app.error = r.error || "Could not open this call."; return }
+                        app.faceTimeDialog = false
+                        Quickshell.execDetached(["gg-web", r.url])
+                        if (r.type === "webrtc") {
+                            draft.text = "Join my video call: " + r.url
+                            app.error = "Video meeting opened. Send the invitation to your contact when ready."
+                        }
+                    } catch (e) { app.error = "Could not create a valid video call link." }
+                }
+            }
             Bridge {
                 id: bridge
                 onEvent: (name, data) => {
