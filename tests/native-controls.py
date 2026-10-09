@@ -117,6 +117,30 @@ class Controls(unittest.TestCase):
         self.assertEqual(self.root.property('actions'), 10)
         self.assertFalse(menu.property('visible'))
         self.assertTrue(self.control('button').hasActiveFocus())
+    def test_menu_escape_cancels_pending_flash_action(self):
+        self.root.showMenu(); APP.processEvents()
+        menu=self.control('menu')
+        self.assertTrue(menu.property('visible'))
+        QTest.keyClick(self.view, Qt.Key_Down)
+        QTest.keyClick(self.view, Qt.Key_Return)
+        # The Mac-like highlight holds the action briefly. Escape before its
+        # completion must not trigger the underlying command after dismissal.
+        QTest.keyClick(self.view, Qt.Key_Escape)
+        QTest.qWait(260)
+        self.assertEqual(self.root.property('actions'),0)
+        self.assertFalse(menu.property('visible'))
+        self.assertTrue(self.control('button').hasActiveFocus())
+
+    def test_click_away_cancels_pending_menu_action(self):
+        self.root.showMenu(); APP.processEvents()
+        QTest.keyClick(self.view, Qt.Key_Down)
+        QTest.keyClick(self.view, Qt.Key_Return)
+        menu=self.control('menu')
+        menu.close()
+        QTest.qWait(260)
+        self.assertEqual(self.root.property('actions'),0)
+        self.assertFalse(menu.property('visible'))
+
     def test_popup_keyboard(self):
         pop = self.control('popupButton')
         self.key(pop, Qt.Key_Space)
