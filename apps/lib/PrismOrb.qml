@@ -49,6 +49,19 @@ Item {
             GradientStop { position: 0.72; color: "#020307" }
             GradientStop { position: 1.0; color: "#15161d" }
         }
+        // Actual Golden Gate lens underneath the caustic: it samples the
+        // shell's DesktopBackdrop and subtly bends desktop text/pictures
+        // beneath the sphere. Falls back to solid smoked glass in software
+        // rendering or when Reduce Transparency is enabled.
+        Glass {
+            id: opticalBackdrop
+            anchors.fill: parent
+            role: "clear"
+            radius: width / 2
+            lens: 16
+            tint: Theme.reduceTransparency ? "#ed06080d" : "#c606080d"
+            shadow: "transparent"
+        }
         // Tiny optical spill, tucked behind the central prismatic stripe.
         Rectangle {
             x: parent.width * 0.10; y: parent.height * (0.49 + 0.025 * Math.sin(orb.sweep * 6.283))
