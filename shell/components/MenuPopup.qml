@@ -26,7 +26,10 @@ PopupWindow {
     // while it was open. So what's shown is fixed while the menu is up; a
     // change that would move or resize it closes the surface and opens it
     // again a moment later, with the new items, where it now belongs.
-    property var shown: items
+    // An owned snapshot, NOT a binding to items. Otherwise shown changes
+    // before onItemsChanged compares the old and new menu shapes, causing
+    // the mapped popup surface to resize instead of safely remapping.
+    property var shown: []
     property bool reopening: false
     // Ignore a delayed focus-clear from the OLD surface during menu switching.
     // The new popup grabs focus again as soon as its new surface appears.
