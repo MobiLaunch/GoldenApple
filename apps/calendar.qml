@@ -33,13 +33,13 @@ ShellRoot {
                 spacing: 10
 
                 ToolbarPill {
-                    ToolbarButton { symbol: "chevron-left"; onClicked: cal.shiftMonth(-1) }
-                    ToolbarButton { symbol: "chevron-right"; onClicked: cal.shiftMonth(1) }
+                    ToolbarButton { symbol: "chevron-left"; onClicked: cal.shiftRange(-1) }
+                    ToolbarButton { symbol: "chevron-right"; onClicked: cal.shiftRange(1) }
                 }
 
                 Text {
                     anchors.verticalCenter: parent.verticalCenter
-                    text: Qt.formatDate(cal.visibleMonth, "MMMM yyyy")
+                    text: cal.rangeLabel
                     color: Theme.label
                     font { family: Theme.fontUi; pixelSize: Theme.fs(15); weight: Font.Bold }
                 }
@@ -48,6 +48,23 @@ ShellRoot {
                 anchors { right: parent.right; rightMargin: 12; verticalCenter: parent.verticalCenter }
                 spacing: 8
 
+                ToolbarPill {
+                    ToolbarButton {
+                        text: "Month"
+                        checked: cal.viewMode === "month"
+                        onClicked: cal.changeView("month")
+                    }
+                    ToolbarButton {
+                        text: "Week"
+                        checked: cal.viewMode === "week"
+                        onClicked: cal.changeView("week")
+                    }
+                    ToolbarButton {
+                        text: "Day"
+                        checked: cal.viewMode === "day"
+                        onClicked: cal.changeView("day")
+                    }
+                }
                 ToolbarButton {
                     round: true
                     symbol: "cloud"
@@ -189,6 +206,7 @@ ShellRoot {
             property date today: new Date()
             property date visibleMonth: new Date(today.getFullYear(), today.getMonth(), 1)
             property date selectedDate: new Date(today.getFullYear(), today.getMonth(), today.getDate())
+            property string viewMode: "month"
             property var events: []
             property bool loading: true
             property string error: ""
@@ -228,14 +246,38 @@ ShellRoot {
             readonly property var pendingSeries: events.find(e => e.id === pendingEdit.id) || ({})
 
             readonly property string selectedKey: Qt.formatDate(selectedDate, "yyyy-MM-dd")
+            readonly property var agendaKeys: Recurrence.displayedDays(viewMode, selectedKey)
+            readonly property string rangeLabel: viewMode === "month"
+                ? Qt.formatDate(visibleMonth, "MMMM yyyy")
+                : viewMode === "day" ? Qt.formatDate(selectedDate, "MMMM d, yyyy")
+                : Qt.formatDate(new Date(Number(agendaKeys[0].slice(0,4)),
+                        Number(agendaKeys[0].slice(5,7))-1, Number(agendaKeys[0].slice(8,10))), "MMM d")
+                    + " – " + Qt.formatDate(new Date(Number(agendaKeys[6].slice(0,4)),
+                        Number(agendaKeys[6].slice(5,7))-1, Number(agendaKeys[6].slice(8,10))), "MMM d, yyyy")
             readonly property var selectedEvents: Recurrence.occurrencesOn(events, selectedKey)
             readonly property int year: visibleMonth.getFullYear()
             readonly property int month: visibleMonth.getMonth()
             readonly property int firstWeekday: new Date(year, month, 1).getDay()
             readonly property int daysInMonth: new Date(year, month + 1, 0).getDate()
 
-            function shiftMonth(delta) {
-                visibleMonth = new Date(year, month + delta, 1)
+            function changeView(mode) {
+                if (mode !== "month" && mode !== "week" && mode !== "day")
+                    return
+                viewMode = mode
+                visibleMonth = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1)
+            }
+
+            function shiftRange(delta) {
+                if (viewMode === "month") {
+                    visibleMonth = new Date(year, month + delta, 1)
+                    selectedDate = new Date(year, month + delta, Math.min(
+                        selectedDate.getDate(), new Date(year, month + delta + 1, 0).getDate()))
+                } else {
+                    const shift = viewMode === "week" ? delta * 7 : delta
+                    selectedDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth(),
+                                            selectedDate.getDate() + shift)
+                    visibleMonth = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1)
+                }
             }
 
             function goToday() {
@@ -657,6 +699,7 @@ ShellRoot {
 
             // The window draws under its toolbar: the weekdays start below it.
             Column {
+                visible: cal.viewMode === "month"
                 anchors { fill: parent; leftMargin: 24; rightMargin: 24; topMargin: win.toolbarHeight + 4; bottomMargin: 18 }
                 spacing: 8
 
@@ -773,6 +816,124 @@ ShellRoot {
                                 onDoubleTapped: {
                                     cal.selectDay(dayCell.day)
                                     cal.openAdd()
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Compact day/week agenda: the same recurrence projection and event
+            // actions as Month, including moved dates and read-only CalDAV.
+            Row {
+                id: agendaRow
+                visible: cal.viewMode !== "month"
+                anchors { fill: parent; leftMargin: 20; rightMargin: 20
+                          topMargin: win.toolbarHeight + 8; bottomMargin: 16 }
+                spacing: 6
+                Repeater {
+                    model: cal.agendaKeys
+                    delegate: Rectangle {
+                        id: agendaDay
+                        required property string modelData
+                        readonly property var dayEvents: Recurrence.occurrencesOn(cal.events, modelData)
+                        readonly property bool isSelected: modelData === cal.selectedKey
+                        readonly property bool isToday: modelData === Qt.formatDate(cal.today, "yyyy-MM-dd")
+                        width: (agendaRow.width - 6 * (cal.agendaKeys.length - 1)) / cal.agendaKeys.length
+                        height: agendaRow.height
+                        radius: 12
+                        color: agendaDay.isSelected
+                            ? Qt.rgba(Theme.accent.r,Theme.accent.g,Theme.accent.b,0.09)
+                            : (Theme.dark ? "#0bffffff" : "#07000000")
+                        border { width: 0.5; color: Theme.separator }
+                        Rectangle {
+                            id: agendaHeader
+                            x: 4; y: 4; width: parent.width - 8; height: 52
+                            color: "transparent"
+                            Text {
+                                anchors { left: parent.left; leftMargin: 8; verticalCenter: parent.verticalCenter }
+                                width: parent.width - 16
+                                text: Qt.formatDate(new Date(Number(agendaDay.modelData.slice(0,4)),
+                                        Number(agendaDay.modelData.slice(5,7))-1,
+                                        Number(agendaDay.modelData.slice(8,10))),
+                                        cal.viewMode === "day" ? "dddd, MMMM d" : "ddd d")
+                                elide: Text.ElideRight
+                                color: agendaDay.isToday ? "#ff453a" : Theme.label
+                                font { family: Theme.fontUi; pixelSize: Theme.fs(cal.viewMode === "day" ? 17 : 12); weight: Font.DemiBold }
+                            }
+                            MouseArea {
+                                anchors.fill: parent
+                                onClicked: cal.selectedDate = new Date(
+                                    Number(agendaDay.modelData.slice(0,4)),
+                                    Number(agendaDay.modelData.slice(5,7))-1,
+                                    Number(agendaDay.modelData.slice(8,10)))
+                                onDoubleClicked: cal.openAdd()
+                            }
+                        }
+                        Rectangle {
+                            x: 8; y: 56; width: parent.width - 16; height: 1
+                            color: Theme.separator
+                        }
+                        Flickable {
+                            id: agendaScroller
+                            x: 5; y: 64
+                            width: parent.width - 10
+                            height: parent.height - 72
+                            clip: true
+                            boundsBehavior: Flickable.StopAtBounds
+                            contentHeight: agendaEntries.implicitHeight
+                            Column {
+                                id: agendaEntries
+                                width: agendaScroller.width
+                                spacing: 6
+                                Text {
+                                    width: parent.width
+                                    visible: agendaDay.dayEvents.length === 0
+                                    text: "No events"
+                                    horizontalAlignment: Text.AlignHCenter
+                                    color: Theme.tertiaryLabel
+                                    font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                                }
+                                Repeater {
+                                    model: agendaDay.dayEvents
+                                    delegate: Rectangle {
+                                        id: eventTile
+                                        required property var modelData
+                                        width: agendaEntries.width
+                                        height: 62
+                                        radius: 8
+                                        color: Theme.dark ? "#16ffffff" : "#ffffff"
+                                        border { width: 1; color: Theme.separator }
+                                        Rectangle {
+                                            x: 4; y: 7; width: 3; height: parent.height - 14
+                                            radius: 2; color: Theme.accent
+                                        }
+                                        Column {
+                                            anchors { left: parent.left; leftMargin: 12; right: parent.right
+                                                      rightMargin: 7; verticalCenter: parent.verticalCenter }
+                                            spacing: 2
+                                            Text {
+                                                width: parent.width
+                                                text: eventTile.modelData.title
+                                                elide: Text.ElideRight
+                                                color: Theme.label
+                                                font { family: Theme.fontUi; pixelSize: Theme.fs(cal.viewMode === "day" ? 13 : 11); weight: Font.DemiBold }
+                                            }
+                                            Text {
+                                                width: parent.width
+                                                text: (eventTile.modelData.time || "All day") +
+                                                    (eventTile.modelData.remote ? " · CalDAV" : "")
+                                                elide: Text.ElideRight
+                                                color: Theme.secondaryLabel
+                                                font { family: Theme.fontUi; pixelSize: Theme.fs(10) }
+                                            }
+                                        }
+                                        MouseArea {
+                                            anchors.fill: parent
+                                            enabled: !eventTile.modelData.remote && !cal.broken
+                                            onClicked: cal.requestEdit(eventTile.modelData)
+                                        }
+                                    }
                                 }
                             }
                         }
