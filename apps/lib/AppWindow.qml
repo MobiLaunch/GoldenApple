@@ -80,6 +80,12 @@ FloatingWindow {
     // Both sidebar-open and sidebar-closed toolbar layouts must reserve the
     // same protected region for the three traffic lights and their hitboxes.
     readonly property real toolbarSafeX: lights.x + lights.width + 16
+    // The shared sidebar toolbar is a separate Row. Its buttons do not
+    // disappear when the sidebar closes: they park immediately after the
+    // traffic lights. Reserve their *live, animated* width for other toolbar
+    // controls too; traffic-light clearance alone isn't enough.
+    readonly property real toolbarLeadingEnd: Math.max(toolbarSafeX,
+        sideRow.x + sideRow.width + (sideRow.width > 0 ? 12 : 0))
     // Content, glass, and separators share identical animated edges.
     readonly property real contentWidth: Math.max(0, width - contentX - presentedTrailingSidebarWidth)
     default property alias content: contentArea.data
