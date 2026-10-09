@@ -118,6 +118,8 @@ ShellRoot {
                 onExited: (code) => {
                     if (code !== 0 && !utility.error)
                         utility.error = workerErrors.text.trim() || "The archive could not be processed."
+                    if (code === 0 && utility.operation === "create" && utility.resultPath)
+                        Qt.callLater(() => utility.inspect(utility.resultPath))
                 }
             }
 
@@ -230,6 +232,7 @@ ShellRoot {
                             reuseItems: true
                             delegate: Rectangle {
                                 required property var modelData
+                                required property int index
                                 width: membersView.width; height: 38
                                 color: index % 2 ? (Theme.dark ? "#101215" : "#fbfbfd") : "transparent"
                                 RowLayout {
