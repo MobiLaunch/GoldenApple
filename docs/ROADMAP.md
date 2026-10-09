@@ -64,6 +64,9 @@
 - [x] Finder list headings: tactile sort feedback and active-column contrast
 - [x] Files: type-to-select with 950 ms jump cue, repeated-letter cycling, Home/End/Page navigation
 - [x] Empty Trash Escape closes the shared sheet instead of overriding its visibility binding
+- [x] Modal sheet outside-click isolation and reentrant close/open focus restoration
+- [x] Files Get Info adopts shared sheet, small-window scroll and Copy Path confirmation
+- [x] Quick Look: focus-safe arrow browsing with Space/Escape/Return actions
 - [x] Menu-bar title switches unmap the previous surface before changing its anchor or geometry
 - [x] Music playlists sort by displayed names; regression restores deterministic duplicate order
 - [x] Screen-reader selected sidebar rows, press actions and checked toolbar controls
