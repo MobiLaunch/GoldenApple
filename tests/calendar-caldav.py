@@ -2,10 +2,11 @@
 """CalDAV read-only parser and secret-free local tests."""
 import importlib.util
 from pathlib import Path
+from contextlib import nullcontext
 import sys
 import tempfile
 import unittest
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 import urllib.request
 import xml.etree.ElementTree as ET
 
@@ -74,6 +75,48 @@ class CalDav(unittest.TestCase):
         with self.assertRaises(ValueError):
             handler.redirect_request(request, None, 302, "Moved", {}, "https://other.example.test/")
 
+    def test_auto_refresh_unit_install_and_stop(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            cfg = home / "account.json"
+            sync.private_json(cfg, {"username": "sample", "url":"https://calendar.example.test/home/"})
+            with patch.object(sync, "CONFIG", cfg), patch.object(sync, "USER_UNITS", home/"units"), patch.object(sync, "systemctl") as run:
+                sync.set_auto(True)
+                self.assertTrue((home/"units/gg-calendar-caldav.timer").exists())
+                self.assertIn("15min", (home/"units/gg-calendar-caldav.timer").read_text())
+                self.assertIn(" sync", (home/"units/gg-calendar-caldav.service").read_text())
+                self.assertTrue(sync.auto_running())
+                sync.set_auto(True)
+                sync.set_auto(False)
+                self.assertFalse((home/"units/gg-calendar-caldav.timer").exists())
+                self.assertFalse(sync.auto_running())
+                run.assert_any_call("disable","--now","gg-calendar-caldav.timer")
+
+    def test_changed_account_cannot_be_overwritten_by_old_sync(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            cfg = root/"account.json"
+            cache = root/"events.json"
+            sync.private_json(cfg, {"username":"A","url":"https://calendar.example.test/A"})
+            def stale_remote(*args):
+                # Imagine Disconnect or switching accounts while the REPORT is in flight.
+                cfg.unlink()
+                return ([{"id":"caldav-remote", "title":"Old data"}], 0)
+            with patch.object(sync, "CONFIG", cfg), patch.object(sync, "CACHE", cache), patch.object(sync, "secret_tool", return_value="password"), patch.object(sync, "fetch_events", side_effect=stale_remote), patch.object(sync.local, "locked", side_effect=nullcontext):
+                self.assertEqual(sync.command("sync"), 1)
+            self.assertFalse(cache.exists(), "an in-flight request cannot restore a disconnected calendar")
+
+    def test_disconnect_stops_timer_and_preserves_local_store(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            cfg = Path(tmp)/"account.json"
+            cache = Path(tmp)/"cache.json"
+            sync.private_json(cfg, {"username":"A","url":"https://calendar.example.test/A"})
+            sync.private_json(cache, [{"id":"remote"}])
+            with patch.object(sync,"CONFIG",cfg), patch.object(sync,"CACHE",cache), patch.object(sync,"set_auto") as timer, patch.object(sync,"secret_tool",return_value=""), patch.object(sync.local,"locked",side_effect=nullcontext):
+                self.assertEqual(sync.command("disconnect"),0)
+            timer.assert_called_once_with(False)
+            self.assertFalse(cache.exists())
+            self.assertFalse(cfg.exists())
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
