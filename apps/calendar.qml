@@ -50,6 +50,12 @@ ShellRoot {
 
                 ToolbarButton {
                     round: true
+                    symbol: "cloud"
+                    Accessible.name: "CalDAV calendar sync and account"
+                    onClicked: cal.openCalDav()
+                }
+                ToolbarButton {
+                    round: true
                     symbol: "bell"
                     enabled: !cal.remindersPending
                     Accessible.name: cal.remindersEnabled ? "Turn Calendar reminders off" : "Turn Calendar reminders on"
@@ -128,7 +134,7 @@ ShellRoot {
                             }
                             Text {
                                 width: parent.width
-                                text: (modelData.time || "All day") + (modelData.repeat && modelData.repeat !== "never" ? " · " + Recurrence.summary(modelData) : "")
+                                text: (modelData.time || "All day") + (modelData.remote ? " · CalDAV · Read-only" : "") + (modelData.repeat && modelData.repeat !== "never" ? " · " + Recurrence.summary(modelData) : "")
                                 elide: Text.ElideRight
                                 color: Theme.secondaryLabel
                                 font { family: Theme.fontUi; pixelSize: Theme.fs(10) }
@@ -139,21 +145,24 @@ ShellRoot {
                             anchors { right: parent.right; rightMargin: 66; verticalCenter: parent.verticalCenter }
                             round: true
                             symbol: "copy"
-                            enabled: !cal.broken && !duplicateProc.running
+                            enabled: !modelData.remote && !cal.broken && !duplicateProc.running
+                            Accessible.name: "Duplicate event"
                             onClicked: cal.duplicateEvent(modelData.id)
                         }
                         ToolbarButton {
                             anchors { right: parent.right; rightMargin: 36; verticalCenter: parent.verticalCenter }
                             round: true
                             symbol: "pencil"
-                            enabled: !cal.broken
+                            enabled: !modelData.remote && !cal.broken
+                            Accessible.name: "Edit event"
                             onClicked: cal.requestEdit(modelData)
                         }
                         ToolbarButton {
                             anchors { right: parent.right; rightMargin: 6; verticalCenter: parent.verticalCenter }
                             round: true
                             symbol: "trash"
-                            enabled: !cal.broken && !deleteProc.running
+                            enabled: !modelData.remote && !cal.broken && !deleteProc.running
+                            Accessible.name: "Delete event"
                             onClicked: cal.requestDelete(modelData)
                         }
                     }
@@ -176,6 +185,7 @@ ShellRoot {
 
             readonly property string helper: Qt.resolvedUrl("calendar/helper.py").toString().replace("file://", "")
             readonly property string reminderHelper: Qt.resolvedUrl("calendar/reminders.py").toString().replace("file://", "")
+            readonly property string calDavHelper: Qt.resolvedUrl("calendar/caldav.py").toString().replace("file://", "")
             property date today: new Date()
             property date visibleMonth: new Date(today.getFullYear(), today.getMonth(), 1)
             property date selectedDate: new Date(today.getFullYear(), today.getMonth(), today.getDate())
@@ -197,6 +207,12 @@ ShellRoot {
             readonly property var reminderValues: [-1, 0, 5, 15, 60]
             property bool remindersEnabled: false
             property bool remindersPending: false
+            property bool calDavConfigured: false
+            property bool calDavPending: false
+            property string calDavUrl: ""
+            property string calDavUsername: ""
+            property string calDavPassword: ""
+            property string calDavMessage: ""
             readonly property var repeatOptions: ["never", "daily", "weekly", "monthly", "yearly"]
             property string deleteTarget: ""
             property string deleteTitle: ""
@@ -337,13 +353,115 @@ ShellRoot {
                     loadProc.running = true
             }
 
-            Component.onCompleted: { reload(); reminderStatus.running = true }
+            Component.onCompleted: { reload(); reminderStatus.running = true; calDavStatus.running = true }
 
             function toggleReminders() {
                 if (remindersPending) return
                 remindersPending = true
                 reminderToggle.command = ["python3", reminderHelper, remindersEnabled ? "disable" : "enable"]
                 reminderToggle.running = true
+            }
+
+            function openCalDav() {
+                calDavMessage = ""
+                calDavAccount.visible = true
+                calDavStatus.running = true
+            }
+
+            function saveCalDav() {
+                if (calDavPending || !calDavUrl.trim() || !calDavUsername.trim() || !calDavPassword)
+                    return
+                calDavPending = true
+                calDavConfig.stdinEnabled = true
+                calDavConfig.running = true
+            }
+
+            function syncCalDav() {
+                if (calDavPending) return
+                calDavPending = true
+                calDavSync.running = true
+            }
+
+            function disconnectCalDav() {
+                if (calDavPending) return
+                calDavPending = true
+                calDavDisconnect.running = true
+            }
+
+            Process {
+                id: calDavStatus
+                command: ["python3", cal.calDavHelper, "status"]
+                stdout: StdioCollector {
+                    onStreamFinished: {
+                        let r = null
+                        try { r = JSON.parse(text) } catch (e) {}
+                        if (r?.ok) {
+                            cal.calDavConfigured = !!r.configured
+                            if (r.configured) {
+                                cal.calDavUrl = r.url || ""
+                                cal.calDavUsername = r.username || ""
+                            }
+                        } else if (r?.error) cal.calDavMessage = r.error
+                    }
+                }
+            }
+
+            Process {
+                id: calDavConfig
+                command: ["python3", cal.calDavHelper, "configure"]
+                stdinEnabled: true
+                onStarted: {
+                    write(JSON.stringify({url:cal.calDavUrl.trim(), username:cal.calDavUsername.trim(), password:cal.calDavPassword}))
+                    cal.calDavPassword = ""
+                    stdinEnabled = false
+                }
+                onExited: cal.calDavPending = false
+                stdout: StdioCollector {
+                    onStreamFinished: {
+                        let r = null
+                        try { r = JSON.parse(text) } catch (e) {}
+                        if (r?.ok) {
+                            cal.calDavConfigured = true
+                            cal.calDavMessage = "Account saved. Select Sync Now to import remote events."
+                        } else cal.calDavMessage = r?.error ?? "Could not save CalDAV account."
+                    }
+                }
+            }
+
+            Process {
+                id: calDavSync
+                command: ["python3", cal.calDavHelper, "sync"]
+                onExited: cal.calDavPending = false
+                stdout: StdioCollector {
+                    onStreamFinished: {
+                        let r = null
+                        try { r = JSON.parse(text) } catch (e) {}
+                        if (r?.ok) {
+                            cal.calDavMessage = "Synced " + r.count + " event(s)" + (r.skipped ? "; " + r.skipped + " unsupported event(s) were skipped." : ".")
+                            cal.reload()
+                        } else cal.calDavMessage = r?.error ?? "CalDAV sync failed. Existing events were kept."
+                    }
+                }
+            }
+
+            Process {
+                id: calDavDisconnect
+                command: ["python3", cal.calDavHelper, "disconnect"]
+                onExited: cal.calDavPending = false
+                stdout: StdioCollector {
+                    onStreamFinished: {
+                        let r = null
+                        try { r = JSON.parse(text) } catch (e) {}
+                        if (r?.ok) {
+                            cal.calDavConfigured = false
+                            cal.calDavUrl = ""
+                            cal.calDavUsername = ""
+                            cal.calDavPassword = ""
+                            cal.calDavMessage = "Disconnected. Local events are unchanged."
+                            cal.reload()
+                        } else cal.calDavMessage = r?.error ?? "Could not disconnect CalDAV."
+                    }
+                }
             }
 
             Process {
@@ -385,7 +503,7 @@ ShellRoot {
                             cal.canRestore = !!r.canRestore
                             if (r.ok) {
                                 cal.events = r.events ?? []
-                                cal.error = r.invalid ? r.invalid + (r.invalid === 1 ? " event couldn't be shown: its date or time isn't valid." : " events couldn't be shown: their dates or times aren't valid.") : ""
+                                cal.error = r.remoteError || (r.invalid ? r.invalid + (r.invalid === 1 ? " event couldn't be shown: its date or time isn't valid." : " events couldn't be shown: their dates or times aren't valid.") : "")
                             } else {
                                 cal.events = []
                                 cal.error = r.error ?? "Calendar data could not be read."
@@ -790,6 +908,95 @@ ShellRoot {
                             prominent: true
                             enabled: !addProc.running && cal.draftTitle.trim().length > 0
                             onClicked: cal.addEvent()
+                        }
+                    }
+                }
+            }
+
+            Glass {
+                id: calDavAccount
+                objectName: "calendarCalDavAccount"
+                parent: win.overlay
+                visible: false
+                anchors.centerIn: parent
+                width: Math.min(480, parent.width - 32)
+                height: cal.calDavConfigured ? 250 : 335
+                radius: 22
+                tint: Theme.glassRegular.tint
+                z: 120
+                Column {
+                    anchors { fill: parent; margins: 20 }
+                    spacing: 10
+                    Text {
+                        text: "CalDAV Calendar"
+                        color: Theme.label
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(18); weight: Font.DemiBold }
+                    }
+                    Text {
+                        width: parent.width; wrapMode: Text.WordWrap
+                        text: "Read-only synchronization. Remote events cannot be edited here. Use your calendar's HTTPS collection URL."
+                        color: Theme.secondaryLabel
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                    }
+                    TextField {
+                        width: parent.width
+                        visible: !cal.calDavConfigured
+                        enabled: !cal.calDavPending
+                        placeholder: "https://calendar.example.com/path/"
+                        text: cal.calDavUrl
+                        onTextChanged: cal.calDavUrl = text
+                    }
+                    TextField {
+                        width: parent.width
+                        visible: !cal.calDavConfigured
+                        enabled: !cal.calDavPending
+                        placeholder: "CalDAV username"
+                        text: cal.calDavUsername
+                        onTextChanged: cal.calDavUsername = text
+                    }
+                    TextField {
+                        width: parent.width
+                        visible: !cal.calDavConfigured
+                        enabled: !cal.calDavPending
+                        password: true
+                        placeholder: "Password or app-specific password"
+                        text: cal.calDavPassword
+                        onTextChanged: cal.calDavPassword = text
+                    }
+                    Text {
+                        width: parent.width
+                        visible: cal.calDavConfigured
+                        text: cal.calDavUsername + " · " + cal.calDavUrl
+                        wrapMode: Text.WrapAnywhere
+                        color: Theme.secondaryLabel
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                    }
+                    Text {
+                        width: parent.width; wrapMode: Text.WordWrap
+                        visible: !!cal.calDavMessage
+                        text: cal.calDavMessage
+                        color: Theme.secondaryLabel
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                    }
+                    Row {
+                        anchors.right: parent.right
+                        spacing: 8
+                        Button { text: "Close"; enabled: !cal.calDavPending; onClicked: calDavAccount.visible = false }
+                        Button {
+                            visible: cal.calDavConfigured
+                            text: "Disconnect"
+                            enabled: !cal.calDavPending
+                            onClicked: cal.disconnectCalDav()
+                        }
+                        Button {
+                            text: cal.calDavConfigured ? "Sync Now" : "Connect"
+                            prominent: true
+                            enabled: !cal.calDavPending && (cal.calDavConfigured ||
+                                (cal.calDavUrl.trim().length > 0 && cal.calDavUsername.trim().length > 0 && cal.calDavPassword.length > 0))
+                            onClicked: {
+                                if (cal.calDavConfigured) cal.syncCalDav()
+                                else cal.saveCalDav()
+                            }
                         }
                     }
                 }
