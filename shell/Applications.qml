@@ -181,7 +181,8 @@ PanelWindow {
         "org.goldengate.Maps", "org.goldengate.Photos", "org.goldengate.Music", "org.goldengate.Calendar",
         "org.goldengate.Notes", "org.goldengate.Weather", "org.goldengate.Clock", "org.goldengate.Calculator",
         "org.goldengate.TextEdit", "org.goldengate.LCode", "org.goldengate.AirDrop", "org.goldengate.Passwords", "org.goldengate.Software", "org.goldengate.Settings",
-        "org.goldengate.Terminal", "org.goldengate.DiskUtility"
+        "org.goldengate.Terminal", "org.goldengate.DiskUtility",
+        "org.goldengate.ArchiveUtility", "org.goldengate.Intelligence"
     ]
     // Launchpad is an APPROVED-icon surface, not a list of all executables.
     // A newly installed app qualifies only when gg-icon-resolver recognizes
@@ -208,9 +209,17 @@ PanelWindow {
             apps.iconCatalogReady = true
         }
     }
+    // FileView can open before its cache exists on a brand-new profile.
+    // Kick off an offline manifest scan once; don't block Launchpad's first
+    // frame or make a network call from a QML process.
+    Process {
+        running: true
+        command: ["gg-icon-resolver", "sync"]
+        onExited: if (approvedIconFile.path) approvedIconFile.reload()
+    }
     function hasApprovedIcon(entry) {
         const id = String(entry.id ?? "")
-        if (id.startsWith("org.goldengate.")) return firstParty.includes(id)
+        if (id.startsWith("org.goldengate.")) return firstParty.includes(id) || !!approvedIcons[id]?.icon
         return !!approvedIcons[id]?.icon
     }
     function iconFor(entry) {
