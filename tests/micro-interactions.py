@@ -66,6 +66,14 @@ check("apps/lib/FocusRing.qml", [
     "Theme.dark ? 0.23 : 0.16",
 ], "focus halo remains visible without heavy GPU effects")
 
+check("apps/lib/TrafficLights.qml", [
+    'Accessible.name: modelData.kind === "close" ? "Close window"',
+    'Accessible.onPressAction: light.activate(true)',
+    'FocusRing { visible: light.activeFocus && light.enabled_ }',
+    'lightHover.hovered ? 1.035 : 1',
+    'onTapped: { light.forceActiveFocus(); light.activate(false) }',
+], "traffic lights have discrete pointer hover and keyboard-accessible actions")
+
 check("apps/lib/Switch.qml", [
     "property bool keyboardPressed: false",
     "readonly property bool active: ma.pressed || sw.keyboardPressed",

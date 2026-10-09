@@ -46,6 +46,7 @@
 - [x] Keyboard and screen-reader actions give the same short tactile feedback as a pointer click
 - [x] Shared segmented/sidebar controls: soft selection and press response without layout shift
 - [x] Liquid Glass: pointer illumination and press effects honor Reduce Motion
+- [x] Traffic lights: individually responsive pointer hover, keyboard and accessibility activation
 - [x] Search-field clear affordance and Escape to clear without dismissing dialogs
 - [x] Pop-up active state, keyboard toggle feedback, slider/scrollbar ease and focus halos
 - [x] Dock label hover intent, subtle inactive-window depth, short menu selection fade

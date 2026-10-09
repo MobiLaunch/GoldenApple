@@ -24,6 +24,7 @@ nonanimated presentation:
 | Overlay scrollbar | Thumb brightens and track expands on deliberate hover | No width or fade transitions |
 | Switch / checkbox | Space, Return and accessibility get the same pressed state as mouse activation | State changes immediately |
 | Focus outline | Two low-cost accent strokes improve contrast on busy backgrounds | Instant focus indication |
+| Traffic lights | Only the hovered control responds; keyboard and accessibility can activate each window action | Hover scale snaps immediately |
 | Sidebar row | Pressed background compresses minimally, selected symbol gains emphasis | No animated scale |
 | Menus | Hover selection washes in over 65 ms, without changing popup dimensions; Escape and click-away cancel pending selections | Highlight appears instantly |
 | Inactive app window | A faint 180 ms toolbar tint changes visual hierarchy | Tint changes instantly |
