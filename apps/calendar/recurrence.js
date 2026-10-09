@@ -4,6 +4,19 @@ function utcDay(iso) {
     return Date.UTC(Number(iso.slice(0, 4)), Number(iso.slice(5, 7)) - 1,
                     Number(iso.slice(8, 10))) / 86400000
 }
+// Dates are ISO calendar days, never parsed as local-midnight strings.
+function shiftDay(date, amount) {
+    const d = new Date(utcDay(date) * 86400000)
+    d.setUTCDate(d.getUTCDate() + amount)
+    return d.toISOString().slice(0, 10)
+}
+function weekDays(date) {
+    const start = -new Date(utcDay(date) * 86400000).getUTCDay()
+    return Array.from({length:7}, (_, i) => shiftDay(date, start + i))
+}
+function displayedDays(mode, selected) {
+    return mode === "week" ? weekDays(selected) : [selected]
+}
 function occursOn(event, date) {
     if (!event || typeof event.date !== "string" || typeof date !== "string")
         return false
@@ -36,6 +49,9 @@ function occurrencesOn(events, date) {
             }))
         }
     }
+    // Native Calendar orders all-day items first, then timed items.
+    result.sort((a, b) => (a.time || "").localeCompare(b.time || "") ||
+        (a.title || "").localeCompare(b.title || "") || (a.id || "").localeCompare(b.id || ""))
     return result
 }
 function summary(event) {
