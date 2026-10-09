@@ -8,7 +8,7 @@ os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
 os.environ.setdefault('QT_QUICK_BACKEND', 'software')
 import unittest
 from pathlib import Path
-from PySide6.QtCore import QObject, QUrl, Qt, QPoint
+from PySide6.QtCore import QObject, QUrl, Qt, QPoint, QPointF
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlComponent
 from PySide6.QtQuick import QQuickView
@@ -274,11 +274,21 @@ class Controls(unittest.TestCase):
         clear = search.findChild(QObject, 'searchClearButton')
         self.assertIsNotNone(clear)
         self.assertTrue(clear.property('shown'))
-        # Mouse and keyboard clear the query without dismissing its parent.
-        QTest.mouseClick(self.view, Qt.LeftButton, pos=QPoint(479, 88))
+        # The clear affordance fades into view; click its actual scene centre
+        # after the transition, not a hard-coded coordinate mid-animation.
+        QTest.qWait(155)
+        self.assertGreater(clear.property('opacity'), 0.98)
+        center = clear.mapToScene(QPointF(clear.property('width') / 2,
+                                         clear.property('height') / 2))
+        QTest.mouseClick(self.view, Qt.LeftButton,
+                         pos=QPoint(round(center.x()), round(center.y())))
+        APP.processEvents()
         self.assertEqual(search.property('text'), '')
         search.setProperty('text', 'another query')
-        editor = search.property('input')
+        # QQml alias properties expose a QQuickTextInput* that PySide cannot
+        # convert directly. Resolve the real input by object name instead.
+        editor = search.findChild(QObject, 'textFieldNativeInput')
+        self.assertIsNotNone(editor)
         editor.forceActiveFocus()
         QTest.keyClick(self.view, Qt.Key_Escape)
         APP.processEvents()
@@ -286,7 +296,8 @@ class Controls(unittest.TestCase):
         self.assertTrue(self.view.isVisible())
         # Plain fields preserve Escape for their dialog/window to handle.
         regular.setProperty('text', 'draft')
-        reg_editor = regular.property('input')
+        reg_editor = regular.findChild(QObject, 'textFieldNativeInput')
+        self.assertIsNotNone(reg_editor)
         reg_editor.forceActiveFocus()
         QTest.keyClick(self.view, Qt.Key_Escape)
         self.assertEqual(regular.property('text'), 'draft')
