@@ -559,7 +559,16 @@ ShellRoot {
                             cal.calDavPassword = ""
                             cal.calDavMessage = "Disconnected. Local events are unchanged."
                             cal.reload()
-                        } else cal.calDavMessage = r?.error ?? "Could not disconnect CalDAV."
+                        } else {
+                            if (r?.disconnected) {
+                                cal.calDavConfigured = false
+                                cal.calDavAuto = false
+                                cal.calDavLastSync = ""
+                                cal.calDavPassword = ""
+                                cal.reload()
+                            }
+                            cal.calDavMessage = r?.error ?? "Could not disconnect CalDAV."
+                        }
                     }
                 }
             }
