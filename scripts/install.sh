@@ -40,6 +40,7 @@ install_extras() {
   install -Dm755 "$REPO/compositor/hyprland/hyprglass-sync.sh" "$R/usr/lib/golden-gate/hyprglass-sync.sh"
   install -Dm755 "$REPO/compositor/hyprland/apply-preferences.sh" "$R/usr/lib/golden-gate/apply-preferences.sh"
   install -Dm755 "$REPO/compositor/hyprland/tile.py" "$R/usr/lib/golden-gate/tile.py"
+  install -Dm755 "$REPO/icons/icon-resolver.py" "$R/usr/lib/golden-gate/icon-resolver.py"
   install -Dm755 "$REPO/compositor/hyprland/idle.py" "$R/usr/lib/golden-gate/idle.py"
   # Standard password-authenticated administration for accounts created in Hello.
   install -d -m755 "$R/etc/sudoers.d"
