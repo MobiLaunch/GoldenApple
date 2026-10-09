@@ -34,7 +34,16 @@ Item {
 
     function editorAt(i) { const holder = editors.itemAt(i); return holder ? holder.item : null }
     function isFileKind(kind) { return kind === "file" || kind === "design" }
-    onCurrentChanged: { closeCompletion(); fileShown(currentPath) }
+    onCurrentChanged: {
+        closeCompletion()
+        fileShown(currentPath)
+        // Programmatic opens, keyboard navigation and restoration from an
+        // earlier session should keep the selected tab in view automatically.
+        Qt.callLater(() => {
+            if (area.current >= 0 && area.current < docs.count)
+                tabs.positionViewAtIndex(area.current, ListView.Contain)
+        })
+    }
 
     ListModel { id: docs }
     readonly property alias documents: docs
@@ -293,6 +302,18 @@ Item {
             clip: true
             model: docs
             boundsBehavior: Flickable.StopAtBounds
+            // Opening and closing a document should move its neighboring tabs,
+            // never teleport the entire editor. All gestures snap under
+            // Accessibility > Reduce Motion.
+            add: Transition {
+                NumberAnimation { property: "opacity"; from: 0; to: 1; duration: Theme.reduceMotion ? 0 : 125 }
+            }
+            remove: Transition {
+                NumberAnimation { property: "opacity"; to: 0; duration: Theme.reduceMotion ? 0 : 95 }
+            }
+            displaced: Transition {
+                NumberAnimation { properties: "x"; duration: Theme.reduceMotion ? 0 : 145; easing.type: Easing.OutCubic }
+            }
             delegate: Item {
                 id: tab
                 required property int index
