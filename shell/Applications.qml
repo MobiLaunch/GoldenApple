@@ -615,7 +615,7 @@ PanelWindow {
                             id: ficon
                             anchors { horizontalCenter: parent.horizontalCenter; top: parent.top; topMargin: 8 }
                             width: apps.iconSize * 0.8; height: width
-                            source: Quickshell.iconPath(fcell.modelData.icon, "application-x-executable")
+                            source: apps.iconFor(fcell.modelData)
                             sourceSize: Qt.size(width * 2, height * 2)
                             smooth: true; mipmap: true
                             scale: farea.pressed && !Theme.reduceMotion ? 0.92 : 1
