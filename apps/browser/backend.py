@@ -16,7 +16,15 @@ from urllib.parse import urlsplit
 
 from PySide6.QtCore import QCoreApplication, QObject, Property, QStandardPaths, Qt, Signal, Slot
 from PySide6.QtGui import QGuiApplication
-from PySide6.QtWebEngineCore import QWebEngineUrlRequestInterceptor
+try:
+    from PySide6.QtWebEngineCore import QWebEngineUrlRequestInterceptor
+    INTERCEPTOR = True
+except ImportError:
+    # PySide6's WebEngine binding doesn't load with this Qt (Arch updating
+    # them out of step): Web still runs (webengine.py), without tracker
+    # blocking, which is the one thing it needs the binding for.
+    QWebEngineUrlRequestInterceptor = QObject
+    INTERCEPTOR = False
 
 from model import Store, address_url
 from passwords import Passwords, origin_of
@@ -279,13 +287,16 @@ class BrowserBackend(QObject):
             for domain, count in sorted(domains.items(), key=lambda item: (-item[1], item[0]))
         ]
         return {
-            "enabled": bool(self._privacy_interceptor.enabled),
+            "available": INTERCEPTOR,
+            "enabled": bool(self._privacy_interceptor.enabled) and INTERCEPTOR,
             "blocked": total,
             "domains": ranked[:30],
         }
 
     @Slot(QObject)
     def attachProfile(self, profile):
+        if not INTERCEPTOR:
+            return
         setter = getattr(profile, "setUrlRequestInterceptor", None)
         if setter is None:
             self.toastRequested.emit("Privacy protection could not attach to this browser profile.")

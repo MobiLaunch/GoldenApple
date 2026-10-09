@@ -263,7 +263,9 @@ Flickable {
                         Text {
                             width: parent.width
                             wrapMode: Text.WordWrap
-                            text: !root.data.privacy?.enabled
+                            text: root.data.privacy?.available === false
+                                ? "Tracker blocking is unavailable until the next system update (PySide6 doesn't match this Qt)."
+                                : !root.data.privacy?.enabled
                                 ? "Privacy Protection is turned off."
                                 : (root.data.privacy?.blocked ?? 0) === 0
                                     ? "No known third-party tracking requests blocked in this session yet."

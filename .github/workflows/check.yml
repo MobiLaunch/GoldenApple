@@ -72,7 +72,8 @@ jobs:
           grep -q 'privacyProtection' apps/browser/model.py
           grep -q 'QWebEngineUrlRequestInterceptor' apps/browser/backend.py
           grep -q 'setUrlRequestInterceptor' apps/browser/backend.py
-          grep -q 'QtWebEngineQuick.initialize' apps/browser/browser.py
+          grep -q 'webengine.initialize()' apps/browser/browser.py
+          grep -q 'QtWebEngineQuick.initialize' apps/browser/webengine.py
           grep -q 'parse_arguments' apps/browser/browser.py
           grep -q 'profile_key' apps/browser/browser.py
           grep -q 'browser.py' apps/browser/launch.sh

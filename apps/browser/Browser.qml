@@ -2399,7 +2399,9 @@ Window {
                 Column {
                     anchors.verticalCenter: parent.verticalCenter
                     Text {
-                        text: root.sitePrivacyReport.enabled
+                        text: root.sitePrivacyReport.available === false
+                            ? "Tracker blocking is unavailable"
+                            : root.sitePrivacyReport.enabled
                             ? (root.sitePrivacyReport.blocked + " tracking request"
                                + (root.sitePrivacyReport.blocked === 1 ? "" : "s") + " blocked")
                             : "Privacy Protection is off"
@@ -2407,7 +2409,11 @@ Window {
                         font { family: Theme.fontUi; pixelSize: Theme.fs(15); weight: Font.DemiBold }
                     }
                     Text {
-                        text: "Known third-party tracker domains are blocked before Chromium sends the request."
+                        width: privacyContent.width - 64
+                        wrapMode: Text.WordWrap
+                        text: root.sitePrivacyReport.available === false
+                            ? "This system's PySide6 doesn't match its Qt, so Web can't filter requests. It comes back after the next update."
+                            : "Known third-party tracker domains are blocked before Chromium sends the request."
                         color: Theme.secondaryLabel
                         font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
                     }

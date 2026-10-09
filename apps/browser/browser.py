@@ -13,23 +13,28 @@ from pathlib import Path
 import signal
 import sys
 
-try:
-    from PySide6.QtCore import QCoreApplication, QLockFile, QStandardPaths, QTimer, QUrl
-    from PySide6.QtGui import QGuiApplication
-    from PySide6.QtNetwork import QLocalServer, QLocalSocket
-    from PySide6.QtQml import QQmlApplicationEngine
-    from PySide6.QtWebEngineQuick import QtWebEngineQuick
-except ImportError as exc:
-    # PySide only says "could not import module 'PySide6.QtWebEngineCore'";
-    # find out why and say it (launch.sh shows the first line, exit 3).
+def cant_start(exc: BaseException) -> None:
+    """Qt couldn't be loaded: say why and what fixes it (launch.sh shows the
+    first line, exit 3). PySide only says "could not import module …"."""
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from diagnose import diagnose
-    print(f"ImportError: {exc}", file=sys.stderr)
+    print(f"{exc.__class__.__name__}: {exc}", file=sys.stderr)
     summary, details = diagnose()
     print("WEB-CANT-START: " + summary, file=sys.stderr)
     for line in details:
         print("  " + line, file=sys.stderr)
     raise SystemExit(3)
+
+
+try:
+    from PySide6.QtCore import QCoreApplication, QLockFile, QTimer, QUrl
+    from PySide6.QtGui import QGuiApplication
+    from PySide6.QtNetwork import QLocalServer, QLocalSocket
+    from PySide6.QtQml import QQmlApplicationEngine
+except ImportError as exc:
+    cant_start(exc)
+
+import webengine
 
 from backend import BrowserBackend, profile_key
 
@@ -80,7 +85,15 @@ def main():
     QCoreApplication.setOrganizationName("Golden Gate")
     QCoreApplication.setApplicationName("GoldenGateWeb")
     QCoreApplication.setApplicationVersion("0.2")
-    QtWebEngineQuick.initialize()
+    # PySide6's WebEngine binding when it loads; Qt's own start-up call when
+    # Arch has Qt and PySide6 out of step (tracker blocking is off then).
+    try:
+        bindings = webengine.initialize()
+    except webengine.Unavailable as exc:
+        cant_start(exc)
+    if not bindings:
+        print("Qt WebEngine started without PySide6's WebEngine binding (it doesn't load with this Qt); "
+              "tracker blocking is off until PySide6 is updated.", file=sys.stderr)
 
     app = QGuiApplication(sys.argv)
     app.setApplicationDisplayName("Web")

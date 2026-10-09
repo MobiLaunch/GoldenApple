@@ -193,6 +193,31 @@ class NativeQmlBrowser(unittest.TestCase):
             state = json.loads(files[0].read_text())
             self.assertIn(BASE + "/first", state["tabs"])
 
+    def test_starts_when_pyside_webengine_binding_wont_load(self):
+        # Arch shipped PySide6 built against a newer Qt WebEngine than its
+        # qt6-webengine ("could not import module 'PySide6.QtWebEngineCore'",
+        # an undefined symbol) and Web didn't start at all. Its pages are
+        # Qt's own QML module, so Web starts Qt WebEngine itself and loads
+        # pages, only without tracker blocking.
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            broken = root / "broken"
+            broken.mkdir()
+            (broken / "sitecustomize.py").write_text(
+                "import sys\n"
+                "class Broken:\n"
+                "    def find_spec(self, name, path=None, target=None):\n"
+                "        if name.startswith('PySide6.QtWebEngine'):\n"
+                "            raise ImportError(\"libshiboken: could not import module '%s'\" % name)\n"
+                "sys.meta_path.insert(0, Broken())\n")
+            env = browser_env(root, 0)
+            env["PYTHONPATH"] = str(broken) + os.pathsep + env.get("PYTHONPATH", "")
+            result = self.run_until([sys.executable, str(BROWSER), BASE + "/no-binding"], env,
+                                    lambda: any(p == "/no-binding" for p, _ in COOKIES_SEEN))
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("without PySide6's WebEngine binding", result.stderr)
+            self.assertNotIn("WEB-CANT-START", result.stderr)
+
     def test_logins_survive_closing_web(self):
         # Closing Web used to sign you out of every site: from Qt 6.9 the QML
         # profile stayed in memory and no cookie ever reached the disk.
@@ -357,7 +382,8 @@ class NativeQmlBrowser(unittest.TestCase):
         launcher = (ROOT / "apps/browser/browser.py").read_text()
         qml = (ROOT / "apps/browser/Browser.qml").read_text()
         shell = (ROOT / "apps/browser/launch.sh").read_text()
-        self.assertIn("QtWebEngineQuick.initialize", launcher)
+        self.assertIn("webengine.initialize()", launcher)
+        self.assertIn("QtWebEngineQuick.initialize", (ROOT / "apps/browser/webengine.py").read_text())
         self.assertIn("QQmlApplicationEngine", launcher)
         self.assertNotIn("QtWidgets", launcher)
         self.assertIn("WebEngineView", qml)

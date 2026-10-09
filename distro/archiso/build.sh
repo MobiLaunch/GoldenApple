@@ -367,15 +367,34 @@ if ! grep -RqsF 'archisosearchuuid=%ARCHISO_UUID%' "$PROFILE/syslinux" "$PROFILE
 fi
 mkarchiso -v -w "$WORK/build" -o "$OUT" "$PROFILE"
 
-# Web runs on PySide6's Qt WebEngine. When Arch updates Qt before PySide6 is
-# rebuilt for it (or a package is missing), the import fails and Web can't
-# start at all ("could not import module 'PySide6.QtWebEngineCore'"). Check
-# the image's own Python can load it, so such an ISO never ships.
+# Web is PySide6 running Qt's own QML WebEngineView. When Arch updates Qt
+# before PySide6 is rebuilt for it, PySide6's WebEngine binding stops loading
+# ("could not import module 'PySide6.QtWebEngineCore'"); Web then starts Qt
+# WebEngine itself (apps/browser/webengine.py) and only loses tracker
+# blocking. Check what Web can't do without: PySide6's core, Qt WebEngine's
+# start-up and its QML module, so an ISO whose Web can't start never ships.
 root="$WORK/build/x86_64/airootfs"
 if [[ -x "$root/usr/bin/python3" ]]; then
-  say "checking Web's Qt WebEngine loads in the image"
-  if ! chroot "$root" /usr/bin/python3 -c 'import PySide6.QtWebEngineQuick, PySide6.QtWebEngineCore' 2>/dev/null; then
-    echo "Web can't start in this image: Qt WebEngine doesn't load."
+  say "checking Web can start in the image"
+  if ! chroot "$root" env QT_QPA_PLATFORM=offscreen /usr/bin/python3 - <<'PY'
+import sys
+sys.path.insert(0, "/usr/share/golden-gate/apps/browser")
+from PySide6.QtCore import QUrl
+from PySide6.QtGui import QGuiApplication
+from PySide6.QtQml import QQmlComponent, QQmlEngine
+import webengine
+bindings = webengine.initialize()
+app = QGuiApplication(sys.argv)
+engine = QQmlEngine()
+component = QQmlComponent(engine)
+component.setData(b"import QtQuick\nimport QtWebEngine\nItem {}\n", QUrl("file:///check.qml"))
+if component.isError():
+    sys.exit("Qt WebEngine's QML module doesn't load: " + "; ".join(e.toString() for e in component.errors()))
+if not bindings:
+    print("warning: PySide6's WebEngine binding doesn't load with this Qt; Web runs without tracker blocking")
+PY
+  then
+    echo "Web can't start in this image."
     chroot "$root" /usr/bin/python3 /usr/share/golden-gate/apps/browser/diagnose.py || true
     exit 1
   fi
