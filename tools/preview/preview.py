@@ -587,13 +587,7 @@ def main() -> int:
             # must still fail deterministically.
             bar = window.findChild(QObject, "globalMenuBar")
             popup = window.findChild(QObject, "menuBarMenu")
-            rows = popup.property("shown") if popup else []
-            if hasattr(rows, "toVariant"):
-                rows = rows.toVariant()
-            first = rows[0] if isinstance(rows, list) and rows else None
-            if hasattr(first, "toVariant"):
-                first = first.toVariant()
-            first_label = first.get("label", first.get("text", "")) if isinstance(first, dict) else ""
+            first_label = popup.property("firstShownLabel") if popup else ""
             expected_first = {"File": "New Files Window", "Edit": "Undo",
                               "View": "Edit Widgets…", "Go": "Recents",
                               "Help": "Search"}
