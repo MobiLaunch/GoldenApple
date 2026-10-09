@@ -13,6 +13,8 @@ ListView {
     property url art
     property var tracks: []
     property bool numbered: true
+    property bool editablePlaylist: false
+    signal managePlaylist()
     property var player
     signal songMenu(var track, var list, Item from, real x, real y)
 
@@ -77,6 +79,18 @@ ListView {
                             }
                         }
                     }
+                }
+                Rectangle {
+                    visible: page.editablePlaylist
+                    width: 102; height: 30; radius: 7
+                    color: Theme.dark ? "#2c2c2e" : "#ebebef"
+                    Text {
+                        anchors.centerIn: parent
+                        text: "Edit Playlist"
+                        color: "#fa2d48"
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.DemiBold }
+                    }
+                    MouseArea { anchors.fill: parent; onClicked: page.managePlaylist() }
                 }
             }
         }

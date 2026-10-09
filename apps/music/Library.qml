@@ -127,7 +127,6 @@ Item {
                     lib.playlistOperationDone(r)
                 } else {
                     lib.playlistError = r?.error || "Couldn't update this playlist."
-                    lib.refreshAfterMutation = true
                 }
             }
         }

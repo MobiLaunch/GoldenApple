@@ -149,6 +149,8 @@ ShellRoot {
                 audio.playList(musicLib.tracks, i)
             }
             function openPlaylistName(mode, playlist) {
+                if (mode === "create" && !pickerSheet.visible && !app.pendingTrack?.path)
+                    pendingTrack = null
                 playlistNameMode = mode
                 playlistTarget = playlist || null
                 playlistDraftName = mode === "rename" ? (playlist?.name || "") : ""
@@ -249,6 +251,7 @@ ShellRoot {
                     if (r.playlist) {
                         const selected = musicLib.playlists.find(p => p.path === r.playlist)
                         if (selected) {
+                            if (musicLib.playlistRequest.command === "add") app.pendingTrack = null
                             if (app.page === "playlist" && app.arg?.path === musicLib.playlistRequest.path)
                                 app.arg = selected
                             if (app.managePath === musicLib.playlistRequest.path)
@@ -365,6 +368,8 @@ ShellRoot {
                     tracks: list ? musicLib.playlistTracks(list) : []
                     art: tracks[0]?.art ?? ""
                     numbered: false
+                    editablePlaylist: true
+                    onManagePlaylist: app.openPlaylistManager()
                     player: audio
                     topMargin: 22
                     onSongMenu: (t, l, f, x, y) => app.songMenu(t, l, f, x, y)
@@ -438,14 +443,7 @@ ShellRoot {
                             }
                         }
                         HoverHandler { id: qh }
-                        TapHandler {
-                            onTapped: {
-                                // Transport selection is intentional, not performed when
-                                // pressing one of the nested queue-management controls.
-                                if (!qh.hovered) return
-                            }
-                            onDoubleTapped: { audio.index = modelData.i; audio.load() }
-                        }
+                        TapHandler { onDoubleTapped: { audio.index = modelData.i; audio.load() } }
                     }
                     Text {
                         visible: parent.count === 0
@@ -506,7 +504,7 @@ ShellRoot {
                 height: 204
                 radius: 20
                 tint: Theme.glassRegular.tint
-                z: 105
+                z: 130
                 Column {
                     anchors { fill: parent; margins: 18 }
                     spacing: 14
@@ -533,7 +531,7 @@ ShellRoot {
                     Row {
                         anchors.right: parent.right
                         spacing: 8
-                        Button { text: "Cancel"; onClicked: nameSheet.visible = false }
+                        Button { text: "Cancel"; onClicked: { nameSheet.visible = false; app.pendingTrack = null } }
                         Button {
                             text: app.playlistNameMode === "create" ? "Create" : "Rename"
                             prominent: true
