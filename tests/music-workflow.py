@@ -127,7 +127,7 @@ class Mpris(unittest.IsolatedAsyncioTestCase):
         with self.assertRaises(DBusError):await self.player.set_loop_status('bad')
     async def test_position_updates_do_not_emit_properties_changed(self):
         events=[];seeked=[]
-        self.props.on_properties_changed(lambda *args:events.append(args))
+        self.props.on_properties_changed(lambda interface, changed, invalidated: events.append((interface, changed, invalidated)))
         self.player.on_seeked(lambda position:seeked.append(position))
         await asyncio.sleep(.03)
         self.state['position']=150;await self.update();await asyncio.sleep(.04)
