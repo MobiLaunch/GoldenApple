@@ -33,7 +33,6 @@ SYSTEM_DATA = [Path(x) for x in (os.environ.get("XDG_DATA_DIRS") or "/usr/local/
 DESKTOP_DIRS = [DATA / "applications", DATA / "flatpak/exports/share/applications",
                 Path("/var/lib/flatpak/exports/share/applications"),
                 *(p / "applications" for p in SYSTEM_DATA)]
-USER_THEME = DATA / "icons/GoldenGate/scalable/apps"
 MANIFEST = CACHE / "launchpad-icons.json"
 SOURCES = CACHE / "icon-packs/whitesur"
 LICENSE_PATH = SOURCES / "COPYING"
@@ -80,11 +79,14 @@ def safe_art(data: bytes):
     if len(data) > MAX_SVG or not data.lstrip().startswith((b"<svg", b"<?xml")):
         return False
     lower = data.lower()
+    # SVG namespace URIs are NOT external fetches; do not reject legitimate
+    # SVGs just because xmlns="http://www.w3.org/2000/svg" is present.
+    refs = re.findall(rb"(?:href|src)\s*=\s*['\"]([^'\"]+)['\"]", lower)
     return (b"<svg" in lower and b"<script" not in lower
             and b"<!doctype" not in lower and b"<!entity" not in lower
-            and b"<foreignobject" not in lower
-            and b"javascript:" not in lower and b"http://" not in lower
-            and b"https://" not in lower)
+            and b"<foreignobject" not in lower and b"javascript:" not in lower
+            and all(not ref.startswith((b"http:", b"https:", b"data:", b"file:")) for ref in refs)
+            and b"url(http" not in lower and b"url(https" not in lower)
 
 
 def bootstrap():
