@@ -37,7 +37,7 @@ Rectangle {
     GG.PopUpButton { objectName: "popupButton"; x: 30; y: 240; options: ["Small", "Medium", "Large"]; menuParent: parent }
     GG.ToolbarButton { objectName: "toolbar"; x: 300; y: 130; text: "Edit" }
     GG.TextField { objectName: "field"; x: 30; y: 295; placeholder: "Regular field"; width: 240 }
-    GG.TextField { objectName: "searchField"; x: 290; y: 295; placeholder: "Search"; width: 205; search: true }
+    GG.TextField { objectName: "searchField"; x: 290; y: 75; placeholder: "Search"; width: 205; search: true }
     GG.SpringValue { objectName: "spring" }
     GG.SidebarRow { objectName: "sidebarRow"; x: 300; y: 185; width: 180; text: "Inbox"; symbol: "envelope"; selected: true }
     GG.ProgressBar { objectName: "progress"; x: 300; y: 240; width: 180; value: 0.42 }
@@ -220,7 +220,7 @@ class Controls(unittest.TestCase):
         self.assertIsNotNone(clear)
         self.assertTrue(clear.property('shown'))
         # Mouse and keyboard clear the query without dismissing its parent.
-        QTest.mouseClick(self.view, Qt.LeftButton, pos=QPoint(479, 308))
+        QTest.mouseClick(self.view, Qt.LeftButton, pos=QPoint(479, 88))
         self.assertEqual(search.property('text'), '')
         search.setProperty('text', 'another query')
         editor = search.property('input')
