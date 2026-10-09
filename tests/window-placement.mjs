@@ -18,6 +18,7 @@ test("native apps and browser both use shared limits", () => {
     assert.match(app, /WindowGeometry\.maximumWidth\(_placementScreenWidth\)/);
     assert.match(app, /WindowGeometry\.maximumHeight\(_placementScreenHeight/);
     assert.match(app, /maximumSize:\s*Qt\.size\(/);
+    assert.match(app, /closeAction: function\(\) \{ win\.closeWindow\(\) \}/);
     assert.match(browser, /maximumWidth:\s*_maxLaunchWidth/);
     assert.match(browser, /maximumHeight:\s*_maxLaunchHeight/);
     assert.match(browser, /WindowGeometry\.maximumHeight\(Screen\.height/);
