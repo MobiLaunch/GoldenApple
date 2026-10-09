@@ -30,7 +30,7 @@ ShellRoot {
         // Back and forward, and the pane's title.
         toolbarItems: [
             Row {
-                x: win.contentX + 14
+                x: Math.max(win.contentX + 14, win.toolbarSafeX)
                 anchors.verticalCenter: parent.verticalCenter
                 spacing: 12
                 ToolbarButton {
