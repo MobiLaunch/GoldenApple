@@ -157,6 +157,14 @@ require("apps/lcode/Navigator.qml", [
     "opacity: tree.keyboardNavigating && fileNodeRow.activeFocus ? 0.75 : 0",
     "checked: nav.page === index",
 ])
+require("apps/lcode/design/DesignInspector.qml", [
+    "onPlainChanged: if (plain && tab > 1) tab = 1",
+    "onSelChanged: contentY = 0",
+    "onTabChanged: contentY = 0",
+])
+require("apps/lcode/Inspector.qml", [
+    "onPathChanged: contentY = 0",
+])
 if "nav.selectedPath =" in (ROOT / "apps/lcode/Navigator.qml").read_text(encoding="utf-8"):
     failures.append("Navigator must not imperatively overwrite Workspace's selectedPath binding")
 
