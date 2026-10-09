@@ -1,3 +1,24 @@
+## October 2026 — window edges, icons, typography, and charging
+
+- Floating-window dragging/resizing uses Hyprland's built-in `general.snap`:
+  a 12 px monitor/window attraction distance, no extra polling, no extra glass
+  layer, and the same gaps as the rest of the desktop. Window › Move & Resize
+  still offers explicit half/quarter tiling via `gg-tile`.
+- Minimize and restore use the compositor's real window surface with a shorter
+  300 ms/18% special-workspace transition. We deliberately do **not** pretend
+  to have a macOS Genie morph until a real captured-window texture can be
+  carried to the Dock without flashing or creating GPU stalls.
+- The menu bar battery now has a real measured green fill and lightning symbol
+  when charging, a restrained opacity pulse, no pulse once fully charged, and
+  instant rendering under Reduce Motion. Percentage remains firmware-derived.
+- The shared icon generator uses 24 normalized OrchardKit/Open Symbols
+  Lucide regular-size glyphs, not Xcode template artboards. They are exposed
+  consistently through Qt/Quickshell assets, GTK symbolic icons, and the web
+  prototype. Custom local symbol overrides remain supported.
+- Fontconfig's Golden Gate UI, Display and Mono aliases resolve a locally
+  installed SFWindows copy when permitted by its license, and use open-source
+  Inter/JetBrains Mono otherwise. No proprietary fonts ship with the project.
+
 # Golden Gate micro-interaction polish
 
 This pass focuses on **restraint**: small gestures, clear feedback and spring
