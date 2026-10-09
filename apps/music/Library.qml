@@ -21,6 +21,7 @@ Item {
     property string playlistError: ""
     property bool playlistBusy: false
     property var playlistRequest: ({})
+    property var postCreateAdd: null
     readonly property string playlistHelper: decodeURIComponent(Qt.resolvedUrl("playlists.py").toString().replace("file://", ""))
     signal playlistOperationDone(var result)
     property bool scanning: scanProc.running
@@ -133,6 +134,11 @@ Item {
         onExited: {
             lib.playlistBusy = false
             stdinEnabled = true
+            if (lib.postCreateAdd) {
+                const next = lib.postCreateAdd
+                lib.postCreateAdd = null
+                Qt.callLater(() => lib.mutatePlaylist("add", next))
+            }
             if (lib.refreshAfterMutation) {
                 lib.refreshAfterMutation = false
                 Qt.callLater(() => lib.refreshPlaylists())
