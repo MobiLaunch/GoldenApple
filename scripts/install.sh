@@ -283,7 +283,7 @@ chmod +x "$CONF/hypr/golden-gate/report-config-errors.sh"
 # Keyboard layout, written by Setup Assistant; empty until then.
 [[ -e "$CONF/hypr/golden-gate/input.conf" ]] || { mkdir -p "$CONF/hypr/golden-gate"; echo "# Written by Setup Assistant (keyboard layout)." > "$CONF/hypr/golden-gate/input.conf"; }
 # Written by Settings (Accessibility, Displays); empty until you change something.
-for f in accessibility displays; do
+for f in accessibility displays windows; do
   [[ -e "$CONF/hypr/golden-gate/$f.conf" ]] || echo "# Written by Settings." > "$CONF/hypr/golden-gate/$f.conf"
 done
 place "$REPO/compositor/hyprland/machine-conf.sh" "$CONF/hypr/golden-gate/machine-conf.sh"
