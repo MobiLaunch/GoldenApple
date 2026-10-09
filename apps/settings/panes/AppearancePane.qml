@@ -116,6 +116,19 @@ Pane {
             }
         }
     }
+    Group {
+        title: "Liquid Glass Rendering"
+        SetRow {
+            title: "Refract windows behind glass"
+            subtitle: "Sidebars, menus and panels bend live windows behind them. Turning this off uses the wallpaper and lowers GPU work."
+            Switch {
+                objectName: "glassWindowRefraction"
+                checked: pane.sys.prefs.glassWindows ?? true
+                enabled: !(pane.sys.prefs.reduceTransparency ?? false)
+                onToggled: (on) => pane.sys.setPref(["glassWindows"], on)
+            }
+        }
+    }
     // How see-through glass is, from the style's look to solid: windows
     // (gg-hyprglass-sync) and CitronOS's own glass follow it together.
     Group {
