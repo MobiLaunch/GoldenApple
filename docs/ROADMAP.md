@@ -61,6 +61,9 @@
 - [x] Files: sortable list headings and per-folder view/sort preferences
 - [x] Files: Undo Rename and Undo New Folder (an empty, unchanged folder only)
 - [x] Calendar: event editing/duplication; validated daily, weekly, monthly and yearly repeat rules
+- [x] Calendar: occurrence-specific edit/move/skip, opt-in background event reminders
+- [x] Calendar: read-only CalDAV collection sync with credentials in Secret Service
+- [ ] Calendar: skipped-date manager, two-way CalDAV, invitations and complex remote recurrence
 - [x] Focus: timed Do Not Disturb, weekly/overnight schedule, allowed apps,
       critical-alert opt-in and shared expiry status in Settings/Control Center
 - [ ] Focus: named profiles, people exceptions and app/context automation

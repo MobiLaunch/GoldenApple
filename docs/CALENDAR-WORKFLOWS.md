@@ -17,10 +17,16 @@ remain one-time events.
 
 Repeating events are stored as one series, not independent occurrences.
 The date view projects occurrences without changing the saved source date.
-Opening Edit changes the entire series, starting from its original date.
-Deleting a series first asks for confirmation and explicitly says that
-every occurrence will be deleted. Per-occurrence exceptions, event alarms,
-attendees, CalDAV synchronization, and day/week views are not provided yet.
+Opening Edit offers This Date or Entire Series. A moved single occurrence
+appears at the replacement date without moving the rest of the series;
+individual dates can also be skipped. Whole-series rule edits are refused if
+there are saved exceptions, rather than silently losing changed instances.
+The backend supports restoring an exception, but the interface does not yet
+provide a dedicated skipped-dates manager. Deleting a repeated event asks
+whether to skip one date or delete its full series. Event reminders and
+read-only CalDAV collection sync are provided in separate subsystems.
+Two-way CalDAV, invitations, complex server recurrences and day/week views
+are still not implemented.
 
 Validation: tests/calendar-store.py checks backend persistence and stale edit
 protection, tests/calendar-recurrence.mjs exercises the exact production
