@@ -177,7 +177,11 @@ Glass {
                         anchors.fill: parent
                         radius: Theme.radiusMenuItem
                         color: Theme.accent
-                        visible: row.lit
+                        opacity: row.lit ? 1 : 0
+                        visible: opacity > 0
+                        Behavior on opacity {
+                            NumberAnimation { duration: Theme.reduceMotion ? 0 : 65; easing.type: Easing.OutCubic }
+                        }
                     }
                     Symbol {
                         visible: row.kind === "item" && row.modelData.checked === true

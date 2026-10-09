@@ -433,15 +433,23 @@ PanelWindow {
                 font { family: Theme.fontUi; pixelSize: Math.round(parent.size * 0.62); weight: Font.DemiBold }
             }
         }
+        property bool tooltipReady: false
+        Timer {
+            id: tooltipDwell
+            interval: 300
+            onTriggered: if (tipArea.containsMouse && !tipArea.pressed && !tile.lifted)
+                tile.tooltipReady = true
+        }
         Glass {
             id: tip
-            readonly property bool shown: (tipArea.containsMouse && !tipArea.pressed) || (tile.lifted && dock.removing)
+            readonly property bool shown: (tile.tooltipReady && tipArea.containsMouse && !tipArea.pressed)
+                || (tile.lifted && dock.removing)
             visible: opacity > 0
             opacity: shown ? 1 : 0
-            scale: shown ? 1 : 0.9
+            scale: Prefs.reduceMotion ? 1 : shown ? 1 : 0.94
             transformOrigin: Item.Bottom
-            Behavior on opacity { NumberAnimation { duration: Prefs.reduceMotion ? 1 : (tip.shown ? 115 : 80) } }
-            Behavior on scale { Spring { spring: Theme.popover } }
+            Behavior on opacity { NumberAnimation { duration: Prefs.reduceMotion ? 0 : (tip.shown ? 115 : 80) } }
+            Behavior on scale { enabled: !Prefs.reduceMotion; Spring { spring: Theme.popover } }
             anchors { bottom: icon.top; bottomMargin: 10 }
             x: Math.max(8 - (shelf.x + row.x + tile.x), Math.min((parent.width - width) / 2, dock.width - 8 - (shelf.x + row.x + tile.x) - width))
             width: Math.min(dock.width - 16, tipText.implicitWidth + 24); height: 26; radius: 13
@@ -455,10 +463,15 @@ PanelWindow {
             acceptedButtons: Qt.LeftButton | Qt.RightButton
             property point start             // on the ground line
             property bool moved: false
+            onEntered: { tile.tooltipReady = false; tooltipDwell.restart() }
+            onExited: { tooltipDwell.stop(); tile.tooltipReady = false }
             // A stand-in (no desktop entry) can't be kept: nothing would open it again.
             readonly property bool movable: tile.modelData.id !== "org.goldengate.Installer" && !tile.modelData.synthetic
             function onGround(mouse) { return tipArea.mapToItem(ground, mouse.x, mouse.y) }
-            onPressed: mouse => { start = onGround(mouse); moved = false }
+            onPressed: mouse => {
+                tooltipDwell.stop(); tile.tooltipReady = false
+                start = onGround(mouse); moved = false
+            }
             onPositionChanged: mouse => {
                 if (!pressed || !(pressedButtons & Qt.LeftButton) || !movable) return
                 const p = onGround(mouse)

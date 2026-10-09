@@ -233,6 +233,18 @@ FloatingWindow {
         Item {
             id: toolbar
             width: parent.width; height: win.toolbarHeight
+            // An inactive window gently recedes without dimming its document.
+            // This doesn't take input or change the frame's measurements.
+            Rectangle {
+                anchors.fill: parent
+                enabled: false
+                color: Theme.dark ? "#16000000" : "#09000000"
+                opacity: win.active ? 0 : 1
+                Behavior on opacity {
+                    enabled: !Theme.reduceMotion
+                    NumberAnimation { duration: 180; easing.type: Easing.OutCubic }
+                }
+            }
             TapHandler {
                 acceptedButtons: Qt.LeftButton
                 onDoubleTapped: Hyprland.dispatch("fullscreen 1")
