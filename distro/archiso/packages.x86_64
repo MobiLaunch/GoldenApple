@@ -121,3 +121,5 @@ gst-libav
 
 # Compile Golden Gate's unified font/symbol assets on installation
 nodejs
+# Desktop Entry autostart engine for Settings › Login Items
+dex
