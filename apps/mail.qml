@@ -175,6 +175,19 @@ ShellRoot {
                     return Qt.formatDateTime(date, "MMM d")
                 return Qt.formatDateTime(date, "MMM d, yyyy")
             }
+            function forward() {
+                if (!selectedMessage.uid) return
+                composeTo = ""
+                composeSubject = /^fwd?:/i.test(selectedMessage.subject || "") ?
+                    selectedMessage.subject : "Fwd: " + (selectedMessage.subject || "")
+                composeBody = "\\n\\n---------- Forwarded message ----------\\n" +
+                    "From: " + (selectedMessage.from || "") + "\\n" +
+                    "Date: " + (selectedMessage.date || "") + "\\n" +
+                    "Subject: " + (selectedMessage.subject || "") + "\\n\\n" +
+                    (selectedMessage.body || "")
+                selectedFolder = "drafts"
+                composing = true
+            }
             function reply() {
                 if (!selectedMessage.uid) return
                 composeTo = address(selectedMessage.from)
@@ -344,6 +357,7 @@ ShellRoot {
                 composeSubject = ""
                 composeBody = ""
                 composing = false
+                selectedFolder = "inbox"
             }
 
             Component.onCompleted: status()
@@ -641,203 +655,413 @@ ShellRoot {
                 }
             }
 
+            // The content begins BELOW the toolbar: three-column macOS Mail
+            // layout on wide windows, single list/reader pane when compact.
             Row {
-                visible: mail.configured && !mail.composing
+                id: mailWorkspace
+                objectName: "mailWorkspace"
+                visible: mail.configured && !mail.composing && mail.selectedFolder === "inbox"
                 anchors.fill: parent
+                spacing: 0
 
                 Rectangle {
-                    width: Math.min(360, parent.width * 0.38)
+                    id: messageListPane
+                    objectName: "mailMessageListPane"
+                    visible: !mail.compactReading || !mail.selectedUid
+                    width: mail.compactReading ? mail.width :
+                        Math.max(304, Math.min(mail.preferredListWidth, mail.width - 350))
                     height: parent.height
-                    color: Theme.dark ? "#111113" : "#f7f7f9"
-                    border { width: 0; color: "transparent" }
+                    color: Theme.dark ? "#232428" : "#f5f5f7"
+                    clip: true
+
+                    Item {
+                        id: listHeader
+                        anchors { top: parent.top; left: parent.left; right: parent.right }
+                        height: 94
+                        Column {
+                            x: 19
+                            y: 13
+                            spacing: 3
+                            Text {
+                                text: "Inbox"
+                                color: Theme.label
+                                font { family: Theme.fontDisplay; pixelSize: Theme.fs(23); weight: Font.Bold }
+                            }
+                            Text {
+                                text: mail.loading ? "Checking for new mail…" :
+                                      mail.filteredMessages.length + (mail.filteredMessages.length === 1 ? " message" : " messages")
+                                color: Theme.secondaryLabel
+                                font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                            }
+                        }
+                        ToolbarPill {
+                            anchors { right: parent.right; rightMargin: 12; bottom: parent.bottom; bottomMargin: 7 }
+                            ToolbarButton {
+                                text: "All"; checked: !mail.unreadOnly
+                                onClicked: mail.unreadOnly = false
+                            }
+                            ToolbarButton {
+                                text: "Unread"; checked: mail.unreadOnly
+                                onClicked: mail.unreadOnly = true
+                            }
+                        }
+                        Rectangle {
+                            anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
+                            height: 1; color: Theme.separator
+                        }
+                    }
 
                     ListView {
-                        anchors.fill: parent
+                        id: mailMessageList
+                        objectName: "mailMessageList"
+                        anchors { top: listHeader.bottom; bottom: parent.bottom; left: parent.left; right: parent.right }
                         clip: true
-                        model: mail.messages
-                        spacing: 1
-
+                        model: mail.filteredMessages
+                        cacheBuffer: 250
+                        boundsBehavior: Flickable.StopAtBounds
                         delegate: Rectangle {
-                            id: msgRow
+                            id: messageEntry
                             required property var modelData
                             width: ListView.view.width
-                            height: 78
-                            color: mail.selectedUid === modelData.uid
-                                ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.16)
-                                : msgHover.hovered
-                                    ? (Theme.dark ? "#0dffffff" : "#07000000")
-                                    : "transparent"
+                            height: 91
+                            readonly property bool chosen: String(mail.selectedUid) === String(modelData.uid)
+                            color: chosen ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b,
+                                                    Theme.dark ? 0.26 : 0.13)
+                                : messageHover.hovered ? (Theme.dark ? "#19ffffff" : "#10000000") : "transparent"
+                            Behavior on color { ColorAnimation { duration: Theme.reduceMotion ? 0 : 110 } }
 
-                            Column {
-                                anchors { fill: parent; leftMargin: 14; rightMargin: 12; topMargin: 10; bottomMargin: 8 }
-                                spacing: 3
-
-                                Row {
-                                    width: parent.width
-                                    spacing: 6
-                                    Rectangle {
-                                        visible: msgRow.modelData.unread
-                                        anchors.verticalCenter: parent.verticalCenter
-                                        width: 7; height: 7; radius: 3.5
-                                        color: Theme.accent
-                                    }
-                                    Text {
-                                        width: parent.width - (msgRow.modelData.unread ? 13 : 0)
-                                        text: msgRow.modelData.from
-                                        elide: Text.ElideRight
-                                        color: Theme.label
-                                        font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: msgRow.modelData.unread ? Font.Bold : Font.DemiBold }
-                                    }
-                                }
-
+                            Rectangle {
+                                anchors { bottom: parent.bottom; left: parent.left; leftMargin: 59; right: parent.right }
+                                height: 1; color: Theme.separator
+                                opacity: messageEntry.chosen ? 0.3 : 0.75
+                            }
+                            Rectangle {
+                                x: 15; y: 14
+                                width: 35; height: 35; radius: width / 2
+                                color: Theme.dark ? "#494b56" : "#dfe4ec"
                                 Text {
-                                    width: parent.width
-                                    text: msgRow.modelData.subject
-                                    elide: Text.ElideRight
-                                    color: Theme.label
-                                    font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: msgRow.modelData.unread ? Font.DemiBold : Font.Normal }
-                                }
-                                Text {
-                                    width: parent.width
-                                    text: msgRow.modelData.date
-                                    elide: Text.ElideRight
-                                    color: Theme.secondaryLabel
-                                    font { family: Theme.fontUi; pixelSize: Theme.fs(10) }
+                                    anchors.centerIn: parent
+                                    text: mail.initials(messageEntry.modelData.from)
+                                    color: Theme.dark ? "#f4f7ff" : "#263445"
+                                    font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: Font.DemiBold }
                                 }
                             }
-
-                            HoverHandler { id: msgHover }
-                            TapHandler { onTapped: mail.read(msgRow.modelData.uid) }
+                            Column {
+                                x: 59; y: 12
+                                width: Math.max(80, parent.width - x - 16)
+                                spacing: 5
+                                Row {
+                                    width: parent.width
+                                    spacing: 5
+                                    Text {
+                                        width: Math.max(60, parent.width - dateLabel.implicitWidth - 24)
+                                        text: mail.senderName(messageEntry.modelData.from)
+                                        color: Theme.label
+                                        elide: Text.ElideRight
+                                        font { family: Theme.fontUi; pixelSize: Theme.fs(13);
+                                               weight: messageEntry.modelData.unread ? Font.Bold : Font.DemiBold }
+                                    }
+                                    Text {
+                                        id: dateLabel
+                                        text: mail.conciseDate(messageEntry.modelData.date)
+                                        color: Theme.secondaryLabel
+                                        font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+                                    }
+                                }
+                                Text {
+                                    width: parent.width
+                                    text: messageEntry.modelData.subject || "(No Subject)"
+                                    elide: Text.ElideRight
+                                    color: Theme.label
+                                    font { family: Theme.fontUi; pixelSize: Theme.fs(12);
+                                           weight: messageEntry.modelData.unread ? Font.DemiBold : Font.Normal }
+                                }
+                                Text {
+                                    width: parent.width - 10
+                                    text: mail.account
+                                    elide: Text.ElideRight
+                                    color: Theme.secondaryLabel
+                                    font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+                                }
+                            }
+                            Rectangle {
+                                visible: !!messageEntry.modelData.unread
+                                x: 5; y: 23; width: 7; height: 7; radius: 3.5
+                                color: Theme.accent
+                            }
+                            HoverHandler { id: messageHover }
+                            TapHandler { onTapped: mail.read(String(messageEntry.modelData.uid)) }
                         }
                     }
 
                     EmptyState {
-                        visible: !mail.loading && mail.messages.length === 0
+                        visible: !mail.loading && mail.filteredMessages.length === 0
                         anchors.centerIn: parent
-                        width: parent.width - 30
-                        height: 220
-                        symbol: "checkmark"
-                        title: "Inbox Empty"
-                        text: "There are no messages to show."
+                        width: Math.min(parent.width - 30, 310)
+                        height: 190
+                        symbol: mail.query || mail.unreadOnly ? "search" : "envelope"
+                        title: mail.query ? "No Matching Messages" : mail.unreadOnly ? "All Caught Up" : "No Messages"
+                        text: mail.query ? "Try a different search." :
+                              mail.unreadOnly ? "You have no unread mail." : "Your inbox is empty."
                     }
-
                     ProgressBar {
                         visible: mail.loading
-                        anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: 14 }
-                        width: parent.width - 40
-                        indeterminate: true
+                        anchors { bottom: parent.bottom; horizontalCenter: parent.horizontalCenter; bottomMargin: 12 }
+                        width: parent.width - 42; indeterminate: true
                     }
                 }
 
-                Item {
-                    width: parent.width - Math.min(360, parent.width * 0.38)
+                Rectangle {
+                    id: readingPane
+                    objectName: "mailReadingPane"
+                    visible: !mail.compactReading || !!mail.selectedUid
+                    width: mail.compactReading ? mail.width : mail.width - messageListPane.width
                     height: parent.height
+                    color: Theme.contentBg
 
+                    Rectangle {
+                        anchors { left: parent.left; top: parent.top; bottom: parent.bottom }
+                        width: 1; color: Theme.separator
+                    }
                     EmptyState {
                         visible: !mail.selectedUid
                         anchors.centerIn: parent
-                        width: Math.min(420, parent.width - 60)
-                        height: 260
-                        symbol: "doc"
-                        title: "Select a Message"
-                        text: "Choose a message from the inbox to read it."
+                        width: Math.min(440, parent.width - 60); height: 260
+                        symbol: "envelope"; title: "No Message Selected"
+                        text: "Choose a message in your inbox to read it here."
                     }
-
+                    ProgressBar {
+                        visible: !!mail.selectedUid && mail.selectedMessage.uid !== mail.selectedUid
+                        anchors.centerIn: parent
+                        width: Math.min(230, parent.width - 50)
+                        indeterminate: true
+                    }
                     Flickable {
-                        visible: !!mail.selectedUid
-                        anchors { fill: parent; margins: 26 }
-                        contentWidth: width
-                        contentHeight: messageBody.implicitHeight + 40
+                        id: messageReader
+                        objectName: "mailMessageReader"
+                        visible: !!mail.selectedUid && mail.selectedMessage.uid === mail.selectedUid
+                        anchors { fill: parent; leftMargin: 28; rightMargin: 28; topMargin: 23; bottomMargin: 16 }
                         clip: true
+                        contentWidth: width
+                        contentHeight: readerContents.implicitHeight + 30
                         boundsBehavior: Flickable.StopAtBounds
-
+                        onVisibleChanged: if (visible) contentY = 0
                         Column {
-                            id: messageBody
+                            id: readerContents
                             width: parent.width
-                            spacing: 10
-
+                            spacing: 17
                             Text {
                                 width: parent.width
-                                text: mail.selectedMessage.subject ?? ""
+                                text: mail.selectedMessage.subject || "(No Subject)"
+                                color: Theme.label
                                 wrapMode: Text.WordWrap
-                                color: Theme.label
-                                font { family: Theme.fontUi; pixelSize: Theme.fs(23); weight: Font.Bold }
+                                font { family: Theme.fontDisplay; pixelSize: Theme.fs(23); weight: Font.Bold }
                             }
+                            Row {
+                                width: parent.width; spacing: 12
+                                Rectangle {
+                                    width: 42; height: 42; radius: 21
+                                    color: Theme.dark ? "#3c4b5d" : "#dae4ee"
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: mail.initials(mail.selectedMessage.from)
+                                        color: Theme.label
+                                        font { family: Theme.fontUi; pixelSize: Theme.fs(15); weight: Font.DemiBold }
+                                    }
+                                }
+                                Column {
+                                    width: Math.max(90, parent.width - 54)
+                                    spacing: 3
+                                    Text {
+                                        width: parent.width
+                                        text: mail.senderName(mail.selectedMessage.from)
+                                        elide: Text.ElideRight
+                                        color: Theme.label
+                                        font { family: Theme.fontUi; pixelSize: Theme.fs(14); weight: Font.DemiBold }
+                                    }
+                                    Text {
+                                        width: parent.width
+                                        text: "To: " + (mail.selectedMessage.to || mail.account)
+                                        color: Theme.secondaryLabel
+                                        elide: Text.ElideRight
+                                        font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                                    }
+                                    Text {
+                                        width: parent.width
+                                        text: mail.selectedMessage.date || ""
+                                        color: Theme.secondaryLabel
+                                        elide: Text.ElideRight
+                                        font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+                                    }
+                                }
+                            }
+                            Rectangle { width: parent.width; height: 1; color: Theme.separator }
                             Text {
                                 width: parent.width
-                                text: mail.selectedMessage.from ?? ""
-                                elide: Text.ElideRight
-                                color: Theme.label
-                                font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: Font.DemiBold }
-                            }
-                            Text {
-                                width: parent.width
-                                text: mail.selectedMessage.date ?? ""
-                                color: Theme.secondaryLabel
-                                font { family: Theme.fontUi; pixelSize: Theme.fs(10) }
-                            }
-                            Rectangle { width: parent.width; height: 0.5; color: Theme.separator }
-                            Text {
-                                width: parent.width
-                                text: mail.selectedMessage.body ?? ""
+                                text: mail.selectedMessage.body || ""
                                 textFormat: Text.PlainText
                                 wrapMode: Text.Wrap
                                 color: Theme.label
-                                font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
+                                lineHeight: 1.3
+                                font { family: Theme.fontUi; pixelSize: Theme.fs(14) }
+                            }
+                            Row {
+                                spacing: 8
+                                Button {
+                                    text: "Reply"
+                                    enabled: !!mail.address(mail.selectedMessage.from)
+                                    onClicked: mail.reply()
+                                }
+                                Button {
+                                    text: "Forward"
+                                    onClicked: mail.forward()
+                                }
                             }
                         }
                     }
                 }
             }
 
-            Column {
+            // The saved draft is local; do not fabricate Sent/Trash mailboxes
+            // until the IMAP backend actually supports those folders.
+            Item {
+                id: localDrafts
+                objectName: "mailDraftsPane"
+                visible: mail.configured && !mail.composing && mail.selectedFolder === "drafts"
+                anchors.fill: parent
+                EmptyState {
+                    visible: !mail.hasDraft
+                    anchors.centerIn: parent
+                    width: Math.min(430, parent.width - 60); height: 250
+                    symbol: "doc"; title: "No Drafts"
+                    text: "Messages you begin writing are saved here automatically."
+                }
+                Column {
+                    visible: mail.hasDraft
+                    anchors { fill: parent; margins: 28 }
+                    spacing: 12
+                    Text {
+                        text: "Drafts"
+                        color: Theme.label
+                        font { family: Theme.fontDisplay; pixelSize: Theme.fs(24); weight: Font.Bold }
+                    }
+                    Rectangle {
+                        width: Math.min(590, parent.width); height: 105
+                        radius: 13
+                        color: Theme.dark ? "#26282d" : "#f0f2f6"
+                        border { width: 1; color: Theme.separator }
+                        Column {
+                            anchors { fill: parent; margins: 15 }
+                            spacing: 6
+                            Text { text: mail.composeTo || "No recipient"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.fs(12) } }
+                            Text {
+                                width: parent.width
+                                text: mail.composeSubject || "(No Subject)"
+                                elide: Text.ElideRight; color: Theme.label
+                                font { family: Theme.fontUi; pixelSize: Theme.fs(14); weight: Font.DemiBold }
+                            }
+                            Text {
+                                width: parent.width
+                                text: mail.composeBody.replace(/\\s+/g, " ").slice(0, 105)
+                                elide: Text.ElideRight; color: Theme.secondaryLabel
+                                font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                            }
+                        }
+                        TapHandler { onTapped: mail.composing = true }
+                    }
+                    Button { text: "Continue Writing"; onClicked: mail.composing = true }
+                }
+            }
+
+            Item {
+                id: composerPane
+                objectName: "mailComposerPane"
                 visible: mail.configured && mail.composing
                 enabled: mail.draftReady && !mail.closing
-                anchors { fill: parent; margins: 24 }
-                spacing: 10
-
-                TextField {
-                    width: parent.width
-                    placeholder: "To"
-                    text: mail.composeTo
-                    onTextChanged: mail.composeTo = text
-                }
-                TextField {
-                    width: parent.width
-                    placeholder: "Subject"
-                    text: mail.composeSubject
-                    onTextChanged: mail.composeSubject = text
-                }
-
-                Rectangle {
-                    width: parent.width
-                    height: parent.height - 118
-                    radius: 12
-                    color: Theme.dark ? "#121214" : "#ffffff"
-                    border { width: 0.5; color: Theme.separator }
-
-                    TextArea {
-                        id: composeEditor
-                        anchors { fill: parent; margins: 14 }
-                        text: mail.composeBody
-                        onTextChanged: mail.composeBody = text
-                        wrapMode: TextEdit.Wrap
-                        selectByMouse: true
+                anchors.fill: parent
+                Rectangle { anchors.fill: parent; color: Theme.contentBg }
+                Column {
+                    id: composeFields
+                    anchors { left: parent.left; right: parent.right; top: parent.top; leftMargin: 26; rightMargin: 26; topMargin: 18 }
+                    spacing: 12
+                    Text {
+                        text: "New Message"
                         color: Theme.label
-                        selectionColor: Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.30)
-                        font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
+                        font { family: Theme.fontDisplay; pixelSize: Theme.fs(22); weight: Font.DemiBold }
                     }
+                    Rectangle { width: parent.width; height: 1; color: Theme.separator }
+                    Row {
+                        width: parent.width; height: 32; spacing: 10
+                        Text {
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: 62
+                            text: "To:"; color: Theme.secondaryLabel
+                            font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
+                        }
+                        TextField {
+                            id: composeToField
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: parent.width - 72
+                            bare: true
+                            placeholder: "Name or email address"
+                            text: mail.composeTo
+                            onTextChanged: mail.composeTo = text
+                        }
+                    }
+                    Rectangle { width: parent.width; height: 1; color: Theme.separator }
+                    Row {
+                        width: parent.width; height: 32; spacing: 10
+                        Text {
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: 62
+                            text: "Subject:"; color: Theme.secondaryLabel
+                            font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
+                        }
+                        TextField {
+                            id: composeSubjectField
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: parent.width - 72
+                            bare: true; placeholder: "Subject"
+                            text: mail.composeSubject
+                            onTextChanged: mail.composeSubject = text
+                        }
+                    }
+                    Rectangle { width: parent.width; height: 1; color: Theme.separator }
                 }
-
+                TextArea {
+                    id: composeEditor
+                    objectName: "mailComposeEditor"
+                    anchors {
+                        left: parent.left; right: parent.right
+                        top: composeFields.bottom; bottom: composeActions.top
+                        leftMargin: 26; rightMargin: 26; topMargin: 16; bottomMargin: 14
+                    }
+                    placeholder: "Write your message…"
+                    text: mail.composeBody
+                    onTextChanged: mail.composeBody = text
+                    wrapMode: TextEdit.Wrap
+                    clip: true
+                    color: Theme.label
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(14) }
+                }
                 Row {
-                    anchors.right: parent.right
+                    id: composeActions
+                    anchors { right: parent.right; rightMargin: 26; bottom: parent.bottom; bottomMargin: 19 }
                     spacing: 8
-                    Button { text: "Writing Tools…"; enabled: !mail.sending && composeEditor.length > 0; onClicked: composeEditor.openWritingTools() }
-                    Button { text: "Save Draft"; enabled: !mail.sending && mail.draftReady; onClicked: { mail.saveDraft(); mail.composing = false } }
+                    Button {
+                        text: "Writing Tools…"
+                        enabled: !mail.sending && composeEditor.length > 0
+                        onClicked: composeEditor.openWritingTools()
+                    }
+                    Button {
+                        text: "Save Draft"
+                        enabled: !mail.sending && mail.draftReady
+                        onClicked: { mail.saveDraft(); mail.selectedFolder = "drafts"; mail.composing = false }
+                    }
                     Button {
                         text: mail.sending ? "Sending…" : "Send"
                         prominent: true
-                        enabled: !mail.sending && mail.composeTo.trim().length > 0
+                        enabled: !mail.sending && mail.draftReady && mail.composeTo.trim().length > 0
                         onClicked: mail.send()
                     }
                 }
