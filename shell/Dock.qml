@@ -261,6 +261,26 @@ PanelWindow {
     property var runningRecords: ({})
     readonly property int recentHoldMs: 900
     readonly property int departureMs: 220
+    // Schedule exactly one wakeup for the next phase transition. Polling at
+    // 25ms during a close kept waking the QML scene while the shelf was
+    // animating and was particularly visible as dropped frames on a live GPU.
+    onRunningIdsChanged: scheduleRecentExpiry()
+    onRunningRecordsChanged: scheduleRecentExpiry()
+    onDragIdChanged: scheduleRecentExpiry()
+    function scheduleRecentExpiry() {
+        recentExpiry.stop()
+        const now = Date.now()
+        let next = Infinity
+        for (const id of runningIds) {
+            const record = runningRecords[id]
+            if (!record || record.phase === "active" || id === dragId) continue
+            next = Math.min(next, record.deadline)
+        }
+        if (next !== Infinity) {
+            recentExpiry.interval = Math.max(1, Math.ceil(next - now))
+            recentExpiry.start()
+        }
+    }
     onRunningChanged: reconcileRunning()
     onEntriesChanged: reconcileRunning()
     function reconcileRunning() {
@@ -303,8 +323,8 @@ PanelWindow {
         runningRecords = next
     }
     Timer {
-        interval: 25; repeat: true
-        running: dock.runningIds.some(id => dock.runningRecords[id]?.phase !== "active")
+        id: recentExpiry
+        repeat: false
         onTriggered: dock.expireRecent()
     }
     function entryForWindow(appId) {
