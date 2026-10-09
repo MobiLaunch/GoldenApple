@@ -194,7 +194,7 @@ ShellRoot {
                 composeTo = ""
                 composeSubject = /^fwd?:/i.test(selectedMessage.subject || "") ?
                     selectedMessage.subject : "Fwd: " + (selectedMessage.subject || "")
-                composeBody = "\n\n---------- Forwarded message ----------\\n" +
+                composeBody = "\n\n---------- Forwarded message ----------\n" +
                     "From: " + (selectedMessage.from || "") + "\n" +
                     "Date: " + (selectedMessage.date || "") + "\n" +
                     "Subject: " + (selectedMessage.subject || "") + "\n\n" +
