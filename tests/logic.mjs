@@ -68,6 +68,23 @@ test('music queue clamps invalid indices and owns its array', () => {
   c.playList(tracks, -1); assert.equal(c.index, 0);
 });
 
+test('Music UI exposes editable playlists and queue controls', () => {
+  const app = readFileSync(new URL('../apps/music.qml', import.meta.url),'utf8');
+  const library = readFileSync(new URL('../apps/music/Library.qml', import.meta.url),'utf8');
+  const album = readFileSync(new URL('../apps/music/AlbumPage.qml', import.meta.url),'utf8');
+  for (const fragment of [
+    'id: nameSheet', 'id: pickerSheet', 'id: managerSheet',
+    'id: deletePlaylistConfirm', 'musicLib.mutatePlaylist("add"',
+    'app.playlistEdit("remove"', 'app.playlistEdit("move"',
+    'audio.moveUpcoming(modelData.i, -1)', 'audio.moveUpcoming(modelData.i, 1)',
+    'audio.removeUpcoming(modelData.i)', 'editablePlaylist: true',
+    'onManagePlaylist: app.openPlaylistManager()'
+  ]) assert.ok(app.includes(fragment), fragment);
+  assert.ok(library.includes('playlistHelper'));
+  assert.ok(library.includes('postCreateAdd'));
+  assert.ok(album.includes('signal managePlaylist()'));
+});
+
 test('Music Playing Next reorders, removes and appends safely under shuffle', () => {
   let saves=0, loads=0;
   const c=context('apps/music/Player.qml',
