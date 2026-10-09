@@ -79,6 +79,7 @@ install_extras() {
   printf '#!/bin/sh\nexec sh /usr/share/golden-gate/apps/software/open.sh "$@"\n' > "$BIN/gg-software"
   printf '#!/bin/sh\nexec sh /usr/share/golden-gate/apps/software/mac-open.sh "$@"\n' > "$BIN/gg-mac-open"
   printf '#!/bin/sh\nexec sh /usr/share/golden-gate/apps/files/open.sh "$@"\n' > "$BIN/gg-files"
+  printf '#!/bin/sh\nexec sh /usr/share/golden-gate/apps/archive/open.sh "$@"\n' > "$BIN/gg-archive"
   printf '#!/bin/sh\nexec sh /usr/share/golden-gate/apps/lcode/open.sh "$@"\n' > "$BIN/gg-lcode"
   printf '#!/bin/sh\nexec sh /usr/share/golden-gate/apps/airdrop/share.sh "$@"\n' > "$BIN/gg-airdrop"
   printf '#!/bin/sh\nexec sh /usr/share/golden-gate/apps/intelligence/open.sh "$@"\n' > "$BIN/gg-intelligence"
@@ -91,7 +92,7 @@ install_extras() {
   printf '#!/bin/sh\nexec python3 /usr/lib/golden-gate/tile.py "$@"\n' > "$BIN/gg-tile"
   printf '#!/bin/sh\nexec python3 /usr/lib/golden-gate/idle.py "$@"\n' > "$BIN/gg-idle"
   cp "$REPO/distro/archiso/overlay/usr/local/bin/gg-session" "$BIN/gg-session"
-  chmod 755 "$BIN/gg-diagnostics" "$BIN/gg-settings" "$BIN/gg-web" "$BIN/gg-install" "$BIN/gg-software" "$BIN/gg-files" "$BIN/gg-lcode" "$BIN/gg-airdrop" "$BIN/gg-pref" "$BIN/gg-hyprglass-sync" "$BIN/gg-apply-preferences" "$BIN/gg-tile" "$BIN/gg-idle" "$BIN/gg-mac-open" "$BIN/gg-session"
+  chmod 755 "$BIN/gg-diagnostics" "$BIN/gg-settings" "$BIN/gg-web" "$BIN/gg-install" "$BIN/gg-software" "$BIN/gg-files" "$BIN/gg-archive" "$BIN/gg-lcode" "$BIN/gg-airdrop" "$BIN/gg-pref" "$BIN/gg-hyprglass-sync" "$BIN/gg-apply-preferences" "$BIN/gg-tile" "$BIN/gg-idle" "$BIN/gg-mac-open" "$BIN/gg-session"
   mkdir -p "$R/usr/share/wayland-sessions"
   cat > "$R/usr/share/wayland-sessions/golden-gate.desktop" <<'EOF'
 [Desktop Entry]
@@ -144,7 +145,7 @@ EOF
     cp "$REPO/design/dist/gtk.css" "$SKEL/.config/gtk-4.0/gtk.css"
     cp "$REPO/design/dist/gtk3.css" "$SKEL/.config/gtk-3.0/gtk.css"
     cp "$REPO/themes/fontconfig/60-golden-gate.conf" "$SKEL/.config/fontconfig/conf.d/60-golden-gate.conf"
-    printf '[Default Applications]\nx-scheme-handler/http=org.goldengate.Web.desktop\nx-scheme-handler/https=org.goldengate.Web.desktop\ntext/html=org.goldengate.Web.desktop\ninode/directory=org.goldengate.Files.desktop\ntext/plain=org.goldengate.TextEdit.desktop\ntext/markdown=org.goldengate.TextEdit.desktop\napplication/json=org.goldengate.TextEdit.desktop\nimage/jpeg=org.goldengate.Photos.desktop\nimage/png=org.goldengate.Photos.desktop\nimage/webp=org.goldengate.Photos.desktop\nimage/gif=org.goldengate.Photos.desktop\nimage/tiff=org.goldengate.Photos.desktop\nvideo/mp4=org.goldengate.Photos.desktop\nvideo/quicktime=org.goldengate.Photos.desktop\nvideo/webm=org.goldengate.Photos.desktop\naudio/mpeg=org.goldengate.Music.desktop\naudio/mp4=org.goldengate.Music.desktop\naudio/flac=org.goldengate.Music.desktop\naudio/ogg=org.goldengate.Music.desktop\naudio/opus=org.goldengate.Music.desktop\naudio/x-wav=org.goldengate.Music.desktop\n' > "$SKEL/.config/mimeapps.list"
+    printf '[Default Applications]\nx-scheme-handler/http=org.goldengate.Web.desktop\nx-scheme-handler/https=org.goldengate.Web.desktop\ntext/html=org.goldengate.Web.desktop\ninode/directory=org.goldengate.Files.desktop\napplication/zip=org.goldengate.ArchiveUtility.desktop\napplication/x-zip-compressed=org.goldengate.ArchiveUtility.desktop\napplication/x-tar=org.goldengate.ArchiveUtility.desktop\napplication/gzip=org.goldengate.ArchiveUtility.desktop\napplication/x-compressed-tar=org.goldengate.ArchiveUtility.desktop\napplication/x-xz-compressed-tar=org.goldengate.ArchiveUtility.desktop\ntext/plain=org.goldengate.TextEdit.desktop\ntext/markdown=org.goldengate.TextEdit.desktop\napplication/json=org.goldengate.TextEdit.desktop\nimage/jpeg=org.goldengate.Photos.desktop\nimage/png=org.goldengate.Photos.desktop\nimage/webp=org.goldengate.Photos.desktop\nimage/gif=org.goldengate.Photos.desktop\nimage/tiff=org.goldengate.Photos.desktop\nvideo/mp4=org.goldengate.Photos.desktop\nvideo/quicktime=org.goldengate.Photos.desktop\nvideo/webm=org.goldengate.Photos.desktop\naudio/mpeg=org.goldengate.Music.desktop\naudio/mp4=org.goldengate.Music.desktop\naudio/flac=org.goldengate.Music.desktop\naudio/ogg=org.goldengate.Music.desktop\naudio/opus=org.goldengate.Music.desktop\naudio/x-wav=org.goldengate.Music.desktop\n' > "$SKEL/.config/mimeapps.list"
   fi
   # Existing installed systems already have /etc/skel: OTA updates must still
   # refresh the canonical default shell + Hyprland bindings. golden_update.py
@@ -334,6 +335,7 @@ printf '#!/bin/sh\nexec bash "%s/settings/open.sh" "$@"\n' "$APPS_RUN" > "$BIN/g
 printf '#!/bin/sh\nexec sh "%s/software/open.sh" "$@"\n' "$APPS_RUN" > "$BIN/gg-software"
 printf '#!/bin/sh\nexec sh "%s/software/mac-open.sh" "$@"\n' "$APPS_RUN" > "$BIN/gg-mac-open"
 printf '#!/bin/sh\nexec sh "%s/files/open.sh" "$@"\n' "$APPS_RUN" > "$BIN/gg-files"
+printf '#!/bin/sh\nexec sh "%s/archive/open.sh" "$@"\n' "$APPS_RUN" > "$BIN/gg-archive"
 printf '#!/bin/sh\nexec sh "%s/lcode/open.sh" "$@"\n' "$APPS_RUN" > "$BIN/gg-lcode"
 printf '#!/bin/sh\nexec sh "%s/airdrop/share.sh" "$@"\n' "$APPS_RUN" > "$BIN/gg-airdrop"
 printf '#!/bin/sh\nexec sh "%s/intelligence/open.sh" "$@"\n' "$APPS_RUN" > "$BIN/gg-intelligence"
@@ -361,7 +363,7 @@ else
   printf '#!/bin/sh\nexec python3 "%s/tile.py" "$@"\n' "$RUNTIME" > "$BIN/gg-tile"
   printf '#!/bin/sh\nexec python3 "%s/idle.py" "$@"\n' "$RUNTIME" > "$BIN/gg-idle"
 fi
-chmod +x "$BIN/gg-settings" "$BIN/gg-software" "$BIN/gg-mac-open" "$BIN/gg-files" "$BIN/gg-lcode" "$BIN/gg-airdrop" "$BIN/gg-pref" "$BIN/gg-hyprglass-sync" "$BIN/gg-apply-preferences" "$BIN/gg-tile" "$BIN/gg-idle"
+chmod +x "$BIN/gg-settings" "$BIN/gg-software" "$BIN/gg-mac-open" "$BIN/gg-files" "$BIN/gg-archive" "$BIN/gg-lcode" "$BIN/gg-airdrop" "$BIN/gg-pref" "$BIN/gg-hyprglass-sync" "$BIN/gg-apply-preferences" "$BIN/gg-tile" "$BIN/gg-idle"
 for f in "$REPO"/apps/desktop/*.desktop; do
   sed "s#@APPS@#$APPS_RUN#g" "$f" > "$DATA/applications/$(basename "$f")"
 done
@@ -392,7 +394,7 @@ chmod +x "$BIN/gg-web" "$BIN/gg-install"
 # System paths inside generated launchers must refer to the booted image, not its build root.
 # Respect an existing browser choice; seed MIME defaults only on a fresh install.
 if [[ ! -e "$CONF/mimeapps.list" ]]; then
-  printf '[Default Applications]\nx-scheme-handler/http=org.goldengate.Web.desktop\nx-scheme-handler/https=org.goldengate.Web.desktop\ntext/html=org.goldengate.Web.desktop\ninode/directory=org.goldengate.Files.desktop\ntext/plain=org.goldengate.TextEdit.desktop\ntext/markdown=org.goldengate.TextEdit.desktop\napplication/json=org.goldengate.TextEdit.desktop\nimage/jpeg=org.goldengate.Photos.desktop\nimage/png=org.goldengate.Photos.desktop\nimage/webp=org.goldengate.Photos.desktop\nimage/gif=org.goldengate.Photos.desktop\nimage/tiff=org.goldengate.Photos.desktop\nvideo/mp4=org.goldengate.Photos.desktop\nvideo/quicktime=org.goldengate.Photos.desktop\nvideo/webm=org.goldengate.Photos.desktop\naudio/mpeg=org.goldengate.Music.desktop\naudio/mp4=org.goldengate.Music.desktop\naudio/flac=org.goldengate.Music.desktop\naudio/ogg=org.goldengate.Music.desktop\naudio/opus=org.goldengate.Music.desktop\naudio/x-wav=org.goldengate.Music.desktop\n' > "$CONF/mimeapps.list"
+  printf '[Default Applications]\nx-scheme-handler/http=org.goldengate.Web.desktop\nx-scheme-handler/https=org.goldengate.Web.desktop\ntext/html=org.goldengate.Web.desktop\ninode/directory=org.goldengate.Files.desktop\napplication/zip=org.goldengate.ArchiveUtility.desktop\napplication/x-zip-compressed=org.goldengate.ArchiveUtility.desktop\napplication/x-tar=org.goldengate.ArchiveUtility.desktop\napplication/gzip=org.goldengate.ArchiveUtility.desktop\napplication/x-compressed-tar=org.goldengate.ArchiveUtility.desktop\napplication/x-xz-compressed-tar=org.goldengate.ArchiveUtility.desktop\ntext/plain=org.goldengate.TextEdit.desktop\ntext/markdown=org.goldengate.TextEdit.desktop\napplication/json=org.goldengate.TextEdit.desktop\nimage/jpeg=org.goldengate.Photos.desktop\nimage/png=org.goldengate.Photos.desktop\nimage/webp=org.goldengate.Photos.desktop\nimage/gif=org.goldengate.Photos.desktop\nimage/tiff=org.goldengate.Photos.desktop\nvideo/mp4=org.goldengate.Photos.desktop\nvideo/quicktime=org.goldengate.Photos.desktop\nvideo/webm=org.goldengate.Photos.desktop\naudio/mpeg=org.goldengate.Music.desktop\naudio/mp4=org.goldengate.Music.desktop\naudio/flac=org.goldengate.Music.desktop\naudio/ogg=org.goldengate.Music.desktop\naudio/opus=org.goldengate.Music.desktop\naudio/x-wav=org.goldengate.Music.desktop\n' > "$CONF/mimeapps.list"
 fi
 
 # 4. Toolkit theming + fonts
