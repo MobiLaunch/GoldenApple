@@ -357,7 +357,7 @@ printf '#!/bin/sh\nexec sh "%s/citronpods/ctl.sh" "$@"\n' "$APPS_RUN" > "$BIN/gg
 # The system service is installed by --extras on system images; standalone
 # user installs keep a private unit for systemctl --user as well.
 install -Dm644 "$REPO/apps/citronpods/citronpods-daemon.service" "$CONF/systemd/user/citronpods-daemon.service"
-chmod +x "$BIN/gg-intelligence"
+chmod +x "$BIN/gg-intelligence" "$BIN/gg-install-citronpods" "$BIN/gg-citronpods"
 printf '#!/bin/sh\nexec qs -n -p "%s/diskutility.qml" "$@"\n' "$APPS_RUN" > "$BIN/gg-disk-utility"
 chmod +x "$BIN/gg-disk-utility"
 RUNTIME="$DATA/golden-gate/runtime"
