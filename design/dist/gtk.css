@@ -211,7 +211,7 @@
   }
 }
 
-* { font-family: "SF Pro Text", "Inter Variable", "Inter", sans-serif; font-feature-settings: 'cv05', 'cv08', 'ss03', 'tnum' 0; }
+* { font-family: "Golden Gate UI", "SF Pro Text", "Inter Variable", "Inter", sans-serif; font-feature-settings: 'cv05', 'cv08', 'ss03', 'tnum' 0; }
 
 /* CitronOS for GTK 4 / libadwaita (1.6+).
  *
