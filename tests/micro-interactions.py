@@ -43,7 +43,9 @@ check("apps/lib/TextField.qml", [
     "Keys.onEscapePressed: (event) => {",
     "event.accepted = false",
     "enabled: !Theme.reduceMotion",
-    "NumberAnimation { duration: 110; easing.type: Easing.OutCubic }",
+    "id: clearOpacityTween",
+    "clearOpacityTween.stop()",
+    "clearButton.opacity = Qt.binding(function() {",
 ], "search fields offer accessible clear buttons and Escape without dismissing windows")
 
 check("apps/lib/PopUpButton.qml", [
@@ -119,7 +121,14 @@ check("apps/lib/PopupMenu.qml", [
     "vanish.stop()",
     "vanish.action = null",
     "box.cancelPending()",
-], "reopening a popover does not execute a previously chosen action")
+    "from: Theme.reduceMotion ? 1 : 0.975; to: 1",
+    "duration: Theme.reduceMotion ? 0 : 170",
+], "reopening a popover is safe and opens without oversized, slow bounce")
+
+check("shell/components/MenuPopup.qml", [
+    'target: list; property: "scale"; from: 0.975; to: 1',
+    "duration: 170",
+], "shell context menus settle their contents without changing Wayland surface geometry")
 
 check("apps/lib/MenuList.qml", [
     "function cancelPending() {",
