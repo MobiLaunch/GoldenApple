@@ -1,0 +1,21 @@
+[Unit]
+Description=Golden Gate AirPods system service (CitronPods M10)
+Documentation=https://github.com/MobiLaunch/GoldenApple
+After=bluetooth.target pipewire.service
+Wants=bluetooth.target
+StartLimitIntervalSec=30
+StartLimitBurst=5
+
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/citronpods-daemon
+Restart=on-failure
+RestartSec=4
+NoNewPrivileges=true
+PrivateTmp=true
+# Session D-Bus, system BlueZ and PipeWire are reached with unprivileged user APIs.
+# Do not sandbox D-Bus or Bluetooth protocol access away.
+UMask=0077
+
+[Install]
+WantedBy=default.target
