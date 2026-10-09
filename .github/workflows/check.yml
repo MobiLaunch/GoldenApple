@@ -541,6 +541,8 @@ jobs:
           QT_QPA_PLATFORM: offscreen
       - name: "Mail setup: plain-word errors, app passwords, both servers checked"
         run: python tests/mail-connect.py
+      - name: "Mail signed-in layout, batching and responsive reading"
+        run: python tests/mail-layout.py
       - name: "Web says why Qt WebEngine won't load, and what fixes it"
         run: python tests/web-diagnose.py
       - name: "AirPlay Receiver: the code, who's mirroring, Stop, and its settings"
