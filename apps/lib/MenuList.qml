@@ -69,6 +69,10 @@ Glass {
         if (row) flick.contentY = Math.max(0, Math.min(flick.contentHeight - flick.height, row.y - flick.height / 2 + row.height / 2))
         if (available(i)) select(i)
     }
+    function cancelPending() {
+        if (flash.running) flash.stop()
+        blink = false
+    }
     function activate(i) {
         if (i === undefined) i = selected
         if (!available(i) || flashing) return
@@ -105,7 +109,7 @@ Glass {
     Keys.onSpacePressed: activate()
     Keys.onRightPressed: if (available(selected) && items[selected].submenu) openSubmenu(selected, true)
     Keys.onLeftPressed: if (isSubmenu) back()
-    Keys.onEscapePressed: dismissed()
+    Keys.onEscapePressed: { cancelPending(); dismissed() }
 
     // The chosen row blinks off and on before the menu goes, as on the Mac.
     SequentialAnimation {

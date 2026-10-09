@@ -20,6 +20,11 @@ Item {
     property alias selected: box.selected
 
     function popup(from, x, y, list, scrollTo) {
+        // Reopening during a fade must not later execute the old menu action.
+        vanish.stop()
+        vanish.action = null
+        appear.stop()
+        box.cancelPending()
         returnFocus = from
         items = list
         const p = from.mapToItem(menu, x, y)
@@ -36,6 +41,10 @@ Item {
         if (scrollTo !== undefined && scrollTo >= 0) box.scrollTo(scrollTo)
     }
     function close() {
+        appear.stop()
+        vanish.stop()
+        vanish.action = null
+        box.cancelPending()
         visible = false
         if (returnFocus && returnFocus.visible && returnFocus.enabled) returnFocus.forceActiveFocus()
     }
