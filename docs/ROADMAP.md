@@ -41,6 +41,19 @@
 - [ ] Verify the keyd per-app classes against real window classes
 - [ ] Compare the QML shell with the prototype screenshot by screenshot
 
+## 0.3.1: deliberate micro-interactions (2026-10-09)
+
+- [x] Keyboard and screen-reader actions give the same short tactile feedback as a pointer click
+- [x] Shared segmented/sidebar controls: soft selection and press response without layout shift
+- [x] Liquid Glass: pointer illumination and press effects honor Reduce Motion
+- [x] Dock label hover intent, subtle inactive-window depth, short menu selection fade
+- [x] Notification Center, Mission Control, switcher and Control Center transition polish
+- [x] Offscreen native-control regressions and source contracts in CI
+- [ ] Installed-GPU motion/blur tests with physical trackpad and pointer
+- [ ] Screen-reader acceptance, localized large-text overflow, slow-GPU frame profiling
+
+See [Micro-interaction design and QA](UI-MICRO-INTERACTIONS.md).
+
 ## 0.4: signature details
 
 - [x] `hyprglass` plugin: per-surface refraction and blur for the glass
