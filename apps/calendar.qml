@@ -95,10 +95,18 @@ ShellRoot {
                 color: Theme.secondaryLabel
                 font { family: Theme.fontUi; pixelSize: Theme.fs(11); weight: Font.DemiBold }
             },
-            Column {
+            Flickable {
                 y: 26
                 width: parent.width
-                spacing: 8
+                height: Math.max(1, parent.height - 30)
+                contentWidth: width
+                contentHeight: selectedDayItems.implicitHeight
+                clip: true
+                boundsBehavior: Flickable.StopAtBounds
+                Column {
+                    id: selectedDayItems
+                    width: parent.width
+                    spacing: 8
 
                 Text {
                     width: parent.width - 16
@@ -192,6 +200,7 @@ ShellRoot {
                     symbol: "calendar"
                     title: "No Events"
                     text: "Nothing is scheduled for this day."
+                }
                 }
             }
         ]
