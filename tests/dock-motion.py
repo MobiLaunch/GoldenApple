@@ -20,6 +20,7 @@ import preview as P
 from PySide6.QtCore import QObject
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtTest import QTest
+from PySide6.QtQml import QQmlEngine, QQmlExpression
 
 state = {}
 
@@ -65,6 +66,18 @@ def ipc(self, target, function, args):
         state["asking"] = offsets(t, 900)
         dock.setProperty("attention", [])
         state["answered"] = offsets(t, 700)
+    elif function == "activate":
+        t = tile("org.goldengate.Files")
+        expression = QQmlExpression(QQmlEngine.contextForObject(t), t, "pulseActivation()")
+        expression.evaluate()
+        if expression.hasError():
+            raise RuntimeError(expression.error().toString())
+        icon = next(c for c in t.childItems() if c.property("activationLift") is not None)
+        values = []
+        for _ in range(25):
+            QTest.qWait(20)
+            values.append(round(icon.property("activationLift"), 2))
+        state["activation"] = values
     elif function == "badge":
         self.notify({"id": 31, "appName": "Mail", "desktopEntry": "org.goldengate.Mail",
                      "summary": "Ferry tickets", "body": "Your booking"})
@@ -91,7 +104,7 @@ def main() -> int:
         env = {**os.environ, "QT_QPA_PLATFORM": "offscreen"}
         p = subprocess.run([sys.executable, str(driver), str(ROOT / "tools/preview"), str(out), "shell",
                             "--env", f"XDG_CONFIG_HOME={t / 'config'}", "--env", f"XDG_STATE_HOME={t / 'state'}",
-                            "--do", "x.launch", "--do", "x.attention", "--do", "x.badge", "--wait", "600", "-o", str(t / "shot.png")],
+                            "--do", "x.launch", "--do", "x.attention", "--do", "x.activate", "--do", "x.badge", "--wait", "600", "-o", str(t / "shot.png")],
                            env=env, capture_output=True, text=True, timeout=240)
         if not out.exists():
             print(p.stderr[-3000:])
@@ -109,13 +122,16 @@ def main() -> int:
             failures.append(f"an app asking for attention bounces: {s['asking']}")
         if s["answered"][-1] != 0:
             failures.append(f"…and settles once it's answered: {s['answered']}")
+        lift = s["activation"]
+        if max(lift) < 4 or abs(lift[-1]) > 0.1:
+            failures.append(f"existing-window activation should briefly lift and settle: {lift}")
         badge = s["badge"]
         if not badge or badge[0] > 0.9 or abs(badge[-1] - 1) > 0.02:
             failures.append(f"the badge grows in rather than appearing at full size: {badge}")
         if failures:
             print("\n".join("FAIL " + f for f in failures), file=sys.stderr)
             return 1
-        print("Dock: icons bounce while opening and for attention, land, and badges pop in")
+        print("Dock: opening/attention bounces, brief existing-app activation lift, and badge motion")
         return 0
 
 
