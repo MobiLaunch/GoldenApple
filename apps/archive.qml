@@ -111,6 +111,8 @@ ShellRoot {
             }
 
             Component.onCompleted: if (sourcePath) Qt.callLater(() => inspect(sourcePath))
+            Shortcut { sequence: "Ctrl+O"; onActivated: if (!utility.busy) archivePicker.open() }
+            Shortcut { sequence: "Ctrl+E"; onActivated: if (!utility.busy && utility.sourcePath) utility.extractTo("") }
             Process {
                 id: worker
                 stdout: SplitParser { onRead: (line) => utility.accept(line) }
@@ -273,6 +275,11 @@ ShellRoot {
                         color: Theme.secondaryLabel
                         font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
                         Layout.fillWidth: true
+                    }
+                    Button {
+                        text: "Cancel"
+                        visible: utility.busy
+                        onClicked: worker.running = false
                     }
                     Button {
                         text: "Extract to…"
