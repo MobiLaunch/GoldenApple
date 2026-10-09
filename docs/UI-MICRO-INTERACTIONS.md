@@ -29,6 +29,8 @@ nonanimated presentation:
 | Menus | Hover selection washes in over 65 ms, without changing popup dimensions; Escape and click-away cancel pending selections | Highlight appears instantly |
 | Inactive app window | A faint 180 ms toolbar tint changes visual hierarchy | Tint changes instantly |
 | Dock labels | Deliberate 300 ms pointer dwell before reveal; leave/press cancels pending tooltip | Tooltip appears without scale motion |
+| Dock recent apps | Last window closes: running dot fades, icon remains 900 ms, then icon/slot/divider collapse together over 220 ms; reopening reverses the same slot | Brief hold remains; departure snaps with no travel, including a mid-flight preference change |
+| App closing | Native compositor fade, no replacement launch card over the disappearing window | Launch card is cancelled immediately; native compositor policy is unchanged |
 | App switcher | Panel settles gently; selection follows current app | Panel appears in place, selection snaps |
 | Notifications | Exit slides, card displacement, and springs are linked to the motion preference | Dismissal and reflow do not travel |
 | Control Center | Module press and disclosure remain responsive; slide transitions are optional | Instant detail switches |
@@ -47,10 +49,44 @@ always-on effects, or geometry-changing menu animations.
 - `python tests/micro-interactions.py`: shell and shared-control behavior
   contracts, including honoring Reduce Motion.
 - `python tests/dock-motion.py`: Dock launch bounces and notification badges.
+- `python tests/dock-lifecycle.py`: isolated, fixture-only close/reopen, slot/divider
+  geometry, delegate/capture identity, pinned apps, startup retention, stale
+  timer cancellation and mid-flight Reduce Motion. No full shell or external services.
 - `python tests/menu-popup.py`: popup-surface stability on menu switching.
 - `python tests/check-qml.py`: QML parser validation across the tree.
 
 ## Final polish: tactile menus and mid-flight accessibility
+
+### Dock lifecycle and close handoff
+
+Transient app identity is separate from window-list identity. Keyed ScriptModels
+keep pinned icons, running icons and unaffected backdrop captures alive when
+one window changes. A just-closed transient icon remains briefly, then its
+opacity and entire slot width follow one transition. Each slot owns its gap;
+the final transient divider follows the remaining slot presence, so destruction
+at zero width cannot introduce a spacing jump. These durations are Golden Gate
+design choices, not claims about Apple's exact timings.
+
+Reopening during the hold or departure reuses the same delegate, and launching
+from a recent icon extends its lifetime through the existing eight-second
+startup timeout. Synthetic entries without a relaunch command are inert after
+their last window closes. Pinned apps keep their position. Dock density does
+not increase icon size when an app closes, and the layer-shell reserve no
+longer follows crowded-icon sizing; app exits do not resize the compositor's
+work area. Density can tighten when additional apps open and resets next session.
+
+Normal close leaves Hyprland's window texture fade unobstructed. The previous
+opaque app-color launch card was not a window snapshot; inserting it on close
+could flash over the real window. The legacy fold API remains opt-in for
+experiments, not the default close effect and not a true Genie implementation.
+Launching/resetting cancels every prior close timer/fade; closing the first
+window before handoff removes its pending overlay immediately. Periodic legacy
+frame tracking is disabled unless that effect is explicitly enabled.
+
+Installed-GPU acceptance is still required: record rapid close/reopen at 60/120
+Hz, several unpinned apps leaving together, crowded Dock sizing, pin/drag during
+the recent hold, multi-monitor launch/focus and Reduce Motion mid-departure.
+Mock captures verify object lifetime, not actual GPU frametimes or texture output.
 
 Context menus in both native apps and the shell settle from only 97.5% to
 full scale in 170 ms. The earlier 90%-to-100% spring took 435 ms and felt

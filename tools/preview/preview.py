@@ -150,9 +150,33 @@ class ScriptModel(QAbstractListModel):
     def _get(self): return self._values
 
     def _set(self, v):
-        self.beginResetModel()
-        self._values = list(v.toVariant() if hasattr(v, "toVariant") else (v or []))
-        self.endResetModel()
+        # Match ScriptModel's incremental semantics, rather than hiding delegate
+        # lifetime bugs behind a reset on every assignment. Entries here are
+        # stable QObjects, string keys, or structurally comparable JS values.
+        new = list(v.toVariant() if hasattr(v, "toVariant") else (v or []))
+        for i in range(len(self._values) - 1, -1, -1):
+            if self._values[i] not in new:
+                self.beginRemoveRows(QModelIndex(), i, i)
+                self._values.pop(i)
+                self.endRemoveRows()
+        for i, value in enumerate(new):
+            if i < len(self._values) and self._values[i] == value:
+                continue
+            try:
+                old = self._values.index(value, i)
+            except ValueError:
+                self.beginInsertRows(QModelIndex(), i, i)
+                self._values.insert(i, value)
+                self.endInsertRows()
+            else:
+                self.beginMoveRows(QModelIndex(), old, old, QModelIndex(), i)
+                self._values.insert(i, self._values.pop(old))
+                self.endMoveRows()
+        while len(self._values) > len(new):
+            i = len(self._values) - 1
+            self.beginRemoveRows(QModelIndex(), i, i)
+            self._values.pop()
+            self.endRemoveRows()
         self.valuesChanged.emit()
     values = Property("QVariantList", _get, _set, notify=valuesChanged)
 

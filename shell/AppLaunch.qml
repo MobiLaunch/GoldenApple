@@ -8,12 +8,9 @@
 // Hyprland itself only fades the window in, in place (windowsIn popin 100%):
 // one outline dissolving into the same one, so the two hand over cleanly.
 //
-// Closing is the same motion in reverse, as when an iPad app is swiped away:
-// when a window closes, a card in its colour with the app's icon starts on
-// the window's last frame and springs back down into the app's Dock icon,
-// the colour fading as the icon grows to fill it. Hyprland only fades the
-// window out underneath (windowsOut fade). Windows are followed from
-// Hyprland's events (and a light refresh) so their last frame is known.
+// Closing belongs to Hyprland's native window fade. A replacement launch card
+// is not a snapshot of the window and flashes over the compositor's own exit.
+// The legacy fold remains explicitly opt-in until a real snapshot/plugin exists.
 //
 // Launch with launch(entry, rect) where rect is the icon in this screen's
 // coordinates. It also runs under Qt's software renderer (VMs without 3D): the
@@ -28,6 +25,8 @@ import "components"
 PanelWindow {
     id: launcher
     readonly property bool enabled: !Prefs.reduceMotion
+    property bool foldOnClose: false
+    onEnabledChanged: if (!enabled) reset()
 
     anchors { top: true; bottom: true; left: true; right: true }
     exclusionMode: ExclusionMode.Ignore
@@ -57,7 +56,7 @@ PanelWindow {
 
     function launch(e, r) {
         if (!enabled) { e.execute(); return }
-        handOver.stop(); findWindow.stop(); giveUp.stop()
+        stopTransitions()
         pendingAddress = ""
         entry = e
         from = r
@@ -86,7 +85,14 @@ PanelWindow {
         handOver.restart()
     }
 
-    function reset() { state_ = "idle"; entry = null; pendingAddress = ""; giveUp.stop(); findWindow.stop(); handOver.stop() }
+    function stopTransitions() {
+        handOver.stop(); findWindow.stop(); giveUp.stop(); landed.stop(); fadeHome.stop(); fade.stop()
+    }
+    function reset() {
+        stopTransitions()
+        state_ = "idle"; entry = null; pendingAddress = ""; card.opacity = 0
+        for (const s of [gx, gy, gw, gh]) s.jump(s.value)
+    }
 
     // ------------------------------------------------------------ closing
     // Every window's last known frame, by address: { app, rect, workspace }.
@@ -106,14 +112,14 @@ PanelWindow {
     Timer { id: resnap; interval: 120; onTriggered: launcher.snapshot() }
     function refreshSoon() { Hyprland.refreshToplevels(); resnap.restart() }
     // Sizes change without an event (a resize by its edge), so a light refresh.
-    Timer { interval: 2000; repeat: true; running: launcher.enabled && Hyprland.toplevels.values.length > 0; onTriggered: launcher.refreshSoon() }
+    Timer { interval: 2000; repeat: true; running: launcher.enabled && launcher.foldOnClose && Hyprland.toplevels.values.length > 0; onTriggered: launcher.refreshSoon() }
     Component.onCompleted: snapshot()
 
     // A window closed: if it was on this screen's current desktop and its app
     // has a Dock icon, fold it back into the icon.
     function windowClosed(address) {
         const f = frames[address]
-        if (!f || !enabled || !dock || state_ === "opening" || state_ === "handing-over") return false
+        if (!foldOnClose || !f || !enabled || !dock || state_ === "opening" || state_ === "handing-over") return false
         const active = Hyprland.monitorFor(launcher.screen)?.activeWorkspace?.id
         if (active !== undefined && f.workspace !== active) return false
         const target = dock.iconFor(f.app)
@@ -123,7 +129,7 @@ PanelWindow {
     // The opening in reverse: from the window's frame into the icon's.
     function fold(e, windowRect, iconRect) {
         if (!enabled) return false
-        handOver.stop(); findWindow.stop(); giveUp.stop(); fade.stop()
+        stopTransitions()
         entry = e
         from = iconRect
         to = windowRect
@@ -142,7 +148,8 @@ PanelWindow {
         property int ticks: 0
         onRunningChanged: if (running) ticks = 0
         onTriggered: {
-            if (Math.abs(gw.value - launcher.from.width) < 1.5 && Math.abs(gy.value - launcher.from.y) < 1.5 || ++ticks > 40) {
+            if ((Math.abs(gx.value - launcher.from.x) < 1.5 && Math.abs(gy.value - launcher.from.y) < 1.5
+                    && Math.abs(gw.value - launcher.from.width) < 1.5 && Math.abs(gh.value - launcher.from.height) < 1.5) || ++ticks > 40) {
                 stop()
                 fadeHome.restart()
             }
@@ -196,13 +203,17 @@ PanelWindow {
             if (event.name === "closewindow") {
                 const raw = event.parse(1)[0] ?? ""
                 const address = raw.startsWith("0x") ? raw : "0x" + raw
+                // The first window may close before its launch handoff lands.
+                if (address === launcher.pendingAddress && ["opening", "handing-over"].includes(launcher.state_))
+                    launcher.reset()
                 launcher.windowClosed(address)
                 const f = launcher.frames
                 delete f[address]
                 launcher.frames = f
                 return
             }
-            if (["openwindow", "activewindowv2", "movewindowv2", "changefloatingmode", "fullscreen", "workspacev2"].includes(event.name))
+            if ((launcher.foldOnClose || launcher.state_ === "opening" || launcher.state_ === "handing-over")
+                    && ["openwindow", "activewindowv2", "movewindowv2", "changefloatingmode", "fullscreen", "workspacev2"].includes(event.name))
                 launcher.refreshSoon()
             if (event.name !== "openwindow" || launcher.state_ !== "opening") return
             const parts = event.parse(4)

@@ -115,7 +115,8 @@ Item {
         return t?.wayland ?? null
     }
     Repeater {
-        model: bd.windowIds
+        // Preserve unaffected GPU capture objects when another window closes.
+        model: ScriptModel { values: bd.windowIds }
         delegate: ScreencopyView {
             required property string modelData
             readonly property var frame: bd.frames[modelData] ?? null

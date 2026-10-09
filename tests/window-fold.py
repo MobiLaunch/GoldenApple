@@ -40,6 +40,8 @@ def ipc(self, target, function, args):
         launcher = find(lambda o: o.property("frames") is not None and o.property("state_") is not None)
         card = find(lambda o: o.objectName() == "launchCard")
         state["frames"] = sorted(plain(launcher.property("frames")).keys())
+        state["native_close"] = close(launcher, "0x5a5a1")
+        launcher.setProperty("foldOnClose", True)  # Legacy effect is explicitly opt-in.
         state["folded"] = close(launcher, "0x5a5a1")          # Files, on this desktop
         seen = []
         for _ in range(45):
@@ -81,6 +83,8 @@ failures = []
 if "error" in s:
     failures.append(s["error"])
 else:
+    if s["native_close"]:
+        failures.append("default close must leave the compositor's fade unobstructed")
     seen = s["seen"]
     first, icon = seen[0], s["icon"]
     if not s["folded"]:

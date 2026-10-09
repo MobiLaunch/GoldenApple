@@ -1,5 +1,8 @@
 # Roadmap
 
+See [Current inventory and next delivery order](ROADMAP-STATUS-2026-10-09.md)
+for the source-backed status, this Dock lifecycle batch and acceptance gates.
+
 ## 0.1: foundation
 
 - [x] Design tokens → CSS / QML / GTK / Hyprland
@@ -53,6 +56,8 @@
 - [x] Search clear fades snap mid-animation when Reduce Motion is activated
 - [x] Scrollbar track/thumb geometry clamps correctly in small inspector panes
 - [x] Dock label hover intent, subtle inactive-window depth, short menu selection fade
+- [x] Dock close lifecycle: stable delegates/captures, brief recent hold, reversible icon fade and gap/divider collapse
+- [x] Native compositor close fade without a replacement launch card; rapid close/reopen cancels stale transitions
 - [x] Shared AppWindow: synchronized, interruptible leading/trailing sidebar choreography
 - [x] Canonical attached modal sheets for Files and LCode, with exit fade and focus return
 - [x] Design popovers preserve focus and adapt their entrance to screen edges
@@ -183,5 +188,4 @@ Still to do:
 - [ ] Disk encryption at install; migration at Setup
 - [ ] Mail (folders, attachments, drafts), Calendar (two-way CalDAV, invitations,
       advanced recurrence), Photos editing; Music smart playlists and library folder selection
-      and removal, and library folder preferences
 - [ ] Translated UI (formats already follow the region; the apps are English)

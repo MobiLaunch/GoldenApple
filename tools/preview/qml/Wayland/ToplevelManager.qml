@@ -6,7 +6,9 @@ QtObject {
     readonly property string __active: __preview.env["GG_PREVIEW_ACTIVE"] ?? ""
     // --env GG_PREVIEW_RUNNING=id,id… opens a window of each (app ids).
     readonly property QtObject toplevels: QtObject {
-        readonly property var values: (__preview.env["GG_PREVIEW_RUNNING"] ?? "").split(",").filter((id) => id).map((id) => ({
+        // Writable so isolated lifecycle tests can deliver window events without
+        // launching a full shell or any external app/service.
+        property var values: (__preview.env["GG_PREVIEW_RUNNING"] ?? "").split(",").filter((id) => id).map((id) => ({
             appId: id, title: id.split(".").pop() + " window",
             activate: () => __preview.log("activate " + id), close: () => __preview.log("close " + id)
         }))

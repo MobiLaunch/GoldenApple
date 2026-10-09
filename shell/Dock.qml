@@ -83,9 +83,14 @@ PanelWindow {
     property real slotXAtPress: 0
     property real pressGroundX: 0       // where the lifted icon was on the ground line when picked up
     // Size from Settings › Desktop & Dock. Keep every icon on one stable grid.
-    readonly property int tileCount: entries.length + running.length + places.length
+    readonly property int tileCount: entries.length + runningIds.length + places.length
+    // Density is a high-water mark for this session. Closing an app must not
+    // resize every remaining icon (or the compositor's reserved work area).
+    property int densityCount: 0
+    onTileCountChanged: densityCount = Math.max(densityCount, tileCount)
     readonly property real restingWidth: tileCount * (baseSize + 6) + 28
-    property real baseSize: Math.min(Prefs.dockSize, Math.max(16, (width - 48) / (tileCount + 3) - 6))
+    property real baseSize: Math.min(Prefs.dockSize, Math.max(16, (width - 48) / (densityCount + 3) - 6))
+    Behavior on baseSize { enabled: !Prefs.reduceMotion; NumberAnimation { duration: 190; easing.type: Easing.OutCubic } }
     property var launcher: null   // AppLaunch on this screen: the icon grows into the window
     property var applications: null
     property real contextX: 0
@@ -97,7 +102,7 @@ PanelWindow {
         const wins = windowsFor(entry)
         if (parked) restore(parked)
         else if (wins.length) wins[0].activate()
-        else if (!entry.synthetic) entry.execute()
+        else if (!entry.synthetic) { retainForLaunch(entry); entry.execute() }
     }
 
     function quitEntry(entry) {
@@ -180,8 +185,8 @@ PanelWindow {
     // Room for the label, its gap, the bounce and an icon dragged up off the
     // Dock. Always this tall: a surface resized under a pressed pointer moves
     // everything under it (and can cancel the press).
-    implicitHeight: baseSize + 230
-    exclusiveZone: baseSize + 22
+    implicitHeight: Prefs.dockSize + 230
+    exclusiveZone: Prefs.dockSize + 22
     color: "transparent"
     WlrLayershell.namespace: "gg-dock"
     WlrLayershell.layer: WlrLayer.Top
@@ -245,6 +250,59 @@ PanelWindow {
             out.push(entry)
         }
         return out
+    }
+    // Stable app identities, independent of Wayland's window list snapshots.
+    // Keep the last icon briefly, then animate its whole slot (including gap)
+    // away. Reopening at either stage reverses the same delegate's transition.
+    property var runningIds: []
+    property var runningRecords: ({})
+    readonly property int recentHoldMs: 900
+    readonly property int departureMs: 220
+    onRunningChanged: reconcileRunning()
+    onEntriesChanged: reconcileRunning()
+    function reconcileRunning() {
+        const now = Date.now(), next = Object.assign({}, runningRecords)
+        const active = running.map(e => e.id), kept = entries.map(e => e.id)
+        let ids = runningIds.filter(id => !kept.includes(id))
+        for (const id of Object.keys(next)) if (kept.includes(id)) delete next[id]
+        for (const e of running) {
+            if (!ids.includes(e.id)) ids.push(e.id)
+            next[e.id] = { entry: e, phase: "active", deadline: 0 }
+        }
+        for (const id of ids) {
+            if (!active.includes(id) && next[id]?.phase === "active")
+                next[id] = { entry: next[id].entry, phase: "recent", deadline: now + recentHoldMs }
+        }
+        runningRecords = next
+        if (ids.join("\n") !== runningIds.join("\n")) runningIds = ids
+    }
+    function expireRecent() {
+        const now = Date.now(), next = Object.assign({}, runningRecords)
+        let changed = false
+        for (const id of runningIds) {
+            const r = next[id]
+            if (id === dragId) continue
+            if (!r || r.phase === "active" || now < r.deadline) continue
+            if (r.phase === "recent" && !Prefs.reduceMotion) {
+                next[id] = { entry: r.entry, phase: "leaving", deadline: now + departureMs + 50 }
+            } else delete next[id]
+            changed = true
+        }
+        if (!changed) return
+        runningRecords = next
+        const ids = runningIds.filter(id => next[id])
+        if (ids.join("\n") !== runningIds.join("\n")) runningIds = ids
+    }
+    function retainForLaunch(entry) {
+        if (!runningRecords[entry.id]) return
+        const next = Object.assign({}, runningRecords)
+        next[entry.id] = { entry: entry, phase: "recent", deadline: Date.now() + 8000 }
+        runningRecords = next
+    }
+    Timer {
+        interval: 25; repeat: true
+        running: dock.runningIds.some(id => dock.runningRecords[id]?.phase !== "active")
+        onTriggered: dock.expireRecent()
     }
     function entryForWindow(appId) {
         const lower = appId.toLowerCase()
@@ -313,6 +371,7 @@ PanelWindow {
         required property var modelData
         required property int index
         property bool kept: false
+        property real layoutOriginX: kept ? keptBox.x : 0
         readonly property var wins: dock.windowsFor(modelData)
         readonly property Item iconItem: icon
         Component.onCompleted: dock.tiles = dock.tiles.concat([tile])
@@ -325,7 +384,7 @@ PanelWindow {
         // how far the pointer has gone, less wherever its slot has moved to
         // since (the shelf recentring as icons make room). A running app that
         // won't land anywhere is dimmed.
-        readonly property real groundX: shelf.x + row.x + (kept ? keptBox.x : 0) + x
+        readonly property real groundX: shelf.x + row.x + layoutOriginX + x
         transform: Translate {
             x: tile.lifted ? dock.pressGroundX + dock.dragDX - tile.groundX : 0
             y: tile.lifted ? dock.dragDY : 0
@@ -394,7 +453,7 @@ PanelWindow {
             color: Theme.dark ? "#ccffffff" : "#8c000000"
             opacity: tile.wins.length && Prefs.dockIndicators ? 1 : 0
             scale: opacity > 0.5 ? 1 : 0.2
-            Behavior on opacity { NumberAnimation { duration: 260 } }
+            Behavior on opacity { NumberAnimation { duration: Prefs.reduceMotion ? 1 : 260 } }
             Behavior on scale { enabled: !Prefs.reduceMotion; Spring { spring: Theme.bouncy } }
         }
         // Unread notifications, as a red badge on the icon's top right.
@@ -451,7 +510,7 @@ PanelWindow {
             Behavior on opacity { NumberAnimation { duration: Prefs.reduceMotion ? 0 : (tip.shown ? 115 : 80) } }
             Behavior on scale { enabled: !Prefs.reduceMotion; Spring { spring: Theme.popover } }
             anchors { bottom: icon.top; bottomMargin: 10 }
-            x: Math.max(8 - (shelf.x + row.x + tile.x), Math.min((parent.width - width) / 2, dock.width - 8 - (shelf.x + row.x + tile.x) - width))
+            x: Math.max(8 - tile.groundX, Math.min((parent.width - width) / 2, dock.width - 8 - tile.groundX - width))
             width: Math.min(dock.width - 16, tipText.implicitWidth + 24); height: 26; radius: 13
             role: "menu"
             Text { id: tipText; anchors.centerIn: parent; width: Math.min(implicitWidth, parent.width - 24); elide: Text.ElideRight; textFormat: Text.PlainText; text: tile.lifted && dock.removing ? "Remove" : tile.modelData.name; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.Medium } }
@@ -500,10 +559,12 @@ PanelWindow {
                 if (parked) dock.restore(parked)
                 else if (tile.wins.length) tile.wins[0].activate()
                 else if (dock.launcher?.enabled && Prefs.animateLaunch) {
+                    dock.retainForLaunch(tile.modelData)
                     tile.launching = true
                     const p = icon.mapToItem(null, 0, 0)
                     dock.launcher.launch(tile.modelData, Qt.rect(p.x, dock.launcher.height - dock.height + p.y, icon.width, icon.height))
                 } else {
+                    dock.retainForLaunch(tile.modelData)
                     if (Prefs.animateLaunch) tile.launching = true
                     tile.modelData.execute()
                 }
@@ -521,17 +582,20 @@ PanelWindow {
 
         Row {
             id: row
+            objectName: "dockRow"
             anchors { left: parent.left; leftMargin: 9; bottom: parent.bottom; bottomMargin: 9 }
-            spacing: 6
+            // Each slot owns its spacing so the last disappearing slot cannot
+            // leave a one-frame Row spacing jump when its delegate is removed.
+            spacing: 0
             height: dock.baseSize
             Item {
                 id: keptBox
-                width: Math.max(0, dock.previewOrder.length * dock.step - 6)
+                width: dock.previewOrder.length * dock.step
                 height: dock.baseSize
                 anchors.bottom: parent.bottom
                 Behavior on width { enabled: !Prefs.reduceMotion; NumberAnimation { duration: 190; easing.type: Easing.OutCubic } }
                 Repeater {
-                    model: dock.entries
+                    model: ScriptModel { values: dock.entries }
                     delegate: AppTile {
                         id: keptTile
                         kept: true
@@ -545,19 +609,68 @@ PanelWindow {
             }
             // Apps running that aren't kept in the Dock, after a divider, as on the Mac.
             Item {
-                visible: dock.running.length > 0
-                width: 11; height: dock.baseSize
+                id: runningGroup
+                width: runningRow.width; height: dock.baseSize
                 anchors.bottom: parent.bottom
-                Rectangle { anchors.centerIn: parent; width: 1; height: parent.height - 12; color: Theme.dark ? "#40ffffff" : "#2e000000" }
-            }
-            Repeater {
-                model: dock.running
-                delegate: AppTile { anchors.bottom: parent.bottom }
+                Row {
+                    id: runningRow
+                    height: parent.height
+                    Item {
+                        readonly property real presence: {
+                            let max = 0
+                            for (let i = 0; i < runningSlots.count; i++)
+                                max = Math.max(max, runningSlots.itemAt(i)?.presence ?? 0)
+                            return max
+                        }
+                        width: 17 * presence; height: dock.baseSize
+                        opacity: presence
+                        Rectangle {
+                            x: (parent.width - 6 * parent.presence - width) / 2
+                            y: (parent.height - height) / 2
+                            width: 1; height: parent.height - 12
+                            color: Theme.dark ? "#40ffffff" : "#2e000000"
+                        }
+                    }
+                    Repeater {
+                        id: runningSlots
+                        model: ScriptModel { values: dock.runningIds }
+                        delegate: Item {
+                            id: slot
+                            required property string modelData
+                            required property int index
+                            objectName: "dockSlot:" + modelData
+                            readonly property var record: dock.runningRecords[modelData]
+                            property bool ready: false
+                            property real presence: ready && record && record.phase !== "leaving" ? 1 : 0
+                            Component.onCompleted: ready = true
+                            Behavior on presence { enabled: !Prefs.reduceMotion; NumberAnimation { duration: dock.departureMs; easing.type: Easing.OutCubic } }
+                            Connections {
+                                target: Prefs
+                                function onReduceMotionChanged() {
+                                    if (!Prefs.reduceMotion) return
+                                    // Reapply the target while Behavior is disabled;
+                                    // this cancels its internally owned animation.
+                                    slot.presence = Qt.binding(() => slot.ready && slot.record && slot.record.phase !== "leaving" ? 1 : 0)
+                                }
+                            }
+                            width: dock.step * presence; height: dock.baseSize
+                            opacity: presence
+                            enabled: presence > 0.5 && !!record && record.phase !== "leaving" && (!record.entry.synthetic || record.phase === "active")
+                            AppTile {
+                                modelData: slot.record?.entry ?? ({ id: slot.modelData, name: slot.modelData, icon: "application-x-executable" })
+                                index: slot.index
+                                layoutOriginX: runningGroup.x + slot.x
+                                x: (slot.width - 6 * slot.presence - width) / 2
+                                anchors.bottom: parent.bottom
+                            }
+                        }
+                    }
+                }
             }
             Item {
-                width: 11; height: dock.baseSize
+                width: 17; height: dock.baseSize
                 anchors.bottom: parent.bottom
-                Rectangle { anchors.centerIn: parent; width: 1; height: parent.height - 12; color: Theme.dark ? "#40ffffff" : "#2e000000" }
+                Rectangle { x: (parent.width - 6 - width) / 2; y: (parent.height - height) / 2; width: 1; height: parent.height - 12; color: Theme.dark ? "#40ffffff" : "#2e000000" }
             }
             Repeater {
                 model: dock.places
@@ -565,7 +678,7 @@ PanelWindow {
                     id: place
                     required property var modelData
                     required property int index
-                    width: dock.baseSize
+                    width: dock.baseSize + (index < dock.places.length - 1 ? 6 : 0)
                     height: row.height
 
                     Image {
@@ -599,7 +712,7 @@ PanelWindow {
                         Behavior on opacity { NumberAnimation { duration: Prefs.reduceMotion ? 1 : (placeTip.shown ? 115 : 80) } }
                         Behavior on scale { Spring { spring: Theme.popover } }
                         anchors { bottom: placeIcon.top; bottomMargin: 10 }
-                        x: Math.max(8 - (shelf.x + row.x + place.x), Math.min((parent.width - width) / 2, dock.width - 8 - (shelf.x + row.x + place.x) - width))
+                        x: Math.max(8 - (shelf.x + row.x + place.x), Math.min((placeIcon.width - width) / 2, dock.width - 8 - (shelf.x + row.x + place.x) - width))
                         width: Math.min(dock.width - 16, placeText.implicitWidth + 24); height: 26; radius: 13
                         role: "menu"
                         Text { id: placeText; anchors.centerIn: parent; width: Math.min(implicitWidth, parent.width - 24); elide: Text.ElideRight; textFormat: Text.PlainText; text: place.modelData.name; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.Medium } }

@@ -352,6 +352,11 @@ jobs:
         run: python tests/dock-motion.py
         env:
           QT_QPA_PLATFORM: offscreen
+      - name: "Dock lifecycle: stable icons, recent hold, smooth departure and rapid reopen"
+        run: python tests/dock-lifecycle.py
+        env:
+          QT_QPA_PLATFORM: offscreen
+          QT_QUICK_BACKEND: software
       - name: Validate Citron voice WebSocket contracts without microphone or network
         run: python tests/intelligence-live.py
       - name: Test account failures, preferences, and browser state
@@ -432,7 +437,7 @@ jobs:
         run: python tests/region-settings.py
         env:
           QT_QPA_PLATFORM: offscreen
-      - name: "Closing a window folds it back into its Dock icon (the opening in reverse)"
+      - name: "Native window close stays unobstructed; optional legacy fold reaches its Dock icon"
         run: python tests/window-fold.py
       - name: "Opening an app: the card lands on the window, then dissolves into it"
         run: python tests/window-open.py
