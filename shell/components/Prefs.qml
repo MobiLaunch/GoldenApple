@@ -8,6 +8,8 @@ pragma Singleton
 import Quickshell
 import Quickshell.Io
 import QtQuick
+import "../ui" as Shared
+import "../ui/FocusPolicy.js" as FocusPolicy
 
 Singleton {
     id: prefs
@@ -76,18 +78,42 @@ Singleton {
     readonly property string notifyPreviews: notifyPrefs.previews ?? "always"   // always | never
     readonly property bool notifySounds: notifyPrefs.sounds ?? true
     function notifyApp(key) {
-        return Object.assign({ allow: true, banners: true, sound: true, badges: true }, (notifyPrefs.apps ?? {})[key] ?? {})
+        return Object.assign({ allow: true, banners: true, sound: true, badges: true }, FocusPolicy.appChoice(notifyPrefs.apps, key))
     }
     // Spotlight (Settings): which kinds of result it shows.
     function spotlightShows(kind) { return (data.spotlight ?? {})[kind] ?? true }
     // Lock Screen (Settings): a message under the clock.
     readonly property string lockMessage: data.lockScreen?.message ?? ""
-    readonly property bool focusDnd: data.focus?.dnd ?? false
+    property QtObject focusStatus: Shared.FocusState { policy: prefs.data.focus ?? ({}) }
+    readonly property bool focusDnd: focusStatus.active
+    readonly property string focusSummary: focusStatus.summary
+    property bool focusBusy: false
+    property string focusError: ""
+    Component {
+        id: focusWriter
+        Process {
+            stderr: StdioCollector { id: focusErr }
+            onExited: (code) => {
+                prefs.focusBusy = false
+                if (code !== 0) prefs.focusError = "Focus couldn't be saved: " + (focusErr.text.trim() || "try again")
+                else { prefs.focusError = ""; desktopFile.reload() }
+                destroy()
+            }
+        }
+    }
+    function setFocus(minutes) {
+        if (focusBusy) return
+        focusBusy = true; focusError = ""
+        const session = minutes < 0 ? focusStatus.stop() : focusStatus.start(minutes)
+        const p = focusWriter.createObject(prefs, {command:["gg-pref", "focus.session", JSON.stringify(session)]})
+        p.running = true
+    }
     readonly property bool nightShift: data.display?.nightShift ?? false
     readonly property int displayWarmth: data.display?.warmth ?? 4500
     readonly property real savedBrightness: data.display?.brightness ?? -1
 
     FileView {
+        id: desktopFile
         path: prefs.file
         printErrors: false
         watchChanges: true

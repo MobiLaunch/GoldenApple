@@ -15,6 +15,7 @@ import QtQuick
 import QtQuick.Layouts
 import "ui/theme"
 import "components"
+import "ui/FocusPolicy.js" as FocusPolicy
 
 Scope {
     id: root
@@ -42,8 +43,12 @@ Scope {
     // One name per app for its Notifications settings: the app it speaks for,
     // else its desktop file, else the name it gives.
     function keyOf(n) {
-        return (ownerOf(n) || n.desktopEntry || n.appName || "notification").toLowerCase()
+        return FocusPolicy.canonicalApp(ownerOf(n) || n.desktopEntry || n.appName || "notification")
     }
+    function allowedDuringFocus(n) { return Prefs.focusStatus.permits(keyOf(n), n.urgency) }
+    function filterFocusBanners() { banners = banners.filter((n) => allowedDuringFocus(n)) }
+    Connections { target: Prefs; function onDataChanged() { root.filterFocusBanners() } }
+    onDndChanged: filterFocusBanners()
     // The apps that have notified, for Settings → Notifications to list:
     // ~/.local/state/golden-gate/notifiers.json, { key: { name, icon } }.
     readonly property string notifiersFile: (Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state") + "/golden-gate/notifiers.json"
@@ -144,15 +149,15 @@ Scope {
             const r = Object.assign({}, root.received); r[n.id] = Date.now(); root.received = r
             root.now = Date.now()
             n.closed.connect(() => root.dropBanner(n))
-            if (!root.dnd && !root.centerOpen && choice.banners) root.banners = [n].concat(root.banners.filter((b) => b !== n)).slice(0, 4)
-            if (!root.dnd && Prefs.notifySounds && choice.sound && !n.transient && !(n.hints?.["suppress-sound"] ?? false)) root.chime()
+            if (root.allowedDuringFocus(n) && !root.centerOpen && choice.banners) root.banners = [n].concat(root.banners.filter((b) => b !== n)).slice(0, 4)
+            if (root.allowedDuringFocus(n) && Prefs.notifySounds && choice.sound && !n.transient && !(n.hints?.["suppress-sound"] ?? false)) root.chime()
         }
     }
 
     IpcHandler {
         target: "notifications"
-        function toggleDnd(): void { Quickshell.execDetached(["gg-pref", "focus.dnd", root.dnd ? "false" : "true"]) }
-        function setDnd(on: bool): void { Quickshell.execDetached(["gg-pref", "focus.dnd", on ? "true" : "false"]) }
+        function toggleDnd(): void { Prefs.setFocus(root.dnd ? -1 : 0) }
+        function setDnd(on: bool): void { Prefs.setFocus(on ? 0 : -1) }
         function clear(): void { root.list.slice().forEach((n) => n.dismiss()) }
         function toggleCenter(): void { root.centerOpen = !root.centerOpen }
     }
@@ -275,7 +280,7 @@ Scope {
         implicitHeight: 4 * 150 + 3 * 8 + 16
         exclusionMode: ExclusionMode.Normal   // sit below the menu bar
         color: "transparent"
-        visible: !root.dnd && (root.banners.length > 0 || bannerList.count > 0)
+        visible: root.banners.length > 0 || bannerList.count > 0
         WlrLayershell.namespace: "gg-notifications"
         // What its glass bends: the desktop under it.
         DesktopBackdrop { surface: bannerWindow; namespace: "gg-notifications" }

@@ -16,6 +16,7 @@ import "components"
 
 PanelWindow {
     id: cc
+    objectName: "controlCenter"
     property bool open: false
     property var notifications
     property bool wifiOn: true
@@ -26,6 +27,10 @@ PanelWindow {
     readonly property var player: Mpris.players.values.length ? Mpris.players.values[0] : null
 
     function toggle() { open = !open; if (open) refresh() }
+    Connections {
+        target: Prefs
+        function onFocusErrorChanged() { if (cc.open && Prefs.focusError) cc.showDetail("focus") }
+    }
 
     // A module opens into its detail view in place, as on the Mac: the Wi-Fi
     // networks, the paired Bluetooth devices, the sound outputs.
@@ -33,12 +38,17 @@ PanelWindow {
     property var networks: []           // [{ ssid, signal, secure, active }]
     function showDetail(kind) {
         // Anything else (asked over IPC) had an empty "No Outputs" panel.
-        if (!["", "wifi", "bluetooth", "sound", "mirroring"].includes(kind)) return
+        if (!["", "wifi", "bluetooth", "sound", "mirroring", "focus"].includes(kind)) return
         detail = kind
         // Keep the last networks on screen while rescanning, so the list
         // doesn't collapse and regrow under the pointer.
         if (kind === "wifi") scanProc.running = true
         if (kind === "mirroring") { airplayProbe.running = true; if (!castBrowse.running) castBrowse.running = true }
+    }
+    function openDetailSettings() {
+        const pane = ({wifi:"wifi", bluetooth:"bluetooth", sound:"sound", mirroring:"airplay", focus:"focus"})[detail]
+        if (!pane) return
+        open = false; run("gg-settings " + pane)
     }
     // AirPlay Receiver: the gg-airplay user service (UxPlay, under
     // apps/mirroring/airplay.py) lets an iPhone, iPad or Mac mirror to this
@@ -273,6 +283,11 @@ PanelWindow {
         property bool on: false
         property var toggleAction: null
         signal activated()
+        activeFocusOnTab: true
+        Keys.onSpacePressed: (event) => { if (!event.isAutoRepeat) activated() }
+        Keys.onReturnPressed: activated()
+        Keys.onEnterPressed: activated()
+        Shared.FocusRing { visible: capsule.activeFocus }
         width: cc.span(2); height: cc.unit
         pressed: capTap.pressed
         hovered: capTap.containsMouse
@@ -312,6 +327,7 @@ PanelWindow {
         }
         Accessible.role: Accessible.Button
         Accessible.name: capsule.title
+        Accessible.onPressAction: activated()
     }
 
     // A row in Screen Mirroring's detail (a device, Stop, Other Displays).
@@ -602,9 +618,11 @@ PanelWindow {
             Column {
                 spacing: cc.gap
                 Capsule {
-                    icon: "moon"; title: "Focus"; subtitle: cc.notifications?.dnd ? "Do Not Disturb" : ""
-                    on: cc.notifications?.dnd ?? false
-                    onActivated: Quickshell.execDetached(["gg-pref", "focus.dnd", (cc.notifications?.dnd ?? false) ? "false" : "true"])
+                    objectName: "ccFocus"
+                    icon: "moon"; title: "Focus"; subtitle: Prefs.focusDnd ? Prefs.focusSummary : ""
+                    on: Prefs.focusDnd
+                    toggleAction: () => Prefs.setFocus(Prefs.focusDnd ? -1 : 0)
+                    onActivated: cc.showDetail("focus")
                 }
                 Row {
                     spacing: cc.gap
@@ -775,7 +793,7 @@ PanelWindow {
         focus: cc.detail !== ""
         Keys.onEscapePressed: cc.detail = ""
 
-        readonly property string title: ({ wifi: "Wi-Fi", bluetooth: "Bluetooth", sound: "Sound Output", mirroring: "Screen Mirroring" })[cc.detail] ?? ""
+        readonly property string title: ({ wifi: "Wi-Fi", bluetooth: "Bluetooth", sound: "Sound Output", mirroring: "Screen Mirroring", focus: "Focus" })[cc.detail] ?? ""
         readonly property bool hasSwitch: cc.detail === "wifi" || cc.detail === "bluetooth"
         readonly property bool on: cc.detail === "wifi" ? cc.wifiOn : (Bluetooth.defaultAdapter?.enabled ?? false)
 
@@ -786,6 +804,11 @@ PanelWindow {
             spacing: 6
             Rectangle {
                 width: 24; height: 24; radius: 12
+                activeFocusOnTab: true
+                Keys.onSpacePressed: cc.detail = ""
+                Keys.onReturnPressed: cc.detail = ""
+                Accessible.onPressAction: cc.detail = ""
+                Shared.FocusRing { visible: parent.activeFocus }
                 color: backArea.pressed ? Theme.selection : backArea.containsMouse ? Theme.fill : "transparent"
                 Symbol { anchors.centerIn: parent; name: "chevron-left"; size: 11; tone: "auto" }
                 MouseArea { id: backArea; anchors.fill: parent; hoverEnabled: true; onClicked: cc.detail = "" }
@@ -813,6 +836,37 @@ PanelWindow {
             }
         }
         Rectangle { Layout.fillWidth: true; Layout.bottomMargin: 4; height: 0.5; color: Theme.separator }
+
+        Column {
+            objectName: "focusDetail"
+            visible: cc.detail === "focus"
+            Layout.fillWidth: true
+            spacing: 8
+            Text {
+                objectName: "ccFocusStatus"
+                width: parent.width; wrapMode: Text.WordWrap
+                text: Prefs.focusBusy ? "Saving Focus…" : Prefs.focusError || Prefs.focusSummary
+                color: Prefs.focusError ? Theme.accentRed : Theme.secondaryLabel
+                font { family: Theme.fontUi; pixelSize: cc.cs(12) }
+            }
+            Repeater {
+                model: [{label:"For 15 minutes", minutes:15}, {label:"For 1 hour", minutes:60},
+                        {label:"For 2 hours", minutes:120}, {label:"Until turned off", minutes:0}]
+                delegate: Shared.Button {
+                    required property var modelData
+                    objectName: "ccFocusDuration:" + modelData.minutes
+                    width: parent.width
+                    text: modelData.label
+                    enabled: !Prefs.focusBusy
+                    onClicked: Prefs.setFocus(modelData.minutes)
+                }
+            }
+            Shared.Button {
+                width: parent.width; text: "Turn Off Do Not Disturb"
+                visible: Prefs.focusDnd; enabled: !Prefs.focusBusy
+                onClicked: Prefs.setFocus(-1)
+            }
+        }
 
         // Screen Mirroring, as on the Mac: this computer as an AirPlay
         // receiver (who's mirroring, the code a device asking has to type,
@@ -906,7 +960,7 @@ PanelWindow {
         }
 
         Text {
-            visible: rows.count === 0 && cc.detail !== "mirroring"
+            visible: rows.count === 0 && cc.detail !== "mirroring" && cc.detail !== "focus"
             Layout.fillWidth: true
             Layout.topMargin: 6; Layout.bottomMargin: 6
             horizontalAlignment: Text.AlignHCenter
@@ -979,6 +1033,15 @@ PanelWindow {
         Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: 30
+            objectName: "ccDetailSettings"
+            activeFocusOnTab: true
+            Accessible.role: Accessible.Button
+            Accessible.name: detailView.title + " Settings"
+            Accessible.onPressAction: cc.openDetailSettings()
+            Keys.onSpacePressed: cc.openDetailSettings()
+            Keys.onReturnPressed: cc.openDetailSettings()
+            Keys.onEnterPressed: cc.openDetailSettings()
+            Shared.FocusRing { visible: parent.activeFocus }
             radius: 9
             color: settingsArea.pressed ? Theme.selection : settingsArea.containsMouse ? Theme.menuHighlight : "transparent"
             Text {
@@ -991,11 +1054,7 @@ PanelWindow {
                 id: settingsArea
                 anchors.fill: parent
                 hoverEnabled: true
-                onClicked: {
-                    const pane = ({ wifi: "wifi", bluetooth: "bluetooth", sound: "sound", mirroring: "airplay" })[cc.detail]
-                    cc.open = false
-                    cc.run("gg-settings " + pane)
-                }
+                onClicked: cc.openDetailSettings()
             }
         }
     }

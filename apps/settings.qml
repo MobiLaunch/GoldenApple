@@ -166,7 +166,7 @@ ShellRoot {
                 [2, "spotlight", "Spotlight", "search", "#8e8e93", "SpotlightPane", "search results categories files web calculator"],
                 [2, "wallpaper", "Wallpaper", "wallpaper", "#30b0c7", "WallpaperPane", "background desktop picture"],
                 [3, "notifications", "Notifications", "bell", "#ff3b30", "NotificationsPane", "alerts banners badges sounds previews apps"],
-                [3, "focus", "Focus", "moon", "#5e5ce6", "FocusPane", "do not disturb notifications"],
+                [3, "focus", "Focus", "moon", "#5e5ce6", "FocusPane", "do not disturb notifications duration schedule allowed apps alarms"],
                 [3, "sound", "Sound", "speaker-wave", "#ff2d55", "SoundPane", "volume output input speakers microphone mute"],
                 [4, "lockscreen", "Lock Screen", "lock", "#1d1d1f", "LockScreenPane", "screen saver display off sleep require password lock message idle"],
                 [4, "touchid", "Touch ID & Password", "touchid", "#ff375f", "TouchIdPane", "fingerprint finger reader biometric unlock sudo fprintd"],

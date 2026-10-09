@@ -8,11 +8,12 @@ import QtQuick
 import "../../lib"
 import "../../lib/theme"
 import ".."
+import "../../lib/FocusPolicy.js" as FocusPolicy
 
 Pane {
     id: pane
     headerSymbol: "bell"; headerTint: "#ff3b30"; headerTitle: "Notifications"
-    headerText: "Choose which apps can notify you, and how. Focus silences them all for a while."
+    headerText: "Choose which apps can notify you, and how. Focus silences interruptions except the apps and critical alerts you allow."
     readonly property var prefs: sys.prefs.notifications ?? {}
     readonly property var appPrefs: prefs.apps ?? {}
     property var seen: ({})
@@ -29,11 +30,13 @@ Pane {
     })
     readonly property var apps: {
         const all = Object.assign({}, builtIn, seen)
-        return Object.keys(all).map((k) => ({ key: k, name: all[k].name || k, icon: all[k].icon || "" }))
+        const canonical = {}
+        for (const key in all) canonical[FocusPolicy.canonicalApp(key)] = all[key]
+        return Object.keys(canonical).map((k) => ({ key: k, name: canonical[k].name || k, icon: canonical[k].icon || "" }))
             .sort((a, b) => a.name.localeCompare(b.name))
     }
     function choice(key) {
-        return Object.assign({ allow: true, banners: true, sound: true, badges: true }, appPrefs[key] ?? {})
+        return Object.assign({ allow: true, banners: true, sound: true, badges: true }, FocusPolicy.appChoice(appPrefs, key))
     }
     function setApp(key, field, value) {
         const all = JSON.parse(JSON.stringify(appPrefs))

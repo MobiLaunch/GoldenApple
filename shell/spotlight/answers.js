@@ -190,7 +190,7 @@ var PANES = [
     ["spotlight", "Spotlight", "search results categories"],
     ["displays", "Displays", "brightness resolution night shift scale monitor"],
     ["wallpaper", "Wallpaper", "background desktop picture"],
-    ["focus", "Focus", "do not disturb notifications dnd"],
+    ["focus", "Focus", "do not disturb notifications dnd duration schedule allowed apps alarms"],
     ["sound", "Sound", "volume output input microphone speakers"],
     ["privacy", "Privacy & Security", "location camera permissions firewall"],
     ["users", "Users & Groups", "accounts password login user"],

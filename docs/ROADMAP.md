@@ -60,6 +60,9 @@
       Get Info, transfer progress/cancellation and Keep Both/Skip conflicts
 - [x] Files: sortable list headings and per-folder view/sort preferences
 - [x] Files: Undo Rename and Undo New Folder (an empty, unchanged folder only)
+- [x] Focus: timed Do Not Disturb, weekly/overnight schedule, allowed apps,
+      critical-alert opt-in and shared expiry status in Settings/Control Center
+- [ ] Focus: named profiles, people exceptions and app/context automation
 - [ ] Files: marquee selection, Open With, column/gallery views, tags,
       smart folders, transfer queue and broader undo/redo
 - [ ] Branding package (`golden-gate-branding`: os-release)

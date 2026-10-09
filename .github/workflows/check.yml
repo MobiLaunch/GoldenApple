@@ -247,6 +247,13 @@ jobs:
         env:
           QT_QPA_PLATFORM: offscreen
           QT_QUICK_BACKEND: software
+      - name: "Focus: timed expiry, overnight schedules, DST and persisted sessions"
+        run: python tests/focus-policy.py
+      - name: "Focus UI: saved state, app exceptions, keyboard access and notification delivery"
+        run: python tests/focus-ui.py
+        env:
+          QT_QPA_PLATFORM: offscreen
+          QT_QUICK_BACKEND: software
       - name: Notes' Recently Deleted never replaces a deleted note, and Recover puts it back
         run: python tests/notes-trash.py
       - name: Calendar's store never overwrites a damaged file, locks changes and checks dates
