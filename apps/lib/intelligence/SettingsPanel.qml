@@ -81,7 +81,7 @@ Column {
     }
     Text {
         width: parent.width; wrapMode: Text.Wrap
-        text: "Use Google Gemini to work with words and images. Only requests you send and photos you choose leave this computer. Your key is stored in the system keyring; conversations stay in this window and are cleared when you close it."
+        text: "Use Google Gemini to work with words and images. Only requests you send and photos you choose leave this computer. Your key is stored in the system keyring; requests appear in the temporary desktop overlay and are cleared when you dismiss it."
         color: Theme.secondaryLabel
         font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
     }
