@@ -323,6 +323,11 @@ class Interactions(unittest.TestCase):
         QTest.qWait(30)
         self.assertTrue(self.root.findChild(QObject,"filesInfo").property("visible"))
         self.assertEqual(self.eval('info.path'),str(self.home/"a.txt"))
+        self.assertTrue(self.eval('infoDialog.shown'))
+        self.assertIsNotNone(self.root.findChild(QObject,'sharedSheetPanel'))
+        self.eval('infoDialog.close()')
+        self.assertFalse(self.eval('infoDialog.shown'))
+        self.assertTrue(self.files.hasActiveFocus())
 
     def test_undo_shortcut_updates_creation_identity_after_rename(self):
         path=str(self.home/"Folder")
@@ -339,9 +344,10 @@ class Interactions(unittest.TestCase):
         sidebar=self.root.findChild(QObject,"filesSidebarScroll")
         self.assertTrue(sidebar.property("clip"))
         self.assertGreater(sidebar.property("contentHeight"),sidebar.property("height"))
-        self.eval('info={name:"Long file name",location:"/" + "very-long-path/".repeat(80),mime:"text/plain",size:1,modified:1,permissions:"-rw-r--r--"}; infoDialog.visible=true')
-        self.assertLess(self.eval('infoDialog.height'),self.eval('win.height'))
-        self.eval('Theme.textScale=1')
+        self.eval('info={name:"Long file name",location:"/" + "very-long-path/".repeat(80),mime:"text/plain",size:1,modified:1,permissions:"-rw-r--r--"}; infoDialog.open()')
+        self.assertLess(self.eval('infoDialog.panel.height'),self.eval('win.height'))
+        self.assertGreater(self.eval('infoScroll.height'),0)
+        self.eval('infoDialog.close(); Theme.textScale=1')
 
 
 if __name__=="__main__":
