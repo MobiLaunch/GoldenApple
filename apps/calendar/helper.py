@@ -38,6 +38,7 @@ LOCK = ROOT / ".events.lock"
 
 
 REPEATS = frozenset(("never", "daily", "weekly", "monthly", "yearly"))
+REMINDERS = frozenset((-1, 0, 5, 15, 60))
 
 
 class Broken(Exception):
@@ -86,6 +87,9 @@ def check(event: dict) -> str:
             return "Choose a repeat interval before setting an end date."
         if until < date:
             return "The repeat end date must not be before the first event."
+    reminder = event.get("reminder", -1)
+    if type(reminder) is not int or reminder not in REMINDERS:
+        return "Choose no reminder, at event time, or 5, 15, or 60 minutes before."
     exceptions = event.get("exceptions", {})
     if not isinstance(exceptions, dict) or len(exceptions) > 1500:
         return "The occurrence exceptions are damaged or exceed the supported limit."
@@ -98,7 +102,7 @@ def check(event: dict) -> str:
             return "An occurrence exception is not part of this series."
         if override is None:
             continue
-        if not isinstance(override, dict) or set(override) - {"title", "date", "time", "calendar"}:
+        if not isinstance(override, dict) or set(override) - {"title", "date", "time", "calendar", "reminder"}:
             return "An occurrence override is damaged."
         revised = {"title": override.get("title"), "date": override.get("date"),
                    "time": override.get("time", ""), "calendar": override.get("calendar", "Home")}
@@ -117,6 +121,9 @@ def check(event: dict) -> str:
             return "An occurrence override has an invalid date or time."
         if not isinstance(revised["calendar"], str) or not revised["calendar"].strip() or len(revised["calendar"]) > 64:
             return "An occurrence override needs a valid calendar."
+        per_reminder = override.get("reminder", reminder)
+        if type(per_reminder) is not int or per_reminder not in REMINDERS:
+            return "An occurrence override has an invalid reminder."
     return ""
 
 
@@ -238,7 +245,7 @@ def expected_event_matches(old: dict, expected: dict) -> bool:
     return all(old.get(k, default) == expected.get(k, default) for k, default in
                (("title", None), ("date", None), ("time", ""),
                 ("calendar", "Home"), ("repeat", "never"), ("until", ""),
-                ("exceptions", {})))
+                ("exceptions", {}), ("reminder", -1)))
 
 def sort_key(e: object) -> tuple:
     e = e if isinstance(e, dict) else {}
@@ -273,6 +280,7 @@ def main() -> int:
             "calendar": str(event.get("calendar") or "Home").strip(),
             "repeat": str(event.get("repeat", "never")).strip().lower(),
             "until": str(event.get("until", "")).strip(),
+            "reminder": event.get("reminder", -1),
         }
         problem = check(row)
         if problem:
@@ -308,6 +316,7 @@ def main() -> int:
             "calendar": str(event.get("calendar") or "Home").strip(),
             "repeat": str(event.get("repeat", "never")).strip().lower(),
             "until": str(event.get("until", "")).strip(),
+            "reminder": event.get("reminder", -1),
         }
         problem = check(changes)
         if problem:
@@ -368,7 +377,8 @@ def main() -> int:
                     exceptions[original] = None
                 else:
                     revised = {"title": request.get("title"), "date": request.get("date"),
-                               "time": request.get("time", ""), "calendar": request.get("calendar", "Home")}
+                               "time": request.get("time", ""), "calendar": request.get("calendar", "Home"),
+                               "reminder": request.get("reminder", old.get("reminder", -1))}
                     proposed = {**old, "exceptions": {**exceptions, original: revised}}
                     problem = check(proposed)
                     if problem:
