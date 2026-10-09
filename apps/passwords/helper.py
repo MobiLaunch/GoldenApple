@@ -429,7 +429,7 @@ def cmd_codes() -> int:
         except (ValueError, TypeError, base64.binascii.Error):
             continue
         out.append({"id": item_id, "code": code, "period": spec["period"],
-                    "remaining": int(spec["period"] - now % spec["period"])})
+                    "remaining": spec["period"] - (int(now) % spec["period"])})
     return emit(True, codes=out)
 
 
