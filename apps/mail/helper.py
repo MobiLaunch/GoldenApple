@@ -112,14 +112,16 @@ def annotate_messages(messages: list[dict[str, object]], account: str) -> None:
         labels = {}
     if not isinstance(vips, list):
         vips = []
-    vip_addresses = {str(x).lower() for x in vips}
+    vip_addresses = {str(x).lower() for x in vips if isinstance(x, str)}
     for message in messages:
         uid = str(message["uid"])
         manual = labels.get(uid)
         message["category"] = manual if manual in CATEGORIES else classify_mail(
             str(message.get("from", "")), str(message.get("subject", "")))
-        message["vip"] = any(address in str(message.get("from", "")).lower()
-                             for address in vip_addresses if "@" in address)
+        # Match the parsed address, not a substring of the display name
+        # (an attacker may place somebody else's address in a forged name).
+        address = email.utils.parseaddr(str(message.get("from", "")))[1].lower()
+        message["vip"] = address in vip_addresses
 
 
 def cmd_category(uid: str, category: str) -> int:
