@@ -102,6 +102,33 @@ tests/files-interactions.py` drives the actual Files QML through sidebar
 toggles and dialogs. They run in CI, but physical trackpad, GPU refraction and
 installed Hyprland window behavior still require hands-on validation.
 
+### Browser and navigator continuity
+
+**LCode navigator sections** (Project, Find, Issues, Reports) crossfade over
+125 ms rather than abruptly replacing the content. The outgoing section is
+disabled as soon as navigation changes, preventing accidental input during the
+exit fade. Folder disclosure arrows use a consistent 125 ms eased rotation.
+
+**Document tabs** fade on insertion/removal, and neighboring tabs move into
+the new position instead of teleporting. Programmatic file opens automatically
+scroll the selected tab into view. Motion is disabled for Reduce Motion.
+
+**Files grid/list** swaps views over 125 ms and immediately transfers
+interaction rights to the incoming view. Its outgoing scrollbar disappears
+rather than hanging over the new view; the shared Scroller now honors the
+associated Flickable's visible/enabled state. The switch preserves the current
+selected item in the viewport or, with no selection, the relative scroll
+position. List-row hover and selection receive a short 95 ms color response.
+
+**Activity capsule regression:** Removed a duplicate `visible` binding in
+LCode Workspace, which could break QML parsing. Its content is clipped and
+constrained when inspector motion reduces the available toolbar width.
+Guard checks prevent the invalid binding from returning.
+
+The acceptance boundary remains the same: connected GUI/native-preview
+checks must run before these interactions can be called verified on a real
+Wayland/Hyprland installation.
+
 ## Real-device acceptance checklist
 
 1. With a trackpad, sweep quickly across a row of Dock icons: labels should
