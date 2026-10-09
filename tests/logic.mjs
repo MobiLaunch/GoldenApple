@@ -427,6 +427,33 @@ test('Mission Control arrow keys move to the closest window in the next row', ()
   assert.equal(nearest(rects, -1, 1), 0);
 });
 
+test('Calendar view switching, month-end clamping and week/day navigation', () => {
+  const src = readFileSync(new URL('../apps/calendar.qml', import.meta.url), 'utf8');
+  for (const marker of [
+    'checked: cal.viewMode === "month"', 'checked: cal.viewMode === "week"',
+    'checked: cal.viewMode === "day"', 'id: agendaRow',
+    'visible: cal.viewMode === "month"',
+    'model: agendaDay.dayEvents', 'cal.requestEdit(eventTile.modelData)'
+  ]) assert.ok(src.includes(marker), marker);
+  const c = context('apps/calendar.qml', ['changeView', 'shiftRange'], {
+    viewMode:'month', selectedDate:new Date(2026, 9, 31),
+    visibleMonth:new Date(2026, 9, 1), year:2026, month:9
+  });
+  c.shiftRange(1);
+  assert.equal(c.selectedDate.getMonth(),10);
+  assert.equal(c.selectedDate.getDate(),30,'Oct 31 clamps to November 30');
+  c.changeView('week');
+  assert.equal(c.viewMode,'week');
+  c.shiftRange(1);
+  assert.equal(c.selectedDate.getMonth(),11,'week crosses into December');
+  assert.equal(c.selectedDate.getDate(),7);
+  c.changeView('day');
+  c.shiftRange(-1);
+  assert.equal(c.selectedDate.getDate(),6);
+  c.changeView('not-a-view');
+  assert.equal(c.viewMode,'day','ignore unknown view');
+});
+
 test('Files drops: move within Files, copy from other apps, Trash, never into itself', () => {
   const ops = [];
   const c = context('apps/files.qml', ['pathsOf', 'accepts', 'dropOn'], {
