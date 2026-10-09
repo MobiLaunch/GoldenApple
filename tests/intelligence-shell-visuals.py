@@ -63,7 +63,7 @@ class SystemIntelligence(unittest.TestCase):
         self.assertNotIn('exec qs -n -p "$here/intelligence.qml"', opener)
         self.assertIn('ipc call citron "$mode"', opener)
         self.assertIn('ipc call citron photo "$photo"', opener)
-        self.assertIn('ipc call citron", "ask"', menu)
+        self.assertIn('["qs", "-c", "golden-gate", "ipc", "call", "citron", "ask"]', menu)
         self.assertIn('text: "Summon Citron"', prefs)
         self.assertIn("gg-settings intelligence", opener)
 
