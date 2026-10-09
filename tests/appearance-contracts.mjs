@@ -16,7 +16,9 @@ const names = ["chevron-left", "chevron-right", "search", "wifi", "bluetooth", "
 test("OrchardKit Xcode artboards are normalized into usable Qt SVG glyphs", () => {
   const build = text("icons/build.mjs");
   assert.match(build, /import \{ orchardSymbols \} from "\.\/orchard-symbols\.mjs"/);
-  const namedForGoldenGate = { "settings": "gear", "trash-2": "trash", "share-2": "share", "grid-2x2": "grid" };
+  const namedForGoldenGate = { "settings": "gear", "trash-2": "trash", "share-2": "share", "grid-2x2": "grid",
+    "volume-1": "speaker", "volume-2": "speaker-wave", "skip-back": "backward", "skip-forward": "forward",
+    "chevrons-up-down": "chevron-updown", "rotate-cw": "arrow-clockwise", "rotate-ccw": "rotate-left" };
   for (const name of names) {
     const key = namedForGoldenGate[name] ?? name;
     const svg = orchardSymbols[name];
