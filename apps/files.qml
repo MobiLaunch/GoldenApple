@@ -1700,7 +1700,10 @@ ShellRoot {
             Rectangle {
                 id: pathBar
                 objectName: "filesPathBar"
-                visible: !files.special && !files.loading
+                // Keep the breadcrumb bar mounted while switching folders.
+                // Hiding it during the asynchronous listing made the content
+                // jump by 28px and stole keyboard focus from the clicked crumb.
+                visible: !files.special
                 anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
                 height: 28
                 color: Theme.contentBg
