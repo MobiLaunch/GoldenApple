@@ -18,6 +18,8 @@ Item {
     property var albums: []          // {key, title, artist, year, art, tracks, added}
     property var artists: []         // {name, albums, art}
     property var playlists: []       // {name, path, paths, revision}
+    property var deletedPlaylists: []
+    property bool deletedBusy: false
     property string playlistError: ""
     property bool playlistBusy: false
     property var playlistRequest: ({})
@@ -80,6 +82,9 @@ Item {
     function refreshPlaylists() {
         if (!playlistBusy && !listProc.running) listProc.running = true
     }
+    function refreshDeleted() {
+        if (!deletedBusy && !playlistBusy) deletedProc.running = true
+    }
 
     function mutatePlaylist(command, data) {
         if (playlistBusy || listProc.running) {
@@ -111,6 +116,24 @@ Item {
         }
     }
     Process {
+        id: deletedProc
+        command: ["python3", lib.playlistHelper, "deleted"]
+        onStarted: lib.deletedBusy = true
+        onExited: lib.deletedBusy = false
+        stdout: StdioCollector {
+            onStreamFinished: {
+                let r = null
+                try { r = JSON.parse(text) } catch (e) {}
+                if (r?.ok && Array.isArray(r.deleted)) {
+                    lib.deletedPlaylists = r.deleted
+                    lib.playlistError = ""
+                } else {
+                    lib.playlistError = r?.error || "Couldn't load recently deleted playlists."
+                }
+            }
+        }
+    }
+    Process {
         id: updateProc
         stdinEnabled: true
         onStarted: {
@@ -123,6 +146,7 @@ Item {
                 try { r = JSON.parse(text) } catch (e) {}
                 if (r?.ok && Array.isArray(r.playlists)) {
                     lib.playlists = r.playlists
+                    if (Array.isArray(r.deleted)) lib.deletedPlaylists = r.deleted
                     lib.playlistError = ""
                     lib.playlistOperationDone(r)
                 } else {
