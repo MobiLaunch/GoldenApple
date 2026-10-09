@@ -334,7 +334,19 @@ ShellRoot {
             id: suggestions
             objectName: "settingsSuggestions"
             parent: win.overlay
-            visible: app.matches.length > 0 && search.input.activeFocus
+            readonly property bool expanded: app.matches.length > 0 && search.input.activeFocus
+            visible: opacity > 0.001
+            enabled: expanded
+            opacity: expanded ? 1 : 0
+            scale: expanded || Theme.reduceMotion ? 1 : 0.984
+            transformOrigin: Item.TopLeft
+            Behavior on opacity {
+                NumberAnimation { duration: Theme.reduceMotion ? 0 : (suggestions.expanded ? 145 : 100); easing.type: Easing.OutCubic }
+            }
+            Behavior on scale {
+                enabled: !Theme.reduceMotion
+                NumberAnimation { duration: 160; easing.type: Easing.OutCubic }
+            }
             x: 8 + 6; y: win.toolbarHeight + 32
             width: 228; height: sugCol.height + 34
             radius: 12
@@ -357,12 +369,23 @@ ShellRoot {
                         required property int index
                         readonly property bool selected: index === app.selectedMatch
                         width: sugCol.width; height: 30
-                        Rectangle { anchors.fill: parent; radius: 7; color: Theme.accent; visible: sh.hovered || parent.selected }
+                        Rectangle {
+                            anchors.fill: parent
+                            radius: 7
+                            color: Theme.accent
+                            opacity: sh.hovered || parent.selected ? 1 : 0
+                            Behavior on opacity {
+                                NumberAnimation { duration: Theme.reduceMotion ? 0 : 90; easing.type: Easing.OutCubic }
+                            }
+                        }
                         PaneIcon { x: 6; anchors.verticalCenter: parent.verticalCenter; symbol: modelData.symbol; tint: modelData.tint }
                         Text {
                             x: 36; anchors.verticalCenter: parent.verticalCenter
                             text: modelData.title
                             color: sh.hovered || parent.selected ? "#ffffff" : Theme.label
+                            Behavior on color {
+                                ColorAnimation { duration: Theme.reduceMotion ? 0 : 90 }
+                            }
                             font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
                         }
                         HoverHandler { id: sh }
