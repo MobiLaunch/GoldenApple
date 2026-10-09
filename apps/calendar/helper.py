@@ -261,10 +261,27 @@ def main() -> int:
         try:
             with locked():
                 events = load()
+                remote = []
+                remote_error = ""
+                cache = ROOT / "caldav-events.json"
+                try:
+                    raw = json.loads(cache.read_text(encoding="utf-8"))
+                    if not isinstance(raw, list) or len(raw) > 5000:
+                        raise ValueError("unexpected cache format")
+                    if any(not isinstance(e, dict) or e.get("remote") is not True or
+                           not isinstance(e.get("id"), str) or not e["id"].startswith("caldav-") or
+                           check(e) for e in raw):
+                        raise ValueError("invalid remote calendar events")
+                    remote = raw
+                except FileNotFoundError:
+                    pass
+                except (ValueError, OSError) as exc:
+                    remote_error = f"CalDAV cache could not be read ({exc}). Local events are unaffected."
         except Broken as exc:
             return broken(exc)
         good = [e for e in events if not check(e)]
-        return emit(True, events=good, invalid=len(events) - len(good))
+        return emit(True, events=sorted(good + remote, key=sort_key),
+                    invalid=len(events) - len(good), remoteError=remote_error)
 
     if command == "add":
         try:
