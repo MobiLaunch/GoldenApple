@@ -102,6 +102,9 @@ class SettingsConnectivity(unittest.TestCase):
         self.assertIn('"hypr/golden-gate/windows.conf"', updater)
         self.assertIn('DesktopEntries.applications.values', picker)
         self.assertIn('pane.sys.setPref(["dock", "pinned"]', picker)
+        self.assertIn('dex --autostart --environment Hyprland', hypr)
+        self.assertIn('dex', (ROOT / "distro/archiso/packages.x86_64").read_text().splitlines())
+        self.assertIn('"glassWindows"', (ROOT / "apps/settings/Sys.qml").read_text())
 
     def test_existing_settings_panes_still_have_real_handlers(self):
         required = {
@@ -115,6 +118,7 @@ class SettingsConnectivity(unittest.TestCase):
             "ControlCenterPane.qml": '"menuBar"',
             "NotificationsPane.qml": '"notifications"',
             "LockScreenPane.qml": '"lockScreen"',
+            "NetworkPane.qml": '"nmcli"',
         }
         for name, needle in required.items():
             source = (ROOT / "apps/settings/panes" / name).read_text()
