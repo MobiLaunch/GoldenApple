@@ -13,44 +13,69 @@ ShellRoot {
         closeAction: () => mail.requestClose()
         implicitWidth: Math.min(1100, (Quickshell.screens[0]?.width ?? 1280) - 80)
         implicitHeight: Math.min(730, (Quickshell.screens[0]?.height ?? 900) - 130)
-        minimumSize: Qt.size(800, 520)
-        sidebarWidth: mail.configured ? 210 : 0
-        fullSizeContent: true
+        minimumSize: Qt.size(760, 500)
+        property bool sidebarShown: true
+        sidebarWidth: mail.configured && sidebarShown ? 205 : 0
+        fullSizeContent: false
         background: Theme.contentBg
 
+        // A system Mail toolbar: controls stay clear of the traffic lights
+        // even while the sidebar's presentation width is animating.
         toolbarSidebar: [
             ToolbarButton {
                 visible: mail.configured
-                round: true
-                symbol: "compose"
-                onClicked: mail.composing = true
+                round: true; symbol: "sidebar"; checked: win.sidebarShown
+                Accessible.name: win.sidebarShown ? "Hide Mailboxes" : "Show Mailboxes"
+                onClicked: win.sidebarShown = !win.sidebarShown
+            },
+            ToolbarButton {
+                visible: mail.configured
+                round: true; symbol: "compose"
+                Accessible.name: "New Message"
+                onClicked: { mail.composing = true; mail.selectedFolder = "drafts" }
             }
         ]
 
         toolbarItems: [
             Row {
                 visible: mail.configured
-                x: Math.max(win.contentX + 12, win.toolbarLeadingEnd)
+                x: Math.max(win.contentX + 14, win.toolbarLeadingEnd)
                 anchors.verticalCenter: parent.verticalCenter
                 spacing: 10
-
+                ToolbarPill {
+                    visible: mail.compactReading && !!mail.selectedUid && !mail.composing
+                    ToolbarButton {
+                        symbol: "chevron-left"
+                        text: "Inbox"
+                        onClicked: mail.selectedUid = ""
+                    }
+                }
                 Text {
                     anchors.verticalCenter: parent.verticalCenter
-                    text: mail.composing ? "New Message" : "Inbox"
+                    text: mail.composing ? "New Message" :
+                          mail.selectedFolder === "drafts" ? "Drafts" : "Inbox"
                     color: Theme.label
-                    font { family: Theme.fontUi; pixelSize: Theme.fs(15); weight: Font.Bold }
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(14); weight: Font.DemiBold }
                 }
             },
             Row {
                 visible: mail.configured
-                anchors { right: parent.right; rightMargin: 12; verticalCenter: parent.verticalCenter }
+                anchors { right: parent.right; rightMargin: 14; verticalCenter: parent.verticalCenter }
                 spacing: 8
-
                 ToolbarButton {
-                    round: true
-                    symbol: "arrow-clockwise"
-                    enabled: !mail.loading && !mail.sending
+                    round: true; symbol: "arrow-clockwise"
+                    enabled: !mail.loading && !mail.sending && !mail.composing
+                    Accessible.name: "Check for Mail"
                     onClicked: mail.refresh()
+                }
+                TextField {
+                    id: mailSearch
+                    visible: !mail.composing
+                    width: Math.max(112, Math.min(220, win.width * 0.20))
+                    height: 32; search: true
+                    placeholder: "Search Mail"
+                    text: mail.query
+                    onTextChanged: mail.query = text
                 }
             }
         ]
@@ -58,32 +83,46 @@ ShellRoot {
         sidebar: [
             Column {
                 width: parent.width
-                spacing: 2
-
+                spacing: 6
+                Text {
+                    x: 12; width: parent.width - 24; height: 25
+                    verticalAlignment: Text.AlignBottom
+                    text: "FAVORITES"; color: Theme.secondaryLabel
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(11); weight: Font.DemiBold; letterSpacing: 0.7 }
+                }
                 SidebarRow {
-                    width: parent.width
-                    text: "Inbox"
-                    symbol: "download"
-                    selected: !mail.composing
-                    badge: mail.unreadCount > 0 ? String(mail.unreadCount) : ""
-                    onClicked: mail.composing = false
+                    width: parent.width; text: "Inbox"; symbol: "tray"
+                    selected: mail.selectedFolder === "inbox" && !mail.composing
+                    badge: mail.unreadCount ? String(mail.unreadCount) : ""
+                    onClicked: { mail.selectedFolder = "inbox"; mail.composing = false }
+                }
+                SidebarRow {
+                    width: parent.width; text: "Drafts"; symbol: "doc"
+                    selected: mail.selectedFolder === "drafts" || mail.composing
+                    badge: mail.hasDraft ? "1" : ""
+                    onClicked: {
+                        mail.selectedFolder = "drafts"
+                        mail.composing = false
+                        mail.selectedUid = ""
+                    }
+                }
+                Rectangle {
+                    width: parent.width - 20; x: 10; height: 1
+                    color: Theme.separator
+                }
+                Text {
+                    x: 12; width: parent.width - 24; height: 24
+                    verticalAlignment: Text.AlignBottom
+                    text: "ACCOUNTS"; color: Theme.secondaryLabel
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(11); weight: Font.DemiBold; letterSpacing: 0.7 }
                 }
                 SidebarRow {
                     width: parent.width
-                    text: "New Message"
-                    symbol: "plus"
-                    selected: mail.composing
-                    onClicked: mail.composing = true
+                    text: mail.account || "Mail Account"
+                    symbol: "envelope"
+                    selected: false
+                    onClicked: { mail.selectedFolder = "inbox"; mail.composing = false }
                 }
-            },
-            Text {
-                y: parent.height - 42
-                x: 8
-                width: parent.width - 16
-                text: mail.account
-                elide: Text.ElideRight
-                color: Theme.secondaryLabel
-                font { family: Theme.fontUi; pixelSize: Theme.fs(10) }
             }
         ]
 
@@ -98,6 +137,56 @@ ShellRoot {
             property bool loading: false
             property bool sending: false
             property bool composing: false
+            property string selectedFolder: "inbox"
+            property string query: ""
+            property bool unreadOnly: false
+            property real preferredListWidth: 336
+            readonly property bool compactReading: width < 700
+            property string queuedUid: ""
+            readonly property var filteredMessages: {
+                const q = query.trim().toLocaleLowerCase()
+                return messages.filter((m) => {
+                    if (unreadOnly && !m.unread) return false
+                    return !q || [m.from, m.subject, m.date].some((value) =>
+                        String(value || "").toLocaleLowerCase().includes(q))
+                })
+            }
+            function senderName(sender) {
+                const text = String(sender || "Unknown Sender")
+                return text.replace(/\\s*<[^>]+>\\s*$/, "").replace(/^"|"$/g, "").trim() || text
+            }
+            function address(sender) {
+                const text = String(sender || "")
+                const tagged = /<([^>]+@[^>]+)>/.exec(text)
+                return tagged ? tagged[1] : /[^\\s<>]+@[^\\s<>]+/.exec(text)?.[0] || ""
+            }
+            function initials(sender) {
+                const parts = senderName(sender).split(/\\s+/).filter(Boolean)
+                return (parts.length > 1 ? parts[0][0] + parts[parts.length - 1][0]
+                    : (parts[0] || "?").slice(0, 2)).toUpperCase()
+            }
+            function conciseDate(value) {
+                const date = new Date(String(value || ""))
+                if (!Number.isFinite(date.getTime())) return String(value || "").slice(0, 18)
+                const now = new Date()
+                if (date.toDateString() === now.toDateString())
+                    return Qt.formatDateTime(date, "h:mm AP")
+                if (date.getFullYear() === now.getFullYear())
+                    return Qt.formatDateTime(date, "MMM d")
+                return Qt.formatDateTime(date, "MMM d, yyyy")
+            }
+            function reply() {
+                if (!selectedMessage.uid) return
+                composeTo = address(selectedMessage.from)
+                composeSubject = /^re:/i.test(selectedMessage.subject || "") ?
+                    selectedMessage.subject : "Re: " + (selectedMessage.subject || "")
+                composeBody = "\\n\\nOn " + (selectedMessage.date || "an earlier date") +
+                    ", " + (selectedMessage.from || "someone") + " wrote:\\n" +
+                    String(selectedMessage.body || "").split("\\n").map((line) => "> " + line).join("\\n")
+                selectedFolder = "drafts"
+                composing = true
+            }
+            readonly property bool hasDraft: !!(composeTo || composeSubject || composeBody)
             property string error: ""
             property var messages: []
             property string selectedUid: ""
@@ -222,9 +311,13 @@ ShellRoot {
             }
 
             function read(uid) {
-                if (!uid || readProc.running)
-                    return
+                if (!uid) return
                 selectedUid = uid
+                if (selectedMessage.uid !== uid) selectedMessage = ({})
+                if (readProc.running) {
+                    queuedUid = uid
+                    return
+                }
                 readProc.command = ["python3", helper, "read", uid]
                 readProc.running = true
             }
@@ -320,6 +413,10 @@ ShellRoot {
                             const r = JSON.parse(text)
                             if (r.ok) {
                                 mail.messages = r.messages ?? []
+                                if (mail.selectedUid && !mail.messages.some((m) => m.uid === mail.selectedUid)) {
+                                    mail.selectedUid = ""
+                                    mail.selectedMessage = ({})
+                                }
                                 mail.account = r.account ?? mail.account
                                 mail.error = ""
                             } else {
@@ -335,14 +432,22 @@ ShellRoot {
 
             Process {
                 id: readProc
+                onExited: {
+                    if (mail.queuedUid) {
+                        const uid = mail.queuedUid
+                        mail.queuedUid = ""
+                        mail.read(uid)
+                    }
+                }
                 stdout: StdioCollector {
                     onStreamFinished: {
                         try {
                             const r = JSON.parse(text)
                             if (r.ok) {
-                                mail.selectedMessage = r.message ?? ({})
+                                const item = r.message ?? ({})
+                                if (item.uid === mail.selectedUid) mail.selectedMessage = item
                                 mail.messages = mail.messages.map((m) => {
-                                    if (m.uid !== mail.selectedUid) return m
+                                    if (m.uid !== item.uid) return m
                                     const copy = Object.assign({}, m)
                                     copy.unread = false
                                     return copy
