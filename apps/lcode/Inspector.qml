@@ -13,6 +13,9 @@ Flickable {
     property var menuParent
     property string path: ""
     property var editor: null
+    // Each document's identity section should start at the top when tabs
+    // change, rather than inheriting the previous file's scroll position.
+    onPathChanged: contentY = 0
     clip: true
     contentHeight: column.height + 20
     boundsBehavior: Flickable.StopAtBounds
