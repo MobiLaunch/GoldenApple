@@ -57,3 +57,36 @@ test("unknown screen falls back to the toolkit's unconstrained size", () => {
     assert.equal(geometry.maximumWidth(0), geometry.UNKNOWN_SIZE);
     assert.equal(geometry.maximumHeight(0, 54, 30), geometry.UNKNOWN_SIZE);
 });
+
+test("launch animation targets the compositor's centered coordinates", () => {
+    const launch = read("shell/AppLaunch.qml");
+    assert.match(launch, /import "ui\/WindowGeometry\.js" as WindowGeometry/);
+    assert.match(launch, /WindowGeometry\.fitWidth\(size\.w, width\)/);
+    assert.match(launch, /WindowGeometry\.fitHeight\(size\.h, height, dockSize, Theme\.sizeMenubar\)/);
+    assert.match(launch, /\(height - h\) \/ 2 - WindowGeometry\.CENTER_BIAS/);
+    for (const [displayWidth, displayHeight, dockSize] of [[1920,1080,54],[1366,768,90],[800,600,90]]) {
+        const width = geometry.fitWidth(1180, displayWidth);
+        const height = geometry.fitHeight(780, displayHeight, dockSize, 30);
+        assert.ok((displayHeight-height)/2-geometry.CENTER_BIAS >= 44);
+        assert.ok((displayWidth-width)/2 >= 24);
+    }
+});
+
+test("compositor exit uses a soft native fade rather than a false window fold", () => {
+    const generator = read("design/build.mjs");
+    const built = read("design/dist/hyprland-motion.conf");
+    assert.match(generator, /animation = windowsOut, 1, 2, smooth, popin 100%/);
+    assert.match(generator, /animation = fadeOut, 1, 2, smooth/);
+    assert.match(built, /animation = windowsOut, 1, 2, smooth, popin 100%/);
+    assert.match(built, /animation = fadeOut, 1, 2, smooth/);
+});
+
+test("Dock exits are deadline-driven and activating parked windows raises them", () => {
+    const dock = read("shell/Dock.qml");
+    assert.match(dock, /onRunningRecordsChanged: scheduleRecentExpiry\(\)/);
+    assert.match(dock, /id: recentExpiry\s+objectName: "dockRecentExpiry"\s+repeat: false/);
+    assert.doesNotMatch(dock, /interval:\s*25; repeat: true/);
+    assert.match(dock, /Hyprland\.dispatch\(`focuswindow address:\$\{address\}`\)/);
+    assert.match(dock, /id: activatePulse/);
+    assert.match(dock, /if \(Prefs\.reduceMotion\) \{ activatePulse\.stop\(\); icon\.activationLift = 0 \}/);
+});
