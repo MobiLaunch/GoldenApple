@@ -10,6 +10,7 @@ Item {
     property int current: 0
     property Item menuParent: null      // the window's overlay (AppWindow.overlay)
     signal picked(int index)
+    readonly property bool expanded: menu.visible
     activeFocusOnTab: true
     opacity: enabled ? 1 : 0.45
     Accessible.role: Accessible.ComboBox
