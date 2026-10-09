@@ -306,8 +306,17 @@ Item {
                 Rectangle {
                     anchors.fill: parent
                     radius: height / 2
-                    color: tab.selected ? (Theme.dark ? "#26ffffff" : "#ffffff") : tabHover.hovered ? Theme.fill : "transparent"
+                    color: tab.selected ? (Theme.dark ? "#26ffffff" : "#ffffff")
+                        : tabHover.hovered ? Theme.fill : "transparent"
                     border { width: tab.selected ? 1 : 0; color: Theme.dark ? "#1affffff" : "#14000000" }
+                    scale: !Theme.reduceMotion && tabTap.pressed ? 0.985 : 1
+                    Behavior on scale {
+                        enabled: !Theme.reduceMotion
+                        NumberAnimation { duration: 95; easing.type: Easing.OutCubic }
+                    }
+                    Behavior on color {
+                        ColorAnimation { duration: Theme.reduceMotion ? 0 : 135; easing.type: Easing.OutCubic }
+                    }
                 }
                 Symbol {
                     x: 12
@@ -348,7 +357,7 @@ Item {
                     }
                 }
                 HoverHandler { id: tabHover }
-                TapHandler { onTapped: area.current = tab.index }
+                TapHandler { id: tabTap; onTapped: area.current = tab.index }
                 TapHandler { acceptedButtons: Qt.MiddleButton; onTapped: area.closeAt(tab.index, false) }
             }
         }
@@ -454,8 +463,12 @@ Item {
         y: jumpBar.y + (jumpBar.visible ? jumpBar.height : 0)
         width: parent.width
         height: area.findVisible ? (area.replaceVisible ? 78 : 42) : 0
-        visible: area.findVisible
+        visible: height > 0.5
         clip: true
+        Behavior on height {
+            enabled: !Theme.reduceMotion
+            NumberAnimation { duration: 170; easing.type: Easing.OutCubic }
+        }
         Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: Theme.separator }
         Row {
             x: 10; y: 6

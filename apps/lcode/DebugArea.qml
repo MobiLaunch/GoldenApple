@@ -8,6 +8,8 @@ Item {
     id: debug
     property var app
     property var backend
+    // Measure drag movement in a stationary coordinate system.
+    property Item resizeCoordinateSpace: null
     signal hideRequested()
     signal resizeBy(real dy)
 
@@ -28,8 +30,18 @@ Item {
         y: -3
         cursorShape: Qt.SizeVerCursor
         property real startY
-        onPressed: (m) => startY = m.y
-        onPositionChanged: (m) => debug.resizeBy(m.y - startY)
+        function pointerY(m) {
+            return mapToItem(debug.resizeCoordinateSpace || debug, m.x, m.y).y
+        }
+        onPressed: (m) => startY = pointerY(m)
+        onPositionChanged: (m) => {
+            if (!pressed) return
+            const next = pointerY(m)
+            const delta = next - startY
+            if (Math.abs(delta) < 0.5) return
+            startY = next
+            debug.resizeBy(delta)
+        }
     }
 
     Item {

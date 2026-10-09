@@ -339,6 +339,7 @@ AppWindow {
 
     // --------------------------------------------------- editor and debug
     Item {
+        id: editorDock
         anchors.fill: parent
         clip: true
 
@@ -371,6 +372,7 @@ AppWindow {
             app: win.app
             backend: win.backend
             onHideRequested: win.toggleDebug()
+            resizeCoordinateSpace: editorDock
             onResizeBy: (dy) => win.resizeDebug(dy)
         }
     }
