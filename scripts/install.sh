@@ -251,11 +251,20 @@ place() { # place SRC DEST: copy with backup of a differing existing file
   cp "$src" "$dest"
 }
 
-# 1. Regenerate themes from tokens (outputs are committed, so Node is optional).
-# Software Update installs a downloaded snapshot as is (GG_SKIP_BUILD=1).
-if [[ "${GG_SKIP_BUILD:-0}" != 1 ]] && command -v node >/dev/null; then
-  say "building design tokens and icons"
-  node "$REPO/design/build.mjs" >/dev/null
+# 1. Regenerate assets from the canonical sources. Software Update stages
+# an exact GitHub snapshot (GG_SKIP_BUILD=1), but OrchardKit glyphs now live in
+# an immutable source table and their pre-tinted copies are build outputs.
+# Rebuild the icon output even for OTA, otherwise the running shell silently
+# keeps its OLD icons while source and Settings report the new version.
+# nodejs is in the required system package list and golden_update.py installs
+# missing required packages before staging. A standalone install without Node
+# can still use the checked-in generated assets as a fallback.
+if command -v node >/dev/null; then
+  if [[ "${GG_SKIP_BUILD:-0}" != 1 ]]; then
+    say "building design tokens"
+    node "$REPO/design/build.mjs" >/dev/null
+  fi
+  say "building shared icons"
   node "$REPO/icons/build.mjs" >/dev/null
 fi
 
