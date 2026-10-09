@@ -30,6 +30,9 @@ require("apps/lib/AppWindow.qml", [
     "Math.max(0, parent.width - 20)",
     "choreographyReady = true",
     "Math.max(lights.x + lights.width + 16,",
+    "readonly property real toolbarLeadingEnd: Math.max(toolbarSafeX,",
+    "sideRow.x + sideRow.width + (sideRow.width > 0 ? 12 : 0)",
+    "Math.max(win.contentX + 10, win.toolbarLeadingEnd)",
 ])
 
 require("apps/lib/ModalSheet.qml", [
