@@ -29,6 +29,7 @@ Singleton {
     readonly property bool touchIdUnlock: data.touchId?.unlock ?? true
     readonly property real dockSize: data.dock?.size ?? 54
     readonly property bool dockIndicators: data.dock?.indicators ?? true
+    readonly property bool dockShowRecents: data.dock?.showRecents ?? true
     readonly property bool animateLaunch: (data.dock?.animateLaunch ?? true) && !reduceMotion
     readonly property var dockPinned: Array.isArray(data.dock?.pinned) ? data.dock.pinned : null   // null: the default set
     // The apps kept in the Dock, in order, and the set a new account starts with.
