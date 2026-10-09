@@ -182,7 +182,7 @@ PanelWindow {
         "org.goldengate.Notes", "org.goldengate.Weather", "org.goldengate.Clock", "org.goldengate.Calculator",
         "org.goldengate.TextEdit", "org.goldengate.LCode", "org.goldengate.AirDrop", "org.goldengate.Passwords", "org.goldengate.Software", "org.goldengate.Settings",
         "org.goldengate.Terminal", "org.goldengate.DiskUtility",
-        "org.goldengate.ArchiveUtility", "org.goldengate.Intelligence"
+        "org.goldengate.ArchiveUtility"
     ]
     // Launchpad is an APPROVED-icon surface, not a list of all executables.
     // A newly installed app qualifies only when gg-icon-resolver recognizes
