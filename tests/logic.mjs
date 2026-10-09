@@ -430,7 +430,9 @@ test('Mission Control arrow keys move to the closest window in the next row', ()
 test('Files drops: move within Files, copy from other apps, Trash, never into itself', () => {
   const ops = [];
   const c = context('apps/files.qml', ['pathsOf', 'accepts', 'dropOn'], {
+    busy:false, say(){},
     runOperation: (args, kind) => ops.push([kind, ...args]),
+    startTransfer: (paths, dest, mode) => ops.push(['transfer', ...paths, dest, mode]),
     Qt: { MoveAction: 2, CopyAction: 1 },
   });
   const urls = ['file:///home/j/Documents/Plan%20B.txt', 'file:///home/j/Documents/Project', 'https://example.com/x'];
@@ -447,11 +449,11 @@ test('Files drops: move within Files, copy from other apps, Trash, never into it
   };
   let d = drop({}, 2);
   c.dropOn(d, '/home/j/Desktop');
-  assert.deepEqual(ops.pop(), ['drop', 'drop', '/home/j/Desktop', 'auto', '/home/j/Documents/Plan B.txt']);
+  assert.deepEqual(ops.pop(), ['transfer', '/home/j/Documents/Plan B.txt', '/home/j/Desktop', 'auto']);
   assert.equal(d.accepted, 2, 'a drag from Files moves');
   d = drop(null, 2);
   c.dropOn(d, '/home/j/Desktop');
-  assert.deepEqual(ops.pop(), ['drop', 'drop', '/home/j/Desktop', 'copy', '/home/j/Documents/Plan B.txt']);
+  assert.deepEqual(ops.pop(), ['transfer', '/home/j/Documents/Plan B.txt', '/home/j/Desktop', 'copy']);
   assert.equal(d.accepted, 1, "another app's file is copied, so that app keeps its own");
   d = drop({}, 2);
   c.dropOn(d, 'trash:');
