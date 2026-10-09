@@ -1319,8 +1319,31 @@ ShellRoot {
                     function sort() { if (files.sortKey === key) files.descending = !files.descending; else files.sortKey = key }
                     Keys.onReturnPressed: sort()
                     Keys.onSpacePressed: sort()
-                    Text { anchors { left: parent.left; leftMargin: 8; verticalCenter: parent.verticalCenter } width: parent.width - 16; elide: Text.ElideRight; text: parent.label + (files.sortKey === parent.key ? files.descending ? " ↓" : " ↑" : ""); color: Theme.secondaryLabel; font.pixelSize: Theme.fs(11) }
-                    MouseArea { anchors.fill: parent; onClicked: parent.sort() }
+                    Rectangle {
+                        anchors.fill: parent
+                        radius: 6
+                        color: sortArea.pressed
+                            ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.14)
+                            : sortArea.containsMouse ? Theme.fill : "transparent"
+                        Behavior on color {
+                            ColorAnimation { duration: Theme.reduceMotion ? 0 : 110 }
+                        }
+                    }
+                    Text {
+                        anchors { left: parent.left; leftMargin: 8; verticalCenter: parent.verticalCenter }
+                        width: parent.width - 16
+                        elide: Text.ElideRight
+                        text: parent.label + (files.sortKey === parent.key ? files.descending ? " ↓" : " ↑" : "")
+                        color: files.sortKey === parent.key ? Theme.label : Theme.secondaryLabel
+                        font.pixelSize: Theme.fs(11)
+                    }
+                    MouseArea {
+                        id: sortArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: { parent.forceActiveFocus(); parent.sort() }
+                    }
                     FocusRing {}
                 }
                 SortHeading { label: "Name"; key: "name"; width: parent.width * 0.55 }
