@@ -14,7 +14,7 @@ Item {
     id: look
     anchors.fill: parent
     z: 105
-    visible: card.opacity > 0
+    visible: look.open || card.opacity > 0.001
     property bool open: false
     property var entry: null            // the selected item, as files/helper.py lists it
     signal openRequested(var entry)
@@ -63,7 +63,7 @@ Item {
         anchors.fill: parent
         color: "#000000"
         opacity: look.open ? (Theme.dark ? 0.28 : 0.12) : 0
-        Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 155 } }
+        Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 0 : 155; easing.type: Easing.OutCubic } }
         MouseArea { anchors.fill: parent; enabled: look.open; onClicked: look.closed() }
     }
 
@@ -91,12 +91,26 @@ Item {
         color: Theme.dark ? "#1e1e20" : "#fafafa"
         border { width: 1; color: Theme.dark ? "#30ffffff" : "#1f000000" }
         opacity: look.open ? 1 : 0
-        scale: look.open || Theme.reduceMotion ? 1 : 0.9
-        Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : (look.open ? 160 : 140) } }
-        Behavior on scale { NumberAnimation { duration: Theme.reduceMotion ? 1 : 210; easing.type: Easing.OutBack; easing.overshoot: 0.9 } }
-        Behavior on width { enabled: look.open && !Theme.reduceMotion; NumberAnimation { duration: 155; easing.type: Easing.OutCubic } }
-        Behavior on height { enabled: look.open && !Theme.reduceMotion; NumberAnimation { duration: 155; easing.type: Easing.OutCubic } }
-        MouseArea { anchors.fill: parent }       // clicks inside don't close it
+        scale: look.open || Theme.reduceMotion ? 1 : 0.972
+        transformOrigin: Item.Center
+        Behavior on opacity {
+            NumberAnimation { duration: Theme.reduceMotion ? 0 : (look.open ? 165 : 115); easing.type: Easing.OutCubic }
+        }
+        Behavior on scale {
+            enabled: !Theme.reduceMotion
+            NumberAnimation { duration: 195; easing.type: Easing.OutCubic }
+        }
+        // Arrow-key navigation between files retargets the same preview. The
+        // card morphs to the new aspect ratio without snapping its boundaries.
+        Behavior on width {
+            enabled: look.open && !Theme.reduceMotion
+            NumberAnimation { duration: 190; easing.type: Easing.OutCubic }
+        }
+        Behavior on height {
+            enabled: look.open && !Theme.reduceMotion
+            NumberAnimation { duration: 190; easing.type: Easing.OutCubic }
+        }
+        MouseArea { anchors.fill: parent; enabled: look.open } // no ghost clicks during exit
 
         Image {
             id: picture
@@ -107,6 +121,29 @@ Item {
             asynchronous: true
             smooth: true
             mipmap: true
+            opacity: status === Image.Ready ? 1 : 0
+            Behavior on opacity {
+                NumberAnimation { duration: Theme.reduceMotion ? 0 : 125; easing.type: Easing.OutCubic }
+            }
+        }
+
+        // Avoid an empty-looking flash when navigating between large images.
+        // This is a static status treatment, not a timer or a GPU effect.
+        Column {
+            anchors.centerIn: picture
+            spacing: 7
+            visible: look.open && look.kind === "image" && picture.status === Image.Loading
+            Symbol {
+                anchors.horizontalCenter: parent.horizontalCenter
+                name: "photo"; size: 30; tone: "gray"
+                opacity: 0.6
+            }
+            Text {
+                anchors.horizontalCenter: parent.horizontalCenter
+                text: "Preparing Preview…"
+                color: Theme.secondaryLabel
+                font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+            }
         }
 
         // Title bar: close, the name, and Open.
