@@ -54,6 +54,7 @@ const orchardKeys = {
   speaker: "volume-1", "speaker-wave": "volume-2", "volume-x": "volume-x",
   backward: "skip-back", forward: "skip-forward",
   "chevron-up": "chevron-up", "chevron-updown": "chevrons-up-down",
+  "arrow-left": "arrow-left", "arrow-right": "arrow-right",
   "arrow-up": "arrow-up", "arrow-clockwise": "rotate-cw",
   "rotate-left": "rotate-ccw", "rotate-right": "rotate-cw",
 };
