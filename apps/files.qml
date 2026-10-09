@@ -1750,14 +1750,37 @@ ShellRoot {
                                     name: "chevron-small-right"; size: 11; tone: "gray"
                                 }
                                 Item {
-                                    objectName: crumb.folded ? "filesCrumbsFolded" : ""
+                                    id: crumbButton
+                                    objectName: crumb.folded ? "filesCrumbsFolded" : "filesCrumb:" + crumb.c.path
                                     width: crumbContent.implicitWidth + 10; height: 22
                                     anchors.verticalCenter: parent.verticalCenter
+                                    activeFocusOnTab: true
+                                    function activate() {
+                                        if (crumb.folded)
+                                            menu.popup(crumbButton, 0, -6 - crumb.folded.length * 26,
+                                                crumb.folded.map((f) => ({ text: f.name, action: () => files.navigate(f.path) })))
+                                        else files.navigate(crumb.c.path)
+                                    }
                                     Accessible.role: crumb.folded ? Accessible.ButtonMenu : Accessible.Button
                                     Accessible.name: crumb.folded ? crumb.folded.map((f) => f.name).join(", ") : crumb.c.name
+                                    Accessible.onPressAction: crumbButton.activate()
+                                    Keys.onReturnPressed: crumbButton.activate()
+                                    Keys.onSpacePressed: (event) => {
+                                        if (!event.isAutoRepeat) crumbButton.activate()
+                                    }
+                                    FocusRing {}
                                     Rectangle {
                                         anchors.fill: parent; radius: 6
-                                        color: crumbArea.pressed ? Theme.selection : crumbArea.containsMouse ? (Theme.dark ? "#12ffffff" : "#0a000000") : "transparent"
+                                        color: crumbArea.pressed ? Theme.selection : crumbArea.containsMouse
+                                            ? (Theme.dark ? "#12ffffff" : "#0a000000") : "transparent"
+                                        scale: !Theme.reduceMotion && crumbArea.pressed ? 0.97 : 1
+                                        Behavior on scale {
+                                            enabled: !Theme.reduceMotion
+                                            NumberAnimation { duration: 95; easing.type: Easing.OutCubic }
+                                        }
+                                        Behavior on color {
+                                            ColorAnimation { duration: Theme.reduceMotion ? 0 : 100; easing.type: Easing.OutCubic }
+                                        }
                                     }
                                     Row {
                                         id: crumbContent
@@ -1777,9 +1800,11 @@ ShellRoot {
                                         id: crumbArea
                                         anchors.fill: parent
                                         hoverEnabled: true
-                                        onClicked: crumb.folded
-                                            ? menu.popup(parent, 0, -6 - crumb.folded.length * 26, crumb.folded.map((f) => ({ text: f.name, action: () => files.navigate(f.path) })))
-                                            : files.navigate(crumb.c.path)
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: {
+                                            crumbButton.forceActiveFocus()
+                                            crumbButton.activate()
+                                        }
                                     }
                                     DropArea {
                                         anchors.fill: parent
