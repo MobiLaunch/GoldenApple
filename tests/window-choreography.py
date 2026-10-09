@@ -81,6 +81,7 @@ require("apps/lcode/EditorArea.qml", [
     "id: tabTap; onTapped: area.current = tab.index",
     "scale: !Theme.reduceMotion && tabTap.pressed ? 0.985 : 1",
     "visible: height > 0.5",
+    "enabled: area.findVisible",
     "NumberAnimation { duration: 170; easing.type: Easing.OutCubic }",
 ])
 require("apps/files/QuickLook.qml", [
@@ -89,6 +90,10 @@ require("apps/files/QuickLook.qml", [
     "enabled: look.open",
     "objectName: \"quickLookHitArea\"",
     "status === Image.Ready ? 1 : 0",
+    "property size previousImageFit:",
+    'if (look.kind === "image") return previousImageFit',
+    'picture.status === Image.Error ? "Preview unavailable"',
+
     "Theme.reduceMotion ? 1 : 0.972",
 ])
 require("apps/lib/ModalSheet.qml", [

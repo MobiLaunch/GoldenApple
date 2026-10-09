@@ -75,7 +75,10 @@ space, preventing drag-feedback jitter. Find/Replace opens with a short 170 ms
 content reflow; tabs tint and compress very slightly on interaction.
 
 **Files Quick Look** now grows only ~2.8% rather than bouncing in, morphs
-between preview aspect ratios, and fades loaded images into the card. A
+between preview aspect ratios, and fades loaded images into the card.
+A loading image retains the previous preview dimensions until the new image
+is ready, avoiding a double resize; failed images show an explicit fallback
+message instead of a blank rectangle. A
 temporary "Preparing Preview" label keeps large images from appearing blank.
 Preview controls and document-sheet buttons stop accepting input as soon as
 dismissal begins, even while the exit fade remains visible. No second action

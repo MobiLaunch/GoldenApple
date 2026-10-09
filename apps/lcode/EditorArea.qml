@@ -464,6 +464,7 @@ Item {
         width: parent.width
         height: area.findVisible ? (area.replaceVisible ? 78 : 42) : 0
         visible: height > 0.5
+        enabled: area.findVisible   // closing bar releases input during its exit
         clip: true
         Behavior on height {
             enabled: !Theme.reduceMotion
