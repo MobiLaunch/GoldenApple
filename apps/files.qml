@@ -1526,7 +1526,9 @@ ShellRoot {
                 panelWidth: 300
                 panelHeight: confirmColumn.implicitHeight + 40
                 z: 110
-                onShownChanged: if (shown) emptyButton.forceActiveFocus()
+                onShownChanged: if (shown) Qt.callLater(() => {
+                    if (confirmEmpty.shown) emptyButton.forceActiveFocus()
+                })
                 onClosed: files.forceActiveFocus()
                 Keys.onEscapePressed: visible = false
                 Column {
