@@ -71,7 +71,8 @@ Scope {
         }).length
         // Mail shows its real IMAP unread messages, not just D-Bus banners.
         // The local file is refreshed after a successful inbox sync.
-        return name === "org.goldengate.mail" ? Math.max(active, mailUnread) : active
+        return name === "org.goldengate.mail" && Prefs.notifyApp("org.goldengate.Mail").badges
+            ? Math.max(active, mailUnread) : active
     }
     // One name per app for its Notifications settings: the app it speaks for,
     // else its desktop file, else the name it gives.
