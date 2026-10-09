@@ -186,6 +186,12 @@ if (places.folder != null)
 for (const [key, svg] of Object.entries(symbols)) {
   const name = symbolNames[key] ?? `goldengate-${key}-symbolic`;
   const file = join(root, "symbolic/actions", `${name}.svg`);
+  // OrchardKit contours are already filled, unlike the legacy stroked
+  // icons. Publish the same geometry for GTK without expensive path outlining.
+  if (Object.hasOwn(orchardKeys, key)) {
+    writeFileSync(file, svg.replace(/currentColor/g, "#2e3436"));
+    continue;
+  }
   if (!outline) { if (keptSymbolic.has(`${name}.svg`)) writeFileSync(file, keptSymbolic.get(`${name}.svg`)); continue; }
   // GTK recolours symbolic icons by their fill; one outlined path draws the same in every renderer.
   let out;
