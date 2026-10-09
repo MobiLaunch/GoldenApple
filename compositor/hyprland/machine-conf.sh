@@ -42,4 +42,12 @@ animation = workspaces, 1, 4, smooth, slide
 env = QT_QUICK_BACKEND,software
 EOF
   fi
+  # Desktop & Dock writes windows.conf only after its first adjustment.
+  # Include its contents, not a nested source path: a missing file must not
+  # trigger Hyprland's "source= globbing error: found no match" on upgrades,
+  # and an accidentally deleted preference file must not break config reload.
+  if [ -r "$(dirname "$out")/windows.conf" ]; then
+    printf '\n# Desktop & Dock: persisted window snapping and border resize.\n'
+    cat "$(dirname "$out")/windows.conf"
+  fi
 } > "$out.tmp" && mv "$out.tmp" "$out"
