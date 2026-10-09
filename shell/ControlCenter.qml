@@ -39,7 +39,7 @@ PanelWindow {
     property var networks: []           // [{ ssid, signal, secure, active }]
     function showDetail(kind) {
         // Anything else (asked over IPC) had an empty "No Outputs" panel.
-        if (!["", "wifi", "bluetooth", "sound", "mirroring", "focus", "display", "media"].includes(kind)) return
+        if (!["", "wifi", "bluetooth", "sound", "mirroring", "focus", "display", "media", "airpods"].includes(kind)) return
         detail = kind
         stage.contentY = 0
         // Keep the last networks on screen while rescanning, so the list
