@@ -11,7 +11,9 @@ const names = ["chevron-left", "chevron-right", "search", "wifi", "bluetooth", "
   "globe", "headphones", "settings", "trash-2", "download", "share-2", "list", "grid-2x2",
   "volume-1", "volume-2", "volume-x", "skip-back", "skip-forward",
   "chevron-up", "chevrons-up-down", "arrow-left", "arrow-right",
-  "arrow-up", "rotate-cw", "rotate-ccw"];
+  "arrow-up", "rotate-cw", "rotate-ccw",
+  "mic", "video", "phone", "info", "shield", "bookmark", "star", "camera",
+  "copy", "scissors", "link", "printer", "terminal", "code", "hammer", "calendar"];
 
 test("OrchardKit Xcode artboards are normalized into usable Qt SVG glyphs", () => {
   const build = text("icons/build.mjs");
