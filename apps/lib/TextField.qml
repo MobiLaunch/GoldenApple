@@ -85,6 +85,7 @@ Rectangle {
     }
     TextInput {
         id: input
+        objectName: "textFieldNativeInput"
         x: tf.search ? tf.glyphSize + (tf.bare ? 10 : 14) : tf.bare ? 0 : 8
         width: Math.max(0, parent.width - x - (tf.bare ? 0 : 8) - (clearButton.shown ? clearButton.width + 2 : 0))
         anchors.verticalCenter: parent.verticalCenter
