@@ -48,7 +48,7 @@ PanelWindow {
         if (kind === "mirroring") { airplayProbe.running = true; if (!castBrowse.running) castBrowse.running = true }
     }
     function openDetailSettings() {
-        const pane = ({wifi:"wifi", bluetooth:"bluetooth", sound:"sound", mirroring:"airplay", focus:"focus", display:"displays"})[detail]
+        const pane = ({wifi:"wifi", bluetooth:"bluetooth", sound:"sound", mirroring:"airplay", focus:"focus", display:"displays", airpods:"airpods"})[detail]
         if (!pane) return
         open = false; run("gg-settings " + pane)
     }
