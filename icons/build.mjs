@@ -51,6 +51,11 @@ const orchardKeys = {
   globe: "globe", headphones: "headphones", gear: "settings",
   trash: "trash-2", download: "download", share: "share-2",
   list: "list", grid: "grid-2x2",
+  speaker: "volume-1", "speaker-wave": "volume-2",
+  backward: "skip-back", forward: "skip-forward",
+  "chevron-up": "chevron-up", "chevron-updown": "chevrons-up-down",
+  "arrow-up": "arrow-up", "arrow-clockwise": "rotate-cw",
+  "rotate-left": "rotate-ccw", "rotate-right": "rotate-cw",
 };
 const unifiedSymbols = { ...baseSymbols };
 for (const [key, orchardKey] of Object.entries(orchardKeys))
