@@ -323,7 +323,9 @@ FloatingWindow {
             x: 20; y: Math.round((win.toolbarHeight - 13) / 2)
             active: win.active
             canZoom: win.resizable
-            closeAction: win.closeAction
+            // The traffic light must take the SAME close path as ⌘W: document
+            // windows hide/reopen, while single-window utilities actually quit.
+            closeAction: function() { win.closeWindow() }
             onZoomHoveredChanged: zoomDelay.restart()
         }
         // Resting on the green button opens Move & Resize, after a beat as on
