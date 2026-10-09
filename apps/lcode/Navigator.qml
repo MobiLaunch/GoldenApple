@@ -152,7 +152,7 @@ Item {
                 }
             }
             leadingSize: 18
-            onClicked: { nav.selectedPath = ""; nav.openProjectEditor() }
+            onClicked: nav.openProjectEditor()
             TapHandler {
                 acceptedButtons: Qt.RightButton
                 onTapped: (p) => nav.fileMenu(projectRow, p.position.x, p.position.y, nav.app.project.root, true)
@@ -165,14 +165,51 @@ Item {
             clip: true
             model: nav.rows
             boundsBehavior: Flickable.StopAtBounds
+            activeFocusOnTab: true
+            property bool keyboardNavigating: false
+            function focusRow(rowIndex) {
+                if (count === 0) return
+                const next = Math.max(0, Math.min(count - 1, rowIndex))
+                keyboardNavigating = true
+                currentIndex = next
+                positionViewAtIndex(next, ListView.Contain)
+                Qt.callLater(() => {
+                    const item = tree.itemAtIndex(next)
+                    if (item && item.focusControl) item.focusControl.forceActiveFocus()
+                    else tree.forceActiveFocus()
+                })
+            }
+            Keys.onPressed: (event) => {
+                if (event.modifiers & (Qt.ControlModifier | Qt.AltModifier | Qt.MetaModifier)) return
+                const i = Math.max(0, Math.min(tree.count - 1, tree.currentIndex))
+                const entry = nav.rows[i]
+                if (event.key === Qt.Key_Up) tree.focusRow(i - 1)
+                else if (event.key === Qt.Key_Down) tree.focusRow(i + 1)
+                else if (event.key === Qt.Key_Right && entry && entry.dir) {
+                    if (!nav.expanded[entry.path]) nav.toggle(entry.path)
+                    else if (i + 1 < tree.count) tree.focusRow(i + 1)
+                } else if (event.key === Qt.Key_Left && entry) {
+                    if (entry.dir && nav.expanded[entry.path]) nav.toggle(entry.path)
+                    else {
+                        const parentIndex = nav.rows.findIndex((n) => n.path === entry.parent)
+                        if (parentIndex >= 0) tree.focusRow(parentIndex)
+                    }
+                } else return
+                tree.keyboardNavigating = true
+                event.accepted = true
+            }
             delegate: Item {
                 id: node
+                required property int index
                 required property var modelData
+                property alias focusControl: fileNodeRow
                 width: tree.width
                 height: 28
                 SidebarRow {
+                    id: fileNodeRow
                     anchors.fill: parent
                     indent: node.modelData.depth * 14
+                    onActiveFocusChanged: if (activeFocus) tree.currentIndex = node.index
                     text: node.modelData.name
                     selected: node.modelData.path === nav.selectedPath
                     leadingSize: 32
@@ -201,9 +238,21 @@ Item {
                         if (node.modelData.dir) {
                             nav.toggle(node.modelData.path)
                         } else {
-                            nav.selectedPath = node.modelData.path
                             nav.openFile(node.modelData.path, 0, 0)
                         }
+                        tree.keyboardNavigating = false
+                    }
+                }
+                Rectangle {
+                    anchors { fill: parent; margins: 2 }
+                    radius: 7
+                    color: "transparent"
+                    border.width: 1
+                    border.color: Theme.accent
+                    opacity: tree.keyboardNavigating && fileNodeRow.activeFocus ? 0.75 : 0
+                    visible: opacity > 0.001
+                    Behavior on opacity {
+                        NumberAnimation { duration: Theme.reduceMotion ? 0 : 105; easing.type: Easing.OutCubic }
                     }
                 }
                 TapHandler {
