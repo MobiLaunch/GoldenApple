@@ -13,7 +13,7 @@ Pane {
     headerTitle: "Citron Intelligence"
     headerText: "Writing, ideas and images — with Google Gemini."
 
-    Process { id: appLaunch; command: ["gg-intelligence"] }
+    Process { id: appLaunch; command: ["qs", "-c", "golden-gate", "ipc", "call", "citron", "ask"] }
     property string panelError: ""
     property var settingsComponent: null
     function reloadPanel() {
