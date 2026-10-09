@@ -240,6 +240,13 @@ jobs:
         run: python tests/tiling.py
       - name: Files' backend (drag and drop, Trash, Recents)
         run: python tests/files-helper.py
+      - name: "Files transfers: cancellation, conflicts, clipboard, Undo and view persistence"
+        run: python tests/files-workflow.py
+      - name: "Files UI: multi-selection, clipboard shortcuts, conflict dialogs and sorting"
+        run: python tests/files-interactions.py
+        env:
+          QT_QPA_PLATFORM: offscreen
+          QT_QUICK_BACKEND: software
       - name: Notes' Recently Deleted never replaces a deleted note, and Recover puts it back
         run: python tests/notes-trash.py
       - name: Calendar's store never overwrites a damaged file, locks changes and checks dates

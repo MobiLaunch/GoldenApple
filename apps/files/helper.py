@@ -11,6 +11,7 @@ import stat
 import subprocess
 import sys
 import time
+import tempfile
 from datetime import datetime
 from urllib.parse import quote, unquote, urlparse
 import xml.etree.ElementTree as ET
@@ -322,7 +323,8 @@ def mkdir(raw: str, name: str) -> int:
     target = parent / clean
     try:
         target.mkdir()
-        return result(True, path=str(target))
+        st = target.lstat()
+        return result(True, path=str(target), undo={"kind": "mkdir", "path": str(target), "identity": [st.st_dev, st.st_ino], "created": st.st_ctime_ns})
     except FileExistsError:
         return result(False, error=f"The name “{clean}” is already taken. Please choose a different name.")
     except Exception as exc:
@@ -406,7 +408,8 @@ def rename(raw: str, name: str) -> int:
                 raise
         else:
             rename_noreplace(path, target)
-        return result(True, path=str(target))
+        st = target.lstat()
+        return result(True, path=str(target), undo={"kind": "rename", "path": str(target), "original": str(path), "identity": [st.st_dev, st.st_ino]})
     except FileExistsError:
         return result(False, error=f"The name “{clean}” is already taken. Please choose a different name.")
     except RenameUnsafe:
@@ -416,19 +419,145 @@ def rename(raw: str, name: str) -> int:
         return result(False, error=str(exc))
 
 
-def open_item(raw: str) -> int:
-    path = pathlib.Path(raw).expanduser().resolve()
+def open_item(*raws: str) -> int:
     try:
-        subprocess.Popen(["xdg-open", str(path)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+        for raw in raws:
+            path = pathlib.Path(raw).expanduser().resolve()
+            subprocess.Popen(["gg-files" if path.is_dir() else "xdg-open", str(path)],
+                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
         return result(True)
     except Exception as exc:
         return result(False, error=str(exc))
+
+
+def undo(req: dict) -> int:
+    """Undo only the exact item we created/renamed; never replace a name."""
+    try:
+        path = pathlib.Path(req["path"])
+        st = path.lstat()
+        if [st.st_dev, st.st_ino] != req.get("identity"):
+            return result(False, error="This item has been replaced since the operation. Nothing was changed.")
+        if req.get("kind") == "mkdir":
+            if st.st_ctime_ns != req.get("created"):
+                return result(False, error="This folder has changed since it was created. It was kept.")
+            path.rmdir()  # a populated folder is never removed
+            return result(True)
+        if req.get("kind") == "rename":
+            original = pathlib.Path(req["original"])
+            rename_noreplace(path, original)
+            st = original.lstat()
+            return result(True, path=str(original), identity=[st.st_dev, st.st_ino], created=st.st_ctime_ns)
+        return result(False, error="That operation can't be undone.")
+    except FileExistsError:
+        return result(False, error="The original name is now taken. Both items were kept.")
+    except OSError as exc:
+        return result(False, error="The operation couldn't be undone: " + str(exc))
+    except (KeyError, TypeError, ValueError):
+        return result(False, error="The undo record wasn't valid.")
+
+
+def file_info(raw: str) -> int:
+    try:
+        path = pathlib.Path(raw).expanduser().absolute()
+        s = path.lstat()
+        return result(True, info={**describe(path), "location": str(path.parent),
+                                 "permissions": stat.filemode(s.st_mode),
+                                 "link": os.readlink(path) if path.is_symlink() else "",
+                                 "size": s.st_size if not path.is_dir() else 0})
+    except OSError as exc:
+        return result(False, error=str(exc))
+
+
+def clipboard_write(req: dict) -> int:
+    try:
+        paths = req.get("paths", [])
+        mode = req.get("mode", "copy")
+        if mode not in ("copy", "cut") or not paths:
+            return result(False, error="Select items to copy or cut.")
+        content = mode + "\n" + "\n".join(pathlib.Path(p).absolute().as_uri() for p in paths) + "\n"
+        # wl-copy keeps a background clipboard owner. A file, rather than a
+        # stderr pipe, avoids waiting for that owner's pipe to close.
+        with tempfile.TemporaryFile(mode="w+") as err:
+            p = subprocess.run(["wl-copy", "--type", "x-special/gnome-copied-files"], input=content,
+                               text=True, stdout=subprocess.DEVNULL, stderr=err, timeout=10)
+            if p.returncode:
+                err.seek(0)
+                return result(False, error=err.read().strip() or "The clipboard isn't available.")
+        return result(True)
+    except (OSError, ValueError, TypeError, subprocess.TimeoutExpired) as exc:
+        return result(False, error="Files couldn't use the clipboard: " + str(exc))
+
+
+def clipboard_read() -> int:
+    try:
+        for mime in ("x-special/gnome-copied-files", "text/uri-list"):
+            p = subprocess.run(["wl-paste", "--no-newline", "--type", mime], capture_output=True, text=True, timeout=10)
+            if p.returncode:
+                continue
+            lines = p.stdout.splitlines()
+            mode = "move" if mime.startswith("x-special") and lines[:1] == ["cut"] else "copy"
+            paths = []
+            for line in lines:
+                u = urlparse(line)
+                if u.scheme == "file" and u.netloc in ("", "localhost") and u.path.startswith("/"):
+                    paths.append(unquote(u.path))
+            if paths:
+                return result(True, paths=list(dict.fromkeys(paths)), mode=mode)
+        return result(False, error="The clipboard doesn't contain local files or folders.")
+    except (OSError, ValueError, subprocess.TimeoutExpired) as exc:
+        return result(False, error="Files couldn't read the clipboard: " + str(exc))
+
+
+def prefs_file() -> pathlib.Path:
+    return pathlib.Path(os.environ.get("XDG_CONFIG_HOME", pathlib.Path.home() / ".config")) / "golden-gate/files.json"
+
+
+def preferences(save: bool = False) -> int:
+    try:
+        file = prefs_file()
+        if not save:
+            try:
+                data = json.loads(file.read_text())
+            except FileNotFoundError:
+                data = {}
+            if not isinstance(data, dict):
+                raise ValueError("Files' preferences aren't valid.")
+            last = data.get("lastPath", "")
+            if last and last not in ("trash:", "recents:", "computer:") and not pathlib.Path(last).is_dir():
+                data["lastPath"] = str(pathlib.Path.home())
+                return result(True, preferences=data, warning="The previous folder isn't available. Home was opened instead.")
+            return result(True, preferences=data)
+        data = json.load(sys.stdin)
+        if not isinstance(data, dict) or not isinstance(data.get("folders", {}), dict):
+            raise ValueError("Files' preferences aren't valid.")
+        data["folders"] = dict(list(data.get("folders", {}).items())[-500:])
+        file.parent.mkdir(parents=True, exist_ok=True)
+        fd, temp = tempfile.mkstemp(prefix=".files-", dir=file.parent)
+        try:
+            with os.fdopen(fd, "w") as f:
+                json.dump(data, f); f.flush(); os.fsync(f.fileno())
+            os.replace(temp, file)
+        finally:
+            pathlib.Path(temp).unlink(missing_ok=True)
+        return result(True)
+    except (OSError, ValueError, TypeError) as exc:
+        return result(False, error="Files couldn't restore or save its view preferences: " + str(exc))
 
 
 def main() -> int:
     if len(sys.argv) < 2:
         return 2
     cmd = sys.argv[1]
+    if cmd == "undo":
+        return undo(json.load(sys.stdin))
+    if cmd == "info" and len(sys.argv) == 3:
+        return file_info(sys.argv[2])
+    if cmd == "clipboard-write":
+        return clipboard_write(json.load(sys.stdin))
+    if cmd == "clipboard-read":
+        return clipboard_read()
+    if cmd in ("prefs-load", "prefs-save"):
+        return preferences(cmd == "prefs-save")
     if cmd == "list" and len(sys.argv) >= 3:
         return list_dir(sys.argv[2], sys.argv[3] if len(sys.argv) > 3 else "",
                         hidden=len(sys.argv) > 4 and sys.argv[4] == "hidden")
@@ -444,8 +573,8 @@ def main() -> int:
         return empty_trash()
     if cmd == "drop" and len(sys.argv) >= 5:
         return drop(sys.argv[2], sys.argv[3], *sys.argv[4:])
-    if cmd == "open" and len(sys.argv) == 3:
-        return open_item(sys.argv[2])
+    if cmd == "open" and len(sys.argv) >= 3:
+        return open_item(*sys.argv[2:])
     return 2
 
 

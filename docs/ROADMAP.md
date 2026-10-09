@@ -56,7 +56,12 @@
 
 - [x] Files, Settings, the installer, Disk Utility and the other default apps
       are native QML apps on one shared component store (`apps/lib`)
-- [ ] Files: column and gallery views, tags, smart folders, undo
+- [x] Files: range/toggle/multiple selection, copy/cut/paste, Duplicate,
+      Get Info, transfer progress/cancellation and Keep Both/Skip conflicts
+- [x] Files: sortable list headings and per-folder view/sort preferences
+- [x] Files: Undo Rename and Undo New Folder (an empty, unchanged folder only)
+- [ ] Files: marquee selection, Open With, column/gallery views, tags,
+      smart folders, transfer queue and broader undo/redo
 - [ ] Branding package (`golden-gate-branding`: os-release)
 
 ## 0.6: from the audits (2026-10-07)

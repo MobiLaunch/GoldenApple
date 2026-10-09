@@ -1,0 +1,166 @@
+#!/usr/bin/env python3
+"""Files' real QML: selection, shortcuts, transfer feedback and remembered views.
+
+Only read-only listings use the temporary filesystem. Clipboard, transfer and
+preference writes are fixtures; backend effects are tested by files-workflow.py.
+"""
+import json
+import os
+from pathlib import Path
+import sys
+import tempfile
+import unittest
+
+os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+os.environ.setdefault("QT_QUICK_BACKEND", "software")
+from PySide6.QtCore import QEvent, QObject, QUrl, Qt, Slot
+from PySide6.QtGui import QGuiApplication
+from PySide6.QtQml import QQmlComponent, QQmlExpression, QQmlEngine
+from PySide6.QtTest import QTest
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "tools/preview"))
+import preview
+APP = QGuiApplication([])
+
+
+class System(preview.Preview):
+    def __init__(self, home):
+        super().__init__({"HOME":str(home), "USER":"preview", "XDG_CONFIG_HOME":str(home/"config"),
+                          "XDG_DATA_HOME":str(home/"data"), "GG_FILES_PATH":str(home)},str(ROOT/"apps"),"'default'")
+        self.commands=[]
+        self.clipboard_paths=[]
+        self.undo_response={"ok":True}
+    @Slot("QVariant", result="QVariantMap")
+    def run(self, cmd):
+        cmd=cmd.toVariant() if hasattr(cmd,"toVariant") else cmd
+        self.commands.append(cmd)
+        if any(str(c).endswith("files/operations.py") for c in cmd):
+            return dict(stdout='',stderr='',code=0,hang=True)
+        if any(str(c).endswith("files/helper.py") for c in cmd) and cmd[2] != "list":
+            if cmd[2]=="prefs-load": r=dict(ok=True,preferences={"folders":{}})
+            elif cmd[2]=="clipboard-read": r=dict(ok=True,mode="move",paths=self.clipboard_paths)
+            elif cmd[2]=="info": r=dict(ok=True,info={"name":"Note","path":cmd[3],"permissions":"-rw-r--r--","mime":"text/plain","size":10,"modified":1})
+            elif cmd[2]=="undo": r=self.undo_response
+            else: r=dict(ok=True)
+            return dict(stdout=json.dumps(r),stderr='',code=0)
+        return super().run(cmd)
+
+
+class Interactions(unittest.TestCase):
+    def setUp(self):
+        self.tmp=tempfile.TemporaryDirectory()
+        self.home=Path(self.tmp.name)
+        for name in ("a.txt","b.txt","c.txt","d.txt"): (self.home/name).write_text(name)
+        (self.home/"Downloads").mkdir()
+        self.system=System(self.home)
+        self.engine=QQmlEngine()
+        self.engine.addImportPath(str(ROOT/"tools/preview/qml"))
+        self.engine.rootContext().setContextProperty("__preview",self.system)
+        self.component=QQmlComponent(self.engine,QUrl.fromLocalFile(str(ROOT/"tools/preview/Desktop.qml")))
+        self.assertEqual(self.component.status(),QQmlComponent.Ready)
+        self.root=self.component.createWithInitialProperties({"targetUrl":QUrl.fromLocalFile(str(ROOT/"apps/files.qml"))})
+        self.assertIsNotNone(self.root)
+        self.root.requestActivate(); QTest.qWait(180)
+        self.files=self.root.findChild(QObject,"filesApp")
+        self.assertIsNotNone(self.files)
+        self.assertTrue(self.files.property("prefsReady"))
+        self.eval('forceActiveFocus()')
+
+    def eval(self, code):
+        e=QQmlExpression(QQmlEngine.contextForObject(self.files),self.files,code)
+        v=e.evaluate()[0]
+        self.assertFalse(e.hasError(),e.error().toString())
+        return v.toVariant() if hasattr(v,"toVariant") else v
+
+    def tearDown(self):
+        self.root.deleteLater(); self.engine.deleteLater()
+        APP.processEvents(); APP.sendPostedEvents(None,QEvent.DeferredDelete)
+        self.tmp.cleanup()
+
+    def test_range_toggle_all_and_clear_on_navigation(self):
+        self.eval('view="list"; select(entries[0])')
+        QTest.keyClick(self.root,Qt.Key_Down,Qt.ShiftModifier)
+        self.assertEqual(self.eval('selectedPaths.length'),2)
+        self.eval('select(entries[3], Qt.ControlModifier)')
+        self.assertEqual(self.eval('selectedPaths.length'),3)
+        QTest.keyClick(self.root,Qt.Key_A,Qt.ControlModifier)
+        self.assertEqual(self.eval('selectedPaths.length'),self.eval('entries.length'))
+        QTest.keyClick(self.root,Qt.Key_Escape)
+        self.assertEqual(self.eval('selectedPaths.length'),0)
+        self.eval('selectAll()')
+        self.eval('navigate(home + "/Downloads")')
+        self.assertEqual(self.eval('selectedPaths.length'),0)
+
+    def test_cut_paste_shortcuts_and_busy_feedback(self):
+        self.eval('select(entries.find(e => e.name === "a.txt"))')
+        QTest.keyClick(self.root,Qt.Key_X,Qt.ControlModifier)
+        QTest.qWait(30)
+        self.assertEqual(self.eval('cutPaths'),[str(self.home/"a.txt")])
+        self.system.clipboard_paths=[str(self.home/"a.txt")]
+        self.eval('navigate(home + "/Downloads")'); QTest.qWait(30)
+        self.eval('forceActiveFocus()')
+        QTest.keyClick(self.root,Qt.Key_V,Qt.ControlModifier)
+        QTest.qWait(30)
+        self.assertTrue(self.files.property("busy"))
+        self.assertEqual(self.eval('transferRequest.mode'),"move")
+        self.assertEqual(self.eval('transferRequest.paths'),self.system.clipboard_paths)
+        self.eval('startTransfer([home + "/b.txt"], path, "copy")')
+        self.assertIn("already running",self.files.property("notice"))
+        self.eval('requestClose()')
+        self.assertIn("before closing",self.files.property("notice"))
+
+    def test_conflict_keyboard_cancel_and_finished_summary(self):
+        self.eval('startTransfer([home+"/a.txt"],home+"/Downloads","copy")')
+        QTest.qWait(20)
+        self.eval('takeTransfer(JSON.stringify({event:"conflict",name:"a.txt"}))')
+        QTest.qWait(10)
+        keep=self.root.findChild(QObject,"filesKeepBoth")
+        self.assertEqual(self.root.activeFocusItem(),keep)
+        QTest.keyClick(self.root,Qt.Key_Escape)
+        self.assertTrue(self.files.property("cancelRequested"))
+        self.assertIsNone(self.eval('conflict'))
+        self.eval('takeTransfer(JSON.stringify({event:"finished",ok:true,cancelled:true,completed:[{path:home+"/Downloads/a.txt",source:home+"/a.txt",action:"copy"}],skipped:[],errors:[],destination:home+"/Downloads"}))')
+        self.assertTrue(self.root.findChild(QObject,"filesTransferPanel").property("visible"))
+        self.assertEqual(self.eval('transferResult.completed.length'),1)
+        self.assertTrue(self.eval('transferResult.cancelled'))
+
+    def test_sort_and_per_folder_view_restore(self):
+        self.eval('view="list"; sortKey="name"; descending=true')
+        self.assertEqual(self.eval('entries.filter(e => !e.folder).map(e=>e.name)'),["d.txt","c.txt","b.txt","a.txt"])
+        self.eval('navigate(home+"/Downloads")')
+        self.assertEqual(self.files.property("view"),"grid")
+        self.eval('navigate(home)')
+        self.assertEqual(self.files.property("view"),"list")
+        self.assertTrue(self.files.property("descending"))
+        self.assertEqual(self.eval('preferences.folders[home].view'),"list")
+
+    def test_get_info_shortcut(self):
+        self.eval('select(entries.find(e => e.name === "a.txt"))')
+        QTest.keyClick(self.root,Qt.Key_I,Qt.ControlModifier)
+        QTest.qWait(30)
+        self.assertTrue(self.root.findChild(QObject,"filesInfo").property("visible"))
+        self.assertEqual(self.eval('info.path'),str(self.home/"a.txt"))
+
+    def test_undo_shortcut_updates_creation_identity_after_rename(self):
+        path=str(self.home/"Folder")
+        self.eval('undoStack=[{kind:"mkdir",path:'+json.dumps(path)+',identity:[1,2],created:10},{kind:"rename",path:'+json.dumps(path+'2')+',original:'+json.dumps(path)+',identity:[1,2]}]')
+        self.system.undo_response=dict(ok=True,path=path,identity=[1,2],created=20)
+        QTest.keyClick(self.root,Qt.Key_Z,Qt.ControlModifier)
+        QTest.qWait(30)
+        self.assertEqual(self.eval('undoStack.length'),1)
+        self.assertEqual(self.eval('undoStack[0].created'),20)
+
+    def test_small_window_large_text_keeps_sidebar_and_dialogs_reachable(self):
+        self.eval('win.width=720; win.height=440; Theme.textScale=1.5')
+        QTest.qWait(30)
+        sidebar=self.root.findChild(QObject,"filesSidebarScroll")
+        self.assertTrue(sidebar.property("clip"))
+        self.assertGreater(sidebar.property("contentHeight"),sidebar.property("height"))
+        self.eval('info={name:"Long file name",location:"/" + "very-long-path/".repeat(80),mime:"text/plain",size:1,modified:1,permissions:"-rw-r--r--"}; infoDialog.visible=true')
+        self.assertLess(self.eval('infoDialog.height'),self.eval('win.height'))
+        self.eval('Theme.textScale=1')
+
+
+if __name__=="__main__":
+    unittest.main(verbosity=2)

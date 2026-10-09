@@ -13,6 +13,7 @@ ShellRoot {
     AppWindow {
         id: win
         title: files.title
+        closeAction: () => files.requestClose()
         onBackRequested: files.goBack()
         onForwardRequested: files.goForward()
         implicitWidth: Math.min(1050, (Quickshell.screens[0]?.width ?? 1280) - 80)
@@ -48,13 +49,16 @@ ShellRoot {
 
                 Column {
                     anchors.verticalCenter: parent.verticalCenter
+                    width: Math.max(80, Math.min(180, files.width - 400))
                     Text {
+                        width: parent.width; elide: Text.ElideRight
                         text: files.title
                         color: Theme.label
                         font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.Bold }
                     }
                     Text {
-                        text: files.entries.length + (files.entries.length === 1 ? " item" : " items")
+                        width: parent.width; elide: Text.ElideRight
+                        text: files.selectedPaths.length ? files.selectedPaths.length + " selected" : files.entries.length + (files.entries.length === 1 ? " item" : " items")
                         color: Theme.secondaryLabel
                         font { family: Theme.fontUi; pixelSize: Theme.fs(10) }
                     }
@@ -68,19 +72,19 @@ ShellRoot {
                     ToolbarButton {
                         symbol: "grid"
                         checked: files.view === "grid"
-                        onClicked: files.view = "grid"
+                        onClicked: { files.view = "grid"; files.forceActiveFocus() }
                     }
                     ToolbarButton {
                         symbol: "list"
                         checked: files.view === "list"
-                        onClicked: files.view = "list"
+                        onClicked: { files.view = "list"; files.forceActiveFocus() }
                     }
                 }
 
                 Button {
                     anchors.verticalCenter: parent.verticalCenter
                     visible: files.inTrash
-                    enabled: files.entries.length > 0
+                    enabled: files.entries.length > 0 && !files.busy
                     text: "Empty"
                     onClicked: files.askEmptyTrash()
                 }
@@ -88,7 +92,7 @@ ShellRoot {
                 ToolbarButton {
                     round: true
                     symbol: "folder"
-                    enabled: !files.special
+                    enabled: !files.special && !files.busy
                     onClicked: {
                         files.dialogMode = "new"
                         files.dialogText = "untitled folder"
@@ -106,7 +110,7 @@ ShellRoot {
 
                 TextField {
                     id: toolbarSearch
-                    width: 190
+                    width: Math.max(110, Math.min(190, files.width * 0.25))
                     height: 30
                     search: true
                     placeholder: "Search"
@@ -121,17 +125,28 @@ ShellRoot {
         ]
 
         sidebar: [
-            Text {
-                width: parent.width - 12
-                x: 8
-                text: "Favorites"
-                color: Theme.secondaryLabel
-                font { family: Theme.fontUi; pixelSize: Theme.fs(11); weight: Font.DemiBold }
-            },
+            Flickable {
+                id: placesFlick
+                objectName: "filesSidebarScroll"
+                anchors.fill: parent; clip: true
+                contentHeight: placesColumn.height + 8
+                boundsBehavior: Flickable.StopAtBounds
+                function ensureVisible(row) {
+                    if (!row.activeFocus) return
+                    if (row.y < contentY) contentY = Math.max(0, row.y - 8)
+                    else if (row.y + row.height > contentY + height) contentY = Math.max(0, Math.min(contentHeight - height, row.y + row.height - height + 8))
+                }
+                Behavior on contentY { enabled: !Theme.reduceMotion; NumberAnimation { duration: 120 } }
             Column {
-                y: 24
-                width: parent.width
+                id: placesColumn
+                width: placesFlick.width
                 spacing: 2
+                Text {
+                    width: parent.width - 12; x: 8
+                    text: "Favorites"; color: Theme.secondaryLabel
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(11); weight: Font.DemiBold }
+                }
+                Item { width: 1; height: 6 }
 
                 Repeater {
                     model: files.locations
@@ -142,6 +157,7 @@ ShellRoot {
                         text: modelData.name
                         symbol: modelData.icon
                         selected: files.path === modelData.path || placeDrop.containsDrag
+                        onActiveFocusChanged: placesFlick.ensureVisible(place)
                         onClicked: files.navigate(modelData.path)
                         // Drop on a place to move there; on the Trash to throw away.
                         DropArea {
@@ -149,7 +165,7 @@ ShellRoot {
                             anchors.fill: parent
                             enabled: place.modelData.path !== "recents:"
                             onEntered: (drag) => drag.accepted = place.modelData.path === "trash:"
-                                ? files.pathsOf(drag.urls).length > 0 && !files.inTrash
+                                ? files.pathsOf(drag.urls).length > 0 && !files.inTrash && !files.busy
                                 : files.accepts(drag, place.modelData.path)
                             onDropped: (drop) => files.dropOn(drop, place.modelData.path)
                         }
@@ -180,6 +196,7 @@ ShellRoot {
                         symbol: "drive"
                         opacity: modelData.mounted ? 1 : 0.55
                         selected: !!modelData.mountpoint && files.path === modelData.mountpoint || volumeDrop.containsDrag
+                        onActiveFocusChanged: placesFlick.ensureVisible(volumeRow)
                         onClicked: files.openVolume(modelData)
                         DropArea {
                             id: volumeDrop
@@ -209,10 +226,13 @@ ShellRoot {
                     }
                 }
             }
+                Scroller { parent: placesFlick; flickable: placesFlick }
+            }
         ]
 
         FocusScope {
             id: files
+            objectName: "filesApp"
             anchors.fill: parent
             focus: true
 
@@ -220,13 +240,18 @@ ShellRoot {
             readonly property string home: Quickshell.env("HOME")
             property string path: Quickshell.env("GG_FILES_PATH") || home
             property string initialSelect: Quickshell.env("GG_FILES_SELECT") || ""
-            property var entries: []
+            property var listing: []
+            readonly property var entries: sorted(listing)
             property var back: []
             property var forward: []
             property string selectedPath: ""
-            property string selectedName: ""
-            property bool selectedFolder: false
+            property var selectedPaths: []
+            property string selectionAnchor: ""
+            readonly property string selectedName: selectedEntry?.name ?? ""
+            readonly property bool selectedFolder: selectedEntry?.folder ?? false
             property string view: "grid"
+            property string sortKey: "name"
+            property bool descending: false
             property string query: ""
             property bool loading: false
             property string error: ""
@@ -236,6 +261,134 @@ ShellRoot {
             property bool showHidden: false
             property real free: -1              // space left on this folder's disk
             property string notice: ""          // a passing word in the path bar (an eject that failed)
+            readonly property bool busy: opProc.running || transferProc.running || undoProc.running
+            property var undoStack: []
+            property var info: ({})
+            property var cutPaths: []
+            property var preferences: ({folders: {}})
+            property bool prefsReady: false
+            property bool prefsApplying: false
+            property bool prefsFailed: false
+            property string prefsPending: ""
+            property string prefsSaved: ""
+            property var transferRequest: ({})
+            property var transferState: ({})
+            property var transferResult: null
+            property var conflict: null
+            property bool cancelRequested: false
+            property bool closeAfterTransfer: false
+            property var selectionAfterReload: []
+            readonly property string worker: Qt.resolvedUrl("files/operations.py").toString().replace("file://", "")
+            readonly property var selectedEntries: entries.filter((e) => selectedPaths.includes(e.path))
+            function sorted(rows) {
+                const out = rows.slice()
+                out.sort((a, b) => {
+                    if (sortKey === "name" && a.folder !== b.folder) return a.folder ? -1 : 1
+                    let cmp = sortKey === "modified" || sortKey === "size" ? (a[sortKey] - b[sortKey])
+                        : String(sortKey === "kind" ? a.mime : a.name).localeCompare(String(sortKey === "kind" ? b.mime : b.name), undefined, {numeric:true, sensitivity:"base"})
+                    if (!cmp) cmp = a.path.localeCompare(b.path)
+                    return descending ? -cmp : cmp
+                })
+                return out
+            }
+            function rememberView() {
+                if (!prefsReady || prefsApplying) return
+                const folders = Object.assign({}, preferences.folders ?? {})
+                folders[path] = {view:view, sortKey:sortKey, descending:descending}
+                preferences = {folders:folders, lastPath:path, showHidden:showHidden}
+                prefsDebounce.restart()
+            }
+            function restoreView() {
+                prefsApplying = true
+                const p = preferences.folders?.[path] ?? {}
+                view = p.view === "list" ? "list" : "grid"
+                sortKey = ["name", "modified", "size", "kind"].includes(p.sortKey) ? p.sortKey : "name"
+                descending = !!p.descending
+                prefsApplying = false
+            }
+            onViewChanged: rememberView()
+            onSortKeyChanged: rememberView()
+            onDescendingChanged: rememberView()
+            onShowHiddenChanged: rememberView()
+            onPathChanged: { clearSelection(); if (prefsReady) { restoreView(); rememberView() } }
+            function clearSelection() { selectedPaths = []; selectedPath = ""; selectionAnchor = "" }
+            function setSelection(paths, primary) {
+                selectedPaths = Array.from(new Set(paths))
+                selectedPath = selectedPaths.includes(primary) ? primary : selectedPaths[selectedPaths.length - 1] ?? ""
+            }
+            function selectAll() { setSelection(entries.map((e) => e.path), entries[0]?.path); selectionAnchor = selectedPath; forceActiveFocus() }
+            function clipboard(mode) {
+                if (!selectedPaths.length || inTrash || inComputer || clipboardProc.running) return
+                clipboardProc.mode = mode
+                clipboardProc.request = {paths:selectedPaths.slice(), mode:mode}
+                clipboardProc.command = ["python3", helper, "clipboard-write"]
+                clipboardProc.running = true
+                forceActiveFocus()
+            }
+            function paste(move) {
+                if (special || busy || clipboardProc.running) { say("Wait for the current operation to finish, then paste."); return }
+                clipboardProc.mode = "paste"
+                clipboardProc.move = !!move
+                clipboardProc.destination = path
+                clipboardProc.command = ["python3", helper, "clipboard-read"]
+                clipboardProc.running = true
+                forceActiveFocus()
+            }
+            function startTransfer(paths, dest, mode) {
+                if (busy) { say("An operation is already running. Wait or cancel it before starting another."); return }
+                if (!paths.length) return
+                transferRequest = {paths:paths.slice(), destination:dest, mode:mode, conflicts:mode === "duplicate" ? "keep-both" : "ask"}
+                transferResult = null; transferState = {event:"preparing",total:paths.length}; conflict = null; cancelRequested = false
+                transferProc.finishedEvent = false
+                transferProc.running = true
+                forceActiveFocus()
+            }
+            function duplicate() { if (!inTrash && !inComputer) startTransfer(selectedPaths, "", "duplicate") }
+            function cancelTransfer() {
+                if (!transferProc.running || cancelRequested) return
+                cancelRequested = true; conflict = null
+                transferProc.write(JSON.stringify({cancel:true}) + "\n")
+            }
+            function answerConflict(answer) {
+                transferProc.write(JSON.stringify({answer:answer, all:conflictAll.checked}) + "\n")
+                conflict = null
+            }
+            function takeTransfer(line) {
+                let r
+                try { r = JSON.parse(line) } catch (e) { return }
+                if (r.event === "conflict") { conflictAll.checked = false; conflict = r; return }
+                if (r.event !== "finished") { transferState = Object.assign({}, transferState, r); return }
+                transferProc.finishedEvent = true
+                transferResult = r; conflict = null
+                selectionAfterReload = (r.completed ?? []).map((item) => item.path)
+                cutPaths = cutPaths.filter((p) => !(r.completed ?? []).some((item) => item.source === p && item.action === "move"))
+                reload()
+            }
+            function undoLast() {
+                if (busy || !undoStack.length) return
+                undoProc.record = undoStack[undoStack.length - 1]
+                undoProc.running = true
+            }
+            function getInfo() {
+                if (!selectedEntry || selectedPaths.length !== 1 || infoProc.running) return
+                infoProc.command = ["python3", helper, "info", selectedPath]; infoProc.running = true
+            }
+            function requestClose() {
+                if (busy || clipboardProc.running) {
+                    say("An operation is running. Wait for it to finish or cancel the transfer before closing.")
+                    return
+                }
+                if (prefsFailed) { Qt.quit(); return }
+                prefsDebounce.stop()
+                closeAfterTransfer = true
+                savePreferences()
+            }
+            function savePreferences() {
+                if (prefsWriter.running) return
+                const text = JSON.stringify(preferences)
+                if (!prefsReady || text === prefsSaved) { if (closeAfterTransfer) Qt.quit(); return }
+                prefsPending = text; prefsWriter.running = true
+            }
 
             // ---------------------------------------------------- disks
             readonly property string disksHelper: Qt.resolvedUrl("lib/disks/disks.py").toString().replace("file://", "")
@@ -321,7 +474,7 @@ ShellRoot {
             function reload() {
                 if (inComputer) {
                     // Computer: every volume, with the room left on it.
-                    entries = volumes.map((v) => ({
+                    listing = volumes.map((v) => ({
                         name: v.name, path: v.mountpoint || "volume:" + v.device, folder: true,
                         icon: "drive-harddisk", size: 0, modified: 0, mime: "inode/directory", volume: v,
                         detail: v.mounted ? formatSize(v.free) + " free of " + formatSize(v.size) : "Not mounted"
@@ -352,12 +505,11 @@ ShellRoot {
                     forward = []
                 }
                 path = next
-                selectedPath = ""
-                selectedName = ""
-                selectedFolder = false
+                clearSelection()
                 query = ""
                 toolbarSearch.text = ""
                 reload()
+                files.forceActiveFocus()
             }
 
             function goBack() {
@@ -370,6 +522,7 @@ ShellRoot {
                 query = ""
                 toolbarSearch.text = ""
                 reload()
+                forceActiveFocus()
             }
 
             function goForward() {
@@ -382,12 +535,25 @@ ShellRoot {
                 query = ""
                 toolbarSearch.text = ""
                 reload()
+                forceActiveFocus()
             }
 
-            function select(entry) {
-                selectedPath = entry.path
-                selectedName = entry.name
-                selectedFolder = entry.folder
+            function select(entry, modifiers) {
+                const ctrl = (modifiers ?? 0) & Qt.ControlModifier
+                const shift = (modifiers ?? 0) & Qt.ShiftModifier
+                if (shift) {
+                    let anchor = entries.findIndex((e) => e.path === selectionAnchor)
+                    if (anchor < 0) anchor = Math.max(0, selectedIndex)
+                    const index = entries.findIndex((e) => e.path === entry.path)
+                    const range = entries.slice(Math.min(anchor, index), Math.max(anchor, index) + 1).map((e) => e.path)
+                    setSelection(ctrl ? selectedPaths.concat(range) : range, entry.path)
+                } else if (ctrl) {
+                    setSelection(selectedPaths.includes(entry.path) ? selectedPaths.filter((p) => p !== entry.path) : selectedPaths.concat([entry.path]), entry.path)
+                    selectionAnchor = entry.path
+                } else {
+                    setSelection([entry.path], entry.path)
+                    selectionAnchor = entry.path
+                }
                 files.forceActiveFocus()
             }
 
@@ -397,15 +563,15 @@ ShellRoot {
             // (keyd sends ⌘ shortcuts as Ctrl, and ⌘↑ ⌘↓ as Ctrl+Home/End.)
             readonly property int selectedIndex: entries.findIndex((e) => e.path === selectedPath)
             readonly property var selectedEntry: selectedIndex >= 0 ? entries[selectedIndex] : null
-            function moveSelection(step) {
+            function moveSelection(step, modifiers) {
                 if (!entries.length) return
                 const i = selectedIndex < 0 ? 0 : Math.max(0, Math.min(entries.length - 1, selectedIndex + step))
-                select(entries[i])
+                select(entries[i], modifiers)
                 if (view === "grid") grid.positionViewAtIndex(i, GridView.Contain)
                 else list.positionViewAtIndex(i, ListView.Contain)
             }
             function rename() {
-                if (!selectedEntry) return
+                if (!selectedEntry || selectedPaths.length !== 1 || inTrash || inComputer || busy) return
                 dialogMode = "rename"
                 dialogText = selectedName
                 editDialog.visible = true
@@ -415,6 +581,7 @@ ShellRoot {
             function toggleHidden() {
                 showHidden = !showHidden
                 reload()
+                forceActiveFocus()
             }
             function enclosingFolder() {
                 if (special) return
@@ -425,23 +592,31 @@ ShellRoot {
                 const ctrl = event.modifiers & Qt.ControlModifier
                 const shift = event.modifiers & Qt.ShiftModifier
                 const columns = view === "grid" ? Math.max(1, Math.floor(grid.width / grid.cellWidth)) : 1
-                if (event.key === Qt.Key_Space || (ctrl && event.key === Qt.Key_Y)) {
+                if (ctrl && event.key === Qt.Key_A) selectAll()
+                else if (ctrl && !shift && event.key === Qt.Key_C) clipboard("copy")
+                else if (ctrl && event.key === Qt.Key_X) clipboard("cut")
+                else if (ctrl && event.key === Qt.Key_V) paste(shift)
+                else if (ctrl && event.key === Qt.Key_D) duplicate()
+                else if (ctrl && event.key === Qt.Key_I) getInfo()
+                else if (ctrl && event.key === Qt.Key_Z) undoLast()
+                else if (event.key === Qt.Key_Space || (ctrl && event.key === Qt.Key_Y)) {
                     if (selectedEntry || quickLook.open) quickLook.open = !quickLook.open
                 } else if (event.key === Qt.Key_Escape && quickLook.open) quickLook.open = false
                 else if (ctrl && (event.key === Qt.Key_O || event.key === Qt.Key_End)) {
-                    if (selectedEntry) { quickLook.open = false; openEntry(selectedEntry) }
+                    if (selectedEntry) { quickLook.open = false; openSelection() }
                 } else if (ctrl && event.key === Qt.Key_Home) enclosingFolder()
                 else if (ctrl && shift && (event.key === Qt.Key_Period || event.key === Qt.Key_Greater)) toggleHidden()
                 else if (ctrl && shift && event.key === Qt.Key_C) navigate("computer:")
                 else if (ctrl && shift && event.key === Qt.Key_H) navigate(home)
                 else if (ctrl && event.key === Qt.Key_Backspace) {
-                    if (selectedEntry && !inTrash) runOperation(["trash", selectedPath], "trash")
+                    if (selectedPaths.length && !inTrash && !inComputer) runOperation(["trash"].concat(selectedPaths), "trash")
                 } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
                     if (!quickLook.open) rename()
-                } else if (event.key === Qt.Key_Left && view === "grid") moveSelection(-1)
-                else if (event.key === Qt.Key_Right && view === "grid") moveSelection(1)
-                else if (event.key === Qt.Key_Up) moveSelection(-columns)
-                else if (event.key === Qt.Key_Down) moveSelection(columns)
+                } else if (event.key === Qt.Key_Escape) clearSelection()
+                else if (event.key === Qt.Key_Left && view === "grid") moveSelection(-1, event.modifiers)
+                else if (event.key === Qt.Key_Right && view === "grid") moveSelection(1, event.modifiers)
+                else if (event.key === Qt.Key_Up) moveSelection(-columns, event.modifiers)
+                else if (event.key === Qt.Key_Down) moveSelection(columns, event.modifiers)
                 else return
                 event.accepted = true
             }
@@ -452,23 +627,27 @@ ShellRoot {
                 } else if (entry.folder) {
                     navigate(entry.path)
                 } else {
-                    opProc.command = ["python3", helper, "open", entry.path]
-                    pendingOp = "open"
-                    opProc.running = true
+                    runOperation(["open", entry.path], "open")
                 }
             }
 
             function runOperation(args, kind) {
-                if (opProc.running)
-                    return
+                if (busy) { say("An operation is already running. Wait or cancel the transfer first."); return }
                 pendingOp = kind
                 error = ""
                 opProc.command = ["python3", helper].concat(args)
                 opProc.running = true
             }
+            function openSelection() {
+                if (selectedEntries.length === 1) openEntry(selectedEntry)
+                else if (selectedEntries.length > 1 && !inComputer) runOperation(["open"].concat(selectedPaths), "open")
+            }
 
             // ---------------------------------------------------- Trash
-            function putBack(entry) { if (entry?.trashName) runOperation(["put-back", entry.trashName], "put-back") }
+            function putBack(entry) {
+                const names = selectedEntries.filter((e) => e.trashName).map((e) => e.trashName)
+                if (names.length) runOperation(["put-back"].concat(names), "put-back")
+            }
             function askEmptyTrash() { confirmEmpty.visible = true }
             // An item in Recents, shown where it lives.
             function showInFolder(entry) {
@@ -487,9 +666,10 @@ ShellRoot {
             function accepts(drag, dest) {
                 const paths = pathsOf(drag.urls)
                 // Not onto itself, and not a folder into its own contents.
-                return paths.length > 0 && !paths.some((p) => dest === p || dest.startsWith(p + "/"))
+                return !busy && paths.length > 0 && !paths.some((p) => dest === p || dest.startsWith(p + "/"))
             }
             function dropOn(drop, dest) {
+                if (busy) { say("Wait for the current operation before dropping items."); return }
                 const paths = pathsOf(drop.urls)
                 if (!paths.length) return
                 const ours = drop.source !== null && drop.source !== undefined
@@ -499,26 +679,35 @@ ShellRoot {
                     return
                 }
                 const copy = !ours || drop.proposedAction === Qt.CopyAction
-                runOperation(["drop", dest, copy ? "copy" : "auto"].concat(paths), "drop")
+                startTransfer(paths, dest, copy ? "copy" : "auto")
                 drop.accept(copy ? Qt.CopyAction : Qt.MoveAction)
             }
 
             // An item's menu (right-click), for where it is.
             function itemMenu(anchor, x, y, entry) {
-                select(entry)
+                if (!selectedPaths.includes(entry.path)) select(entry)
+                if (entry.volume) {
+                    menu.popup(anchor, x, y, [{text:"Open Volume", action:()=>openVolume(entry.volume)},
+                        {text:"Open Disk Utility", action:()=>Quickshell.execDetached(["gg-disk-utility"])}])
+                    return
+                }
                 const items = inTrash ? [
                     { text: "Put Back", action: () => putBack(entry) },
                     { text: "Quick Look", shortcut: "Space", action: () => quickLook.open = true },
                     { separator: true },
                     { text: "Empty Trash", destructive: true, action: () => askEmptyTrash() }
                 ] : [
-                    { text: "Open", action: () => openEntry(entry) },
+                    { text: "Open", action: () => openSelection() },
                     { text: "Quick Look", shortcut: "Space", action: () => quickLook.open = true }
                 ].concat(inRecents ? [{ text: "Show in Enclosing Folder", action: () => showInFolder(entry) }] : [], [
-                    { text: "Rename", action: () => rename() },
-                    { text: "Share with AirDrop…", action: () => Quickshell.execDetached(["gg-airdrop", entry.path]) },
+                    { text: "Rename", enabled: selectedPaths.length === 1 && !busy, action: () => rename() },
+                    { text: "Get Info", shortcut: "⌘I", enabled: selectedPaths.length === 1, action: () => getInfo() },
+                    { text: "Copy", shortcut: "⌘C", action: () => clipboard("copy") },
+                    { text: "Cut", shortcut: "⌘X", action: () => clipboard("cut") },
+                    { text: "Duplicate", shortcut: "⌘D", enabled: !busy, action: () => duplicate() },
+                    { text: "Share with AirDrop…", enabled: selectedPaths.length === 1, action: () => Quickshell.execDetached(["gg-airdrop", entry.path]) },
                     { separator: true },
-                    { text: "Move to Trash", action: () => runOperation(["trash", entry.path], "trash") }
+                    { text: "Move to Trash", enabled: !busy, action: () => runOperation(["trash"].concat(selectedPaths), "trash") }
                 ])
                 menu.popup(anchor, x, y, items)
             }
@@ -526,7 +715,7 @@ ShellRoot {
             function openActions(anchor) {
                 if (inTrash) {
                     menu.popup(anchor, 0, anchor.height + 6, [
-                        { text: "Put Back", enabled: !!selectedEntry, action: () => putBack(selectedEntry) },
+                        { text: "Put Back", enabled: !!selectedEntry && !busy, action: () => putBack(selectedEntry) },
                         { text: "Quick Look", shortcut: "Space", enabled: !!selectedPath, action: () => quickLook.open = true },
                         { separator: true },
                         { text: "Empty Trash", destructive: true, enabled: entries.length > 0, action: () => askEmptyTrash() }
@@ -534,22 +723,33 @@ ShellRoot {
                     return
                 }
                 const actions = [
-                    { text: "New Folder", enabled: !special, action: () => {
+                    { text: "New Folder", enabled: !special && !busy, action: () => {
                         dialogMode = "new"
                         dialogText = "untitled folder"
                         editDialog.visible = true
                         Qt.callLater(() => dialogField.input.forceActiveFocus())
                     }},
                     { separator: true },
-                    { text: "Open", enabled: !!selectedPath, action: () => {
-                        const item = entries.find((e) => e.path === selectedPath)
-                        if (item) openEntry(item)
-                    }},
+                    { text: "Open", enabled: !!selectedPath, action: () => openSelection() },
                     { text: "Quick Look", shortcut: "Space", enabled: !!selectedPath, action: () => quickLook.open = true },
-                    { text: "Rename", enabled: !!selectedPath, action: () => rename() },
+                    { text: "Rename", enabled: selectedPaths.length === 1 && !inComputer && !busy, action: () => rename() },
+                    { text: "Get Info", shortcut: "⌘I", enabled: selectedPaths.length === 1 && !inComputer, action: () => getInfo() },
+                    { text: "Select All", shortcut: "⌘A", action: () => selectAll() },
+                    { text: "Copy", shortcut: "⌘C", enabled: !!selectedPath && !inComputer, action: () => clipboard("copy") },
+                    { text: "Cut", shortcut: "⌘X", enabled: !!selectedPath && !inComputer, action: () => clipboard("cut") },
+                    { text: "Paste", shortcut: "⌘V", enabled: !special && !busy, action: () => paste(false) },
+                    { text: "Move Items Here", shortcut: "⇧⌘V", enabled: !special && !busy, action: () => paste(true) },
+                    { text: "Duplicate", shortcut: "⌘D", enabled: !!selectedPath && !inComputer && !busy, action: () => duplicate() },
+                    { text: undoStack.length ? "Undo " + (undoStack[undoStack.length - 1].kind === "rename" ? "Rename" : "New Folder") : "Undo", shortcut: "⌘Z", enabled: undoStack.length > 0 && !busy, action: () => undoLast() },
                     { text: "Show in Enclosing Folder", enabled: inRecents && !!selectedEntry, action: () => showInFolder(selectedEntry) },
                     { text: "Share with AirDrop…", enabled: !!selectedPath, action: () => Quickshell.execDetached(["gg-airdrop", selectedPath]) },
-                    { text: "Move to Trash", enabled: !!selectedPath, action: () => runOperation(["trash", selectedPath], "trash") },
+                    { text: "Move to Trash", enabled: !!selectedPath && !inComputer && !busy, action: () => runOperation(["trash"].concat(selectedPaths), "trash") },
+                    { separator: true },
+                    { text: "Sort by Name" + (sortKey === "name" ? " ✓" : ""), action: () => sortKey = "name" },
+                    { text: "Sort by Date Modified" + (sortKey === "modified" ? " ✓" : ""), action: () => sortKey = "modified" },
+                    { text: "Sort by Size" + (sortKey === "size" ? " ✓" : ""), action: () => sortKey = "size" },
+                    { text: "Sort by Kind" + (sortKey === "kind" ? " ✓" : ""), action: () => sortKey = "kind" },
+                    { text: descending ? "Ascending Order" : "Descending Order", action: () => descending = !descending },
                     { separator: true },
                     { text: showHidden ? "Hide Hidden Files" : "Show Hidden Files", shortcut: "⇧⌘.", action: () => toggleHidden() },
                     { text: "Computer", shortcut: "⇧⌘C", action: () => navigate("computer:") },
@@ -571,7 +771,7 @@ ShellRoot {
                 editDialog.visible = false
             }
 
-            Component.onCompleted: reload()
+            Component.onCompleted: if (prefsReady) reload()
 
             Timer {
                 id: searchDelay
@@ -591,7 +791,10 @@ ShellRoot {
                             const r = JSON.parse(text)
                             if (r.ok) {
                                 files.path = r.path
-                                files.entries = r.entries ?? []
+                                files.listing = r.entries ?? []
+                                files.setSelection(files.selectionAfterReload.length ? files.selectionAfterReload.filter((p) => files.entries.some((e) => e.path === p))
+                                    : files.selectedPaths.filter((p) => files.entries.some((e) => e.path === p)), files.selectedPath)
+                                files.selectionAfterReload = []
                                 files.free = r.free ?? -1
                                 files.error = ""
                                 if (files.initialSelect) {
@@ -619,16 +822,121 @@ ShellRoot {
                     onStreamFinished: {
                         try {
                             const r = JSON.parse(text)
-                            if (!r.ok)
-                                files.error = r.error ?? "The operation could not be completed."
-                            else if (files.pendingOp !== "open") {
-                                files.selectedPath = ""
+                            if (!r.ok) {
+                                files.say(r.error ?? "The operation could not be completed.")
+                                if (files.pendingOp !== "open") files.reload()
+                            } else if (files.pendingOp !== "open") {
+                                if (r.undo) files.undoStack = files.undoStack.concat([r.undo]).slice(-30)
+                                files.selectionAfterReload = r.path ? [r.path] : []
                                 files.reload()
                             }
                         } catch (e) {
-                            files.error = "The operation could not be completed."
+                            files.say("The operation could not be completed.")
                         }
                     }
+                }
+            }
+
+            Process {
+                id: transferProc
+                property bool finishedEvent: false
+                command: ["python3", files.worker]
+                stdinEnabled: true
+                onStarted: write(JSON.stringify(files.transferRequest) + "\n")
+                stdout: SplitParser { onRead: (line) => files.takeTransfer(line) }
+                stderr: StdioCollector { id: transferErr }
+                onExited: (code) => {
+                    if (!finishedEvent) files.transferResult = {ok:false, completed:[], skipped:[], errors:[{error:transferErr.text || "The transfer stopped unexpectedly. Check the destination before retrying."}]}
+                    files.conflict = null
+                }
+            }
+            Process {
+                id: clipboardProc
+                property string mode: ""
+                property var request: ({})
+                property string destination: ""
+                property bool move: false
+                stdinEnabled: true
+                stdout: StdioCollector { id: clipboardOut }
+                onStarted: { if (mode !== "paste") write(JSON.stringify(request)); stdinEnabled = false }
+                onExited: (code) => {
+                    stdinEnabled = true
+                    let r = ({})
+                    try { r = JSON.parse(clipboardOut.text) } catch (e) {}
+                    if (!r.ok) { files.say(r.error || "The clipboard isn't available."); return }
+                    if (mode === "paste") files.startTransfer(r.paths ?? [], destination, move ? "move" : r.mode)
+                    else {
+                        files.cutPaths = mode === "cut" ? request.paths.slice() : []
+                        files.say(request.paths.length + (mode === "cut" ? " items ready to move." : " items copied. Paste them into a folder."))
+                    }
+                }
+            }
+            Process {
+                id: undoProc
+                property var record: ({})
+                command: ["python3", files.helper, "undo"]
+                stdinEnabled: true
+                stdout: StdioCollector { id: undoOut }
+                onStarted: { write(JSON.stringify(record)); stdinEnabled = false }
+                onExited: (code) => {
+                    stdinEnabled = true
+                    let r = ({})
+                    try { r = JSON.parse(undoOut.text) } catch (e) {}
+                    if (!r.ok) { files.say(r.error || "The operation couldn't be undone."); return }
+                    files.undoStack = files.undoStack.slice(0, -1).map((item) => item.kind === "mkdir" && item.path === r.path && JSON.stringify(item.identity) === JSON.stringify(r.identity)
+                        ? Object.assign({}, item, {created:r.created}) : item)
+                    files.selectionAfterReload = r.path ? [r.path] : []
+                    files.reload(); files.say("Operation undone.")
+                }
+            }
+            Process {
+                id: infoProc
+                stdout: StdioCollector { id: infoOut }
+                onExited: (code) => {
+                    let r = ({})
+                    try { r = JSON.parse(infoOut.text) } catch (e) {}
+                    if (!r.ok) { files.say(r.error || "Files couldn't read this item's information."); return }
+                    files.info = r.info; infoDialog.visible = true
+                }
+            }
+            Process {
+                id: prefsReader
+                running: true
+                command: ["python3", files.helper, "prefs-load"]
+                stdout: StdioCollector { id: prefsReadOut }
+                onExited: {
+                    let r = ({})
+                    try { r = JSON.parse(prefsReadOut.text) } catch (e) {}
+                    files.prefsApplying = true
+                    if (r.ok) {
+                        files.preferences = r.preferences ?? {folders:{}}
+                        if (!Quickshell.env("GG_FILES_PATH") && !files.initialSelect && files.preferences.lastPath) files.path = files.preferences.lastPath
+                        files.showHidden = !!files.preferences.showHidden
+                        if (r.warning) files.say(r.warning)
+                    } else files.say(r.error || "View preferences couldn't be restored.")
+                    files.restoreView(); files.prefsReady = true; files.prefsApplying = false
+                    files.prefsSaved = JSON.stringify(files.preferences)
+                    files.rememberView(); files.reload()
+                }
+            }
+            Timer { id: prefsDebounce; interval: 400; onTriggered: files.savePreferences() }
+            Process {
+                id: prefsWriter
+                command: ["python3", files.helper, "prefs-save"]
+                stdinEnabled: true
+                stdout: StdioCollector { id: prefsWriteOut }
+                onStarted: { write(files.prefsPending); stdinEnabled = false }
+                onExited: (code) => {
+                    stdinEnabled = true
+                    let r = ({})
+                    try { r = JSON.parse(prefsWriteOut.text) } catch (e) {}
+                    if (!r.ok) {
+                        files.say(r.error || "View preferences couldn't be saved.")
+                        files.prefsFailed = true; files.closeAfterTransfer = false; return
+                    }
+                    files.prefsFailed = false
+                    files.prefsSaved = files.prefsPending
+                    Qt.callLater(() => files.savePreferences())
                 }
             }
 
@@ -741,11 +1049,11 @@ ShellRoot {
                 property var entry
                 property MouseArea area
                 width: 1; height: 1
-                Drag.active: !!area && area.drag.active && !files.inTrash
+                Drag.active: !!area && area.drag.active && !files.inTrash && !files.inComputer && !files.busy
                 Drag.dragType: Drag.Automatic
                 Drag.supportedActions: Qt.MoveAction | Qt.CopyAction
                 Drag.proposedAction: Qt.MoveAction
-                Drag.mimeData: ({ "text/uri-list": Paths.fileUrl(entry?.path ?? "") + "\r\n" })
+                Drag.mimeData: ({ "text/uri-list": (files.selectedPaths.includes(entry?.path) ? files.selectedPaths : [entry?.path ?? ""]).map((p) => Paths.fileUrl(p)).join("\r\n") + "\r\n" })
                 Drag.imageSource: Quickshell.iconPath(entry?.icon ?? "", entry?.folder ? "folder" : "text-x-generic")
                 Drag.imageSourceSize: Qt.size(64, 64)
                 Drag.onDragFinished: { source.x = 0; source.y = 0; files.reload() }
@@ -764,7 +1072,7 @@ ShellRoot {
                 visible: files.view === "grid" && !files.loading && !files.error
                 // The window draws under its toolbar; the grid starts below it and
                 // scrolls up under it (clipped at the window, not at the toolbar).
-                anchors { fill: parent; margins: 18; topMargin: 0; bottomMargin: pathBar.visible ? pathBar.height + 4 : 18 }
+                anchors { fill: parent; margins: 18; topMargin: 0; bottomMargin: (pathBar.visible ? pathBar.height : 0) + (transferPanel.visible ? transferPanel.height : 0) + 4 }
                 topMargin: win.toolbarHeight + 10
                 cellWidth: 118
                 cellHeight: 112
@@ -775,7 +1083,12 @@ ShellRoot {
                     required property var modelData
                     width: grid.cellWidth
                     height: grid.cellHeight
-                    readonly property bool selected: files.selectedPath === modelData.path || cellDrop.containsDrag
+                    objectName: "fileCell:" + modelData.name
+                    readonly property bool selected: files.selectedPaths.includes(modelData.path) || cellDrop.containsDrag
+                    Accessible.role: Accessible.ListItem
+                    Accessible.name: modelData.name
+                    Accessible.selected: selected
+                    opacity: files.cutPaths.includes(modelData.path) ? 0.5 : 1
 
                     Rectangle {
                         anchors { fill: parent; margins: 4 }
@@ -835,10 +1148,10 @@ ShellRoot {
                         acceptedButtons: Qt.LeftButton | Qt.RightButton
                         drag.target: files.inTrash ? null : cellDrag
                         drag.threshold: 6
-                        onPressed: (mouse) => { if (mouse.button === Qt.LeftButton) files.select(cell.modelData) }
+                        onPressed: (mouse) => { if (mouse.button === Qt.LeftButton && (!files.selectedPaths.includes(cell.modelData.path) || (mouse.modifiers & (Qt.ControlModifier | Qt.ShiftModifier)))) files.select(cell.modelData, mouse.modifiers) }
                         onClicked: (mouse) => {
                             if (mouse.button === Qt.RightButton) files.itemMenu(cell, mouse.x, mouse.y, cell.modelData)
-                            else files.select(cell.modelData)
+                            else if (!(mouse.modifiers & (Qt.ControlModifier | Qt.ShiftModifier))) files.select(cell.modelData)
                         }
                         onDoubleClicked: files.openEntry(cell.modelData)
                     }
@@ -857,8 +1170,8 @@ ShellRoot {
             ListView {
                 id: list
                 visible: files.view === "list" && !files.loading && !files.error
-                anchors { fill: parent; margins: 16; topMargin: 0; bottomMargin: pathBar.visible ? pathBar.height + 4 : 16 }
-                topMargin: win.toolbarHeight + 6
+                anchors { fill: parent; margins: 16; topMargin: 0; bottomMargin: (pathBar.visible ? pathBar.height : 0) + (transferPanel.visible ? transferPanel.height : 0) + 4 }
+                topMargin: win.toolbarHeight + 30
                 spacing: 1
                 model: files.entries
 
@@ -868,7 +1181,12 @@ ShellRoot {
                     width: list.width
                     height: 36
                     radius: 7
-                    readonly property bool selected: files.selectedPath === modelData.path || rowDrop.containsDrag
+                    objectName: "fileRow:" + modelData.name
+                    readonly property bool selected: files.selectedPaths.includes(modelData.path) || rowDrop.containsDrag
+                    Accessible.role: Accessible.ListItem
+                    Accessible.name: modelData.name
+                    Accessible.selected: selected
+                    opacity: files.cutPaths.includes(modelData.path) ? 0.5 : 1
                     color: selected
                         ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.18)
                         : rowHover.hovered
@@ -887,7 +1205,7 @@ ShellRoot {
                     Text {
                         x: 40
                         anchors.verticalCenter: parent.verticalCenter
-                        width: parent.width * 0.48
+                        width: Math.max(40, parent.width * 0.55 - 48)
                         text: row.modelData.name
                         elide: Text.ElideRight
                         color: Theme.label
@@ -895,7 +1213,10 @@ ShellRoot {
                     }
 
                     Text {
-                        anchors { right: sizeText.left; rightMargin: 24; verticalCenter: parent.verticalCenter }
+                        x: parent.width * 0.55 + 8
+                        width: Math.max(40, parent.width * 0.27 - 12)
+                        anchors.verticalCenter: parent.verticalCenter
+                        elide: Text.ElideMiddle
                         text: files.inTrash && row.modelData.origin
                             ? row.modelData.origin.replace(/\/[^/]+$/, "").replace(files.home, "~")
                             : new Date(row.modelData.modified * 1000).toLocaleDateString(Qt.locale(), Locale.ShortFormat)
@@ -906,7 +1227,8 @@ ShellRoot {
                     Text {
                         id: sizeText
                         anchors { right: parent.right; rightMargin: 12; verticalCenter: parent.verticalCenter }
-                        width: 76
+                        width: Math.max(32, parent.width * 0.18 - 12)
+                        elide: Text.ElideRight
                         horizontalAlignment: Text.AlignRight
                         text: row.modelData.folder ? "Folder" : files.formatSize(row.modelData.size)
                         color: Theme.secondaryLabel
@@ -921,10 +1243,10 @@ ShellRoot {
                         acceptedButtons: Qt.LeftButton | Qt.RightButton
                         drag.target: files.inTrash ? null : rowDrag
                         drag.threshold: 6
-                        onPressed: (mouse) => { if (mouse.button === Qt.LeftButton) files.select(row.modelData) }
+                        onPressed: (mouse) => { if (mouse.button === Qt.LeftButton && (!files.selectedPaths.includes(row.modelData.path) || (mouse.modifiers & (Qt.ControlModifier | Qt.ShiftModifier)))) files.select(row.modelData, mouse.modifiers) }
                         onClicked: (mouse) => {
                             if (mouse.button === Qt.RightButton) files.itemMenu(row, mouse.x, mouse.y, row.modelData)
-                            else files.select(row.modelData)
+                            else if (!(mouse.modifiers & (Qt.ControlModifier | Qt.ShiftModifier))) files.select(row.modelData)
                         }
                         onDoubleClicked: files.openEntry(row.modelData)
                     }
@@ -938,6 +1260,145 @@ ShellRoot {
                 }
             }
             Scroller { flickable: list }
+
+            Row {
+                visible: list.visible
+                x: 16; y: win.toolbarHeight + 3; width: parent.width - 32
+                component SortHeading: Item {
+                    property string label
+                    property string key
+                    height: 24
+                    activeFocusOnTab: true
+                    Accessible.role: Accessible.Button
+                    Accessible.name: "Sort by " + label
+                    function sort() { if (files.sortKey === key) files.descending = !files.descending; else files.sortKey = key }
+                    Keys.onReturnPressed: sort()
+                    Keys.onSpacePressed: sort()
+                    Text { anchors { left: parent.left; leftMargin: 8; verticalCenter: parent.verticalCenter } width: parent.width - 16; elide: Text.ElideRight; text: parent.label + (files.sortKey === parent.key ? files.descending ? " ↓" : " ↑" : ""); color: Theme.secondaryLabel; font.pixelSize: Theme.fs(11) }
+                    MouseArea { anchors.fill: parent; onClicked: parent.sort() }
+                    FocusRing {}
+                }
+                SortHeading { label: "Name"; key: "name"; width: parent.width * 0.55 }
+                SortHeading { label: "Date Modified"; key: "modified"; width: parent.width * 0.27 }
+                SortHeading { label: "Size"; key: "size"; width: parent.width * 0.18 }
+            }
+
+            Rectangle {
+                id: transferPanel
+                objectName: "filesTransferPanel"
+                visible: transferProc.running || files.transferResult !== null
+                anchors { left: parent.left; right: parent.right; bottom: parent.bottom; bottomMargin: pathBar.visible ? pathBar.height : 0 }
+                height: transferContent.height + 20
+                color: Theme.windowBg
+                Rectangle { width: parent.width; height: 1; color: Theme.separator }
+                Column {
+                    id: transferContent
+                    x: 14; y: 10; width: parent.width - 28; spacing: 7
+                    Text {
+                        width: parent.width; elide: Text.ElideMiddle
+                        text: files.transferResult ? (files.transferResult.cancelled ? "Transfer Cancelled" : files.transferResult.ok ? "Transfer Complete" : "Transfer Finished with Errors")
+                            : files.cancelRequested ? "Cancelling…" : files.conflict ? "Waiting for a name-conflict choice…" : files.transferState.event === "preparing" ? "Preparing transfer…" : "Transferring “" + (files.transferState.name ?? "items") + "”…"
+                        color: Theme.label; font { pixelSize: Theme.fs(13); weight: Font.DemiBold }
+                    }
+                    ProgressBar {
+                        width: parent.width; visible: !files.transferResult
+                        indeterminate: files.transferState.event === "preparing" || !files.transferState.total
+                        value: Math.min(1, Math.max(((files.transferState.completed ?? 0) + (files.transferState.skipped ?? 0)) / Math.max(1, files.transferState.total ?? 1),
+                            (files.transferState.totalBytes ?? 0) > 0 ? (files.transferState.bytes ?? 0) / files.transferState.totalBytes : 0))
+                    }
+                    Text {
+                        width: parent.width; wrapMode: Text.WordWrap
+                        text: files.transferResult ? (files.transferResult.completed?.length ?? 0) + " completed · " + (files.transferResult.skipped?.length ?? 0) + " skipped · " + (files.transferResult.errors?.length ?? 0) + " failed"
+                            : (files.transferState.completed ?? 0) + " of " + (files.transferState.total ?? files.transferRequest.paths?.length ?? 0) + " items completed"
+                                + ((files.transferState.totalBytes ?? 0) > 0 ? " · " + files.formatSize(files.transferState.bytes ?? 0) + " copied" : "")
+                        color: Theme.secondaryLabel; font.pixelSize: Theme.fs(11)
+                    }
+                    Text {
+                        visible: !!files.transferResult?.errors?.length
+                        width: parent.width; wrapMode: Text.WordWrap; maximumLineCount: 3; elide: Text.ElideRight
+                        text: files.transferResult?.errors?.[0]?.error ?? ""
+                        color: Theme.dark ? "#ff453a" : "#d70015"; font.pixelSize: Theme.fs(12)
+                    }
+                    Row {
+                        spacing: 8
+                        Button { text: files.cancelRequested ? "Cancelling…" : "Cancel"; visible: transferProc.running && !files.transferResult; enabled: !files.cancelRequested; onClicked: files.cancelTransfer() }
+                        Button {
+                            text: "Show Results"; visible: !!files.transferResult?.completed?.length
+                            onClicked: {
+                                const paths = files.transferResult.completed.map((e) => e.path)
+                                const dest = files.transferResult.destination || paths[0].replace(/\/[^/]+$/, "") || "/"
+                                files.selectionAfterReload = paths; files.navigate(dest)
+                            }
+                        }
+                        Button { text: "Dismiss"; visible: !!files.transferResult; enabled: !transferProc.running; onClicked: files.transferResult = null }
+                    }
+                }
+            }
+
+            Rectangle {
+                id: conflictOverlay
+                objectName: "filesConflict"
+                parent: win.overlay; anchors.fill: parent; z: 120
+                visible: !!files.conflict
+                color: "#66000000"
+                onVisibleChanged: if (visible) Qt.callLater(() => keepBoth.forceActiveFocus()); else files.forceActiveFocus()
+                Keys.onEscapePressed: files.cancelTransfer()
+                MouseArea { anchors.fill: parent }
+                Rectangle {
+                    anchors.centerIn: parent; width: Math.min(480, parent.width - 40); height: conflictColumn.height + 40
+                    radius: 16; color: Theme.windowBg
+                    Column {
+                        id: conflictColumn
+                        x: 20; y: 20; width: parent.width - 40; spacing: 14
+                        Text { width: parent.width; wrapMode: Text.WordWrap; text: "“" + (files.conflict?.name ?? "") + "” already exists"; color: Theme.label; font { pixelSize: Theme.fs(16); weight: Font.DemiBold } }
+                        Text { width: parent.width; wrapMode: Text.WordWrap; text: "Keep both items with different names, skip this item, or cancel the remaining transfer. Completed items will be kept."; color: Theme.secondaryLabel; font.pixelSize: Theme.fs(13) }
+                        Checkbox { id: conflictAll; width: parent.width; text: "Use this choice for all name conflicts"; KeyNavigation.tab: cancelConflict; KeyNavigation.backtab: keepBoth }
+                        Row {
+                            spacing: 8
+                            Button { id: cancelConflict; text: "Cancel Transfer"; KeyNavigation.tab: skipConflict; KeyNavigation.backtab: conflictAll; onClicked: files.cancelTransfer() }
+                            Button { id: skipConflict; text: "Skip"; KeyNavigation.tab: keepBoth; KeyNavigation.backtab: cancelConflict; onClicked: files.answerConflict("skip") }
+                            Button { id: keepBoth; objectName: "filesKeepBoth"; text: "Keep Both"; prominent: true; KeyNavigation.tab: conflictAll; KeyNavigation.backtab: skipConflict; onClicked: files.answerConflict("keep-both") }
+                        }
+                    }
+                }
+            }
+
+            Rectangle {
+                id: infoDialog
+                objectName: "filesInfo"
+                parent: win.overlay; visible: false; z: 110
+                anchors.centerIn: parent; width: Math.min(460, parent.width - 40); height: infoContent.height + 40
+                radius: 20
+                color: Theme.windowBg; border.color: Theme.separator; border.width: 0.5
+                onVisibleChanged: if (visible) infoClose.forceActiveFocus(); else files.forceActiveFocus()
+                Keys.onEscapePressed: visible = false
+                Column {
+                    id: infoContent
+                    x: 20; y: 20; width: parent.width - 40; spacing: 12
+                    Text { width: parent.width; wrapMode: Text.WordWrap; maximumLineCount: 2; elide: Text.ElideMiddle; text: (files.info.name ?? "") + " Info"; color: Theme.label; font { pixelSize: Theme.fs(17); weight: Font.DemiBold } }
+                    Flickable {
+                        id: infoScroll
+                        activeFocusOnTab: true
+                        Keys.onDownPressed: contentY = Math.min(Math.max(0, contentHeight - height), contentY + 30)
+                        Keys.onUpPressed: contentY = Math.max(0, contentY - 30)
+                        Keys.onPressed: (event) => {
+                            if (event.key === Qt.Key_PageDown) contentY = Math.min(Math.max(0, contentHeight - height), contentY + height)
+                            else if (event.key === Qt.Key_PageUp) contentY = Math.max(0, contentY - height)
+                            else return
+                            event.accepted = true
+                        }
+                        width: parent.width; height: Math.min(infoText.implicitHeight, Math.max(70, infoDialog.parent.height - 240))
+                        contentHeight: infoText.height; clip: true; boundsBehavior: Flickable.StopAtBounds
+                        Text { id: infoText; width: infoScroll.width - 12; wrapMode: Text.WrapAnywhere; text: "Kind: " + (files.info.mime ?? "") + "\nSize: " + (files.info.folder ? "Folder (contents not counted)" : files.formatSize(files.info.size ?? 0)) + "\nWhere: " + (files.info.location ?? "") + "\nModified: " + new Date((files.info.modified ?? 0) * 1000).toLocaleString() + "\nPermissions: " + (files.info.permissions ?? "") + (files.info.link ? "\nLink target: " + files.info.link : ""); color: Theme.label; font.pixelSize: Theme.fs(13) }
+                        Scroller { parent: infoScroll; flickable: infoScroll }
+                    }
+                    Row {
+                        spacing: 8
+                        Button { text: "Copy Path"; onClicked: Quickshell.clipboardText = files.info.path ?? "" }
+                        Button { id: infoClose; text: "Done"; prominent: true; onClicked: infoDialog.visible = false }
+                    }
+                }
+            }
 
             // The path bar and status bar, as Finder's: the disk and the folders
             // down to this one (each opens on a click), the items and the room left.
@@ -1040,7 +1501,7 @@ ShellRoot {
                     id: status
                     objectName: "filesStatus"
                     anchors { right: parent.right; rightMargin: 12; verticalCenter: parent.verticalCenter }
-                    text: files.notice || (files.entries.length + (files.entries.length === 1 ? " item" : " items")
+                    text: files.notice || (files.busy && !transferProc.running ? "Working…" : (files.selectedPaths.length ? files.selectedPaths.length + " of " : "") + files.entries.length + (files.entries.length === 1 ? " item" : " items")
                         + (files.free >= 0 ? ", " + files.formatSize(files.free) + " available" : ""))
                     color: files.notice ? Theme.label : Theme.secondaryLabel
                     font { family: Theme.fontUi; pixelSize: Theme.fs(11); weight: files.notice ? Font.Medium : Font.Normal }
