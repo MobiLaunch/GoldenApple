@@ -137,6 +137,29 @@ require("apps/lcode/Workspace.qml", [
     'visible: opacity > 0.001',
     "Math.min(win.width - 150, win.contentX + win.contentWidth - 12)",
 ])
+require("apps/lcode/Workspace.qml", [
+    'objectName: "workspaceFileInspector"',
+    'objectName: "workspaceDesignInspector"',
+    'enabled: currentInspector',
+    'z: currentInspector ? 1 : 0',
+    "NumberAnimation { duration: Theme.reduceMotion ? 0 : 140;",
+])
+require("apps/lcode/Navigator.qml", [
+    "function focusRow(rowIndex) {",
+    "positionViewAtIndex(next, ListView.Contain)",
+    "const item = tree.itemAtIndex(next)",
+    "if (item && item.focusControl) item.focusControl.forceActiveFocus()",
+    "event.key === Qt.Key_Up",
+    "event.key === Qt.Key_Down",
+    "event.key === Qt.Key_Right",
+    "event.key === Qt.Key_Left",
+    "const parentIndex = nav.rows.findIndex",
+    "opacity: tree.keyboardNavigating && fileNodeRow.activeFocus ? 0.75 : 0",
+    "checked: nav.page === index",
+])
+if "nav.selectedPath =" in (ROOT / "apps/lcode/Navigator.qml").read_text(encoding="utf-8"):
+    failures.append("Navigator must not imperatively overwrite Workspace's selectedPath binding")
+
 if 'visible: rightEdge - leftEdge > 220' in (ROOT / 'apps/lcode/Workspace.qml').read_text(encoding='utf-8'):
     failures.append("LCode activity toolbar has two competing visible bindings")
 
