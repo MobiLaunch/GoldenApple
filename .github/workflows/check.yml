@@ -270,6 +270,8 @@ jobs:
         run: python tests/notes-trash.py
       - name: Calendar's store never overwrites a damaged file, locks changes and checks dates
         run: python tests/calendar-store.py
+      - name: Calendar reminder rules and private notification history
+        run: python tests/calendar-reminders.py
       - name: Installer and Hello refuse taken account names and unsafe passwords before anything is erased
         run: python tests/installer-account.py
       - name: Installer refuses a swapped disk, reports a partial install, and isn't stopped by closing
