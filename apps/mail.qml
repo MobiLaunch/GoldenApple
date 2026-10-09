@@ -30,7 +30,7 @@ ShellRoot {
         toolbarItems: [
             Row {
                 visible: mail.configured
-                x: Math.max(win.contentX + 12, win.toolbarSafeX)
+                x: Math.max(win.contentX + 12, win.toolbarLeadingEnd)
                 anchors.verticalCenter: parent.verticalCenter
                 spacing: 10
 
