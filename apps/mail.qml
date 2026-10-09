@@ -92,9 +92,16 @@ ShellRoot {
         ]
 
         sidebar: [
-            Column {
-                width: parent.width
-                spacing: 6
+            Flickable {
+                width: parent.width; height: parent.height
+                clip: true
+                contentWidth: width
+                contentHeight: mailboxFolders.implicitHeight + 24
+                boundsBehavior: Flickable.StopAtBounds
+                Column {
+                    id: mailboxFolders
+                    width: parent.width
+                    spacing: 6
                 Text {
                     x: 12; width: parent.width - 24; height: 25
                     verticalAlignment: Text.AlignBottom
@@ -174,6 +181,7 @@ ShellRoot {
                     symbol: "envelope"
                     selected: false
                     onClicked: { mail.selectedFolder = "inbox"; mail.composing = false; mail.leaveMessage() }
+                }
                 }
             }
         ]
