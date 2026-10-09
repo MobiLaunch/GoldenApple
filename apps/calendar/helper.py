@@ -6,6 +6,9 @@
     helper.py edit ID < EVENT  save changes only if the original is current
     helper.py duplicate ID    make a separately editable copy
     Supports never/daily/weekly/monthly/yearly, optional inclusive end date
+    helper.py occurrence-edit ID DATE < EVENT    change just one series instance
+    helper.py occurrence-skip ID DATE < EVENT    skip one series instance
+    helper.py occurrence-reset ID DATE < EVENT   restore a skipped/edited date
     helper.py delete ID
     helper.py restore         put the last good copy back after the store broke
 
@@ -83,6 +86,37 @@ def check(event: dict) -> str:
             return "Choose a repeat interval before setting an end date."
         if until < date:
             return "The repeat end date must not be before the first event."
+    exceptions = event.get("exceptions", {})
+    if not isinstance(exceptions, dict) or len(exceptions) > 1500:
+        return "The occurrence exceptions are damaged or exceed the supported limit."
+    for original, override in exceptions.items():
+        try:
+            start_date = datetime.date.fromisoformat(original)
+        except (TypeError, ValueError):
+            return "An occurrence exception has an invalid original date."
+        if not isinstance(original, str) or len(original) != 10 or not occurs_on(event, start_date):
+            return "An occurrence exception is not part of this series."
+        if override is None:
+            continue
+        if not isinstance(override, dict) or set(override) - {"title", "date", "time", "calendar"}:
+            return "An occurrence override is damaged."
+        revised = {"title": override.get("title"), "date": override.get("date"),
+                   "time": override.get("time", ""), "calendar": override.get("calendar", "Home")}
+        # Validate occurrence fields, not a nested recurring series.
+        if not isinstance(revised["title"], str) or not revised["title"].strip() or len(revised["title"]) > 500:
+            return "An occurrence override needs a valid title."
+        try:
+            if not isinstance(revised["date"], str) or len(revised["date"]) != 10:
+                raise ValueError
+            datetime.date.fromisoformat(revised["date"])
+            if revised["time"]:
+                if not isinstance(revised["time"], str) or len(revised["time"]) != 5:
+                    raise ValueError
+                datetime.time.fromisoformat(revised["time"])
+        except ValueError:
+            return "An occurrence override has an invalid date or time."
+        if not isinstance(revised["calendar"], str) or not revised["calendar"].strip() or len(revised["calendar"]) > 64:
+            return "An occurrence override needs a valid calendar."
     return ""
 
 
@@ -175,6 +209,37 @@ def broken(exc: Broken) -> int:
                       + (" Choose Restore to go back to the last good copy." if BACKUP.exists() else ""))
 
 
+
+def occurs_on(event: dict, day: datetime.date) -> bool:
+    """The *base* series recurrence, before exceptions and moved instances."""
+    try:
+        first = datetime.date.fromisoformat(event["date"])
+        end = datetime.date.fromisoformat(event["until"]) if event.get("until") else None
+    except (KeyError, TypeError, ValueError):
+        return False
+    if day < first or (end is not None and day > end):
+        return False
+    interval = event.get("repeat", "never")
+    if interval == "never":
+        return day == first
+    if interval == "daily":
+        return True
+    if interval == "weekly":
+        return (day - first).days % 7 == 0
+    if interval == "monthly":
+        return first.day == day.day
+    if interval == "yearly":
+        return first.month == day.month and first.day == day.day
+    return False
+
+
+def expected_event_matches(old: dict, expected: dict) -> bool:
+    """Optimistic lock: preserves compatibility with old snapshot shapes."""
+    return all(old.get(k, default) == expected.get(k, default) for k, default in
+               (("title", None), ("date", None), ("time", ""),
+                ("calendar", "Home"), ("repeat", "never"), ("until", ""),
+                ("exceptions", {})))
+
 def sort_key(e: object) -> tuple:
     e = e if isinstance(e, dict) else {}
     return (str(e.get("date", "")), str(e.get("time", "")), str(e.get("title", "")))
@@ -256,12 +321,11 @@ def main() -> int:
                     return emit(False, error="That event is missing or has an ambiguous identity. Refresh Calendar.")
                 index = matches[0]
                 old = events[index]
-                fields = (("title", None), ("date", None), ("time", ""),
-                          ("calendar", "Home"), ("repeat", "never"), ("until", ""))
-                if any(old.get(key, default) != expected.get(key, default)
-                       for key, default in fields):
+                if not expected_event_matches(old, expected):
                     return emit(False, conflict=True,
                                 error="This event changed in another window. Close the editor and reopen it to see the latest version.")
+                if old.get("exceptions") and (old.get("date") != changes["date"] or old.get("repeat", "never") != changes["repeat"] or old.get("until", "") != changes["until"]):
+                    return emit(False, error="Remove or reset individual changes before changing this series’ recurrence.")
                 edited = {**old, **changes}
                 events[index] = edited
                 events.sort(key=sort_key)
@@ -271,6 +335,86 @@ def main() -> int:
         except OSError as exc:
             return emit(False, error=f"The edited event could not be saved ({exc.strerror or exc}).")
         return emit(True, event=edited)
+
+    if command in ("occurrence-edit", "occurrence-skip") and len(sys.argv) == 4:
+        target, original = sys.argv[2], sys.argv[3]
+        try:
+            request = json.load(sys.stdin)
+        except ValueError:
+            return emit(False, error="The occurrence request could not be read.")
+        if not isinstance(request, dict) or not isinstance(request.get("expected"), dict):
+            return emit(False, error="Reopen the event to edit this occurrence.")
+        try:
+            day = datetime.date.fromisoformat(original)
+            if len(original) != 10:
+                raise ValueError
+        except ValueError:
+            return emit(False, error="The selected occurrence date is invalid.")
+        try:
+            with locked():
+                events = load()
+                matches = [i for i, e in enumerate(events) if isinstance(e, dict) and e.get("id") == target]
+                if len(matches) != 1:
+                    return emit(False, error="That series is missing or duplicated. Refresh Calendar.")
+                i = matches[0]
+                old = events[i]
+                if old.get("repeat", "never") == "never" or not occurs_on(old, day):
+                    return emit(False, error="This date is not an occurrence of the repeating event.")
+                if request["expected"].get("id") != target or not expected_event_matches(old, request["expected"]):
+                    return emit(False, conflict=True,
+                                error="This repeating event changed in another window. Reopen it before editing.")
+                exceptions = dict(old.get("exceptions") or {})
+                if command == "occurrence-skip":
+                    exceptions[original] = None
+                else:
+                    revised = {"title": request.get("title"), "date": request.get("date"),
+                               "time": request.get("time", ""), "calendar": request.get("calendar", "Home")}
+                    proposed = {**old, "exceptions": {**exceptions, original: revised}}
+                    problem = check(proposed)
+                    if problem:
+                        return emit(False, error=problem)
+                    exceptions[original] = revised
+                changed = {**old, "exceptions": exceptions}
+                problem = check(changed)
+                if problem:
+                    return emit(False, error=problem)
+                events[i] = changed
+                save(events)
+        except Broken as exc:
+            return broken(exc)
+        except OSError as exc:
+            return emit(False, error=f"The occurrence could not be saved ({exc.strerror or exc}).")
+        return emit(True, event=changed)
+
+    if command == "occurrence-reset" and len(sys.argv) == 4:
+        target, original = sys.argv[2], sys.argv[3]
+        try:
+            request = json.load(sys.stdin)
+        except ValueError:
+            return emit(False, error="The occurrence request could not be read.")
+        if not isinstance(request, dict) or not isinstance(request.get("expected"), dict):
+            return emit(False, error="Reopen the event first.")
+        try:
+            with locked():
+                events = load()
+                matches = [i for i, e in enumerate(events) if isinstance(e, dict) and e.get("id") == target]
+                if len(matches) != 1:
+                    return emit(False, error="That series is missing or duplicated.")
+                old = events[matches[0]]
+                if request["expected"].get("id") != target or not expected_event_matches(old, request["expected"]):
+                    return emit(False, conflict=True, error="This series changed. Refresh Calendar.")
+                if original not in (old.get("exceptions") or {}):
+                    return emit(False, error="There is no change to reset on that date.")
+                exceptions = dict(old["exceptions"])
+                del exceptions[original]
+                changed = {**old, "exceptions": exceptions}
+                events[matches[0]] = changed
+                save(events)
+        except Broken as exc:
+            return broken(exc)
+        except OSError as exc:
+            return emit(False, error=f"Could not restore the occurrence ({exc.strerror or exc}).")
+        return emit(True, event=changed)
 
     if command == "duplicate" and len(sys.argv) == 3:
         target = sys.argv[2]

@@ -20,9 +20,23 @@ function occursOn(event, date) {
     return false
 }
 function occurrencesOn(events, date) {
-    return (Array.isArray(events) ? events : [])
-        .filter(e => occursOn(e, date))
-        .map(e => Object.assign({}, e, {occurrenceDate:date}))
+    const result = []
+    for (const event of (Array.isArray(events) ? events : [])) {
+        const exceptions = event.exceptions || {}
+        if (occursOn(event, date) && !Object.prototype.hasOwnProperty.call(exceptions, date))
+            result.push(Object.assign({}, event, {occurrenceDate:date, displayedDate:date}))
+        for (const original in exceptions) {
+            if (!Object.prototype.hasOwnProperty.call(exceptions, original))
+                continue
+            const override = exceptions[original]
+            if (!override || override.date !== date) continue
+            result.push(Object.assign({}, event, override, {
+                date:event.date, occurrenceDate:original, displayedDate:date,
+                occurrenceEdited:true
+            }))
+        }
+    }
+    return result
 }
 function summary(event) {
     const r = event?.repeat || "never"

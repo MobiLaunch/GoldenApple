@@ -31,4 +31,18 @@ assert.equal(projected[0].date,"2026-10-08");
 assert.equal(projected[0].occurrenceDate,"2026-10-15");
 assert.equal(source.occurrenceDate,undefined);
 assert.equal(cal.summary(e("2026-10-08","weekly","2026-11-30")),"Weekly until 2026-11-30");
+const recurring=e("2026-10-08","weekly");
+recurring.exceptions={
+    "2026-10-15":null,
+    "2026-10-22":{title:"Moved",date:"2026-10-23",time:"15:00",calendar:"Home"}
+};
+assert.equal(cal.occurrencesOn([recurring],"2026-10-15").length,0);
+assert.equal(cal.occurrencesOn([recurring],"2026-10-22").length,0);
+const moved=cal.occurrencesOn([recurring],"2026-10-23");
+assert.equal(moved.length,1);
+assert.equal(moved[0].title,"Moved");
+assert.equal(moved[0].date,"2026-10-08");
+assert.equal(moved[0].occurrenceDate,"2026-10-22");
+assert.equal(moved[0].displayedDate,"2026-10-23");
+assert.equal(cal.occurrencesOn([recurring],"2026-10-29").length,1);
 console.log("Calendar recurrence contracts passed");

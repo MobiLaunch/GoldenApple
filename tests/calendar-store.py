@@ -224,5 +224,43 @@ class CalendarStore(unittest.TestCase):
         self.assertNotEqual(copy["id"], old["id"])
 
 
+    def test_per_occurrence_override_move_skip_reset_and_stale_edit(self):
+        source = self.add("Weekly", repeat="weekly", until="2026-11-30")["event"]
+        self.assertFalse(self.helper("occurrence-skip", source["id"], "2026-10-09",
+                                      event={"expected":source})["ok"], "not in weekly series")
+        moved = self.helper("occurrence-edit", source["id"], "2026-10-14",
+            event={"expected":source, "title":"Different title", "date":"2026-10-15",
+                   "time":"13:30", "calendar":"Work"})
+        self.assertTrue(moved["ok"], moved)
+        changed = moved["event"]
+        self.assertEqual(changed["exceptions"]["2026-10-14"]["date"], "2026-10-15")
+        self.assertFalse(self.helper("occurrence-skip", source["id"], "2026-10-21",
+                                      event={"expected":source})["ok"], "stale edits rejected")
+        skipped = self.helper("occurrence-skip", source["id"], "2026-10-21",
+                              event={"expected":changed})
+        self.assertTrue(skipped["ok"], skipped)
+        self.assertIsNone(skipped["event"]["exceptions"]["2026-10-21"])
+        self.assertTrue(self.helper("occurrence-reset", source["id"], "2026-10-14",
+                                     event={"expected":skipped["event"]})["ok"])
+        self.assertNotIn("2026-10-14", self.helper("list")["events"][0]["exceptions"])
+        self.assertFalse(self.helper("occurrence-reset", source["id"], "2026-10-14",
+                                     event={"expected":self.helper("list")["events"][0]})["ok"])
+
+    def test_occurrence_protection_and_series_rule_conflicts(self):
+        source = self.add("Weekly", repeat="weekly")["event"]
+        r = self.helper("occurrence-edit", source["id"], "2026-10-14",
+                        event={"expected":source,"title":"Invalid","date":"2026-02-30",
+                               "time":"","calendar":"Home"})
+        self.assertFalse(r["ok"])
+        self.assertTrue(self.helper("occurrence-skip", source["id"], "2026-10-14",
+                                    event={"expected":source})["ok"])
+        current = self.helper("list")["events"][0]
+        self.assertFalse(self.helper("edit",source["id"],event={
+            **current, "expected":current, "repeat":"daily"})["ok"])
+        self.assertEqual(self.helper("list")["events"][0]["repeat"], "weekly")
+        self.store.write_text("{damaged")
+        self.assertTrue(self.helper("occurrence-skip",source["id"],"2026-10-21",
+                                    event={"expected":current})["broken"])
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
