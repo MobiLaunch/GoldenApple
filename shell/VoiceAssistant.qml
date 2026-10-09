@@ -188,6 +188,15 @@ PanelWindow {
         function writing(): void { citron.show("writing") }
         function image(): void { citron.show("image") }
         function edit(): void { citron.show("edit") }
+        function voice(): void {
+            citron.show("ask")
+            citron.startVoice()
+        }
+        function photo(path: string): void {
+            if (!path || !path.startsWith("/") || path.includes("\\0")) return
+            citron.show("edit")
+            citron.selectedPhoto = path
+        }
     }
 
     // Reuses the existing keyring-backed Gemini service. Requests are sent on
