@@ -8,6 +8,7 @@ Item {
     id: sw
     property bool checked: false
     property bool enabled_: true
+    property bool showFocusRing: true
     signal toggled(bool checked)
     implicitWidth: 38; implicitHeight: 22
     opacity: enabled && enabled_ ? 1 : 0.4
@@ -15,7 +16,7 @@ Item {
     Accessible.checkable: true
     Accessible.checked: checked
     Accessible.onPressAction: flip(true)
-    FocusRing { visible: sw.activeFocus && sw.enabled && sw.enabled_ }
+    FocusRing { visible: sw.showFocusRing && sw.activeFocus && sw.enabled && sw.enabled_ }
     activeFocusOnTab: enabled && enabled_
 
     property bool keyboardPressed: false

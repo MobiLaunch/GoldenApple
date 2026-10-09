@@ -12,6 +12,7 @@ Item {
     property string symbol: "sun-max"
     property color symbolColor: "transparent"
     property bool expandable: false
+    property bool showFocusRing: true
     signal moved(real value)
     signal expanded()
 
@@ -165,9 +166,9 @@ Item {
         Symbol { anchors.centerIn: parent; name: "chevron-up"; size: 10; tone: level.shownValue > 0.85 ? "dark" : "white" }
         HoverHandler { id: disclosureHover }
         TapHandler { enabled: level.enabled; onTapped: level.expand() }
-        FocusRing { }
+        FocusRing { visible: level.showFocusRing && opacity > 0 }
     }
-    FocusRing { }
+    FocusRing { visible: level.showFocusRing && opacity > 0 }
     Connections {
         target: Theme
         function onReduceMotionChanged() {

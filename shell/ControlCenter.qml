@@ -154,6 +154,7 @@ PanelWindow {
     onOpenChanged: {
         if (open) closeTimer.stop()
         else closeTimer.restart()
+        panel.syncPresentation()
     }
     Timer {
         id: closeTimer
@@ -329,7 +330,6 @@ PanelWindow {
         }
         Keys.onReturnPressed: trigger()
         Keys.onEnterPressed: trigger()
-        Shared.FocusRing { visible: capsule.activeFocus }
         width: cc.span(2); height: cc.unit
         pressed: capTap.pressed
         hovered: capTap.containsMouse
@@ -436,7 +436,6 @@ PanelWindow {
                 name: circle.icon; size: 22; on: circle.on
                 tone: circle.on ? (Theme.dark ? "dark" : "white") : "auto"
             }
-            Shared.FocusRing { visible: circle.activeFocus }
         }
         Text {
             anchors { top: circleDisc.bottom; topMargin: 5; left: parent.left; right: parent.right }
@@ -456,6 +455,7 @@ PanelWindow {
     }
 
     component SliderTile: Shared.LevelSlider {
+        showFocusRing: false
         property string title
         property string lowIcon
         property string highIcon
@@ -496,7 +496,6 @@ PanelWindow {
                 }
                 Symbol { anchors.centerIn: parent; name: parent.modelData.icon; size: transport.large ? 27 : 21; tone: "auto" }
                 MouseArea { id: mediaArea; anchors.fill: parent; hoverEnabled: true; onClicked: { parent.forceActiveFocus(); parent.modelData.action() } }
-                Shared.FocusRing { }
             }
         }
     }
@@ -510,12 +509,33 @@ PanelWindow {
         width: cc.span(4) + 28
         height: Math.min(cc.height - 40, (cc.detail ? detailView.implicitHeight : content.implicitHeight) + 28)
         Behavior on height { enabled: !Prefs.reduceMotion; Spring { spring: Theme.snappy } }
-        opacity: cc.open ? 1 : 0
-        scale: cc.open || Prefs.reduceMotion ? 1 : 0.965
+        opacity: 0
+        scale: 0.975
         transformOrigin: Item.TopRight
-        Behavior on opacity { NumberAnimation { duration: Prefs.reduceMotion ? 1 : 130; easing.type: Easing.OutCubic } }
-        Behavior on scale { enabled: !Prefs.reduceMotion; NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
-
+        function syncPresentation() {
+            entrance.stop()
+            departure.stop()
+            if (Prefs.reduceMotion) { opacity = cc.open ? 1 : 0; scale = 1; return }
+            if (cc.open) {
+                if (opacity === 0) scale = 0.975
+                entrance.start()
+            } else departure.start()
+        }
+        Component.onCompleted: syncPresentation()
+        ParallelAnimation {
+            id: entrance
+            NumberAnimation { target: panel; property: "opacity"; to: 1; duration: 100; easing.type: Easing.OutCubic }
+            SequentialAnimation {
+                NumberAnimation { target: panel; property: "scale"; to: 1.012; duration: 110; easing.type: Easing.OutCubic }
+                NumberAnimation { target: panel; property: "scale"; to: 1; duration: 160; easing.type: Easing.OutCubic }
+            }
+        }
+        ParallelAnimation {
+            id: departure
+            NumberAnimation { target: panel; property: "opacity"; to: 0; duration: 110; easing.type: Easing.OutCubic }
+            NumberAnimation { target: panel; property: "scale"; to: 0.985; duration: 110; easing.type: Easing.OutCubic }
+        }
+        Connections { target: Prefs; function onReduceMotionChanged() { if (Prefs.reduceMotion) panel.syncPresentation() } }
     }
 
     // The grid and a module's detail view share the panel: the grid slides
@@ -532,6 +552,7 @@ PanelWindow {
     interactive: contentHeight > height
     onContentHeightChanged: contentY = Math.min(contentY, Math.max(0, contentHeight - height))
     scale: panel.scale
+    opacity: panel.opacity
     transformOrigin: Item.TopRight
 
     Column {
@@ -540,7 +561,7 @@ PanelWindow {
         x: 14; y: 14
         width: cc.span(4)
         spacing: cc.gap
-        opacity: cc.detail ? 0 : panel.opacity
+        opacity: cc.detail ? 0 : 1
         visible: opacity > 0
         enabled: cc.open && !cc.detail
         focus: cc.open && !cc.detail
@@ -684,7 +705,6 @@ PanelWindow {
                 Symbol { anchors.centerIn: parent; name: "airplay"; size: 16; tone: "auto" }
                 HoverHandler { id: routeHover }
                 TapHandler { id: routeTap; onTapped: cc.showDetail("sound") }
-                Shared.FocusRing { }
             }
             Text {
                 x: 62; y: 14; width: parent.width - 110
@@ -697,7 +717,6 @@ PanelWindow {
                 color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: cc.cs(11) }
             }
             MediaControls { anchors { right: parent.right; rightMargin: 10; bottom: parent.bottom; bottomMargin: 2 } }
-            Shared.FocusRing { }
         }
 
         Grid {
@@ -746,7 +765,6 @@ PanelWindow {
                 Accessible.onPressAction: cc.editing = !cc.editing
                 Keys.onSpacePressed: (event) => { if (!event.isAutoRepeat) cc.editing = !cc.editing }
                 Keys.onReturnPressed: cc.editing = !cc.editing
-                Shared.FocusRing { }
                 pressed: editTap.pressed
                 hovered: editTap.containsMouse
                 Text { id: editLabel; anchors.centerIn: parent; text: cc.editing ? "Done" : "Edit Controls"; color: Theme.label; font { family: Theme.fontUi; pixelSize: cc.cs(12); weight: Font.Medium } }
@@ -771,7 +789,7 @@ PanelWindow {
         id: detailView
         anchors { top: parent.top; left: parent.left; right: parent.right; topMargin: 20; leftMargin: 22; rightMargin: 22 }
         spacing: 2
-        opacity: cc.detail ? panel.opacity : 0
+        opacity: cc.detail ? 1 : 0
         visible: opacity > 0
         enabled: cc.open && !!cc.detail
         Behavior on opacity { NumberAnimation { duration: Prefs.reduceMotion ? 1 : 180; easing.type: Easing.OutCubic } }
@@ -798,7 +816,6 @@ PanelWindow {
                 Keys.onSpacePressed: cc.detail = ""
                 Keys.onReturnPressed: cc.detail = ""
                 Accessible.onPressAction: cc.detail = ""
-                Shared.FocusRing { visible: parent.activeFocus }
                 color: backArea.pressed ? Theme.selection : backArea.containsMouse ? Theme.fill : "transparent"
                 Symbol { anchors.centerIn: parent; name: "chevron-left"; size: 11; tone: "auto" }
                 MouseArea { id: backArea; anchors.fill: parent; hoverEnabled: true; onClicked: cc.detail = "" }
@@ -812,6 +829,8 @@ PanelWindow {
                 font { family: Theme.fontUi; pixelSize: cc.cs(15); weight: Font.Bold }
             }
             Shared.Switch {
+                objectName: "ccDetailSwitch"
+                showFocusRing: false
                 visible: detailView.hasSwitch
                 checked: detailView.on
                 onToggled: {
@@ -832,6 +851,7 @@ PanelWindow {
             Layout.fillWidth: true
             spacing: 14
             Shared.LevelSlider {
+                showFocusRing: false
                 objectName: "ccExpandedLevel"
                 anchors.horizontalCenter: parent.horizontalCenter
                 width: 80; height: 204
@@ -1106,7 +1126,6 @@ PanelWindow {
             Keys.onSpacePressed: cc.openDetailSettings()
             Keys.onReturnPressed: cc.openDetailSettings()
             Keys.onEnterPressed: cc.openDetailSettings()
-            Shared.FocusRing { visible: parent.activeFocus }
             radius: height / 2
             color: settingsArea.pressed ? Theme.selection : settingsArea.containsMouse ? Theme.menuHighlight : "transparent"
             Text {

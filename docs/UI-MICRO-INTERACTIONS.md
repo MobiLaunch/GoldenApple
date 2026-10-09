@@ -313,6 +313,14 @@ Pills and circular actions squash slightly on press and bounce to 102.5%
 on release/keyboard activation, then settle within 335 ms. Reduce Motion
 stops an active bounce immediately. Only visual transforms move; the grid
 does not resize during interaction.
+Control Center omits accent focus outlines on its actions, level capsules,
+disclosures and detail switches while retaining keyboard/accessibility actions.
+The shared level slider and switch still show focus rings in other surfaces.
+Its entrance grows from 97.5% to 101.2% and settles at 100% over 270 ms,
+alongside one 100 ms opacity fade. The content follows that opacity directly,
+avoiding a second fade that continually chases the first. Opening/closing
+stops the previous presentation animation; Reduce Motion snaps to the final
+state and cancels an entrance in progress. The Wayland surface stays fixed.
 Display and Now Playing expand into larger controls while existing network,
 audio-output, mirroring and Focus workflows remain available.
 
