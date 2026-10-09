@@ -131,6 +131,7 @@ EOF
     printf '# Written by Setup Assistant (keyboard layout).\n' > "$SKEL/.config/hypr/golden-gate/input.conf"
     printf '# Written by Settings.\n' > "$SKEL/.config/hypr/golden-gate/accessibility.conf"
     printf '# Written by Settings.\n' > "$SKEL/.config/hypr/golden-gate/displays.conf"
+    printf '# Written by Settings: window snapping and resize.\n' > "$SKEL/.config/hypr/golden-gate/windows.conf"
     printf '# Filled in by machine-conf.sh when the session starts.\n' > "$SKEL/.config/hypr/golden-gate/machine.conf"
     cp -a "$REPO/shell" "$SKEL/.config/quickshell/golden-gate"
     # The shell reaches the canonical shared UI (Theme, Glass, Symbol, controls)
@@ -157,7 +158,9 @@ EOF
     cp -a "$REPO/shell" "$SKEL/.config/quickshell/golden-gate"
     rm -rf "$SKEL/.config/quickshell/golden-gate/ui"
     ln -s "/usr/share/golden-gate/ui" "$SKEL/.config/quickshell/golden-gate/ui"
-    mkdir -p "$SKEL/.config/hypr"
+    mkdir -p "$SKEL/.config/hypr/golden-gate"
+    [[ -e "$SKEL/.config/hypr/golden-gate/windows.conf" ]] ||
+        printf '# Written by Settings: window snapping and resize.\n' > "$SKEL/.config/hypr/golden-gate/windows.conf"
     sed -e 's#__GG_WALLPAPER__#/usr/share/backgrounds/golden-gate/tide.png#' \
         -e 's#__GG_APPS__#/usr/share/golden-gate/apps#' \
         "$REPO/compositor/hyprland/hyprland.conf" > "$SKEL/.config/hypr/hyprland.conf"
