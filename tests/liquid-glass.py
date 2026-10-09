@@ -139,7 +139,7 @@ for line in ("gaps_in = 8", "gaps_out = 16", "border_size = 1", "col.active_bord
 deco = (ROOT / "design/dist/hyprland-motion.conf").read_text()
 for line in ("size = 12", "passes = 4", "new_optimizations = true", "ignore_opacity = false", "vibrancy = 0.35",
              "vibrancy_darkness = 0.15", "contrast = 1.2", "brightness = 1.1", "noise = 0.015", "popups = true",
-             "popups_ignorealpha = 0.3", "range = 30", "render_power = 4", "color = rgba(00000045)"):
+             "popups_ignorealpha = 0.3", "range = 46", "render_power = 2", "color = rgba(00000034)"):
     check(line in deco, f"blur and shadow: {line}")
 check("opacity 0.97 0.96" in conf and "com\\.mitchellh\\.ghostty" in conf, "the terminal is a little clearer")
 check(" override" not in "\n".join(l for l in conf.splitlines() if "opacity" in l and l.startswith("windowrule")),
