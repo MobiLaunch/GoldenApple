@@ -1,9 +1,7 @@
 #!/usr/bin/env python3
-"""Launchpad's folders: a Utilities folder, as on the Mac, holds Terminal,
-Disk Utility and the apps whose desktop files call them system tools
-(Settings, Monitor, TerminalEmulator, PackageManager…); "Other" keeps only
-the rest of the apps without a CitronOS icon; and a folder of one app is
-just that app. Runs the whole shell in the preview harness."""
+"""Launchpad's strict curated icon policy: unmatched Linux apps are never
+shown, including in the old Other folder. Golden Gate system tools remain
+inside Utilities. Runs the shell in the preview harness."""
 import json
 import os
 from pathlib import Path
@@ -66,18 +64,21 @@ with tempfile.TemporaryDirectory() as t:
 
 failures = []
 util = s["folders"].get("Utilities", [])
-for ident in ("org.goldengate.Terminal", "org.goldengate.DiskUtility", "htop", "org.gnome.Settings", "xterm", "org.example.Unzip"):
+for ident in ("org.goldengate.Terminal", "org.goldengate.DiskUtility"):
     if ident not in util:
-        failures.append(f"{ident} is in Utilities: {util}")
+        failures.append(f"Missing native utility with curated icon: {ident} ({util})")
+for ident in ("htop", "org.gnome.Settings", "xterm", "org.example.Unzip", "gimp"):
+    if ident in s["grid"] or ident in util or any(ident in ids for ids in s["folders"].values()):
+        failures.append(f"Unmatched Linux app leaked into Launchpad: {ident}")
 for ident in ("org.goldengate.Terminal", "org.goldengate.DiskUtility"):
     if ident in s["grid"]:
         failures.append(f"{ident} isn't also loose on the grid")
-if "gimp" in util:
-    failures.append("a graphics app isn't a utility")
+if "Other" in s["folders"]:
+    failures.append("Other folder must not expose apps without curated icons")
 if "org.goldengate.Files" not in s["grid"]:
     failures.append("CitronOS's own apps stay on the grid")
 for f in failures:
     print("FAIL", f, file=sys.stderr)
 if not failures:
-    print(f"Launchpad: Utilities holds {len(util)} apps; Other {len(s['folders'].get('Other', []))}")
+    print(f"Launchpad: Utilities holds {len(util)} curated icons; unmatched apps excluded")
 sys.exit(1 if failures else 0)
