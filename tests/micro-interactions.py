@@ -65,7 +65,9 @@ check("apps/lib/Scroller.qml", [
     "Behavior on color { ColorAnimation { duration: Theme.reduceMotion ? 0 : 100 } }",
     "height: Math.min(s.height, Math.max(24, s.height * ratio))",
     "y: Math.max(0, s.height - height)",
-], "macOS overlay scrollbars widen gently and fit inside tiny inspector panels")
+    "enabled: s.needed && s.visible",
+    "Theme.alwaysShowScrollbars || s.active || hover.hovered || pressed",
+], "macOS overlay scrollbars fit tiny panels and never steal invisible clicks")
 
 check("apps/lib/FocusRing.qml", [
     "Gentle two-tone focus halo",
