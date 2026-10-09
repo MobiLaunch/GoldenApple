@@ -185,7 +185,7 @@ Item {
                                 size: 12
                                 tone: "gray"
                                 rotation: nav.expanded[node.modelData.path] ? 90 : 0
-                                Behavior on rotation { NumberAnimation { duration: Theme.reduceMotion ? 1 : 120 } }
+                                Behavior on rotation { NumberAnimation { duration: Theme.reduceMotion ? 0 : 125; easing.type: Easing.OutCubic } }
                             }
                             Symbol {
                                 x: 15

@@ -1232,6 +1232,9 @@ ShellRoot {
                         : rowHover.hovered
                             ? (Theme.dark ? "#0dffffff" : "#07000000")
                             : "transparent"
+                    Behavior on color {
+                        ColorAnimation { duration: Theme.reduceMotion ? 0 : 95; easing.type: Easing.OutCubic }
+                    }
 
                     Image {
                         x: 8
