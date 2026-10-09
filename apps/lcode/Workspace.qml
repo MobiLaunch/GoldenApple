@@ -26,6 +26,27 @@ AppWindow {
     readonly property bool showDebug: designing ? designDebugOpen : debugOpen
     function toggleDebug() { if (designing) designDebugOpen = !designDebugOpen; else debugOpen = !debugOpen }
     property real debugHeight: 210
+    // The debug pane docks to the editor rather than appearing as a second
+    // floating surface. One animated boundary controls editor height and the
+    // pane's top edge; resizing with the pointer remains immediate.
+    property bool debugResizing: false
+    property real presentedDebugHeight: showDebug
+        ? Math.max(90, Math.min(debugHeight, Math.max(90, height - toolbarHeight - 160)))
+        : 0
+    Behavior on presentedDebugHeight {
+        enabled: !Theme.reduceMotion && !win.debugResizing
+        NumberAnimation { duration: 205; easing.type: Easing.OutCubic }
+    }
+    Timer {
+        id: debugResizeIdle
+        interval: 160
+        onTriggered: win.debugResizing = false
+    }
+    function resizeDebug(dy) {
+        debugResizing = true
+        debugHeight = Math.max(90, debugHeight - dy)
+        debugResizeIdle.restart()
+    }
 
     title: app.project ? app.project.name : "LCode"
     implicitWidth: Math.min(1480, (Quickshell.screens[0]?.width ?? 1600) - 60)
@@ -319,12 +340,13 @@ AppWindow {
     // --------------------------------------------------- editor and debug
     Item {
         anchors.fill: parent
+        clip: true
 
         EditorArea {
             id: editorArea
             objectName: "editorArea"
             width: parent.width
-            height: parent.height - (win.showDebug ? debugArea.height : 0)
+            height: Math.max(0, parent.height - win.presentedDebugHeight)
             app: win.app
             backend: win.backend
             menu: menu
@@ -341,14 +363,15 @@ AppWindow {
 
         DebugArea {
             id: debugArea
-            visible: win.showDebug
-            y: parent.height - height
+            visible: win.presentedDebugHeight > 0.5
+            y: parent.height - win.presentedDebugHeight
             width: parent.width
             height: Math.max(90, Math.min(win.debugHeight, parent.height - 160))
+            opacity: Math.max(0, Math.min(1, win.presentedDebugHeight / 70))
             app: win.app
             backend: win.backend
             onHideRequested: win.toggleDebug()
-            onResizeBy: (dy) => win.debugHeight = Math.max(90, win.debugHeight - dy)
+            onResizeBy: (dy) => win.resizeDebug(dy)
         }
     }
 
