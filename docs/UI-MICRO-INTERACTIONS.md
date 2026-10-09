@@ -50,6 +50,38 @@ always-on effects, or geometry-changing menu animations.
 - `python tests/menu-popup.py`: popup-surface stability on menu switching.
 - `python tests/check-qml.py`: QML parser validation across the tree.
 
+## Window and navigation choreography
+
+**Sidebars and inspector panels** use a 215 ms ease, with the public width
+remaining the desired width and the animated presentation feeding both
+`contentX` and `contentWidth`. Both edges, separators, toolbar positioning
+and clipped panel areas follow a common boundary. A toggle can reverse
+mid-flight without leaving a blank stripe between glass and content.
+Intermediate widths are clamped so narrow panels cannot make their children
+negative-sized. There is no sidebar entrance on the app's first frame.
+
+**Document sheets** are now one reusable `apps/lib/ModalSheet.qml` component.
+The New Project and other LCode sheets use this shared component, as do Files'
+Rename, New Folder and Empty Trash confirmations. The scrim and attached
+sheet animate together; the sheet remains mounted for its short exit fade,
+but it stops intercepting input on dismissal. A remembered focus origin is
+restored on close. Escape and click-away respect dismissibility.
+
+**Design popovers** scale and fade in on the side of their source with room
+available, and restore focus on dismissal. If reopened during a fade, the
+animation is retargeted instead of spawning a stale second surface.
+
+When **Reduce Motion** is enabled, sidebar widths snap and sheet/popover
+scale/translation is suppressed. Color and opacity changes still identify the
+current state, without relying on direction of travel.
+
+**Tests**: `python tests/window-choreography.py` enforces shared-QML
+contracts; `python tests/native-controls.py` exercises sheet entrance,
+Escape/focus return and rapid reopening in Qt; `python
+tests/files-interactions.py` drives the actual Files QML through sidebar
+toggles and dialogs. They run in CI, but physical trackpad, GPU refraction and
+installed Hyprland window behavior still require hands-on validation.
+
 ## Real-device acceptance checklist
 
 1. With a trackpad, sweep quickly across a row of Dock icons: labels should

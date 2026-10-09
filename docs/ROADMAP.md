@@ -50,6 +50,9 @@
 - [x] Search-field clear affordance and Escape to clear without dismissing dialogs
 - [x] Pop-up active state, keyboard toggle feedback, slider/scrollbar ease and focus halos
 - [x] Dock label hover intent, subtle inactive-window depth, short menu selection fade
+- [x] Shared AppWindow: synchronized, interruptible leading/trailing sidebar choreography
+- [x] Canonical attached modal sheets for Files and LCode, with exit fade and focus return
+- [x] Design popovers preserve focus and adapt their entrance to screen edges
 - [x] Notification Center, Mission Control, switcher and Control Center transition polish
 - [x] Offscreen native-control regressions and source contracts in CI
 - [ ] Installed-GPU motion/blur tests with physical trackpad and pointer

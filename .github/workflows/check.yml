@@ -221,6 +221,8 @@ jobs:
         run: python tests/shared-ui.py
       - name: Micro-interaction and Reduce Motion shell contracts
         run: python tests/micro-interactions.py
+      - name: Synchronized window panels and modal sheet choreography
+        run: python tests/window-choreography.py
       - name: Verify the default desktop is internally coherent
         run: python tests/default-desktop.py
       - name: Verify the default desktop is internally coherent
