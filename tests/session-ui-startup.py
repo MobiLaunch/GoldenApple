@@ -38,13 +38,37 @@ class WindowSettingsAndMessageLaunch(unittest.TestCase):
     def test_sidebar_buttons_never_enter_traffic_light_zone(self):
         shared = (ROOT / "apps/lib/AppWindow.qml").read_text()
         self.assertIn("readonly property real toolbarSafeX: lights.x + lights.width + 16", shared)
+        self.assertIn("readonly property real toolbarLeadingEnd: Math.max(toolbarSafeX,", shared)
+        self.assertIn("sideRow.x + sideRow.width + (sideRow.width > 0 ? 12 : 0)", shared)
+        self.assertIn("Math.max(win.contentX + 10, win.toolbarLeadingEnd)", shared)
         # These applications can animate their sidebar down to zero width.
-        for app in ("settings", "files", "mail", "calendar"):
+        for app in ("files", "mail", "calendar", "photos"):
             source = (ROOT / f"apps/{app}.qml").read_text()
-            self.assertIn("Math.max(win.contentX +", source, app)
-            self.assertIn("win.toolbarSafeX)", source, app)
+            self.assertIn("Math.max(win.contentX + 12, win.toolbarLeadingEnd)", source, app)
+        settings = (ROOT / "apps/settings.qml").read_text()
+        self.assertIn("Math.max(win.contentX + 14, win.toolbarSafeX)", settings)
+        notes = (ROOT / "apps/notes.qml").read_text()
+        self.assertIn("win.toolbarLeadingEnd)", notes)
+        lcode = (ROOT / "apps/lcode/Workspace.qml").read_text()
+        self.assertIn("win.toolbarLeadingEnd, 180)", lcode)
         # The dedicated sidebar-side toolbar already has a safe lower bound.
         self.assertIn("Math.max(lights.x + lights.width + 16,", shared)
+
+    def test_sidebar_animation_maintains_clickable_separation(self):
+        # Model the exact AppWindow expressions at every point in the
+        # 215-ms closing animation. Both the traffic lights and the actual
+        # sidebar button(s) must have a non-overlapping input rectangle.
+        traffic_end = 20 + (3 * 13 + 2 * 8) + 16
+        for button_count in (1, 2):
+            row_width = button_count * 36 + (button_count - 1) * 8
+            for presented in range(0, 281):
+                sidebar_row_x = max(traffic_end, presented - row_width - 10
+                                    if presented > 0 else traffic_end)
+                leading_end = max(traffic_end, sidebar_row_x + row_width + 12)
+                content_start = max(presented + 12, leading_end)
+                with self.subTest(buttons=button_count, sidebar=presented):
+                    self.assertGreaterEqual(sidebar_row_x, traffic_end)
+                    self.assertGreaterEqual(content_start, sidebar_row_x + row_width + 12)
 
     def test_messages_starts_with_error_reporting_and_real_onboarding(self):
         desktop = (ROOT / "apps/desktop/org.goldengate.Messages.desktop").read_text()
