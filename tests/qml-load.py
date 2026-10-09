@@ -17,7 +17,7 @@ import tempfile
 ROOT = Path(__file__).resolve().parents[1]
 PREVIEW = ROOT / "tools/preview/preview.py"
 APPS = ["settings", "files", "notes", "music", "photos", "weather", "calculator", "textedit", "messages",
-        "maps", "calendar", "software", "airdrop", "lcode", "mail", "clock", "intelligence", "diskutility"]
+        "maps", "calendar", "software", "airdrop", "lcode", "mail", "clock", "diskutility"]
 ERRORS = re.compile(r"is not a type|Type \w+ unavailable|Cannot override FINAL|Cannot assign to non-existent property|"
                     r"module \"[^\"]+\" is not installed|Syntax error|failed to load component|could not create")
 
@@ -29,16 +29,17 @@ with tempfile.TemporaryDirectory() as tmp:
     targets += [
         # Summoning the floating Citron orb must compile independently of
         # the full assistant and without contacting Gemini in preview.
-        ("citron-voice-bubble", ["shell", "--do", "citron.toggle",
-                                 "--require-object", "citronVoiceBubble"]),
+        ("citron-system-overlay", ["shell", "--do", "citron.toggle",
+                                 "--require-object", "citronSystemOverlay"]),
         ("settings-intelligence-start", ["app", "apps/settings.qml", "--env",
                                          "GG_SETTINGS_PANE=intelligence", "--require-object", "citronSettingsPanel"]),
         ("settings-intelligence-navigation", ["app", "apps/settings.qml",
                                               "--do", "settings.open:intelligence",
                                               "--require-object", "citronSettingsPanel"]),
-        ("intelligence-preferences", ["app", "apps/intelligence.qml",
-                                      "--env", "GG_INTELLIGENCE_MODE=settings",
-                                      "--require-object", "citronSettingsPanel"]),
+        # Messages must always draw its own connection/onboarding surface
+        # even when the optional BlueFerry daemon is unavailable.
+        ("messages-onboarding", ["app", "apps/messages.qml",
+                                  "--require-object", "messagesOnboarding"]),
     ]
     for name, args in targets:
         proc = subprocess.run([sys.executable, str(PREVIEW), *args, "--wait", "300", "-o", f"{tmp}/{name}.png"],
