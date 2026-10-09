@@ -112,6 +112,36 @@ class Interactions(unittest.TestCase):
         self.eval('confirmEmpty.close()')
         self.assertFalse(self.eval('confirmEmpty.shown'))
 
+    def test_quick_look_morph_and_nonblocking_exit(self):
+        self.eval('select(entries[0]); quickLook.open=true')
+        card=self.root.findChild(QObject,'quickLookCard')
+        surface=self.root.findChild(QObject,'quickLookHitArea')
+        self.assertIsNotNone(card)
+        self.assertIsNotNone(surface)
+        self.assertTrue(surface.property('enabled'))
+        self.assertTrue(self.eval('quickLook.visible'))
+        QTest.qWait(260)
+        self.assertAlmostEqual(card.property('scale'),1.0,delta=0.03)
+        self.eval('quickLook.open=false')
+        self.assertFalse(surface.property('enabled'),
+                         'Quick Look must release mouse input before its exit fade completes')
+        QTest.qWait(230)
+        self.assertFalse(self.eval('quickLook.visible'))
+
+    def test_quick_look_reduce_motion_avoids_pop_and_preview_remains_navigable(self):
+        self.eval('Theme.reduceMotion=true; select(entries[0]); quickLook.open=true')
+        card=self.root.findChild(QObject,'quickLookCard')
+        self.assertAlmostEqual(card.property('scale'),1.0,delta=0.01)
+        # Selection can change while Quick Look stays open. The preview retargets
+        # its entry without opening a new surface and without a size tween.
+        self.eval('select(entries[1])')
+        APP.processEvents()
+        self.assertEqual(self.eval('quickLook.entry.path'),str(self.home/'b.txt'))
+        self.assertTrue(self.eval('quickLook.open'))
+        self.eval('quickLook.open=false')
+        APP.processEvents()
+        self.assertFalse(self.eval('quickLook.visible'))
+
     def test_range_toggle_all_and_clear_on_navigation(self):
         self.eval('view="list"; select(entries[0])')
         QTest.keyClick(self.root,Qt.Key_Down,Qt.ShiftModifier)
