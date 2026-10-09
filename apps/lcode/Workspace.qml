@@ -198,10 +198,18 @@ AppWindow {
             id: activity
             app: win.app
             readonly property real leftEdge: schemePill.x + schemePill.width + 14
-            // Stop short of the toolbar's right-hand buttons (over the inspector when it's open).
-            readonly property real rightEdge: win.inspectorOpen ? win.contentX + win.contentWidth - 12 : win.width - 150
-            width: Math.max(220, Math.min(560, rightEdge - leftEdge))
+            // Follow the animated inspector boundary. Never overlap the
+            // trailing toolbar actions when both sidebars are visible.
+            readonly property real rightEdge: Math.min(win.width - 150, win.contentX + win.contentWidth - 12)
+            readonly property real room: Math.max(0, rightEdge - leftEdge)
+            width: Math.min(560, room)
             x: Math.max(leftEdge, (leftEdge + rightEdge - width) / 2)
+            opacity: room >= 260 ? 1 : 0
+            visible: opacity > 0.001
+            enabled: room >= 260
+            Behavior on opacity {
+                NumberAnimation { duration: Theme.reduceMotion ? 0 : 125; easing.type: Easing.OutCubic }
+            }
             anchors.verticalCenter: parent.verticalCenter
             visible: rightEdge - leftEdge > 220
             onIssuesClicked: { win.navigatorOpen = true; navigator.page = 2 }
