@@ -59,6 +59,22 @@ always-on effects, or geometry-changing menu animations.
 
 ### Dock lifecycle and close handoff
 
+Dock recent-icon cleanup now uses a **single-shot timer** for the nearest
+pending deadline, instead of polling every 25 ms throughout the hold and exit.
+A new open, a pin action or a resumed drag reschedules the same timer; after
+the final slot is removed it stops completely. The existing keyed delegates and
+220 ms width/opacity collapse remain, so the Dock's glass backing retains its
+geometry as the gap closes. A 90 ms upward/165 ms settling nudge confirms an
+already-running app was selected; it does not change slot dimensions or replay
+the longer launch bounce. Reduce Motion cancels the nudge immediately.
+
+The shell's opening card now uses the compositor's exact 28 px upward center
+bias, plus the shared screen-fit helper, avoiding the last-frame correction
+seen when its estimated rectangle disagreed with the actual window frame.
+The native compositor exit and opacity fade last 200 ms rather than 100 ms;
+closing still does not draw a fake window-snapshot card. Dock restore explicitly
+focuses the returned window after moving it to the Dock monitor's workspace.
+
 Transient app identity is separate from window-list identity. Keyed ScriptModels
 keep pinned icons, running icons and unaffected backdrop captures alive when
 one window changes. A just-closed transient icon remains briefly, then its
