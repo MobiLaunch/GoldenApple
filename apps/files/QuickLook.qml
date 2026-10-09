@@ -76,12 +76,17 @@ Item {
         // A picture sits this far inside the card, so its square corners stay
         // within the card's rounded ones (in any renderer, no clipping needed).
         readonly property real mat: 6
+        // Keep the previous image's fitted size while the next selection loads.
+        // Otherwise an image-to-image arrow-key change shrinks to the generic
+        // placeholder size and grows again, producing an ugly double-morph.
+        property size previousImageFit: Qt.size(Math.min(maxW, 460), Math.min(maxH, 380))
         // Pictures size the card to themselves; everything else gets a page.
         readonly property size fit: {
             if (look.kind === "image" && picture.status === Image.Ready && picture.implicitWidth > 0) {
                 const s = Math.min(1, (maxW - 2 * mat) / picture.implicitWidth, (maxH - bar.height - 2 * mat) / picture.implicitHeight)
                 return Qt.size(Math.max(360, picture.implicitWidth * s + 2 * mat), Math.max(240, picture.implicitHeight * s + bar.height + 2 * mat))
             }
+            if (look.kind === "image") return previousImageFit
             if (look.kind === "text") return Qt.size(Math.min(maxW, 760), maxH)
             return Qt.size(Math.min(maxW, 460), Math.min(maxH, 380))
         }
@@ -119,6 +124,10 @@ Item {
             visible: look.kind === "image"
             anchors { fill: parent; topMargin: bar.height + card.mat; leftMargin: card.mat; rightMargin: card.mat; bottomMargin: card.mat }
             source: look.open && look.kind === "image" ? Paths.fileUrl(look.entry.path) : ""
+            onStatusChanged: {
+                if (status === Image.Ready && look.kind === "image")
+                    card.previousImageFit = card.fit
+            }
             fillMode: Image.PreserveAspectFit
             asynchronous: true
             smooth: true
@@ -134,7 +143,8 @@ Item {
         Column {
             anchors.centerIn: picture
             spacing: 7
-            visible: look.open && look.kind === "image" && picture.status === Image.Loading
+            visible: look.open && look.kind === "image" &&
+                (picture.status === Image.Loading || picture.status === Image.Error)
             Symbol {
                 anchors.horizontalCenter: parent.horizontalCenter
                 name: "photo"; size: 30; tone: "gray"
@@ -142,7 +152,7 @@ Item {
             }
             Text {
                 anchors.horizontalCenter: parent.horizontalCenter
-                text: "Preparing Preview…"
+                text: picture.status === Image.Error ? "Preview unavailable" : "Preparing Preview…"
                 color: Theme.secondaryLabel
                 font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
             }
