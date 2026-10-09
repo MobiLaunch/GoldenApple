@@ -1173,6 +1173,104 @@ ShellRoot {
                 cellHeight: 112
                 model: files.entries
 
+                // Drag across empty grid space to select a rectangle of icons.
+                // The background sits BEHIND item delegates, so an icon drag
+                // still goes through the existing DragSource/DropArea path.
+                MouseArea {
+                    id: marqueeBackground
+                    objectName: "filesMarqueeBackground"
+                    anchors.fill: parent
+                    z: -1
+                    enabled: grid.activeView && !files.busy
+                    acceptedButtons: Qt.LeftButton
+                    preventStealing: true
+                    property real startX: 0
+                    property real startY: 0
+                    property real lastX: 0
+                    property real lastY: 0
+                    property bool dragging: false
+                    property bool hadDrag: false
+                    property var originalPaths: []
+                    property int modifiers: 0
+
+                    function selectionBetween(x0, y0, x1, y1) {
+                        const left = Math.min(x0, x1), right = Math.max(x0, x1)
+                        const top = Math.min(y0, y1), bottom = Math.max(y0, y1)
+                        const paths = []
+                        // itemAtIndex only returns instantiated, visible cells;
+                        // a drag cannot select offscreen items accidentally.
+                        for (let i = 0; i < grid.count; i++) {
+                            const item = grid.itemAtIndex(i)
+                            if (!item) continue
+                            const p = item.mapToItem(grid, 0, 0)
+                            if (p.x < right && p.x + item.width > left
+                                && p.y < bottom && p.y + item.height > top)
+                                paths.push(files.entries[i].path)
+                        }
+                        return paths
+                    }
+                    function applyRectangle(x, y) {
+                        lastX = Math.max(0, Math.min(grid.width, x))
+                        lastY = Math.max(0, Math.min(grid.height, y))
+                        const hits = selectionBetween(startX, startY, lastX, lastY)
+                        let paths
+                        if (modifiers & Qt.ControlModifier) {
+                            paths = originalPaths.filter((p) => !hits.includes(p))
+                                .concat(hits.filter((p) => !originalPaths.includes(p)))
+                        } else if (modifiers & Qt.ShiftModifier) {
+                            paths = originalPaths.concat(hits.filter((p) => !originalPaths.includes(p)))
+                        } else {
+                            paths = hits
+                        }
+                        const previous = files.selectedPaths
+                        if (previous.length !== paths.length
+                            || paths.some((p, i) => p !== previous[i]))
+                            files.setSelection(paths, paths[paths.length - 1] ?? "")
+                    }
+                    onPressed: (mouse) => {
+                        startX = mouse.x; startY = mouse.y
+                        lastX = startX; lastY = startY
+                        modifiers = mouse.modifiers
+                        originalPaths = files.selectedPaths.slice()
+                        dragging = false
+                        hadDrag = false
+                        files.forceActiveFocus()
+                    }
+                    onPositionChanged: (mouse) => {
+                        if (!pressed) return
+                        if (!dragging && Math.hypot(mouse.x - startX, mouse.y - startY) > 6) {
+                            dragging = true
+                            hadDrag = true
+                        }
+                        if (dragging) applyRectangle(mouse.x, mouse.y)
+                    }
+                    onReleased: {
+                        if (dragging) files.selectionAnchor = files.selectedPath
+                        dragging = false
+                    }
+                    onCanceled: { dragging = false; hadDrag = false }
+                    onClicked: (mouse) => {
+                        if (!hadDrag && !(mouse.modifiers & (Qt.ControlModifier | Qt.ShiftModifier)))
+                            files.clearSelection()
+                    }
+                }
+
+                Rectangle {
+                    id: marqueeHighlight
+                    objectName: "filesMarqueeHighlight"
+                    z: 12
+                    enabled: false
+                    visible: marqueeBackground.dragging && grid.activeView
+                    x: Math.min(marqueeBackground.startX, marqueeBackground.lastX)
+                    y: Math.min(marqueeBackground.startY, marqueeBackground.lastY)
+                    width: Math.abs(marqueeBackground.lastX - marqueeBackground.startX)
+                    height: Math.abs(marqueeBackground.lastY - marqueeBackground.startY)
+                    color: Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, Theme.dark ? 0.19 : 0.12)
+                    border.width: 1
+                    border.color: Theme.accent
+                    radius: 3
+                }
+
                 delegate: Item {
                     id: cell
                     required property var modelData
