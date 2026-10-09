@@ -26,6 +26,19 @@ FloatingWindow {
     id: win
     property real sidebarWidth: 0
     property real trailingSidebarWidth: 0  // an inspector floating at the right edge
+    // Present sidebars and the content boundaries as one layout transaction.
+    // Rapid toggles retarget the transition without restarting a fixed sequence.
+    property bool choreographyReady: false
+    property real presentedSidebarWidth: Math.max(0, sidebarWidth)
+    property real presentedTrailingSidebarWidth: Math.max(0, trailingSidebarWidth)
+    Behavior on presentedSidebarWidth {
+        enabled: win.choreographyReady && !Theme.reduceMotion
+        NumberAnimation { duration: 215; easing.type: Easing.OutCubic }
+    }
+    Behavior on presentedTrailingSidebarWidth {
+        enabled: win.choreographyReady && !Theme.reduceMotion
+        NumberAnimation { duration: 215; easing.type: Easing.OutCubic }
+    }
     property color background: Theme.windowBg
     property bool forceDark: false        // Calculator is dark in both appearances
     property bool resizable: true
@@ -51,9 +64,9 @@ FloatingWindow {
     readonly property real inset: 0       // sidebars are edge to edge
     readonly property bool active: win._backingWindow ? win._backingWindow.active : true
     // The content column starts right of the sidebar.
-    readonly property real contentX: sidebarWidth > 0 ? sidebarWidth : 0
-    // The content column ends left of the trailing sidebar.
-    readonly property real contentWidth: width - contentX - (trailingSidebarWidth > 0 ? trailingSidebarWidth : 0)
+    readonly property real contentX: presentedSidebarWidth
+    // Content, glass, and separators share identical animated edges.
+    readonly property real contentWidth: Math.max(0, width - contentX - presentedTrailingSidebarWidth)
     default property alias content: contentArea.data
     property alias toolbarLeft: leftRow.data
     property alias toolbarRight: rightRow.data
@@ -85,7 +98,10 @@ FloatingWindow {
     }
     onForceDarkChanged: applyScheme()
     onAppearanceChanged: applyScheme()
-    Component.onCompleted: if (forceDark || appearance) applyScheme()
+    Component.onCompleted: {
+        if (forceDark || appearance) applyScheme()
+        choreographyReady = true
+    }
     Process {
         running: true
         command: ["gsettings", "monitor", "org.gnome.desktop.interface", "color-scheme"]
@@ -169,9 +185,9 @@ FloatingWindow {
             Rectangle {
                 x: win.contentX
                 width: win.contentWidth; height: parent.height
-                topLeftRadius: win.sidebarWidth > 0 ? 0 : Theme.radiusWindow
+                topLeftRadius: win.presentedSidebarWidth > 0.5 ? 0 : Theme.radiusWindow
                 bottomLeftRadius: topLeftRadius
-                topRightRadius: win.trailingSidebarWidth > 0 ? 0 : Theme.radiusWindow
+                topRightRadius: win.presentedTrailingSidebarWidth > 0.5 ? 0 : Theme.radiusWindow
                 bottomRightRadius: topRightRadius
                 color: win.background
             }
@@ -184,8 +200,9 @@ FloatingWindow {
             // Glass sidebar, edge to edge.
             Rectangle {
                 id: sidebarGlass
-                visible: win.sidebarWidth > 0
-                width: win.sidebarWidth; height: parent.height
+                visible: win.presentedSidebarWidth > 0.5
+                width: win.presentedSidebarWidth; height: parent.height
+                clip: true
                 topLeftRadius: Theme.radiusWindow
                 bottomLeftRadius: Theme.radiusWindow
                 color: Theme.reduceTransparency ? Qt.rgba(Theme.sidebarBg.r, Theme.sidebarBg.g, Theme.sidebarBg.b, 1) : Theme.sidebarBg
@@ -203,9 +220,10 @@ FloatingWindow {
 
             // Trailing glass sidebar (inspectors), the mirror of the leading one.
             Rectangle {
-                visible: win.trailingSidebarWidth > 0
-                x: parent.width - win.trailingSidebarWidth
-                width: win.trailingSidebarWidth; height: parent.height
+                visible: win.presentedTrailingSidebarWidth > 0.5
+                x: parent.width - win.presentedTrailingSidebarWidth
+                width: win.presentedTrailingSidebarWidth; height: parent.height
+                clip: true
                 topRightRadius: Theme.radiusWindow
                 bottomRightRadius: Theme.radiusWindow
                 color: sidebarGlass.color
@@ -266,7 +284,7 @@ FloatingWindow {
             }
             Row {
                 id: sideRow
-                x: win.sidebarWidth > 0 ? win.sidebarWidth - width - 10 : lights.x + lights.width + 16
+                x: win.presentedSidebarWidth > 0 ? win.presentedSidebarWidth - width - 10 : lights.x + lights.width + 16
                 anchors.verticalCenter: parent.verticalCenter
                 spacing: 8
             }
