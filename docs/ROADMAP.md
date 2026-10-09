@@ -49,6 +49,9 @@
 - [x] Traffic lights: individually responsive pointer hover, keyboard and accessibility activation
 - [x] Search-field clear affordance and Escape to clear without dismissing dialogs
 - [x] Pop-up active state, keyboard toggle feedback, slider/scrollbar ease and focus halos
+- [x] Context menu 170 ms, 2.5% settle (without Wayland popup surface resizing)
+- [x] Search clear fades snap mid-animation when Reduce Motion is activated
+- [x] Scrollbar track/thumb geometry clamps correctly in small inspector panes
 - [x] Dock label hover intent, subtle inactive-window depth, short menu selection fade
 - [x] Shared AppWindow: synchronized, interruptible leading/trailing sidebar choreography
 - [x] Canonical attached modal sheets for Files and LCode, with exit fade and focus return

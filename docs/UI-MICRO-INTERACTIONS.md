@@ -50,6 +50,27 @@ always-on effects, or geometry-changing menu animations.
 - `python tests/menu-popup.py`: popup-surface stability on menu switching.
 - `python tests/check-qml.py`: QML parser validation across the tree.
 
+## Final polish: tactile menus and mid-flight accessibility
+
+Context menus in both native apps and the shell settle from only 97.5% to
+full scale in 170 ms. The earlier 90%-to-100% spring took 435 ms and felt
+disconnected from the pointer. Crucially, shell popup *surfaces* never change
+size or anchor while mapped: the adjustment only touches rendered menu
+content, preserving the compositor safety invariant. Reduce Motion continues
+to skip entry movement.
+
+The shared search field cancels a **currently running** clear-button fade
+when Reduce Motion turns on. It snaps the opacity back to its declarative
+shown/hidden state in the same event, rather than leaving an intermediate
+opacity that may intercept focus or confuse the user. The native-control
+regression exercises this mid-animation preference change.
+
+Overlay scrollbar tracks and thumbs now clamp to the available height of
+tiny inspector panels. A 24-pixel minimum thumb no longer sticks out of a
+shorter track or produces negative thumb coordinates; ordinary scrollbars
+retain the same tactile width and color transitions. Source-contract tests
+cover both improvements.
+
 ## Window and navigation choreography
 
 **Sidebars and inspector panels** use a 215 ms ease, with the public width
