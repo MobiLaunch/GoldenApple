@@ -240,8 +240,7 @@ def fetch_events(url, username, password):
             ignored += rejected
             if len(rows) > MAX_EVENTS:
                 raise ValueError("Too many events in the CalDAV collection.")
-    if not xml.findall("{DAV:}response"):
-        raise ValueError("CalDAV response contained no collection entries.")
+    # An empty multistatus collection is valid: the user has no events yet.
     return rows, ignored
 
 
