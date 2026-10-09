@@ -77,6 +77,9 @@ FloatingWindow {
     readonly property bool active: win._backingWindow ? win._backingWindow.active : true
     // The content column starts right of the sidebar.
     readonly property real contentX: presentedSidebarWidth
+    // Both sidebar-open and sidebar-closed toolbar layouts must reserve the
+    // same protected region for the three traffic lights and their hitboxes.
+    readonly property real toolbarSafeX: lights.x + lights.width + 16
     // Content, glass, and separators share identical animated edges.
     readonly property real contentWidth: Math.max(0, width - contentX - presentedTrailingSidebarWidth)
     default property alias content: contentArea.data
