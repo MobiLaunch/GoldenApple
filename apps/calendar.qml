@@ -140,7 +140,7 @@ ShellRoot {
                             round: true
                             symbol: "pencil"
                             enabled: !cal.broken
-                            onClicked: cal.openEdit(modelData)
+                            onClicked: cal.requestEdit(modelData)
                         }
                         ToolbarButton {
                             anchors { right: parent.right; rightMargin: 6; verticalCenter: parent.verticalCenter }
@@ -189,6 +189,11 @@ ShellRoot {
             property string deleteTarget: ""
             property string deleteTitle: ""
             property bool deleteIsSeries: false
+            property string deleteOccurrence: ""
+            property var deleteOriginal: ({})
+            property bool editingOccurrence: false
+            property string editingDate: ""
+            property var pendingEdit: ({})
 
             readonly property string selectedKey: Qt.formatDate(selectedDate, "yyyy-MM-dd")
             readonly property var selectedEvents: Recurrence.occurrencesOn(events, selectedKey)
@@ -234,21 +239,30 @@ ShellRoot {
                 Qt.callLater(() => titleField.input.forceActiveFocus())
             }
 
-            function openEdit(event) {
+            function requestEdit(event) {
                 if (broken || addProc.running || !event || !event.id)
                     return
+                if (event.repeat && event.repeat !== "never") {
+                    pendingEdit = event
+                    editScope.visible = true
+                } else openEdit(event, false)
+            }
+
+            function openEdit(event, oneOccurrence) {
+                if (broken || addProc.running || !event || !event.id)
+                    return
+                const original = events.find(e => e.id === event.id)
+                if (!original) { error = "Refresh Calendar to edit this event."; return }
                 editingId = event.id
-                editingOriginal = {
-                    id: event.id, title: event.title, date: event.date,
-                    time: event.time || "", calendar: event.calendar || "Home",
-                    repeat: event.repeat || "never", until: event.until || ""
-                }
-                draftTitle = editingOriginal.title
-                draftDate = editingOriginal.date
-                draftTime = editingOriginal.time
-                draftCalendar = editingOriginal.calendar
-                draftRepeat = editingOriginal.repeat
-                draftUntil = editingOriginal.until
+                editingOriginal = JSON.parse(JSON.stringify(original))
+                editingOccurrence = !!oneOccurrence
+                editingDate = event.occurrenceDate || original.date
+                draftTitle = editingOccurrence ? event.title : original.title
+                draftDate = editingOccurrence ? (event.displayedDate || editingDate) : original.date
+                draftTime = editingOccurrence ? (event.time || "") : (original.time || "")
+                draftCalendar = editingOccurrence ? (event.calendar || "Home") : (original.calendar || "Home")
+                draftRepeat = original.repeat || "never"
+                draftUntil = original.until || ""
                 error = ""
                 addDialog.visible = true
                 Qt.callLater(() => titleField.input.forceActiveFocus())
@@ -258,7 +272,8 @@ ShellRoot {
                 if (!draftTitle.trim() || broken || addProc.running)
                     return
                 addProc.command = editingId
-                    ? ["python3", helper, "edit", editingId]
+                    ? (editingOccurrence ? ["python3", helper, "occurrence-edit", editingId, editingDate]
+                                         : ["python3", helper, "edit", editingId])
                     : ["python3", helper, "add"]
                 addProc.stdinEnabled = true
                 addProc.running = true
@@ -277,14 +292,25 @@ ShellRoot {
                 deleteTarget = event.id
                 deleteTitle = event.title
                 deleteIsSeries = event.repeat && event.repeat !== "never"
+                deleteOccurrence = event.occurrenceDate || event.date
+                const source = events.find(e => e.id === event.id)
+                deleteOriginal = source ? JSON.parse(JSON.stringify(source)) : ({})
                 deleteConfirm.visible = true
             }
 
             function deleteEvent(id) {
-                if (deleteProc.running)
+                if (deleteProc.running || skipProc.running)
                     return
                 deleteProc.command = ["python3", helper, "delete", id]
                 deleteProc.running = true
+            }
+
+            function skipOccurrence() {
+                if (skipProc.running || deleteProc.running || !deleteOriginal.id)
+                    return
+                skipProc.command = ["python3", helper, "occurrence-skip", deleteTarget, deleteOccurrence]
+                skipProc.stdinEnabled = true
+                skipProc.running = true
             }
 
             function restore() {
@@ -381,6 +407,27 @@ ShellRoot {
                         try { r = JSON.parse(text) } catch (e) {}
                         if (r && r.ok) cal.reload()
                         else cal.error = r?.error ?? "The earlier copy couldn't be put back."
+                    }
+                }
+            }
+
+            Process {
+                id: skipProc
+                stdinEnabled: true
+                onStarted: {
+                    write(JSON.stringify({expected:cal.deleteOriginal}))
+                    stdinEnabled = false
+                }
+                onExited: stdinEnabled = true
+                stdout: StdioCollector {
+                    onStreamFinished: {
+                        try {
+                            const r = JSON.parse(text)
+                            if (r.ok) cal.reload()
+                            else cal.error = r.error ?? "This occurrence could not be skipped."
+                        } catch (e) {
+                            cal.error = "This occurrence could not be skipped."
+                        }
                     }
                 }
             }
@@ -569,7 +616,7 @@ ShellRoot {
                 visible: false
                 anchors.centerIn: parent
                 width: 420
-                height: (cal.draftRepeat === "never" ? 320 : 385) + (cal.error ? 38 : 0)
+                height: (cal.draftRepeat === "never" || cal.editingOccurrence ? 320 : 385) + (cal.error ? 38 : 0)
                 radius: 22
                 tint: Theme.glassRegular.tint
                 z: 100
@@ -579,7 +626,7 @@ ShellRoot {
                     spacing: 12
 
                     Text {
-                        text: cal.editingId ? (cal.draftRepeat !== "never" ? "Edit Repeating Event" : "Edit Event") : "New Event"
+                        text: cal.editingOccurrence ? "Edit This Occurrence" : (cal.editingId ? (cal.draftRepeat !== "never" ? "Edit Repeating Event" : "Edit Event") : "New Event")
                         color: Theme.label
                         font { family: Theme.fontUi; pixelSize: Theme.fs(18); weight: Font.DemiBold }
                     }
@@ -618,6 +665,7 @@ ShellRoot {
 
                     Row {
                         width: parent.width
+                        visible: !cal.editingOccurrence
                         spacing: 12
                         Text {
                             anchors.verticalCenter: parent.verticalCenter
@@ -640,7 +688,7 @@ ShellRoot {
                     TextField {
                         id: repeatUntil
                         width: parent.width
-                        visible: cal.draftRepeat !== "never"
+                        visible: !cal.editingOccurrence && cal.draftRepeat !== "never"
                         placeholder: "Repeat until YYYY-MM-DD (optional)"
                         text: cal.draftUntil
                         onTextChanged: cal.draftUntil = text
@@ -648,7 +696,7 @@ ShellRoot {
 
                     Text {
                         width: parent.width
-                        visible: !!cal.editingId && cal.draftRepeat !== "never"
+                        visible: !!cal.editingId && !cal.editingOccurrence && cal.draftRepeat !== "never"
                         text: "Editing changes every occurrence of this series."
                         wrapMode: Text.WordWrap
                         color: Theme.secondaryLabel
@@ -681,6 +729,49 @@ ShellRoot {
             }
 
             Glass {
+                id: editScope
+                objectName: "calendarEditScope"
+                parent: win.overlay
+                visible: false
+                anchors.centerIn: parent
+                width: 390
+                height: 180
+                radius: 22
+                tint: Theme.glassRegular.tint
+                z: 110
+                Column {
+                    anchors { fill: parent; margins: 20 }
+                    spacing: 12
+                    Text {
+                        text: "Edit Repeating Event"
+                        color: Theme.label
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(18); weight: Font.DemiBold }
+                    }
+                    Text {
+                        width: parent.width
+                        wrapMode: Text.WordWrap
+                        text: "Change only this date, or update every event in the series?"
+                        color: Theme.secondaryLabel
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                    }
+                    Row {
+                        anchors.right: parent.right
+                        spacing: 8
+                        Button { text: "Cancel"; onClicked: editScope.visible = false }
+                        Button {
+                            text: "Entire Series"
+                            onClicked: { editScope.visible = false; cal.openEdit(cal.pendingEdit, false) }
+                        }
+                        Button {
+                            text: "This Date"
+                            prominent: true
+                            onClicked: { editScope.visible = false; cal.openEdit(cal.pendingEdit, true) }
+                        }
+                    }
+                }
+            }
+
+            Glass {
                 id: deleteConfirm
                 objectName: "calendarDeleteConfirmation"
                 parent: win.overlay
@@ -707,7 +798,7 @@ ShellRoot {
                         width: parent.width
                         wrapMode: Text.WordWrap
                         text: "Delete “" + cal.deleteTitle + "”? " +
-                            (cal.deleteIsSeries ? "This removes the entire repeating series." : "This event will be removed.") +
+                            (cal.deleteIsSeries ? "You can skip only this date or delete the entire series." : "This event will be removed.") +
                             " This cannot be undone."
                         color: Theme.secondaryLabel
                         font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
@@ -717,8 +808,17 @@ ShellRoot {
                         spacing: 8
                         Button { text: "Cancel"; onClicked: deleteConfirm.visible = false }
                         Button {
-                            text: "Delete"
-                            enabled: !deleteProc.running
+                            visible: cal.deleteIsSeries
+                            text: "Only This Date"
+                            enabled: !skipProc.running && !deleteProc.running
+                            onClicked: {
+                                deleteConfirm.visible = false
+                                cal.skipOccurrence()
+                            }
+                        }
+                        Button {
+                            text: cal.deleteIsSeries ? "Entire Series" : "Delete"
+                            enabled: !deleteProc.running && !skipProc.running
                             onClicked: {
                                 deleteConfirm.visible = false
                                 cal.deleteEvent(cal.deleteTarget)
