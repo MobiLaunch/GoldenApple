@@ -21,6 +21,32 @@ from email.message import EmailMessage
 from html.parser import HTMLParser
 
 CONFIG = pathlib.Path(os.environ.get("XDG_CONFIG_HOME", pathlib.Path.home() / ".config")) / "golden-gate/mail.json"
+DRAFT = pathlib.Path(os.environ.get("XDG_STATE_HOME", pathlib.Path.home() / ".local/state")) / "golden-gate/mail-draft.json"
+
+
+def draft_fields(data: object) -> dict[str, str]:
+    if not isinstance(data, dict) or any(not isinstance(data.get(k, ""), str) for k in ("to", "subject", "body")):
+        raise ValueError("The saved draft is damaged; it was left untouched.")
+    return {k: data.get(k, "") for k in ("to", "subject", "body")}
+
+
+def cmd_draft(save: bool = False) -> int:
+    try:
+        if save:
+            # Validate an existing file before replacing it, including on a
+            # new session. A damaged draft must never be silently discarded.
+            if DRAFT.exists():
+                draft_fields(json.loads(DRAFT.read_text(encoding="utf-8")))
+            data = draft_fields(json.load(sys.stdin))
+            atomic_json(DRAFT, data)  # mkstemp keeps message content mode 0600
+        else:
+            try:
+                data = draft_fields(json.loads(DRAFT.read_text(encoding="utf-8")))
+            except FileNotFoundError:
+                data = draft_fields({})
+        return emit(True, draft=data)
+    except (OSError, ValueError) as exc:
+        return emit(False, error="Mail couldn't keep or restore your draft: " + str(exc))
 
 
 def emit(ok: bool = True, **payload: object) -> int:
@@ -436,6 +462,8 @@ def main() -> int:
     if len(sys.argv) < 2:
         return 2
     cmd = sys.argv[1]
+    if cmd in ("draft-load", "draft-save"):
+        return cmd_draft(cmd == "draft-save")
     if cmd == "setup":
         return cmd_setup()
     if cmd == "status":

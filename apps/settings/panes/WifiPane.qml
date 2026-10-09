@@ -13,6 +13,8 @@ Pane {
     property var networks: []
     property string joining: ""
     property string error: ""
+    property bool connecting: false
+    property bool radioBusy: false
 
     function fields(line) {
         const out = []; let cur = ""
@@ -38,18 +40,34 @@ Pane {
         })
     }
     Component.onCompleted: refresh()
-    Timer { interval: 10000; running: pane.visible && !pane.joining; repeat: true; onTriggered: pane.refresh() }
+    Timer { interval: 10000; running: pane.visible && !pane.joining && !pane.connecting; repeat: true; onTriggered: pane.refresh() }
     function join(ssid, password) {
-        error = ""
-        sys.run(password ? ["nmcli", "device", "wifi", "connect", ssid, "password", password] : ["nmcli", "device", "wifi", "connect", ssid],
-                (o, code) => { if (code === 0) { joining = ""; refresh() } else error = "Couldn't join “" + ssid + "”." })
+        if (connecting || radioBusy) return
+        error = ""; joining = ssid; connecting = true
+        sys.run(password ? ["nmcli", "--wait", "30", "device", "wifi", "connect", ssid, "password", password] : ["nmcli", "--wait", "30", "device", "wifi", "connect", ssid],
+                (o, code, err) => {
+                    connecting = false
+                    if (code === 0) { joining = ""; refresh() }
+                    else error = "Couldn't join “" + ssid + "”. " + (err || o || "Check the password and try again.").trim()
+                })
     }
     readonly property var current: networks.find((n) => n.active) ?? null
 
     Group {
         SetRow {
             title: "Wi-Fi"; symbol: "wifi"; symbolTint: "#0a84ff"
-            Switch { checked: pane.radio; onToggled: (on) => { pane.radio = on; pane.sys.run(["nmcli", "radio", "wifi", on ? "on" : "off"], () => pane.refresh()) } }
+            Switch {
+                checked: pane.radio; enabled: !pane.connecting && !pane.radioBusy
+                onToggled: (on) => {
+                    pane.radioBusy = true; pane.error = ""
+                    pane.sys.run(["nmcli", "radio", "wifi", on ? "on" : "off"], (out, code, err) => {
+                        pane.radioBusy = false
+                        if (code !== 0) pane.error = "Wi-Fi couldn't be changed. " + (err || out || "Try again.").trim()
+                        pane.refresh()
+                    })
+                    checked = Qt.binding(() => pane.radio)
+                }
+            }
         }
         SetRow {
             visible: pane.radio && !!pane.current
@@ -77,7 +95,8 @@ Pane {
                     Symbol { name: "lock"; size: 13; visible: networkBlock.modelData.secure; opacity: 0.6 }
                     Symbol { name: "wifi"; size: 15; opacity: 0.35 + 0.65 * Math.min(1, networkBlock.modelData.signal / 80) }
                     Button {
-                        text: pane.joining === networkBlock.modelData.ssid ? "Cancel" : "Connect"
+                        text: pane.connecting && pane.joining === networkBlock.modelData.ssid ? "Joining…" : pane.joining === networkBlock.modelData.ssid ? "Cancel" : "Connect"
+                        enabled: !pane.connecting && !pane.radioBusy
                         onClicked: {
                             pane.error = ""
                             if (pane.joining === networkBlock.modelData.ssid) { pane.joining = ""; return }
@@ -98,11 +117,13 @@ Pane {
                         id: pw
                         width: 180
                         password: true
+                        enabled: !pane.connecting
                         placeholder: "Password"
                         onAccepted: pane.join(networkBlock.modelData.ssid, text)
                     }
                     Button {
-                        text: "Join"
+                        text: pane.connecting ? "Joining…" : "Join"
+                        enabled: !pane.connecting && !pane.radioBusy && pw.text.length > 0
                         prominent: true
                         onClicked: pane.join(networkBlock.modelData.ssid, pw.text)
                     }
@@ -114,4 +135,5 @@ Pane {
             title: "No other networks found"
         }
     }
+    Text { visible: !!pane.error && !pane.joining; width: parent.width; wrapMode: Text.WordWrap; text: pane.error; color: Theme.dark ? "#ff453a" : "#d70015" }
 }

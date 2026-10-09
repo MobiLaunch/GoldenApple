@@ -292,8 +292,14 @@ Window {
     }
 
     function openPasswords() {
-        BrowserBackend.requestSavedLogins()
-        passwordsOpen = true
+        BrowserBackend.openPasswordsApp()
+    }
+    function downloadLabel(download) {
+        if (download.state === WebEngineDownloadRequest.DownloadCompleted) return "Completed"
+        if (download.state === WebEngineDownloadRequest.DownloadCancelled) return "Cancelled"
+        if (download.state === WebEngineDownloadRequest.DownloadInterrupted) return "Failed: " + (download.interruptReasonString || "The download was interrupted.")
+        if (download.isPaused) return "Paused"
+        return download.totalBytes > 0 ? Math.round(download.receivedBytes / download.totalBytes * 100) + "%" : "Downloading…"
     }
 
     // Sends a tab somewhere. The model's url follows the page (redirects,
@@ -1964,13 +1970,12 @@ Window {
                                 width: parent.width
                                 height: 5
                                 value: modelData.totalBytes > 0 ? modelData.receivedBytes / modelData.totalBytes : 0
-                                indeterminate: modelData.totalBytes <= 0 && !modelData.isFinished
+                                indeterminate: modelData.totalBytes <= 0 && modelData.state === WebEngineDownloadRequest.DownloadInProgress && !modelData.isPaused
                             }
                             Text {
                                 width: parent.width
-                                text: modelData.isFinished ? "Finished"
-                                    : modelData.totalBytes > 0 ? Math.round(modelData.receivedBytes / modelData.totalBytes * 100) + "%"
-                                    : "Downloading…"
+                                text: root.downloadLabel(modelData)
+                                elide: Text.ElideRight
                                 color: Theme.secondaryLabel
                                 font { family: Theme.fontUi; pixelSize: Theme.fs(10) }
                             }
@@ -1978,10 +1983,23 @@ Window {
                         BrowserButton {
                             id: cancelDownload
                             anchors.verticalCenter: parent.verticalCenter
-                            visible: !modelData.isFinished
+                            visible: !modelData.isFinished && modelData.state !== WebEngineDownloadRequest.DownloadInterrupted
                             width: 26; height: 26
                             symbol: "xmark"; tooltip: "Cancel Download"
                             onClicked: modelData.cancel()
+                        }
+                        BrowserButton {
+                            anchors.verticalCenter: parent.verticalCenter
+                            visible: modelData.isFinished || modelData.state === WebEngineDownloadRequest.DownloadInterrupted
+                            width: 26; height: 26
+                            symbol: modelData.state === WebEngineDownloadRequest.DownloadCompleted ? "folder" : "arrow-clockwise"
+                            tooltip: modelData.state === WebEngineDownloadRequest.DownloadCompleted ? "Show in Files" : "Retry Download"
+                            enabled: modelData.state === WebEngineDownloadRequest.DownloadCompleted || !!root.currentView
+                            onClicked: {
+                                if (modelData.state === WebEngineDownloadRequest.DownloadCompleted)
+                                    BrowserBackend.revealDownload(modelData.downloadDirectory + "/" + modelData.downloadFileName)
+                                else if (root.currentView) root.currentView.download(modelData.url)
+                            }
                         }
                     }
                 }

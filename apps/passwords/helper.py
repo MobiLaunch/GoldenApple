@@ -38,7 +38,7 @@ from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlsplit
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "browser"))
-from passwords import APP as WEB, origin_of  # noqa: E402
+from passwords import APP as WEB, origin_of, write_lock  # noqa: E402
 
 APP = "org.goldengate.Passwords"
 KEEP_DELETED = 30 * 86400
@@ -314,9 +314,11 @@ def cmd_save() -> int:
             return emit(False, error="Enter a name and a setup key (or an otpauth:// link).")
         account = str(req.get("username") or "")
         old_kind, old = parse_id(str(req.get("id") or ""))
+        if (old_kind != "c" or old != [label, account]) and lookup("app", APP, "kind", "code", "label", label, "account", account) is not None:
+            return emit(False, error="A verification code already exists with that name and account. Neither item was changed.")
+        store("Passwords: " + label, spec_text, "app", APP, "kind", "code", "label", label, "account", account)
         if old_kind == "c" and len(old) == 2 and old != [label, account]:
             clear("app", APP, "kind", "code", "label", old[0], "account", old[1])
-        store("Passwords: " + label, spec_text, "app", APP, "kind", "code", "label", label, "account", account)
         return emit(True, id="c:" + json.dumps([label, account]))
     website = str(req.get("website") or "").strip()
     if website and "://" not in website:
@@ -333,6 +335,9 @@ def cmd_save() -> int:
         return emit(False, error="That verification code setup key isn't valid.")
     old_kind, old = parse_id(str(req.get("id") or ""))
     profile = old[0] if old_kind == "w" and len(old) == 3 else str(req.get("profile") or "Personal")
+    destination = [profile, origin, username]
+    if (old_kind != "w" or old != destination) and lookup(*web_attrs(*destination)) is not None:
+        return emit(False, error="A password already exists for this website and user name. Edit that item instead; neither password was changed.")
     host = urlsplit(origin).hostname or origin
     store(f"Web: {host}" + (f" ({username})" if username else ""), password, *web_attrs(profile, origin, username))
     notes = str(req.get("notes") or "")
@@ -383,6 +388,8 @@ def cmd_restore() -> int:
     except ValueError:
         return emit(False, error="That password isn't in Recently Deleted any more.")
     profile, origin, username, _ = key
+    if lookup(*web_attrs(profile, origin, username)) is not None:
+        return emit(False, error="A current password already exists for this website and user name. It was kept, and this older password is still in Recently Deleted.")
     host = urlsplit(origin).hostname or origin
     store(f"Web: {host}" + (f" ({username})" if username else ""), data.get("password", ""),
           *web_attrs(profile, origin, username))
@@ -449,8 +456,11 @@ def main(argv: list[str]) -> int:
     if not fn:
         return emit(False, error="usage: helper.py " + "|".join(commands))
     try:
+        if argv[1] in ("save", "delete", "restore", "purge"):
+            with write_lock():
+                return fn()
         return fn()
-    except RuntimeError as exc:
+    except (OSError, RuntimeError) as exc:
         return emit(False, error=str(exc))
 
 

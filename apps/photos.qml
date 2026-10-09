@@ -148,6 +148,7 @@ ShellRoot {
 
         Item {
             id: app
+            objectName: "photosApp"
             anchors.fill: parent
             focus: true
 
@@ -219,10 +220,24 @@ ShellRoot {
                 store.setText(JSON.stringify({ favorites: favorites }, null, 1))
             }
             function trash(it) {
-                if (!it) return
-                Quickshell.execDetached(["gio", "trash", it.path])
-                items = items.filter((i) => i.path !== it.path)
-                if (viewing >= shown.length) viewing = shown.length - 1
+                if (!it || photoTrash.running) return
+                photoTrash.path = it.path
+                photoTrash.command = ["gio", "trash", it.path]
+                photoTrash.running = true
+            }
+            Process {
+                id: photoTrash
+                objectName: "photoTrash"
+                property string path: ""
+                stderr: StdioCollector { id: trashError }
+                onExited: (code) => {
+                    if (code === 0) {
+                        app.items = app.items.filter((i) => i.path !== path)
+                        if (app.viewing >= app.shown.length) app.viewing = app.shown.length - 1
+                        app.notice = "Moved to Trash. You can put it back in Files."
+                    } else app.notice = "The photo couldn't be moved to Trash. " + trashError.text.trim()
+                    noticeTimer.restart()
+                }
             }
             function rescan() { scanner.running = true }
 

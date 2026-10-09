@@ -10,10 +10,34 @@ was saved in.
 from __future__ import annotations
 
 import subprocess
+import fcntl
+import os
+import time
+from contextlib import contextmanager
+from pathlib import Path
 from urllib.parse import urlsplit
 
 APP = "org.goldengate.Web"
 SCHEMA = "org.goldengate.Web.Password"
+
+
+@contextmanager
+def write_lock():
+    """Serialize Web writes with Passwords' collision checks and recovery."""
+    directory = Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state")) / "golden-gate"
+    directory.mkdir(parents=True, exist_ok=True)
+    fd = os.open(directory / ".passwords.lock", os.O_CREAT | os.O_RDWR, 0o600)
+    with os.fdopen(fd, "a") as lock:
+        deadline = time.monotonic() + 35
+        while True:
+            try:
+                fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                break
+            except BlockingIOError:
+                if time.monotonic() >= deadline:
+                    raise RuntimeError("Another password change is still running. Try again in a moment.")
+                time.sleep(0.05)
+        yield
 
 
 def origin_of(url: str) -> str:
@@ -111,9 +135,19 @@ class Passwords:
             return False
         host = urlsplit(origin).hostname or origin
         label = f"Web: {host}" + (f" ({username})" if username else "")
-        p = self._call(["store", "--label", label, *self._attrs(origin, username)], secret=password)
+        try:
+            with write_lock():
+                p = self._call(["store", "--label", label, *self._attrs(origin, username)], secret=password)
+        except (OSError, RuntimeError) as exc:
+            self.error = str(exc)
+            return False
         return p is not None and p.returncode == 0
 
     def remove(self, origin: str, username: str) -> bool:
-        p = self._call(["clear", *self._attrs(origin, username)])
+        try:
+            with write_lock():
+                p = self._call(["clear", *self._attrs(origin, username)])
+        except (OSError, RuntimeError) as exc:
+            self.error = str(exc)
+            return False
         return p is not None and p.returncode == 0

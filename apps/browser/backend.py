@@ -829,6 +829,21 @@ class BrowserBackend(QObject):
     def openDownloadsFolder(self):
         subprocess.Popen(["xdg-open", self.downloadDir], close_fds=True, start_new_session=True)
 
+    @Slot()
+    def openPasswordsApp(self):
+        try:
+            subprocess.Popen(["qs", "-n", "-p", str(Path(__file__).resolve().parent.parent / "passwords.qml")],
+                             close_fds=True, start_new_session=True)
+        except OSError:
+            self.toastRequested.emit("Passwords couldn't open. Check that Quickshell is installed.")
+
+    @Slot(str)
+    def revealDownload(self, path):
+        try:
+            subprocess.Popen(["gg-files", "--select", path], close_fds=True, start_new_session=True)
+        except OSError:
+            self.toastRequested.emit("Files couldn't open. Check that Golden Gate's Files app is installed.")
+
     def _save(self):
         try:
             self.store.save()

@@ -49,12 +49,15 @@ ShellRoot {
         sidebar: [
             TextField {
                 id: search
+                objectName: "settingsSearch"
                 width: parent.width; height: 30
                 search: true
                 placeholder: "Search"
-                onAccepted: if (app.matches.length) { app.open(app.matches[0].id); text = "" }
+                onAccepted: app.acceptMatch()
+                onTextChanged: app.selectedMatch = -1
                 input.Keys.onEscapePressed: text = ""
-                input.Keys.onDownPressed: suggestions.forceActiveFocus()
+                input.Keys.onDownPressed: app.selectedMatch = Math.min(app.matches.length - 1, app.selectedMatch + 1)
+                input.Keys.onUpPressed: app.selectedMatch = Math.max(0, app.selectedMatch - 1)
             },
             Flickable {
                 id: navFlick
@@ -72,7 +75,7 @@ ShellRoot {
                     if (top < contentY) contentY = Math.max(0, top - 8)
                     else if (top + row.height > contentY + height) contentY = Math.min(contentHeight - height, top + row.height - height + 8)
                 }
-                Behavior on contentY { NumberAnimation { duration: 190; easing.type: Easing.OutCubic } }
+                Behavior on contentY { enabled: !Theme.reduceMotion; NumberAnimation { duration: 190; easing.type: Easing.OutCubic } }
                 contentHeight: nav.height + 12
                 clip: true
                 boundsBehavior: Flickable.StopAtBounds
@@ -142,6 +145,7 @@ ShellRoot {
 
         Item {
             id: app
+            objectName: "settingsApp"
             anchors.fill: parent
             focus: true
 
@@ -208,6 +212,13 @@ ShellRoot {
                     .filter((p) => p.title.toLowerCase().includes(q) || (p.words ?? "").includes(q))
                     .slice(0, 6)
             }
+            property int selectedMatch: -1
+            function acceptMatch() {
+                if (!matches.length) return
+                open(matches[Math.max(0, Math.min(matches.length - 1, selectedMatch))].id)
+                search.text = ""
+                forceActiveFocus()
+            }
 
             Keys.onPressed: (e) => {
                 if ((e.modifiers & Qt.ControlModifier) && e.key === Qt.Key_BracketLeft) { goBack(); e.accepted = true }
@@ -230,6 +241,7 @@ ShellRoot {
             // The pane, sliding in from the side you went.
             Loader {
                 id: loader
+                objectName: "settingsPaneLoader"
                 width: parent.width; height: parent.height
                 property string shown: ""
                 function load() {
@@ -257,7 +269,17 @@ ShellRoot {
             }
             Connections {
                 target: app
-                function onCurrentChanged() { swap.forward = app.forward.length === 0; swap.restart() }
+                function onCurrentChanged() {
+                    swap.stop()
+                    if (Theme.reduceMotion) { loader.load(); loader.x = 0; loader.opacity = 1 }
+                    else { swap.forward = app.forward.length === 0; swap.restart() }
+                }
+            }
+            Connections {
+                target: Theme
+                function onReduceMotionChanged() {
+                    if (Theme.reduceMotion) { swap.stop(); if (loader.shown !== app.current) loader.load(); loader.x = 0; loader.opacity = 1 }
+                }
             }
             SequentialAnimation {
                 id: swap
@@ -310,6 +332,7 @@ ShellRoot {
         // Search suggestions, under the field.
         Rectangle {
             id: suggestions
+            objectName: "settingsSuggestions"
             parent: win.overlay
             visible: app.matches.length > 0 && search.input.activeFocus
             x: 8 + 6; y: win.toolbarHeight + 32
@@ -331,17 +354,19 @@ ShellRoot {
                     model: app.matches
                     delegate: Item {
                         required property var modelData
+                        required property int index
+                        readonly property bool selected: index === app.selectedMatch
                         width: sugCol.width; height: 30
-                        Rectangle { anchors.fill: parent; radius: 7; color: Theme.accent; visible: sh.hovered }
+                        Rectangle { anchors.fill: parent; radius: 7; color: Theme.accent; visible: sh.hovered || parent.selected }
                         PaneIcon { x: 6; anchors.verticalCenter: parent.verticalCenter; symbol: modelData.symbol; tint: modelData.tint }
                         Text {
                             x: 36; anchors.verticalCenter: parent.verticalCenter
                             text: modelData.title
-                            color: sh.hovered ? "#ffffff" : Theme.label
+                            color: sh.hovered || parent.selected ? "#ffffff" : Theme.label
                             font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
                         }
                         HoverHandler { id: sh }
-                        TapHandler { onTapped: { app.open(modelData.id); search.text = ""; app.forceActiveFocus() } }
+                        TapHandler { onTapped: { app.selectedMatch = index; app.acceptMatch() } }
                     }
                 }
             }

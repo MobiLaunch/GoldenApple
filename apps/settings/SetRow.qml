@@ -23,6 +23,15 @@ Item {
     }
     default property alias trailing: slot.data
     signal clicked()
+    activeFocusOnTab: chevron || selectable
+    Accessible.role: chevron || selectable ? Accessible.Button : Accessible.NoRole
+    Accessible.name: title
+    Accessible.description: subtitle
+    Accessible.onPressAction: if (enabled && (chevron || selectable)) clicked()
+    Keys.onSpacePressed: (event) => { if (enabled && (chevron || selectable) && !event.isAutoRepeat) clicked() }
+    Keys.onReturnPressed: if (enabled && (chevron || selectable)) clicked()
+    Keys.onEnterPressed: if (enabled && (chevron || selectable)) clicked()
+    FocusRing { visible: row.activeFocus }
     width: parent ? parent.width : 500
     // As tall as its text (which wraps, and grows with Text Size) or its controls.
     height: Math.max(Theme.fh(subtitle ? 50 : 40), slot.childrenRect.height + 16, labels.implicitHeight + 18)
@@ -81,5 +90,5 @@ Item {
         name: "chevron-right"; tone: "gray"; size: 12
     }
     HoverHandler { id: hover; enabled: row.chevron || row.selectable }
-    TapHandler { id: tap; enabled: row.chevron || row.selectable; onTapped: row.clicked() }
+    TapHandler { id: tap; enabled: row.enabled && (row.chevron || row.selectable); onTapped: { row.forceActiveFocus(); row.clicked() } }
 }

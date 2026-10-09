@@ -25,7 +25,8 @@ Item {
             id: p
             property var done: null
             stdout: StdioCollector { id: out }
-            onExited: (code) => { if (p.done) p.done(out.text, code); p.destroy() }
+            stderr: StdioCollector { id: err }
+            onExited: (code) => { if (p.done) p.done(out.text, code, err.text); p.destroy() }
         }
     }
     function run(args, done) {

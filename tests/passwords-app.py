@@ -79,7 +79,7 @@ with tempfile.TemporaryDirectory() as t:
     (bin_ / "nmcli").write_text(FAKE_NMCLI)
     for f in bin_.iterdir():
         f.chmod(0o755)
-    env = dict(os.environ, PATH=f"{bin_}:{os.environ['PATH']}", FAKE_KEYRING=str(tmp / "keyring.json"))
+    env = dict(os.environ, PATH=f"{bin_}:{os.environ['PATH']}", FAKE_KEYRING=str(tmp / "keyring.json"), XDG_STATE_HOME=str(tmp / "state"))
 
     def helper(cmd: str, req: dict | None = None) -> dict:
         p = subprocess.run([sys.executable, str(HELPER), cmd], input=json.dumps(req or {}), capture_output=True,
@@ -89,7 +89,7 @@ with tempfile.TemporaryDirectory() as t:
     def web_save(origin: str, user: str, password: str, profile: str = "Personal") -> None:
         sys.path.insert(0, str(ROOT / "apps/browser"))
         from passwords import Passwords
-        os.environ.update(PATH=env["PATH"], FAKE_KEYRING=env["FAKE_KEYRING"])
+        os.environ.update(PATH=env["PATH"], FAKE_KEYRING=env["FAKE_KEYRING"], XDG_STATE_HOME=env["XDG_STATE_HOME"])
         assert Passwords(profile).save(origin, user, password)
 
     # Saved in Web.
@@ -144,6 +144,22 @@ with tempfile.TemporaryDirectory() as t:
     check(helper("restore", {"id": r["deleted"][0]["id"]})["ok"] and
           Passwords("Personal").password("https://github.com", "jordan") == "Tr1cky-Horse-Battery!", "restore brings it back")
     check(helper("list")["deleted"] == [], "and Recently Deleted is empty again")
+
+    # A newer password at the same identity must survive recovery, creation
+    # and rename collisions, with the older deleted item still recoverable.
+    helper("delete", {"id": gh})
+    old_deleted = helper("list")["deleted"][0]["id"]
+    web_save("https://github.com", "jordan", "New-current-password-42!")
+    recovery = helper("restore", {"id": old_deleted})
+    check(not recovery["ok"] and "already exists" in recovery["error"], "recovery explains an existing current password")
+    check(Passwords("Personal").password("https://github.com", "jordan") == "New-current-password-42!",
+          "recovery never overwrites the newer credential")
+    check(any(d["id"] == old_deleted for d in helper("list")["deleted"]), "the old credential stays in Recently Deleted")
+    duplicate = helper("save", {"website": "github.com", "username": "jordan", "password": "collision"})
+    check(not duplicate["ok"], "adding a duplicate refuses replacement")
+    rename_collision = helper("save", {"id": s2["id"], "website": "github.com", "username": "jordan", "password": "collision"})
+    check(not rename_collision["ok"] and Passwords("Personal").password("https://mail.example.com", "me2") == "Gen-erated-123",
+          "rename collisions keep both current items")
 
     # Standalone code.
     c = helper("save", {"kind": "code", "title": "AWS", "username": "root", "totp": "JBSWY3DPEHPK3PXP"})

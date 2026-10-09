@@ -10,6 +10,7 @@ ShellRoot {
     AppWindow {
         id: win
         title: "Mail"
+        closeAction: () => mail.requestClose()
         implicitWidth: Math.min(1100, (Quickshell.screens[0]?.width ?? 1280) - 80)
         implicitHeight: Math.min(730, (Quickshell.screens[0]?.height ?? 900) - 130)
         minimumSize: Qt.size(800, 520)
@@ -88,6 +89,7 @@ ShellRoot {
 
         Item {
             id: mail
+            objectName: "mailApp"
             anchors.fill: parent
 
             readonly property string helper: Qt.resolvedUrl("mail/helper.py").toString().replace("file://", "")
@@ -115,6 +117,62 @@ ShellRoot {
             property string composeTo: ""
             property string composeSubject: ""
             property string composeBody: ""
+            property bool draftReady: false
+            property bool closing: false
+            property string draftSaved: ""
+            property string draftPending: ""
+            readonly property string draftText: JSON.stringify({ to: composeTo, subject: composeSubject, body: composeBody })
+            onDraftTextChanged: if (draftReady) draftDebounce.restart()
+            function requestClose() {
+                if (sending) { error = "Wait for your message to finish sending before closing Mail."; return }
+                if (!draftReady) {
+                    if (!composeTo && !composeSubject && !composeBody) { Qt.quit(); return }
+                    error = "Mail hasn't restored your draft yet. Resolve the draft error before closing."; return
+                }
+                closing = true; draftDebounce.stop()
+                saveDraft()
+            }
+            function saveDraft() {
+                if (!draftReady || draftWriter.running) return
+                if (draftText === draftSaved) { if (closing) Qt.quit(); return }
+                draftPending = draftText
+                draftWriter.running = true
+            }
+            Timer { id: draftDebounce; interval: 500; onTriggered: mail.saveDraft() }
+            Process {
+                id: draftReader
+                running: true
+                command: ["python3", mail.helper, "draft-load"]
+                stdout: StdioCollector { id: draftReadOut }
+                onExited: (code) => {
+                    try {
+                        const r = JSON.parse(draftReadOut.text)
+                        if (!r.ok) { mail.error = r.error; return }
+                        mail.composeTo = r.draft.to; mail.composeSubject = r.draft.subject; mail.composeBody = r.draft.body
+                        mail.draftSaved = mail.draftText; mail.draftReady = true
+                        if (mail.composeTo || mail.composeSubject || mail.composeBody) mail.composing = true
+                    } catch (e) { mail.error = "Mail couldn't restore your draft. It was left untouched." }
+                }
+            }
+            Process {
+                id: draftWriter
+                command: ["python3", mail.helper, "draft-save"]
+                stdinEnabled: true
+                stdout: StdioCollector { id: draftWriteOut }
+                onStarted: { write(mail.draftPending); stdinEnabled = false }
+                onExited: (code) => {
+                    stdinEnabled = true
+                    let r = ({})
+                    try { r = JSON.parse(draftWriteOut.text) } catch (e) {}
+                    if (code !== 0 || !r.ok) {
+                        mail.error = r.error || "Your draft couldn't be saved. Mail was kept open; try again."
+                        mail.closing = false
+                        return
+                    }
+                    mail.draftSaved = mail.draftPending
+                    Qt.callLater(() => mail.saveDraft())
+                }
+            }
 
             // What the provider wants instead of the account password, said
             // before Connect rather than after the server turns it down.
@@ -180,7 +238,7 @@ ShellRoot {
             }
 
             function send() {
-                if (sending || !composeTo.trim())
+                if (sending || !draftReady || closing || !composeTo.trim())
                     return
                 error = ""
                 sending = true
@@ -629,6 +687,7 @@ ShellRoot {
 
             Column {
                 visible: mail.configured && mail.composing
+                enabled: mail.draftReady && !mail.closing
                 anchors { fill: parent; margins: 24 }
                 spacing: 10
 
@@ -669,7 +728,7 @@ ShellRoot {
                     anchors.right: parent.right
                     spacing: 8
                     Button { text: "Writing Tools…"; enabled: !mail.sending && composeEditor.length > 0; onClicked: composeEditor.openWritingTools() }
-                    Button { text: "Cancel"; enabled: !mail.sending; onClicked: mail.composing = false }
+                    Button { text: "Save Draft"; enabled: !mail.sending && mail.draftReady; onClicked: { mail.saveDraft(); mail.composing = false } }
                     Button {
                         text: mail.sending ? "Sending…" : "Send"
                         prominent: true

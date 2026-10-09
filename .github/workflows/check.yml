@@ -468,6 +468,18 @@ jobs:
         run: python tests/airplay-receiver.py
       - name: "Passwords: Web's passwords, codes, Wi-Fi, security, recently deleted"
         run: python tests/passwords-app.py
+      - name: "Audit interactions: keyboard search, idle lock, Wi-Fi, AirPlay and trash failures"
+        run: python tests/audit-interactions.py
+        env:
+          QT_QPA_PLATFORM: offscreen
+          QT_QUICK_BACKEND: software
+      - name: "Mail drafts: persistence, private permissions and damaged-file protection"
+        run: python tests/mail-drafts.py
+      - name: "Web downloads: completed, cancelled, interrupted and paused states"
+        run: python tests/browser-downloads.py
+        env:
+          QT_QPA_PLATFORM: offscreen
+          QT_QUICK_BACKEND: software
       - name: "Battery level and time left; alert sounds and the charging chime"
         run: python tests/battery-sounds.py
         env:

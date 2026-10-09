@@ -9,6 +9,7 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Services.Pam
 import QtQuick
+import QtQuick.Window
 import "lib"
 import "lib/theme"
 
@@ -16,6 +17,7 @@ ShellRoot {
     AppWindow {
         id: win
         title: "Passwords"
+        closeAction: () => app.requestLeave(() => Qt.quit())
         implicitWidth: Math.min(1020, (Quickshell.screens[0]?.width ?? 1280) - 80)
         implicitHeight: Math.min(680, (Quickshell.screens[0]?.height ?? 900) - 130)
         minimumSize: Qt.size(760, 480)
@@ -61,7 +63,7 @@ ShellRoot {
                         symbol: modelData.symbol
                         selected: app.section === modelData.id
                         badge: modelData.count > 0 ? String(modelData.count) : ""
-                        onClicked: { app.section = modelData.id; app.select("") }
+                        onClicked: app.requestLeave(() => { app.section = modelData.id; app.selectNow("") })
                     }
                 }
             }
@@ -69,7 +71,20 @@ ShellRoot {
 
         Item {
             id: app
+            objectName: "passwordsApp"
             anchors.fill: parent
+            focus: true
+            Keys.onPressed: (event) => { app.activity(); event.accepted = false }
+            Connections {
+                target: app.Window.window
+                function onActiveFocusItemChanged() { app.activity() }
+            }
+            Connections {
+                target: app.Window.window?.activeFocusItem ?? null
+                ignoreUnknownSignals: true
+                function onTextEdited() { app.activity() }
+                function onCursorPositionChanged() { app.activity() }
+            }
 
             readonly property string helper: decodeURIComponent(Qt.resolvedUrl("passwords/helper.py").toString().replace("file://", ""))
             // Opens locked. (GG_PASSWORDS_PREVIEW=1 opens it unlocked, for
@@ -90,6 +105,23 @@ ShellRoot {
             property string error: ""
             property string toast: ""
             property bool loading: false
+            property bool saving: false
+            property string draftBaseline: ""
+            property var pendingLeave: null
+            property bool confirmLeave: false
+            function activity() { if (!locked) lockTimer.restart() }
+            function requestLeave(action) {
+                if (saving) return
+                if (locked && editing) { unlockError = "Unlock Passwords to save or discard your interrupted edit before closing."; return }
+                if (editing && JSON.stringify(draft) !== draftBaseline) { pendingLeave = action; confirmLeave = true }
+                else action()
+            }
+            function finishLeave() {
+                const action = pendingLeave
+                pendingLeave = null; confirmLeave = false
+                if (action) action()
+            }
+            function discardEdit() { editing = false; draft = ({}); draftBaseline = "" }
 
             readonly property var weakOrReused: items.filter((i) => i.weak || i.reused)
             readonly property var sections: [
@@ -136,21 +168,22 @@ ShellRoot {
                 c.running = true
             }
 
-            function refresh() {
+            function refresh(done) {
                 loading = true
                 call("list", {}, (r) => {
                     loading = false
-                    if (!r.ok) return
+                    if (!r.ok || locked) return
                     items = r.items ?? []; wifi = r.wifi ?? []; deleted = r.deleted ?? []
                     refreshCodes()
                     // Screenshots: a section, and an item in it.
                     const pick = Quickshell.env("GG_PASSWORDS_PREVIEW_SELECT")
                     if (pick && !selectedId) { const it = items.concat(wifi).find((i) => i.title === pick); if (it) select(it.id) }
+                    if (done) done()
                 })
             }
             function refreshCodes() {
                 call("codes", {}, (r) => {
-                    if (!r.ok) return
+                    if (!r.ok || locked) return
                     const m = {}
                     for (const c of r.codes ?? []) m[c.id] = c
                     codes = m
@@ -174,35 +207,46 @@ ShellRoot {
             }
 
             function select(id) {
+                requestLeave(() => selectNow(id))
+            }
+            function selectNow(id) {
                 selectedId = id
-                secret = ({}); reveal = false; editing = false; error = ""
+                secret = ({}); reveal = false; discardEdit(); error = ""
                 const it = selected
                 if (!it || id === "new") return
                 if (it.kind === "website" || it.kind === "code")
-                    call("secret", { id: id }, (r) => { if (r.ok && app.selectedId === id) app.secret = r })
+                    call("secret", { id: id }, (r) => { if (r.ok && !app.locked && app.selectedId === id) app.secret = r })
             }
             function startNew(kind) {
+                requestLeave(() => startNewNow(kind))
+            }
+            function startNewNow(kind) {
                 draft = { id: "new", kind: kind, title: "", website: "", username: "", password: "", notes: "", totp: "" }
+                const startedDraft = draft
+                draftBaseline = JSON.stringify(draft)
                 selectedId = "new"; editing = true; secret = ({}); error = ""
-                if (kind === "website") call("generate", {}, (r) => { if (r.ok && app.selectedId === "new") app.draft = Object.assign({}, app.draft, { password: r.password }) })
+                if (kind === "website") call("generate", {}, (r) => { if (r.ok && !app.locked && app.draft === startedDraft && app.editing && !app.draft.password) app.draft = Object.assign({}, app.draft, { password: r.password }) })
             }
             function startEdit() {
                 const it = selected
+                if (!it || !secret.ok || locked || saving) return
                 draft = { id: it.id, kind: it.kind, title: it.title, website: it.origin ?? "", username: it.username,
                           password: secret.password ?? "", notes: secret.notes ?? "", totp: secret.totp ?? "" }
                 editing = true
+                draftBaseline = JSON.stringify(draft)
             }
             function save() {
+                if (saving || locked) return
+                saving = true
                 call("save", draft, (r) => {
+                    saving = false
                     if (!r.ok) return
-                    editing = false
+                    discardEdit()
+                    if (pendingLeave) { finishLeave(); return }
                     const id = r.id
-                    refresh()
-                    afterRefresh.target = id
-                    afterRefresh.restart()
+                    refresh(() => { if (!locked) selectNow(id) })
                 })
             }
-            Timer { id: afterRefresh; property string target; interval: 600; onTriggered: app.select(target) }
             function remove(it) {
                 call(it.kind === "deleted" ? "purge" : "delete", { id: it.id }, (r) => { if (r.ok) { app.select(""); app.refresh() } })
             }
@@ -210,7 +254,7 @@ ShellRoot {
                 call("restore", { id: it.id }, (r) => { if (r.ok) { app.select(""); app.section = "all"; app.refresh() } })
             }
             function showWifi(it) {
-                call("wifi-secret", { id: it.id }, (r) => { if (r.ok && app.selectedId === it.id) { app.secret = r; app.reveal = true } })
+                call("wifi-secret", { id: it.id }, (r) => { if (r.ok && !app.locked && app.selectedId === it.id) { app.secret = r; app.reveal = true } })
             }
 
             // Copied: and taken off the clipboard after a minute, if it's still there.
@@ -232,7 +276,11 @@ ShellRoot {
             // --------------------------------------------------------- locking
             function lock() {
                 locked = true
-                secret = ({}); reveal = false; editing = false; selectedId = ""; items = []; wifi = []; deleted = []; codes = ({})
+                secret = ({}); reveal = false; items = []; wifi = []; deleted = []; codes = ({})
+                // An interrupted edit stays only in this process, behind the
+                // lock. Unlocking restores it; quitting still asks first.
+                if (!editing) selectedId = ""
+                confirmLeave = false; pendingLeave = null
                 unlockField.text = ""
             }
             function unlocked() {
@@ -245,7 +293,7 @@ ShellRoot {
             Timer { id: lockTimer; interval: 5 * 60 * 1000; running: !app.locked; onTriggered: app.lock() }
             MouseArea {
                 anchors.fill: parent; acceptedButtons: Qt.NoButton; hoverEnabled: true; z: 1000
-                onPositionChanged: if (!app.locked) lockTimer.restart()
+                onPositionChanged: app.activity()
             }
             property string unlockError: ""
             property string pending: ""
@@ -558,6 +606,7 @@ ShellRoot {
                             // Editing (or new).
                             Column {
                                 visible: app.editing
+                                enabled: !app.saving
                                 width: parent.width
                                 spacing: 8
                                 component Labeled: Column {
@@ -626,14 +675,14 @@ ShellRoot {
                             Row {
                                 spacing: 8
                                 // Viewing.
-                                Button { visible: !app.editing && (detail.it.kind === "website" || detail.it.kind === "code"); text: "Edit"; onClicked: app.startEdit() }
+                                Button { visible: !app.editing && (detail.it.kind === "website" || detail.it.kind === "code"); text: "Edit"; enabled: !!app.secret.ok; onClicked: app.startEdit() }
                                 Button { visible: !app.editing && (detail.it.kind === "website" || detail.it.kind === "code"); text: "Delete"; destructive: true; onClicked: app.remove(detail.it) }
                                 Button { visible: !app.editing && detail.it.kind === "deleted"; text: "Recover"; prominent: true; onClicked: app.restore(detail.it) }
                                 Button { visible: !app.editing && detail.it.kind === "deleted"; text: "Delete Now"; destructive: true; onClicked: app.remove(detail.it) }
                                 Button { visible: !app.editing && detail.it.kind === "website" && !!detail.it.origin; text: "Open Website"; onClicked: Quickshell.execDetached(["gg-web", detail.it.origin]) }
                                 // Editing.
-                                Button { visible: app.editing; text: "Cancel"; onClicked: { if (app.selectedId === "new") app.select(""); else app.editing = false; app.error = "" } }
-                                Button { visible: app.editing; objectName: "draftSave"; text: "Save"; prominent: true; onClicked: app.save() }
+                                Button { visible: app.editing; text: "Cancel"; enabled: !app.saving; onClicked: { app.requestLeave(() => { app.discardEdit(); if (app.selectedId === "new") app.selectNow(""); app.error = "" }) } }
+                                Button { visible: app.editing; objectName: "draftSave"; text: app.saving ? "Saving…" : "Save"; enabled: !app.saving; prominent: true; onClicked: app.save() }
                             }
                         }
                     }
@@ -641,6 +690,38 @@ ShellRoot {
             }
 
             // A short note: "Password copied".
+            Rectangle {
+                id: leaveOverlay
+                parent: win.overlay
+                anchors.fill: parent; z: 100
+                visible: app.confirmLeave && !app.locked
+                property var previousFocus: null
+                onVisibleChanged: {
+                    if (visible) { previousFocus = app.Window.window?.activeFocusItem; keepEditing.forceActiveFocus() }
+                    else if (previousFocus && previousFocus.visible && previousFocus.enabled) previousFocus.forceActiveFocus()
+                }
+                Keys.onEscapePressed: if (!app.saving) { app.pendingLeave = null; app.confirmLeave = false }
+                color: "#66000000"
+                MouseArea { anchors.fill: parent }
+                Rectangle {
+                    anchors.centerIn: parent
+                    width: Math.min(430, parent.width - 40); height: leaveContent.height + 40
+                    radius: 16; color: Theme.windowBg
+                    Column {
+                        id: leaveContent
+                        anchors { left: parent.left; right: parent.right; top: parent.top; margins: 20 }
+                        spacing: 14
+                        Text { width: parent.width; text: "Save your changes?"; color: Theme.label; font { pixelSize: Theme.fs(16); weight: Font.Bold } }
+                        Text { width: parent.width; wrapMode: Text.WordWrap; text: app.error || "Keep editing, save this password, or discard the changes."; color: app.error ? "#ff453a" : Theme.secondaryLabel }
+                        Row {
+                            spacing: 8
+                            Button { id: keepEditing; objectName: "keepPasswordEdit"; text: "Keep Editing"; enabled: !app.saving; KeyNavigation.tab: discardChanges; KeyNavigation.backtab: saveChanges; onClicked: { app.pendingLeave = null; app.confirmLeave = false } }
+                            Button { id: discardChanges; text: "Discard"; destructive: true; enabled: !app.saving; KeyNavigation.tab: saveChanges; KeyNavigation.backtab: keepEditing; onClicked: { app.discardEdit(); app.finishLeave() } }
+                            Button { id: saveChanges; text: "Save"; prominent: true; enabled: !app.saving; KeyNavigation.tab: keepEditing; KeyNavigation.backtab: discardChanges; onClicked: app.save() }
+                        }
+                    }
+                }
+            }
             Glass {
                 visible: !!app.toast
                 anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: 18 }
