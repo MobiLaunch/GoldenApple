@@ -7,13 +7,13 @@ QtObject {
 
     readonly property string fontUi: "Golden Gate UI"
     readonly property string fontDisplay: "Golden Gate Display"
-    readonly property real textCaption2: 10
-    readonly property real textCaption: 11
+    readonly property real textCaption2: 11
+    readonly property real textCaption: 12
     readonly property real textFootnote: 12
-    readonly property real textBody: 13
-    readonly property real textCallout: 14
-    readonly property real textHeadline: 13
-    readonly property real textTitle3: 15
+    readonly property real textBody: 14
+    readonly property real textCallout: 15
+    readonly property real textHeadline: 14
+    readonly property real textTitle3: 16
     readonly property real textTitle2: 17
     readonly property real textTitle1: 22
     readonly property real textLargeTitle: 26
@@ -50,16 +50,16 @@ QtObject {
     property bool alwaysShowScrollbars: false
     property real glassSolidity: 0
     property real textScale: 1
-    function fs(n) { return n > 24 ? n : Math.round(n * Math.max(1, Math.min(1.5, textScale))) }
+    function fs(n) { return n > 24 ? n : Math.round(Math.max(12, n) * Math.max(1, Math.min(1.5, textScale))) }
     // Control heights follow the text: fh(26) for a 26 px control.
     function fh(n) { return Math.round(n * (1 + (Math.max(1, Math.min(1.5, textScale)) - 1) * 0.8)) }
     readonly property color accent: ({ blue: accentBlue, teal: accentBlue, purple: accentPurple, pink: accentPink, red: accentRed, orange: accentOrange, yellow: accentYellow, green: accentGreen, slate: accentGraphite })[accentName] ?? accentBlue
     readonly property color windowBg: dark ? "#1e1e1e" : "#ffffff"
     readonly property color contentBg: dark ? "#1a1a1a" : "#ffffff"
     readonly property color sidebarBg: dark ? "#d92a282e" : "#d1f6f6f8"
-    readonly property color label: dark ? "#ebffffff" : "#e0000000"
-    readonly property color secondaryLabel: dark ? "#8cffffff" : "#8c000000"
-    readonly property color tertiaryLabel: dark ? "#40ffffff" : "#47000000"
+    readonly property color label: dark ? "#f7ffffff" : "#f2000000"
+    readonly property color secondaryLabel: dark ? "#d1ffffff" : "#b3000000"
+    readonly property color tertiaryLabel: dark ? "#a3ffffff" : "#94000000"
     readonly property color separator: dark ? "#1affffff" : "#17000000"
     readonly property color fill: dark ? "#12ffffff" : "#0d000000"
     readonly property color selection: dark ? "#1affffff" : "#12000000"
@@ -73,7 +73,7 @@ QtObject {
         readonly property color edge: "#1a000000"
         readonly property real lens: 10
         readonly property real shadowY: 5
-        readonly property real shadowOpacity: 0.18
+        readonly property real shadowOpacity: 0.13
         readonly property real tinted: 0.72
         readonly property real reduced: 0.94
     }
@@ -85,8 +85,8 @@ QtObject {
         readonly property color shine: dark ? "#0fffffff" : "#38ffffff"
         readonly property color edge: "#1f000000"
         readonly property real lens: 12
-        readonly property real shadowY: 6
-        readonly property real shadowOpacity: 0.22
+        readonly property real shadowY: 7
+        readonly property real shadowOpacity: 0.15
         readonly property real tinted: 0.88
         readonly property real reduced: 0.96
     }
@@ -98,8 +98,8 @@ QtObject {
         readonly property color shine: dark ? "#0affffff" : "#29ffffff"
         readonly property color edge: "#1a000000"
         readonly property real lens: 8
-        readonly property real shadowY: 10
-        readonly property real shadowOpacity: 0.28
+        readonly property real shadowY: 9
+        readonly property real shadowOpacity: 0.17
         readonly property real tinted: 0.92
         readonly property real reduced: 0.97
     }
@@ -111,8 +111,8 @@ QtObject {
         readonly property color shine: dark ? "#0dffffff" : "#33ffffff"
         readonly property color edge: "#14000000"
         readonly property real lens: 5
-        readonly property real shadowY: 2
-        readonly property real shadowOpacity: 0.14
+        readonly property real shadowY: 3
+        readonly property real shadowOpacity: 0.1
         readonly property real tinted: 0.94
         readonly property real reduced: 0.98
     }
@@ -124,8 +124,8 @@ QtObject {
         readonly property color shine: dark ? "#08ffffff" : "#1fffffff"
         readonly property color edge: "#0f000000"
         readonly property real lens: 0
-        readonly property real shadowY: 2
-        readonly property real shadowOpacity: 0.1
+        readonly property real shadowY: 4
+        readonly property real shadowOpacity: 0.08
         readonly property real tinted: 0.86
         readonly property real reduced: 0.97
     }
@@ -137,8 +137,8 @@ QtObject {
         readonly property color shine: dark ? "#0fffffff" : "#1affffff"
         readonly property color edge: "#1f000000"
         readonly property real lens: 4
-        readonly property real shadowY: 5
-        readonly property real shadowOpacity: 0.3
+        readonly property real shadowY: 8
+        readonly property real shadowOpacity: 0.19
         readonly property real tinted: 0.8
         readonly property real reduced: 0.94
     }
