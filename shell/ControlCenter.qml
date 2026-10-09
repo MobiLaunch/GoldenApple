@@ -26,6 +26,9 @@ PanelWindow {
     readonly property bool nightShift: Prefs.nightShift
     readonly property var sink: Pipewire.defaultAudioSink
     readonly property var player: Mpris.players.values.length ? Mpris.players.values[0] : null
+    // CitronPods M10 provides a private daemon snapshot; no new BlueZ
+    // polling or audio control loop in Control Center.
+    Shared.CitronPodsService { id: airpods; enabled: cc.open }
 
     function toggle() { open = !open; if (open) refresh() }
     Connections {
@@ -666,6 +669,19 @@ PanelWindow {
         }
 
         Capsule {
+            objectName: "ccAirPods"
+            visible: airpods.connected
+            width: cc.span(4)
+            height: cc.unit - 12
+            icon: "headphones"
+            title: airpods.activeDevice.name || "AirPods"
+            subtitle: "Connected · " + (typeof airpods.activeDevice.leftBattery === "number"
+                && airpods.activeDevice.leftBattery >= 0 ? airpods.activeDevice.leftBattery + "% left" : "Battery unavailable")
+            on: true
+            onActivated: cc.showDetail("airpods")
+        }
+
+        Capsule {
             objectName: "ccFocus"
             width: cc.span(4); height: cc.unit - 12
             icon: "moon"; title: "Focus"; subtitle: Prefs.focusDnd ? Prefs.focusSummary : "Off"
@@ -1050,8 +1066,86 @@ PanelWindow {
             }
         }
 
+        // AirPods detail uses the existing system pane instead of launching
+        // the original separate Qt application.
+        ColumnLayout {
+            Layout.fillWidth: true
+            visible: cc.detail === "airpods"
+            spacing: 10
+            Text {
+                Layout.fillWidth: true
+                text: airpods.activeDevice.name || "No AirPods connected"
+                color: Theme.label
+                font { family: Theme.fontUi; pixelSize: cc.cs(15); weight: Font.DemiBold }
+            }
+            Text {
+                Layout.fillWidth: true
+                text: airpods.status
+                color: Theme.secondaryLabel
+                font { family: Theme.fontUi; pixelSize: cc.cs(12) }
+            }
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+                Repeater {
+                    model: [
+                        { label: "Left", value: airpods.activeDevice.leftBattery },
+                        { label: "Right", value: airpods.activeDevice.rightBattery },
+                        { label: "Case", value: airpods.activeDevice.caseBattery }
+                    ]
+                    delegate: Rectangle {
+                        required property var modelData
+                        Layout.fillWidth: true; height: 51; radius: 14
+                        color: Theme.fill
+                        Column {
+                            anchors.centerIn: parent; spacing: 5
+                            Text {
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                text: modelData.label; color: Theme.secondaryLabel
+                                font { family: Theme.fontUi; pixelSize: cc.cs(11) }
+                            }
+                            Text {
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                text: typeof modelData.value === "number" && modelData.value >= 0
+                                    && modelData.value <= 100 ? modelData.value + "%" : "—"
+                                color: Theme.label
+                                font { family: Theme.fontUi; pixelSize: cc.cs(12); weight: Font.DemiBold }
+                            }
+                        }
+                    }
+                }
+            }
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 5
+                Repeater {
+                    model: ["Off", "ANC", "Transparency", "Adaptive"]
+                    delegate: Rectangle {
+                        id: noiseItem
+                        required property string modelData
+                        required property int index
+                        Layout.fillWidth: true
+                        height: 34; radius: 17
+                        color: airpods.canControl && airpods.state.noiseMode === index ? Theme.accent : Theme.fill
+                        opacity: airpods.canControl ? 1 : 0.50
+                        Text {
+                            anchors.centerIn: parent
+                            text: noiseItem.modelData
+                            color: airpods.canControl && airpods.state.noiseMode === noiseItem.index ? "white" : Theme.label
+                            font { family: Theme.fontUi; pixelSize: cc.cs(11) }
+                        }
+                        MouseArea {
+                            anchors.fill: parent
+                            enabled: airpods.canControl
+                            onClicked: airpods.setNoiseMode(noiseItem.index)
+                        }
+                    }
+                }
+            }
+        }
+
         Text {
-            visible: rows.count === 0 && cc.detail !== "mirroring" && cc.detail !== "focus" && cc.detail !== "display" && cc.detail !== "media"
+            visible: rows.count === 0 && cc.detail !== "airpods" && cc.detail !== "mirroring" && cc.detail !== "focus" && cc.detail !== "display" && cc.detail !== "media"
             Layout.fillWidth: true
             Layout.topMargin: 6; Layout.bottomMargin: 6
             horizontalAlignment: Text.AlignHCenter
