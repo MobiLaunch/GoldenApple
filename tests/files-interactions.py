@@ -145,6 +145,8 @@ class Interactions(unittest.TestCase):
         self.assertFalse(self.eval('quickLook.visible'))
 
     def test_finder_grid_list_crossfade_leaves_only_active_view_interactive(self):
+        self.eval('select(entries[1])')
+        selected=self.eval('selectedPath')
         grid=self.root.findChild(QObject,"filesGridView")
         listing=self.root.findChild(QObject,"filesListView")
         self.assertIsNotNone(grid)
@@ -153,7 +155,7 @@ class Interactions(unittest.TestCase):
         QTest.qWait(155)
         self.assertTrue(grid.property("enabled"))
         self.assertFalse(listing.property("enabled"))
-        self.eval('view="list"')
+        self.eval('switchView("list")')
         # The outgoing view can remain painted briefly; it must immediately
         # relinquish input, drag targets and scrollbar ownership.
         self.assertFalse(grid.property("enabled"))
@@ -162,11 +164,13 @@ class Interactions(unittest.TestCase):
         self.assertFalse(grid.property("visible"))
         self.assertTrue(listing.property("visible"))
         self.assertAlmostEqual(listing.property("opacity"),1.0,delta=0.03)
-        self.eval('Theme.reduceMotion=true; view="grid"')
+        self.eval('Theme.reduceMotion=true; switchView("grid")')
         APP.processEvents()
         self.assertFalse(listing.property("visible"))
         self.assertAlmostEqual(grid.property("opacity"),1.0,delta=0.03)
         self.assertTrue(grid.property("enabled"))
+        self.assertEqual(self.eval('selectedPath'), selected,
+                         'switching layout must not change file selection')
 
     def test_range_toggle_all_and_clear_on_navigation(self):
         self.eval('view="list"; select(entries[0])')
