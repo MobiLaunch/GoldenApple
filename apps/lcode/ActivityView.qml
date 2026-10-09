@@ -11,6 +11,7 @@ Item {
     property var app
     signal issuesClicked()
     implicitHeight: 36
+    clip: true
 
     Glass {
         anchors.fill: parent
@@ -45,7 +46,7 @@ Item {
 
     Text {
         x: lead.x + lead.width + 8
-        width: badges.x - x - 10
+        width: Math.max(0, badges.x - x - 10)
         anchors.verticalCenter: parent.verticalCenter
         text: view.app.status
         elide: Text.ElideRight
