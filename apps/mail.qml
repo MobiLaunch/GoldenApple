@@ -1182,6 +1182,7 @@ ShellRoot {
                                     font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
                                 }
                                 PopUpButton {
+                                    menuParent: win.overlay
                                     options: ["Primary", "Transactions", "Updates", "Promotions"]
                                     current: Math.max(0, ["primary", "transactions", "updates", "promotions"]
                                         .indexOf(mail.messages.find((m) => String(m.uid) === String(mail.selectedUid))?.category || "primary"))
