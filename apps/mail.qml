@@ -91,7 +91,7 @@ ShellRoot {
                     font { family: Theme.fontUi; pixelSize: Theme.fs(11); weight: Font.DemiBold; letterSpacing: 0.7 }
                 }
                 SidebarRow {
-                    width: parent.width; text: "Inbox"; symbol: "tray"
+                    width: parent.width; text: "Inbox"; symbol: "download"
                     selected: mail.selectedFolder === "inbox" && !mail.composing
                     badge: mail.unreadCount ? String(mail.unreadCount) : ""
                     onClicked: { mail.selectedFolder = "inbox"; mail.composing = false }
@@ -153,15 +153,15 @@ ShellRoot {
             }
             function senderName(sender) {
                 const text = String(sender || "Unknown Sender")
-                return text.replace(/\\s*<[^>]+>\\s*$/, "").replace(/^"|"$/g, "").trim() || text
+                return text.replace(/\s*<[^>]+>\s*$/, "").replace(/^"|"$/g, "").trim() || text
             }
             function address(sender) {
                 const text = String(sender || "")
                 const tagged = /<([^>]+@[^>]+)>/.exec(text)
-                return tagged ? tagged[1] : /[^\\s<>]+@[^\\s<>]+/.exec(text)?.[0] || ""
+                return tagged ? tagged[1] : /[^\s<>]+@[^\s<>]+/.exec(text)?.[0] || ""
             }
             function initials(sender) {
-                const parts = senderName(sender).split(/\\s+/).filter(Boolean)
+                const parts = senderName(sender).split(/\s+/).filter(Boolean)
                 return (parts.length > 1 ? parts[0][0] + parts[parts.length - 1][0]
                     : (parts[0] || "?").slice(0, 2)).toUpperCase()
             }
@@ -180,10 +180,10 @@ ShellRoot {
                 composeTo = ""
                 composeSubject = /^fwd?:/i.test(selectedMessage.subject || "") ?
                     selectedMessage.subject : "Fwd: " + (selectedMessage.subject || "")
-                composeBody = "\\n\\n---------- Forwarded message ----------\\n" +
-                    "From: " + (selectedMessage.from || "") + "\\n" +
-                    "Date: " + (selectedMessage.date || "") + "\\n" +
-                    "Subject: " + (selectedMessage.subject || "") + "\\n\\n" +
+                composeBody = "\n\n---------- Forwarded message ----------\\n" +
+                    "From: " + (selectedMessage.from || "") + "\n" +
+                    "Date: " + (selectedMessage.date || "") + "\n" +
+                    "Subject: " + (selectedMessage.subject || "") + "\n\n" +
                     (selectedMessage.body || "")
                 selectedFolder = "drafts"
                 composing = true
@@ -193,9 +193,9 @@ ShellRoot {
                 composeTo = address(selectedMessage.from)
                 composeSubject = /^re:/i.test(selectedMessage.subject || "") ?
                     selectedMessage.subject : "Re: " + (selectedMessage.subject || "")
-                composeBody = "\\n\\nOn " + (selectedMessage.date || "an earlier date") +
-                    ", " + (selectedMessage.from || "someone") + " wrote:\\n" +
-                    String(selectedMessage.body || "").split("\\n").map((line) => "> " + line).join("\\n")
+                composeBody = "\n\nOn " + (selectedMessage.date || "an earlier date") +
+                    ", " + (selectedMessage.from || "someone") + " wrote:\n" +
+                    String(selectedMessage.body || "").split("\n").map((line) => "> " + line).join("\n")
                 selectedFolder = "drafts"
                 composing = true
             }
@@ -962,7 +962,7 @@ ShellRoot {
                             }
                             Text {
                                 width: parent.width
-                                text: mail.composeBody.replace(/\\s+/g, " ").slice(0, 105)
+                                text: mail.composeBody.replace(/\s+/g, " ").slice(0, 105)
                                 elide: Text.ElideRight; color: Theme.secondaryLabel
                                 font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
                             }
