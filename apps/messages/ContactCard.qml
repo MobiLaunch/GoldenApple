@@ -49,6 +49,7 @@ Item {
                 Layout.alignment: Qt.AlignHCenter
                 name: card.contact?.name ?? ""
                 group: !!card.contact?.is_group
+                photoPath: card.contact?.photo_path || card.contact?.contact_photo_path || ""
                 size: 94
             }
             Text {
