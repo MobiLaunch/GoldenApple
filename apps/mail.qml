@@ -530,11 +530,21 @@ ShellRoot {
                 color: Theme.contentBg
             }
 
-            Column {
+            Flickable {
+                id: setupScroller
+                objectName: "mailSetupScroller"
                 visible: !mail.configured
-                anchors.centerIn: parent
-                width: Math.min(520, parent.width - 80)
-                spacing: 12
+                anchors.fill: parent
+                clip: true
+                boundsBehavior: Flickable.StopAtBounds
+                contentWidth: width
+                contentHeight: Math.max(height, setupColumn.y + setupColumn.implicitHeight + 24)
+                Column {
+                    id: setupColumn
+                    x: Math.max(20, (setupScroller.width - width) / 2)
+                    y: Math.max(22, (setupScroller.height - implicitHeight) / 2)
+                    width: Math.min(520, setupScroller.width - 44)
+                    spacing: 12
 
                 Symbol {
                     anchors.horizontalCenter: parent.horizontalCenter
@@ -668,6 +678,7 @@ ShellRoot {
                             && !!mail.imapHost && !!mail.smtpHost && mail.setupPassword.length > 0
                         onClicked: mail.setupAccount()
                     }
+                }
                 }
             }
 
