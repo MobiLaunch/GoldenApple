@@ -180,8 +180,8 @@ PanelWindow {
                         radius: 8
                         color: "#33000000"
                         border { width: desk.current || desk.target ? 3 : 1; color: desk.target ? Theme.accent : desk.current ? "#ffffff" : "#40ffffff" }
-                        scale: tileHover.hovered || desk.target ? 1.04 : 1
-                        Behavior on scale { NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
+                        scale: !Theme.reduceMotion && (tileHover.hovered || desk.target) ? 1.025 : 1
+                        Behavior on scale { enabled: !Theme.reduceMotion; NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
                         clip: true
                         Image {
                             anchors { fill: parent; margins: parent.border.width }
@@ -298,7 +298,7 @@ PanelWindow {
                 color: "transparent"
                 border { width: 3; color: Theme.accent }
                 opacity: win.lit && mc.open && !drag.active ? 1 : 0
-                Behavior on opacity { NumberAnimation { duration: 120 } }
+                Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 0 : 120 } }
             }
             // The title, under the window, while it's highlighted.
             Rectangle {
@@ -307,7 +307,7 @@ PanelWindow {
                 radius: 12
                 color: "#b3000000"
                 opacity: win.lit && mc.progress > 0.9 && !drag.active ? 1 : 0
-                Behavior on opacity { NumberAnimation { duration: 120 } }
+                Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 0 : 120 } }
                 Text {
                     id: title
                     anchors.centerIn: parent

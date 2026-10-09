@@ -242,7 +242,7 @@ PanelWindow {
             : Theme.dark ? Qt.rgba(1, 1, 1, pressed ? 0.17 : hovered ? 0.13 : 0.09)
                          : Qt.rgba(1, 1, 1, pressed ? 0.38 : hovered ? 0.72 : 0.56)
         border { width: bare ? 0 : 0.5; color: Theme.dark ? "#1fffffff" : "#12000000" }
-        Behavior on color { ColorAnimation { duration: 120 } }
+        Behavior on color { ColorAnimation { duration: Prefs.reduceMotion ? 0 : 120 } }
         scale: pressed && !Prefs.reduceMotion ? Math.max(0.95, 1 - 4 / Math.max(1, Math.max(width, height))) : 1
         Behavior on scale { enabled: !Prefs.reduceMotion; Spring { spring: mod.pressed ? Theme.snappy : Theme.bouncy } }
     }
@@ -252,7 +252,7 @@ PanelWindow {
         id: glyph
         property bool on: false
         property real pop: 1
-        onOnChanged: if (!Prefs.reduceMotion) popAnim.restart()
+        onOnChanged: { if (Prefs.reduceMotion) { popAnim.stop(); pop = 1 } else popAnim.restart() }
         transform: Scale { origin.x: glyph.width / 2; origin.y: glyph.height / 2; xScale: glyph.pop; yScale: glyph.pop }
         SequentialAnimation {
             id: popAnim
@@ -532,7 +532,7 @@ PanelWindow {
         Behavior on opacity { NumberAnimation { duration: Prefs.reduceMotion ? 1 : 160; easing.type: Easing.OutCubic } }
         transform: Translate {
             x: cc.detail && !Prefs.reduceMotion ? -28 : 0
-            Behavior on x { NumberAnimation { duration: 225; easing.type: Easing.OutCubic } }
+            Behavior on x { enabled: !Prefs.reduceMotion; NumberAnimation { duration: 225; easing.type: Easing.OutCubic } }
         }
 
         // In use: which apps have the microphone, camera, screen or location,
@@ -788,7 +788,7 @@ PanelWindow {
         transform: Translate {
             id: detailShift
             x: cc.detail || Prefs.reduceMotion ? 0 : 28
-            Behavior on x { NumberAnimation { duration: 225; easing.type: Easing.OutCubic } }
+            Behavior on x { enabled: !Prefs.reduceMotion; NumberAnimation { duration: 225; easing.type: Easing.OutCubic } }
         }
         focus: cc.detail !== ""
         Keys.onEscapePressed: cc.detail = ""

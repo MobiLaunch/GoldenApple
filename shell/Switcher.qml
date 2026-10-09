@@ -95,8 +95,8 @@ PanelWindow {
         height: row.implicitHeight + 28
         role: "regular"
         radius: 30
-        scale: sw.open ? 1 : 0.9
-        Behavior on scale { Spring { spring: Theme.popover } }
+        scale: sw.open || Theme.reduceMotion ? 1 : 0.92
+        Behavior on scale { enabled: !Theme.reduceMotion; Spring { spring: Theme.popover } }
 
         // One selection that springs from app to app as Tab moves it.
         Rectangle {

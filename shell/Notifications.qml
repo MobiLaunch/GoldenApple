@@ -257,7 +257,7 @@ Scope {
             role: "control"
             x: -7; y: -7; width: 22; height: 22; radius: 11
             opacity: hover.hovered ? 1 : 0
-            Behavior on opacity { NumberAnimation { duration: 130 } }
+            Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 0 : 130 } }
             Symbol { anchors.centerIn: parent; name: "xmark"; size: 10; tone: Theme.dark ? "white" : "dark" }
             TapHandler { onTapped: if (card.live) card.n.dismiss() }
         }
@@ -311,16 +311,16 @@ Scope {
             }
             remove: Transition {
                 ParallelAnimation {
-                    NumberAnimation { property: "x"; to: bannerList.still ? 0 : bannerList.away; duration: 260; easing.type: Easing.InCubic }
-                    NumberAnimation { property: "opacity"; to: 0; duration: 260; easing.type: Easing.InQuad }
+                    NumberAnimation { property: "x"; to: bannerList.still ? 0 : bannerList.away; duration: bannerList.still ? 0 : 260; easing.type: Easing.InCubic }
+                    NumberAnimation { property: "opacity"; to: 0; duration: bannerList.still ? 0 : 260; easing.type: Easing.InQuad }
                 }
             }
             displaced: Transition {
                 NumberAnimation { property: "y"; duration: bannerList.still ? 0 : Theme.snappy.duration
                     easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.snappy.curve }
                 // A banner caught mid-arrival finishes arriving.
-                NumberAnimation { property: "x"; to: 0; duration: 175 }
-                NumberAnimation { property: "opacity"; to: 1; duration: 175 }
+                NumberAnimation { property: "x"; to: 0; duration: bannerList.still ? 0 : 175 }
+                NumberAnimation { property: "opacity"; to: 1; duration: bannerList.still ? 0 : 175 }
             }
 
             delegate: Card {
@@ -334,7 +334,7 @@ Scope {
                 property real dragX: 0
                 transform: Translate { x: banner.dragX }
                 opacity: 1 - Math.max(0, dragX) / 320
-                Behavior on dragX { enabled: !drag.active; Spring { spring: Theme.snappy } }
+                Behavior on dragX { enabled: !drag.active && !Theme.reduceMotion; Spring { spring: Theme.snappy } }
 
                 // The banner goes; the notification stays in Notification Center.
                 // Its time counts from when it arrived.
@@ -390,7 +390,7 @@ Scope {
             width: 380
             anchors { top: parent.top; bottom: parent.bottom; topMargin: 30; bottomMargin: 10 }
             x: root.centerOpen ? center.width - width - 6 : center.width + 20
-            Behavior on x { Spring { spring: Theme.snappy } }
+            Behavior on x { enabled: !Theme.reduceMotion; Spring { spring: Theme.snappy } }
             focus: root.centerOpen
             Keys.onEscapePressed: root.centerOpen = false
             MouseArea { anchors.fill: parent }   // clicks inside stay inside
