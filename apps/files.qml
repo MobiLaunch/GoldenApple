@@ -1197,9 +1197,17 @@ ShellRoot {
                         const left = Math.min(x0, x1), right = Math.max(x0, x1)
                         const top = Math.min(y0, y1), bottom = Math.max(y0, y1)
                         const paths = []
-                        // itemAtIndex only returns instantiated, visible cells;
-                        // a drag cannot select offscreen items accidentally.
-                        for (let i = 0; i < grid.count; i++) {
+                        // Only inspect rows inside the visible selection box.
+                        // Scanning every file on every pointer move would stutter
+                        // in directories with thousands of items.
+                        const cols = Math.max(1, Math.floor(grid.width / grid.cellWidth))
+                        const topRow = Math.max(0,
+                            Math.floor((top + grid.contentY) / grid.cellHeight) - 2)
+                        const bottomRow = Math.max(topRow,
+                            Math.ceil((bottom + grid.contentY) / grid.cellHeight) + 2)
+                        for (let i = topRow * cols;
+                             i < Math.min(grid.count, (bottomRow + 1) * cols); i++) {
+                            // itemAtIndex is null for offscreen delegates.
                             const item = grid.itemAtIndex(i)
                             if (!item) continue
                             const p = item.mapToItem(grid, 0, 0)
