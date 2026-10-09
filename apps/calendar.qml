@@ -50,6 +50,13 @@ ShellRoot {
 
                 ToolbarButton {
                     round: true
+                    symbol: "bell"
+                    enabled: !cal.remindersPending
+                    Accessible.name: cal.remindersEnabled ? "Turn Calendar reminders off" : "Turn Calendar reminders on"
+                    onClicked: cal.toggleReminders()
+                }
+                ToolbarButton {
+                    round: true
                     symbol: "plus"
                     enabled: !cal.broken
                     onClicked: cal.openAdd()
@@ -168,6 +175,7 @@ ShellRoot {
             anchors.fill: parent
 
             readonly property string helper: Qt.resolvedUrl("calendar/helper.py").toString().replace("file://", "")
+            readonly property string reminderHelper: Qt.resolvedUrl("calendar/reminders.py").toString().replace("file://", "")
             property date today: new Date()
             property date visibleMonth: new Date(today.getFullYear(), today.getMonth(), 1)
             property date selectedDate: new Date(today.getFullYear(), today.getMonth(), today.getDate())
@@ -185,6 +193,10 @@ ShellRoot {
             property var editingOriginal: ({})
             property string draftRepeat: "never"
             property string draftUntil: ""
+            property int draftReminder: -1
+            readonly property var reminderValues: [-1, 0, 5, 15, 60]
+            property bool remindersEnabled: false
+            property bool remindersPending: false
             readonly property var repeatOptions: ["never", "daily", "weekly", "monthly", "yearly"]
             property string deleteTarget: ""
             property string deleteTitle: ""
@@ -234,6 +246,7 @@ ShellRoot {
                 editingOriginal = ({})
                 draftRepeat = "never"
                 draftUntil = ""
+                draftReminder = -1
                 error = ""
                 addDialog.visible = true
                 Qt.callLater(() => titleField.input.forceActiveFocus())
@@ -263,6 +276,7 @@ ShellRoot {
                 draftCalendar = editingOccurrence ? (event.calendar || "Home") : (original.calendar || "Home")
                 draftRepeat = original.repeat || "never"
                 draftUntil = original.until || ""
+                draftReminder = editingOccurrence ? (event.reminder ?? original.reminder ?? -1) : (original.reminder ?? -1)
                 error = ""
                 addDialog.visible = true
                 Qt.callLater(() => titleField.input.forceActiveFocus())
@@ -323,7 +337,42 @@ ShellRoot {
                     loadProc.running = true
             }
 
-            Component.onCompleted: reload()
+            Component.onCompleted: { reload(); reminderStatus.running = true }
+
+            function toggleReminders() {
+                if (remindersPending) return
+                remindersPending = true
+                reminderToggle.command = ["python3", reminderHelper, remindersEnabled ? "disable" : "enable"]
+                reminderToggle.running = true
+            }
+
+            Process {
+                id: reminderStatus
+                command: ["python3", cal.reminderHelper, "status"]
+                stdout: StdioCollector {
+                    onStreamFinished: {
+                        let r = null
+                        try { r = JSON.parse(text) } catch (e) {}
+                        if (r?.ok) cal.remindersEnabled = !!r.enabled
+                    }
+                }
+            }
+
+            Process {
+                id: reminderToggle
+                stdout: StdioCollector {
+                    onStreamFinished: {
+                        let r = null
+                        try { r = JSON.parse(text) } catch (e) {}
+                        if (r?.ok) cal.remindersEnabled = !!r.enabled
+                        else cal.error = r?.error ?? "Calendar reminders could not be changed."
+                    }
+                }
+                onExited: {
+                    cal.remindersPending = false
+                    reminderStatus.running = true
+                }
+            }
 
             Process {
                 id: loadProc
@@ -376,6 +425,7 @@ ShellRoot {
                         calendar: cal.draftCalendar,
                         repeat: cal.draftRepeat,
                         until: cal.draftRepeat === "never" ? "" : cal.draftUntil.trim(),
+                        reminder: cal.draftReminder,
                         expected: cal.editingOriginal
                     }))
                     stdinEnabled = false
@@ -616,7 +666,7 @@ ShellRoot {
                 visible: false
                 anchors.centerIn: parent
                 width: 420
-                height: (cal.draftRepeat === "never" || cal.editingOccurrence ? 320 : 385) + (cal.error ? 38 : 0)
+                height: (cal.draftRepeat === "never" || cal.editingOccurrence ? 360 : 425) + (cal.error ? 38 : 0)
                 radius: 22
                 tint: Theme.glassRegular.tint
                 z: 100
@@ -661,6 +711,23 @@ ShellRoot {
                         placeholder: "Calendar"
                         text: cal.draftCalendar
                         onTextChanged: cal.draftCalendar = text
+                    }
+
+                    Row {
+                        width: parent.width
+                        spacing: 12
+                        Text {
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: "Reminder"
+                            color: Theme.secondaryLabel
+                            font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                        }
+                        PopUpButton {
+                            menuParent: win.overlay
+                            options: ["None", "At Event Time", "5 Minutes Before", "15 Minutes Before", "1 Hour Before"]
+                            current: Math.max(0, cal.reminderValues.indexOf(cal.draftReminder))
+                            onPicked: (i) => cal.draftReminder = cal.reminderValues[i]
+                        }
                     }
 
                     Row {
