@@ -295,7 +295,7 @@ PanelWindow {
                 id: orb
                 objectName: "citronPrismaticOrb"
                 anchors.horizontalCenter: parent.horizontalCenter
-                width: Math.min(226, citron.width * 0.31)
+                width: Math.min(citron.height < 810 ? 176 : 226, citron.width * 0.31)
                 height: width
                 mode: citron.orbMode
                 level: citron.soundLevel
@@ -342,7 +342,7 @@ PanelWindow {
             Item {
                 id: resultArea
                 width: parent.width
-                height: citron.responseOpen ? Math.min(232, Math.max(94, answerContent.implicitHeight + 28)) : 0
+                height: citron.responseOpen ? Math.min(citron.height < 810 ? 164 : 235, Math.max(92, answerContent.implicitHeight + 28)) : 0
                 opacity: citron.responseOpen ? 1 : 0
                 visible: height > 1
                 Behavior on height { enabled: !Theme.reduceMotion; NumberAnimation { duration: 210; easing.type: Easing.OutCubic } }
@@ -353,10 +353,17 @@ PanelWindow {
                     tint: "#e9171b26"
                     shadow: "#44000000"
                 }
-                Column {
-                    id: answerContent
-                    anchors { left: parent.left; right: parent.right; top: parent.top; margins: 15 }
-                    spacing: 9
+                Flickable {
+                    id: answerScroll
+                    anchors { fill: parent; margins: 15 }
+                    contentWidth: width
+                    contentHeight: answerContent.implicitHeight
+                    clip: true
+                    boundsBehavior: Flickable.StopAtBounds
+                    Column {
+                        id: answerContent
+                        width: answerScroll.width
+                        spacing: 9
                     Row {
                         width: parent.width
                         spacing: 10
@@ -412,6 +419,7 @@ PanelWindow {
                         font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: Font.DemiBold }
                         MouseArea { anchors.fill: parent; onClicked: imageSave.open() }
                     }
+                    }
                 }
             }
 
@@ -419,7 +427,7 @@ PanelWindow {
             Rectangle {
                 id: contextArea
                 width: parent.width
-                height: citron.tool === "writing" ? 94 : citron.selectedPhoto ? 38 : 0
+                height: citron.tool === "writing" ? (citron.height < 810 ? 77 : 94) : citron.selectedPhoto ? 38 : 0
                 visible: height > 0
                 radius: 17
                 color: "#dc121620"
@@ -490,7 +498,7 @@ PanelWindow {
             Item {
                 id: capsule
                 width: parent.width
-                height: 58
+                height: citron.height < 810 ? 52 : 58
                 Shared.Glass {
                     anchors.fill: parent; role: "regular"; radius: height / 2
                     tint: "#e81c202a"; shadow: "#5c000000"
