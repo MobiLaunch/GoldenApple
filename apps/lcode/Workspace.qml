@@ -30,11 +30,12 @@ AppWindow {
     // floating surface. One animated boundary controls editor height and the
     // pane's top edge; resizing with the pointer remains immediate.
     property bool debugResizing: false
+    property bool debugMotionReady: false
     property real presentedDebugHeight: showDebug
         ? Math.max(90, Math.min(debugHeight, Math.max(90, height - toolbarHeight - 160)))
         : 0
     Behavior on presentedDebugHeight {
-        enabled: !Theme.reduceMotion && !win.debugResizing
+        enabled: win.debugMotionReady && !Theme.reduceMotion && !win.debugResizing
         NumberAnimation { duration: 205; easing.type: Easing.OutCubic }
     }
     Timer {
@@ -71,6 +72,7 @@ AppWindow {
         if (launched) editorArea.open(launched, 0, 0)
         else if (st.selected_file) editorArea.open(st.selected_file, 0, 0)
         else if (!(st.open_files || []).length) openDefaultFile.start()
+        win.debugMotionReady = true
     }
     Timer {
         id: openDefaultFile

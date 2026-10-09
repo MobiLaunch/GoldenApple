@@ -69,6 +69,7 @@ Item {
 
     Rectangle {
         id: card
+        objectName: "quickLookCard"
         readonly property real maxW: look.width - 120
         readonly property real maxH: look.height - 110
         // A picture sits this far inside the card, so its square corners stay
@@ -110,7 +111,7 @@ Item {
             enabled: look.open && !Theme.reduceMotion
             NumberAnimation { duration: 190; easing.type: Easing.OutCubic }
         }
-        MouseArea { anchors.fill: parent; enabled: look.open } // no ghost clicks during exit
+        MouseArea { objectName: "quickLookHitArea"; anchors.fill: parent; enabled: look.open } // no ghost clicks during exit
 
         Image {
             id: picture
