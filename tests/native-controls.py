@@ -25,6 +25,8 @@ Rectangle {
     function dark() { Theme.dark = true }
     function reduce() { Theme.reduceMotion = true }
     function standardMotion() { Theme.reduceMotion = false }
+    function showSheet() { sheet.open() }
+    function dismissSheet() { sheet.close() }
     function showMenu() { menu.popup(button, 0, 30, [
         {text: "First", action: () => actions++}, {separator: true},
         {text: "Disabled", enabled: false}, {text: "Last", action: () => actions += 10}
@@ -43,6 +45,12 @@ Rectangle {
     GG.ProgressBar { objectName: "progress"; x: 300; y: 240; width: 180; value: 0.42 }
     GG.EmptyState { objectName: "emptyState"; x: 300; y: 270; width: 190; height: 80; title: "Nothing Here"; text: "Shared empty state" }
     GG.PopupMenu { id: menu; objectName: "menu" }
+    GG.ModalSheet {
+        id: sheet
+        objectName: "documentSheet"
+        panelWidth: 340; panelHeight: 190
+        GG.Button { objectName: "sheetConfirmation"; text: "Confirm" }
+    }
 }'''
 
 class Controls(unittest.TestCase):
@@ -210,6 +218,50 @@ class Controls(unittest.TestCase):
         self.assertEqual(spy.count(),0)
         QTest.mouseClick(self.view,Qt.LeftButton,pos=QPoint(315,198))
         self.assertEqual(spy.count(),0)
+
+    def test_document_sheet_entrance_escape_and_focus_return(self):
+        trigger=self.control('button')
+        trigger.forceActiveFocus()
+        self.root.showSheet()
+        sheet=self.control('documentSheet')
+        panel=sheet.findChild(QObject,'sharedSheetPanel')
+        self.assertIsNotNone(panel)
+        self.assertTrue(sheet.property('shown'))
+        self.assertTrue(sheet.property('visible'))
+        QTest.qWait(260)
+        self.assertAlmostEqual(panel.property('scale'),1.0,delta=0.02)
+        QTest.keyClick(self.view,Qt.Key_Escape)
+        self.assertFalse(sheet.property('shown'))
+        QTest.qWait(220)
+        self.assertFalse(sheet.property('visible'),
+                         'dismissed sheet should stop blocking the content once fade ends')
+        self.assertTrue(trigger.hasActiveFocus(),
+                        'focus must return to the control that opened the sheet')
+
+    def test_sheet_reduce_motion_and_rapid_reopen(self):
+        trigger=self.control('button')
+        trigger.forceActiveFocus()
+        self.root.reduce()
+        self.root.showSheet()
+        sheet=self.control('documentSheet')
+        panel=sheet.findChild(QObject,'sharedSheetPanel')
+        APP.processEvents()
+        self.assertAlmostEqual(panel.property('scale'),1.0,delta=0.01)
+        self.assertAlmostEqual(panel.property('opacity'),1.0,delta=0.01)
+        self.root.dismissSheet()
+        APP.processEvents()
+        self.assertFalse(sheet.property('visible'))
+        self.root.standardMotion()
+        self.root.showSheet()
+        QTest.qWait(40)
+        self.root.dismissSheet()
+        QTest.qWait(20)
+        self.root.showSheet()
+        QTest.qWait(275)
+        self.assertTrue(sheet.property('shown'))
+        self.assertTrue(sheet.property('visible'))
+        self.assertAlmostEqual(panel.property('scale'),1.0,delta=0.02)
+        self.root.dismissSheet()
 
     def test_search_clear_affordance_and_escape(self):
         search = self.control('searchField')
