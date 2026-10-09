@@ -85,7 +85,10 @@ def safe_art(data: bytes):
     return (b"<svg" in lower and b"<script" not in lower
             and b"<!doctype" not in lower and b"<!entity" not in lower
             and b"<foreignobject" not in lower and b"javascript:" not in lower
-            and all(not ref.startswith((b"http:", b"https:", b"data:", b"file:")) for ref in refs)
+            and all(not ref.startswith((b"http:", b"https:", b"file:"))
+                    and (not ref.startswith(b"data:") or
+                         ref.startswith((b"data:image/png;base64,", b"data:image/jpeg;base64,")))
+                    for ref in refs)
             and b"url(http" not in lower and b"url(https" not in lower)
 
 
