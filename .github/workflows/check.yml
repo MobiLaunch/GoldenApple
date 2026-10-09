@@ -133,7 +133,10 @@ jobs:
           test -f "$root/usr/share/applications/org.goldengate.ArchiveUtility.desktop"
           test -x "$root/usr/local/bin/gg-intelligence"
           test -f "$root/usr/share/golden-gate/ui/intelligence/helper.py"
-          test -f "$root/usr/share/applications/org.goldengate.Intelligence.desktop"
+          # Citron is a shell overlay, not a separately launchable app.
+          test ! -e "$root/usr/share/applications/org.goldengate.Intelligence.desktop"
+          test -f "$root/usr/share/golden-gate/ui/PrismOrb.qml"
+          test -f "$root/usr/share/golden-gate/apps/messages/open.sh"
           test -x "$root/usr/local/bin/gg-lcode"
           test -x "$root/usr/local/bin/gg-pref"
           test -x "$root/usr/local/bin/gg-hyprglass-sync"
