@@ -211,7 +211,6 @@ AppWindow {
                 NumberAnimation { duration: Theme.reduceMotion ? 0 : 125; easing.type: Easing.OutCubic }
             }
             anchors.verticalCenter: parent.verticalCenter
-            visible: rightEdge - leftEdge > 220
             onIssuesClicked: { win.navigatorOpen = true; navigator.page = 2 }
         }
     ]
