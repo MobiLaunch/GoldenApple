@@ -37,6 +37,7 @@ check("apps/lib/ToolbarButton.qml", [
 
 check("apps/lib/TextField.qml", [
     'objectName: "searchClearButton"',
+    'objectName: "textFieldNativeInput"',
     'Accessible.name: "Clear search"',
     "function clearSearch() {",
     "Keys.onEscapePressed: (event) => {",
