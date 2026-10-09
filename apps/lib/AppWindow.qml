@@ -21,9 +21,21 @@ import Quickshell.Hyprland
 import QtQuick
 import QtQuick.Shapes
 import "theme"
+import "WindowGeometry.js" as WindowGeometry
 
 FloatingWindow {
     id: win
+    // Limit the initial Wayland toplevel to the usable monitor space BEFORE
+    // the compositor places it. Hyprland centers the window above the Dock,
+    // so neither the 30px menu bar nor the traffic lights are covered.
+    // Unlike a post-map hyprctl resize, this produces no visible second jump.
+    property real _placementDockSize: Theme.sizeDockIcon
+    readonly property real _placementScreenWidth: win.screen ? win.screen.width : 0
+    readonly property real _placementScreenHeight: win.screen ? win.screen.height : 0
+    maximumSize: Qt.size(
+        WindowGeometry.maximumWidth(_placementScreenWidth),
+        WindowGeometry.maximumHeight(_placementScreenHeight, _placementDockSize, Theme.sizeMenubar)
+    )
     property real sidebarWidth: 0
     property real trailingSidebarWidth: 0  // an inspector floating at the right edge
     // Present sidebars and the content boundaries as one layout transaction.
@@ -141,6 +153,7 @@ FloatingWindow {
             Theme.textScale = d.textScale ?? 1
             Theme.alwaysShowScrollbars = d.scrollBars === "always"
             Theme.glassSolidity = d.glassSolidity ?? 0
+            win._placementDockSize = (d.dock && d.dock.size > 0) ? d.dock.size : Theme.sizeDockIcon
         }
     }
 
