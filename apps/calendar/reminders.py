@@ -22,12 +22,15 @@ import helper as calendar
 CONFIG = Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config") / "systemd/user"
 STATE = Path(os.environ.get("XDG_STATE_HOME") or Path.home() / ".local/state") / "golden-gate/calendar/reminders-sent.json"
 UNIT = "gg-calendar-reminders"
+REMINDER_PATH = str(Path(__file__).resolve())
+if any(c in REMINDER_PATH for c in ("\\n", "\\r")):
+    raise RuntimeError("Calendar reminders path contains an invalid character.")
 SERVICE = """[Unit]
 Description=CitronOS Calendar event notifications
 [Service]
 Type=oneshot
-ExecStart=/usr/bin/python3 /usr/share/golden-gate/apps/calendar/reminders.py scan
-"""
+ExecStart=/usr/bin/python3 "{path}" scan
+""".format(path=REMINDER_PATH.replace("\\", "\\\\").replace('"', '\\"').replace("%", "%%"))
 TIMER = """[Unit]
 Description=Check Calendar event notifications every minute
 [Timer]
