@@ -139,7 +139,7 @@ AppWindow {
     toolbarItems: [
         ToolbarPill {
             id: runPill
-            x: Math.max(win.contentX + 12, 180)
+            x: Math.max(win.contentX + 12, win.toolbarLeadingEnd, 180)
             anchors.verticalCenter: parent.verticalCenter
             ToolbarButton {
                 symbol: "play"
