@@ -147,7 +147,7 @@ def cmd_category(uid: str, category: str) -> int:
 
 def cmd_vip(address: str, on: bool) -> int:
     address = address.strip().lower()
-    if not re.fullmatch(r"[^\\s@<>]{1,100}@[^\\s@<>]{1,200}", address):
+    if not re.fullmatch(r"[^\s@<>]{1,100}@[^\s@<>]{1,200}", address):
         return emit(False, error="Choose a valid email address.")
     try:
         cfg, _ = configured()
