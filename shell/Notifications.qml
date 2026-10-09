@@ -24,6 +24,25 @@ Scope {
     readonly property var list: server.trackedNotifications.values
     property var banners: []            // notifications showing as banners, newest first
     property var received: ({})         // notification id → time received (ms)
+    // TrackedNotifications.values does not reliably emit a QML list-change
+    // signal on all Quickshell versions. Badges must depend on this explicit
+    // revision so each notification arrival/dismissal refreshes Dock tiles.
+    property int badgeEpoch: 0
+    property int mailUnread: 0
+    FileView {
+        id: mailBadges
+        path: (Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state")
+              + "/golden-gate/mail-badges.json"
+        printErrors: false
+        watchChanges: true
+        onFileChanged: reload()
+        onLoaded: {
+            try {
+                const data = JSON.parse(text())
+                root.mailUnread = Math.max(0, Math.min(9999, Math.round(Number(data.unread) || 0)))
+            } catch (e) { root.mailUnread = 0 }
+        }
+    }
     property bool centerOpen: false
     property bool controlCenterOpen: false   // banners step aside for Control Center
     property real now: Date.now()
@@ -36,9 +55,23 @@ Scope {
         return owners[(n.desktopEntry || "").toLowerCase()] || owners[(n.appName || "").toLowerCase()] || ""
     }
     function countFor(appId, startupClass) {
-        const ids = [appId, appId.split(".").pop(), startupClass ?? ""].map((s) => s.toLowerCase()).filter((s) => s)
-        return list.filter((n) => Prefs.notifyApp(keyOf(n)).badges).filter((n) => ids.includes((n.desktopEntry || "").toLowerCase())
-            || ids.includes((n.appName || "").toLowerCase()) || ids.includes(ownerOf(n).toLowerCase())).length
+        // Pull in a notifyable QML property. Updating badgeEpoch below forces
+        // the Dock's binding to recompute even when the backing list mutates
+        // in-place instead of notifying its owner.
+        const revision = badgeEpoch
+        const name = String(appId || "").toLowerCase()
+        const aliases = [name, name.split(".").pop(), String(startupClass || "").toLowerCase(),
+                         name.replace(/\\.desktop$/, "")].filter(Boolean)
+        const active = list.filter((n) => {
+            if (!Prefs.notifyApp(keyOf(n)).badges) return false
+            const raw = [n.desktopEntry, n.appName, ownerOf(n), keyOf(n)]
+                .map((x) => String(x || "").toLowerCase().replace(/\\.desktop$/, ""))
+            return raw.some((value) => aliases.includes(value) ||
+                aliases.includes(value.split(".").pop()))
+        }).length
+        // Mail shows its real IMAP unread messages, not just D-Bus banners.
+        // The local file is refreshed after a successful inbox sync.
+        return name === "org.goldengate.mail" ? Math.max(active, mailUnread) : active
     }
     // One name per app for its Notifications settings: the app it speaks for,
     // else its desktop file, else the name it gives.
@@ -148,7 +181,11 @@ Scope {
             n.tracked = true
             const r = Object.assign({}, root.received); r[n.id] = Date.now(); root.received = r
             root.now = Date.now()
-            n.closed.connect(() => root.dropBanner(n))
+            n.closed.connect(() => {
+                root.dropBanner(n)
+                root.badgeEpoch++
+            })
+            root.badgeEpoch++
             if (root.allowedDuringFocus(n) && !root.centerOpen && choice.banners) root.banners = [n].concat(root.banners.filter((b) => b !== n)).slice(0, 4)
             if (root.allowedDuringFocus(n) && Prefs.notifySounds && choice.sound && !n.transient && !(n.hints?.["suppress-sound"] ?? false)) root.chime()
         }
