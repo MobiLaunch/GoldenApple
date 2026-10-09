@@ -158,10 +158,20 @@ rather than changing a bound visibility flag.
 before changing the anchor and item geometry. The displayed menu rows now live
 in an independent snapshot instead of a QML binding to the incoming rows:
 otherwise both sides of the shape comparison always matched, and a menu could
-resize while still mapped. The screenshot regression and geometry guard remain
-in CI. The separate Music playlist regression found
-filenames sorted by the extension instead of the displayed playlist name;
-sorting now uses the playlist stem.
+resize while still mapped. A dedicated live-state preview assertion now
+checks the requested menu title, actual displayed menu rows, and fully
+opened popup after switching File → Edit. Pixel-difference diagnostics
+remain visible in the test output, but are not used as a flaky pass/fail
+criterion when Qt's offscreen compositor settles or refraction changes.
+The popup geometry guards remain enforced in CI.
+
+**CI stabilization:** Native search-field tests now click the center of the
+fully revealed clear affordance instead of using a fragile hard-coded
+coordinate before its fade-in has completed. The native TextInput has a
+stable scoped `objectName` for Qt/PySide focus tests; reading its QML
+alias directly had triggered a Python QQuickTextInput* converter error.
+The separate Music playlist regression found filenames sorted by their
+extensions instead of their displayed names; Music now sorts by the stem.
 
 The acceptance boundary remains the same: connected GUI/native-preview
 checks must run before these interactions can be called verified on a real
