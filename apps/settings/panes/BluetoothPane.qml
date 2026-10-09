@@ -59,6 +59,15 @@ Pane {
         }
     }
     Group {
+        title: "AirPods"
+        SetRow {
+            title: "AirPods Settings"
+            subtitle: "Battery, noise control, ear detection and the connection card"
+            symbol: "bluetooth"
+            Button { text: "Details…"; onClicked: pane.nav.open("airpods") }
+        }
+    }
+    Group {
         visible: pane.powered
         title: "My Devices"
         Repeater {
