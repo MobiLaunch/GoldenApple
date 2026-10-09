@@ -87,13 +87,19 @@ test('Music UI exposes editable playlists and queue controls', () => {
 
 test('Music Playing Next reorders, removes and appends safely under shuffle', () => {
   let saves=0, loads=0;
+  // QML resolves 'current' as a reactive Player property; the sandbox must
+  // expose the same derived value instead of leaving an undeclared global.
+  const state={
+    queue:[{title:'A'},{title:'B'},{title:'C'},{title:'D'}],
+    order:[2,0,3,1],index:2,
+    scheduleSave(){saves++},
+  };
+  Object.defineProperty(state,'current',{get(){return this.queue[this.index] ?? null}});
+  state.playList=(list,index)=>{
+    state.queue=list;state.index=index;state.order=list.map((_,j)=>j);loads++;
+  };
   const c=context('apps/music/Player.qml',
-    ['futureOrder','moveUpcoming','removeUpcoming','playLater','playNext'],{
-      queue:[{title:'A'},{title:'B'},{title:'C'},{title:'D'}],
-      order:[2,0,3,1],index:2,
-      scheduleSave(){saves++},
-      playList(l,i){this.queue=l;this.index=i;this.order=l.map((_,j)=>j);loads++}
-    });
+    ['futureOrder','moveUpcoming','removeUpcoming','playLater','playNext'],state);
   assert.deepEqual(Array.from(c.futureOrder()),[0,3,1]);
   assert.equal(c.moveUpcoming(1,-1),true);
   assert.deepEqual(Array.from(c.order),[2,0,1,3]);
@@ -117,13 +123,18 @@ test('Music Playing Next reorders, removes and appends safely under shuffle', ()
 });
 
 test('Music inserts first queued track when playback is empty', () => {
-  const c=context('apps/music/Player.qml',['playNext','playLater'],{
-    current:null,playList(list,index){this.queue=list;this.index=index},
-  });
+  const state={queue:[],order:[],index:-1};
+  Object.defineProperty(state,'current',{get(){return this.queue[this.index] ?? null}});
+  // QML calls playList as a component method, not an unbound strict JS
+  // object method; use the same shared state for this isolated harness.
+  state.playList=(list,index)=>{
+    state.queue=list;state.index=index;state.order=list.map((_,i)=>i);
+  };
+  const c=context('apps/music/Player.qml',['playNext','playLater'],state);
   c.playNext({title:'Solo'});
   assert.equal(c.index,0);
   assert.equal(c.queue[0].title,'Solo');
-  c.current=null;
+  c.queue=[];c.order=[];c.index=-1;
   c.playLater({title:'Another'});
   assert.equal(c.queue[0].title,'Another');
 });
