@@ -121,6 +121,9 @@ with tempfile.TemporaryDirectory() as t:
     check(H.totp("GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ", 59, 8) == "94287082", "codes follow RFC 6238 (test vector at T=59)")
     check(H.totp_parse("otpauth://totp/GitHub:jordan?secret=JBSWY3DPEHPK3PXP&issuer=GitHub")["issuer"] == "GitHub",
           "an otpauth:// link is read")
+    check(all(H.code_remaining(at, 30) == expected for at, expected in
+              ((0, 30), (29, 1), (29.999, 1), (30, 30), (59.999, 1), (60, 30))),
+          "verification code counts down 1..30 even at fractional rollover")
     codes = helper("codes")
     check(any(c["id"] == s["id"] and re.fullmatch(r"\d{6}", c["code"]) and 0 < c["remaining"] <= 30 for c in codes["codes"]),
           f"the current code and seconds left: {codes}")
