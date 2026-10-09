@@ -119,7 +119,7 @@ rollback on an installed system, and a clean install end to end.
 Music now publishes local playback to MPRIS, restores queues paused with a
 saved position, and reports playback and save failures with recovery actions.
 See [Music workflows](MUSIC-WORKFLOWS.md) for controls and validation boundaries.
-Music now supports creating, editing and safely deleting M3U playlists, song
+Music now supports creating, editing, safely deleting and restoring M3U playlists, song
 ordering, and reorder/remove controls for the Playing Next queue.
 Verify physical media keys, audible output, and Control Center on the installed
 desktop; the live MPRIS contract runs on a private session bus in CI.

@@ -76,12 +76,26 @@ the list, and move or remove individual entries using accessible controls.
 Playlist deletion moves the list into Playlists/.Deleted for recovery; it
 never deletes the music files.
 
+**Recently Deleted** is available in Music's sidebar and Playback Options. It
+lists archived playlists by deletion time, with a Restore control for each
+entry. Restoring retains the original M3U/M3U8 file and EXTINF metadata. If the
+name is already taken, it safely chooses a "Restored" suffix rather than
+overwriting the active playlist. A stale or tampered archive is rejected.
+The editor also offers **Show in Files**, and Playback Options offers a manual
+**Refresh Playlists** for externally edited M3U files.
+
 The playlist store is a separate Python helper with per-mutation file locks,
 atomic UTF-8 writes, a recovery copy for file edits, validation of filenames
 and playlist paths, collision checks and per-file revisions. Concurrent edits
 from another Music window are rejected rather than silently overwritten.
 Existing EXTINF metadata travels with the associated track when reordered,
 and relative paths are preserved. Read failures leave the library untouched.
+Files are published without overwriting an existing destination (including
+when another program creates that file mid-operation). Edits make distinct
+backups rather than overwriting a previous recovery copy or following a
+backup symlink. Filesystems that do not support hard links use an exclusive
+copy fallback; the original is retained unless the new file was written
+successfully.
 
 ## Playing Next
 
@@ -95,7 +109,8 @@ Restore Queue remains enabled.
 ## Additional tests and limits
 
 Run `python tests/music-playlists.py` for playlist file integrity,
-conflicting-edit detection, metadata preservation, path safety and recovery.
+conflicting-edit detection, deleted-playlist restoration, metadata preservation,
+name conflicts, symlink safety and non-hard-link filesystems.
 `npm run test:logic` includes shuffle/queue reordering and removal checks.
 The existing native Music UI tests and QML compilation run in CI.
 
