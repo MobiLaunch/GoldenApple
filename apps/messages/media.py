@@ -9,6 +9,7 @@ Requires ~/.config/golden-gate/messages-media.json (0600):
 from __future__ import annotations
 
 import http.client
+import tempfile
 import json
 import mimetypes
 import os
@@ -60,6 +61,25 @@ def server(config: dict):
     if not config.get("password"):
         raise ValueError("BlueBubbles server password is missing.")
     return url
+
+
+def configure(values: dict) -> None:
+    if not isinstance(values, dict):
+        raise ValueError("Media configuration must be an object.")
+    record = {"provider": "bluebubbles", "url": str(values.get("url", "")).strip().rstrip("/"),
+              "password": str(values.get("password", "")).strip()}
+    server(record)
+    CONFIG.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    fd, filename = tempfile.mkstemp(prefix=".media-", dir=CONFIG.parent)
+    try:
+        os.fchmod(fd, 0o600)
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            json.dump(record, f)
+            f.write("\n")
+        os.replace(filename, CONFIG)
+    finally:
+        if os.path.exists(filename):
+            os.unlink(filename)
 
 
 def validate_file(path: Path) -> tuple[int, str]:
@@ -135,9 +155,14 @@ def send(config: dict, raw_path: str, recipient: str, caption: str) -> dict:
 
 def main(argv: list[str]) -> int:
     try:
-        if not argv or argv[0] not in ("status", "inspect", "send"):
-            raise ValueError("Usage: media.py status | inspect FILE | send FILE RECIPIENT [CAPTION]")
+        if not argv or argv[0] not in ("status", "inspect", "send", "configure"):
+            raise ValueError("Usage: media.py status | inspect FILE | send FILE RECIPIENT [CAPTION] | configure")
         cmd = argv[0]
+        if cmd == "configure" and len(argv) == 1:
+            # Secrets come from stdin (not argv or journalled process command).
+            values = json.loads(sys.stdin.read(8192))
+            configure(values)
+            return emit(True, ready=True, provider="bluebubbles")
         if cmd == "inspect" and len(argv) == 2:
             return emit(True, **attachment_details(Path(argv[1]).expanduser()))
         if cmd == "status" and len(argv) == 1:
@@ -149,7 +174,8 @@ def main(argv: list[str]) -> int:
         if cmd == "send" and len(argv) in (3, 4):
             return emit(True, **send(settings(), argv[1], argv[2], argv[3] if len(argv) == 4 else ""))
         raise ValueError("Unsupported media command.")
-    except (ValueError, OSError, UnicodeError, json.JSONDecodeError, TimeoutError, ConnectionError) as exc:
+    except (ValueError, OSError, UnicodeError, json.JSONDecodeError, TimeoutError, ConnectionError,
+            http.client.HTTPException) as exc:
         return emit(False, error=str(exc))
 
 
