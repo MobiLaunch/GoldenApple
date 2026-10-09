@@ -214,7 +214,9 @@ FloatingWindow {
                 }
                 Item {
                     id: sidebarArea
-                    anchors { fill: parent; topMargin: win.toolbarHeight; leftMargin: 10; rightMargin: 10; bottomMargin: 8 }
+                    x: 10; y: win.toolbarHeight
+                    width: Math.max(0, parent.width - 20)
+                    height: Math.max(0, parent.height - y - 8)
                 }
             }
 
@@ -234,7 +236,9 @@ FloatingWindow {
                 }
                 Item {
                     id: trailingArea
-                    anchors { fill: parent; topMargin: win.toolbarHeight; leftMargin: 10; rightMargin: 10; bottomMargin: 8 }
+                    x: 10; y: win.toolbarHeight
+                    width: Math.max(0, parent.width - 20)
+                    height: Math.max(0, parent.height - y - 8)
                 }
             }
 
@@ -284,7 +288,9 @@ FloatingWindow {
             }
             Row {
                 id: sideRow
-                x: win.presentedSidebarWidth > 0 ? win.presentedSidebarWidth - width - 10 : lights.x + lights.width + 16
+                x: Math.max(lights.x + lights.width + 16,
+                    win.presentedSidebarWidth > 0 ? win.presentedSidebarWidth - width - 10
+                        : lights.x + lights.width + 16)
                 anchors.verticalCenter: parent.verticalCenter
                 spacing: 8
             }
