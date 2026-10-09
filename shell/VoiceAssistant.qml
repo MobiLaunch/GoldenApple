@@ -375,6 +375,7 @@ PanelWindow {
                         }
                         Text {
                             text: citron.aiServiceBusy ? "Cancel" : "Copy"
+                            visible: citron.aiServiceBusy || citron.answer.length > 0
                             color: "#b8d7ff"
                             font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
                             MouseArea {
