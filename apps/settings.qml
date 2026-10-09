@@ -21,11 +21,11 @@ import "settings"
 ShellRoot {
     AppWindow {
         id: win
-        title: "Settings"
-        implicitWidth: 780; implicitHeight: Math.min(700, (Quickshell.screens[0]?.height ?? 900) - 150)
-        minimumSize: Qt.size(680, 440)
-        sidebarWidth: 240
-        background: Theme.dark ? "#1e1e1e" : "#fbfbfd"
+        title: app.page?.title ? app.page.title + " — System Settings" : "System Settings"
+        implicitWidth: 860; implicitHeight: Math.min(740, (Quickshell.screens[0]?.height ?? 900) - 120)
+        minimumSize: Qt.size(700, 470)
+        sidebarWidth: app.sidebarShown ? 244 : 0
+        background: Theme.contentBg
 
         // Back and forward, and the pane's title.
         toolbarItems: [
@@ -33,6 +33,13 @@ ShellRoot {
                 x: win.contentX + 14
                 anchors.verticalCenter: parent.verticalCenter
                 spacing: 12
+                ToolbarButton {
+                    objectName: "settingsSidebarToggle"
+                    symbol: "sidebar"
+                    round: true
+                    onClicked: sys.setPref(["settings", "sidebarShown"], !app.sidebarShown)
+                    Accessible.name: app.sidebarShown ? "Hide Settings Sidebar" : "Show Settings Sidebar"
+                }
                 ToolbarPill {
                     ToolbarButton { symbol: "chevron-left"; enabled: app.back.length > 0; onClicked: app.goBack() }
                     ToolbarButton { symbol: "chevron-right"; enabled: app.forward.length > 0; onClicked: app.goForward() }
@@ -160,7 +167,7 @@ ShellRoot {
                 [2, "accessibility", "Accessibility", "person", "#0a84ff", "AccessibilityPane", "reduce motion transparency text size"],
                 [2, "appearance", "Appearance", "contrast", "#1d1d1f", "AppearancePane", "dark mode light auto accent colour color liquid glass scroll bars"],
                 [2, "controlcenter", "Control Center", "control-center", "#8e8e93", "ControlCenterPane", "menu bar items battery percentage bluetooth sound focus now playing"],
-                [2, "dock", "Desktop & Dock", "apps", "#1d1d1f", "DockPane", "dock size magnification indicators"],
+                [2, "dock", "Desktop & Dock", "apps", "#487bd9", "DockPane", "dock size pin reorder recents show dock snapping windows edges resize attraction"],
                 [2, "menubar", "Menu Bar", "panel-bottom", "#1d1d1f", "MenuBarPane", "menu bar background clock date seconds 24 hour"],
                 [2, "displays", "Displays", "sun-max", "#0a84ff", "DisplaysPane", "resolution scale brightness night shift monitor"],
                 [2, "spotlight", "Spotlight", "search", "#8e8e93", "SpotlightPane", "search results categories files web calculator"],
@@ -173,7 +180,7 @@ ShellRoot {
                 [4, "privacy", "Privacy & Security", "shield", "#0a84ff", "PrivacyPane", "location analytics crash diagnostics"],
                 [4, "users", "Users & Groups", "people", "#0a84ff", "UsersPane", "account password admin"],
                 [5, "keyboard", "Keyboard", "keyboard", "#8e8e93", "KeyboardPane", "key repeat layout input source"],
-                [5, "trackpad", "Trackpad & Mouse", "rectangle-fill", "#8e8e93", "TrackpadPane", "tracking speed natural scrolling tap to click pointer"],
+                [5, "trackpad", "Trackpad & Mouse", "rectangle-fill", "#8e8e93", "TrackpadPane", "tracking speed natural scrolling tap to click two finger click scroll drag typing sensitivity"],
             ].map((p) => ({ group: p[0], id: p[1], title: p[2], symbol: p[3], tint: p[4], file: p[5], words: p[6] }))
             // Sub-pages of General: [id, title, file]
             readonly property var subpages: ({
@@ -182,6 +189,7 @@ ShellRoot {
                 storage: { title: "Storage", file: "StoragePane", parent: "general", symbol: "drive", tint: "#8e8e93", words: "disk drive space capacity available used" },
                 datetime: { title: "Date & Time", file: "DateTimePane", parent: "general", symbol: "clock", tint: "#0a84ff", words: "date time timezone clock automatic ntp 24 hour" },
                 finishsetup: { title: "Finish Setting Up", file: "FinishSetupPane", symbol: "gear", tint: "#ff9f0a", words: "setup deferred time zone formats location finish later" },
+                dockapps: { title: "Add to Dock", file: "DockAppsPane", parent: "dock", symbol: "apps", tint: "#487bd9", words: "applications install launcher add dock pin reorder" },
                 airplay: { title: "AirPlay Receiver", file: "AirPlayPane", parent: "general", symbol: "airplay", tint: "#0a84ff", words: "airplay receiver screen mirroring iphone ipad mac mirror code pin uxplay" },
                 language: { title: "Language & Region", file: "LanguagePane", parent: "general", symbol: "globe", tint: "#0a84ff", words: "language locale region measurement format" },
             })
@@ -189,7 +197,8 @@ ShellRoot {
             function paneOf(id) { return subpages[id]?.parent ?? id }
             readonly property var page: panes.find((p) => p.id === current) ?? subpages[current] ?? null
 
-            property string current: Quickshell.env("GG_SETTINGS_PANE") || "appearance"
+            property string current: Quickshell.env("GG_SETTINGS_PANE") || "general"
+            readonly property bool sidebarShown: sys.prefs.settings?.sidebarShown ?? true
             property var back: []
             property var forward: []
             property string userName: Quickshell.env("USER") ?? ""
