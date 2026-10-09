@@ -90,6 +90,7 @@ const appNames = {
   intelligence: ["org.goldengate.Intelligence"],
   diskutility: ["org.goldengate.DiskUtility", "gnome-disks"],
   airdrop: ["org.goldengate.AirDrop", "localsend", "localsend_app", "org.localsend.localsend_app"],
+  passwords: ["org.goldengate.Passwords", "seahorse", "org.gnome.seahorse.Application", "dialog-password"],
 };
 const placeNames = { trash: ["user-trash"], "trash-full": ["user-trash-full"], folder: ["folder"], document: ["text-x-generic"], audio: ["audio-x-generic"], image: ["image-x-generic"], disk: ["drive-harddisk"] };
 const symbolNames = {

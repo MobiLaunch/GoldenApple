@@ -199,13 +199,24 @@ FAKE_TOOLS = {
     "getent": 'case "$1" in passwd) echo "jordan:x:1000:1000:Jordan Avery:/home/jordan:/bin/bash";; group) echo "wheel:x:998:jordan";; esac',
     "hostname": "echo golden-gate",
     "hostnamectl": "echo golden-gate",
-    "nmcli": 'case "$*" in *radio*) echo enabled;; *IN-USE,SSID*) printf "*:Golden Gate:86:WPA2\\n :Bay Area Guest:64:\\n :Ferry Building:58:WPA2\\n";; *IN-USE*|*SIGNAL*) printf "*:86:WPA2:Golden Gate\\n :64::Bay Area Guest\\n :58:WPA2:Ferry Building\\n";; '
+    "nmcli": 'case "$*" in *NAME,UUID,TYPE*) printf "Golden Gate:1111:802-11-wireless\\nBay Area Guest:2222:802-11-wireless\\n";; *radio*) echo enabled;; *IN-USE,SSID*) printf "*:Golden Gate:86:WPA2\\n :Bay Area Guest:64:\\n :Ferry Building:58:WPA2\\n";; *IN-USE*|*SIGNAL*) printf "*:86:WPA2:Golden Gate\\n :64::Bay Area Guest\\n :58:WPA2:Ferry Building\\n";; '
              '*TYPE,STATE*) printf "wifi:connected\\nethernet:unavailable\\n";; *ACTIVE,SSID*) printf "yes:Golden Gate\\nno:Bay Area Guest\\n";; *) ;; esac',
     "gsettings": 'case "$1 $3" in "get color-scheme") echo "$GG_PREVIEW_SCHEME";; "get accent-color") echo "\x27blue\x27";; esac',
     "bluetoothctl": 'case "$1" in show) printf "Controller AA:BB:CC:DD:EE:FF golden-gate [default]\\n\\tPowered: yes\\n";; devices) printf "Device AA:BB:CC:00:11:22 AirPods Pro\\n";; esac',
     "brightnessctl": 'case "$1" in -m) echo "intel_backlight,backlight,768,80%,960";; g|get) echo 768;; m|max) echo 960;; esac',
     "blueferry": "echo '{\"configured\": true, \"storage_state\": \"unlocked\"}'",
     "systemctl": "exit 3",
+    # The keyring, for Passwords: a few sites (one weak, two sharing a password, one with a code).
+    "secret-tool": 'case "$1" in search) case "$*" in *org.goldengate.Web*) '
+                   'for s in "github.com jordan Tr1cky-Horse-Battery" "news.example.com jordan password1" '
+                   '"shop.example.org jordan@ferry.example Same-Pass-1234!" "bank.example.net jordan Same-Pass-1234!" '
+                   '"apple.com jordan@icloud.example Qp7-vLm2-Zx9r-Tt4w" "netflix.com family Wx2-ha8-Lp0q-Mm3n"; do set -- $s; '
+                   'printf "[/x/%s]\\nlabel = Web: %s\\nsecret = %s\\nmodified = 2026-09-30 10:00:00\\n" "$1" "$1" "$3"; '
+                   'printf "attribute.app = org.goldengate.Web\\nattribute.profile = Personal\\nattribute.origin = https://%s\\nattribute.username = %s\\n" "$1" "$2" >&2; done;; '
+                   '*org.goldengate.Passwords*) printf "[/x/e]\\nlabel = Passwords: github.com\\nsecret = {\\"notes\\": \\"\\", \\"totp\\": \\"JBSWY3DPEHPK3PXP\\"}\\n"; '
+                   'printf "attribute.app = org.goldengate.Passwords\\nattribute.kind = extra\\nattribute.profile = Personal\\nattribute.origin = https://github.com\\nattribute.username = jordan\\n" >&2;; esac;; '
+                   'lookup) echo "Tr1cky-Horse-Battery";; *) exit 1;; esac',
+
     "pactl": "exit 0",
     "flatpak": "exit 0",
 }

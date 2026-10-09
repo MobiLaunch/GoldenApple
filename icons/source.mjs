@@ -352,6 +352,14 @@ export const apps = {
      <path class="tint-stroke" d="M42.22 63.78A11 11 0 1 1 57.78 63.78 M35.15 70.85A21 21 0 1 1 64.85 70.85 M28.08 77.92A31 31 0 1 1 71.92 77.92" fill="none" stroke="#fff" stroke-width="6.5" stroke-linecap="round"/>
      <circle class="tint" cx="50" cy="56" r="4.5" fill="#fff"/>`),
 
+  // Passwords: a key on blue, as on the Mac.
+  passwords: app("passwords", "#0a84ff", lin("passwords-bg", "#7fd8ff", "#0a62e6") + lin("passwords-k", "#ffffff", "#dceeff"),
+    `<rect class="bg" fill="url(#passwords-bg)" width="100" height="100"/>
+     <g class="tint" fill="url(#passwords-k)">
+       <path fill-rule="evenodd" d="M35 31a19 19 0 1 1 0 38 19 19 0 0 1 0-38zm0 11a8 8 0 1 0 0 16 8 8 0 0 0 0-16z"/>
+       <path d="M51 45.5h31a3 3 0 0 1 3 3v3a3 3 0 0 1-3 3h-4v8a3 3 0 0 1-3 3h-3a3 3 0 0 1-3-3v-8h-3v5a3 3 0 0 1-3 3h-2a3 3 0 0 1-3-3v-5h-5z"/>
+     </g>`),
+
   // Citron Intelligence: Citron's orb (lib/CitronOrb.qml), clouds of its four
   // colours inside a glass ball. Radial gradients only: Qt's SVG renderer has no blur.
   intelligence: app("intelligence", "#a35cff", lin("intelligence-bg", "#2a2350", "#0c0a1f")

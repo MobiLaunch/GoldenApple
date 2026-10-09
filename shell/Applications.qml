@@ -67,7 +67,7 @@ PanelWindow {
         "org.goldengate.Files", "org.goldengate.Web", "org.goldengate.Mail", "org.goldengate.Messages",
         "org.goldengate.Maps", "org.goldengate.Photos", "org.goldengate.Music", "org.goldengate.Calendar",
         "org.goldengate.Notes", "org.goldengate.Weather", "org.goldengate.Clock", "org.goldengate.Calculator",
-        "org.goldengate.TextEdit", "org.goldengate.LCode", "org.goldengate.AirDrop", "org.goldengate.Software", "org.goldengate.Settings",
+        "org.goldengate.TextEdit", "org.goldengate.LCode", "org.goldengate.AirDrop", "org.goldengate.Passwords", "org.goldengate.Software", "org.goldengate.Settings",
         "org.goldengate.Terminal", "org.goldengate.DiskUtility"
     ]
     // Utilities, as on the Mac: CitronOS's own (Terminal, Disk Utility) and
