@@ -1845,6 +1845,12 @@ ShellRoot {
                 parent: win.overlay
                 entry: files.selectedEntry
                 onOpenRequested: (entry) => { open = false; files.openEntry(entry) }
+                onNavigateRequested: (delta) => {
+                    files.moveSelection(delta, 0)
+                    // moveSelection deliberately focuses Files for normal arrow
+                    // browsing; Quick Look's own arrow loop stays in front.
+                    quickLook.focusPreview()
+                }
                 onClosed: open = false
                 onOpenChanged: if (!open) files.forceActiveFocus()
                 // Nothing selected (a folder changed, the item went to the Trash):
