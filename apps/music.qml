@@ -164,8 +164,7 @@ ShellRoot {
                 const request = playlistNameMode === "rename"
                     ? {name:name, path:playlistTarget.path, expected:playlistTarget.revision}
                     : {name:name}
-                if (musicLib.mutatePlaylist(playlistNameMode, request))
-                    nameSheet.visible = false
+                musicLib.mutatePlaylist(playlistNameMode, request)
             }
 
             function openPlaylistManager() {
@@ -189,9 +188,8 @@ ShellRoot {
 
             function addSelectedTrack(playlist) {
                 if (!pendingTrack || !playlist || musicLib.playlistBusy) return
-                if (musicLib.mutatePlaylist("add",
-                    {path:playlist.path, expected:playlist.revision, track:pendingTrack.path}))
-                    pickerSheet.visible = false
+                musicLib.mutatePlaylist("add",
+                    {path:playlist.path, expected:playlist.revision, track:pendingTrack.path})
             }
 
             function songMenu(t, list, from, x, y) {
@@ -248,6 +246,9 @@ ShellRoot {
             Connections {
                 target: musicLib
                 function onPlaylistOperationDone(r) {
+                    if (musicLib.playlistRequest.command === "create" ||
+                        musicLib.playlistRequest.command === "rename") nameSheet.visible = false
+                    if (musicLib.playlistRequest.command === "add") pickerSheet.visible = false
                     if (r.playlist) {
                         const selected = musicLib.playlists.find(p => p.path === r.playlist)
                         if (selected) {
