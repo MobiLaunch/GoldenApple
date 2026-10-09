@@ -57,6 +57,10 @@ const orchardKeys = {
   "arrow-left": "arrow-left", "arrow-right": "arrow-right",
   "arrow-up": "arrow-up", "arrow-clockwise": "rotate-cw",
   "rotate-left": "rotate-ccw", "rotate-right": "rotate-cw",
+  mic: "mic", video: "video", phone: "phone", info: "info",
+  shield: "shield", bookmark: "bookmark", star: "star", camera: "camera",
+  copy: "copy", scissors: "scissors", link: "link", printer: "printer",
+  terminal: "terminal", code: "code", hammer: "hammer", calendar: "calendar",
 };
 const unifiedSymbols = { ...baseSymbols };
 for (const [key, orchardKey] of Object.entries(orchardKeys))
