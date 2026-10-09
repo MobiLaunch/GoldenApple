@@ -68,8 +68,10 @@ regression exercises this mid-animation preference change.
 Overlay scrollbar tracks and thumbs now clamp to the available height of
 tiny inspector panels. A 24-pixel minimum thumb no longer sticks out of a
 shorter track or produces negative thumb coordinates; ordinary scrollbars
-retain the same tactile width and color transitions. Source-contract tests
-cover both improvements.
+retain the same tactile width and color transitions. Auto-hidden scrollbars
+are no longer invisible input blockers: their drag hit area activates only
+for a visible, hovered, active or pressed scrollbar. Source-contract tests
+cover these conditions.
 
 ## Window and navigation choreography
 
