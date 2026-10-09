@@ -192,5 +192,25 @@ class Playlists(unittest.TestCase):
         self.assertFalse(self.call("deleted")["ok"])
 
 
+    def test_external_filesystem_without_hardlinks_still_creates_exclusively(self):
+        import errno
+        import importlib.util
+        from unittest.mock import patch
+        spec = importlib.util.spec_from_file_location("playlist_backend", SCRIPT)
+        backend = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(backend)
+        source = Path(self.temp.name) / "source.m3u8"
+        target = Path(self.temp.name) / "target.m3u8"
+        source.write_text("#EXTM3U\n../Track One.mp3\n")
+        with patch.object(backend.os, "link", side_effect=OSError(errno.EOPNOTSUPP, "hardlinks unavailable")):
+            backend.publish_exclusively(source, target)
+            self.assertEqual(target.read_bytes(), source.read_bytes())
+            self.assertEqual(target.stat().st_mode & 0o777, 0o600)
+            with self.assertRaises(FileExistsError):
+                backend.publish_exclusively(source, target)
+        self.assertEqual(source.read_text(), target.read_text())
+
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
