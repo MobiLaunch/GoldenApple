@@ -363,7 +363,7 @@ def parse_header_items(fetched, expected: set[str]) -> dict[str, dict[str, objec
         meta_bytes, raw = part[:2]
         if not isinstance(meta_bytes, (bytes, bytearray)) or not isinstance(raw, bytes):
             continue
-        match = re.search(rb"\\bUID\\s+(\\d+)\\b", meta_bytes, re.I)
+        match = re.search(rb"\bUID\s+(\d+)\b", meta_bytes, re.I)
         if not match:
             continue
         uid = match.group(1).decode("ascii")
@@ -376,7 +376,7 @@ def parse_header_items(fetched, expected: set[str]) -> dict[str, dict[str, objec
             "subject": decode_header(msg.get("Subject")) or "(No Subject)",
             "from": clean_address(msg.get("From")),
             "date": decode_header(msg.get("Date")),
-            "unread": "\\\\Seen" not in meta,
+            "unread": "\\Seen" not in meta,
         }
     return result
 
