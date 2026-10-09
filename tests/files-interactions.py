@@ -172,6 +172,49 @@ class Interactions(unittest.TestCase):
         self.assertEqual(self.eval('selectedPath'), selected,
                          'switching layout must not change file selection')
 
+    def test_type_to_select_matches_prefix_without_filtering_directory(self):
+        count=self.eval('entries.length')
+        self.assertTrue(self.eval('typeSelect("a")'))
+        self.assertEqual(self.eval('selectedEntry.name'),"a.txt")
+        self.assertEqual(self.eval('typeAhead'),"a")
+        cue=self.root.findChild(QObject,"filesTypeAheadCue")
+        self.assertIsNotNone(cue)
+        self.assertTrue(cue.property('visible'))
+        # A nonmatching prefix falls back to the new character and wraps.
+        self.assertTrue(self.eval('typeSelect("b")'))
+        self.assertEqual(self.eval('selectedEntry.name'),"b.txt")
+        self.assertEqual(self.eval('typeAhead'),"b")
+        self.assertEqual(self.eval('entries.length'),count)
+        self.assertEqual(self.eval('query'),"")
+        self.assertTrue(self.eval('typeSelect("b")'))
+        self.assertEqual(self.eval('selectedEntry.name'),"b.txt")
+        QTest.qWait(1080)
+        self.assertEqual(self.eval('typeAhead'),"")
+        self.assertFalse(cue.property('visible'))
+
+    def test_type_to_select_ignores_open_dialogs_and_quick_look(self):
+        self.eval('editDialog.open()')
+        self.assertFalse(self.eval('typeSelect("a")'))
+        self.eval('editDialog.close()')
+        self.eval('select(entries[0]); quickLook.open=true')
+        self.assertFalse(self.eval('typeSelect("a")'))
+        self.eval('quickLook.open=false')
+        self.assertTrue(self.eval('typeSelect("a")'))
+        # Switching directories clears any half-entered prefix.
+        self.eval('navigate(home + "/Downloads")')
+        self.assertEqual(self.eval('typeAhead'),"")
+
+    def test_keyboard_home_end_page_and_shift_range(self):
+        self.eval('forceActiveFocus()')
+        QTest.keyClick(self.root,Qt.Key_End)
+        self.assertEqual(self.eval('selectedPath'),self.eval('entries[entries.length - 1].path'))
+        QTest.keyClick(self.root,Qt.Key_Home,Qt.ShiftModifier)
+        self.assertEqual(self.eval('selectedPaths.length'),self.eval('entries.length'))
+        QTest.keyClick(self.root,Qt.Key_PageDown)
+        self.assertTrue(self.eval('selectedIndex >= 0'))
+        QTest.keyClick(self.root,Qt.Key_PageUp)
+        self.assertTrue(self.eval('selectedIndex >= 0'))
+
     def test_range_toggle_all_and_clear_on_navigation(self):
         self.eval('view="list"; select(entries[0])')
         QTest.keyClick(self.root,Qt.Key_Down,Qt.ShiftModifier)
