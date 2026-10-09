@@ -417,7 +417,13 @@ PanelWindow {
                         visible: citron.imageResults.length > 0
                         color: "#b8d7ff"
                         font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: Font.DemiBold }
-                        MouseArea { anchors.fill: parent; onClicked: imageSave.open() }
+                        MouseArea {
+                            anchors.fill: parent
+                            onClicked: {
+                                imageSave.defaultSuffix = citron.imageResults[0].split(".").pop()
+                                imageSave.open()
+                            }
+                        }
                     }
                     }
                 }
