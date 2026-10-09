@@ -356,6 +356,23 @@ def transaction(action: str, app_id: str) -> int:
 
     code = proc.wait()
     if code == 0:
+        # The App Store transaction is complete even when no matching Mac
+        # artwork exists. A missing match stays hidden in Launchpad; never
+        # invent a generic icon or roll back a successful app installation.
+        # Run AFTER flatpak commits its desktop exports. The resolver detects
+        # newly installed app IDs and selects licensed open-source artwork.
+        if action in ("install", "update", "remove") and shutil_which("gg-icon-resolver"):
+            emit("progress", id=app_id, action=action, progress=0.96,
+                 message="Matching Golden Gate application icons…")
+            try:
+                check = subprocess.run(["gg-icon-resolver", "bootstrap" if action == "install" else "sync"],
+                                       capture_output=True, text=True, timeout=65)
+                if check.returncode != 0:
+                    emit("icon-warning", id=app_id,
+                         message="App installed; a compatible macOS-style icon is not available yet.")
+            except (OSError, subprocess.TimeoutExpired):
+                emit("icon-warning", id=app_id,
+                     message="App installed; icon matching will retry in the background.")
         emit("done", id=app_id, action=action, progress=1.0)
         return 0
 
