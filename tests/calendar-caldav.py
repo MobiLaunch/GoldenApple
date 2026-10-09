@@ -25,9 +25,10 @@ def vevent(uid, when, summary="Meeting", extra=""):
 class CalDav(unittest.TestCase):
     def test_private_https_url_only(self):
         self.assertEqual(sync.validate_url("https://calendar.example.test/users/me/"), "https://calendar.example.test/users/me/")
+        self.assertEqual(sync.validate_url("https://example.test:5006/calendar/"), "https://example.test:5006/calendar/")
         for url in ("http://calendar.example.test/", "file:///etc/passwd",
                     "https://username:password@example.test/",
-                    "https://example.test/#fragment", "https://example.test:9000/"):
+                    "https://example.test/#fragment", "https://example.test:0/"):
             with self.assertRaises(ValueError, msg=url):
                 sync.validate_url(url)
 

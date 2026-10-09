@@ -75,8 +75,8 @@ def validate_url(value):
     parsed = urllib.parse.urlsplit(value)
     if parsed.scheme != "https" or not parsed.hostname or parsed.username or parsed.password or parsed.fragment:
         raise ValueError("Use an HTTPS calendar collection URL without embedded credentials or a fragment.")
-    if parsed.port not in (None, 443, 8443):
-        raise ValueError("Use HTTPS on port 443 or 8443.")
+    if parsed.port is not None and not (1 <= parsed.port <= 65535):
+        raise ValueError("The HTTPS port is out of range.")
     if len(value) > 2000:
         raise ValueError("Calendar URL is too long.")
     return value
