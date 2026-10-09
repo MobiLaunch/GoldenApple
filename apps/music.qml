@@ -42,6 +42,9 @@ ShellRoot {
                     { text: "Forget Saved Queue", action: () => audio.forgetSavedQueue() },
                     { text: "Clear Queue", enabled: audio.queue.length > 0, action: () => audio.clearQueue() },
                     { separator: true },
+                    { text: "New Playlist…", action: () => app.openPlaylistName("create") },
+                    { text: "Manage This Playlist…", enabled: app.page === "playlist", action: () => app.openPlaylistManager() },
+                    { separator: true },
                     { text: "Retry System Media Controls", enabled: !systemMedia.available, action: () => systemMedia.retry() },
                     { text: "Retry Saving Queue", action: () => audio.save() }
                 ])
@@ -67,7 +70,13 @@ ShellRoot {
                     SidebarRow { symbolTone: "auto"; selectedSymbolTone: "red"; selectedTextColor: Theme.label; selectedFill: Theme.selection; symbol: "mic"; text: "Artists"; selected: app.page === "artists"; onClicked: app.go("artists") }
                     SidebarRow { symbolTone: "auto"; selectedSymbolTone: "red"; selectedTextColor: Theme.label; selectedFill: Theme.selection; symbol: "gallery"; text: "Albums"; selected: app.page === "albums"; onClicked: app.go("albums") }
                     SidebarRow { symbolTone: "auto"; selectedSymbolTone: "red"; selectedTextColor: Theme.label; selectedFill: Theme.selection; symbol: "music"; text: "Songs"; selected: app.page === "songs"; onClicked: app.go("songs") }
-                    Heading { text: "Playlists"; visible: musicLib.playlists.length > 0 }
+                    Heading { text: "Playlists" }
+                    SidebarRow {
+                        symbol: "plus"; text: "New Playlist…"
+                        symbolTone: "auto"; selectedSymbolTone: "red"
+                        selectedTextColor: Theme.label; selectedFill: Theme.selection
+                        onClicked: app.openPlaylistName("create")
+                    }
                     Repeater {
                         model: musicLib.playlists
                         delegate: SidebarRow {
@@ -104,6 +113,14 @@ ShellRoot {
             property var history: []
             property string userName: Quickshell.env("USER") ?? ""
             property bool queueOpen: false
+            property string playlistNameMode: "create"
+            property string playlistDraftName: ""
+            property var playlistTarget: null
+            property var pendingTrack: null
+            property string managePath: ""
+            readonly property var managedPlaylist: musicLib.playlists.find(p => p.path === managePath) || null
+            readonly property var managedTracks: managedPlaylist ? musicLib.playlistTracks(managedPlaylist) : []
+            property bool deletingPlaylist: false
 
             function go(p, a) {
                 if (p === page && a === arg) return
@@ -127,10 +144,64 @@ ShellRoot {
                 page = "songs"
                 audio.playList(musicLib.tracks, i)
             }
+            function openPlaylistName(mode, playlist) {
+                playlistNameMode = mode
+                playlistTarget = playlist || null
+                playlistDraftName = mode === "rename" ? (playlist?.name || "") : ""
+                nameSheet.visible = true
+                Qt.callLater(() => playlistNameField.input.forceActiveFocus())
+            }
+
+            function savePlaylistName() {
+                const name = playlistDraftName.trim()
+                if (!name || musicLib.playlistBusy) return
+                const request = playlistNameMode === "rename"
+                    ? {name:name, path:playlistTarget.path, expected:playlistTarget.revision}
+                    : {name:name}
+                if (musicLib.mutatePlaylist(playlistNameMode, request))
+                    nameSheet.visible = false
+            }
+
+            function openPlaylistManager() {
+                const selected = musicLib.playlists.find(p => p.path === app.arg?.path)
+                if (!selected) { musicLib.playlistError = "Choose a playlist to manage."; return }
+                managePath = selected.path
+                managerSheet.visible = true
+            }
+
+            function playlistEdit(command, data) {
+                const source = managedPlaylist
+                if (!source) return false
+                return musicLib.mutatePlaylist(command,
+                    Object.assign({path:source.path, expected:source.revision}, data || {}))
+            }
+
+            function choosePlaylist(t) {
+                pendingTrack = t
+                pickerSheet.visible = true
+            }
+
+            function addSelectedTrack(playlist) {
+                if (!pendingTrack || !playlist || musicLib.playlistBusy) return
+                if (musicLib.mutatePlaylist("add",
+                    {path:playlist.path, expected:playlist.revision, track:pendingTrack.path}))
+                    pickerSheet.visible = false
+            }
+
             function songMenu(t, list, from, x, y) {
                 songMenuPopup.popup(from, x, y, [
                     { text: "Play", action: () => audio.playList(list, list.indexOf(t)) },
                     { text: "Play Next", action: () => audio.playNext(t) },
+                    { text: "Play Last", action: () => audio.playLater(t) },
+                    { text: "Add to Playlist…", enabled: !t.radio, action: () => app.choosePlaylist(t) },
+                    ...(app.page === "playlist" && app.arg?.path && !t.radio ? [
+                        { text: "Remove from This Playlist", action: () => {
+                            const p = musicLib.playlists.find(p => p.path === app.arg?.path)
+                            if (!p) return
+                            const at = p.paths.indexOf(t.path)
+                            if (at >= 0) musicLib.mutatePlaylist("remove", {path:p.path, expected:p.revision, index:at})
+                        } }
+                    ] : []),
                     { separator: true },
                     { text: "Go to Album", action: () => { const a = musicLib.albumOf(t); if (a) app.openAlbum(a) } },
                     { text: "Go to Artist", action: () => { app.go("artists"); const i = musicLib.artists.findIndex((r) => r.name === t.albumArtist); if (i >= 0) Qt.callLater(() => { if (pages.item) pages.item.selected = i }) } },
@@ -168,6 +239,34 @@ ShellRoot {
             }
 
             Library { id: musicLib }
+            Connections {
+                target: musicLib
+                function onPlaylistOperationDone(r) {
+                    if (r.playlist) {
+                        const selected = musicLib.playlists.find(p => p.path === r.playlist)
+                        if (selected) {
+                            if (app.page === "playlist" && app.arg?.path === musicLib.playlistRequest.path)
+                                app.arg = selected
+                            if (app.managePath === musicLib.playlistRequest.path)
+                                app.managePath = selected.path
+                            if (musicLib.playlistRequest.command === "create") {
+                                app.go("playlist", selected)
+                                if (app.pendingTrack?.path) {
+                                    const track = app.pendingTrack
+                                    app.pendingTrack = null
+                                    Qt.callLater(() => musicLib.mutatePlaylist("add",
+                                        {path:selected.path, expected:selected.revision, track:track.path}))
+                                }
+                            }
+                        }
+                    } else if (musicLib.playlistRequest.command === "delete") {
+                        if (app.page === "playlist" && app.arg?.path === musicLib.playlistRequest.path)
+                            app.go("songs")
+                        managerSheet.visible = false
+                        app.managePath = ""
+                    }
+                }
+            }
             Player {
                 id: audio
                 onSessionReadyChanged: app.openRequestedTrack()
@@ -257,7 +356,7 @@ ShellRoot {
             Component {
                 id: playlistPage
                 AlbumPage {
-                    readonly property var list: app.arg
+                    readonly property var list: musicLib.playlists.find(p => p.path === app.arg?.path) || app.arg
                     title: list?.name ?? ""; subtitle: ""
                     detail: "PLAYLIST"
                     tracks: list ? musicLib.playlistTracks(list) : []
