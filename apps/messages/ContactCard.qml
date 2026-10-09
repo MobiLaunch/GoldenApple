@@ -109,7 +109,11 @@ Item {
                                     font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
                                 }
                             }
-                            ToolbarButton { anchors { right: parent.right; rightMargin: 5; verticalCenter: parent.verticalCenter }; symbol: "copy"; round: true; onClicked: card.copyRequested(String(modelData)) }
+                            ToolbarButton {
+                                anchors { right: parent.right; rightMargin: 5; verticalCenter: parent.verticalCenter }
+                                symbol: "copy"; round: true
+                                onClicked: card.copyRequested(String(modelData))
+                            }
                         }
                     }
                 }
