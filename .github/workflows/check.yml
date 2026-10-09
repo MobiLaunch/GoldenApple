@@ -123,6 +123,8 @@ jobs:
           test -x "$root/usr/local/bin/gg-software"
           test -x "$root/usr/local/bin/gg-files"
           test -x "$root/usr/local/bin/gg-archive"
+          test -x "$root/usr/local/bin/gg-icon-resolver"
+          test -f "$root/usr/lib/golden-gate/icon-resolver.py"
           test -f "$root/usr/share/golden-gate/apps/archive/helper.py"
           test -f "$root/usr/share/golden-gate/apps/settings/app-preferences.py"
           test -f "$root/usr/share/golden-gate/apps/settings/panes/DockAppsPane.qml"
@@ -272,6 +274,8 @@ jobs:
         run: python tests/settings-connectivity.py
       - name: Default Apps and Login Items respect real XDG state
         run: python tests/settings-app-preferences.py
+      - name: Licensed macOS-style application icon selection and Launchpad allowlist
+        run: python tests/icon-resolver.py
       - name: Window restore stays onscreen and rejects stale window IDs
         run: python tests/tile-layout.py
       - name: Files' backend (drag and drop, Trash, Recents)
