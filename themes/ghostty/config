@@ -9,7 +9,7 @@ gtk-tabs-location = top
 
 # Terminal's "Basic" profile, following the system appearance.
 theme = light:CitronOS Light,dark:CitronOS Dark
-font-family = JetBrains Mono
+font-family = Golden Gate Mono
 font-size = 11
 window-padding-x = 6
 window-padding-y = 4
