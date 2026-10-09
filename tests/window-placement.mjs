@@ -83,7 +83,8 @@ test("compositor exit uses a soft native fade rather than a false window fold", 
 
 test("Dock exits are deadline-driven and activating parked windows raises them", () => {
     const dock = read("shell/Dock.qml");
-    assert.match(dock, /onRunningRecordsChanged: scheduleRecentExpiry\(\)/);
+    assert.match(dock, /onRunningRecordsChanged: Qt\.callLater\(dock\.scheduleRecentExpiry\)/);
+    assert.match(dock, /onTriggered: \{\s+dock\.expireRecent\(\)\s+\/\/[^\n]*\n\s+\/\/[^\n]*\n\s+Qt\.callLater\(dock\.scheduleRecentExpiry\)/);
     assert.match(dock, /id: recentExpiry\s+objectName: "dockRecentExpiry"\s+repeat: false/);
     assert.doesNotMatch(dock, /interval:\s*25; repeat: true/);
     assert.match(dock, /Hyprland\.dispatch\(`focuswindow address:\$\{address\}`\)/);
