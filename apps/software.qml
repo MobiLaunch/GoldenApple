@@ -285,6 +285,7 @@ ShellRoot {
                     const e = JSON.parse(line)
                     if (e.event === "progress") { progress = e.progress ?? progress; message = e.message ?? message }
                     else if (e.event === "done") progress = 1
+                    else if (e.event === "icon-warning") message = e.message || "Installed but not shown in Launchpad without a matching macOS-style icon."
                     else if (e.event === "error") {
                         if (e.code === "no-darling") askDarling = true
                         else { error = e.message ?? "That didn't work."; errorDetails = e.details ?? "" }
