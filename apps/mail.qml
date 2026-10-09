@@ -137,6 +137,20 @@ ShellRoot {
             property bool loading: false
             property bool sending: false
             property bool composing: false
+            Shortcut {
+                sequence: "Ctrl+N"
+                onActivated: { mail.selectedFolder = "drafts"; mail.composing = true }
+            }
+            Shortcut {
+                sequence: "Ctrl+F"
+                enabled: mail.configured && !mail.composing
+                onActivated: mailSearch.input.forceActiveFocus()
+            }
+            Shortcut {
+                sequence: "Ctrl+R"
+                enabled: mail.configured && !mail.composing
+                onActivated: mail.refresh()
+            }
             property string selectedFolder: "inbox"
             property string query: ""
             property bool unreadOnly: false
@@ -252,7 +266,9 @@ ShellRoot {
                         if (!r.ok) { mail.error = r.error; return }
                         mail.composeTo = r.draft.to; mail.composeSubject = r.draft.subject; mail.composeBody = r.draft.body
                         mail.draftSaved = mail.draftText; mail.draftReady = true
-                        if (mail.composeTo || mail.composeSubject || mail.composeBody) mail.composing = true
+                        // Saved drafts stay in Drafts on launch. Reopening
+                        // the entire composer on every sign-in covers the inbox
+                        // and makes Mail feel like it never finished loading.
                     } catch (e) { mail.error = "Mail couldn't restore your draft. It was left untouched." }
                 }
             }
