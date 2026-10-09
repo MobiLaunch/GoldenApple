@@ -72,12 +72,12 @@ ShellRoot {
                     ToolbarButton {
                         symbol: "grid"
                         checked: files.view === "grid"
-                        onClicked: { files.view = "grid"; files.forceActiveFocus() }
+                        onClicked: files.switchView("grid")
                     }
                     ToolbarButton {
                         symbol: "list"
                         checked: files.view === "list"
-                        onClicked: { files.view = "list"; files.forceActiveFocus() }
+                        onClicked: files.switchView("list")
                     }
                 }
 
@@ -305,6 +305,32 @@ ShellRoot {
                 sortKey = ["name", "modified", "size", "kind"].includes(p.sortKey) ? p.sortKey : "name"
                 descending = !!p.descending
                 prefsApplying = false
+            }
+            function switchView(next) {
+                if (next !== "grid" && next !== "list") return
+                if (view === next) { forceActiveFocus(); return }
+                const before = view === "grid" ? grid : list
+                const after = next === "grid" ? grid : list
+                const oldRange = Math.max(0, before.contentHeight - before.height)
+                const fraction = oldRange > 0
+                    ? Math.max(0, Math.min(1, (before.contentY - before.originY) / oldRange))
+                    : 0
+                const keepSelection = selectedIndex
+                view = next
+                forceActiveFocus()
+                // Wait for the incoming GridView/ListView to establish its new
+                // geometry. The old view stays painted for its short crossfade,
+                // but gives up interaction immediately.
+                Qt.callLater(() => {
+                    if (view !== next || loading || error) return
+                    if (keepSelection >= 0 && keepSelection < entries.length) {
+                        after.positionViewAtIndex(keepSelection,
+                            next === "grid" ? GridView.Contain : ListView.Contain)
+                    } else {
+                        const newRange = Math.max(0, after.contentHeight - after.height)
+                        after.contentY = after.originY + fraction * newRange
+                    }
+                })
             }
             onViewChanged: rememberView()
             onSortKeyChanged: rememberView()
