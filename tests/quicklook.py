@@ -81,7 +81,7 @@ with tempfile.TemporaryDirectory() as tmp:
 
 files = (ROOT / "apps/files.qml").read_text()
 for needle, what in [("Qt.Key_Space", "Space toggles Quick Look"), ("Qt.Key_Y", "⌘Y toggles Quick Look"),
-                     ("moveSelection(-columns)", "↑ moves up a row"), ("moveSelection(columns)", "↓ moves down a row"),
+                     ("moveSelection(-columns, event.modifiers)", "↑ moves up a row"), ("moveSelection(columns, event.modifiers)", "↓ moves down a row"),
                      ("Qt.Key_Return", "Return renames"), ("Qt.Key_End", "⌘↓ opens"),
                      ("enclosingFolder()", "⌘↑ goes up"), ("Qt.Key_Backspace", "⌘⌫ moves to the Trash"),
                      ("QuickLook {", "Files has Quick Look"), ("Drag.dragType: Drag.Automatic", "items drag out"),
