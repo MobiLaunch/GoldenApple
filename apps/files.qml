@@ -618,7 +618,7 @@ ShellRoot {
             }
             function typeSelect(letter) {
                 if (!entries.length || editDialog.shown || confirmEmpty.shown
-                    || infoDialog.visible || !!conflict || quickLook.open) return false
+                    || infoDialog.shown || !!conflict || quickLook.open) return false
                 const char = letter.toLocaleLowerCase()
                 // Repeating a single character cycles through matching names;
                 // a multi-character sequence narrows the prefix instead.
@@ -984,7 +984,7 @@ ShellRoot {
                     let r = ({})
                     try { r = JSON.parse(infoOut.text) } catch (e) {}
                     if (!r.ok) { files.say(r.error || "Files couldn't read this item's information."); return }
-                    files.info = r.info; infoDialog.visible = true
+                    files.info = r.info; infoDialog.open()
                 }
             }
             Process {
@@ -1599,18 +1599,23 @@ ShellRoot {
                 }
             }
 
-            Rectangle {
+            ModalSheet {
                 id: infoDialog
                 objectName: "filesInfo"
-                parent: win.overlay; visible: false; z: 110
-                anchors.centerIn: parent; width: Math.min(460, parent.width - 40); height: infoContent.height + 40
-                radius: 20
-                color: Theme.windowBg; border.color: Theme.separator; border.width: 0.5
-                onVisibleChanged: if (visible) infoClose.forceActiveFocus(); else files.forceActiveFocus()
-                Keys.onEscapePressed: visible = false
+                parent: win.overlay
+                panelWidth: 460
+                panelHeight: infoContent.implicitHeight + 40
+                z: 110
+                // The old Get Info card had no backdrop hit barrier and
+                // could leak clicks to Finder underneath while it was open.
+                onShownChanged: if (shown) Qt.callLater(() => {
+                    if (infoDialog.shown) infoClose.forceActiveFocus()
+                })
+                onClosed: files.forceActiveFocus()
                 Column {
                     id: infoContent
-                    x: 20; y: 20; width: parent.width - 40; spacing: 12
+                    width: parent.width
+                    spacing: 12
                     Text { width: parent.width; wrapMode: Text.WordWrap; maximumLineCount: 2; elide: Text.ElideMiddle; text: (files.info.name ?? "") + " Info"; color: Theme.label; font { pixelSize: Theme.fs(17); weight: Font.DemiBold } }
                     Flickable {
                         id: infoScroll
@@ -1631,7 +1636,7 @@ ShellRoot {
                     Row {
                         spacing: 8
                         Button { text: "Copy Path"; onClicked: Quickshell.clipboardText = files.info.path ?? "" }
-                        Button { id: infoClose; text: "Done"; prominent: true; onClicked: infoDialog.visible = false }
+                        Button { id: infoClose; text: "Done"; prominent: true; onClicked: infoDialog.close() }
                     }
                 }
             }
