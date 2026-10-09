@@ -49,6 +49,11 @@ Rectangle {
         id: sheet
         objectName: "documentSheet"
         panelWidth: 340; panelHeight: 190
+        property bool reopenOnClose: false
+        onClosed: if (reopenOnClose) {
+            reopenOnClose = false
+            open()
+        }
         GG.Button { objectName: "sheetConfirmation"; text: "Confirm" }
     }
 }'''
@@ -218,6 +223,38 @@ class Controls(unittest.TestCase):
         self.assertEqual(spy.count(),0)
         QTest.mouseClick(self.view,Qt.LeftButton,pos=QPoint(315,198))
         self.assertEqual(spy.count(),0)
+
+    def test_nondismissible_sheet_blocks_background_clicks(self):
+        trigger=self.control('button')
+        spy=QSignalSpy(trigger.clicked)
+        trigger.forceActiveFocus()
+        self.root.showSheet()
+        sheet=self.control('documentSheet')
+        sheet.setProperty('dismissible',False)
+        APP.processEvents()
+        QTest.mouseClick(self.view,Qt.LeftButton,pos=QPoint(45,45))
+        self.assertEqual(spy.count(),0,
+                         'backdrop must not pass clicks through a non-dismissible dialog')
+        self.assertTrue(sheet.property('shown'))
+        sheet.setProperty('dismissible',True)
+        QTest.mouseClick(self.view,Qt.LeftButton,pos=QPoint(45,45))
+        self.assertFalse(sheet.property('shown'))
+        self.assertEqual(spy.count(),0)
+
+    def test_sheet_close_callback_reopen_preserves_dialog_focus(self):
+        trigger=self.control('button')
+        trigger.forceActiveFocus()
+        self.root.showSheet()
+        sheet=self.control('documentSheet')
+        sheet.setProperty('reopenOnClose',True)
+        self.root.dismissSheet()
+        self.assertTrue(sheet.property('shown'))
+        panel=sheet.findChild(QObject,'sharedSheetPanel')
+        self.assertTrue(panel.hasActiveFocus())
+        self.assertFalse(trigger.hasActiveFocus(),
+                         'closing the first sheet must not steal focus from the reopened sheet')
+        self.root.dismissSheet()
+        self.assertTrue(trigger.hasActiveFocus())
 
     def test_document_sheet_entrance_escape_and_focus_return(self):
         trigger=self.control('button')
