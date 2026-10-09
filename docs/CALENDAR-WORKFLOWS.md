@@ -21,8 +21,8 @@ Opening Edit offers This Date or Entire Series. A moved single occurrence
 appears at the replacement date without moving the rest of the series;
 individual dates can also be skipped. Whole-series rule edits are refused if
 there are saved exceptions, rather than silently losing changed instances.
-The backend supports restoring an exception, but the interface does not yet
-provide a dedicated skipped-dates manager. Deleting a repeated event asks
+The interface includes a Changed Dates manager for restoring previously moved
+or skipped dates independently of the full recurring series. Deleting a repeated event asks
 whether to skip one date or delete its full series. Event reminders and
 read-only CalDAV collection sync are provided in separate subsystems.
 Two-way CalDAV, invitations, complex server recurrences and day/week views
