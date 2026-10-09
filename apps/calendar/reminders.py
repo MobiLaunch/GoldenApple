@@ -61,7 +61,13 @@ def configure(action):
     timer = CONFIG / (UNIT + ".timer")
     runner = CONFIG / (UNIT + ".service")
     if action == "status":
-        return report(True, enabled=timer.is_file() and runner.is_file())
+        if not (timer.is_file() and runner.is_file()):
+            return report(True, enabled=False)
+        try:
+            service("is-active", UNIT + ".timer")
+            return report(True, enabled=True)
+        except RuntimeError as exc:
+            return report(True, enabled=False, note=str(exc))
     if action == "enable":
         created = []
         try:
