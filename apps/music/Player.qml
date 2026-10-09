@@ -100,12 +100,53 @@ Item {
         seeked(media.position / 1000)
         scheduleSave()
     }
+    // The visible queue is order[], not queue[] (shuffle can change it).
+    // Edit the future playback order without reloading the current decoder.
+    function futureOrder() {
+        const pos = order.indexOf(index)
+        return pos < 0 ? [] : order.slice(pos + 1)
+    }
+    function moveUpcoming(queueIndex, direction) {
+        const pos = order.indexOf(queueIndex)
+        const now = order.indexOf(index)
+        const target = pos + direction
+        if (pos <= now || target <= now || target >= order.length)
+            return false
+        const next = order.slice()
+        next.splice(target, 0, next.splice(pos, 1)[0])
+        order = next
+        scheduleSave()
+        return true
+    }
+    function removeUpcoming(queueIndex) {
+        const pos = order.indexOf(queueIndex)
+        if (pos <= order.indexOf(index) || queueIndex < 0 || queueIndex >= queue.length)
+            return false
+        const nextQueue = queue.slice()
+        nextQueue.splice(queueIndex, 1)
+        const nextOrder = order.filter(i => i !== queueIndex).map(i => i > queueIndex ? i - 1 : i)
+        if (queueIndex < index) index--
+        queue = nextQueue
+        order = nextOrder
+        scheduleSave()
+        return true
+    }
+    function playLater(t) {
+        if (!current) { playList([t], 0); return }
+        const nextQueue = queue.concat([t])
+        order = order.concat([queue.length])
+        queue = nextQueue
+        scheduleSave()
+    }
     function playNext(t) {
         if (!current) { playList([t], 0); return }
-        const q = queue.slice(); q.splice(index + 1, 0, t)
-        const o = order.map((i) => i > index ? i + 1 : i)
-        o.splice(o.indexOf(index) + 1, 0, index + 1)
-        queue = q; order = o
+        const nextQueue = queue.concat([t])
+        const now = order.indexOf(index)
+        const nextOrder = order.slice()
+        nextOrder.splice(now + 1, 0, queue.length)
+        queue = nextQueue
+        order = nextOrder
+        scheduleSave()
     }
     function clearQueue() { queue = []; order = []; index = -1; load(false) }
     function systemState() {
