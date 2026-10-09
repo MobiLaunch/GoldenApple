@@ -479,6 +479,11 @@ PanelWindow {
         const key = name === "window" ? "Window" : name
         const wasOpen = key === "system" ? systemMenu.open : key === "app" ? appMenu.open
             : key === "Window" ? windowMenu.open : barMenu.open && openTitle === key
+        // A different title needs a different menu geometry. Hide the old
+        // popup *before* changing its items or anchor, rather than waiting for
+        // reactive bindings to notice after the surface has been resized.
+        if (barMenu.open && !wasOpen && key !== "Window" && key !== "system"
+            && key !== "app" && openTitle !== key) barMenu.reopen()
         systemMenu.open = !wasOpen && key === "system"
         appMenu.open = !wasOpen && key === "app"
         if ((key === "Window" || key === "»") && !wasOpen) tileTarget = activeAddress()
