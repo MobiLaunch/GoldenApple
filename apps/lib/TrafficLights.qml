@@ -31,9 +31,31 @@ Row {
             id: light
             required property var modelData
             readonly property bool enabled_: modelData.kind !== "zoom" || lights.canZoom
+            enabled: enabled_
+            activeFocusOnTab: enabled_
+            Accessible.role: Accessible.Button
+            Accessible.name: modelData.kind === "close" ? "Close window"
+                : modelData.kind === "minimize" ? "Minimize window" : "Zoom window"
+            Accessible.onPressAction: light.activate(true)
+            Keys.onSpacePressed: (event) => { if (!event.isAutoRepeat) light.activate(true) }
+            Keys.onReturnPressed: (event) => { if (!event.isAutoRepeat) light.activate(true) }
+            property bool keyboardPressed: false
+            function activate(feedback) {
+                if (!enabled_) return
+                if (feedback) { keyboardPressed = true; keyRelease.restart() }
+                if (modelData.kind === "close") {
+                    if (lights.closeAction) lights.closeAction()
+                    else Qt.quit()
+                } else if (modelData.kind === "minimize")
+                    Hyprland.dispatch("movetoworkspacesilent special:minimized")
+                else Hyprland.dispatch("fullscreen 1")
+            }
+            Timer { id: keyRelease; interval: 90; onTriggered: light.keyboardPressed = false }
+            FocusRing { visible: light.activeFocus && light.enabled_ }
             width: 13; height: 13; radius: 6.5
             color: (lights.active || lights.showGlyphs) && enabled_ ? modelData.color : (Theme.dark ? "#4a4a4d" : "#d4d4d4")
-            scale: !Theme.reduceMotion && tap.pressed ? 0.88 : !Theme.reduceMotion && lights.showGlyphs ? 1.025 : 1
+            scale: !Theme.reduceMotion && (tap.pressed || light.keyboardPressed) ? 0.88
+                : !Theme.reduceMotion && lightHover.hovered ? 1.035 : 1
             Behavior on color { ColorAnimation { duration: Theme.reduceMotion ? 1 : 120 } }
             Behavior on scale { NumberAnimation { duration: Theme.reduceMotion ? 1 : 85; easing.type: Easing.OutCubic } }
             border { width: 0.5; color: Qt.rgba(0, 0, 0, 0.16) }
@@ -68,17 +90,15 @@ Row {
                 }
             }
             HoverHandler {
-                enabled: light.modelData.kind === "zoom" && light.enabled_
-                onHoveredChanged: lights.zoomHovered = hovered
+                id: lightHover
+                enabled: light.enabled_
+                onHoveredChanged: if (light.modelData.kind === "zoom")
+                    lights.zoomHovered = hovered
             }
             TapHandler {
                 id: tap
                 enabled: light.enabled_
-                onTapped: {
-                    if (light.modelData.kind === "close") { if (lights.closeAction) lights.closeAction(); else Qt.quit() }
-                    else if (light.modelData.kind === "minimize") Hyprland.dispatch("movetoworkspacesilent special:minimized")
-                    else Hyprland.dispatch("fullscreen 1")
-                }
+                onTapped: { light.forceActiveFocus(); light.activate(false) }
             }
         }
     }
