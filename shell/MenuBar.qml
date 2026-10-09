@@ -151,7 +151,7 @@ PanelWindow {
         font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.Medium }
         // Soft legibility shadow on the GPU renderer (shader effects need it).
         layer.enabled: GraphicsInfo.api !== GraphicsInfo.Software
-        layer.effect: MultiEffect { shadowEnabled: true; shadowColor: "#38001440"; shadowBlur: 0.5; shadowVerticalOffset: 0 }
+        layer.effect: MultiEffect { shadowEnabled: true; shadowColor: "#74000000"; shadowBlur: 0.88; shadowVerticalOffset: 0 }
     }
 
     // Room on the bar: the status items on the right come first (they're
