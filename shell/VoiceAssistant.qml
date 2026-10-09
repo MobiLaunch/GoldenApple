@@ -295,7 +295,7 @@ PanelWindow {
                 id: orb
                 objectName: "citronPrismaticOrb"
                 anchors.horizontalCenter: parent.horizontalCenter
-                width: Math.min(citron.height < 810 ? 176 : 226, citron.width * 0.31)
+                width: Math.min(citron.height < 810 ? 176 : citron.height < 1000 ? 238 : 286, citron.width * 0.40)
                 height: width
                 mode: citron.orbMode
                 level: citron.soundLevel
