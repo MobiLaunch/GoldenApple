@@ -73,6 +73,9 @@ install_extras() {
   for f in "$REPO"/apps/desktop/*.desktop; do
     sed 's#@APPS@#/usr/share/golden-gate/apps#g' "$f" > "$R/usr/share/applications/$(basename "$f")"
   done
+  # The old standalone intelligence icon must not survive an OTA/install.
+  rm -f "$R/usr/share/applications/org.goldengate.Intelligence.desktop"
+  rm -f "$R/usr/local/share/applications/org.goldengate.Intelligence.desktop"
   printf '#!/bin/sh\nexec bash /usr/share/golden-gate/apps/setup/diagnostics.sh "$@"\n' > "$BIN/gg-diagnostics"
   printf '#!/bin/sh\nexec bash /usr/share/golden-gate/apps/settings/open.sh "$@"\n' > "$BIN/gg-settings"
   printf '#!/bin/sh\nexec sh /usr/share/golden-gate/apps/browser/launch.sh "$@"\n' > "$BIN/gg-web"
