@@ -348,7 +348,7 @@ PanelWindow {
                 visible: Prefs.barCitron
                 Accessible.name: "Citron Intelligence"
                 Shared.Symbol { name: "wand"; size: 15; tone: bar.darkRight ? "dark" : "white" }
-                onClicked: Quickshell.execDetached(["gg-intelligence"])
+                onClicked: Quickshell.execDetached(["qs", "-c", "golden-gate", "ipc", "call", "citron", "ask"])
             }
             // Privacy: a dot while an app uses the microphone (yellow), camera
             // (green) or screen (purple), an arrow while one is given your location
