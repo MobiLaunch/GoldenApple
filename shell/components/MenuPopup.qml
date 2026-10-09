@@ -30,6 +30,12 @@ PopupWindow {
     // before onItemsChanged compares the old and new menu shapes, causing
     // the mapped popup surface to resize instead of safely remapping.
     property var shown: []
+    // Primitive diagnostic for the preview harness. Avoid exporting a JS
+    // array containing callback functions across the Python/QML boundary.
+    readonly property string firstShownLabel: {
+        const first = shown.length ? shown[0] : null
+        return typeof first === "string" ? first : String(first?.label ?? first?.text ?? "")
+    }
     property bool reopening: false
     // Ignore a delayed focus-clear from the OLD surface during menu switching.
     // The new popup grabs focus again as soon as its new surface appears.
