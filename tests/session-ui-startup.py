@@ -56,6 +56,8 @@ class WindowSettingsAndMessageLaunch(unittest.TestCase):
         self.assertIn('qs -n -p "$apps/messages.qml"', opener)
         self.assertIn("golden-gate-messages.log", opener)
         self.assertIn("ContactCard {", qml)
+        self.assertIn("if (bridge.checked && bridge.available) pairing.start()", qml)
+        self.assertNotIn("Component.onCompleted: { pairing.start();", qml)
         self.assertIn('objectName: "messagesOnboarding"', onboarding)
         self.assertIn('("messages-onboarding", ["app", "apps/messages.qml"', checks)
 
