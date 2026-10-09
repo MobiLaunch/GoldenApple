@@ -280,6 +280,22 @@ def sync(*, network=False, app_id=""):
         if item["hidden"] or item["noDisplay"]:
             continue
         app_id = item["id"]
+        # Real Mac applications installed through Golden Gate's Darling
+        # App Store have their OWN ICNS-derived PNG, not WhiteSur artwork.
+        # These count as matching macOS icons only when the generated desktop
+        # entry points to the exact, app-ID-specific image we extracted.
+        if app_id.startswith("gg-mac-"):
+            token = app_id[7:]
+            owned = DATA / "golden-gate/mac-icons" / (token + ".png")
+            try:
+                if token and ID.fullmatch(token) and item["icon"] == str(owned) \
+                        and owned.is_file() and 0 < owned.stat().st_size < 12 * 1024 * 1024:
+                    with owned.open("rb") as f:
+                        if f.read(8) == b"\x89PNG\r\n\x1a\n":
+                            selected[app_id] = {"icon": str(owned), "source": "NativeMacApp"}
+                            continue
+            except OSError:
+                pass
         # Keep first-party assets from GoldenGate, never replace them with a
         # downloaded Mac art that might not match the native application.
         if app_id.startswith(FIRST_PARTY):
