@@ -1069,7 +1069,14 @@ ShellRoot {
 
             GridView {
                 id: grid
-                visible: files.view === "grid" && !files.loading && !files.error
+                objectName: "filesGridView"
+                readonly property bool activeView: files.view === "grid" && !files.loading && !files.error
+                opacity: activeView ? 1 : 0
+                visible: opacity > 0.001
+                enabled: activeView
+                Behavior on opacity {
+                    NumberAnimation { duration: Theme.reduceMotion ? 0 : 125; easing.type: Easing.OutCubic }
+                }
                 // The window draws under its toolbar; the grid starts below it and
                 // scrolls up under it (clipped at the window, not at the toolbar).
                 anchors { fill: parent; margins: 18; topMargin: 0; bottomMargin: (pathBar.visible ? pathBar.height : 0) + (transferPanel.visible ? transferPanel.height : 0) + 4 }
@@ -1165,11 +1172,18 @@ ShellRoot {
                     }
                 }
             }
-            Scroller { flickable: grid }
+            Scroller { objectName: "filesGridScroller"; flickable: grid }
 
             ListView {
                 id: list
-                visible: files.view === "list" && !files.loading && !files.error
+                objectName: "filesListView"
+                readonly property bool activeView: files.view === "list" && !files.loading && !files.error
+                opacity: activeView ? 1 : 0
+                visible: opacity > 0.001
+                enabled: activeView
+                Behavior on opacity {
+                    NumberAnimation { duration: Theme.reduceMotion ? 0 : 125; easing.type: Easing.OutCubic }
+                }
                 anchors { fill: parent; margins: 16; topMargin: 0; bottomMargin: (pathBar.visible ? pathBar.height : 0) + (transferPanel.visible ? transferPanel.height : 0) + 4 }
                 topMargin: win.toolbarHeight + 30
                 spacing: 1
@@ -1259,10 +1273,12 @@ ShellRoot {
                     }
                 }
             }
-            Scroller { flickable: list }
+            Scroller { objectName: "filesListScroller"; flickable: list }
 
             Row {
                 visible: list.visible
+                enabled: list.activeView
+                opacity: list.opacity
                 x: 16; y: win.toolbarHeight + 3; width: parent.width - 32
                 component SortHeading: Item {
                     property string label

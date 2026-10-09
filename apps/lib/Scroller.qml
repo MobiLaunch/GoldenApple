@@ -26,7 +26,7 @@ Item {
     width: wide ? 12 : 9
     height: flickable ? flickable.height - 4 : 0
     z: (flickable && !inside ? flickable.z : 0) + 1
-    visible: needed
+    visible: needed && !!flickable && flickable.visible && flickable.enabled
     opacity: needed && (Theme.alwaysShowScrollbars || active || wide) ? 1 : 0
     Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 0 : (s.opacity > 0 ? 300 : 115) } }
     Behavior on width { enabled: !Theme.reduceMotion; NumberAnimation { duration: 125; easing.type: Easing.OutCubic } }
