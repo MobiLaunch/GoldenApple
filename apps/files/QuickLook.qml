@@ -18,7 +18,12 @@ Item {
     property bool open: false
     property var entry: null            // the selected item, as files/helper.py lists it
     signal openRequested(var entry)
+    signal navigateRequested(int delta)
     signal closed()
+    function focusPreview() {
+        if (look.open) card.forceActiveFocus()
+    }
+    onOpenChanged: if (open) Qt.callLater(() => focusPreview())
 
     readonly property string kind: {
         if (!entry) return ""
@@ -71,6 +76,25 @@ Item {
         id: card
         objectName: "quickLookCard"
         enabled: look.open
+        focus: true
+        activeFocusOnTab: true
+        Accessible.role: Accessible.Dialog
+        Accessible.name: look.entry ? "Quick Look: " + look.entry.name : "Quick Look"
+        // A Quick Look window is its own keyboard surface. Focus may be on the
+        // preview, Close, or Open; arrows must still browse the file selection.
+        Keys.onPressed: (event) => {
+            if (!look.open || (event.modifiers & (Qt.ControlModifier | Qt.AltModifier | Qt.MetaModifier))) return
+            if (event.key === Qt.Key_Left || event.key === Qt.Key_Up)
+                look.navigateRequested(-1)
+            else if (event.key === Qt.Key_Right || event.key === Qt.Key_Down)
+                look.navigateRequested(1)
+            else if (event.key === Qt.Key_Space || event.key === Qt.Key_Escape)
+                look.closed()
+            else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter)
+                look.openRequested(look.entry)
+            else return
+            event.accepted = true
+        }
         readonly property real maxW: look.width - 120
         readonly property real maxH: look.height - 110
         // A picture sits this far inside the card, so its square corners stay
