@@ -111,7 +111,10 @@ def send(config: dict, raw_path: str, recipient: str, caption: str) -> dict:
     boundary = "gg-" + secrets.token_hex(14)
     def field(name: str, value: str) -> bytes:
         return (f"--{boundary}\r\nContent-Disposition: form-data; name=\"{name}\"\r\n\r\n{value}\r\n").encode()
-    head = (f"--{boundary}\r\nContent-Disposition: form-data; name=\"attachment\"; filename=\"media\"\r\n"
+    # Keep the original extension for receiver-side photo/video detection,
+    # but escape unsafe characters out of the multipart header filename.
+    safe_filename = re.sub(r"[^A-Za-z0-9._() -]", "_", path.name)[:180] or "attachment"
+    head = (f"--{boundary}\r\nContent-Disposition: form-data; name=\"attachment\"; filename=\"{safe_filename}\"\r\n"
             f"Content-Type: {mime}\r\n\r\n").encode()
     tail = f"\r\n--{boundary}--\r\n".encode()
     # BlueBubbles uses chatGuid; for 1:1 chats use the bare address instead
