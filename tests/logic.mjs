@@ -68,6 +68,48 @@ test('music queue clamps invalid indices and owns its array', () => {
   c.playList(tracks, -1); assert.equal(c.index, 0);
 });
 
+test('Music Playing Next reorders, removes and appends safely under shuffle', () => {
+  let saves=0, loads=0;
+  const c=context('apps/music/Player.qml',
+    ['futureOrder','moveUpcoming','removeUpcoming','playLater','playNext'],{
+      queue:[{title:'A'},{title:'B'},{title:'C'},{title:'D'}],
+      order:[2,0,3,1],index:2,
+      scheduleSave(){saves++},
+      playList(l,i){this.queue=l;this.index=i;this.order=l.map((_,j)=>j);loads++}
+    });
+  assert.deepEqual(Array.from(c.futureOrder()),[0,3,1]);
+  assert.equal(c.moveUpcoming(1,-1),true);
+  assert.deepEqual(Array.from(c.order),[2,0,1,3]);
+  assert.equal(c.moveUpcoming(2,1),false,'current track must not move');
+  assert.equal(c.moveUpcoming(0,-1),false,'future track cannot move before current');
+  assert.equal(c.removeUpcoming(1),true);
+  assert.deepEqual(Array.from(c.order),[2,0,1]);
+  assert.equal(c.index,2,'current decoder index remains unchanged');
+  assert.equal(c.queue.length,3);
+  assert.equal(c.removeUpcoming(2),false,'cannot remove current');
+  const next={title:'Next'},last={title:'Last'};
+  c.playNext(next);
+  assert.deepEqual(Array.from(c.order),[2,3,0,1]);
+  assert.equal(c.queue[3],next);
+  c.playLater(last);
+  assert.deepEqual(Array.from(c.order),[2,3,0,1,4]);
+  assert.equal(c.queue[4],last);
+  assert.equal(loads,0,'editing future tracks never restarts audio');
+  assert.ok(saves>=4,'changes are persisted');
+});
+
+test('Music inserts first queued track when playback is empty', () => {
+  const c=context('apps/music/Player.qml',['playNext','playLater'],{
+    current:null,playList(list,index){this.queue=list;this.index=index},
+  });
+  c.playNext({title:'Solo'});
+  assert.equal(c.index,0);
+  assert.equal(c.queue[0].title,'Solo');
+  c.current=null;
+  c.playLater({title:'Another'});
+  assert.equal(c.queue[0].title,'Another');
+});
+
 test('latest route wins when travel mode changes during fetch', () => {
   const requests=[];
   const c=context('apps/maps.qml',['route'],{
