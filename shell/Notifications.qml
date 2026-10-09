@@ -61,7 +61,7 @@ Scope {
         const revision = badgeEpoch
         const name = String(appId || "").toLowerCase()
         const aliases = [name, name.split(".").pop(), String(startupClass || "").toLowerCase(),
-                         name.replace(/\\.desktop$/, "")].filter(Boolean)
+                         name.replace(/\.desktop$/, "")].filter(Boolean)
         const active = list.filter((n) => {
             if (!Prefs.notifyApp(keyOf(n)).badges) return false
             const raw = [n.desktopEntry, n.appName, ownerOf(n), keyOf(n)]
