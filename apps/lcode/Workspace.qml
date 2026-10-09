@@ -388,8 +388,17 @@ AppWindow {
 
     trailingSidebar: [
         Inspector {
+            id: fileInspector
+            objectName: "workspaceFileInspector"
             anchors.fill: parent
-            visible: !editorArea.currentDesigner
+            readonly property bool currentInspector: !editorArea.currentDesigner
+            opacity: currentInspector ? 1 : 0
+            visible: opacity > 0.001
+            enabled: currentInspector
+            z: currentInspector ? 1 : 0
+            Behavior on opacity {
+                NumberAnimation { duration: Theme.reduceMotion ? 0 : 140; easing.type: Easing.OutCubic }
+            }
             app: win.app
             backend: win.backend
             menuParent: win.overlay
@@ -398,8 +407,17 @@ AppWindow {
         },
         // The App Designer's inspectors for the design in front.
         DesignInspector {
+            id: designInspector
+            objectName: "workspaceDesignInspector"
             anchors.fill: parent
-            visible: !!editorArea.currentDesigner
+            readonly property bool currentInspector: !!editorArea.currentDesigner
+            opacity: currentInspector ? 1 : 0
+            visible: opacity > 0.001
+            enabled: currentInspector
+            z: currentInspector ? 1 : 0
+            Behavior on opacity {
+                NumberAnimation { duration: Theme.reduceMotion ? 0 : 140; easing.type: Easing.OutCubic }
+            }
             designer: editorArea.currentDesigner
             overlay: win.overlay
             backend: win.backend
