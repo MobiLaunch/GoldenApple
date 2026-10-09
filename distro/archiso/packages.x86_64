@@ -18,6 +18,7 @@ sddm
 # SDDM draws its Wayland login screen inside Weston's kiosk shell (there is no X server).
 weston
 qt6-declarative
+qt6-connectivity  # CitronPods daemon: Qt Bluetooth RFCOMM/L2CAP and discovery
 qt6-svg
 qt6-wayland
 # CitronOS Music and Photos: playback (FFmpeg backend), tags, artwork, video frames
