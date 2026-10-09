@@ -94,7 +94,7 @@ install_extras() {
   printf '#!/bin/sh\nexec python3 /usr/lib/golden-gate/icon-resolver.py "$@"\n' > "$BIN/gg-icon-resolver"
   printf '#!/bin/sh\nexec python3 /usr/lib/golden-gate/idle.py "$@"\n' > "$BIN/gg-idle"
   cp "$REPO/distro/archiso/overlay/usr/local/bin/gg-session" "$BIN/gg-session"
-  chmod 755 "$BIN/gg-diagnostics" "$BIN/gg-settings" "$BIN/gg-web" "$BIN/gg-install" "$BIN/gg-software" "$BIN/gg-files" "$BIN/gg-archive" "$BIN/gg-lcode" "$BIN/gg-airdrop" "$BIN/gg-pref" "$BIN/gg-hyprglass-sync" "$BIN/gg-apply-preferences" "$BIN/gg-tile" "$BIN/gg-idle" "$BIN/gg-mac-open" "$BIN/gg-session"
+  chmod 755 "$BIN/gg-diagnostics" "$BIN/gg-settings" "$BIN/gg-web" "$BIN/gg-install" "$BIN/gg-software" "$BIN/gg-files" "$BIN/gg-archive" "$BIN/gg-lcode" "$BIN/gg-airdrop" "$BIN/gg-pref" "$BIN/gg-hyprglass-sync" "$BIN/gg-apply-preferences" "$BIN/gg-tile" "$BIN/gg-icon-resolver" "$BIN/gg-idle" "$BIN/gg-mac-open" "$BIN/gg-session"
   mkdir -p "$R/usr/share/wayland-sessions"
   cat > "$R/usr/share/wayland-sessions/golden-gate.desktop" <<'EOF'
 [Desktop Entry]
