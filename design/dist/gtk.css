@@ -24,41 +24,41 @@
   --error-fg-color: #ffffff;
   --error-color: #ff3b30;
   --window-bg-color: #ffffff;
-  --window-fg-color: rgba(0, 0, 0, 0.88);
+  --window-fg-color: rgba(0, 0, 0, 0.95);
   --view-bg-color: #ffffff;
-  --view-fg-color: rgba(0, 0, 0, 0.88);
+  --view-fg-color: rgba(0, 0, 0, 0.95);
   --headerbar-bg-color: #ffffff;
-  --headerbar-fg-color: rgba(0, 0, 0, 0.88);
+  --headerbar-fg-color: rgba(0, 0, 0, 0.95);
   --headerbar-backdrop-color: #ffffff;
   --headerbar-border-color: transparent;
   --headerbar-shade-color: transparent;
   --headerbar-darker-shade-color: transparent;
   --sidebar-bg-color: #efeff2;
-  --sidebar-fg-color: rgba(0, 0, 0, 0.88);
+  --sidebar-fg-color: rgba(0, 0, 0, 0.95);
   --sidebar-backdrop-color: #efeff2;
   --sidebar-border-color: transparent;
   --sidebar-shade-color: transparent;
   --secondary-sidebar-bg-color: #ffffff;
-  --secondary-sidebar-fg-color: rgba(0, 0, 0, 0.88);
+  --secondary-sidebar-fg-color: rgba(0, 0, 0, 0.95);
   --secondary-sidebar-backdrop-color: #ffffff;
   --secondary-sidebar-border-color: rgba(0, 0, 0, 0.09);
   --card-bg-color: rgba(0, 0, 0, 0.05);
-  --card-fg-color: rgba(0, 0, 0, 0.88);
+  --card-fg-color: rgba(0, 0, 0, 0.95);
   --card-shade-color: rgba(0, 0, 0, 0.09);
   --dialog-bg-color: #ffffff;
-  --dialog-fg-color: rgba(0, 0, 0, 0.88);
+  --dialog-fg-color: rgba(0, 0, 0, 0.95);
   --popover-bg-color: rgba(246, 246, 248, 0.94);
-  --popover-fg-color: rgba(0, 0, 0, 0.88);
+  --popover-fg-color: rgba(0, 0, 0, 0.95);
   --popover-shade-color: rgba(0, 0, 0, 0.09);
   --thumbnail-bg-color: #ffffff;
-  --thumbnail-fg-color: rgba(0, 0, 0, 0.88);
+  --thumbnail-fg-color: rgba(0, 0, 0, 0.95);
   --shade-color: rgba(0, 0, 0, 0.09);
   --border-color: rgba(0, 0, 0, 0.09);
-  --dim-opacity: 62%;
+  --dim-opacity: 78%;
   --window-radius: 22px;
-  --gg-label: rgba(0, 0, 0, 0.88);
-  --gg-secondary-label: rgba(0, 0, 0, 0.55);
-  --gg-tertiary-label: rgba(0, 0, 0, 0.28);
+  --gg-label: rgba(0, 0, 0, 0.95);
+  --gg-secondary-label: rgba(0, 0, 0, 0.70);
+  --gg-tertiary-label: rgba(0, 0, 0, 0.58);
   --gg-separator: rgba(0, 0, 0, 0.09);
   --gg-fill: rgba(0, 0, 0, 0.05);
   --gg-selection: rgba(0, 0, 0, 0.07);
@@ -71,23 +71,23 @@
   --gg-focus-ring: color-mix(in srgb, var(--accent-bg-color) 45%, transparent);
   --gg-scroll-edge: color-mix(in srgb, #ffffff 94%, transparent);
   --gg-sidebar: #efeff2;
-  --gg-sidebar-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.07), 0 1px 5px rgba(0, 0, 0, 0.05);
-  --gg-pill: rgba(255, 255, 255, 0.92);
+  --gg-sidebar-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.06), 0 5px 18px rgba(0, 0, 0, 0.05);
+  --gg-pill: rgba(255, 255, 255, 0.97);
   --gg-pill-hover: #f3f3f5;
   --gg-pill-active: #e7e7ea;
-  --gg-pill-shadow: 0 1px 2px rgba(0, 0, 0, 0.05), 0 3px 12px rgba(0, 0, 0, 0.08), 0 0 0 0.5px rgba(0, 0, 0, 0.07);
+  --gg-pill-shadow: 0 4px 15px rgba(0, 0, 0, 0.08), 0 0 0 0.5px rgba(0, 0, 0, 0.06);
   --gg-button: rgba(0, 0, 0, 0.05);
   --gg-button-hover: rgba(0, 0, 0, 0.07);
   --gg-button-active: rgba(0, 0, 0, 0.11);
   --gg-button-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.09);
   --gg-glass-sheen: linear-gradient(to bottom, rgba(255, 255, 255, 0.28), rgba(255, 255, 255, 0) 55%);
-  --gg-glass-rim: inset 0 1px 0 rgba(255, 255, 255, 0.55), inset 0 0 0 0.5px rgba(0, 0, 0, 0.1), inset 0 -1px 1px rgba(255, 255, 255, 0.15), 0 1px 2px rgba(0, 0, 0, 0.1);
+  --gg-glass-rim: inset 0 1px 0 rgba(255, 255, 255, 0.82), inset 0 0 0 0.5px rgba(0, 0, 0, 0.1), inset 0 -1px 1px rgba(255, 255, 255, 0.15), 0 1px 2px rgba(0, 0, 0, 0.1);
   --gg-glass-lens: rgba(255, 255, 255, 0.4);
   --gg-control: #ffffff;
   --gg-control-border: inset 0 0 0 0.5px rgba(0, 0, 0, 0.25), 0 0.5px 1px rgba(0, 0, 0, 0.08);
   --gg-field-border: inset 0 0 0 0.5px rgba(0, 0, 0, 0.2), inset 0 0.5px 1px rgba(0, 0, 0, 0.05);
   --gg-segment-on: #ffffff;
-  --gg-segment-on-shadow: 0 1px 3px rgba(0, 0, 0, 0.14), 0 0 0 0.5px rgba(0, 0, 0, 0.05);
+  --gg-segment-on-shadow: 0 4px 13px rgba(0, 0, 0, 0.12);
   --gg-switch-off: rgba(120, 120, 128, 0.18);
   --gg-fill-strong: rgba(0, 0, 0, 0.1);
   --gg-hover: rgba(0, 0, 0, 0.035);
@@ -96,8 +96,8 @@
   --gg-menu: rgba(246, 246, 248, 0.94);
   --gg-tooltip: rgba(246, 246, 248, 0.97);
   --gg-scrollbar: rgba(0, 0, 0, 0.4);
-  --gg-window-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.22), 0 28px 80px rgba(0, 0, 0, 0.30), 0 10px 24px rgba(0, 0, 0, 0.12);
-  --gg-window-shadow-inactive: 0 0 0 0.5px rgba(0, 0, 0, 0.16), 0 16px 44px rgba(0, 0, 0, 0.18), 0 4px 12px rgba(0, 0, 0, 0.08);
+  --gg-window-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.13), 0 34px 110px rgba(0, 0, 0, 0.19), 0 13px 45px rgba(0, 0, 0, 0.09);
+  --gg-window-shadow-inactive: 0 0 0 0.5px rgba(0, 0, 0, 0.10), 0 22px 76px rgba(0, 0, 0, 0.13), 0 8px 30px rgba(0, 0, 0, 0.05);
   --gg-selection-strong: rgba(0, 0, 0, 0.1);
   --gg-calc-digit: #ffffff;
   --gg-calc-digit-hover: #f5f5f7;
@@ -129,41 +129,41 @@
     --error-fg-color: #ffffff;
     --error-color: #ff453a;
     --window-bg-color: #1e1e1e;
-    --window-fg-color: rgba(255, 255, 255, 0.92);
+    --window-fg-color: rgba(255, 255, 255, 0.97);
     --view-bg-color: #1a1a1a;
-    --view-fg-color: rgba(255, 255, 255, 0.92);
+    --view-fg-color: rgba(255, 255, 255, 0.97);
     --headerbar-bg-color: #1e1e1e;
-    --headerbar-fg-color: rgba(255, 255, 255, 0.92);
+    --headerbar-fg-color: rgba(255, 255, 255, 0.97);
     --headerbar-backdrop-color: #1e1e1e;
     --headerbar-border-color: transparent;
     --headerbar-shade-color: transparent;
     --headerbar-darker-shade-color: transparent;
     --sidebar-bg-color: #2a2a2e;
-    --sidebar-fg-color: rgba(255, 255, 255, 0.92);
+    --sidebar-fg-color: rgba(255, 255, 255, 0.97);
     --sidebar-backdrop-color: #2a2a2e;
     --sidebar-border-color: transparent;
     --sidebar-shade-color: transparent;
     --secondary-sidebar-bg-color: #1a1a1a;
-    --secondary-sidebar-fg-color: rgba(255, 255, 255, 0.92);
+    --secondary-sidebar-fg-color: rgba(255, 255, 255, 0.97);
     --secondary-sidebar-backdrop-color: #1a1a1a;
     --secondary-sidebar-border-color: rgba(255, 255, 255, 0.10);
     --card-bg-color: rgba(255, 255, 255, 0.07);
-    --card-fg-color: rgba(255, 255, 255, 0.92);
+    --card-fg-color: rgba(255, 255, 255, 0.97);
     --card-shade-color: rgba(255, 255, 255, 0.10);
     --dialog-bg-color: #1e1e1e;
-    --dialog-fg-color: rgba(255, 255, 255, 0.92);
+    --dialog-fg-color: rgba(255, 255, 255, 0.97);
     --popover-bg-color: rgba(40, 40, 44, 0.94);
-    --popover-fg-color: rgba(255, 255, 255, 0.92);
+    --popover-fg-color: rgba(255, 255, 255, 0.97);
     --popover-shade-color: rgba(255, 255, 255, 0.10);
     --thumbnail-bg-color: #1a1a1a;
-    --thumbnail-fg-color: rgba(255, 255, 255, 0.92);
+    --thumbnail-fg-color: rgba(255, 255, 255, 0.97);
     --shade-color: rgba(255, 255, 255, 0.10);
     --border-color: rgba(255, 255, 255, 0.10);
-    --dim-opacity: 62%;
+    --dim-opacity: 78%;
     --window-radius: 22px;
-    --gg-label: rgba(255, 255, 255, 0.92);
-    --gg-secondary-label: rgba(255, 255, 255, 0.55);
-    --gg-tertiary-label: rgba(255, 255, 255, 0.25);
+    --gg-label: rgba(255, 255, 255, 0.97);
+    --gg-secondary-label: rgba(255, 255, 255, 0.82);
+    --gg-tertiary-label: rgba(255, 255, 255, 0.64);
     --gg-separator: rgba(255, 255, 255, 0.10);
     --gg-fill: rgba(255, 255, 255, 0.07);
     --gg-selection: rgba(255, 255, 255, 0.10);
@@ -180,7 +180,7 @@
     --gg-pill: rgba(58, 58, 62, 0.92);
     --gg-pill-hover: rgba(70, 70, 74, 0.94);
     --gg-pill-active: rgba(84, 84, 88, 0.95);
-    --gg-pill-shadow: inset 0 0.5px rgba(255, 255, 255, 0.18), 0 0 0 0.5px rgba(0, 0, 0, 0.5), 0 2px 10px rgba(0, 0, 0, 0.3);
+    --gg-pill-shadow: inset 0 0.5px rgba(255, 255, 255, 0.18), 0 4px 16px rgba(0, 0, 0, 0.21);
     --gg-button: rgba(255, 255, 255, 0.12);
     --gg-button-hover: rgba(255, 255, 255, 0.16);
     --gg-button-active: rgba(255, 255, 255, 0.22);
@@ -192,7 +192,7 @@
     --gg-control-border: inset 0 0 0 0.5px rgba(255, 255, 255, 0.18);
     --gg-field-border: inset 0 0 0 0.5px rgba(255, 255, 255, 0.14);
     --gg-segment-on: #5a5a5e;
-    --gg-segment-on-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    --gg-segment-on-shadow: 0 4px 14px rgba(0, 0, 0, 0.19);
     --gg-switch-off: rgba(120, 120, 128, 0.32);
     --gg-fill-strong: rgba(255, 255, 255, 0.14);
     --gg-hover: rgba(255, 255, 255, 0.04);
@@ -201,11 +201,11 @@
     --gg-menu: rgba(40, 40, 44, 0.94);
     --gg-tooltip: rgba(44, 44, 48, 0.97);
     --gg-scrollbar: rgba(255, 255, 255, 0.4);
-    --gg-window-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.9), inset 0 0 0 0.5px rgba(255, 255, 255, 0.14), 0 28px 80px rgba(0, 0, 0, 0.5), 0 10px 24px rgba(0, 0, 0, 0.25);
-    --gg-window-shadow-inactive: 0 0 0 0.5px rgba(0, 0, 0, 0.8), inset 0 0 0 0.5px rgba(255, 255, 255, 0.1), 0 16px 44px rgba(0, 0, 0, 0.35), 0 4px 12px rgba(0, 0, 0, 0.18);
+    --gg-window-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.48), inset 0 0 0 0.5px rgba(255, 255, 255, 0.10), 0 38px 116px rgba(0, 0, 0, 0.32), 0 14px 46px rgba(0, 0, 0, 0.13);
+    --gg-window-shadow-inactive: 0 0 0 0.5px rgba(0, 0, 0, 0.36), inset 0 0 0 0.5px rgba(255, 255, 255, 0.08), 0 25px 82px rgba(0, 0, 0, 0.22), 0 9px 30px rgba(0, 0, 0, 0.10);
     --gg-selection-strong: rgba(255, 255, 255, 0.14);
     --gg-calc-digit: rgba(255, 255, 255, 0.2);
-    --gg-calc-digit-hover: rgba(255, 255, 255, 0.25);
+    --gg-calc-digit-hover: rgba(255, 255, 255, 0.64);
     --gg-calc-function: rgba(255, 255, 255, 0.4);
     --gg-calc-digit-shadow: inset 0 1px rgba(255, 255, 255, 0.12), inset 0 0 0 0.5px rgba(255, 255, 255, 0.05);
   }
@@ -354,7 +354,7 @@ windowcontrols > button:active > image {
 windowcontrols > button.close { background: radial-gradient(circle closest-side, var(--gg-tl-close) 91%, rgba(0, 0, 0, 0.14) 93%, rgba(0, 0, 0, 0.14) 97%, transparent 100%); }
 windowcontrols > button.minimize { background: radial-gradient(circle closest-side, var(--gg-tl-minimize) 91%, rgba(0, 0, 0, 0.14) 93%, rgba(0, 0, 0, 0.14) 97%, transparent 100%); }
 windowcontrols > button.maximize { background: radial-gradient(circle closest-side, var(--gg-tl-zoom) 91%, rgba(0, 0, 0, 0.14) 93%, rgba(0, 0, 0, 0.14) 97%, transparent 100%); }
-windowcontrols:hover > button > image { color: rgba(0, 0, 0, 0.55); }
+windowcontrols:hover > button > image { color: rgba(0, 0, 0, 0.70); }
 windowcontrols > button:active { filter: brightness(0.82); }
 window:backdrop windowcontrols:not(:hover) > button,
 windowcontrols > button:disabled { background: radial-gradient(circle closest-side, var(--gg-tl-inactive) 93%, rgba(0, 0, 0, 0.08) 95%, rgba(0, 0, 0, 0.08) 97%, transparent 100%); opacity: 1; }
@@ -449,7 +449,7 @@ button.suggested-action:hover, button.default:hover {
 button.suggested-action:active { filter: brightness(0.9); }
 button.destructive-action, button.destructive-action:hover { color: var(--gg-red); }
 button.opaque { color: #ffffff; box-shadow: none; }
-button.osd, .osd button { background: rgba(0, 0, 0, 0.55); color: #ffffff; box-shadow: none; }
+button.osd, .osd button { background: rgba(0, 0, 0, 0.70); color: #ffffff; box-shadow: none; }
 
 /* Segmented controls: linked buttons and toggle groups */
 .linked:not(.vertical):not(.search):not(.entry-combo) {
