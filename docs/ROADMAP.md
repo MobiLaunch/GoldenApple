@@ -119,6 +119,8 @@ rollback on an installed system, and a clean install end to end.
 Music now publishes local playback to MPRIS, restores queues paused with a
 saved position, and reports playback and save failures with recovery actions.
 See [Music workflows](MUSIC-WORKFLOWS.md) for controls and validation boundaries.
+Music now supports creating, editing and safely deleting M3U playlists, song
+ordering, and reorder/remove controls for the Playing Next queue.
 Verify physical media keys, audible output, and Control Center on the installed
 desktop; the live MPRIS contract runs on a private session bus in CI.
 
@@ -135,6 +137,6 @@ Still to do:
       display resolution, arrangement and rotation
 - [ ] Disk encryption at install; migration at Setup
 - [ ] Mail (folders, attachments, drafts), Calendar (two-way CalDAV, invitations,
-      advanced recurrence), Photos editing; Music playlist creation/editing, queue reordering
+      advanced recurrence), Photos editing; Music smart playlists and library folder selection
       and removal, and library folder preferences
 - [ ] Translated UI (formats already follow the region; the apps are English)

@@ -66,7 +66,42 @@ restoration, seeking, navigation, close-time saves, failure recovery, opt-out,
 clear/forget, keyboard operation, large text and readable playback errors. It
 also compiles the main window without starting its library or radio services.
 
-CI runs the live private-bus and isolated QML suites. Audible playback, physical
-media keys, actual compositor activation and installed Control Center remain
-hardware/session checks. Playlist creation/editing, queue reordering/removal,
-folder selection and a full macOS Music feature set remain future work.
+## Editable playlists
+
+Playlists remain compatible with existing M3U and M3U8 files in the Music
+folder's Playlists subdirectory. Use New Playlist in Music's sidebar or
+Playback Options. Track context menus offer Add to Playlist, Play Next and
+Play Last. In a playlist, use Edit Playlist to rename, duplicate or delete
+the list, and move or remove individual entries using accessible controls.
+Playlist deletion moves the list into Playlists/.Deleted for recovery; it
+never deletes the music files.
+
+The playlist store is a separate Python helper with per-mutation file locks,
+atomic UTF-8 writes, a recovery copy for file edits, validation of filenames
+and playlist paths, collision checks and per-file revisions. Concurrent edits
+from another Music window are rejected rather than silently overwritten.
+Existing EXTINF metadata travels with the associated track when reordered,
+and relative paths are preserved. Read failures leave the library untouched.
+
+## Playing Next
+
+The queue pane lets you move upcoming tracks up or down or remove them;
+playing audio is not reloaded or interrupted by these changes. Queue edits
+respect shuffle's playback order, including repeated copies of the same
+song. New songs may be queued next or last. All changes are part of the
+same persisted session state, so reordering survives normal restart while
+Restore Queue remains enabled.
+
+## Additional tests and limits
+
+Run `python tests/music-playlists.py` for playlist file integrity,
+conflicting-edit detection, metadata preservation, path safety and recovery.
+`npm run test:logic` includes shuffle/queue reordering and removal checks.
+The existing native Music UI tests and QML compilation run in CI.
+
+CI runs the live private-bus and isolated QML suites. Audible playback,
+physical media keys, compositor activation, actual drag-and-drop queue
+reordering and installed Control Center remain hardware/session checks.
+Music still lacks cloud catalog integration, smart playlists, configurable
+library folders, a sophisticated playlist sharing system and the complete
+macOS Music feature set.
