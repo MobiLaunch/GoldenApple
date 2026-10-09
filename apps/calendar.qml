@@ -5,6 +5,7 @@ import QtQuick
 import QtQuick.Layouts
 import "lib"
 import "lib/theme"
+import "calendar/recurrence.js" as Recurrence
 
 ShellRoot {
     AppWindow {
@@ -120,7 +121,8 @@ ShellRoot {
                             }
                             Text {
                                 width: parent.width
-                                text: modelData.time || "All day"
+                                text: (modelData.time || "All day") + (modelData.repeat && modelData.repeat !== "never" ? " · " + Recurrence.summary(modelData) : "")
+                                elide: Text.ElideRight
                                 color: Theme.secondaryLabel
                                 font { family: Theme.fontUi; pixelSize: Theme.fs(10) }
                             }
@@ -145,7 +147,7 @@ ShellRoot {
                             round: true
                             symbol: "trash"
                             enabled: !cal.broken && !deleteProc.running
-                            onClicked: cal.deleteEvent(modelData.id)
+                            onClicked: cal.requestDelete(modelData)
                         }
                     }
                 }
@@ -181,9 +183,15 @@ ShellRoot {
             property string draftCalendar: "Home"
             property string editingId: ""
             property var editingOriginal: ({})
+            property string draftRepeat: "never"
+            property string draftUntil: ""
+            readonly property var repeatOptions: ["never", "daily", "weekly", "monthly", "yearly"]
+            property string deleteTarget: ""
+            property string deleteTitle: ""
+            property bool deleteIsSeries: false
 
             readonly property string selectedKey: Qt.formatDate(selectedDate, "yyyy-MM-dd")
-            readonly property var selectedEvents: events.filter((event) => event.date === selectedKey)
+            readonly property var selectedEvents: Recurrence.occurrencesOn(events, selectedKey)
             readonly property int year: visibleMonth.getFullYear()
             readonly property int month: visibleMonth.getMonth()
             readonly property int firstWeekday: new Date(year, month, 1).getDay()
@@ -207,7 +215,7 @@ ShellRoot {
 
             function eventCount(day) {
                 const key = Qt.formatDate(new Date(year, month, day), "yyyy-MM-dd")
-                return events.filter((event) => event.date === key).length
+                return Recurrence.occurrencesOn(events, key).length
             }
 
             function openAdd() {
@@ -219,6 +227,9 @@ ShellRoot {
                 draftCalendar = "Home"
                 editingId = ""
                 editingOriginal = ({})
+                draftRepeat = "never"
+                draftUntil = ""
+                error = ""
                 addDialog.visible = true
                 Qt.callLater(() => titleField.input.forceActiveFocus())
             }
@@ -229,12 +240,16 @@ ShellRoot {
                 editingId = event.id
                 editingOriginal = {
                     id: event.id, title: event.title, date: event.date,
-                    time: event.time || "", calendar: event.calendar || "Home"
+                    time: event.time || "", calendar: event.calendar || "Home",
+                    repeat: event.repeat || "never", until: event.until || ""
                 }
                 draftTitle = editingOriginal.title
                 draftDate = editingOriginal.date
                 draftTime = editingOriginal.time
                 draftCalendar = editingOriginal.calendar
+                draftRepeat = editingOriginal.repeat
+                draftUntil = editingOriginal.until
+                error = ""
                 addDialog.visible = true
                 Qt.callLater(() => titleField.input.forceActiveFocus())
             }
@@ -254,6 +269,15 @@ ShellRoot {
                     return
                 duplicateProc.command = ["python3", helper, "duplicate", id]
                 duplicateProc.running = true
+            }
+
+            function requestDelete(event) {
+                if (broken || deleteProc.running || !event || !event.id)
+                    return
+                deleteTarget = event.id
+                deleteTitle = event.title
+                deleteIsSeries = event.repeat && event.repeat !== "never"
+                deleteConfirm.visible = true
             }
 
             function deleteEvent(id) {
@@ -324,6 +348,8 @@ ShellRoot {
                         date: cal.draftDate,
                         time: cal.draftTime.trim(),
                         calendar: cal.draftCalendar,
+                        repeat: cal.draftRepeat,
+                        until: cal.draftRepeat === "never" ? "" : cal.draftUntil.trim(),
                         expected: cal.editingOriginal
                     }))
                     stdinEnabled = false
@@ -543,7 +569,7 @@ ShellRoot {
                 visible: false
                 anchors.centerIn: parent
                 width: 420
-                height: 270
+                height: (cal.draftRepeat === "never" ? 320 : 385) + (cal.error ? 38 : 0)
                 radius: 22
                 tint: Theme.glassRegular.tint
                 z: 100
@@ -553,7 +579,7 @@ ShellRoot {
                     spacing: 12
 
                     Text {
-                        text: cal.editingId ? "Edit Event" : "New Event"
+                        text: cal.editingId ? (cal.draftRepeat !== "never" ? "Edit Repeating Event" : "Edit Event") : "New Event"
                         color: Theme.label
                         font { family: Theme.fontUi; pixelSize: Theme.fs(18); weight: Font.DemiBold }
                     }
@@ -591,6 +617,56 @@ ShellRoot {
                     }
 
                     Row {
+                        width: parent.width
+                        spacing: 12
+                        Text {
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: "Repeat"
+                            color: Theme.secondaryLabel
+                            font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                        }
+                        PopUpButton {
+                            id: repeatPicker
+                            menuParent: win.overlay
+                            options: ["Never", "Every Day", "Every Week", "Every Month", "Every Year"]
+                            current: cal.repeatOptions.indexOf(cal.draftRepeat)
+                            onPicked: (i) => {
+                                cal.draftRepeat = cal.repeatOptions[i]
+                                if (i === 0) cal.draftUntil = ""
+                            }
+                        }
+                    }
+
+                    TextField {
+                        id: repeatUntil
+                        width: parent.width
+                        visible: cal.draftRepeat !== "never"
+                        placeholder: "Repeat until YYYY-MM-DD (optional)"
+                        text: cal.draftUntil
+                        onTextChanged: cal.draftUntil = text
+                    }
+
+                    Text {
+                        width: parent.width
+                        visible: !!cal.editingId && cal.draftRepeat !== "never"
+                        text: "Editing changes every occurrence of this series."
+                        wrapMode: Text.WordWrap
+                        color: Theme.secondaryLabel
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+                    }
+
+                    Text {
+                        width: parent.width
+                        visible: !!cal.error
+                        text: cal.error
+                        wrapMode: Text.WordWrap
+                        maximumLineCount: 2
+                        elide: Text.ElideRight
+                        color: "#ff453a"
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+                    }
+
+                    Row {
                         anchors.right: parent.right
                         spacing: 8
                         Button { text: "Cancel"; enabled: !addProc.running; onClicked: addDialog.visible = false }
@@ -599,6 +675,54 @@ ShellRoot {
                             prominent: true
                             enabled: !addProc.running && cal.draftTitle.trim().length > 0
                             onClicked: cal.addEvent()
+                        }
+                    }
+                }
+            }
+
+            Glass {
+                id: deleteConfirm
+                objectName: "calendarDeleteConfirmation"
+                parent: win.overlay
+                visible: false
+                anchors.centerIn: parent
+                width: Math.min(420, parent.width - 32)
+                height: Math.max(184, confirmDetail.implicitHeight + 132)
+                radius: 22
+                tint: Theme.glassRegular.tint
+                z: 110
+
+                Column {
+                    anchors { fill: parent; margins: 20 }
+                    spacing: 12
+
+                    Text {
+                        width: parent.width
+                        text: cal.deleteIsSeries ? "Delete Repeating Event?" : "Delete Event?"
+                        color: Theme.label
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(18); weight: Font.DemiBold }
+                    }
+                    Text {
+                        id: confirmDetail
+                        width: parent.width
+                        wrapMode: Text.WordWrap
+                        text: "Delete “" + cal.deleteTitle + "”? " +
+                            (cal.deleteIsSeries ? "This removes the entire repeating series." : "This event will be removed.") +
+                            " This cannot be undone."
+                        color: Theme.secondaryLabel
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                    }
+                    Row {
+                        anchors.right: parent.right
+                        spacing: 8
+                        Button { text: "Cancel"; onClicked: deleteConfirm.visible = false }
+                        Button {
+                            text: "Delete"
+                            enabled: !deleteProc.running
+                            onClicked: {
+                                deleteConfirm.visible = false
+                                cal.deleteEvent(cal.deleteTarget)
+                            }
                         }
                     }
                 }
