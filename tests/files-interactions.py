@@ -78,6 +78,40 @@ class Interactions(unittest.TestCase):
         APP.processEvents(); APP.sendPostedEvents(None,QEvent.DeferredDelete)
         self.tmp.cleanup()
 
+    def test_sidebar_choreography_keeps_content_and_glass_in_sync(self):
+        # This is the real Files QML, using the AppWindow implementation.
+        self.assertAlmostEqual(self.eval('win.presentedSidebarWidth'),210,delta=1)
+        self.assertAlmostEqual(self.eval('win.contentX'),210,delta=1)
+        self.eval('win.sidebarShown=false')
+        QTest.qWait(250)
+        self.assertAlmostEqual(self.eval('win.presentedSidebarWidth'),0,delta=2)
+        self.assertAlmostEqual(self.eval('win.contentX'),0,delta=2)
+        self.eval('win.sidebarShown=true')
+        QTest.qWait(250)
+        self.assertAlmostEqual(self.eval('win.presentedSidebarWidth'),210,delta=2)
+        self.assertAlmostEqual(self.eval('win.contentX'),210,delta=2)
+        # Reduced motion snaps both edges immediately, with no orphan panel.
+        self.eval('Theme.reduceMotion=true; win.sidebarShown=false')
+        APP.processEvents()
+        self.assertAlmostEqual(self.eval('win.presentedSidebarWidth'),0,delta=1)
+        self.assertAlmostEqual(self.eval('win.contentX'),0,delta=1)
+        self.eval('win.sidebarShown=true')
+        APP.processEvents()
+        self.assertAlmostEqual(self.eval('win.presentedSidebarWidth'),210,delta=1)
+        self.assertAlmostEqual(self.eval('win.contentWidth'),self.eval('win.width')-210,delta=1)
+
+    def test_files_rename_and_empty_trash_use_shared_document_sheets(self):
+        self.eval('files.dialogMode="mkdir"; files.dialogText="New Folder"; editDialog.open()')
+        self.assertTrue(self.eval('editDialog.shown'))
+        self.assertIsNotNone(self.root.findChild(QObject,'filesEditSheet'))
+        self.eval('editDialog.close()')
+        self.assertFalse(self.eval('editDialog.shown'))
+        self.eval('confirmEmpty.open()')
+        self.assertTrue(self.eval('confirmEmpty.shown'))
+        self.assertIsNotNone(self.root.findChild(QObject,'filesEmptyTrashSheet'))
+        self.eval('confirmEmpty.close()')
+        self.assertFalse(self.eval('confirmEmpty.shown'))
+
     def test_range_toggle_all_and_clear_on_navigation(self):
         self.eval('view="list"; select(entries[0])')
         QTest.keyClick(self.root,Qt.Key_Down,Qt.ShiftModifier)
