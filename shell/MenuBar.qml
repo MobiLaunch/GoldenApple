@@ -19,6 +19,7 @@ import "ui" as Shared
 
 PanelWindow {
     id: bar
+    objectName: "globalMenuBar"
     property var controlCenter
     property var spotlight
     property var session                // SessionDialog: Restart, Shut Down and Log Out ask first
