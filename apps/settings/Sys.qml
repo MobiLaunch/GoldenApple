@@ -14,6 +14,7 @@ Item {
     property var prefs: ({})         // desktop.json
     property var privacy: ({})       // privacy.json
     property var input: ({})         // input.json (keyboard, trackpad)
+    property var windows: ({})       // windows.json (compositor window controls)
     // A change that couldn't be saved: Settings shows it, and the file (which
     // was left as it was) is read again so the controls show what's saved.
     property string writeError: ""
@@ -62,7 +63,7 @@ Item {
     function writeJson(file, obj) { writeFile(gg + "/" + file, JSON.stringify(obj, null, 1) + "\n", file) }
     function failed(what, why) {
         writeError = "Your change couldn't be saved (" + what + ": " + why + "). The previous setting was kept."
-        for (const f of [desktopFile, privacyFile, inputFile]) f.reload()
+        for (const f of [desktopFile, privacyFile, inputFile, windowsFile]) f.reload()
     }
     function setIn(obj, path, value) {
         const copy = JSON.parse(JSON.stringify(obj ?? {}))
@@ -102,7 +103,7 @@ Item {
     // and only once it's saved applied to the running session; the record
     // shown afterwards is the one saved.
     readonly property string setter: decodeURIComponent(Qt.resolvedUrl("set-prefs.py").toString().replace("file://", ""))
-    readonly property var recordFiles: ({ privacy: "privacy.json", input: "input.json", accessibility: "accessibility.json" })
+    readonly property var recordFiles: ({ privacy: "privacy.json", input: "input.json", accessibility: "accessibility.json", windows: "windows.json" })
     property var pendingKeys: ({})          // record → { key: value } not yet saved
     property var afterSave: ({})            // record → [function(ok)]
     function setRecord(name, key, value, applied) {
@@ -154,11 +155,32 @@ Item {
     // Keyboard and pointer: input.json is the record; hypr's input.conf is
     // generated from it with it (sourced by hyprland.conf).
     readonly property var inputKeywords: ({ layout: "input:kb_layout", variant: "input:kb_variant", repeatRate: "input:repeat_rate", repeatDelay: "input:repeat_delay",
-                                            sensitivity: "input:sensitivity", naturalScroll: "input:touchpad:natural_scroll", tapToClick: "input:touchpad:tap-to-click" })
+                                            sensitivity: "input:sensitivity", naturalScroll: "input:touchpad:natural_scroll", tapToClick: "input:touchpad:tap-to-click",
+                                            twoFingerClick: "input:touchpad:clickfinger_behavior", disableWhileTyping: "input:touchpad:disable_while_typing",
+                                            tapAndDrag: "input:touchpad:tap_and_drag", dragLock: "input:touchpad:drag_lock",
+                                            scrollFactor: "input:touchpad:scroll_factor" })
     function setInput(key, value) {
         setRecord("input", key, value, (ok) => {
             const kw = inputKeywords[key]
             if (ok && kw) applyLive(["hyprctl", "keyword", kw, String(typeof value === "number" && key !== "sensitivity" ? Math.round(value) : value)], "input.conf")
+        })
+    }
+
+    // Persist and apply the exact Hyprland controls from Desktop & Dock.
+    // The record writer generates ~/.config/hypr/golden-gate/windows.conf
+    // atomically, so the same values survive restart or Settings OTA updates.
+    readonly property var windowKeywords: ({
+        snapEnabled: "general:snap:enabled",
+        windowGap: "general:snap:window_gap",
+        monitorGap: "general:snap:monitor_gap",
+        respectGaps: "general:snap:respect_gaps",
+        resizeOnBorder: "general:resize_on_border",
+        grabArea: "general:extend_border_grab_area"
+    })
+    function setWindow(key, value) {
+        if (!windowKeywords[key]) return
+        setRecord("windows", key, value, (ok) => {
+            if (ok) applyLive(["hyprctl", "keyword", windowKeywords[key], typeof value === "boolean" ? String(value).toLowerCase() : String(value)], "windows.conf")
         })
     }
 
@@ -207,6 +229,7 @@ Item {
     JsonFile { id: desktopFile; path: sys.gg + "/desktop.json"; key: "prefs" }
     JsonFile { id: privacyFile; path: sys.gg + "/privacy.json"; key: "privacy" }
     JsonFile { id: inputFile; path: sys.gg + "/input.json"; key: "input" }
+    JsonFile { id: windowsFile; path: sys.gg + "/windows.json"; key: "windows" }
     // First time: show the keyboard Setup Assistant wrote (set-prefs.py keeps
     // it in input.json the first time it saves, so a later change, such as the
     // repeat rate, keeps the same layout and variant).
