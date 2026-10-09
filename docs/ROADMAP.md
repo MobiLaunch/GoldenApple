@@ -131,7 +131,7 @@ Still to do:
 - [ ] Network configuration (hidden/enterprise Wi-Fi, VPN, proxy, DNS);
       display resolution, arrangement and rotation
 - [ ] Disk encryption at install; migration at Setup
-- [ ] Mail (folders, attachments, drafts), Calendar (CalDAV, invitations,
-      occurrence exceptions), Photos editing; Music playlist creation/editing, queue reordering
+- [ ] Mail (folders, attachments, drafts), Calendar (two-way CalDAV, invitations,
+      advanced recurrence), Photos editing; Music playlist creation/editing, queue reordering
       and removal, and library folder preferences
 - [ ] Translated UI (formats already follow the region; the apps are English)
