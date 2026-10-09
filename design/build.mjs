@@ -261,13 +261,14 @@ function qmlColor(c) {
   for (const [k, s] of Object.entries(springs)) lines.push(`    bezier = ${k}, ${hyprBezier(s.dampingFraction).join(", ")}`);
   const ds = (k) => Math.max(1, Math.round(springs[k].duration / 100));
   lines.push(
-    // The shell's launch card (shell/AppLaunch.qml) carries the motion of an app
-    // opening, and of a window closing back into its Dock icon (the opening in
-    // reverse); the window itself only settles in, or fades out, underneath
-    // it, quickly (it had the smooth spring's whole settle, 0.6 s).
+    // AppLaunch animates app opening; closing normally uses only the native
+    // window fade. A 100ms exit was too abrupt next to the Dock's 220ms slot
+    // collapse, and the closing surface could appear to vanish in a frame.
+    // Keep popin 100% (no closing scale / forced GPU texture reallocations)
+    // and use a restrained 200ms fade so the app recedes without flashing.
     `    animation = windowsIn, 1, 3, snappy, popin 100%`,
-    `    animation = windowsOut, 1, 1, smooth, popin 100%`,
-    `    animation = fadeOut, 1, 1, smooth`,
+    `    animation = windowsOut, 1, 2, smooth, popin 100%`,
+    `    animation = fadeOut, 1, 2, smooth`,
     `    animation = windowsMove, 1, ${ds("snappy")}, snappy`,
     `    animation = layersIn, 1, ${ds("popover")}, popover, popin 90%`,
     `    animation = layersOut, 1, 2, smooth, fade`,
