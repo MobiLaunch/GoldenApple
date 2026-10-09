@@ -274,6 +274,7 @@ ShellRoot {
             focus: true
 
             readonly property string helper: Qt.resolvedUrl("files/helper.py").toString().replace("file://", "")
+            readonly property string archiveHelper: Qt.resolvedUrl("archive/helper.py").toString().replace("file://", "")
             readonly property string home: Quickshell.env("HOME")
             property string path: Quickshell.env("GG_FILES_PATH") || home
             property string initialSelect: Quickshell.env("GG_FILES_SELECT") || ""
@@ -306,7 +307,7 @@ ShellRoot {
             property bool showHidden: false
             property real free: -1              // space left on this folder's disk
             property string notice: ""          // a passing word in the path bar (an eject that failed)
-            readonly property bool busy: opProc.running || transferProc.running || undoProc.running
+            readonly property bool busy: opProc.running || transferProc.running || undoProc.running || archiveProc.running
             property var undoStack: []
             property var info: ({})
             property var cutPaths: []
@@ -746,11 +747,25 @@ ShellRoot {
                 event.accepted = true
             }
 
+            function isArchivePath(path) {
+                return /\.(zip|cbz|tar|tar\.gz|tgz|tar\.xz|txz|tar\.bz2|tbz|tbz2)$/i.test(String(path))
+            }
+            function archiveAction(action) {
+                if (busy || inTrash || inComputer || !selectedPaths.length) return
+                const selected = selectedPaths.slice()
+                if (action === "extract" && (selected.length !== 1 || !isArchivePath(selected[0]))) return
+                archiveProc.completed = null
+                archiveProc.command = ["python3", archiveHelper, action].concat(selected)
+                archiveProc.running = true
+                say(action === "create" ? "Compressing selection…" : "Extracting archive…")
+            }
             function openEntry(entry) {
                 if (entry.volume) {
                     openVolume(entry.volume)
                 } else if (entry.folder) {
                     navigate(entry.path)
+                } else if (isArchivePath(entry.path)) {
+                    Quickshell.execDetached(["gg-archive", entry.path])
                 } else {
                     runOperation(["open", entry.path], "open")
                 }
@@ -825,6 +840,11 @@ ShellRoot {
                     { text: "Open", action: () => openSelection() },
                     { text: "Quick Look", shortcut: "Space", action: () => quickLook.open = true }
                 ].concat(inRecents ? [{ text: "Show in Enclosing Folder", action: () => showInFolder(entry) }] : [], [
+                    { text: "Extract Here", enabled: selectedPaths.length === 1 && isArchivePath(entry.path) && !busy,
+                      action: () => archiveAction("extract") },
+                    { text: "Compress" + (selectedPaths.length > 1 ? " " + selectedPaths.length + " Items" : " to ZIP"),
+                      enabled: selectedPaths.length > 0 && !busy && !special,
+                      action: () => archiveAction("create") },
                     { text: "Rename", enabled: selectedPaths.length === 1 && !busy, action: () => rename() },
                     { text: "Get Info", shortcut: "⌘I", enabled: selectedPaths.length === 1, action: () => getInfo() },
                     { text: "Copy", shortcut: "⌘C", action: () => clipboard("copy") },
@@ -857,6 +877,10 @@ ShellRoot {
                     { separator: true },
                     { text: "Open", enabled: !!selectedPath, action: () => openSelection() },
                     { text: "Quick Look", shortcut: "Space", enabled: !!selectedPath, action: () => quickLook.open = true },
+                    { text: "Extract Here", enabled: selectedPaths.length === 1 && isArchivePath(selectedPath) && !busy,
+                      action: () => archiveAction("extract") },
+                    { text: "Compress to ZIP", enabled: !!selectedPath && !special && !busy,
+                      action: () => archiveAction("create") },
                     { text: "Rename", enabled: selectedPaths.length === 1 && !inComputer && !busy, action: () => rename() },
                     { text: "Get Info", shortcut: "⌘I", enabled: selectedPaths.length === 1 && !inComputer, action: () => getInfo() },
                     { text: "Select All", shortcut: "⌘A", action: () => selectAll() },
@@ -962,6 +986,30 @@ ShellRoot {
                 }
             }
 
+            // The worker writes structured JSON, never executes filenames.
+            Process {
+                id: archiveProc
+                property var completed: null
+                stdout: SplitParser {
+                    onRead: (line) => {
+                        try {
+                            const event = JSON.parse(line)
+                            if (event.event === "done") archiveProc.completed = event
+                        } catch (e) {}
+                    }
+                }
+                stderr: StdioCollector { id: archiveError }
+                onExited: (code) => {
+                    const r = archiveProc.completed
+                    if (code !== 0 || !r?.ok) {
+                        files.say(r?.error || archiveError.text.trim() || "The archive operation failed.")
+                        return
+                    }
+                    files.selectionAfterReload = r.destination ? [r.destination] : []
+                    files.reload()
+                    files.say(r.mode === "create" ? "ZIP archive created." : "Archive extracted.")
+                }
+            }
             Process {
                 id: transferProc
                 property bool finishedEvent: false
