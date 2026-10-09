@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Read-only CalDAV calendar collection sync.
 
-caldav.py status | configure < JSON-on-stdin | sync | disconnect
+caldav.py status | configure < JSON-on-stdin | sync | start-auto | stop-auto | disconnect
 The username and URL live in a private JSON config. Passwords live only in
 the desktop Secret Service keyring (secret-tool), never JSON, logs or argv.
 Only HTTPS calendar collection URLs are accepted, no automatic redirects.
@@ -18,6 +18,7 @@ import re
 import subprocess
 import sys
 import tempfile
+import datetime
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -36,6 +37,8 @@ DAV_XML = b"""<?xml version="1.0" encoding="utf-8"?>
 </c:calendar-query>"""
 MAX_BYTES = 6 * 1024 * 1024
 MAX_EVENTS = 5000
+AUTO_UNIT = "gg-calendar-caldav"
+USER_UNITS = Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config") / "systemd/user"
 
 
 def emit(ok, **fields):
@@ -244,12 +247,90 @@ def fetch_events(url, username, password):
     return rows, ignored
 
 
+
+def systemctl(*args):
+    try:
+        proc = subprocess.run(["systemctl", "--user", *args],
+                              capture_output=True, text=True, timeout=20)
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise RuntimeError("User service manager unavailable.") from exc
+    if proc.returncode:
+        raise RuntimeError(proc.stderr.strip() or "Could not update the user timer.")
+
+
+def timer_files():
+    return (USER_UNITS / (AUTO_UNIT + ".service"),
+            USER_UNITS / (AUTO_UNIT + ".timer"))
+
+
+def auto_running():
+    runner, timer = timer_files()
+    if not (runner.is_file() and timer.is_file()):
+        return False
+    try:
+        systemctl("is-active", AUTO_UNIT + ".timer")
+    except RuntimeError:
+        return False
+    return True
+
+
+def set_auto(enabled):
+    runner, timer = timer_files()
+    if not enabled:
+        if runner.exists() or timer.exists():
+            systemctl("disable", "--now", AUTO_UNIT + ".timer")
+            runner.unlink(missing_ok=True)
+            timer.unlink(missing_ok=True)
+            systemctl("daemon-reload")
+        return
+    if read_config() is None:
+        raise ValueError("Connect a CalDAV calendar first.")
+    home = str(Path(__file__).resolve())
+    if any(c in home for c in ("\n", "\r")):
+        raise ValueError("CalDAV helper path cannot contain line breaks.")
+    home = home.replace("\\", "\\\\").replace('"', '\\"').replace("%", "%%")
+    service_body = ("[Unit]\nDescription=CitronOS CalDAV read-only refresh\n"
+                    "[Service]\nType=oneshot\nExecStart=/usr/bin/python3 \"" + home + "\" sync\n")
+    timer_body = ("[Unit]\nDescription=Refresh CitronOS CalDAV calendar periodically\n"
+                  "[Timer]\nOnBootSec=3min\nOnUnitActiveSec=15min\n"
+                  "AccuracySec=1min\nUnit=gg-calendar-caldav.service\n"
+                  "[Install]\nWantedBy=timers.target\n")
+    USER_UNITS.mkdir(parents=True, exist_ok=True)
+    created = []
+    try:
+        for file, body in ((runner, service_body), (timer, timer_body)):
+            if file.exists():
+                if file.read_text(encoding="utf-8") != body:
+                    raise ValueError("CalDAV systemd unit has been modified. Refusing to overwrite it.")
+            else:
+                fd = os.open(file, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+                created.append(file)
+                with os.fdopen(fd, "w", encoding="utf-8") as stream:
+                    stream.write(body)
+        systemctl("daemon-reload")
+        systemctl("enable", "--now", AUTO_UNIT + ".timer")
+    except Exception:
+        # Do not remove a timer that was already enabled before this call.
+        for file in created:
+            file.unlink(missing_ok=True)
+        try:
+            systemctl("daemon-reload")
+        except RuntimeError:
+            pass
+        raise
+
+
 def command(name):
     try:
         if name == "status":
             config = read_config()
-            return emit(True, configured=config is not None,
-                        url=config["url"] if config else "", username=config["username"] if config else "")
+            try:
+                last_sync = datetime.datetime.fromtimestamp(CACHE.stat().st_mtime).isoformat(timespec="minutes")
+            except FileNotFoundError:
+                last_sync = ""
+            return emit(True, configured=config is not None, autoEnabled=auto_running(),
+                        lastSync=last_sync, url=config["url"] if config else "",
+                        username=config["username"] if config else "")
         if name == "configure":
             data = json.load(sys.stdin)
             if not isinstance(data, dict):
@@ -273,15 +354,34 @@ def command(name):
                 raise RuntimeError("No CalDAV password was found in Secret Service.")
             rows, ignored = fetch_events(config["url"], config["username"], password)
             with local.locked():
+                # An in-flight request cannot recreate a cache after Disconnect
+                # or import into a newly selected account.
+                if read_config() != config:
+                    raise ValueError("CalDAV account changed during synchronization. Nothing was saved.")
                 private_json(CACHE, rows)
             return emit(True, count=len(rows), skipped=ignored)
+        if name == "start-auto":
+            set_auto(True)
+            return emit(True, autoEnabled=auto_running())
+        if name == "stop-auto":
+            set_auto(False)
+            return emit(True, autoEnabled=False)
         if name == "disconnect":
-            secret_tool("clear")
-            CONFIG.unlink(missing_ok=True)
+            set_auto(False)
+            # Remove account/cache under the same lock taken when a successful
+            # sync commits, so overlapping network requests cannot restore it.
             with local.locked():
+                CONFIG.unlink(missing_ok=True)
                 CACHE.unlink(missing_ok=True)
+            try:
+                secret_tool("clear")
+            except RuntimeError:
+                # Secret Service might be locked during sign-out. The account
+                # is already disconnected; report cleanup needed, not success.
+                return emit(False, disconnected=True,
+                            error="Calendar disconnected, but its keyring password could not be cleared. Unlock your keyring and disconnect again.")
             return emit(True, configured=False)
-        raise ValueError("Choose status, configure, sync, or disconnect.")
+        raise ValueError("Choose status, configure, sync, start-auto, stop-auto, or disconnect.")
     except urllib.error.HTTPError as exc:
         return emit(False, error=f"CalDAV server returned HTTP {exc.code}. Check the collection URL and login.")
     except (OSError, RuntimeError, ValueError, ET.ParseError, urllib.error.URLError, json.JSONDecodeError) as exc:
@@ -290,5 +390,5 @@ def command(name):
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
-        raise SystemExit(emit(False, error="Choose status, configure, sync, or disconnect."))
+        raise SystemExit(emit(False, error="Choose status, configure, sync, start-auto, stop-auto, or disconnect."))
     raise SystemExit(command(sys.argv[1]))
