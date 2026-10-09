@@ -24,6 +24,8 @@ Item {
     activeFocusOnTab: true
     Accessible.role: Accessible.Button
     Accessible.name: text
+    Accessible.selected: row.selected
+    Accessible.onPressAction: if (row.enabled) row.clicked()
     Keys.onSpacePressed: (event) => { if (!event.isAutoRepeat && row.enabled) clicked() }
     Keys.onReturnPressed: if (row.enabled) clicked()
     Keys.onEnterPressed: if (row.enabled) clicked()

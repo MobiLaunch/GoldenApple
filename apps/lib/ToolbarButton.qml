@@ -9,6 +9,7 @@ Item {
     activeFocusOnTab: true
     Accessible.role: Accessible.Button
     Accessible.name: button.text || button.symbol
+    Accessible.checked: button.checked
     Accessible.onPressAction: button.activate()
     Keys.onSpacePressed: (event) => { if (!event.isAutoRepeat) button.activate() }
     Keys.onReturnPressed: button.activate()
