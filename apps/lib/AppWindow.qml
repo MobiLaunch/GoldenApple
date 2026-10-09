@@ -299,7 +299,7 @@ FloatingWindow {
             }
             Row {
                 id: leftRow
-                x: Math.max(win.contentX + 10, lights.x + lights.width + 16)
+                x: Math.max(win.contentX + 10, win.toolbarLeadingEnd)
                 anchors.verticalCenter: parent.verticalCenter
                 spacing: 8
             }
