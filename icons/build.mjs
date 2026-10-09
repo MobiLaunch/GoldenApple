@@ -5,6 +5,7 @@ import { writeFileSync, mkdirSync, rmSync, symlinkSync, existsSync, readFileSync
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { symbols as baseSymbols, apps as baseApps, places as basePlaces } from "./source.mjs";
+import { orchardSymbols } from "./orchard-symbols.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, "GoldenGate");
@@ -37,7 +38,19 @@ function override(kind, table) {
   }
   return { table: outTable, pngs };
 }
-const A = override("apps", baseApps), P = override("places", basePlaces), Y = override("symbols", baseSymbols);
+// OrchardKit's Lucide Regular-S symbols are converted from Apple's template
+// layout to compact plain SVG contours. One canonical table feeds Quickshell,
+// our Qt apps, GTK symbolic icons and the prototype.
+const orchardKeys = {
+  "chevron-left": "chevron-left",
+  "chevron-right": "chevron-right",
+  search: "search", wifi: "wifi", bluetooth: "bluetooth",
+  moon: "moon", play: "play", pause: "pause",
+};
+const unifiedSymbols = { ...baseSymbols };
+for (const [key, orchardKey] of Object.entries(orchardKeys))
+  if (orchardSymbols[orchardKey]) unifiedSymbols[key] = orchardSymbols[orchardKey];
+const A = override("apps", baseApps), P = override("places", basePlaces), Y = override("symbols", unifiedSymbols);
 // The built-in app icons fill their canvas; macOS icons (and the custom pack)
 // sit on a grid, the squircle 824/1024 of it, centred. Put the built-in ones on
 // that grid too, so an app without a custom icon (AirDrop, LCode) isn't drawn
