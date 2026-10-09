@@ -2,6 +2,7 @@
 // left for theirs, close together within a run, with the tail on a run's
 // last bubble. A time separator heads messages after a pause, and in groups
 // the sender's name sits above their first bubble.
+import Quickshell
 import QtQuick
 import QtQuick.Shapes
 import "../lib"
@@ -17,6 +18,17 @@ Item {
     property string footnote: ""
     signal menuRequested(Item target, real x, real y)
     readonly property bool mine: !!message.outgoing
+    // Future full-fidelity transports may supply an attachments list. Show
+    // local thumbnails without silently fetching arbitrary remote resources;
+    // BlueFerry MAP text messages normally contain no such payloads.
+    readonly property var attachments: {
+        const value = message.attachments ?? message.im_attachments ?? []
+        if (Array.isArray(value)) return value
+        if (typeof value === "string") {
+            try { const parsed = JSON.parse(value); return Array.isArray(parsed) ? parsed : [] } catch (e) {}
+        }
+        return []
+    }
     readonly property color fill: mine ? "#0a84ff" : Theme.dark ? "#3b3b3d" : "#e9e9eb"
     height: column.height + (lastInRun ? 8 : 2)
 
@@ -47,19 +59,72 @@ Item {
             Rectangle {
                 id: bubble
                 x: item.mine ? parent.width - width - 4 : 4
-                width: Math.min(item.width * 0.7, body.implicitWidth + 26)
-                height: body.height + 14
+                width: Math.min(item.width * 0.7, Math.max(body.implicitWidth + 26, item.attachments.length ? 246 : 0))
+                height: bubbleContent.implicitHeight + 14
                 radius: 17
                 color: item.fill
-                Text {
-                    id: body
+                Column {
+                    id: bubbleContent
                     x: 13; y: 7
-                    width: Math.min(item.width * 0.7 - 26, implicitWidth)
-                    text: item.message.body || ""
-                    textFormat: Text.PlainText
-                    wrapMode: Text.Wrap
-                    color: item.mine ? "#ffffff" : Theme.label
-                    font { family: Theme.fontUi; pixelSize: Theme.fs(14) }
+                    width: bubble.width - 26
+                    spacing: 7
+                    Text {
+                        id: body
+                        visible: !!text
+                        width: Math.min(bubbleContent.width, implicitWidth)
+                        text: item.message.body || ""
+                        textFormat: Text.PlainText
+                        wrapMode: Text.Wrap
+                        color: item.mine ? "#ffffff" : Theme.label
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(14) }
+                    }
+                    Repeater {
+                        model: item.attachments
+                        delegate: Rectangle {
+                            id: mediaEntry
+                            required property var modelData
+                            readonly property string localPath: String(modelData.path || modelData.local_path || "")
+                            readonly property bool local: localPath.startsWith("/") || localPath.startsWith("file://")
+                            readonly property string kind: String(modelData.mime || modelData.mime_type || "")
+                            readonly property bool photo: kind.startsWith("image/")
+                            width: bubbleContent.width
+                            height: photo && local ? 150 : 49
+                            radius: 10
+                            color: item.mine ? "#22ffffff" : Theme.fill
+                            clip: true
+                            Image {
+                                anchors.fill: parent
+                                visible: mediaEntry.photo && mediaEntry.local
+                                source: visible ? (mediaEntry.localPath.startsWith("file://") ? mediaEntry.localPath : "file://" + mediaEntry.localPath) : ""
+                                fillMode: Image.PreserveAspectCrop
+                                asynchronous: true
+                                sourceSize.width: 320; sourceSize.height: 320
+                            }
+                            Row {
+                                visible: !mediaEntry.photo || !mediaEntry.local
+                                anchors { fill: parent; leftMargin: 9; rightMargin: 9 }
+                                spacing: 8
+                                Symbol {
+                                    name: mediaEntry.kind.startsWith("video/") ? "film" : "photo"
+                                    size: 22
+                                    tone: item.mine ? "white" : "gray"
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
+                                Text {
+                                    width: mediaEntry.width - 58
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: mediaEntry.modelData.name || mediaEntry.modelData.filename || "Media attachment"
+                                    elide: Text.ElideMiddle
+                                    color: item.mine ? "#ffffff" : Theme.label
+                                    font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                                }
+                            }
+                            TapHandler {
+                                enabled: mediaEntry.local
+                                onTapped: Quickshell.execDetached(["xdg-open", mediaEntry.localPath.startsWith("file://") ? decodeURIComponent(mediaEntry.localPath.slice(7)) : mediaEntry.localPath])
+                            }
+                        }
+                    }
                 }
                 TapHandler {
                     acceptedButtons: Qt.RightButton
