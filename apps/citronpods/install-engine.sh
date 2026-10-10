@@ -107,6 +107,9 @@ if [[ -f "${GG_CITRONPODS_UNIT:-}" ]]; then
   install -m644 "$GG_CITRONPODS_UNIT" "$unit_dir/citronpods-daemon.service"
 elif [[ -f "/usr/share/golden-gate/apps/citronpods/citronpods-daemon.service" ]]; then
   install -m644 /usr/share/golden-gate/apps/citronpods/citronpods-daemon.service "$unit_dir/citronpods-daemon.service"
+elif [[ -f "$(dirname "$0")/citronpods-daemon.service" ]]; then
+  # User-local Golden Gate installs store apps in XDG_DATA_HOME, not /usr.
+  install -m644 "$(dirname "$0")/citronpods-daemon.service" "$unit_dir/citronpods-daemon.service"
 else
   echo 'Could not locate the Golden Gate CitronPods service unit.' >&2
   exit 1
