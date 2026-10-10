@@ -114,7 +114,8 @@ class CitronPodsIntegration(unittest.TestCase):
         self.assertIn('citronpods-daemon.service', installer)
         self.assertIn('"$BIN/gg-install-citronpods"', installer)
         self.assertIn('"$BIN/gg-citronpods"', installer)
-        self.assertIn('%h/.local/bin/citronpods-daemon', service)
+        self.assertIn('Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin', service)
+        self.assertIn('ExecStart=/usr/bin/env citronpods-daemon', service)
         self.assertIn('NoNewPrivileges=true', service)
 
 
