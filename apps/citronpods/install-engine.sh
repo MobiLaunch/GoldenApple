@@ -95,11 +95,30 @@ bridge = (target/"citronos/src/ProtocolBridge.cpp").read_text()
 if "QBluetoothSocket::UnconnectedState" in bridge or "QBluetoothSocket::ConnectedState" in bridge:
     raise SystemExit("This source has the old Qt Bluetooth enum error. Use M10-Qt6-Fixed.zip")
 PY
-echo 'Configuring native CitronPods system engine…'
-cmake -S "$tmp/source/citronos" -B "$tmp/build" -G Ninja \
-  -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$HOME/.local"
-echo 'Building only the daemon (the duplicate Qt app is intentionally not installed)…'
-cmake --build "$tmp/build" --parallel 2 --target citronpods-daemon
+# Keep the complete compiler output: Ninja errors normally go to stdout,
+# whereas CMake emits nonfatal Qt/Quickshell warnings to stderr. Never present
+# only the last warning as the reason a build failed.
+umask 077
+log_dir="${XDG_STATE_HOME:-$HOME/.local/state}/golden-gate"
+mkdir -p -m 700 "$log_dir"
+build_log="$log_dir/citronpods-install.log"
+set +e
+(
+  set -e
+  echo 'Configuring native CitronPods system engine…'
+  cmake -S "$tmp/source/citronos" -B "$tmp/build" -G Ninja \
+    -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$HOME/.local"
+  echo 'Building only the daemon (the duplicate Qt app is intentionally not installed)…'
+  cmake --build "$tmp/build" --parallel 2 --target citronpods-daemon
+) 2>&1 | tee "$build_log"
+build_rc=${PIPESTATUS[0]}
+set -e
+if (( build_rc != 0 )); then
+  echo "CitronPods build failed (exit $build_rc). Compiler diagnostics:" >&2
+  grep -E '(^FAILED:|^CMake Error|^ninja: error|fatal error:| error:|undefined reference|No such file or directory)' "$build_log" | head -n 8 >&2 || true
+  echo "Complete build log: $build_log" >&2
+  exit "$build_rc"
+fi
 install -Dm755 "$tmp/build/citronpods-daemon" "$HOME/.local/bin/citronpods-daemon"
 unit_dir="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
 mkdir -p "$unit_dir"
