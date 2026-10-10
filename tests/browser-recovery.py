@@ -117,10 +117,6 @@ class BrowserRecovery(unittest.TestCase):
         self.assertIn("--disable-gpu", self.lines()[0])
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class SharedThemeImportRegression(unittest.TestCase):
     def test_native_web_can_import_shared_theme_without_quickshell(self):
         theme = (ROOT / "apps/lib/theme/Touch.qml").read_text()
@@ -129,3 +125,7 @@ class SharedThemeImportRegression(unittest.TestCase):
         self.assertNotIn("import Quickshell", theme)
         self.assertNotIn("FileView {", theme)
         self.assertIn("onTabletEnabledChanged: Touch.enabled = tabletEnabled", app_window)
+
+
+if __name__ == "__main__":
+    unittest.main()
