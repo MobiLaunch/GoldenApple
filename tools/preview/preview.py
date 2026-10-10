@@ -627,21 +627,42 @@ def main() -> int:
         steps.insert(0, "@notify")
 
     def find_surface_object(name):
-        found = window.findChild(QObject, name)
+        # Qt Quick ListView/Repeater delegates belong to the VISUAL scene graph,
+        # not necessarily the QObject parent tree. Looking only for findChild()
+        # gives a false "missing tablet Home widget/columns" after the delegate
+        # is rendered correctly. Search both trees, including Instantiator
+        # PanelWindows whose QObject parent is not our preview root.
+        def find_in_scene(root):
+            try:
+                found = root.findChild(QObject, name)
+                if found or root.objectName() == name:
+                    return found or root
+            except RuntimeError:
+                return None
+            stack = [root]
+            seen = set()
+            while stack:
+                item = stack.pop()
+                try:
+                    key = id(item)
+                    if key in seen:
+                        continue
+                    seen.add(key)
+                    if item.objectName() == name:
+                        return item
+                    if isinstance(item, QQuickItem):
+                        stack.extend(item.childItems())
+                except RuntimeError:
+                    continue
+            return None
+
+        found = find_in_scene(window)
         if found:
             return found
-        # Quickshell's Variants creates PanelWindows under Qt Instantiator.
-        # Those objects exist and render but are not children of the preview
-        # root, so ordinary QObject.findChild alone misses them.
         for panel in preview._panels:
-            try:
-                if panel.objectName() == name:
-                    return panel
-                found = panel.findChild(QObject, name)
-                if found:
-                    return found
-            except RuntimeError:
-                continue  # A per-screen delegate was destroyed.
+            found = find_in_scene(panel)
+            if found:
+                return found
         return None
 
     def finish():
