@@ -70,6 +70,7 @@ class CitronPodsIntegration(unittest.TestCase):
             cmake = tools / "cmake"
             cmake.write_text(
                 '#!/bin/sh\n'
+                'if [ "$1" = "-S" ]; then mkdir -p "$4"; fi\n'
                 'if [ "$1" = "--build" ]; then\n'
                 '  printf "#!/bin/sh\\nexit 0\\n" > "$2/citronpods-daemon"\n'
                 '  chmod +x "$2/citronpods-daemon"\n'
