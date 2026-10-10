@@ -173,15 +173,23 @@ def main():
             server.newConnection.connect(connected)
 
     engine = QQmlApplicationEngine()
-    engine.warnings.connect(
-        lambda warnings: [sys.stderr.write("Web QML: " + w.toString() + "\n") for w in warnings]
-    )
+    qml_warnings = []
+
+    def report_qml_warnings(warnings):
+        for warning in warnings:
+            detail = warning.toString()
+            qml_warnings.append(detail)
+            sys.stderr.write("Web QML: " + detail + "\n")
+
+    engine.warnings.connect(report_qml_warnings)
     engine.rootContext().setContextProperty("BrowserBackend", backend)
 
     qml = Path(__file__).with_name("Browser.qml")
     engine.load(QUrl.fromLocalFile(str(qml)))
     if not engine.rootObjects():
+        from diagnose import qml_failure
         sys.stderr.write("CitronOS Web could not load its QML interface.\n")
+        sys.stderr.write("WEB-CANT-START: " + qml_failure(qml_warnings) + "\n")
         return 2
 
     # CI/test-only timed exit. Production never sets this environment variable.

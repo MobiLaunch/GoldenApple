@@ -92,6 +92,30 @@ def diagnose(pyside_dir: str | None = None, versions: dict[str, str] | None = No
             "doesn't help, sudo pacman -S qt6-webengine pyside6.", details)
 
 
+
+def qml_failure(messages: list[str]) -> str:
+    """Readable, non-sensitive cause when the browser QML never creates a window.
+
+    QML warnings may include local file paths and internal type chains. Keep
+    the details in the private log; the desktop notification needs an action.
+    """
+    details = "\n".join(messages)
+    if 'module "Quickshell"' in details or 'module "Quickshell.Io"' in details:
+        return ("Web's shared interface is incompatible with a standalone browser. "
+                "Install the latest CitronOS update, then reopen Web.")
+    if 'module "QtWebEngine"' in details:
+        return ("The Qt WebEngine QML module is unavailable. Run Software Update "
+                "(or sudo pacman -Syu qt6-webengine) and reopen Web.")
+    if 'module "QtQuick' in details:
+        return ("The Qt Quick UI module is unavailable. Run Software Update "
+                "(or sudo pacman -Syu qt6-declarative pyside6).")
+    if "Type " in details and " unavailable" in details:
+        return ("A Web interface component could not be loaded. Run Software Update; "
+                "if the problem persists, inspect the private web.log for its QML error.")
+    return ("Web could not create its interface. Run Software Update and consult "
+            "the private web.log for details.")
+
+
 if __name__ == "__main__":
     summary, details = diagnose()
     print(summary)

@@ -89,8 +89,20 @@ with tempfile.TemporaryDirectory() as t:
 browser = (ROOT / "apps/browser/browser.py").read_text()
 check("except ImportError as exc:" in browser and "WEB-CANT-START: " in browser and "SystemExit(3)" in browser,
       "browser.py explains a failed Qt import and exits 3")
+from diagnose import qml_failure
+check("Quickshell-only" not in qml_failure(['module "Quickshell" is not installed'])
+      and "shared interface" in qml_failure(['module "Quickshell" is not installed']),
+      "QML diagnosis identifies standalone Quickshell import without leaking file paths")
+check("Qt WebEngine QML" in qml_failure(['module "QtWebEngine" is not installed']),
+      "QML diagnosis identifies a missing QtWebEngine module")
+check("Qt Quick UI" in qml_failure(['module "QtQuick.Controls" is not installed']),
+      "QML diagnosis identifies missing Qt Quick modules")
+browser = (ROOT / "apps/browser/browser.py").read_text()
+check('qml_warnings = []' in browser and 'qml_failure(qml_warnings)' in browser,
+      "browser.py records QML load errors for user-facing failure diagnosis")
 launch = (ROOT / "apps/browser/launch.sh").read_text()
-check("WEB-CANT-START: " in launch and '"${why:-Details: $log}"' in launch,
+check('if [ "$status" = 2 ] || [ "$status" = 3 ]' in launch
+      and "WEB-CANT-START: " in launch and '"${why:-Details: $log}"' in launch,
       "the notification says why, not only where the log is")
 
 print("Web diagnosis: " + ("all checks passed" if not failures else f"{len(failures)} failed"))

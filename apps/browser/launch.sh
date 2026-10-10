@@ -108,10 +108,10 @@ case "$status" in
         ;;
 esac
 logger -t gg-web "Web failed (exit $status); see $log" 2>/dev/null || :
-# Exit 3: Qt WebEngine wouldn't load; browser.py worked out why and what
-# fixes it (an update, a missing package, a pip copy in the way).
+# Exit 2 is a failed QML interface; exit 3 is a missing/incompatible Qt.
+# Both report an actionable private-log-safe diagnosis in browser.py.
 why=
-if [ "$status" = 3 ]; then
+if [ "$status" = 2 ] || [ "$status" = 3 ]; then
     why=$(grep 'WEB-CANT-START: ' "$log" 2>/dev/null | tail -n 1 | sed 's/^WEB-CANT-START: //')
 fi
 if command -v notify-send >/dev/null 2>&1; then
