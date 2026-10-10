@@ -182,7 +182,12 @@ bridge = (ROOT / "apps/messages/Bridge.qml").read_text(encoding="utf-8")
 messages_qml = (ROOT / "apps/messages.qml").read_text(encoding="utf-8")
 assert "/usr/bin/blueferry-quickshell-bridge" in bridge
 assert "stdinEnabled: true" in bridge and "onStarted" in bridge and "queue.push" in bridge
-assert "Process {" not in messages_qml, "Messages runs its own processes instead of the bridge"
+# Additional, independent helpers inspect/send media over an opt-in Mac
+# relay, configure its credentials or validate WebRTC links. They must never
+# bypass the BlueFerry stdin bridge for ordinary SMS/iMessage text.
 assert 'bridge.call("send"' in messages_qml and 'bridge.call("send_to_thread"' in messages_qml
+assert 'id: mediaSender' in messages_qml and 'id: callHelper' in messages_qml
+assert 'command: ["python3", app.mediaHelper' in messages_qml
+assert 'stdinEnabled: true' in messages_qml, "Media relay settings must not pass secrets in argv"
 
 print("Native app backends: filesystem, calendar, editor, store, updater and account-state smoke tests passed")
