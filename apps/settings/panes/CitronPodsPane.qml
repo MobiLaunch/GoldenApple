@@ -73,7 +73,7 @@ Pane {
         title: "Engine Setup"
         visible: !pods.online
         SetRow {
-            title: "Install CitronPods Engine"
+            title: "AirPods System Engine"
             subtitle: pane.detectedArchive
                 ? "Detected your M10 Qt6-Fixed source in Downloads. Only the system daemon will be built."
                 : "Golden Gate installs the native engine at login when its verified M10 source is available. Choose a ZIP to install now."
