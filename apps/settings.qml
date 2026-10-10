@@ -37,7 +37,10 @@ ShellRoot {
                     objectName: "settingsSidebarToggle"
                     symbol: "sidebar"
                     round: true
-                    onClicked: sys.setPref(["settings", "sidebarShown"], !app.sidebarShown)
+                    onClicked: {
+                        if (win.tabletCompact) app.showMobileCategories = !app.showMobileCategories
+                        else sys.setPref(["settings", "sidebarShown"], !app.sidebarShown)
+                    }
                     Accessible.name: app.sidebarShown ? "Hide Settings Sidebar" : "Show Settings Sidebar"
                 }
                 ToolbarPill {
