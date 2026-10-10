@@ -149,7 +149,10 @@ class MediaContracts(unittest.TestCase):
         self.assertIn("gg-web", qml)
         self.assertIn("iMessage Media Relay", qml)
         self.assertIn("mediaReady", qml)
-        self.assertIn("app.sendMedia()", qml)
+        # The composer dispatches via app.send(), which delegates media sends
+        # to sendMedia() only when an attachment has been validated.
+        self.assertIn("function sendMedia()", qml)
+        self.assertIn("if (mediaPath) { sendMedia(); return }", qml)
         self.assertIn("faceTimeInput", qml)
         self.assertIn('server(record)', (ROOT / "apps/messages/media.py").read_text())
 
