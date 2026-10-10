@@ -25,6 +25,19 @@ ShellRoot {
             l?.toggle()
         }
     }
+    // One tablet Home Screen per output. Only the currently focused output
+    // receives widget-edit commands; other monitors keep their own layout.
+    property var tabletHomes: []
+    function focusedTabletHome() {
+        const name = Hyprland.focusedMonitor?.name
+        return tabletHomes.find(h => h.screen?.name === name) ?? tabletHomes[0]
+    }
+    IpcHandler {
+        target: "tablet"
+        function edit(): void { if (Prefs.tabletMode && root.focusedTabletHome()) root.focusedTabletHome().editing = true }
+        function done(): void { if (root.focusedTabletHome()) root.focusedTabletHome().editing = false }
+        function home(): void { root.focusedTabletHome()?.scrollToTop() }
+    }
     // One Control Center per screen; ⌥⌘C toggles the one on the focused screen.
     property var controlCenters: []
     function focusedControlCenter() {
