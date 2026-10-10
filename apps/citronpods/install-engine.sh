@@ -17,10 +17,14 @@ if [[ -z "$archive" || "$archive" == "--find" ]]; then
   # filename is NOT sufficient: CMake can execute commands during configure.
   # Other source archives require an explicit choice in System Settings.
   trusted="d14d3e74efb716357713d024bcb7c2311ae1226d8fa6bb883f4b9237661b4da4"
+  trusted_logging="7c5624dec81b6bc6d7aed79cd7041d5f88cca5430163d2164eb67ecff15d1601"
   for candidate in "${candidates[@]}"; do
-    if [[ -f "$candidate" ]] && [[ "$(sha256sum -- "$candidate" | cut -d' ' -f1)" == "$trusted" ]]; then
+    if [[ -f "$candidate" ]]; then
+      digest=$(sha256sum -- "$candidate" | cut -d' ' -f1)
+      if [[ "$digest" == "$trusted" || "$digest" == "$trusted_logging" ]]; then
       archive="$candidate"
       break
+      fi
     fi
   done
   if [[ "${1:-}" == "--find" ]]; then
