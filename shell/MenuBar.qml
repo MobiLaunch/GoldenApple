@@ -82,6 +82,36 @@ PanelWindow {
         }
     }
 
+    // iPad-style corner gesture in tablet mode. The DragHandler listens to
+    // touchscreen movement without adding an opaque mouse-grabbing layer over
+    // the Control Center button or the status indicators. A vertical swipe
+    // that STARTS at the top-right corner opens the real, existing panel.
+    Item {
+        id: tabletCorner
+        objectName: "tabletControlCenterGesture"
+        visible: Prefs.tabletMode
+        anchors { top: parent.top; right: parent.right }
+        width: Math.min(116, bar.width * 0.22)
+        height: bar.height
+        z: 50
+        property bool triggered: false
+        DragHandler {
+            id: cornerSwipe
+            enabled: Prefs.tabletMode && !!bar.controlCenter
+            acceptedDevices: PointerDevice.TouchScreen
+            target: null
+            onTranslationChanged: {
+                if (!active || tabletCorner.triggered) return
+                if (translation.y < 58 || Math.abs(translation.x) > 92) return
+                tabletCorner.triggered = true
+                if (!bar.controlCenter.open) bar.controlCenter.toggle()
+            }
+            onActiveChanged: {
+                if (!active) tabletCorner.triggered = false
+            }
+        }
+    }
+
     // The film is so faint the wallpaper still decides the text: each half
     // picks white or dark text from its brightness (sampled once per wallpaper).
     property string wallpaper: Prefs.wallpaper
