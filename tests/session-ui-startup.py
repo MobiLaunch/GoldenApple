@@ -44,7 +44,8 @@ class WindowSettingsAndMessageLaunch(unittest.TestCase):
         # These applications can animate their sidebar down to zero width.
         for app in ("files", "mail", "calendar", "photos"):
             source = (ROOT / f"apps/{app}.qml").read_text()
-            self.assertIn("Math.max(win.contentX + 12, win.toolbarLeadingEnd)", source, app)
+            expected = "Math.max(win.contentX + " + ("14" if app == "mail" else "12") + ", win.toolbarLeadingEnd)"
+            self.assertIn(expected, source, app)
         settings = (ROOT / "apps/settings.qml").read_text()
         self.assertIn("Math.max(win.contentX + 14, win.toolbarSafeX)", settings)
         notes = (ROOT / "apps/notes.qml").read_text()
