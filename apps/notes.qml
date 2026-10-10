@@ -358,8 +358,9 @@ ShellRoot {
             // ------------------------------------------------------------ editor
             NoteEditor {
                 id: editor
-                x: app.listWidth + 1; y: win.toolbarHeight
-                width: app.editorWidth - 1; height: parent.height - y
+                visible: !win.tabletCompact || app.mobileShowingNote
+                x: win.tabletCompact ? 0 : app.listWidth + 1; y: win.toolbarHeight
+                width: win.tabletCompact ? app.width : app.editorWidth - 1; height: parent.height - y
                 path: app.current
                 mtime: app.notes.find((n) => n.path === app.current)?.mtime ?? 0
                 taken: app.notes.map((n) => n.path)
