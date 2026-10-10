@@ -19,7 +19,7 @@ Item {
     property string text
     property bool checked: false
     property bool round: false
-    property real symbolSize: 17
+    property real symbolSize: Touch.enabled ? 19 : 17
     property string tone: "auto"
     property color glassColor: Theme.glassControl.tint
     signal clicked()
