@@ -4,9 +4,11 @@
 # its verified source archive is available and the daemon isn't installed.
 # Safe to run on every login or when a new source ZIP is placed in Downloads.
 set -euo pipefail
+# Logs and state can contain paired-device details.
+umask 077
 export PATH="$HOME/.local/bin:/usr/local/bin:/usr/bin:$PATH"
 state="${XDG_STATE_HOME:-$HOME/.local/state}/golden-gate"
-mkdir -p "$state"
+mkdir -p -m 700 "$state"
 exec 9>"$state/citronpods-bootstrap.lock"
 flock -n 9 || exit 0
 
