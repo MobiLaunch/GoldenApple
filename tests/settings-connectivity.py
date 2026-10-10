@@ -97,7 +97,11 @@ class SettingsConnectivity(unittest.TestCase):
         self.assertIn('readonly property bool glassWindows', prefs)
         self.assertIn('readonly property bool dockShowRecents', prefs)
         self.assertIn('Prefs.dockShowRecents', dock_shell)
-        self.assertIn('source = ~/.config/hypr/golden-gate/windows.conf', hypr)
+        # windows.conf is generated for settings compatibility but deliberately
+        # not sourced: older accounts might not have it, making Hyprland reject
+        # an unmatched source glob at startup.
+        self.assertNotIn('source = ~/.config/hypr/golden-gate/windows.conf', hypr)
+        self.assertIn('source = ~/.config/hypr/golden-gate/machine.conf', hypr)
         self.assertIn('accessibility displays windows', install)
         self.assertIn('"hypr/golden-gate/windows.conf"', updater)
         self.assertIn('DesktopEntries.applications.values', picker)
