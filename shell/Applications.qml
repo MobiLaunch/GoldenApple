@@ -283,7 +283,10 @@ PanelWindow {
         (height - (dock?.baseSize ?? 54)) / (998 - 54)))
     readonly property real bottomClearance: (dock?.baseSize ?? 54) + 65 * layoutScale
     readonly property real gridTop: 116 * layoutScale
-    readonly property int columns: Math.max(2, Math.min(8, Math.floor((width - 48) / (146.25 * layoutScale))))
+    // Tablet Mode: iPad-inspired four columns in portrait, six in
+    // landscape. Larger hit areas are easier to use without a pointer.
+    readonly property int columns: Prefs.tabletMode ? (width < height ? 4 : 6)
+        : Math.max(2, Math.min(8, Math.floor((width - 48) / (146.25 * layoutScale))))
     readonly property int rows: Math.max(1, Math.min(5, Math.floor((height - gridTop - bottomClearance - 26 * layoutScale) / (146 * layoutScale))))
     readonly property int perPage: columns * rows
     readonly property int pageCount: Math.max(1, Math.ceil(entries.length / perPage))
