@@ -639,15 +639,22 @@ def main() -> int:
                     return found or root
             except RuntimeError:
                 return None
+            # Quickshell's Surface is a QtObject, not a QQuickItem.
+            # Its scene lives in the separate __frameItem whose visual parent
+            # is PreviewDesktop.layers[layer], not the PanelWindow QObject.
+            # Inspect that visual root too, or ListView delegates appear to
+            # be missing despite being plainly visible in the screenshot.
             stack = [root]
-            seen = set()
+            for property_name in ("__frameItem", "contentItem"):
+                try:
+                    visual_root = root.property(property_name)
+                    if isinstance(visual_root, QQuickItem):
+                        stack.append(visual_root)
+                except RuntimeError:
+                    pass
             while stack:
                 item = stack.pop()
                 try:
-                    key = id(item)
-                    if key in seen:
-                        continue
-                    seen.add(key)
                     if item.objectName() == name:
                         return item
                     if isinstance(item, QQuickItem):
