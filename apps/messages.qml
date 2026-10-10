@@ -36,6 +36,19 @@ ShellRoot {
         ]
 
         toolbarItems: [
+            ToolbarButton {
+                objectName: "tabletMessagesBack"
+                visible: win.tabletCompact && app.connected && (!!app.currentKey || app.composing)
+                x: win.toolbarLeadingEnd
+                anchors.verticalCenter: parent.verticalCenter
+                round: true; symbol: "chevron-left"
+                Accessible.name: "Conversations"
+                onClicked: {
+                    app.composing = false
+                    app.currentKey = ""
+                    app.mediaPath = ""
+                }
+            },
             // The conversation's title, centred over the transcript.
             Row {
                 visible: app.connected && (!!app.current || app.composing)
