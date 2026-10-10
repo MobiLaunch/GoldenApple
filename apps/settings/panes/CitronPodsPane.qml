@@ -21,6 +21,16 @@ Pane {
     readonly property bool paired: device.paired === true
     property string engineMessage: ""
     property string detectedArchive: ""
+    // The OS performs an idle, one-time native engine bootstrap at login;
+    // expose its real result instead of asking for an archive unnecessarily.
+    FileView {
+        path: (Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state")
+              + "/golden-gate/citronpods-engine-status"
+        printErrors: false
+        watchChanges: true
+        onFileChanged: reload()
+        onLoaded: pane.engineMessage = text().trim()
+    }
     Process {
         id: archiveProbe
         command: ["gg-install-citronpods", "--find"]
