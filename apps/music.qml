@@ -143,6 +143,7 @@ ShellRoot {
             property bool deletingPlaylist: false
 
             function go(p, a) {
+                if (win.tabletCompact) win.showMobileNavigation = false
                 if (p === page && a === arg) return
                 history = history.concat([{ page: page, arg: arg }]).slice(-30)
                 page = p; arg = a ?? null
