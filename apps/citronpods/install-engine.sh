@@ -22,8 +22,8 @@ if [[ -z "$archive" || "$archive" == "--find" ]]; then
     if [[ -f "$candidate" ]]; then
       digest=$(sha256sum -- "$candidate" | cut -d' ' -f1)
       if [[ "$digest" == "$trusted" || "$digest" == "$trusted_logging" ]]; then
-      archive="$candidate"
-      break
+        archive="$candidate"
+        break
       fi
     fi
   done
