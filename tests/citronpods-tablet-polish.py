@@ -2,6 +2,9 @@
 """Tablet presentation, CitronPods setup, and clipped-shadow guardrails."""
 from pathlib import Path
 import unittest
+import os
+import subprocess
+import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -48,6 +51,33 @@ class IntegrationPolish(unittest.TestCase):
         self.assertIn('Prefs.tabletMode ? 54 : 48', control)
         self.assertIn('objectName: "tabletModeToggle"', settings)
         self.assertIn('pane.sys.setPref(["tablet", "enabled"], on)', settings)
+
+    def test_tablet_keyboard_and_offline_archive_discovery(self):
+        installer = ROOT / "apps/citronpods/install-engine.sh"
+        with tempfile.TemporaryDirectory() as folder:
+            home = Path(folder)
+            downloads = home / "Downloads"
+            downloads.mkdir()
+            archive = downloads / "LibrePods-CitronPods-M10-Qt6-Fixed.zip"
+            archive.write_bytes(b"source-is-validated-later")
+            env = dict(os.environ, HOME=str(home), XDG_DOWNLOAD_DIR=str(downloads))
+            proc = subprocess.run(["bash", str(installer), "--find"], env=env,
+                                  text=True, capture_output=True, timeout=5)
+            self.assertEqual(proc.returncode, 0, proc.stderr)
+            self.assertEqual(proc.stdout.strip(), str(archive))
+            archive.unlink()
+            proc = subprocess.run(["bash", str(installer), "--find"], env=env,
+                                  text=True, capture_output=True, timeout=5)
+            self.assertNotEqual(proc.returncode, 0)
+        osk = self.src("apps/tablet/keyboard.sh")
+        self.assertIn("squeekboard", osk)
+        self.assertIn("sm.puri.OSK0 SetVisible", osk)
+        installer_code = self.src("scripts/install.sh")
+        self.assertIn('gg-tablet-keyboard', installer_code)
+        packages = self.src("distro/archiso/packages.x86_64")
+        self.assertIn("squeekboard", packages.splitlines())
+        pane = self.src("apps/settings/panes/DockPane.qml")
+        self.assertIn('["gg-tablet-keyboard", "show"]', pane)
 
     def test_tablet_mode_is_user_opt_in(self):
         # Never infer Tablet Mode solely from a touchscreen. Convertible users
