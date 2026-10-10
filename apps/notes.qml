@@ -226,6 +226,7 @@ ShellRoot {
                 const path = dir + "/" + name
                 const n = { folder: dir.split("/").pop(), folderPath: dir, path: path, mtime: Date.now() / 1000, title: "New Note", preview: "", fresh: true }
                 notes = [n].concat(notes)
+                mobileShowingNote = true
                 current = path
                 editor.startNew(path)
             }
