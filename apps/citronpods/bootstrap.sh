@@ -32,8 +32,9 @@ fi
 # Validate again in case the source changed between --find and compile.
 # Automatic CMake execution must never trust a Downloads ZIP by filename.
 trusted="d14d3e74efb716357713d024bcb7c2311ae1226d8fa6bb883f4b9237661b4da4"
+  trusted_logging="7c5624dec81b6bc6d7aed79cd7041d5f88cca5430163d2164eb67ecff15d1601"
 actual=$(sha256sum -- "$source_zip" | cut -d' ' -f1)
-if [ "$actual" != "$trusted" ]; then
+if [ "$actual" != "$trusted" ] && [ "$actual" != "$trusted_logging" ]; then
     printf 'Unrecognized CitronPods source. Select it explicitly in Settings if trusted.\n' > "$state/citronpods-engine-status"
     exit 0
 fi
