@@ -99,6 +99,7 @@ ShellRoot {
             },
             ToolbarButton {
                 id: noteMore
+                visible: !win.tabletCompact || app.mobileShowingNote
                 x: parent.width - width - (searchBox.visible ? searchBox.width + 20 : 58)
                 anchors.verticalCenter: parent.verticalCenter
                 round: true; symbol: "ellipsis"
