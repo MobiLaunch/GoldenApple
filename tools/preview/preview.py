@@ -705,6 +705,27 @@ def main() -> int:
                       + ", visible=" + repr(visible) + ", height=" + repr(height)
                       + ", width=" + repr(width) + ", min_height=" + str(minimum)
                       + ")", file=sys.stderr)
+                if a.require_object.startswith("tablet"):
+                    print("preview: tablet diagnostics — GG_TABLET_PREVIEW="
+                          + repr(preview._env.get("GG_TABLET_PREVIEW")), file=sys.stderr)
+                    for panel in preview._panels:
+                        try:
+                            label = panel.objectName()
+                            if label == "tabletHome" or "tablet" in label.lower():
+                                print("preview: panel " + repr(label)
+                                      + " visible=" + repr(panel.property("visible"))
+                                      + " size=" + repr((panel.property("width"), panel.property("height"))),
+                                      file=sys.stderr)
+                        except RuntimeError:
+                            pass
+                    for part in ("tabletHome", "tabletSwipePages", "tabletWidgetFlow",
+                                 "tabletAppColumns", "tabletControlCenterGesture"):
+                        child = find_surface_object(part)
+                        print("preview: scene object " + part
+                              + " exists=" + repr(child is not None)
+                              + ((" visible=" + repr(child.property("visible"))
+                                  + " size=" + repr((child.property("width"), child.property("height"))))
+                                 if child else ""), file=sys.stderr)
                 app.exit(3)
                 return
         img: QImage = window.grabWindow()
