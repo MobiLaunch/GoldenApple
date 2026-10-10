@@ -5,6 +5,8 @@ Description=Detect newly downloaded native CitronPods engine source
 # Directory watch, not a recursive poll. Setup is idempotent and compiles
 # only if a verified M10 archive exists and no daemon is installed.
 PathChanged=%h/Downloads
+# Handle source ZIPs that arrived while the path unit was inactive, too.
+PathExistsGlob=%h/Downloads/LibrePods-CitronPods-M10-Qt6-Fixed*.zip
 Unit=citronpods-engine-bootstrap.service
 
 [Install]
