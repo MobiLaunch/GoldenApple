@@ -69,7 +69,12 @@ install_extras() {
   cp -a "$REPO/apps" "$SHARE/apps"
   # The Qt6 daemon is installed separately from source once, but the OS owns
   # its service, UI, Settings and command-line bridge on every normal update.
-  install -Dm644 "$REPO/apps/citronpods/citronpods-daemon.service"     "$R/usr/lib/systemd/user/citronpods-daemon.service"
+  install -Dm644 "$REPO/apps/citronpods/citronpods-daemon.service" "$R/usr/lib/systemd/user/citronpods-daemon.service"
+  install -Dm644 "$REPO/apps/citronpods/citronpods-engine-bootstrap.service" "$R/usr/lib/systemd/user/citronpods-engine-bootstrap.service"
+  # Run the daemon setup automatically on the first account login (and on
+  # upgrades); this is a oneshot with a lock, and no ZIP means a fast no-op.
+  install -d "$R/etc/systemd/user/default.target.wants"
+  ln -sfn /usr/lib/systemd/user/citronpods-engine-bootstrap.service     "$R/etc/systemd/user/default.target.wants/citronpods-engine-bootstrap.service"
   rm -rf "$SHARE/apps/lib"
   ln -s ../ui "$SHARE/apps/lib"
   rm -rf "$SHARE/apps/desktop"
@@ -92,8 +97,9 @@ install_extras() {
   printf '#!/bin/sh\nexec sh /usr/share/golden-gate/apps/intelligence/open.sh "$@"\n' > "$BIN/gg-intelligence"
   printf '#!/bin/sh\nexec bash /usr/share/golden-gate/apps/citronpods/install-engine.sh "$@"\n' > "$BIN/gg-install-citronpods"
   printf '#!/bin/sh\nexec sh /usr/share/golden-gate/apps/citronpods/ctl.sh "$@"\n' > "$BIN/gg-citronpods"
+  printf '#!/bin/sh\nexec bash /usr/share/golden-gate/apps/citronpods/bootstrap.sh "$@"\n' > "$BIN/gg-citronpods-bootstrap"
   printf '#!/bin/sh\nexec sh /usr/share/golden-gate/apps/tablet/keyboard.sh "$@"\n' > "$BIN/gg-tablet-keyboard"
-  chmod 755 "$BIN/gg-intelligence" "$BIN/gg-install-citronpods" "$BIN/gg-citronpods" "$BIN/gg-tablet-keyboard"
+  chmod 755 "$BIN/gg-intelligence" "$BIN/gg-install-citronpods" "$BIN/gg-citronpods" "$BIN/gg-citronpods-bootstrap" "$BIN/gg-tablet-keyboard"
   printf '#!/bin/sh\nexec qs -n -p /usr/share/golden-gate/apps/diskutility.qml "$@"\n' > "$BIN/gg-disk-utility"
   chmod 755 "$BIN/gg-disk-utility"
   printf '#!/bin/sh\nexec python3 /usr/lib/golden-gate/pref-helper.py "$@"\n' > "$BIN/gg-pref"
@@ -355,18 +361,22 @@ printf '#!/bin/sh\nexec sh "%s/airdrop/share.sh" "$@"\n' "$APPS_RUN" > "$BIN/gg-
 printf '#!/bin/sh\nexec sh "%s/intelligence/open.sh" "$@"\n' "$APPS_RUN" > "$BIN/gg-intelligence"
 printf '#!/bin/sh\nexec bash "%s/citronpods/install-engine.sh" "$@"\n' "$APPS_RUN" > "$BIN/gg-install-citronpods"
 printf '#!/bin/sh\nexec sh "%s/citronpods/ctl.sh" "$@"\n' "$APPS_RUN" > "$BIN/gg-citronpods"
+printf '#!/bin/sh\nexec bash "%s/citronpods/bootstrap.sh" "$@"\n' "$APPS_RUN" > "$BIN/gg-citronpods-bootstrap"
 printf '#!/bin/sh\nexec sh "%s/tablet/keyboard.sh" "$@"\n' "$APPS_RUN" > "$BIN/gg-tablet-keyboard"
 # The system service is installed by --extras on system images; standalone
 # user installs keep a private unit for systemctl --user as well.
 install -Dm644 "$REPO/apps/citronpods/citronpods-daemon.service" "$CONF/systemd/user/citronpods-daemon.service"
-chmod +x "$BIN/gg-intelligence" "$BIN/gg-install-citronpods" "$BIN/gg-citronpods" "$BIN/gg-tablet-keyboard"
+install -Dm644 "$REPO/apps/citronpods/citronpods-engine-bootstrap.service" "$CONF/systemd/user/citronpods-engine-bootstrap.service"
+chmod +x "$BIN/gg-intelligence" "$BIN/gg-install-citronpods" "$BIN/gg-citronpods" "$BIN/gg-citronpods-bootstrap" "$BIN/gg-tablet-keyboard"
 # Adopt an existing M10 daemon installed by the user's previous CitronPods
 # build. Do not recompile, install a second GUI or enable a failing service
 # when no backend exists yet. Staged/offline image builds skip user systemd.
-if command -v citronpods-daemon >/dev/null 2>&1 &&
-   command -v systemctl >/dev/null 2>&1; then
+if [[ $MODE != system ]] && command -v systemctl >/dev/null 2>&1; then
   systemctl --user daemon-reload >/dev/null 2>&1 || :
-  systemctl --user enable --now citronpods-daemon.service >/dev/null 2>&1 || :
+  systemctl --user enable --now citronpods-engine-bootstrap.service >/dev/null 2>&1 || :
+  if command -v citronpods-daemon >/dev/null 2>&1; then
+    systemctl --user enable --now citronpods-daemon.service >/dev/null 2>&1 || :
+  fi
 fi
 printf '#!/bin/sh\nexec qs -n -p "%s/diskutility.qml" "$@"\n' "$APPS_RUN" > "$BIN/gg-disk-utility"
 chmod +x "$BIN/gg-disk-utility"
