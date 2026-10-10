@@ -18,6 +18,11 @@ sddm
 # SDDM draws its Wayland login screen inside Weston's kiosk shell (there is no X server).
 weston
 qt6-declarative
+# CitronPods can compile its GPL-3.0 daemon locally from the verified M10
+# archive without installing a separate GUI or requiring manual tool setup.
+cmake
+ninja
+gcc
 # CitronPods: Qt Bluetooth discovery and L2CAP protocol support
 qt6-connectivity
 qt6-svg
