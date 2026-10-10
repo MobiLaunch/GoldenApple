@@ -94,6 +94,14 @@ if not all((target / name).is_file() for name in needed):
 bridge = (target/"citronos/src/ProtocolBridge.cpp").read_text()
 if "QBluetoothSocket::UnconnectedState" in bridge or "QBluetoothSocket::ConnectedState" in bridge:
     raise SystemExit("This source has the old Qt Bluetooth enum error. Use M10-Qt6-Fixed.zip")
+# LibrePods battery.hpp uses LOG_INFO, whose Q_DECLARE_LOGGING_CATEGORY
+# references librepods(). Upstream defines it in linux/main.cpp, which the
+# independent CitronPods daemon correctly does not link. Define it once in
+# the daemon to resolve the M10 undefined-reference-to-librepods() link error.
+daemon_main = target / "citronos/src/daemonmain.cpp"
+main_src = daemon_main.read_text()
+if "Q_LOGGING_CATEGORY(librepods," not in main_src:
+    daemon_main.write_text(main_src + "\n#include <QLoggingCategory>\nQ_LOGGING_CATEGORY(librepods, \"librepods\")\n")
 PY
 # Keep the complete compiler output: Ninja errors normally go to stdout,
 # whereas CMake emits nonfatal Qt/Quickshell warnings to stderr. Never present
