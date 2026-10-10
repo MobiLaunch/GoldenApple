@@ -230,13 +230,15 @@ PanelWindow {
     // ---------------------------------------------------------- the grid
     // Golden Gate: individual glass circles, capsules and rounded cards.
     // The fixed Wayland surface stays unchanged while its content scrolls.
-    readonly property real unit: Math.min(56, Math.max(48, (width - 64) / 4))
+    readonly property real unit: Math.min(Prefs.tabletMode ? 62 : 56,
+        Math.max(Prefs.tabletMode ? 54 : 48, (width - 64) / 4))
     readonly property real gap: 10
     function span(n) { return n * unit + (n - 1) * gap }
     // Control Center is a fixed grid of modules, as on the Mac: its text
     // follows Text Size only a little (up to 115%), so labels never crowd
     // the controls beside them.
-    function cs(n) { return Math.round(n * Math.max(1, Math.min(1.15, Theme.textScale))) }
+    function cs(n) { return Math.round(Math.max(Prefs.tabletMode ? 12 : 10, n)
+        * Math.max(1, Math.min(1.15, Theme.textScale))) }
 
     // Optional controls, chosen with Edit Controls (desktop.json controlCenter.extras).
     readonly property var extraCatalog: [
