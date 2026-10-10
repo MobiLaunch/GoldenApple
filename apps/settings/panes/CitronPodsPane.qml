@@ -2,6 +2,8 @@
 // Requires the M10 CitronPods daemon; if absent show an actionable status,
 // never made-up battery/ANC values or a fake connection.
 import QtQuick
+import QtQuick.Dialogs
+import Quickshell.Io
 import "../../lib"
 import "../../lib/theme"
 import ".."
@@ -17,11 +19,56 @@ Pane {
     readonly property var device: pods.activeDevice
     readonly property string address: String(device.address ?? "")
     readonly property bool paired: device.paired === true
+    property string engineMessage: ""
+    FileDialog {
+        id: engineArchive
+        title: "Select the CitronPods M10 Qt6-Fixed source archive"
+        fileMode: FileDialog.OpenFile
+        nameFilters: ["CitronPods Source ZIP (*.zip)"]
+        onAccepted: {
+            const path = decodeURIComponent(String(selectedFile).replace(/^file:\/\//, ""))
+            pane.engineMessage = "Building CitronPods engine…"
+            engineBuild.command = ["gg-install-citronpods", path]
+            engineBuild.running = true
+        }
+    }
+    Process {
+        id: engineBuild
+        stdout: StdioCollector { id: engineBuildOutput }
+        stderr: StdioCollector { id: engineBuildError }
+        onExited: (code) => {
+            pane.engineMessage = code === 0 ? "CitronPods engine installed. Connecting…"
+                : "Engine setup failed. Check dependencies and the source archive. " +
+                  String(engineBuildError.text || "").slice(-500)
+            if (code === 0) {
+                pods.snapshotValid = false
+                pods.refresh()
+            }
+        }
+    }
     function battery(value) {
         return typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 100
                ? value + "%" : "Unavailable"
     }
 
+    Group {
+        title: "Engine Setup"
+        visible: !pods.online
+        SetRow {
+            title: "Install CitronPods Engine"
+            subtitle: "Choose the M10 Qt6-Fixed source ZIP. Only the background service is installed."
+            Button {
+                text: engineBuild.running ? "Building…" : "Choose ZIP…"
+                enabled: !engineBuild.running
+                onClicked: engineArchive.open()
+            }
+        }
+        SetRow {
+            visible: !!pane.engineMessage
+            title: "Installation Status"
+            subtitle: pane.engineMessage
+        }
+    }
     Group {
         title: "My AirPods"
         SetRow {
