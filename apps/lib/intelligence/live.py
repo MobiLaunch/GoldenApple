@@ -19,6 +19,7 @@ import os
 import re
 import signal
 import shutil
+import time
 import sys
 from pathlib import Path
 from urllib.parse import quote
@@ -77,13 +78,15 @@ def setup_message(model: str, voice: str, language: str = "en-US", language_code
                 "responseModalities": ["AUDIO"],
                 "speechConfig": speech,
             },
-            # Slow to decide someone has started talking (a cough, a door, a
-            # TV doesn't start a reply), patient before deciding they've stopped.
+            # Keep background-noise rejection at speech onset, but don't
+            # hold an entire spoken request after the client gate has ended.
+            # Google's suggested silence window is 500–800 ms; audioStreamEnd
+            # explicitly flushes the last gated PCM on every completed turn.
             "realtimeInputConfig": {"automaticActivityDetection": {
                 "startOfSpeechSensitivity": "START_SENSITIVITY_LOW",
-                "endOfSpeechSensitivity": "END_SENSITIVITY_LOW",
-                "prefixPaddingMs": 300,
-                "silenceDurationMs": 700,
+                "endOfSpeechSensitivity": "END_SENSITIVITY_HIGH",
+                "prefixPaddingMs": 200,
+                "silenceDurationMs": 500,
             }},
             "inputAudioTranscription": {},
             "outputAudioTranscription": {},
@@ -101,13 +104,13 @@ class SpeechGate:
     carries its energy in the voice band (not a low hum, not flat hiss), and
     keeps rising and falling with its syllables while it's loud. Opening takes
     200 ms of it; the 400 ms before are sent too, so the first syllable isn't
-    lost; it stays open through the pauses between words, and closes on a
-    sound that has gone steady. While Citron itself is talking, speech must be
+    lost; 600 ms of quiet protects normal word gaps before closing, and it
+    also closes on a sound that has gone steady. While Citron itself is talking, speech must be
     clearly louder to count (talking over it), so its echo doesn't.
     """
     FRAME = 160            # 10 ms at 16 kHz
     OPEN_CHUNKS = 2        # 200 ms of speech to open
-    HANGOVER = 8           # 800 ms of quiet to close
+    HANGOVER = 6           # 600 ms of quiet; > natural brief word gaps
     PAUSES = 12.0          # dB it drops between syllables; less for 1.2 s is a steady sound
 
     def __init__(self):
@@ -288,6 +291,13 @@ class VoiceSession:
         self.echo_module = None
         self.mic_target = ""
         self.play_target = ""
+        self.mic_stopped = asyncio.Event()
+        self.mic_stopped.set()
+        # Monotonic timing only; never record or log spoken words, samples,
+        # account identifiers or API keys. Stage timing is useful when
+        # separating local silence/VAD from Gemini network/model latency.
+        self.utterance_started_at = 0.0
+        self.utterance_ended_at = 0.0
 
     def status(self, mode: str) -> None:
         if mode != self.last_status:
@@ -409,6 +419,8 @@ class VoiceSession:
             self.out_proc = None
         self.turn_has_audio = False
         self.speaker_active = False
+        self.utterance_ended_at = 0.0
+        self.utterance_started_at = 0.0
         if not self.muted:
             self.mic_allowed.set()
 
@@ -419,6 +431,7 @@ class VoiceSession:
                 break
             target = ["--target", self.mic_target] if self.mic_target else []
             # Named, so the menu bar's microphone indicator says who's listening.
+            self.mic_stopped.clear()
             self.mic_proc = await self.process(
                 "pw-record", "--raw", "--format", "s16",
                 "--rate", str(INPUT_RATE), "--channels", "1", *target,
@@ -437,17 +450,26 @@ class VoiceSession:
                         raise RuntimeError("Microphone disconnected. Check input permissions and PipeWire.")
                     if self.muted or not self.running or not self.mic_allowed.is_set():
                         break
+                    was_open = self.gate.open
                     send, ended = self.gate.feed(chunk, talking_over=self.speaker_active)
+                    if self.gate.open and not was_open:
+                        self.utterance_started_at = time.monotonic()
+                        self.utterance_ended_at = 0.0
+                        self.status("listening")
                     for piece in send:
                         await self.ws.send(json.dumps(audio_packet(piece)))
                     if ended:
-                        # The speech is over: say so, rather than streaming the room.
+                        # Prompt response immediately: Gemini's Live API
+                        # explicitly flushes cached PCM on audioStreamEnd.
                         await self.ws.send(json.dumps({"realtimeInput": {"audioStreamEnd": True}}))
+                        self.utterance_ended_at = time.monotonic()
+                        self.status("thinking")
                     emit("level", value=pcm_level(chunk) if self.gate.open else 0)
             finally:
                 await self.stop_proc(self.mic_proc)
                 self.mic_proc = None
                 self.gate.reset()
+                self.mic_stopped.set()
 
     async def playback(self) -> None:
         # A None item marks the end of a turn. Closing pw-play's stdin and
@@ -481,6 +503,13 @@ class VoiceSession:
                         self.status("muted" if self.muted else "listening")
                     continue
                 async with self.play_lock:
+                    if epoch != self.audio_epoch:
+                        continue
+                    if self.half_duplex:
+                        # Playback never starts until the listen() task has
+                        # actually closed PipeWire's mic, preventing echo.
+                        # Waiting here does NOT block the WS reader.
+                        await self.mic_stopped.wait()
                     if epoch != self.audio_epoch:
                         continue
                     if self.out_proc is None or self.out_proc.returncode is not None:
@@ -524,11 +553,16 @@ class VoiceSession:
                 except (ValueError, TypeError):
                     continue
                 if self.half_duplex and not self.speaker_active:
-                    # Pause before emitting any output so the mic can't feed
-                    # Citron's speaker audio back to server-side VAD.
+                    # Close mic BEFORE playback. Killing its PipeWire process
+                    # may take up to 600 ms: let the microphone's listen()
+                    # task do that asynchronously instead of blocking the
+                    # WebSocket receive loop and queuing the first audio.
                     self.mic_allowed.clear()
-                    await self.stop_proc(self.mic_proc)
                     emit("level", value=0)
+                if not self.speaker_active and self.utterance_ended_at:
+                    emit("timing", stage="first_audio",
+                         ms=round((time.monotonic() - self.utterance_ended_at) * 1000))
+                    self.utterance_ended_at = 0.0
                 self.speaker_active = True
                 self.turn_has_audio = True
                 # Visual response uses normalized amplitude only. No raw audio
