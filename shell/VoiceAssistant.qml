@@ -99,6 +99,7 @@ PanelWindow {
     function stopVoice() {
         voiceWatchdog.stop()
         voiceRestart.stop()
+        restartingVoice = false
         voiceMode = false
         voiceProc.running = false
         everReady = false
@@ -120,6 +121,7 @@ PanelWindow {
     function startVoice() {
         if (voiceMode) return
         voiceMode = true
+        restartingVoice = false
         phase = "connecting"
         errorText = ""
         everReady = false
