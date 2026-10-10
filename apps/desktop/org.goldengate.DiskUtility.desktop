@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Disk Utility
+Comment=See your disks and how full they are; mount, eject, check and erase them
+Icon=org.goldengate.DiskUtility
+Exec=qs -n -p @APPS@/diskutility.qml
+StartupWMClass=org.goldengate.DiskUtility
+Categories=System;Utility;
+Keywords=disk;drive;partition;format;erase;usb;mount;eject;storage;space;
+StartupNotify=false

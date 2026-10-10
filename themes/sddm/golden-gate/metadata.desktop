@@ -1,0 +1,10 @@
+[SddmGreeterTheme]
+Name=CitronOS
+Description=Liquid Glass login screen for the CitronOS desktop
+Author=CitronOS
+Type=sddm-theme
+Version=0.1
+Website=https://github.com/mobilaunch/goldenapple
+MainScript=Main.qml
+ConfigFile=theme.conf
+QtVersion=6

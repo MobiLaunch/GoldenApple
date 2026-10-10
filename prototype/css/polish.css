@@ -1,0 +1,102 @@
+/* Global refinements: cursor, focus, selection, scrollbars, press states,
+   pointer-following glass light, continuous corners, inactive-window dimming. */
+
+/* Original arrow cursor (black with a white keyline and soft shadow). */
+:root {
+  --cursor: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 28 28'%3E%3Cdefs%3E%3Cfilter id='s' x='-40%25' y='-40%25' width='180%25' height='180%25'%3E%3CfeDropShadow dx='0' dy='1' stdDeviation='.9' flood-opacity='.35'/%3E%3C/filter%3E%3C/defs%3E%3Cpath filter='url(%23s)' d='M7 4.5v17l4.3-4.2 2.8 6.4 3-1.3-2.8-6.3h6z' fill='%23111' stroke='%23fff' stroke-width='1.5' stroke-linejoin='round'/%3E%3C/svg%3E") 7 4, default;
+}
+body, button, .win, .menu, #dock, #cc, .pill, .side-row { cursor: var(--cursor); }
+input, textarea, [contenteditable] { cursor: text; }
+
+/* Selection and focus */
+::selection { background: color-mix(in srgb, var(--accent) 32%, transparent); }
+:focus { outline: none; }
+:focus-visible { outline: none; box-shadow: 0 0 0 3.5px color-mix(in srgb, var(--accent) 50%, transparent); border-radius: 8px; }
+.pill .tb:focus-visible, button.btn:focus-visible { box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 55%, transparent); }
+
+/* Overlay scrollbars: thin, rounded, visible when the pointer is over the view. */
+* { scrollbar-width: thin; scrollbar-color: transparent transparent; }
+*:hover { scrollbar-color: color-mix(in srgb, var(--label) 28%, transparent) transparent; }
+::-webkit-scrollbar { width: 11px; height: 11px; background: transparent; }
+::-webkit-scrollbar-thumb { border-radius: 6px; border: 3px solid transparent; background: transparent padding-box; }
+*:hover::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--label) 28%, transparent) padding-box; }
+::-webkit-scrollbar-thumb:hover { background: color-mix(in srgb, var(--label) 45%, transparent) padding-box; }
+
+/* Press states: controls give a little under the finger. */
+.pill .tb { transition: background var(--dur-hover), transform 280ms var(--spring-snappy), opacity 200ms; }
+.pill .tb:active { transform: scale(.9); }
+.btn { transition: transform 260ms var(--spring-snappy), filter 150ms; }
+.btn:active { transform: scale(.96); filter: brightness(.94); }
+.side-row { transition: background 120ms; }
+.side-row:active { background: var(--selection); }
+.menu .item { transition: background 60ms; }
+
+/* Liquid Glass light: a soft highlight that follows the pointer across glass
+   controls (js/polish.js feeds --mx/--my). */
+:is(.pill, .cc-mod, #dock, #spotlight .field, #spotlight .cat, .dock-stack, .banner, .lk-field) { position: relative; }
+:is(.pill, .cc-mod, #dock, #spotlight .field, #spotlight .cat, .dock-stack, .banner, .lk-field)::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: 1;
+  background: radial-gradient(140px circle at var(--mx, 50%) var(--my, -60%), rgba(255,255,255,.34), rgba(255,255,255,.08) 45%, transparent 70%);
+  opacity: 0; transition: opacity 260ms; mix-blend-mode: soft-light;
+}
+:is(.pill, .cc-mod, #dock, #spotlight .field, #spotlight .cat, .dock-stack, .banner, .lk-field):hover::after { opacity: 1; }
+:root[data-theme="dark"] :is(.pill, .cc-mod, #dock, .banner)::after { mix-blend-mode: screen; background: radial-gradient(140px circle at var(--mx, 50%) var(--my, -60%), rgba(255,255,255,.12), transparent 65%); }
+.cc-mod > *, .pill > * { position: relative; z-index: 2; }
+
+/* Inactive windows: toolbar controls and titles recede. */
+.win.inactive .toolbar .pill .tb, .win.inactive .toolbar .title { opacity: .5; transition: opacity 200ms; }
+.win.inactive .win-sidebar .side-row.sel { background: color-mix(in srgb, var(--selection) 70%, transparent); }
+.win.inactive .files-body .cell.sel .name, .win.inactive .mrow.sel, .win.inactive .convo.sel { filter: saturate(0) brightness(1.15); }
+
+/* Switches follow the accent colour, like the system. */
+.switch.on { background: var(--accent); }
+
+/* Tooltips (js/polish.js) */
+.gg-tip { position: absolute; z-index: 99990; padding: 3px 9px; border-radius: 7px; font-size: 11.5px; font-weight: 500; color: var(--label); pointer-events: none; white-space: nowrap; }
+
+/* Continuous corners where supported: the rounded rectangles in the shell use a
+   superellipse profile instead of circular arcs (circles stay circles). */
+@supports (corner-shape: superellipse(1.4)) {
+  .win, .menu, .pill, .cc-wide, .cc-now, .cc-slider, .cc-detail, #dock, .banner, .widget, #spotlight .field, #spotlight .results,
+  .dock-stack, .ql, .gen-icon, .web .fav .tile, .cover, .hero, .ess, .card, .city, .wx-card, .form-group, .win-sidebar, #switcher .panel,
+  .side-row, .menu .item, .mrow, .convo, .cal-pop, .lk-field, .dock-tip, .mc-label, .cc-detail .net, .place-card .pc-actions button {
+    corner-shape: superellipse(1.4);
+  }
+  .win { border-radius: 26px; }
+  .menu { border-radius: 16px; }
+  .win-sidebar { border-radius: 19px; }
+  .menu .item, .side-row { border-radius: 9px; }
+  #dock { border-radius: 32px; }
+}
+
+/* Icon styles (System Settings → Appearance) */
+:root[data-icons="clear"] img[data-icon] { filter: grayscale(1) brightness(1.28) contrast(.92) drop-shadow(0 2px 4px rgba(0,20,60,.18)); opacity: .92; }
+:root[data-icons="tinted"] img[data-icon] { filter: grayscale(1) sepia(1) hue-rotate(var(--tint-hue, 185deg)) saturate(2.4) brightness(.95); }
+:root[data-theme="dark"][data-icons="clear"] img[data-icon] { filter: grayscale(1) brightness(1.1) contrast(1.05); opacity: .85; }
+
+/* Liquid Glass: Tinted increases opacity for legibility. */
+:root[data-glass="tinted"] {
+  --mat-glass-clear-tint: rgba(246, 247, 250, .52);
+  --mat-glass-regular-tint: rgba(250, 250, 252, .86);
+  --mat-menu-tint: rgba(246, 246, 248, .9);
+}
+:root[data-glass="tinted"][data-theme="dark"] {
+  --mat-glass-clear-tint: rgba(40, 42, 50, .58);
+  --mat-glass-regular-tint: rgba(36, 36, 40, .86);
+  --mat-menu-tint: rgba(40, 40, 44, .9);
+}
+:root[data-glass="tinted"] #cc { color: var(--label); text-shadow: none; }
+:root[data-glass="tinted"] #cc svg.sym { filter: none; }
+:root[data-glass="tinted"] #cc .glass:not(.on) { --tint: var(--mat-glass-clear-tint); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 1ms !important; animation-duration: 1ms !important; }
+}
+.menu .item.disabled .ico { opacity: .35; }
+/* Text fields live inside styled capsules (search pills, Spotlight, the lock
+   field), so the caret and the capsule show focus, never a ring on the input. */
+input:focus-visible, textarea:focus-visible, [contenteditable]:focus-visible { box-shadow: none; }
+
+
+/* Keyboard selection in Spotlight's application grid. */
+#spotlight .app-tile.hl { outline: 2px solid var(--accent); outline-offset: -2px; background: var(--selection); }

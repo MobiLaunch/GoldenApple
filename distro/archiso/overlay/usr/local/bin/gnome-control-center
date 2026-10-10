@@ -1,0 +1,5 @@
+#!/bin/sh
+# Compatibility command for software that still invokes gnome-control-center.
+# CitronOS owns the complete settings experience; legacy panel names are
+# translated by settings/open.sh and never open a second settings application.
+exec bash /usr/share/golden-gate/apps/settings/open.sh "$@"

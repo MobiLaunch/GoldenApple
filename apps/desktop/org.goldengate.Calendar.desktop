@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Calendar
+Comment=Manage events and schedules
+Icon=office-calendar
+Exec=qs -n -p @APPS@/calendar.qml
+StartupWMClass=org.goldengate.Calendar
+Categories=Office;Calendar;
+Keywords=calendar;events;schedule;appointments;
+StartupNotify=false

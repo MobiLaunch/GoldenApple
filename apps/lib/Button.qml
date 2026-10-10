@@ -1,0 +1,65 @@
+// A push button in Liquid Glass: a capsule of glass, or the accent colour for
+// the default button (`prominent`). Presses squash it; hover lifts it.
+import QtQuick
+import "theme"
+
+Item {
+    id: b
+    activeFocusOnTab: true
+    Accessible.role: Accessible.Button
+    Accessible.name: b.text
+    Accessible.onPressAction: b.activate()
+    Keys.onSpacePressed: (event) => { if (!event.isAutoRepeat) b.activate() }
+    Keys.onReturnPressed: b.activate()
+    Keys.onEnterPressed: b.activate()
+    FocusRing {}
+    property string text
+    property string symbol
+    property bool prominent: false
+    // Disabled, a default button is drawn as a plain one (as on the Mac):
+    // faded accent with white text all but disappeared on a light window.
+    readonly property bool lit: prominent && enabled
+    property bool destructive: false
+    // Destructive wins: a prominent destructive button (Erase, Delete) is red,
+    // never the accent blue that says "safe default".
+    readonly property color red: Theme.dark ? "#ff453a" : "#ff3b30"
+    signal clicked()
+    property bool keyboardPressed: false
+    function activate() {
+        if (!enabled) return
+        keyboardPressed = true
+        releaseFeedback.restart()
+        clicked()
+    }
+    Timer { id: releaseFeedback; interval: 90; onTriggered: b.keyboardPressed = false }
+    implicitWidth: Math.max(72, row.implicitWidth + 28); implicitHeight: Theme.fh(26)
+    opacity: enabled ? 1 : 0.45
+
+    Glass {
+        anchors.fill: parent
+        radius: height / 2
+        role: "control"
+        // The default button is stained with the accent (red if it destroys
+        // something); the others are plain glass.
+        tint: b.lit ? (b.destructive ? b.red : Theme.accent) : (material?.tint ?? "transparent")
+        pressed: ma.pressed || b.keyboardPressed
+        hovered: ma.containsMouse && b.enabled
+        shadow: Theme.dark ? "#40000000" : "#1a000000"
+    }
+    Row {
+        id: row
+        anchors.centerIn: parent
+        spacing: 6
+        scale: (ma.pressed || b.keyboardPressed) && !Theme.reduceMotion ? 0.975 : 1
+        Behavior on scale { enabled: !Theme.reduceMotion; NumberAnimation { duration: 85; easing.type: Easing.OutCubic } }
+        Symbol { visible: !!b.symbol; anchors.verticalCenter: parent.verticalCenter; name: b.symbol; size: 14; tone: b.lit ? "white" : "auto" }
+        Text {
+            anchors.verticalCenter: parent.verticalCenter
+            text: b.text
+            color: b.lit ? "#ffffff" : b.destructive ? b.red : Theme.label
+            font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: b.prominent ? Font.DemiBold : Font.Medium }
+        }
+    }
+    MouseArea { id: ma; anchors.fill: parent; hoverEnabled: true; enabled: b.enabled; onClicked: { b.forceActiveFocus(); b.clicked() } }
+}
+

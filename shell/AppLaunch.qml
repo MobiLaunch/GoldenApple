@@ -1,0 +1,305 @@
+// App launch: the tapped icon grows into the app's window, as on iOS.
+//
+// A card starts exactly over the icon (Dock tile or Spotlight row), springs to
+// where the window will open and shows the app's icon on the window colour, like
+// an iOS launch screen, while the app starts. When Hyprland maps the window, the
+// card springs onto its real frame (keeping its momentum, so the motion bends
+// rather than restarts) and, once it sits exactly on it, dissolves into it.
+// Hyprland itself only fades the window in, in place (windowsIn popin 100%):
+// one outline dissolving into the same one, so the two hand over cleanly.
+//
+// Closing belongs to Hyprland's native window fade. A replacement launch card
+// is not a snapshot of the window and flashes over the compositor's own exit.
+// The legacy fold remains explicitly opt-in until a real snapshot/plugin exists.
+//
+// Launch with launch(entry, rect) where rect is the icon in this screen's
+// coordinates. It also runs under Qt's software renderer (VMs without 3D): the
+// card is plain rectangles and images, and only its area is redrawn.
+import Quickshell
+import Quickshell.Hyprland
+import Quickshell.Wayland
+import QtQuick
+import "ui/theme"
+import "ui/WindowGeometry.js" as WindowGeometry
+import "components"
+
+PanelWindow {
+    id: launcher
+    readonly property bool enabled: !Prefs.reduceMotion
+    property bool foldOnClose: false
+    onEnabledChanged: if (!enabled) reset()
+
+    anchors { top: true; bottom: true; left: true; right: true }
+    exclusionMode: ExclusionMode.Ignore
+    color: "transparent"
+    WlrLayershell.namespace: "gg-launch"
+    WlrLayershell.layer: WlrLayer.Overlay
+    mask: Region {}   // never takes input
+    property var entry: null
+    property rect from: Qt.rect(0, 0, 0, 0)
+    property rect to: Qt.rect(0, 0, 0, 0)
+    property string state_: "idle"           // idle | opening | handing-over | cancelling | closing
+    property var dock: null                  // this screen's Dock: where a closing window goes back to
+    // Last window size per app, so the card aims for the right frame next time.
+    // CitronOS's own apps start out known: their windows have a fixed size.
+    property var sizes: ({ "org.goldengate.Web": { w: 1180, h: 780 }, "org.goldengate.Calculator": { w: 229, h: 405 }, "org.goldengate.Weather": { w: 1100, h: 860 }, "org.goldengate.Music": { w: 1180, h: 760 }, "org.goldengate.Notes": { w: 1120, h: 720 }, "org.goldengate.Photos": { w: 1180, h: 780 }, "org.goldengate.Maps": { w: 1280, h: 800 }, "org.goldengate.Settings": { w: 780, h: 700 } })
+    // Apps whose window isn't the usual window colour (Calculator is always dark).
+    readonly property var windowColors: ({ "org.goldengate.Calculator": "#24292d", "org.goldengate.Weather": "#a4bcd2" })
+
+    // Aim the launch card at the SAME initial frame as the compositor.
+    // Previously the card used a different "usable center" calculation, then
+    // jumped when Hyprland reported the real rectangle. That read as a small
+    // sideways hiccup just before the opening handoff.
+    function estimate(e) {
+        const size = sizes[e?.id] ?? { w: Math.min(960, width * 0.62), h: Math.min(640, height * 0.62) }
+        const dockSize = e?.id === "org.goldengate.Web" ? Math.max(100, Prefs.dockSize) : Prefs.dockSize
+        const w = WindowGeometry.fitWidth(size.w, width)
+        const h = WindowGeometry.fitHeight(size.h, height, dockSize, Theme.sizeMenubar)
+        return Qt.rect(Math.round((width - w) / 2),
+            Math.round((height - h) / 2 - WindowGeometry.CENTER_BIAS), w, h)
+    }
+
+    function launch(e, r) {
+        if (!enabled) { e.execute(); return }
+        stopTransitions()
+        pendingAddress = ""
+        entry = e
+        from = r
+        to = estimate(e)
+        for (const [s, v] of [[gx, r.x], [gy, r.y], [gw, r.width], [gh, r.height]]) s.jump(v)
+        fade.stop(); card.opacity = 1
+        state_ = "opening"
+        aim(to)
+        giveUp.restart()
+        // Ensure a launch initiated from a secondary-screen Dock/Spotlight opens
+        // on that screen's active workspace instead of the previously focused one.
+        const monitor = Hyprland.monitorFor(launcher.screen)
+        if (monitor?.name) Hyprland.dispatch(`focusmonitor ${monitor.name}`)
+        e.execute()
+    }
+    function aim(r) { gx.target = r.x; gy.target = r.y; gw.target = r.width; gh.target = r.height }
+
+    // The window is up: land on its frame, then let it show through.
+    function landOn(r) {
+        if (r) {
+            to = r
+            if (entry) { const s = launcher.sizes; s[entry.id] = { w: r.width, h: r.height }; launcher.sizes = s }
+            aim(r)
+        }
+        state_ = "handing-over"
+        handOver.restart()
+    }
+
+    function stopTransitions() {
+        handOver.stop(); findWindow.stop(); giveUp.stop(); landed.stop(); fadeHome.stop(); fade.stop()
+    }
+    function reset() {
+        stopTransitions()
+        state_ = "idle"; entry = null; pendingAddress = ""; card.opacity = 0
+        for (const s of [gx, gy, gw, gh]) s.jump(s.value)
+    }
+
+    // ------------------------------------------------------------ closing
+    // Every window's last known frame, by address: { app, rect, workspace }.
+    property var frames: ({})
+    function snapshot() {
+        const monitor = Hyprland.monitorFor(launcher.screen)
+        const out = {}
+        for (const t of Hyprland.toplevels.values) {
+            const o = t.lastIpcObject
+            if (!o?.address || !o.at || !o.size || o.hidden) continue
+            if (o.monitor !== undefined && monitor && o.monitor !== monitor.id) continue
+            out[o.address] = { app: o.class ?? "", workspace: o.workspace?.id ?? -1,
+                               rect: Qt.rect(o.at[0] - (monitor?.x ?? 0), o.at[1] - (monitor?.y ?? 0), o.size[0], o.size[1]) }
+        }
+        frames = out
+    }
+    Timer { id: resnap; interval: 120; onTriggered: launcher.snapshot() }
+    function refreshSoon() { Hyprland.refreshToplevels(); resnap.restart() }
+    // Sizes change without an event (a resize by its edge), so a light refresh.
+    Timer { interval: 2000; repeat: true; running: launcher.enabled && launcher.foldOnClose && Hyprland.toplevels.values.length > 0; onTriggered: launcher.refreshSoon() }
+    Component.onCompleted: snapshot()
+
+    // A window closed: if it was on this screen's current desktop and its app
+    // has a Dock icon, fold it back into the icon.
+    function windowClosed(address) {
+        const f = frames[address]
+        if (!foldOnClose || !f || !enabled || !dock || state_ === "opening" || state_ === "handing-over") return false
+        const active = Hyprland.monitorFor(launcher.screen)?.activeWorkspace?.id
+        if (active !== undefined && f.workspace !== active) return false
+        const target = dock.iconFor(f.app)
+        if (!target) return false
+        return fold(target.entry, f.rect, Qt.rect(target.rect.x, height + target.rect.y, target.rect.width, target.rect.height))
+    }
+    // The opening in reverse: from the window's frame into the icon's.
+    function fold(e, windowRect, iconRect) {
+        if (!enabled) return false
+        stopTransitions()
+        entry = e
+        from = iconRect
+        to = windowRect
+        for (const [s, v] of [[gx, windowRect.x], [gy, windowRect.y], [gw, windowRect.width], [gh, windowRect.height]]) s.jump(v)
+        card.opacity = 1
+        state_ = "closing"
+        aim(iconRect)
+        landed.restart()
+        return true
+    }
+    // Home: once the card is the icon again (or after a moment, whatever
+    // happens), it goes, leaving the Dock icon where it was.
+    Timer {
+        id: landed
+        interval: 30; repeat: true
+        property int ticks: 0
+        onRunningChanged: if (running) ticks = 0
+        onTriggered: {
+            if ((Math.abs(gx.value - launcher.from.x) < 1.5 && Math.abs(gy.value - launcher.from.y) < 1.5
+                    && Math.abs(gw.value - launcher.from.width) < 1.5 && Math.abs(gh.value - launcher.from.height) < 1.5) || ++ticks > 40) {
+                stop()
+                fadeHome.restart()
+            }
+        }
+    }
+    NumberAnimation {
+        id: fadeHome
+        target: card; property: "opacity"; to: 0
+        duration: 90; easing.type: Easing.OutCubic
+        onFinished: launcher.reset()
+    }
+
+    // The app never opened a window: fall back into the icon.
+    Timer {
+        id: giveUp
+        interval: 8000
+        onTriggered: { launcher.state_ = "cancelling"; launcher.aim(launcher.from); fade.restart() }
+    }
+    // The card dissolves into the window only once it sits on the window's
+    // frame (or after a moment, whatever happens), snapped exactly onto it:
+    // fading while it was still springing there showed two outlines, the card
+    // sliding over a window already in place. The window has had those frames
+    // to draw underneath.
+    Timer {
+        id: handOver
+        interval: 16; repeat: true
+        property int ticks: 0
+        onRunningChanged: if (running) ticks = 0
+        onTriggered: {
+            const t = launcher.to
+            const there = Math.abs(gx.value - t.x) < 1.5 && Math.abs(gy.value - t.y) < 1.5
+                && Math.abs(gw.value - t.width) < 1.5 && Math.abs(gh.value - t.height) < 1.5
+            if (!there && ++ticks < 22) return
+            stop()
+            for (const [s, v] of [[gx, t.x], [gy, t.y], [gw, t.width], [gh, t.height]]) s.jump(v)
+            fade.restart()
+        }
+    }
+    NumberAnimation {
+        id: fade
+        target: card; property: "opacity"; to: 0
+        duration: 150; easing.type: Easing.OutCubic
+        onFinished: launcher.reset()
+    }
+
+    // New windows, from Hyprland's event socket.
+    property string pendingAddress: ""
+    Connections {
+        target: Hyprland
+        function onRawEvent(event) {
+            if (event.name === "closewindow") {
+                const raw = event.parse(1)[0] ?? ""
+                const address = raw.startsWith("0x") ? raw : "0x" + raw
+                // The first window may close before its launch handoff lands.
+                if (address === launcher.pendingAddress && ["opening", "handing-over"].includes(launcher.state_))
+                    launcher.reset()
+                launcher.windowClosed(address)
+                const f = launcher.frames
+                delete f[address]
+                launcher.frames = f
+                return
+            }
+            if ((launcher.foldOnClose || launcher.state_ === "opening" || launcher.state_ === "handing-over")
+                    && ["openwindow", "activewindowv2", "movewindowv2", "changefloatingmode", "fullscreen", "workspacev2"].includes(event.name))
+                launcher.refreshSoon()
+            if (event.name !== "openwindow" || launcher.state_ !== "opening") return
+            const parts = event.parse(4)
+            const appClass = (parts[2] ?? "").toLowerCase()
+            const id = (launcher.entry?.id ?? "").toLowerCase()
+            const startup = (launcher.entry?.startupClass ?? "").toLowerCase()
+            if (appClass !== id && appClass !== id.split(".").pop() && (!startup || appClass !== startup)) return
+            launcher.pendingAddress = parts[0].startsWith("0x") ? parts[0] : "0x" + parts[0]
+            giveUp.stop()
+            Hyprland.refreshToplevels()
+            findWindow.tries = 0
+            findWindow.restart()
+        }
+    }
+    Timer {
+        id: findWindow
+        property int tries: 0
+        interval: 40; repeat: true
+        onTriggered: {
+            const t = Hyprland.toplevels.values.find((w) => w.lastIpcObject?.address === launcher.pendingAddress)
+            const o = t?.lastIpcObject
+            if (o?.at && o?.size) {
+                stop()
+                const monitor = Hyprland.monitorFor(launcher.screen)
+                const originX = monitor?.x ?? launcher.screen.x
+                const originY = monitor?.y ?? launcher.screen.y
+                launcher.landOn(Qt.rect(o.at[0] - originX, o.at[1] - originY, o.size[0], o.size[1]))
+            } else if (++tries > 12) {
+                stop(); launcher.landOn(null)
+            }
+        }
+    }
+
+    // Spring: quick and nearly critically damped, like an iOS app opening.
+    SpringValue { id: gx; response: 0.32; dampingFraction: 0.92 }
+    SpringValue { id: gy; response: 0.32; dampingFraction: 0.92 }
+    SpringValue { id: gw; response: 0.32; dampingFraction: 0.92 }
+    SpringValue { id: gh; response: 0.32; dampingFraction: 0.92 }
+
+    Item {
+        id: card
+        objectName: "launchCard"
+        visible: launcher.state_ !== "idle"
+        x: gx.value; y: gy.value; width: gw.value; height: gh.value
+        // 0 while the card is still the icon, 1 once it has the window's size.
+        readonly property real grow: {
+            const span = Math.max(1, launcher.to.width - launcher.from.width)
+            return Math.max(0, Math.min(1, (width - launcher.from.width) / span))
+        }
+        function ease(a, b, t) { const u = Math.max(0, Math.min(1, (t - a) / (b - a))); return u * u * (3 - 2 * u) }
+
+        // The window's shadow (a nine-patch image, so no shader has to compile on
+        // the first launch) and its surface, coming in as the icon grows.
+        BorderImage {
+            anchors { fill: parent; leftMargin: -34; rightMargin: -34; topMargin: -38; bottomMargin: -30 }
+            source: Qt.resolvedUrl("assets/card-shadow.png")
+            border { left: 56; right: 56; top: 60; bottom: 52 }
+            opacity: surface.opacity
+        }
+        Rectangle {
+            id: surface
+            anchors.fill: parent
+            radius: Math.min(width, height) * 0.2237 * (1 - card.grow) + Theme.radiusWindow * card.grow
+            color: launcher.windowColors[launcher.entry?.id] ?? Theme.windowBg
+            opacity: card.ease(0.06, 0.4, card.grow)
+            border { width: 1; color: Theme.dark ? "#26ffffff" : "#1a000000" }
+        }
+        // The icon: fills the card at first (so it starts as the Dock icon itself),
+        // then settles in the middle, like an iOS launch screen.
+        Image {
+            readonly property real s: {
+                const start = Math.min(card.width, card.height)
+                const t = card.ease(0, 0.55, card.grow)
+                return start * (1 - t) + Math.min(96, start) * t
+            }
+            width: s; height: s
+            anchors.centerIn: parent
+            source: launcher.entry ? Quickshell.iconPath(launcher.entry.icon, "application-x-executable") : ""
+            sourceSize: Qt.size(256, 256)
+            smooth: true; mipmap: true
+        }
+    }
+}
+

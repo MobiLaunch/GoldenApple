@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE policyconfig PUBLIC "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN"
+ "http://www.freedesktop.org/standards/PolicyKit/1/policyconfig.dtd">
+<!-- Settings › Touch ID & Password turns Touch ID for sudo and system
+     password prompts on or off with this one helper (it edits
+     /etc/pam.d/sudo and /etc/pam.d/polkit-1), so an administrator's
+     password is asked for. -->
+<policyconfig>
+  <vendor>CitronOS</vendor>
+  <action id="org.goldengate.touchid">
+    <description>Use Touch ID for administrator authorization</description>
+    <message>Settings wants to change how administrator authorization is asked for.</message>
+    <icon_name>fingerprint-gui</icon_name>
+    <defaults>
+      <allow_any>auth_admin</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/share/golden-gate/apps/settings/touchid-helper.py</annotate>
+  </action>
+</policyconfig>

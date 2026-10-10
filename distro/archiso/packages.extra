@@ -1,0 +1,11 @@
+# Packages that may not be in the official repositories. build.sh checks each one:
+# if the sync repos have it, it is installed normally; otherwise it must be built
+# (e.g. from the AUR with makepkg) into distro/localrepo/, which build.sh adds as
+# a local pacman repository.
+quickshell
+# Messages: iMessage and SMS through a paired iPhone over Bluetooth
+# (github.com/erikwb/blueferry, built from source by build.sh).
+blueferry-backend
+# Screen Mirroring: AirPlay Receiver, and mirroring to Miracast/Chromecast TVs.
+uxplay
+gnome-network-displays

@@ -1,0 +1,4 @@
+#!/bin/sh
+# The image ships CitronOS's own Calculator instead of GNOME's; anything that
+# still asks for gnome-calculator gets it.
+exec qs -n -p /usr/share/golden-gate/apps/calculator.qml

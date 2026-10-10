@@ -1,0 +1,543 @@
+#!/usr/bin/env bash
+# Install the CitronOS desktop.
+#
+#   scripts/install.sh                 into your home directory (existing Arch + Hyprland)
+#   scripts/install.sh --system ROOT   into a root filesystem: /etc/skel + /usr/share,
+#                                      plus the system pieces below (used by the ISO build)
+#   sudo scripts/install.sh --extras   system integration + shared runtime for new accounts
+#   scripts/install.sh --extras ROOT   same operation staged under ROOT (CI/testing)
+#
+# Existing files are backed up next to themselves as *.bak-YYYYmmdd-HHMMSS.
+set -euo pipefail
+
+REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+MODE=user
+ROOT=""
+if [[ "${1:-}" == "--system" ]]; then
+  MODE=system
+  ROOT="$(realpath -m "${2:?usage: install.sh --system ROOT}")"
+elif [[ "${1:-}" == "--extras" ]]; then
+  MODE=extras
+  ROOT="${2:-}"
+  if [[ -n $ROOT ]]; then
+    ROOT="$(realpath -m "$ROOT")"
+  else
+    [[ $EUID -eq 0 ]] || { echo "--extras writes to /etc and /usr: run with sudo"; exit 1; }
+  fi
+fi
+
+say() { printf '\033[1;33m›\033[0m %s\n' "$*"; }
+
+# System pieces: keyd ⌘ layer, SDDM theme, Plymouth splash. $1 = root prefix.
+install_extras() {
+  local R=$1
+  say "local account setup helper → $R/usr/lib/golden-gate"
+  install -Dm644 "$REPO/third_party/hyprglass/LICENSE" "$R/usr/share/licenses/golden-gate/hyprglass/LICENSE"
+  install -Dm755 "$REPO/apps/setup/account-helper.py" "$R/usr/lib/golden-gate/account-helper.py"
+  install -Dm644 "$REPO/apps/setup/account_rules.py" "$R/usr/lib/golden-gate/account_rules.py"
+  install -Dm644 "$REPO/apps/setup/save-preferences.py" "$R/usr/lib/golden-gate/save-preferences.py"
+  install -Dm755 "$REPO/apps/setup/pref-helper.py" "$R/usr/lib/golden-gate/pref-helper.py"
+  install -Dm755 "$REPO/compositor/hyprland/hyprglass-sync.sh" "$R/usr/lib/golden-gate/hyprglass-sync.sh"
+  install -Dm755 "$REPO/compositor/hyprland/apply-preferences.sh" "$R/usr/lib/golden-gate/apply-preferences.sh"
+  install -Dm755 "$REPO/compositor/hyprland/tile.py" "$R/usr/lib/golden-gate/tile.py"
+  install -Dm755 "$REPO/icons/icon-resolver.py" "$R/usr/lib/golden-gate/icon-resolver.py"
+  install -Dm755 "$REPO/compositor/hyprland/idle.py" "$R/usr/lib/golden-gate/idle.py"
+  # Standard password-authenticated administration for accounts created in Hello.
+  install -d -m755 "$R/etc/sudoers.d"
+  if [[ ! -e "$R/etc/sudoers.d/20-golden-wheel" ]]; then
+    printf '%%wheel ALL=(ALL:ALL) ALL\n' > "$R/etc/sudoers.d/20-golden-wheel"
+    chmod 440 "$R/etc/sudoers.d/20-golden-wheel"
+  fi
+  # Touch ID (Settings › Touch ID & Password): the lock screen's fingerprint
+  # PAM service, and the polkit action for its sudo/system-prompt switch.
+  install -Dm644 "$REPO/distro/archiso/overlay/etc/pam.d/gg-touchid" "$R/etc/pam.d/gg-touchid"
+  install -Dm644 "$REPO/distro/archiso/overlay/usr/share/polkit-1/actions/org.goldengate.touchid.policy" \
+    "$R/usr/share/polkit-1/actions/org.goldengate.touchid.policy"
+
+  # Account creation happens before the new user has ever logged in. Install a
+  # root-owned shared runtime plus a CitronOS /etc/skel so useradd produces a
+  # usable desktop instead of a bare Hyprland account on existing Arch systems.
+  # In --system mode the same files already exist; refreshing them is harmless.
+  say "shared CitronOS runtime → $R/usr/share/golden-gate"
+  local SHARE="$R/usr/share/golden-gate"
+  local BIN="$R/usr/local/bin"
+  mkdir -p "$SHARE" "$R/usr/share/applications" "$R/usr/share/icons" "$R/usr/share/backgrounds/golden-gate" "$BIN"
+  # One canonical UI component store. Every CitronOS app imports lib/, but
+  # lib is now a link to this shared copy rather than a per-app component fork.
+  rm -rf "$SHARE/ui" "$SHARE/apps"
+  cp -a "$REPO/apps/lib" "$SHARE/ui"
+  cp -a "$REPO/apps" "$SHARE/apps"
+  # The Qt6 daemon is installed separately from source once, but the OS owns
+  # its service, UI, Settings and command-line bridge on every normal update.
+  install -Dm644 "$REPO/apps/citronpods/citronpods-daemon.service" "$R/usr/lib/systemd/user/citronpods-daemon.service"
+  install -Dm644 "$REPO/apps/citronpods/citronpods-engine-bootstrap.service" "$R/usr/lib/systemd/user/citronpods-engine-bootstrap.service"
+  install -Dm644 "$REPO/apps/citronpods/citronpods-engine-bootstrap.path" "$R/usr/lib/systemd/user/citronpods-engine-bootstrap.path"
+  # Run the daemon setup automatically on the first account login (and on
+  # upgrades); this is a oneshot with a lock, and no ZIP means a fast no-op.
+  install -d "$R/etc/systemd/user/default.target.wants"
+  ln -sfn /usr/lib/systemd/user/citronpods-engine-bootstrap.service "$R/etc/systemd/user/default.target.wants/citronpods-engine-bootstrap.service"
+  ln -sfn /usr/lib/systemd/user/citronpods-engine-bootstrap.path "$R/etc/systemd/user/default.target.wants/citronpods-engine-bootstrap.path"
+  rm -rf "$SHARE/apps/lib"
+  ln -s ../ui "$SHARE/apps/lib"
+  rm -rf "$SHARE/apps/desktop"
+  for f in "$REPO"/apps/desktop/*.desktop; do
+    sed 's#@APPS@#/usr/share/golden-gate/apps#g' "$f" > "$R/usr/share/applications/$(basename "$f")"
+  done
+  # The old standalone intelligence icon must not survive an OTA/install.
+  rm -f "$R/usr/share/applications/org.goldengate.Intelligence.desktop"
+  rm -f "$R/usr/local/share/applications/org.goldengate.Intelligence.desktop"
+  printf '#!/bin/sh\nexec bash /usr/share/golden-gate/apps/setup/diagnostics.sh "$@"\n' > "$BIN/gg-diagnostics"
+  printf '#!/bin/sh\nexec bash /usr/share/golden-gate/apps/settings/open.sh "$@"\n' > "$BIN/gg-settings"
+  printf '#!/bin/sh\nexec sh /usr/share/golden-gate/apps/browser/launch.sh "$@"\n' > "$BIN/gg-web"
+  printf '#!/bin/sh\nexec sh /usr/share/golden-gate/apps/installer/launch.sh "$@"\n' > "$BIN/gg-install"
+  printf '#!/bin/sh\nexec sh /usr/share/golden-gate/apps/software/open.sh "$@"\n' > "$BIN/gg-software"
+  printf '#!/bin/sh\nexec sh /usr/share/golden-gate/apps/software/mac-open.sh "$@"\n' > "$BIN/gg-mac-open"
+  printf '#!/bin/sh\nexec sh /usr/share/golden-gate/apps/files/open.sh "$@"\n' > "$BIN/gg-files"
+  printf '#!/bin/sh\nexec sh /usr/share/golden-gate/apps/archive/open.sh "$@"\n' > "$BIN/gg-archive"
+  printf '#!/bin/sh\nexec sh /usr/share/golden-gate/apps/lcode/open.sh "$@"\n' > "$BIN/gg-lcode"
+  printf '#!/bin/sh\nexec sh /usr/share/golden-gate/apps/airdrop/share.sh "$@"\n' > "$BIN/gg-airdrop"
+  printf '#!/bin/sh\nexec sh /usr/share/golden-gate/apps/intelligence/open.sh "$@"\n' > "$BIN/gg-intelligence"
+  printf '#!/bin/sh\nexec bash /usr/share/golden-gate/apps/citronpods/install-engine.sh "$@"\n' > "$BIN/gg-install-citronpods"
+  printf '#!/bin/sh\nexec sh /usr/share/golden-gate/apps/citronpods/ctl.sh "$@"\n' > "$BIN/gg-citronpods"
+  printf '#!/bin/sh\nexec bash /usr/share/golden-gate/apps/citronpods/bootstrap.sh "$@"\n' > "$BIN/gg-citronpods-bootstrap"
+  printf '#!/bin/sh\nexec sh /usr/share/golden-gate/apps/tablet/keyboard.sh "$@"\n' > "$BIN/gg-tablet-keyboard"
+  chmod 755 "$BIN/gg-intelligence" "$BIN/gg-install-citronpods" "$BIN/gg-citronpods" "$BIN/gg-citronpods-bootstrap" "$BIN/gg-tablet-keyboard"
+  printf '#!/bin/sh\nexec qs -n -p /usr/share/golden-gate/apps/diskutility.qml "$@"\n' > "$BIN/gg-disk-utility"
+  chmod 755 "$BIN/gg-disk-utility"
+  printf '#!/bin/sh\nexec python3 /usr/lib/golden-gate/pref-helper.py "$@"\n' > "$BIN/gg-pref"
+  printf '#!/bin/sh\nexec /usr/lib/golden-gate/hyprglass-sync.sh "$@"\n' > "$BIN/gg-hyprglass-sync"
+  printf '#!/bin/sh\nexec /usr/lib/golden-gate/apply-preferences.sh "$@"\n' > "$BIN/gg-apply-preferences"
+  printf '#!/bin/sh\nexec python3 /usr/lib/golden-gate/tile.py "$@"\n' > "$BIN/gg-tile"
+  printf '#!/bin/sh\nexec python3 /usr/lib/golden-gate/icon-resolver.py "$@"\n' > "$BIN/gg-icon-resolver"
+  printf '#!/bin/sh\nexec python3 /usr/lib/golden-gate/idle.py "$@"\n' > "$BIN/gg-idle"
+  cp "$REPO/distro/archiso/overlay/usr/local/bin/gg-session" "$BIN/gg-session"
+  chmod 755 "$BIN/gg-diagnostics" "$BIN/gg-settings" "$BIN/gg-web" "$BIN/gg-install" "$BIN/gg-software" "$BIN/gg-files" "$BIN/gg-archive" "$BIN/gg-lcode" "$BIN/gg-airdrop" "$BIN/gg-pref" "$BIN/gg-hyprglass-sync" "$BIN/gg-apply-preferences" "$BIN/gg-tile" "$BIN/gg-icon-resolver" "$BIN/gg-idle" "$BIN/gg-mac-open" "$BIN/gg-session"
+  mkdir -p "$R/usr/share/wayland-sessions"
+  cat > "$R/usr/share/wayland-sessions/golden-gate.desktop" <<'EOF'
+[Desktop Entry]
+Name=CitronOS
+Comment=CitronOS desktop
+Exec=gg-session
+Type=Application
+DesktopNames=Hyprland
+EOF
+
+  rm -rf "$R/usr/share/icons/GoldenGate"
+  cp -a "$REPO/icons/GoldenGate" "$R/usr/share/icons/GoldenGate"
+  for svg in "$REPO"/prototype/assets/wallpapers/*.svg; do
+    local name
+    name="$(basename "$svg" .svg)"
+    cp "$svg" "$R/usr/share/backgrounds/golden-gate/$name.svg"
+    if command -v rsvg-convert >/dev/null; then
+      rsvg-convert -w 3840 -h 2400 -o "$R/usr/share/backgrounds/golden-gate/$name.png" "$svg"
+    fi
+  done
+
+  local SKEL="$R/etc/skel"
+  if [[ ! -d "$SKEL/.config/quickshell/golden-gate" ]]; then
+    say "new-account CitronOS desktop → $SKEL"
+    mkdir -p "$SKEL/.config/hypr/golden-gate" "$SKEL/.config/quickshell" \
+             "$SKEL/.config/ghostty/themes" "$SKEL/.config/gtk-4.0" "$SKEL/.config/gtk-3.0" \
+             "$SKEL/.config/fontconfig/conf.d"
+    sed -e 's#__GG_WALLPAPER__#/usr/share/backgrounds/golden-gate/tide.png#' \
+        -e 's#__GG_APPS__#/usr/share/golden-gate/apps#' \
+        "$REPO/compositor/hyprland/hyprland.conf" > "$SKEL/.config/hypr/hyprland.conf"
+    cp "$REPO/design/dist/hyprland-motion.conf" "$SKEL/.config/hypr/golden-gate/motion.conf"
+    cp "$REPO/compositor/hyprland/hypridle.conf" "$SKEL/.config/hypr/hypridle.conf"
+    cp "$REPO/compositor/hyprland/report-config-errors.sh" "$SKEL/.config/hypr/golden-gate/report-config-errors.sh"
+    cp "$REPO/compositor/hyprland/machine-conf.sh" "$SKEL/.config/hypr/golden-gate/machine-conf.sh"
+    chmod 755 "$SKEL/.config/hypr/golden-gate/report-config-errors.sh" "$SKEL/.config/hypr/golden-gate/machine-conf.sh"
+    printf '# Written by Setup Assistant (keyboard layout).\n' > "$SKEL/.config/hypr/golden-gate/input.conf"
+    printf '# Written by Settings.\n' > "$SKEL/.config/hypr/golden-gate/accessibility.conf"
+    printf '# Written by Settings.\n' > "$SKEL/.config/hypr/golden-gate/displays.conf"
+    printf '# Written by Settings: window snapping and resize.\n' > "$SKEL/.config/hypr/golden-gate/windows.conf"
+    printf '# Filled in by machine-conf.sh when the session starts.\n' > "$SKEL/.config/hypr/golden-gate/machine.conf"
+    cp -a "$REPO/shell" "$SKEL/.config/quickshell/golden-gate"
+    # The shell reaches the canonical shared UI (Theme, Glass, Symbol, controls)
+    # only through its ui/ link, so the shell and every shared control resolve
+    # one Theme module and one Theme singleton: dark mode, accent, glass style
+    # and Reduce Transparency set by the shell reach every control.
+    local SHELL_SKEL="$SKEL/.config/quickshell/golden-gate"
+    rm -rf "$SHELL_SKEL/ui"
+    ln -s "/usr/share/golden-gate/ui" "$SHELL_SKEL/ui"
+    cp "$REPO/themes/ghostty/config" "$SKEL/.config/ghostty/config"
+    cp "$REPO"/themes/ghostty/themes/* "$SKEL/.config/ghostty/themes/"
+    cp "$REPO/design/dist/gtk.css" "$SKEL/.config/gtk-4.0/gtk.css"
+    cp "$REPO/design/dist/gtk3.css" "$SKEL/.config/gtk-3.0/gtk.css"
+    cp "$REPO/themes/fontconfig/60-golden-gate.conf" "$SKEL/.config/fontconfig/conf.d/60-golden-gate.conf"
+    printf '[Default Applications]\nx-scheme-handler/http=org.goldengate.Web.desktop\nx-scheme-handler/https=org.goldengate.Web.desktop\ntext/html=org.goldengate.Web.desktop\ninode/directory=org.goldengate.Files.desktop\napplication/zip=org.goldengate.ArchiveUtility.desktop\napplication/x-zip-compressed=org.goldengate.ArchiveUtility.desktop\napplication/x-tar=org.goldengate.ArchiveUtility.desktop\napplication/gzip=org.goldengate.ArchiveUtility.desktop\napplication/x-compressed-tar=org.goldengate.ArchiveUtility.desktop\napplication/x-xz-compressed-tar=org.goldengate.ArchiveUtility.desktop\ntext/plain=org.goldengate.TextEdit.desktop\ntext/markdown=org.goldengate.TextEdit.desktop\napplication/json=org.goldengate.TextEdit.desktop\nimage/jpeg=org.goldengate.Photos.desktop\nimage/png=org.goldengate.Photos.desktop\nimage/webp=org.goldengate.Photos.desktop\nimage/gif=org.goldengate.Photos.desktop\nimage/tiff=org.goldengate.Photos.desktop\nvideo/mp4=org.goldengate.Photos.desktop\nvideo/quicktime=org.goldengate.Photos.desktop\nvideo/webm=org.goldengate.Photos.desktop\naudio/mpeg=org.goldengate.Music.desktop\naudio/mp4=org.goldengate.Music.desktop\naudio/flac=org.goldengate.Music.desktop\naudio/ogg=org.goldengate.Music.desktop\naudio/opus=org.goldengate.Music.desktop\naudio/x-wav=org.goldengate.Music.desktop\n' > "$SKEL/.config/mimeapps.list"
+  fi
+  # Existing installed systems already have /etc/skel: OTA updates must still
+  # refresh the canonical default shell + Hyprland bindings. golden_update.py
+  # snapshots the previous defaults first and updates each user's pristine
+  # managed files, preserving customized files as .golden-gate-new.
+  if [[ -d "$SKEL/.config/quickshell/golden-gate" ]]; then
+    say "refreshing CitronOS shell and keyboard shortcut defaults → $SKEL"
+    rm -rf "$SKEL/.config/quickshell/golden-gate"
+    cp -a "$REPO/shell" "$SKEL/.config/quickshell/golden-gate"
+    rm -rf "$SKEL/.config/quickshell/golden-gate/ui"
+    ln -s "/usr/share/golden-gate/ui" "$SKEL/.config/quickshell/golden-gate/ui"
+    mkdir -p "$SKEL/.config/hypr/golden-gate"
+    [[ -e "$SKEL/.config/hypr/golden-gate/windows.conf" ]] ||
+        printf '# Written by Settings: window snapping and resize.\n' > "$SKEL/.config/hypr/golden-gate/windows.conf"
+    sed -e 's#__GG_WALLPAPER__#/usr/share/backgrounds/golden-gate/tide.png#' \
+        -e 's#__GG_APPS__#/usr/share/golden-gate/apps#' \
+        "$REPO/compositor/hyprland/hyprland.conf" > "$SKEL/.config/hypr/hyprland.conf"
+  fi
+  say "GNOME defaults (fonts and icons) → $R/usr/share/glib-2.0/schemas"
+  local schema_dir="$R/usr/share/glib-2.0/schemas"
+  mkdir -p "$schema_dir"
+  cp "$REPO/themes/gsettings/90_golden-gate.gschema.override" "$schema_dir/"
+  # During an ArchISO build airootfs is copied before packages are installed.
+  # At this point the staged root contains our override but not the package-owned
+  # *.gschema.xml files yet. Calling glib-compile-schemas here produces the
+  # misleading "No schema files found" message. Pacman's GLib schema hook compiles
+  # the directory after gsettings-desktop-schemas is installed. For an existing
+  # system (--extras without a staging root), compile immediately instead.
+  if command -v glib-compile-schemas >/dev/null 2>&1 \
+      && compgen -G "$schema_dir/*.gschema.xml" >/dev/null; then
+    glib-compile-schemas "$schema_dir"
+  else
+    say "GSettings override staged; schema cache will be built when packages are installed"
+  fi
+
+  say "keyd ⌘ layer → $R/etc/keyd"
+  mkdir -p "$R/etc/keyd"
+  cp "$REPO/themes/keyd/default.conf" "$REPO/themes/keyd/app.conf" "$R/etc/keyd/"
+
+  say "SDDM theme → $R/usr/share/sddm/themes/golden-gate"
+  local T="$R/usr/share/sddm/themes/golden-gate"
+  rm -rf "$T"
+  mkdir -p "$T/components"
+  cp "$REPO"/themes/sddm/golden-gate/* "$T/"
+
+  # The greeter is laid out like the shell: ui/ is the canonical shared UI (a
+  # copy, since the greeter may run before /usr/share/golden-gate exists), and
+  # components/ holds the shell's lock/login surface and its thin wrappers.
+  cp -a "$REPO/apps/lib" "$T/ui"
+  for shared in Glass.qml TextField.qml Symbol.qml Spring.qml SpringValue.qml; do
+    cp "$REPO/shell/components/$shared" "$T/components/$shared"
+  done
+  cp "$REPO/shell/components/LockSurface.qml" "$T/components/LockSurface.qml"
+  cp "$REPO/shell/components/SystemClockProxy.qml" "$T/components/SystemClockProxy.qml"
+  mkdir -p "$R/etc/sddm.conf.d"
+  # CitronOS has no X server, and SDDM's greeter runs on X11 unless told
+  # otherwise: left at that default, the installed system booted to a black
+  # screen. The greeter runs on Wayland, full screen in Weston's kiosk shell.
+  printf '[Theme]\nCurrent=golden-gate\n\n[General]\nDisplayServer=wayland\n\n[Wayland]\nCompositorCommand=weston --shell=kiosk --idle-time=0\n' > "$R/etc/sddm.conf.d/golden-gate.conf"
+
+  say "Plymouth splash → $R/usr/share/plymouth/themes/golden-gate"
+  local P="$R/usr/share/plymouth/themes/golden-gate"
+  mkdir -p "$P"
+  cp "$REPO"/themes/plymouth/golden-gate/* "$P/"
+  if command -v rsvg-convert >/dev/null; then
+    # The web preview's boot screen: a 92 px mark, a 180 x 5 bar; @2x for HiDPI.
+    local k sfx
+    for k in 1 2; do
+      sfx=""; [[ $k == 2 ]] && sfx="@2x"
+      rsvg-convert -w $((92 * k)) -h $((92 * k)) -o "$P/logo$sfx.png" "$REPO/shell/assets/symbols/logo.svg"
+      printf '<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d"><rect width="%d" height="%d" rx="%d" fill="#fff" fill-opacity=".22"/></svg>' \
+        $((180 * k)) $((5 * k)) $((180 * k)) $((5 * k)) $((3 * k)) | rsvg-convert -o "$P/track$sfx.png"
+      printf '<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d"><rect width="%d" height="%d" rx="%d" fill="#fff"/></svg>' \
+        $((180 * k)) $((5 * k)) $((180 * k)) $((5 * k)) $((3 * k)) | rsvg-convert -o "$P/fill$sfx.png"
+      printf '<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d"><rect x=".5" y=".5" width="%d" height="%d" rx="%d" fill="#fff" fill-opacity=".14" stroke="#fff" stroke-opacity=".45"/></svg>' \
+        $((220 * k)) $((34 * k)) $((220 * k - 1)) $((34 * k - 1)) $((17 * k)) | rsvg-convert -o "$P/field$sfx.png"
+    done
+  else
+    say "rsvg-convert not found (install librsvg); Plymouth images skipped"
+  fi
+}
+
+if [[ $MODE == extras ]]; then
+  install_extras "$ROOT"
+  say "done. Enable with: systemctl enable --now keyd; systemctl enable sddm; plymouth-set-default-theme -R golden-gate"
+  exit 0
+fi
+
+if [[ $MODE == user ]]; then
+  CONF="${XDG_CONFIG_HOME:-$HOME/.config}"
+  DATA="${XDG_DATA_HOME:-$HOME/.local/share}"
+  BG_PATH="~/.local/share/backgrounds/golden-gate"
+else
+  CONF="$ROOT/etc/skel/.config"
+  DATA="$ROOT/usr/share"
+  BG_PATH="/usr/share/backgrounds/golden-gate"
+fi
+STAMP="$(date +%Y%m%d-%H%M%S)"
+place() { # place SRC DEST: copy with backup of a differing existing file
+  local src=$1 dest=$2
+  mkdir -p "$(dirname "$dest")"
+  if [[ -e $dest && ! -L $dest ]] && ! cmp -s "$src" "$dest"; then
+    mv "$dest" "$dest.bak-$STAMP"
+    say "backed up $(basename "$dest") → $(basename "$dest").bak-$STAMP"
+  fi
+  cp "$src" "$dest"
+}
+
+# 1. Regenerate assets from the canonical sources. Software Update stages
+# an exact GitHub snapshot (GG_SKIP_BUILD=1), but OrchardKit glyphs now live in
+# an immutable source table and their pre-tinted copies are build outputs.
+# Rebuild the icon output even for OTA, otherwise the running shell silently
+# keeps its OLD icons while source and Settings report the new version.
+# nodejs is in the required system package list and golden_update.py installs
+# missing required packages before staging. A standalone install without Node
+# can still use the checked-in generated assets as a fallback.
+if command -v node >/dev/null; then
+  if [[ "${GG_SKIP_BUILD:-0}" != 1 ]]; then
+    say "building design tokens"
+    node "$REPO/design/build.mjs" >/dev/null
+  fi
+  say "building shared icons"
+  node "$REPO/icons/build.mjs" >/dev/null
+fi
+
+# 2. Compositor
+say "Hyprland config → $CONF/hypr"
+BG_ABS="${BG_PATH/#\~/$HOME}"
+if [[ $MODE == system ]]; then APPS_RUN=/usr/share/golden-gate/apps; else APPS_RUN="$DATA/golden-gate/apps"; fi
+sed -e "s#__GG_WALLPAPER__#$BG_ABS/tide.png#" -e "s#__GG_APPS__#$APPS_RUN#" "$REPO/compositor/hyprland/hyprland.conf" > "$REPO/.hyprland.tmp"
+place "$REPO/.hyprland.tmp" "$CONF/hypr/hyprland.conf"
+rm -f "$REPO/.hyprland.tmp"
+place "$REPO/design/dist/hyprland-motion.conf" "$CONF/hypr/golden-gate/motion.conf"
+place "$REPO/compositor/hyprland/hypridle.conf" "$CONF/hypr/hypridle.conf"
+place "$REPO/compositor/hyprland/report-config-errors.sh" "$CONF/hypr/golden-gate/report-config-errors.sh"
+chmod +x "$CONF/hypr/golden-gate/report-config-errors.sh"
+# Keyboard layout, written by Setup Assistant; empty until then.
+[[ -e "$CONF/hypr/golden-gate/input.conf" ]] || { mkdir -p "$CONF/hypr/golden-gate"; echo "# Written by Setup Assistant (keyboard layout)." > "$CONF/hypr/golden-gate/input.conf"; }
+# Written by Settings (Accessibility, Displays); empty until you change something.
+for f in accessibility displays windows; do
+  [[ -e "$CONF/hypr/golden-gate/$f.conf" ]] || echo "# Written by Settings." > "$CONF/hypr/golden-gate/$f.conf"
+done
+place "$REPO/compositor/hyprland/machine-conf.sh" "$CONF/hypr/golden-gate/machine-conf.sh"
+chmod +x "$CONF/hypr/golden-gate/machine-conf.sh"
+if [[ $MODE == system ]]; then
+  # An image is built on another machine: leave the file empty; gg-session fills
+  # it in on the machine that boots.
+  echo "# Filled in by machine-conf.sh when the session starts." > "$CONF/hypr/golden-gate/machine.conf"
+else
+  sh "$CONF/hypr/golden-gate/machine-conf.sh" "$CONF/hypr/golden-gate/machine.conf"
+fi
+
+# 3. Shell
+say "Quickshell shell → $CONF/quickshell/golden-gate"
+rm -rf "$CONF/quickshell/golden-gate"
+mkdir -p "$CONF/quickshell"
+cp -a "$REPO/shell" "$CONF/quickshell/golden-gate"
+
+# CitronOS's own apps (Calculator, …): Quickshell configs with desktop entries.
+say "apps → $DATA/golden-gate/apps"
+rm -rf "$DATA/golden-gate/apps"
+mkdir -p "$DATA/golden-gate" "$DATA/applications"
+cp -a "$REPO/apps" "$DATA/golden-gate/apps"
+rm -rf "$DATA/golden-gate/apps/desktop"
+# Canonical component store for installed apps. App-local lib/ is an alias, so
+# Button/Switch/Slider/TextField/etc. can never drift between applications.
+rm -rf "$DATA/golden-gate/ui" "$DATA/golden-gate/apps/lib"
+cp -a "$REPO/apps/lib" "$DATA/golden-gate/ui"
+ln -s ../ui "$DATA/golden-gate/apps/lib"
+
+# Collapse shell/app primitives onto the same runtime component store. In a
+# staged system image the final target is /usr/share; user installs point at
+# their actual XDG data directory.
+if [[ $MODE == system ]]; then
+  SHARED_UI=/usr/share/golden-gate/ui
+else
+  SHARED_UI="$DATA/golden-gate/ui"
+fi
+SHELL_RUNTIME="$CONF/quickshell/golden-gate"
+# One link, ui/ → the shared store: one Theme module and singleton for the shell.
+rm -rf "$SHELL_RUNTIME/ui"
+ln -s "$SHARED_UI" "$SHELL_RUNTIME/ui"
+# gg-diagnostics: a crash and diagnostics report you can read and send.
+if [[ $MODE == system ]]; then BIN="$ROOT/usr/local/bin"; else BIN="$HOME/.local/bin"; fi
+mkdir -p "$BIN"
+printf '#!/bin/sh\nexec bash "%s/setup/diagnostics.sh" "$@"\n' "$APPS_RUN" > "$BIN/gg-diagnostics"
+chmod +x "$BIN/gg-diagnostics"
+printf '#!/bin/sh\nexec bash "%s/settings/open.sh" "$@"\n' "$APPS_RUN" > "$BIN/gg-settings"
+printf '#!/bin/sh\nexec sh "%s/software/open.sh" "$@"\n' "$APPS_RUN" > "$BIN/gg-software"
+printf '#!/bin/sh\nexec sh "%s/software/mac-open.sh" "$@"\n' "$APPS_RUN" > "$BIN/gg-mac-open"
+printf '#!/bin/sh\nexec sh "%s/files/open.sh" "$@"\n' "$APPS_RUN" > "$BIN/gg-files"
+printf '#!/bin/sh\nexec sh "%s/archive/open.sh" "$@"\n' "$APPS_RUN" > "$BIN/gg-archive"
+printf '#!/bin/sh\nexec sh "%s/lcode/open.sh" "$@"\n' "$APPS_RUN" > "$BIN/gg-lcode"
+printf '#!/bin/sh\nexec sh "%s/airdrop/share.sh" "$@"\n' "$APPS_RUN" > "$BIN/gg-airdrop"
+printf '#!/bin/sh\nexec sh "%s/intelligence/open.sh" "$@"\n' "$APPS_RUN" > "$BIN/gg-intelligence"
+printf '#!/bin/sh\nexec bash "%s/citronpods/install-engine.sh" "$@"\n' "$APPS_RUN" > "$BIN/gg-install-citronpods"
+printf '#!/bin/sh\nexec sh "%s/citronpods/ctl.sh" "$@"\n' "$APPS_RUN" > "$BIN/gg-citronpods"
+printf '#!/bin/sh\nexec bash "%s/citronpods/bootstrap.sh" "$@"\n' "$APPS_RUN" > "$BIN/gg-citronpods-bootstrap"
+printf '#!/bin/sh\nexec sh "%s/tablet/keyboard.sh" "$@"\n' "$APPS_RUN" > "$BIN/gg-tablet-keyboard"
+# The system service is installed by --extras on system images; standalone
+# user installs keep a private unit for systemctl --user as well.
+install -Dm644 "$REPO/apps/citronpods/citronpods-daemon.service" "$CONF/systemd/user/citronpods-daemon.service"
+install -Dm644 "$REPO/apps/citronpods/citronpods-engine-bootstrap.service" "$CONF/systemd/user/citronpods-engine-bootstrap.service"
+install -Dm644 "$REPO/apps/citronpods/citronpods-engine-bootstrap.path" "$CONF/systemd/user/citronpods-engine-bootstrap.path"
+chmod +x "$BIN/gg-intelligence" "$BIN/gg-install-citronpods" "$BIN/gg-citronpods" "$BIN/gg-citronpods-bootstrap" "$BIN/gg-tablet-keyboard"
+# Adopt an existing M10 daemon installed by the user's previous CitronPods
+# build. Do not recompile, install a second GUI or enable a failing service
+# when no backend exists yet. Staged/offline image builds skip user systemd.
+if [[ $MODE != system ]] && command -v systemctl >/dev/null 2>&1; then
+  systemctl --user daemon-reload >/dev/null 2>&1 || :
+  systemctl --user enable citronpods-engine-bootstrap.service citronpods-engine-bootstrap.path >/dev/null 2>&1 || :
+  systemctl --user start --no-block citronpods-engine-bootstrap.path citronpods-engine-bootstrap.service >/dev/null 2>&1 || :
+  if command -v citronpods-daemon >/dev/null 2>&1; then
+    systemctl --user enable --now citronpods-daemon.service >/dev/null 2>&1 || :
+  fi
+fi
+printf '#!/bin/sh\nexec qs -n -p "%s/diskutility.qml" "$@"\n' "$APPS_RUN" > "$BIN/gg-disk-utility"
+chmod +x "$BIN/gg-disk-utility"
+RUNTIME="$DATA/golden-gate/runtime"
+mkdir -p "$RUNTIME"
+cp "$REPO/apps/setup/pref-helper.py" "$RUNTIME/pref-helper.py"
+cp "$REPO/compositor/hyprland/hyprglass-sync.sh" "$RUNTIME/hyprglass-sync.sh"
+cp "$REPO/compositor/hyprland/apply-preferences.sh" "$RUNTIME/apply-preferences.sh"
+cp "$REPO/compositor/hyprland/tile.py" "$RUNTIME/tile.py"
+cp "$REPO/icons/icon-resolver.py" "$RUNTIME/icon-resolver.py"
+cp "$REPO/compositor/hyprland/idle.py" "$RUNTIME/idle.py"
+chmod 755 "$RUNTIME/pref-helper.py" "$RUNTIME/hyprglass-sync.sh" "$RUNTIME/apply-preferences.sh" "$RUNTIME/tile.py" "$RUNTIME/icon-resolver.py" "$RUNTIME/idle.py"
+if [[ $MODE == system ]]; then
+  printf '#!/bin/sh\nexec python3 /usr/share/golden-gate/runtime/pref-helper.py "$@"\n' > "$BIN/gg-pref"
+  printf '#!/bin/sh\nexec /usr/share/golden-gate/runtime/hyprglass-sync.sh "$@"\n' > "$BIN/gg-hyprglass-sync"
+  printf '#!/bin/sh\nexec /usr/share/golden-gate/runtime/apply-preferences.sh "$@"\n' > "$BIN/gg-apply-preferences"
+  printf '#!/bin/sh\nexec python3 /usr/share/golden-gate/runtime/tile.py "$@"\n' > "$BIN/gg-tile"
+  printf '#!/bin/sh\nexec python3 /usr/share/golden-gate/runtime/icon-resolver.py "$@"\n' > "$BIN/gg-icon-resolver"
+  printf '#!/bin/sh\nexec python3 /usr/share/golden-gate/runtime/idle.py "$@"\n' > "$BIN/gg-idle"
+else
+  printf '#!/bin/sh\nexec python3 "%s/pref-helper.py" "$@"\n' "$RUNTIME" > "$BIN/gg-pref"
+  printf '#!/bin/sh\nexec "%s/hyprglass-sync.sh" "$@"\n' "$RUNTIME" > "$BIN/gg-hyprglass-sync"
+  printf '#!/bin/sh\nexec "%s/apply-preferences.sh" "$@"\n' "$RUNTIME" > "$BIN/gg-apply-preferences"
+  printf '#!/bin/sh\nexec python3 "%s/tile.py" "$@"\n' "$RUNTIME" > "$BIN/gg-tile"
+  printf '#!/bin/sh\nexec python3 "%s/icon-resolver.py" "$@"\n' "$RUNTIME" > "$BIN/gg-icon-resolver"
+  printf '#!/bin/sh\nexec python3 "%s/idle.py" "$@"\n' "$RUNTIME" > "$BIN/gg-idle"
+fi
+chmod +x "$BIN/gg-settings" "$BIN/gg-software" "$BIN/gg-mac-open" "$BIN/gg-files" "$BIN/gg-archive" "$BIN/gg-lcode" "$BIN/gg-airdrop" "$BIN/gg-pref" "$BIN/gg-hyprglass-sync" "$BIN/gg-apply-preferences" "$BIN/gg-tile" "$BIN/gg-icon-resolver" "$BIN/gg-idle"
+for f in "$REPO"/apps/desktop/*.desktop; do
+  sed "s#@APPS@#$APPS_RUN#g" "$f" > "$DATA/applications/$(basename "$f")"
+done
+# Existing installs may have the old launcher even though the repository
+# no longer ships it. Remove that one owned desktop file, not vendor apps.
+rm -f "$DATA/applications/org.goldengate.Intelligence.desktop"
+# Hide Ghostty's upstream launcher without colliding with its package-owned
+# /usr/share/applications entry. /usr/local/share takes precedence system-wide;
+# user installs can safely shadow it in their own XDG data directory.
+if [[ $MODE == system ]]; then
+  GHOSTTY_DESKTOP_DIR="$ROOT/usr/local/share/applications"
+else
+  GHOSTTY_DESKTOP_DIR="$DATA/applications"
+fi
+mkdir -p "$GHOSTTY_DESKTOP_DIR"
+cat > "$GHOSTTY_DESKTOP_DIR/com.mitchellh.ghostty.desktop" <<'EOF'
+[Desktop Entry]
+Type=Application
+Name=Ghostty
+Exec=ghostty
+NoDisplay=true
+EOF
+# Terminal: its own title bar and Terminal.app's look
+place "$REPO/themes/ghostty/config" "$CONF/ghostty/config"
+for f in "$REPO"/themes/ghostty/themes/*; do place "$f" "$CONF/ghostty/themes/$(basename "$f")"; done
+
+# Web owns the browser UI and Chromium engine; do not expose a second browser chrome.
+printf '#!/bin/sh\nexec sh "%s/browser/launch.sh" "$@"\n' "$APPS_RUN" > "$BIN/gg-web"
+printf '#!/bin/sh\nexec sh "%s/installer/launch.sh" "$@"\n' "$APPS_RUN" > "$BIN/gg-install"
+chmod +x "$BIN/gg-web" "$BIN/gg-install"
+# System paths inside generated launchers must refer to the booted image, not its build root.
+# Respect an existing browser choice; seed MIME defaults only on a fresh install.
+if [[ ! -e "$CONF/mimeapps.list" ]]; then
+  printf '[Default Applications]\nx-scheme-handler/http=org.goldengate.Web.desktop\nx-scheme-handler/https=org.goldengate.Web.desktop\ntext/html=org.goldengate.Web.desktop\ninode/directory=org.goldengate.Files.desktop\napplication/zip=org.goldengate.ArchiveUtility.desktop\napplication/x-zip-compressed=org.goldengate.ArchiveUtility.desktop\napplication/x-tar=org.goldengate.ArchiveUtility.desktop\napplication/gzip=org.goldengate.ArchiveUtility.desktop\napplication/x-compressed-tar=org.goldengate.ArchiveUtility.desktop\napplication/x-xz-compressed-tar=org.goldengate.ArchiveUtility.desktop\ntext/plain=org.goldengate.TextEdit.desktop\ntext/markdown=org.goldengate.TextEdit.desktop\napplication/json=org.goldengate.TextEdit.desktop\nimage/jpeg=org.goldengate.Photos.desktop\nimage/png=org.goldengate.Photos.desktop\nimage/webp=org.goldengate.Photos.desktop\nimage/gif=org.goldengate.Photos.desktop\nimage/tiff=org.goldengate.Photos.desktop\nvideo/mp4=org.goldengate.Photos.desktop\nvideo/quicktime=org.goldengate.Photos.desktop\nvideo/webm=org.goldengate.Photos.desktop\naudio/mpeg=org.goldengate.Music.desktop\naudio/mp4=org.goldengate.Music.desktop\naudio/flac=org.goldengate.Music.desktop\naudio/ogg=org.goldengate.Music.desktop\naudio/opus=org.goldengate.Music.desktop\naudio/x-wav=org.goldengate.Music.desktop\n' > "$CONF/mimeapps.list"
+fi
+
+# 4. Toolkit theming + fonts
+say "GTK 4 / libadwaita overrides, fontconfig"
+place "$REPO/design/dist/gtk.css" "$CONF/gtk-4.0/gtk.css"
+place "$REPO/design/dist/gtk3.css" "$CONF/gtk-3.0/gtk.css"
+place "$REPO/themes/fontconfig/60-golden-gate.conf" "$CONF/fontconfig/conf.d/60-golden-gate.conf"
+
+# 5. Icons
+say "icon theme → $DATA/icons/GoldenGate"
+rm -rf "$DATA/icons/GoldenGate"
+mkdir -p "$DATA/icons"
+cp -a "$REPO/icons/GoldenGate" "$DATA/icons/GoldenGate"
+command -v gtk-update-icon-cache >/dev/null && gtk-update-icon-cache -q -f "$DATA/icons/GoldenGate" || true
+
+# 6. Wallpapers: PNGs for the shell, lock screen and menu-bar sampling
+BG_DIR="$DATA/backgrounds/golden-gate"
+mkdir -p "$BG_DIR"
+for svg in "$REPO"/prototype/assets/wallpapers/*.svg; do
+  name="$(basename "$svg" .svg)"
+  cp "$svg" "$BG_DIR/$name.svg"
+  if command -v rsvg-convert >/dev/null; then
+    rsvg-convert -w 3840 -h 2400 -o "$BG_DIR/$name.png" "$svg"
+  else
+    say "rsvg-convert not found (install librsvg); skipping $name.png"
+  fi
+done
+
+# What the system calls itself (os-release), from apps/lib/theme/Release.qml:
+# About This Computer, the boot menu and tools like fastfetch read it. pacman's
+# filesystem package owns /usr/lib/os-release, so a hook puts ours back
+# whenever that package is installed (the ISO build) or upgraded.
+install_identity() {
+  local R=$1
+  [[ -f "$REPO/apps/lib/theme/Release.qml" ]] || return 0
+  rel() { sed -n "s/.*property string $1: \"\(.*\)\".*/\1/p" "$REPO/apps/lib/theme/Release.qml"; }
+  local name release version
+  name=$(rel name); release=$(rel release); version=$(rel version)
+  say "system identity → $name $release $version"
+  mkdir -p "$R/usr/share/golden-gate" "$R/etc/pacman.d/hooks"
+  cat > "$R/usr/share/golden-gate/os-release" <<EOF
+NAME="$name"
+PRETTY_NAME="$name $release $version"
+ID=citronos
+ID_LIKE=arch
+VERSION="$version ($release)"
+VERSION_ID=$version
+VERSION_CODENAME=${release,,}
+BUILD_ID=$(date --date="@${SOURCE_DATE_EPOCH:-$(date +%s)}" +%Y.%m.%d)
+ANSI_COLOR="38;2;255;204;0"
+HOME_URL="https://github.com/mobilaunch/goldenapple"
+LOGO=archlinux-logo
+EOF
+  cat > "$R/etc/pacman.d/hooks/citronos-release.hook" <<'EOF'
+[Trigger]
+Type = Path
+Operation = Install
+Operation = Upgrade
+Target = usr/lib/os-release
+
+[Action]
+Description = Naming the system CitronOS...
+When = PostTransaction
+Exec = /usr/bin/install -m644 /usr/share/golden-gate/os-release /usr/lib/os-release
+EOF
+  # Already installed (an update, not the ISO build, which hasn't installed
+  # packages yet): rename it now.
+  if [[ -e "$R/usr/lib/os-release" ]]; then
+    install -m644 "$R/usr/share/golden-gate/os-release" "$R/usr/lib/os-release"
+  fi
+
+  # pacman.conf ready for installing software ([multilib] on, no build-only
+  # repository); see apps/setup/pacman-config.sh. The hook keeps it so when
+  # pacman installs or upgrades the file; on an installed system it's fixed now.
+  install -Dm755 "$REPO/apps/setup/pacman-config.sh" "$R/usr/lib/golden-gate/pacman-config.sh"
+  cat > "$R/etc/pacman.d/hooks/citronos-pacman.hook" <<'EOF'
+[Trigger]
+Type = Path
+Operation = Install
+Operation = Upgrade
+Target = etc/pacman.conf
+
+[Action]
+Description = Setting up the package repositories for CitronOS...
+When = PostTransaction
+Exec = /bin/sh /usr/lib/golden-gate/pacman-config.sh
+EOF
+  sh "$REPO/apps/setup/pacman-config.sh" "$R"
+}
+
+if [[ $MODE == system ]]; then
+  install_extras "$ROOT"
+  install_identity "$ROOT"
+else
+  say "system pieces (keyd ⌘ layer, login screen, boot splash): sudo scripts/install.sh --extras"
+fi
+
+say "done. Log into a Hyprland session (or run: hyprctl reload && qs -c golden-gate)."

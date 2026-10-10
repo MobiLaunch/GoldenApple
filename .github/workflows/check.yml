@@ -1,0 +1,596 @@
+name: Check
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  generated:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --no-package-lock
+      - name: Rebuild tokens and icons
+        run: npm run build
+      - name: Verify desktop archive associations
+        run: |
+          grep -q 'MimeType=application/zip' apps/desktop/org.goldengate.ArchiveUtility.desktop
+          grep -q 'application/zip=org.goldengate.ArchiveUtility.desktop' scripts/install.sh
+      - name: Generated design files are up to date
+        # OrchardKit glyphs are assembled at install time by icons/build.mjs.
+        # Source templates are committed, while per-tone files are generated.
+        run: git diff --exit-code -- . ':!shell/assets/symbols/**' ':!apps/lib/assets/symbols/**' ':!icons/GoldenGate/symbolic/actions/**' ':!icons/GoldenGate/scalable/places/user-home.svg' ':!icons/GoldenGate/scalable/places/folder-*.svg' ':!prototype/assets/icons.js'
+      - name: Lint shell scripts
+        run: find scripts distro apps themes compositor -type f -name "*.sh" -print0 | xargs -0 -n1 bash -n
+      - name: Calendar recurrence contracts
+        run: node tests/calendar-recurrence.mjs
+      - name: Verify OrchardKit symbols, Golden Gate typography and charging indicator
+        run: node --test tests/appearance-contracts.mjs
+      - name: Tablet Home Screen layout, widget editor and swipe gesture contracts
+        run: node --test tests/tablet-home.mjs
+      - name: Responsive iPad-style app navigation and touch hit targets
+        run: python tests/tablet-app-interfaces.py
+      - name: Desktop window positioning and Dock motion contracts
+        run: node --test tests/window-placement.mjs
+      - name: Guard the login and glass paths
+        run: |
+          grep -q 'id: applicationsPanel' shell/shell.qml
+          grep -q 'DesktopEntries.applications.values' shell/Applications.qml
+          ! grep -q 'Quickshell.Services.DesktopEntries' shell/Applications.qml
+          ! grep -q 'applicationsOpenRetry' shell/Dock.qml
+          grep -q 'apps@accent.svg' shell/Dock.qml
+          ! grep -q 'dockMagnification' shell/Dock.qml
+          ! grep -q 'dockMagnifiedSize' shell/Dock.qml
+          ! grep -q 'pointerTargetX' shell/Dock.qml
+          grep -q 'iPad-style glass shelf' shell/Dock.qml
+          grep -q 'DesktopWidgets { id: desktopWidgets' shell/shell.qml
+          grep -q 'golden-gate-shell.log' distro/archiso/overlay/usr/local/bin/gg-session
+          ! grep -q 'qs -c' distro/archiso/overlay/usr/local/bin/gg-session
+          grep -q 'qs -c golden-gate' compositor/hyprland/hyprland.conf
+          grep -q 'gg-apply-preferences' compositor/hyprland/hyprland.conf
+          grep -q 'systemd-detect-virt --vm' compositor/hyprland/hyprglass-sync.sh
+          grep -q 'glass_opacity 0.58' compositor/hyprland/hyprglass-sync.sh
+          grep -q 'id: panel' shell/ControlCenter.qml
+          grep -q 'Qt.RightButton' shell/Wallpaper.qml
+          grep -q 'Qt.RightButton' shell/Dock.qml
+          grep -q 'Qt.RightButton' shell/Applications.qml
+          grep -q 'onContextMenuRequested' apps/browser/Browser.qml
+          grep -q 'menu.popup' apps/files.qml
+          grep -q 'id: nowPlaying' shell/ControlCenter.qml
+          grep -q 'role: "dock"' shell/Dock.qml
+          grep -q 'dark ? "#7021262e" : "#5f343941"' apps/lib/theme/Theme.qml
+          grep -q 'GG_WEB_LIVE_SAFE=1' apps/browser/launch.sh
+          grep -q -- '--disable-gpu' apps/browser/launch.sh
+          grep -q 'rendererRestarts' apps/browser/Browser.qml
+          grep -q 'visible: pane.joining === networkBlock.modelData.ssid' apps/settings/panes/WifiPane.qml
+          grep -q 'fontUi: "Golden Gate UI"' apps/lib/theme/Theme.qml
+          grep -q 'import QtWebEngine' apps/browser/Browser.qml
+          grep -q 'Search or enter website name' apps/browser/Browser.qml
+          grep -q 'WebEngineProfile' apps/browser/Browser.qml
+          grep -q 'Reading List' apps/browser/Browser.qml
+          grep -q 'TAB GROUPS' apps/browser/Browser.qml
+          grep -q 'text: "Profiles"' apps/browser/Browser.qml
+          grep -q 'options: \["DuckDuckGo", "Brave", "Bing", "Google"\]' apps/browser/Browser.qml
+          grep -q 'id: websitePermissionsSheet' apps/browser/Browser.qml
+          grep -q 'listAllPermissions' apps/browser/Browser.qml
+          grep -q 'id: tabOverview' apps/browser/Browser.qml
+          grep -q 'DragHandler' apps/browser/Browser.qml
+          grep -q 'text: "Find on Page…"' apps/browser/Browser.qml
+          grep -q 'currentView.findText' apps/browser/Browser.qml
+          grep -q 'id: tabGroupsManager' apps/browser/Browser.qml
+          grep -q 'Save Tabs as Group' apps/browser/Browser.qml
+          grep -q 'WebEngineProfile' apps/browser/Browser.qml
+          grep -q 'BrowserBackend.attachProfile(root.profile)' apps/browser/Browser.qml
+          grep -q 'text: "Privacy Report"' apps/browser/Browser.qml
+          grep -q 'privacyProtection' apps/browser/model.py
+          grep -q 'QWebEngineUrlRequestInterceptor' apps/browser/backend.py
+          grep -q 'setUrlRequestInterceptor' apps/browser/backend.py
+          grep -q 'webengine.initialize()' apps/browser/browser.py
+          grep -q 'QtWebEngineQuick.initialize' apps/browser/webengine.py
+          grep -q 'parse_arguments' apps/browser/browser.py
+          grep -q 'profile_key' apps/browser/browser.py
+          grep -q 'browser.py' apps/browser/launch.sh
+          ! grep -q 'QtWidgets' apps/browser/browser.py
+          test ! -e apps/browser/ui.py
+          test ! -e apps/browser/qml_browser.py
+          test ! -e apps/browser/WebWindow.qml
+          grep -q 'hyprglass.so' distro/archiso/build.sh
+          grep -q 'HyprGlass owns blur/refraction' compositor/hyprland/hyprland.conf
+          ! grep -Rqs 'ShaderEffect' apps/setup
+          test ! -d apps/setup/shaders
+          grep -q 'org.goldengate.Software' shell/components/Prefs.qml
+          bash -n distro/archiso/overlay/usr/local/bin/gg-session
+          bash -n apps/software/open.sh
+          ! grep -q 'ghostty' apps/settings/panes/UpdatePane.qml
+          grep -q 'update-helper.py' apps/settings/panes/UpdatePane.qml
+          grep -q 'ERASE:' apps/installer/helper.py
+          grep -q 'rsync' apps/installer/helper.py
+          ! grep -q 'archinstall' apps/installer.qml
+          ! grep -qxE 'nautilus|gnome-software|gnome-control-center|gnome-clocks|gnome-text-editor|gnome-calendar|loupe|geary|fractal' distro/archiso/packages.x86_64
+          ! grep -Rqs 'TextInput {' apps --exclude-dir=lib --exclude-dir=browser
+          grep -q 'org.goldengate.Mail' shell/components/Prefs.qml
+          grep -q 'org.goldengate.Messages' shell/components/Prefs.qml
+          grep -q 'org.goldengate.Calendar' shell/components/Prefs.qml
+          grep -q 'org.goldengate.Files' shell/components/Prefs.qml
+          grep -q 'compgen -G "$schema_dir/\*.gschema.xml"' scripts/install.sh
+          ! grep -q 'org.gnome.nautilus' themes/gsettings/90_golden-gate.gschema.override
+      - name: Stage extras and new-account desktop
+        run: |
+          root="$(mktemp -d)"
+          scripts/install.sh --extras "$root"
+          test -x "$root/usr/local/bin/gg-session"
+          test -x "$root/usr/local/bin/gg-web"
+          test -x "$root/usr/local/bin/gg-install"
+          test -x "$root/usr/local/bin/gg-software"
+          test -x "$root/usr/local/bin/gg-files"
+          test -x "$root/usr/local/bin/gg-archive"
+          test -x "$root/usr/local/bin/gg-citronpods"
+          test -x "$root/usr/local/bin/gg-install-citronpods"
+          test -f "$root/usr/lib/systemd/user/citronpods-daemon.service"
+          test -f "$root/usr/lib/systemd/user/citronpods-engine-bootstrap.service"
+          test -f "$root/usr/lib/systemd/user/citronpods-engine-bootstrap.path"
+          test -x "$root/usr/local/bin/gg-citronpods-bootstrap"
+          test -L "$root/etc/systemd/user/default.target.wants/citronpods-engine-bootstrap.service"
+          test -L "$root/etc/systemd/user/default.target.wants/citronpods-engine-bootstrap.path"
+          test -f "$root/usr/share/golden-gate/apps/citronpods/install-engine.sh"
+          test -f "$root/usr/share/golden-gate/apps/settings/panes/CitronPodsPane.qml"
+          test -f "$root/usr/share/golden-gate/ui/CitronPodsService.qml"
+          test -x "$root/usr/local/bin/gg-icon-resolver"
+          test -f "$root/usr/lib/golden-gate/icon-resolver.py"
+          test -f "$root/usr/share/golden-gate/apps/archive/helper.py"
+          test -f "$root/usr/share/golden-gate/apps/settings/app-preferences.py"
+          test -f "$root/usr/share/golden-gate/apps/settings/panes/DockAppsPane.qml"
+          test -f "$root/usr/share/golden-gate/apps/settings/panes/LoginItemsPane.qml"
+          test -f "$root/usr/share/golden-gate/apps/settings/panes/DefaultAppsPane.qml"
+          test -f "$root/usr/share/applications/org.goldengate.ArchiveUtility.desktop"
+          test -x "$root/usr/local/bin/gg-intelligence"
+          test -f "$root/usr/share/golden-gate/ui/intelligence/helper.py"
+          # Citron is a shell overlay, not a separately launchable app.
+          test ! -e "$root/usr/share/applications/org.goldengate.Intelligence.desktop"
+          test -f "$root/usr/share/golden-gate/ui/PrismOrb.qml"
+          test -f "$root/usr/share/golden-gate/apps/messages/open.sh"
+          test -x "$root/usr/local/bin/gg-lcode"
+          test -x "$root/usr/local/bin/gg-pref"
+          test -x "$root/usr/local/bin/gg-hyprglass-sync"
+          test -x "$root/usr/local/bin/gg-apply-preferences"
+          test -f "$root/usr/share/wayland-sessions/golden-gate.desktop"
+          grep -q '^Exec=gg-session$' "$root/usr/share/wayland-sessions/golden-gate.desktop"
+          test -d "$root/etc/skel/.config/quickshell/golden-gate"
+          test -f "$root/etc/skel/.config/hypr/hyprland.conf"
+          grep -q '/usr/share/golden-gate/apps' "$root/etc/skel/.config/hypr/hyprland.conf"
+          test -f "$root/usr/share/applications/org.goldengate.Web.desktop"
+          test -f "$root/usr/share/applications/org.goldengate.Installer.desktop"
+          test -f "$root/usr/share/applications/org.goldengate.Software.desktop"
+          test -f "$root/usr/share/applications/org.goldengate.Files.desktop"
+          test -f "$root/usr/share/applications/org.goldengate.Calendar.desktop"
+          test -f "$root/usr/share/applications/org.goldengate.Mail.desktop"
+          test -f "$root/usr/share/applications/org.goldengate.Messages.desktop"
+          test -f "$root/usr/share/applications/org.goldengate.Clock.desktop"
+          test -f "$root/usr/share/golden-gate/apps/music/Mpris.qml"
+          test -f "$root/usr/share/golden-gate/apps/music/mpris.py"
+          test -f "$root/usr/share/golden-gate/apps/music/session.py"
+          test -f "$root/usr/share/applications/org.goldengate.TextEdit.desktop"
+          test -f "$root/usr/share/applications/org.goldengate.Terminal.desktop"
+          test -f "$root/usr/share/applications/org.goldengate.LCode.desktop"
+          test -f "$root/usr/share/golden-gate/apps/lcode/helper.py"
+          test -f "$root/usr/share/golden-gate/apps/installer.qml"
+          test -f "$root/usr/share/golden-gate/apps/installer/helper.py"
+          test -f "$root/usr/share/golden-gate/apps/settings/update-helper.py"
+          test -f "$root/usr/share/golden-gate/ui/ProgressBar.qml"
+          test -f "$root/usr/share/golden-gate/ui/TextArea.qml"
+          # The shell reaches the shared UI and its one Theme only through ui/.
+          test -L "$root/etc/skel/.config/quickshell/golden-gate/ui"
+          test "$(readlink "$root/etc/skel/.config/quickshell/golden-gate/ui")" = "/usr/share/golden-gate/ui"
+          test -f "$root/etc/skel/.config/quickshell/golden-gate/components/Glass.qml"
+          grep -q 'import "../ui" as Shared' "$root/etc/skel/.config/quickshell/golden-gate/components/Glass.qml"
+          test ! -e "$root/etc/skel/.config/quickshell/golden-gate/theme"
+          test -d "$root/usr/share/golden-gate/ui"
+          test -L "$root/usr/share/golden-gate/apps/lib"
+          test "$(readlink "$root/usr/share/golden-gate/apps/lib")" = "../ui"
+          test -f "$root/usr/lib/golden-gate/account_rules.py"
+          test -x "$root/usr/lib/golden-gate/pref-helper.py"
+          test -x "$root/usr/lib/golden-gate/hyprglass-sync.sh"
+          test -x "$root/usr/lib/golden-gate/apply-preferences.sh"
+          test -f "$root/usr/share/licenses/golden-gate/hyprglass/LICENSE"
+
+          # mkarchiso uses --system, not --extras. Stage that exact path too so
+          # canonical shell links cannot accidentally differ in the live image.
+          system_root="$(mktemp -d)"
+          scripts/install.sh --system "$system_root"
+          # The shell reaches the shared UI and its one Theme only through ui/.
+          test -L "$system_root/etc/skel/.config/quickshell/golden-gate/ui"
+          test "$(readlink "$system_root/etc/skel/.config/quickshell/golden-gate/ui")" = "/usr/share/golden-gate/ui"
+          test -f "$system_root/etc/skel/.config/quickshell/golden-gate/components/Glass.qml"
+          grep -q 'import "../ui" as Shared' "$system_root/etc/skel/.config/quickshell/golden-gate/components/Glass.qml"
+          test ! -e "$system_root/etc/skel/.config/quickshell/golden-gate/theme"
+          test ! -e "$system_root/usr/share/applications/com.mitchellh.ghostty.desktop"
+          test -f "$system_root/usr/local/share/applications/com.mitchellh.ghostty.desktop"
+          grep -q '^NoDisplay=true$' "$system_root/usr/local/share/applications/com.mitchellh.ghostty.desktop"
+
+  ui:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --no-package-lock
+      - run: npx playwright install --with-deps chromium
+      - name: Click through the reference shell
+        run: SHOTS=out/ui npm run test:ui
+      - name: Upload UI screenshots
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-screenshots
+          path: out/ui
+          retention-days: 3
+
+  native-controls:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: sudo apt-get update && sudo apt-get install -y libegl1 libopengl0 xvfb libx11-6 libxtst6 dbus libpulse0
+      - run: python -m pip install PySide6-Essentials==6.11.2 PySide6-Addons==6.11.2 dbus-next==0.2.3
+      - name: Compile native Python helpers
+        run: python -m compileall -q apps tests
+      - name: Guard known QML parser regressions
+        run: python tests/qml-regressions.py
+      - name: Parse all native QML
+        run: python tests/check-qml.py
+      - name: Hyprland animation styles are ones Hyprland knows
+        run: python tests/hyprland-animations.py
+      - name: Verify installer disk discovery stays read-only
+        run: python tests/installer-safety.py
+      - name: Verify Settings are wired to real persistent actions
+        run: python tests/settings-wiring.py
+      - name: Guard the shared app component store
+        run: python tests/shared-ui.py
+      - name: Micro-interaction and Reduce Motion shell contracts
+        run: python tests/micro-interactions.py
+      - name: Synchronized window panels and modal sheet choreography
+        run: python tests/window-choreography.py
+      - name: Verify optional Hyprland sources, sidebar controls and Messages startup
+        run: python tests/session-ui-startup.py
+      - name: Verify the default desktop is internally coherent
+        run: python tests/default-desktop.py
+      - name: Verify the default desktop is internally coherent
+        run: python tests/default-desktop.py
+      - name: Verify QML symbol references exist
+        run: python tests/symbol-integrity.py
+      - name: Smoke-test native app backends
+        run: python tests/native-app-backends.py
+      - name: Citron Intelligence API contracts and file safety (no API key needed)
+        run: python tests/intelligence.py
+      - name: Share files between two AirDrop services (LocalSend protocol)
+        run: python tests/airdrop.py
+      - name: Recognise nearby headphones and iPhones for the pairing card
+        run: python tests/nearby.py
+      - name: Install CitronOS from GitHub as a Software Update (staged root)
+        run: python tests/golden-update.py
+      - name: Software Update repairs an out-of-date pacman keyring
+        run: python tests/update-keyring.py
+      - name: "Software Update: done only when every part installed; required packages, rollback, glass notice"
+        run: python tests/update-outcomes.py
+      - name: Title bars with traffic lights for apps that leave theirs to the compositor
+        run: python tests/titlebars.py
+      - name: Window › Move & Resize tiles inside the usable area
+        run: python tests/tiling.py
+      - name: Archive Utility ZIP/TAR safety, collisions and Files handoff
+        run: python tests/archive-utility.py
+      - name: Messages media provider security and WebRTC / FaceTime link contracts
+        run: python tests/messages-media.py
+      - name: System Settings real window, pointer and Dock persistence
+        run: python tests/settings-connectivity.py
+      - name: Default Apps and Login Items respect real XDG state
+        run: python tests/settings-app-preferences.py
+      - name: CitronPods M10 daemon integration, source bootstrap and clipped-glass contracts
+        run: |
+          python tests/citronpods-integration.py
+          python tests/citronpods-bootstrap.py
+      - name: Licensed macOS-style application icon selection and Launchpad allowlist
+        run: python tests/icon-resolver.py
+      - name: Shell-only intelligence, privacy, shadow and contrast contracts
+        run: python tests/intelligence-shell-visuals.py
+      - name: Window restore stays onscreen and rejects stale window IDs
+        run: python tests/tile-layout.py
+      - name: Files' backend (drag and drop, Trash, Recents)
+        run: python tests/files-helper.py
+      - name: "Files transfers: cancellation, conflicts, clipboard, Undo and view persistence"
+        run: python tests/files-workflow.py
+      - name: "Files UI: multi-selection, clipboard shortcuts, conflict dialogs and sorting"
+        run: python tests/files-interactions.py
+        env:
+          QT_QPA_PLATFORM: offscreen
+          QT_QUICK_BACKEND: software
+      - name: "Focus: timed expiry, overnight schedules, DST and persisted sessions"
+        run: python tests/focus-policy.py
+      - name: "Focus UI: saved state, app exceptions, keyboard access and notification delivery"
+        run: python tests/focus-ui.py
+        env:
+          QT_QPA_PLATFORM: offscreen
+          QT_QUICK_BACKEND: software
+      - name: "Music: saved queues and MPRIS on a private D-Bus session"
+        run: python tests/music-workflow.py
+      - name: "Music: playlists survive edits, detect conflicts and never delete songs"
+        run: python tests/music-playlists.py
+      - name: "Music UI: paused restore, local WAV playback, navigation, errors and keyboard controls"
+        run: python tests/music-ui.py
+        env:
+          QT_QPA_PLATFORM: offscreen
+          QT_QUICK_BACKEND: software
+      - name: Notes' Recently Deleted never replaces a deleted note, and Recover puts it back
+        run: python tests/notes-trash.py
+      - name: Calendar's store never overwrites a damaged file, locks changes and checks dates
+        run: python tests/calendar-store.py
+      - name: Calendar reminder rules and private notification history
+        run: python tests/calendar-reminders.py
+      - name: CalDAV read-only parser, HTTPS and redirect protections
+        run: python tests/calendar-caldav.py
+      - name: Installer and Hello refuse taken account names and unsafe passwords before anything is erased
+        run: python tests/installer-account.py
+      - name: Installer refuses a swapped disk, reports a partial install, and isn't stopped by closing
+        run: python tests/installer-failure.py
+      - name: "Clock: alarms set only once systemd took them, listed and deletable; the timer outlives the window"
+        run: python tests/clock-helper.py
+      - name: "Mac apps: catalog, download, checksum, install, open with Darling, remove"
+        run: python tests/mac-apps.py
+      - name: Mac app support installs Darling's release after readying pacman
+        run: python tests/darling-setup.py
+      - name: Liquid Glass is set up system-wide with valid Hyprland rules
+        run: python tests/liquid-glass.py
+      - name: Exercise native control keyboard and pointer behavior
+        run: python tests/native-controls.py
+        env:
+          QT_QPA_PLATFORM: offscreen
+          QT_QUICK_BACKEND: software
+      - name: Test LCode projects, builds, Simulator and code editor
+        run: python tests/lcode.py
+        env:
+          QT_QPA_PLATFORM: offscreen
+          QT_QUICK_BACKEND: software
+      - name: Test app data and async request handling
+        run: npm run test:logic
+
+  browser-and-setup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: sudo apt-get update && sudo apt-get install -y xvfb libegl1 libopengl0 libnss3 libxtst6 libxkbfile1 libasound2t64 libxcb-cursor0 libxkbcommon-x11-0 libxcb-icccm4 libxcb-keysyms1 libxcb-shape0 libxcb-xinerama0 libsecret-tools gnome-keyring dbus librsvg2-bin libpulse0
+      - run: python -m pip install PySide6==6.11.2
+      - name: Writing Tools selection, undo and TextEdit save regressions
+        run: python tests/intelligence-ui.py
+        env:
+          QT_QPA_PLATFORM: offscreen
+          QT_QUICK_BACKEND: software
+      - name: "Calculator: Basic, Scientific, Programmer and Convert"
+        run: python tests/calculator.py
+        env:
+          QT_QPA_PLATFORM: offscreen
+          QT_QUICK_BACKEND: software
+      - name: "Weather: My Location, the large header, °C/°F"
+        run: python tests/weather.py
+        env:
+          QT_QPA_PLATFORM: offscreen
+          QT_QUICK_BACKEND: software
+      - name: "Maps: My Location, Find Nearby, Favorites, Share"
+        run: python tests/maps.py
+        env:
+          QT_QPA_PLATFORM: offscreen
+          QT_QUICK_BACKEND: software
+      - name: "Settings: Lock Screen timers, Spotlight finds every pane, the shell reads each choice"
+        run: python tests/system-settings.py
+      - name: "Helpers give up on commands that never answer (keyring, compositor)"
+        run: python tests/helper-timeouts.py
+      - name: "The shell starts on a new account, is restarted, and its log is kept small"
+        run: python tests/shell-supervisor.py
+      - name: "Notifications follow Settings: allow, banners, badges, the list of apps"
+        run: python tests/notification-settings.py
+        env:
+          QT_QPA_PLATFORM: offscreen
+      - name: "Notification banners slide in, slide out when dropped, and keep their words as they go"
+        run: python tests/notification-banners.py
+        env:
+          QT_QPA_PLATFORM: offscreen
+      - name: "Dock icons bounce while apps open and for attention; badges pop in"
+        run: python tests/dock-motion.py
+        env:
+          QT_QPA_PLATFORM: offscreen
+      - name: "Dock lifecycle: stable icons, recent hold, smooth departure and rapid reopen"
+        run: python tests/dock-lifecycle.py
+        env:
+          QT_QPA_PLATFORM: offscreen
+          QT_QUICK_BACKEND: software
+      - name: Validate Citron voice WebSocket contracts without microphone or network
+        run: python tests/intelligence-live.py
+      - name: Test account failures, preferences, and browser state
+        run: python tests/setup-browser.py
+      - name: Test Web startup crash recovery and safe graphics fallback
+        run: python tests/browser-recovery.py
+      - name: "Web moves: sheets grow in, tabs slide, loading glides, pages fade in"
+        run: python tests/browser-motion.py
+      - name: Exercise native Chromium navigation, tabs, private browsing, and shortcuts
+        run: xvfb-run -a python tests/native-browser.py
+        env:
+          QT_QPA_PLATFORM: xcb
+          QTWEBENGINE_CHROMIUM_FLAGS: --disable-gpu
+      - name: "Web's keyring: in the background (a locked one never freezes Web), no stray line breaks"
+        run: xvfb-run -a python tests/browser-passwords.py
+        env:
+          QT_QPA_PLATFORM: xcb
+          QTWEBENGINE_CHROMIUM_FLAGS: --disable-gpu
+      - name: Load the shell and every app through the preview harness (no QML errors)
+        run: sudo apt-get install -y librsvg2-bin libpulse0 && python tests/qml-load.py
+        env:
+          QT_QPA_PLATFORM: offscreen
+      - name: "Disks: read, named, the running system never changed, changes through udisks"
+        run: python tests/disks.py
+      - name: "Files shows the disks: Locations, Computer, the path bar, hidden files"
+        run: python tests/files-disks.py
+        env:
+          QT_QPA_PLATFORM: offscreen
+      - name: "Disk Utility: the system left alone, erase, First Aid, what's using space"
+        run: python tests/disk-utility.py
+        env:
+          QT_QPA_PLATFORM: offscreen
+      - name: "Symbols replace their glyph as SF Symbols do"
+        run: python tests/symbol-motion.py
+        env:
+          QT_QPA_PLATFORM: offscreen
+      - name: "Text Size scales CitronOS's own text and controls"
+        run: python tests/text-size.py
+        env:
+          QT_QPA_PLATFORM: offscreen
+      - name: "Displays: a scale change keeps the layout, asks to keep it, and reverts by itself"
+        run: python tests/displays-scale.py
+        env:
+          QT_QPA_PLATFORM: offscreen
+      - name: "Scroll bars: shown while scrolling or always, draggable, in every main scroll area"
+        run: python tests/scroll-bars.py
+        env:
+          QT_QPA_PLATFORM: offscreen
+      - name: "⌘W closes, ⌘Q quits, unsaved work is asked about either way"
+        run: python tests/window-close.py
+        env:
+          QT_QPA_PLATFORM: offscreen
+      - name: "Menu bar: status items first, menus that don't fit move into »"
+        run: python tests/menubar-room.py
+      - name: "Launchpad: a Utilities folder by category"
+        run: python tests/launchpad-folders.py
+      - name: A prominent destructive button is red, not the accent
+        run: python tests/button-destructive.py
+        env:
+          QT_QPA_PLATFORM: offscreen
+      - name: Installer window shows a partial install apart from a refusal, and won't close mid-install
+        run: python tests/installer-window.py
+        env:
+          QT_QPA_PLATFORM: offscreen
+      - name: "Hello: Try or Install on the USB, waits for each finishing step, setup-done last"
+        run: python tests/setup-finish.py
+        env:
+          QT_QPA_PLATFORM: offscreen
+      - name: "Notes never writes over a note changed elsewhere; renames never replace"
+        run: python tests/notes-conflicts.py
+        env:
+          QT_QPA_PLATFORM: offscreen
+      - name: "Settings: key-level, acknowledged preference writes; two windows keep both; Setup's keyboard variant kept"
+        run: python tests/settings-prefs.py
+        env:
+          QT_QPA_PLATFORM: offscreen
+      - name: "Language & Region shows the saved formats; what Setup put off can be finished in Settings"
+        run: python tests/region-settings.py
+        env:
+          QT_QPA_PLATFORM: offscreen
+      - name: "Native window close stays unobstructed; optional legacy fold reaches its Dock icon"
+        run: python tests/window-fold.py
+      - name: "Opening an app: the card lands on the window, then dissolves into it"
+        run: python tests/window-open.py
+      - name: "Dock: every running app, kept or not, with or without a desktop entry"
+        run: python tests/dock-running.py
+        env:
+          QT_QPA_PLATFORM: offscreen
+      - name: "Dock: a dragged icon stays under the pointer, lands where it's let go, and is removed dragged off"
+        run: python tests/dock-drag.py
+        env:
+          QT_QPA_PLATFORM: offscreen
+      - name: "Liquid Glass reacts: a light follows the pointer, it lifts and gives; its rim bright all round"
+        run: python tests/glass-reactions.py
+        env:
+          QT_QPA_PLATFORM: offscreen
+      - name: "Liquid Glass drawn with OpenGL: see-through, its shadow outside it"
+        run: sudo apt-get install -y libgl1-mesa-dri libglx-mesa0 && python tests/glass-gpu.py
+      - name: "Liquid Glass bends what's under it: magnified in the middle, pulled at the edge (OpenGL)"
+        run: python tests/glass-lens.py
+      - name: Files' Quick Look previews pictures, text and other files
+        run: python tests/quicklook.py
+        env:
+          QT_QPA_PLATFORM: offscreen
+      - name: Mission Control spreads this desktop's windows; App Exposé the front app's
+        run: python tests/missioncontrol.py
+        env:
+          QT_QPA_PLATFORM: offscreen
+      - name: The screenshot toolbar draws and its keys are wired
+        run: python tests/screenshot.py
+        env:
+          QT_QPA_PLATFORM: offscreen
+      - name: The App Store's pages draw
+        run: python tests/app-store.py
+        env:
+          QT_QPA_PLATFORM: offscreen
+      - name: Control Center draws the macOS 26 grid
+        run: python tests/control-center.py
+        env:
+          QT_QPA_PLATFORM: offscreen
+      - name: Desktop widgets draw, edit and add
+        run: python tests/desktop-widgets.py
+        env:
+          QT_QPA_PLATFORM: offscreen
+      - name: The lock screen sleeps, wakes and unlocks
+        run: python tests/lock-screen.py
+        env:
+          QT_QPA_PLATFORM: offscreen
+      - name: The SDDM login window logs in
+        run: python tests/sddm-theme.py
+        env:
+          QT_QPA_PLATFORM: offscreen
+      - name: The menu bar has a background and Files' menus on the desktop
+        run: python tests/menu-bar.py
+      - name: "Wallpaper: any picture or photo, from Settings or Photos"
+        run: python tests/wallpaper.py
+      - name: "Touch ID: fingerprints in Settings, the lock screen, and sudo when chosen"
+        run: python tests/touchid.py
+      - name: gg-settings opens every pane by its own name and the old ones
+        run: python tests/settings-open.py
+      - name: "Shell menus never resize while up (the menu-switch crash and restart)"
+        run: python tests/menu-popup.py
+        env:
+          QT_QPA_PLATFORM: offscreen
+      - name: "Mail setup: plain-word errors, app passwords, both servers checked"
+        run: python tests/mail-connect.py
+      - name: "Mail signed-in layout, batching and responsive reading"
+        run: python tests/mail-layout.py
+      - name: "Web says why Qt WebEngine won't load, and what fixes it"
+        run: python tests/web-diagnose.py
+      - name: "AirPlay Receiver: the code, who's mirroring, Stop, and its settings"
+        run: python tests/airplay-receiver.py
+      - name: "Passwords: Web's passwords, codes, Wi-Fi, security, recently deleted"
+        run: python tests/passwords-app.py
+      - name: "Audit interactions: keyboard search, idle lock, Wi-Fi, AirPlay and trash failures"
+        run: python tests/audit-interactions.py
+        env:
+          QT_QPA_PLATFORM: offscreen
+          QT_QUICK_BACKEND: software
+      - name: "Mail drafts: persistence, private permissions and damaged-file protection"
+        run: python tests/mail-drafts.py
+      - name: Smart Mail categories, real Important flags and reactive Dock badges
+        run: python tests/mail-categories-badges.py
+      - name: CitronPods M10 OS integration and menu-shadow polish
+        run: python tests/citronpods-integration.py
+      - name: CitronPods auto-setup, rounded shadows and Tablet Mode
+        run: python tests/citronpods-tablet-polish.py
+      - name: "Web downloads: completed, cancelled, interrupted and paused states"
+        run: python tests/browser-downloads.py
+        env:
+          QT_QPA_PLATFORM: offscreen
+          QT_QUICK_BACKEND: software
+      - name: "Battery level and time left; alert sounds and the charging chime"
+        run: python tests/battery-sounds.py
+        env:
+          QT_QPA_PLATFORM: offscreen
+      - name: Privacy indicators show who uses the microphone, camera, screen and location
+        run: python tests/privacy.py
+        env:
+          QT_QPA_PLATFORM: offscreen

@@ -1,0 +1,71 @@
+#!/bin/sh
+# Start the CitronOS desktop on the first virtual terminal.
+export XDG_CURRENT_DESKTOP=Hyprland
+export XDG_SESSION_TYPE=wayland
+export XDG_SESSION_DESKTOP=golden-gate
+
+# Flatpak exports desktop files and icons outside /usr/share. Keep these paths
+# explicit so App Store installs appear in Applications immediately in both the
+# live session and installed SDDM sessions.
+base_data_dirs="${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
+export XDG_DATA_DIRS="$HOME/.local/share/flatpak/exports/share:/var/lib/flatpak/exports/share:$base_data_dirs"
+
+# Make first-login folders deterministic for Files/Photos/Music/Notes and any
+# XDG-aware application. This is idempotent on later sessions.
+command -v xdg-user-dirs-update >/dev/null 2>&1 && xdg-user-dirs-update >/dev/null 2>&1 || true
+mkdir -p "$HOME/.local/state" "$HOME/.cache" "$HOME/.config"
+
+# VirtualBox (VMSVGA) and VMware use the vmwgfx driver. With 3D acceleration on,
+# its GL path leaves Hyprland and the shell black with only a hardware cursor
+# showing, so render in software (Mesa llvmpipe) there. GG_RENDERER=hardware opts out.
+if [ "${GG_RENDERER:-auto}" = auto ] && grep -qs '^DRIVER=vmwgfx$' /sys/class/drm/card*/device/uevent; then
+  export LIBGL_ALWAYS_SOFTWARE=1
+  logger -t gg-session "vmwgfx (VirtualBox/VMware): using software rendering"
+fi
+
+# Screen scale and effects for this machine (virtual screen, no GPU).
+conf="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/golden-gate"
+sh "$conf/machine-conf.sh" && head -n 1 "$conf/machine.conf" | logger -t gg-session
+
+# Hyprland must own the Wayland display before Quickshell starts. Launching qs
+# before the compositor exists can create a restart loop and leave the live VT
+# looking like a black screen. Hyprland's exec-once no longer launches qs; this
+# supervisor waits for WAYLAND_DISPLAY to become usable inside the compositor
+# session via a small Hyprland startup helper.
+mkdir -p "$HOME/.local/state"
+export GG_SHELL_CONFIG=golden-gate
+export GG_SHELL_LOG="$HOME/.local/state/golden-gate-shell.log"
+
+logger -t gg-session "starting Hyprland"
+started=$(date +%s)
+# Newer Hyprland ships start-hyprland, a launcher that restarts it after a crash.
+if command -v start-hyprland >/dev/null; then start-hyprland; else Hyprland; fi
+status=$?
+ran=$(( $(date +%s) - started ))
+logger -t gg-session "Hyprland exited with status $status after ${ran}s"
+
+# A session that lasted a while ended on purpose (the user logged out).
+[ "$ran" -ge 20 ] && exit 0
+
+# Hyprland gave up at startup, sometimes while still reporting success. Stay on
+# this terminal and say why, rather than logging out, which would autologin and
+# fail again in a loop. The log also goes to the journal for boot tests.
+log=$(ls -t "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"/hypr/*/hyprland.log 2>/dev/null | head -n 1)
+printf '\n\033[1mThe desktop could not start (Hyprland stopped after %ss, status %s).\033[0m\n' "$ran" "$status"
+if [ -n "$log" ]; then
+  printf 'Last lines of %s:\n\n' "$log"
+  problems=$(grep -iE 'err|crit|warn|fail|cannot|could not|no ' "$log" | tail -n 20)
+  if [ -n "$problems" ]; then printf '%s\n' "$problems"; else tail -n 20 "$log"; fi
+  tail -n 80 "$log" | logger -t hyprland-log
+fi
+[ -e /dev/dri/renderD128 ] || printf '\nNo GPU render device (/dev/dri/renderD128): this machine or VM has no 3D acceleration.\n'
+cat <<'MSG'
+
+In a virtual machine: give it 6 GB of memory and 4 CPUs, and use
+  QEMU        -accel kvm (Linux) or -accel whpx (Windows), with -vga std or
+              -device virtio-vga-gl -display gtk,gl=on for 3D on Linux
+  VirtualBox  Display → VMSVGA (3D acceleration on or off; the desktop
+              renders in software there either way)
+Type gg-session to try again.
+
+MSG

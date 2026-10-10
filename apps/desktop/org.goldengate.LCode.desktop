@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=LCode
+GenericName=Integrated Development Environment
+Comment=Build Swift apps and run them on your Linux PC or in the Simulator
+Icon=org.goldengate.LCode
+Exec=sh @APPS@/lcode/open.sh %f
+StartupWMClass=org.goldengate.LCode
+Categories=Development;IDE;
+Keywords=swift;ide;xcode;simulator;code;developer;
+MimeType=inode/directory;text/x-swift;
+StartupNotify=false

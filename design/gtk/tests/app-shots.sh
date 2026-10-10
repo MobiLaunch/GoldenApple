@@ -1,0 +1,175 @@
+#!/usr/bin/env bash
+# Screenshot GTK apps with the CitronOS theme, light and dark, in a headless
+# Sway session. No GPU needed.
+#
+#   design/gtk/tests/app-shots.sh OUTDIR [shot...]
+#
+# Shots (default: all that are installed):
+#   gallery gallery-menu gallery-dialog gallery-finder   every control (tests/gallery.js)
+#   files text-editor calculator settings settings-mouse clocks calendar weather maps
+#   loupe music software fractal ghostty mail (Geary, GTK 3)
+#   browser (Firefox, with themes/firefox installed into /usr/lib/firefox by root)
+# Writes OUTDIR/<shot>-light.png and -dark.png: the window plus 40 px around it,
+# over the default wallpaper. SHOTS_B64=1 also prints each as a JPEG in base64
+# ("--- shot <name> ---" … "--- end ---"), so they can be read from a CI log.
+# Needs: sway, swaybg, grim, jq, gjs, rsvg-convert, dbus-run-session.
+set -euo pipefail
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO="$(cd "$HERE/../../.." && pwd)"
+OUT="$(mkdir -p "${1:?usage: app-shots.sh OUTDIR [shot...]}" && cd "$1" && pwd)"; shift
+# Files refuses to run as root (CI containers run as root): use a plain user.
+if [[ $EUID == 0 ]]; then
+  # Settings won't start without a system bus (containers have none).
+  if ! dbus-send --system --print-reply --dest=org.freedesktop.DBus / org.freedesktop.DBus.GetId >/dev/null 2>&1; then
+    rm -f /run/dbus/pid /run/dbus/system_bus_socket; mkdir -p /run/dbus
+    dbus-daemon --system --fork 2>/dev/null || true
+  fi
+  id gg-shots >/dev/null 2>&1 || useradd -m gg-shots
+  chown -R gg-shots "$OUT"
+  exec runuser -u gg-shots -- env ${SHOTS_B64:+SHOTS_B64=$SHOTS_B64} ${SETTLE:+SETTLE=$SETTLE} "$0" "$OUT" "$@"
+fi
+[[ -n ${DBUS_SESSION_BUS_ADDRESS:-} ]] || exec dbus-run-session -- "$0" "$OUT" "$@"
+say() { printf '\033[1;33m›\033[0m %s\n' "$*"; }
+
+# ---------------------------------------------------------------- what each shot runs
+declare -A CMD=(
+  [gallery]="gjs -m $HERE/gallery.js main"
+  [gallery-menu]="gjs -m $HERE/gallery.js menu"
+  [gallery-dialog]="gjs -m $HERE/gallery.js dialog"
+  [gallery-finder]="gjs -m $HERE/gallery.js finder"
+  [files]='nautilus --new-window --select $HOME/Documents'
+  [files-list]='nautilus --new-window --select $HOME/Documents'
+  [text-editor]='gnome-text-editor --standalone $HOME/Documents/Notes.txt'   # expanded below
+  [calculator]="env ADW_DEBUG_COLOR_SCHEME=prefer-dark gnome-calculator --equation 1234*5.6"   # dark always, like the image's wrapper
+  [settings]="env XDG_CURRENT_DESKTOP=GNOME gnome-control-center background"
+  [settings-mouse]="env XDG_CURRENT_DESKTOP=GNOME gnome-control-center mouse"
+  [clocks]="gnome-clocks"
+  [calendar]="gnome-calendar"
+  [weather]="gnome-weather"
+  [maps]="gnome-maps"
+  [loupe]="loupe"
+  [music]="gnome-music"
+  [software]="gnome-software"
+  [fractal]="fractal"
+  [ghostty]="ghostty"
+  [mail]="geary"
+  [browser]='firefox --new-instance --profile $HOME/.firefox-shot file://$HOME/Documents/Welcome.html'
+)
+GTK3_SHOTS=(mail browser)
+# Slow starters: seconds to let them settle before the shot.
+declare -A SETTLE_FOR=([browser]=10)
+# Settings a shot needs first.
+declare -A PREP=(
+  [files]="gsettings set org.gnome.nautilus.preferences default-folder-viewer icon-view"
+  [files-list]="gsettings set org.gnome.nautilus.preferences default-folder-viewer list-view"
+)
+ORDER=(gallery gallery-menu gallery-dialog gallery-finder files files-list text-editor calculator settings settings-mouse clocks calendar weather maps loupe music software fractal ghostty mail browser)
+shots=("$@"); [[ ${#shots[@]} -gt 0 ]] || shots=("${ORDER[@]}")
+
+# ---------------------------------------------------------------- a clean home with the theme
+export HOME="$(mktemp -d)" XDG_RUNTIME_DIR="$(mktemp -d)"
+chmod 700 "$XDG_RUNTIME_DIR"
+export XDG_CONFIG_HOME="$HOME/.config" XDG_DATA_HOME="$HOME/.local/share" XDG_CACHE_HOME="$HOME/.cache"
+for c in "${!CMD[@]}"; do CMD[$c]="${CMD[$c]//\$HOME/$HOME}"; done
+# Services D-Bus starts from here on (dconf, which stores GSettings) must use this home.
+dbus-update-activation-environment HOME XDG_CONFIG_HOME XDG_DATA_HOME XDG_CACHE_HOME XDG_RUNTIME_DIR
+mkdir -p "$XDG_CONFIG_HOME/gtk-4.0" "$XDG_CONFIG_HOME/gtk-3.0" "$XDG_CONFIG_HOME/fontconfig/conf.d" "$XDG_DATA_HOME/icons"
+cp "$REPO/design/dist/gtk.css" "$XDG_CONFIG_HOME/gtk-4.0/gtk.css"
+[[ -f $REPO/design/dist/gtk3.css ]] && cp "$REPO/design/dist/gtk3.css" "$XDG_CONFIG_HOME/gtk-3.0/gtk.css"
+cp "$REPO/themes/fontconfig/60-golden-gate.conf" "$XDG_CONFIG_HOME/fontconfig/conf.d/"
+mkdir -p "$XDG_CONFIG_HOME/ghostty" && cp -r "$REPO"/themes/ghostty/* "$XDG_CONFIG_HOME/ghostty/"
+[[ -d $REPO/icons/GoldenGate ]] && cp -a "$REPO/icons/GoldenGate" "$XDG_DATA_HOME/icons/"
+for d in gtk-4.0 gtk-3.0; do
+  printf '[Settings]\ngtk-icon-theme-name=GoldenGate\ngtk-font-name=%s\ngtk-decoration-layout=close,minimize,maximize:\n' \
+    "${GG_FONT:-Inter Variable 10}" > "$XDG_CONFIG_HOME/$d/settings.ini"
+done
+# The image's GSettings defaults (themes/gsettings), compiled over the system schemas.
+mkdir -p "$HOME/.schemas" && cp /usr/share/glib-2.0/schemas/*.xml "$REPO/themes/gsettings/"*.override "$HOME/.schemas/"
+glib-compile-schemas "$HOME/.schemas" && export GSETTINGS_SCHEMA_DIR="$HOME/.schemas"
+dbus-update-activation-environment GSETTINGS_SCHEMA_DIR
+# GTK 4 on Wayland takes these from GSettings (the session sets them the same way
+# in hyprland.conf), not from settings.ini.
+gsettings set org.gnome.desktop.wm.preferences button-layout 'close,minimize,maximize:'
+gsettings set org.gnome.desktop.interface icon-theme GoldenGate
+gsettings set org.gnome.desktop.interface font-name "${GG_FONT:-Inter Variable 10}"
+gsettings set org.gnome.desktop.interface monospace-font-name "JetBrains Mono 10"
+gsettings set org.gnome.desktop.interface accent-color blue 2>/dev/null || true
+# A Secret Service (Fractal won't start without one), unlocked without a prompt.
+if command -v gnome-keyring-daemon >/dev/null; then
+  eval "$(printf '' | gnome-keyring-daemon --unlock --components=secrets 2>/dev/null)" || true
+fi
+# Something to look at in Files and Text Editor.
+mkdir -p "$HOME"/{Desktop,Documents,Downloads,Music,Pictures,Videos}
+for d in DESKTOP:Desktop DOCUMENTS:Documents DOWNLOAD:Downloads MUSIC:Music PICTURES:Pictures VIDEOS:Videos; do
+  echo "XDG_${d%%:*}_DIR=\"\$HOME/${d#*:}\""
+done > "$XDG_CONFIG_HOME/user-dirs.dirs"
+printf 'CitronOS\n\nA Linux desktop with Liquid Glass.\n' > "$HOME/Documents/Notes.txt"
+for f in "Budget 2026.ods" "Trip itinerary.pdf" "Presentation.odp"; do : > "$HOME/Documents/$f"; done
+mkdir -p "$HOME/.firefox-shot"
+cat > "$HOME/Documents/Welcome.html" <<'HTML'
+<!doctype html><meta charset="utf-8"><title>Welcome to CitronOS</title>
+<style>:root{color-scheme:light dark}body{font:15px "Inter Variable",sans-serif;max-width:640px;margin:80px auto;padding:0 24px}h1{font-size:34px;letter-spacing:-.5px}</style>
+<h1>Welcome to CitronOS</h1><p>A Linux desktop with Liquid Glass. This page is local, so the shot needs no network.</p>
+HTML
+rsvg-convert -w 1600 "$REPO/prototype/assets/wallpapers/tide.svg" -o "$HOME/Pictures/Tide.png"
+
+# ---------------------------------------------------------------- Sway
+cat > "$XDG_RUNTIME_DIR/sway.conf" <<EOF
+output HEADLESS-1 resolution ${GG_RES:-1600x1000} scale ${GG_SCALE:-1} bg $HOME/Pictures/Tide.png fill
+default_border none
+default_floating_border none
+for_window [app_id=".*"] floating enable, move position center
+EOF
+export LANG=C.UTF-8 LC_ALL=C.UTF-8
+export WLR_BACKENDS=headless WLR_RENDERER=pixman WLR_LIBINPUT_NO_DEVICES=1
+export LIBGL_ALWAYS_SOFTWARE=1 GDK_BACKEND=wayland NO_AT_BRIDGE=1 GTK_A11Y=none
+sway -c "$XDG_RUNTIME_DIR/sway.conf" >"$OUT/sway.log" 2>&1 &
+SWAY=$!
+trap 'kill $SWAY 2>/dev/null || true' EXIT
+for _ in $(seq 300); do [[ -S $XDG_RUNTIME_DIR/wayland-1 ]] && ls "$XDG_RUNTIME_DIR"/sway-ipc.*.sock >/dev/null 2>&1 && break; sleep 0.1; done
+if ! ls "$XDG_RUNTIME_DIR"/sway-ipc.*.sock >/dev/null 2>&1; then echo "Sway did not start:"; tail -30 "$OUT/sway.log"; exit 1; fi
+export WAYLAND_DISPLAY=wayland-1 SWAYSOCK="$(ls "$XDG_RUNTIME_DIR"/sway-ipc.*.sock)"
+
+window() { swaymsg -t get_tree | jq -r '[.. | objects | select(.pid? != null)] | last | if . == null then empty else "\(.rect.x),\(.rect.y) \(.rect.width)x\(.rect.height)" end'; }
+
+shoot() { # shoot NAME SCHEME
+  local name=$1 scheme=$2 cmd=${CMD[$1]} bin geo=
+  # The program is the first word after any leading "env VAR=value …".
+  local -a words; read -ra words <<< "$cmd"; local i=0
+  if [[ ${words[0]} == env ]]; then i=1; while [[ ${words[$i]} == *=* ]]; do i=$((i + 1)); done; fi
+  bin=${words[$i]}
+  command -v "$bin" >/dev/null || { say "$name: $bin not installed, skipped"; return; }
+  [[ -n ${PREP[$name]:-} ]] && ${PREP[$name]}
+  # GTK 3 has no colour scheme, only a dark theme; libadwaita must not see GTK_THEME.
+  local theme=(-u GTK_THEME); [[ " ${GTK3_SHOTS[*]} " == *" $name "* && $scheme == dark ]] && theme=(GTK_THEME=Adwaita:dark)
+  env "${theme[@]}" ADW_DEBUG_COLOR_SCHEME=prefer-$scheme ADW_DEBUG_ACCENT_COLOR=blue $cmd >"$OUT/$name-$scheme.log" 2>&1 &
+  local pid=$!
+  for _ in $(seq 60); do geo=$(window); [[ -n $geo ]] && break; sleep 0.5; done
+  if [[ -z $geo ]]; then say "$name ($scheme): no window"; tail -5 "$OUT/$name-$scheme.log"; kill $pid 2>/dev/null || true; return; fi
+  sleep "${SETTLE_FOR[$name]:-${SETTLE:-3}}"
+  geo=$(window)   # apps resize after their first frame
+  local x=${geo%%,*} rest=${geo#*,}; local y=${rest%% *} size=${rest#* }; local w=${size%x*} h=${size#*x}
+  local res=${GG_RES:-1600x1000}; local W=${res%x*} H=${res#*x}
+  local x0=$(( x > 40 ? x - 40 : 0 )) y0=$(( y > 40 ? y - 40 : 0 ))
+  local x1=$(( x + w + 40 < W ? x + w + 40 : W )) y1=$(( y + h + 40 < H ? y + h + 40 : H ))
+  grim -g "$x0,$y0 $((x1 - x0))x$((y1 - y0))" "$OUT/$name-$scheme.png"
+  say "$name ($scheme): ${w}x${h}"
+  # Firefox prints its window layout (GG_FIREFOX_DEBUG) for checking the theme's selectors.
+  sed -n '/GG-DEBUG begin/,/GG-DEBUG end/p' "$OUT/$name-$scheme.log" | head -120
+  swaymsg '[pid=".*"] kill' >/dev/null 2>&1 || true
+  kill $pid 2>/dev/null || true; wait $pid 2>/dev/null || true
+  pkill -f gnome-software 2>/dev/null || true   # it keeps a service running
+  sleep 0.5
+}
+
+for s in "${shots[@]}"; do
+  [[ -n ${CMD[$s]:-} ]] || { echo "unknown shot: $s"; exit 1; }
+  for scheme in light dark; do shoot "$s" "$scheme"; done
+done
+
+if [[ ${SHOTS_B64:-0} == 1 ]]; then
+  for f in "$OUT"/*.png; do
+    echo "--- shot $(basename "$f" .png) ---"
+    convert "$f" -quality 88 jpg:- | base64 -w0; echo; echo "--- end ---"
+  done
+fi

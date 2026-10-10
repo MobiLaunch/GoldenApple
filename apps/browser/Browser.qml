@@ -1,0 +1,3157 @@
+import QtQuick
+import QtQuick.Window
+import QtQuick.Layouts
+import QtWebEngine
+import "../lib"
+import "../lib/WindowGeometry.js" as WindowGeometry
+import "../lib/theme"
+
+Window {
+    id: root
+    objectName: "browserWindow"
+    // Match native Golden Gate window placement. Browser.qml is a Qt Window,
+    // not the Quickshell AppWindow, so constrain its first requested size too.
+    // Use a generous 100px Dock size here to stay safe with larger user docks.
+    readonly property real _maxLaunchWidth: WindowGeometry.maximumWidth(Screen.width)
+    readonly property real _maxLaunchHeight: WindowGeometry.maximumHeight(Screen.height, 100, 30)
+    width: Math.min(1180, _maxLaunchWidth)
+    height: Math.min(780, _maxLaunchHeight)
+    maximumWidth: _maxLaunchWidth
+    maximumHeight: _maxLaunchHeight
+    minimumWidth: Math.min(720, _maxLaunchWidth)
+    minimumHeight: Math.min(480, _maxLaunchHeight)
+    visible: true
+    flags: Qt.Window | Qt.FramelessWindowHint
+    color: Theme.dark ? "#1d1d20" : "#f5f5f7"
+    title: (BrowserBackend.privateMode ? "Private Browsing" : (currentTitle || "Web")) + " — Web"
+
+    property int currentIndex: 0
+    readonly property int tabCount: tabsModel.count
+    readonly property var currentDelegate: tabViews.itemAt(currentIndex)
+    readonly property var currentView: currentDelegate ? currentDelegate.view : null
+    readonly property string currentUrl: currentView ? currentView.url.toString() : (tabsModel.count ? tabsModel.get(currentIndex).url : "about:blank")
+    readonly property string currentTitle: currentView ? currentView.title : (tabsModel.count ? tabsModel.get(currentIndex).title : "Start Page")
+    property bool sidebarOpen: width >= 900
+    property bool pageMenuOpen: false
+    property bool downloadsOpen: false
+    property bool settingsOpen: false
+    property bool privacySheetOpen: false
+    property var sitePrivacyReport: ({ enabled: true, blocked: 0, domains: [] })
+    property bool findOpen: false
+    property string findQuery: ""
+    property int findMatches: 0
+    property int findActive: 0
+    property bool readerOpen: false
+    property bool tabOverviewOpen: false
+    property string readerTitle: ""
+    property string readerText: ""
+    property var downloads: []
+    property var pendingPermission: null
+    // Saved passwords: the "Save Password?" banner's sign-in, the Passwords
+    // sheet, and usernames typed on username-first pages, by site.
+    property var passwordPrompt: null       // { url, username, password, kind: "save" | "update" }
+    property bool passwordsOpen: false
+    property var savedLogins: []
+    property var typedUsernames: ({})
+    property var startPageData: JSON.parse(BrowserBackend.startPageJson())
+    property var browserSettings: JSON.parse(BrowserBackend.settingsJson)
+    property var suggestionData: []
+    property var tabGroups: []
+    property bool tabGroupEditorOpen: false
+    property bool tabGroupsSheetOpen: false
+    property string tabGroupName: ""
+    property var profiles: []
+    property bool profileSheetOpen: false
+    property string newProfileName: ""
+    property bool websitePermissionsOpen: false
+    property bool webContextOpen: false
+    property real webContextX: 0
+    property real webContextY: 0
+    property var webContextItems: []
+    property string permissionOriginFilter: ""
+    property var websitePermissions: []
+    readonly property bool compactTabs: browserSettings.tabLayout === "compact"
+
+    Binding { target: Theme; property: "dark"; value: BrowserBackend.dark }
+
+    function openWebContext(request, view) {
+        request.accepted = true
+        const point = view.mapToItem(root.contentItem, request.position.x, request.position.y)
+        const link = request.linkUrl ? request.linkUrl.toString() : ""
+        const selected = request.selectedText || ""
+        let items = []
+
+        if (link) {
+            items.push({ label: "Open Link in New Tab", action: () => root.newTab(link, true) })
+            items.push({ label: "Copy Link", action: () => BrowserBackend.copyText(link) })
+            items.push({ separator: true })
+        }
+
+        if (selected.length) {
+            items.push({ label: "Copy", shortcut: "⌘C", action: () => BrowserBackend.copyText(selected) })
+        }
+        if (request.isContentEditable) {
+            items.push({ label: "Cut", shortcut: "⌘X", action: () => view.triggerWebAction(WebEngineView.Cut) })
+            items.push({ label: "Paste", shortcut: "⌘V", action: () => view.triggerWebAction(WebEngineView.Paste) })
+        }
+        if (selected.length || request.isContentEditable)
+            items.push({ separator: true })
+
+        items.push({ label: "Back", shortcut: "⌘[", enabled: view.canGoBack, action: () => view.goBack() })
+        items.push({ label: "Forward", shortcut: "⌘]", enabled: view.canGoForward, action: () => view.goForward() })
+        items.push({ label: "Reload", shortcut: "⌘R", action: () => view.reload() })
+
+        webContextItems = items
+        webContextX = point.x
+        webContextY = point.y
+        webContextOpen = true
+        webContextMenu.popup(root.contentItem, point.x, point.y, items)
+    }
+
+    // Page zoom in tenths, 50–300%; 0 resets it.
+    function zoomBy(step) {
+        if (root.currentView) root.currentView.zoomFactor = step === 0 ? 1 : Math.max(0.5, Math.min(3, root.currentView.zoomFactor + step))
+    }
+
+    // Safari's page menu, as items for the shared menu.
+    function pageMenuItems() {
+        const page = root.currentUrl !== "about:blank"
+        const blocked = page ? String(JSON.parse(BrowserBackend.privacyReportForUrl(root.currentUrl)).blocked || "") : ""
+        return [
+            { text: "Show Reader", enabled: page, action: () => root.enterReader() },
+            { text: "Privacy Report", shortcut: blocked ? blocked + " blocked" : "", action: () => root.openPrivacyReport() },
+            { separator: true },
+            { text: "Add to Favorites", enabled: page, action: () => BrowserBackend.addBookmark(root.currentUrl, root.currentTitle) },
+            { text: "Add to Reading List", enabled: page, action: () => BrowserBackend.addReadingList(root.currentUrl, root.currentTitle) },
+            { text: "Copy Link", enabled: page, action: () => { BrowserBackend.copyText(root.currentUrl); BrowserBackend.notify("Link copied") } },
+            { text: "Find on Page…", shortcut: "⌘F", enabled: page, action: () => root.openFind() },
+            { separator: true },
+            { header: "Zoom " + (root.currentView ? Math.round(root.currentView.zoomFactor * 100) : 100) + "%" },
+            { text: "Zoom In", shortcut: "⌘+", enabled: page, action: () => root.zoomBy(0.1) },
+            { text: "Actual Size", shortcut: "⌘0", enabled: page, action: () => root.zoomBy(0) },
+            { text: "Zoom Out", shortcut: "⌘−", enabled: page, action: () => root.zoomBy(-0.1) },
+            { separator: true },
+            { text: "Website Settings…", enabled: page, action: () => root.showWebsitePermissions(true) },
+            { text: "Passwords…", action: () => root.openPasswords() },
+            { text: "Web Settings…", action: () => root.settingsOpen = true }
+        ]
+    }
+    onPageMenuOpenChanged: {
+        if (pageMenuOpen && !pageMenu.visible) pageMenu.popup(smartField, 0, smartField.height + 5, pageMenuItems())
+        else if (!pageMenuOpen && pageMenu.visible) pageMenu.close()
+    }
+    onWebContextOpenChanged: if (!webContextOpen && webContextMenu.visible) webContextMenu.close()
+
+    function refreshStartPage() {
+        startPageData = JSON.parse(BrowserBackend.startPageJson())
+        tabGroups = JSON.parse(BrowserBackend.collectionJson("tabGroups"))
+    }
+
+    function tabSnapshot() {
+        let out = []
+        for (let i = 0; i < tabsModel.count; i++) {
+            let t = tabsModel.get(i)
+            out.push({ title: t.title, url: t.url })
+        }
+        return out
+    }
+
+    function saveTabsSoon() {
+        saveTimer.restart()
+    }
+
+    function newTab(url, activate) {
+        let target = url || "about:blank"
+        tabsModel.append({
+            url: target,
+            title: target === "about:blank" ? "Start Page" : BrowserBackend.displayAddress(target),
+            icon: "",
+            loading: false,
+            progress: 0,
+            audible: false,
+            muted: false
+        })
+        let index = tabsModel.count - 1
+        if (activate === undefined || activate) {
+            currentIndex = index
+            Qt.callLater(function() {
+                syncAddress()
+                if (target === "about:blank") focusAddress()
+            })
+        }
+        saveTabsSoon()
+        return index
+    }
+
+    function closeTab(index) {
+        if (index < 0 || index >= tabsModel.count) return
+        let record = tabsModel.get(index)
+        BrowserBackend.rememberClosedTab(record.url, record.title)
+        if (tabsModel.count === 1) {
+            loadInTab(0, "about:blank")
+            tabsModel.setProperty(0, "title", "Start Page")
+            tabsModel.setProperty(0, "icon", "")
+            currentIndex = 0
+        } else {
+            tabsModel.remove(index)
+            if (currentIndex >= tabsModel.count) currentIndex = tabsModel.count - 1
+            else if (index < currentIndex) currentIndex--
+        }
+        refreshStartPage()
+        saveTabsSoon()
+        Qt.callLater(syncAddress)
+    }
+
+    function reorderTab(from, to) {
+        if (from < 0 || to < 0 || from >= tabsModel.count || to >= tabsModel.count || from === to)
+            return
+        const active = currentIndex
+        tabsModel.move(from, to, 1)
+        if (active === from) currentIndex = to
+        else if (from < active && to >= active) currentIndex = active - 1
+        else if (from > active && to <= active) currentIndex = active + 1
+        saveTabsSoon()
+        Qt.callLater(syncAddress)
+    }
+
+    function activateUrl(url) {
+        for (let i = 0; i < tabsModel.count; i++) {
+            if (tabsModel.get(i).url === url) {
+                currentIndex = i
+                addressField.input.focus = false
+                syncAddress()
+                return
+            }
+        }
+        navigateTo(url)
+    }
+
+    // A message from Web's page script (passwords.js), via the console. Only
+    // messages carrying this run's token count: the page can't see it.
+    function pagePasswordMessage(url, message) {
+        const token = BrowserBackend.passwordToken
+        const site = BrowserBackend.displayAddress(url)
+        let body = null
+        try {
+            if (message.startsWith("\u0001gg-user:" + token + ":")) {
+                body = JSON.parse(message.slice(("\u0001gg-user:" + token + ":").length))
+                const names = Object.assign({}, typedUsernames)
+                names[site] = String(body.u || "")
+                typedUsernames = names
+                return true
+            }
+            if (!message.startsWith("\u0001gg-pw:" + token + ":")) return false
+            body = JSON.parse(message.slice(("\u0001gg-pw:" + token + ":").length))
+        } catch (e) {
+            return true
+        }
+        const username = String(body.u || "") || typedUsernames[site] || ""
+        const password = String(body.p || "")
+        // The keyring answers in the background (it may be locked).
+        const request = "offer" + (++passwordRequests)
+        pendingOffers[request] = { url: url, site: site, username: username, password: password }
+        BrowserBackend.requestPasswordOffer(request, url, username, password)
+        return true
+    }
+    property int passwordRequests: 0
+    property var pendingOffers: ({})
+    Connections {
+        target: BrowserBackend
+        function onPasswordOfferReady(request, kind) {
+            const offer = root.pendingOffers[request]
+            delete root.pendingOffers[request]
+            if (!offer || !kind) return
+            root.passwordPrompt = Object.assign({ kind: kind }, offer)
+            if (BrowserBackend.testAcceptsPasswords) root.answerPasswordPrompt("save")
+        }
+        function onPasswordSaved(ok, kind) {
+            if (ok) BrowserBackend.notify(kind === "update" ? "Password updated" : "Password saved")
+        }
+        function onSavedLoginsReady(json) { root.savedLogins = JSON.parse(json) }
+    }
+    // A keyring that takes its time is waiting to be unlocked, not a frozen Web.
+    Rectangle {
+        objectName: "keyringWaiting"
+        z: 1000
+        visible: opacity > 0
+        opacity: BrowserBackend.keyringWaiting ? 1 : 0
+        Behavior on opacity { NumberAnimation { duration: 155 } }
+        anchors { horizontalCenter: parent.horizontalCenter; top: parent.top; topMargin: 64 }
+        width: keyringText.implicitWidth + 28; height: 30; radius: 15
+        color: Theme.dark ? "#e62c2c2e" : "#f2ffffff"
+        border { width: 0.5; color: Theme.dark ? "#33ffffff" : "#26000000" }
+        Text {
+            id: keyringText
+            anchors.centerIn: parent
+            text: "Waiting for the keyring… Unlock it if it asks."
+            color: Theme.dark ? "#ffffff" : "#1d1d1f"
+            font.pixelSize: Theme.fs(12)
+        }
+    }
+
+    function answerPasswordPrompt(choice) {
+        const prompt = passwordPrompt
+        passwordPrompt = null
+        if (!prompt) return
+        if (choice === "save")
+            BrowserBackend.savePasswordAsync(prompt.url, prompt.username, prompt.password, prompt.kind)
+        else if (choice === "never")
+            BrowserBackend.neverSavePasswordsFor(prompt.url)
+    }
+
+    function openPasswords() {
+        BrowserBackend.openPasswordsApp()
+    }
+    function downloadLabel(download) {
+        if (download.state === WebEngineDownloadRequest.DownloadCompleted) return "Completed"
+        if (download.state === WebEngineDownloadRequest.DownloadCancelled) return "Cancelled"
+        if (download.state === WebEngineDownloadRequest.DownloadInterrupted) return "Failed: " + (download.interruptReasonString || "The download was interrupted.")
+        if (download.isPaused) return "Paused"
+        return download.totalBytes > 0 ? Math.round(download.receivedBytes / download.totalBytes * 100) + "%" : "Downloading…"
+    }
+
+    // Sends a tab somewhere. The model's url follows the page (redirects,
+    // pages that change their own address) and is never bound back to the
+    // view: a binding reloaded every page whose address changed under it, so
+    // sign-ins were posted twice and web apps reloaded themselves in a loop.
+    function loadInTab(index, target) {
+        tabsModel.setProperty(index, "url", target)
+        const item = tabViews.itemAt(index)
+        if (item) item.go(target)
+    }
+
+    function navigateTo(value) {
+        let target = value
+        if (!target || target === "about:blank") target = "about:blank"
+        else if (!String(target).startsWith("http://") && !String(target).startsWith("https://"))
+            target = BrowserBackend.resolveAddress(String(target))
+        if (!target) return
+        pageMenuOpen = false
+        suggestionData = []
+        if (tabsModel.count === 0) newTab(target, true)
+        else loadInTab(currentIndex, target)
+        addressField.input.focus = false
+        saveTabsSoon()
+    }
+
+    function syncAddress() {
+        if (!addressField.input.activeFocus)
+            addressField.input.text = BrowserBackend.displayAddress(currentUrl)
+    }
+
+    function focusAddress() {
+        addressField.input.forceActiveFocus()
+        addressField.input.text = currentUrl === "about:blank" ? "" : currentUrl
+        addressField.input.selectAll()
+        updateSuggestions()
+    }
+
+    function updateSuggestions() {
+        if (!addressField.input.activeFocus) {
+            suggestionData = []
+            return
+        }
+        suggestionData = JSON.parse(BrowserBackend.suggestions(addressField.input.text, JSON.stringify(tabSnapshot())))
+    }
+
+    function reloadOrStop() {
+        if (!currentView) return
+        if (currentView.loading) currentView.stop()
+        else currentView.reload()
+    }
+
+    function performFind(backward) {
+        if (!currentView) return
+        const query = findQuery.trim()
+        if (!query) {
+            currentView.findText("")
+            findMatches = 0
+            findActive = 0
+            return
+        }
+        currentView.findText(query, backward ? WebEngineView.FindBackward : 0)
+    }
+
+    function openFind() {
+        if (!currentView || currentUrl === "about:blank") return
+        findOpen = true
+        Qt.callLater(function() { findField.input.forceActiveFocus(); findField.input.selectAll() })
+    }
+
+    function closeFind() {
+        if (currentView) currentView.findText("")
+        findOpen = false
+        findQuery = ""
+        findMatches = 0
+        findActive = 0
+    }
+
+    function reopenLastClosed() {
+        let closed = JSON.parse(BrowserBackend.collectionJson("closedTabs"))
+        if (closed.length) newTab(closed[0].url, true)
+    }
+
+    function enterReader() {
+        if (!currentView || currentUrl === "about:blank") return
+        currentView.runJavaScript(
+            "(function(){const a=document.querySelector('article,main,[role=main]')||document.body;" +
+            "return JSON.stringify({title:document.title||'',text:(a.innerText||'').replace(/\\n{3,}/g,'\\n\\n').trim()});})()",
+            function(value) {
+                try {
+                    let article = JSON.parse(value)
+                    if (!article.text) {
+                        BrowserBackend.notify("Reader couldn't find readable text on this page.")
+                        return
+                    }
+                    readerTitle = article.title
+                    readerText = article.text
+                    readerOpen = true
+                    pageMenuOpen = false
+                } catch (_) {
+                    BrowserBackend.notify("Reader couldn't open this page.")
+                }
+            }
+        )
+    }
+
+    function requestNewWindow(request) {
+        if (!request.userInitiated) {
+            BrowserBackend.notify("A pop-up was blocked.")
+            return
+        }
+        let background = request.destination === WebEngineNewWindowRequest.InNewBackgroundTab
+        let index = newTab("about:blank", !background)
+        // At once, inside this handler: the request is deleted once it
+        // returns, and opening it later (Qt.callLater) crashed Web. The new
+        // tab's view exists already (the Repeater makes it as the tab is added).
+        let item = tabViews.itemAt(index)
+        if (item) request.openIn(item.view)
+    }
+
+    function acceptDownload(download) {
+        download.downloadDirectory = BrowserBackend.downloadDir
+        download.downloadFileName = download.suggestedFileName
+        downloads = [download].concat(downloads)
+        downloadsButton.bump()
+        download.accept()
+        downloadsOpen = true
+    }
+
+    function setBrowserSetting(key, value) {
+        let copy = JSON.parse(JSON.stringify(browserSettings))
+        copy[key] = value
+        browserSettings = copy
+        BrowserBackend.setSetting(key, JSON.stringify(value))
+    }
+
+    function openPrivacyReport() {
+        try { sitePrivacyReport = JSON.parse(BrowserBackend.privacyReportForUrl(currentUrl)) }
+        catch (_) { sitePrivacyReport = ({ enabled: true, blocked: 0, domains: [] }) }
+        pageMenuOpen = false
+        privacySheetOpen = true
+    }
+
+    function refreshTabGroups() {
+        try { tabGroups = JSON.parse(BrowserBackend.collectionJson("tabGroups")) }
+        catch (_) { tabGroups = [] }
+    }
+
+    function saveCurrentTabGroup() {
+        const name = tabGroupName.trim()
+        if (!name) {
+            BrowserBackend.notify("Give this Tab Group a name.")
+            return
+        }
+        if (BrowserBackend.saveTabGroup(name, JSON.stringify(tabSnapshot()))) {
+            tabGroupEditorOpen = false
+            tabGroupName = ""
+            refreshTabGroups()
+        }
+    }
+
+    function openTabGroup(index) {
+        if (index < 0 || index >= tabGroups.length) return
+        const group = tabGroups[index]
+        if (!group || !Array.isArray(group.tabs) || !group.tabs.length) return
+
+        tabsModel.clear()
+        for (let i = 0; i < group.tabs.length; i++) {
+            const record = group.tabs[i]
+            tabsModel.append({
+                url: record.url || "about:blank",
+                title: record.title || BrowserBackend.displayAddress(record.url || "") || "Start Page",
+                icon: "",
+                loading: false,
+                progress: 0,
+                audible: false,
+                muted: false
+            })
+        }
+        currentIndex = 0
+        libraryOverlay.mode = ""
+        saveTabsSoon()
+        Qt.callLater(syncAddress)
+    }
+
+    function toggleMute(index) {
+        const item = tabViews.itemAt(index)
+        if (item && item.view)
+            item.view.audioMuted = !item.view.audioMuted
+    }
+
+    function refreshProfiles() {
+        try { profiles = JSON.parse(BrowserBackend.profilesJson) }
+        catch (_) { profiles = ["Personal"] }
+    }
+
+    function createProfile() {
+        const name = newProfileName.trim()
+        if (!name) {
+            BrowserBackend.notify("Enter a profile name.")
+            return
+        }
+        if (BrowserBackend.createProfile(name)) {
+            newProfileName = ""
+            refreshProfiles()
+        }
+    }
+
+    function permissionLabel(type) {
+        switch (Number(type)) {
+        case 1: return "Microphone"
+        case 2: return "Camera"
+        case 3: return "Camera & Microphone"
+        case 4: return "Screen Capture"
+        case 5: return "Screen & Audio Capture"
+        case 6: return "Pointer Lock"
+        case 7: return "Notifications"
+        case 8: return "Location"
+        case 9: return "Clipboard"
+        case 10: return "Local Fonts"
+        default: return "Website Permission"
+        }
+    }
+
+    function permissionStateLabel(state) {
+        switch (Number(state)) {
+        case 2: return "Allowed"
+        case 3: return "Blocked"
+        default: return "Ask"
+        }
+    }
+
+    function refreshWebsitePermissions() {
+        try { websitePermissions = root.profile.listAllPermissions() }
+        catch (_) { websitePermissions = [] }
+    }
+
+    function showWebsitePermissions(originOnly) {
+        permissionOriginFilter = originOnly ? BrowserBackend.securityOrigin(currentUrl) : ""
+        refreshWebsitePermissions()
+        pageMenuOpen = false
+        websitePermissionsOpen = true
+    }
+
+    Timer {
+        id: saveTimer
+        interval: 350
+        repeat: false
+        onTriggered: root.saveTabsNow()
+    }
+    function saveTabsNow() {
+        saveTimer.stop()
+        let values = []
+        for (let i = 0; i < tabsModel.count; i++) values.push(tabsModel.get(i).url)
+        BrowserBackend.saveTabs(JSON.stringify(values))
+    }
+    // Closing Web (or the system quitting it) saves the tabs at once rather
+    // than in 350 ms, when the process may already be gone.
+    onClosing: saveTabsNow()
+    Connections {
+        target: Qt.application
+        function onAboutToQuit() { root.saveTabsNow() }
+    }
+
+    ListModel { id: tabsModel }
+
+    // The browsing profile: cookies, logins, site data and permissions, kept
+    // on disk (except in Private Browsing). From Qt 6.9 a profile declared as
+    // a plain WebEngineProfile in QML is created before its storage settings
+    // apply and stays in memory, so every login was lost when Web closed; the
+    // prototype creates it with them. Session cookies are kept too, as Safari
+    // and Chrome do when they reopen your tabs, so "remember me"-less logins
+    // last until you sign out.
+    WebEngineProfilePrototype {
+        id: profilePrototype
+        storageName: BrowserBackend.privateMode ? "" : "GoldenGateWeb"
+        persistentStoragePath: BrowserBackend.privateMode ? "" : BrowserBackend.dataDir + "/profile"
+        cachePath: BrowserBackend.privateMode ? "" : BrowserBackend.cacheDir + "/web"
+        httpCacheType: BrowserBackend.privateMode ? WebEngineProfile.MemoryHttpCache : WebEngineProfile.DiskHttpCache
+        persistentCookiesPolicy: BrowserBackend.privateMode ? WebEngineProfile.NoPersistentCookies : WebEngineProfile.ForcePersistentCookies
+        persistentPermissionsPolicy: BrowserBackend.privateMode ? WebEngineProfile.StoreInMemory : WebEngineProfile.StoreOnDisk
+    }
+    // Set first thing in Component.onCompleted, before any tab opens: asking
+    // the prototype for it while QML is still being created crashes Qt.
+    property WebEngineProfile profile: null
+    Binding { target: root.profile; property: "downloadPath"; value: BrowserBackend.downloadDir }
+    Binding { target: root.profile; property: "spellCheckEnabled"; value: true }
+    Connections {
+        target: root.profile
+        function onDownloadRequested(download) { root.acceptDownload(download) }
+    }
+
+    Component.onCompleted: {
+        profile = profilePrototype.instance()
+        BrowserBackend.attachProfile(root.profile)
+        let initial = JSON.parse(BrowserBackend.initialTabsJson)
+        if (!initial.length) initial = ["about:blank"]
+        for (let i = 0; i < initial.length; i++) newTab(initial[i], false)
+        currentIndex = 0
+        refreshTabGroups()
+        refreshProfiles()
+        Qt.callLater(syncAddress)
+    }
+
+    Connections {
+        target: BrowserBackend
+        function onDarkChanged() {
+            Qt.callLater(root.syncAddress)
+        }
+        function onLibraryChanged() {
+            root.refreshStartPage()
+            root.refreshTabGroups()
+            if (libraryOverlay.visible) libraryOverlay.reload()
+        }
+        function onProfilesChanged() { root.refreshProfiles() }
+        function onPrivacyChanged() {
+            root.refreshStartPage()
+            if (root.privacySheetOpen) root.openPrivacyReport()
+        }
+        function onToastRequested(message) {
+            toastLabel.text = message
+            toast.opacity = 1
+            toastTimer.restart()
+        }
+        function onExternalUrls(json) {
+            let values = JSON.parse(json)
+            for (let i = 0; i < values.length; i++) root.newTab(values[i], true)
+            root.showNormal()
+            root.raise()
+            root.requestActivate()
+        }
+    }
+
+    Rectangle {
+        anchors.fill: parent
+        color: Theme.dark ? "#1d1d20" : "#f5f5f7"
+        border { width: 0.5; color: Theme.dark ? "#45000000" : "#22000000" }
+    }
+
+    Rectangle {
+        id: toolbar
+        z: 20
+        anchors { top: parent.top; left: parent.left; right: parent.right }
+        height: 56
+        color: BrowserBackend.privateMode
+            ? (Theme.dark ? "#e22d2737" : "#f1ece8f4")
+            : (Theme.dark ? "#e22b2b2f" : "#f0f1f1f3")
+        border { width: 0; color: "transparent" }
+
+        MouseArea {
+            anchors.fill: parent
+            acceptedButtons: Qt.LeftButton
+            onPressed: function(mouse) {
+                if (mouse.button === Qt.LeftButton) root.startSystemMove()
+            }
+            onDoubleClicked: root.visibility = root.visibility === Window.Maximized ? Window.Windowed : Window.Maximized
+        }
+
+        RowLayout {
+            anchors { fill: parent; leftMargin: 14; rightMargin: 14 }
+            spacing: 7
+
+            Row {
+                Layout.alignment: Qt.AlignVCenter
+                spacing: 8
+                Repeater {
+                    model: [
+                        ["#ff5f57", "Close"],
+                        ["#febc2e", "Minimize"],
+                        ["#28c840", "Zoom"]
+                    ]
+                    delegate: Rectangle {
+                        required property var modelData
+                        width: 13; height: 13; radius: 6.5
+                        color: modelData[0]
+                        border { width: 0.5; color: "#33000000" }
+                        MouseArea {
+                            anchors.fill: parent
+                            onClicked: {
+                                if (modelData[1] === "Close") root.close()
+                                else if (modelData[1] === "Minimize") root.showMinimized()
+                                else root.visibility = root.visibility === Window.Maximized ? Window.Windowed : Window.Maximized
+                            }
+                        }
+                    }
+                }
+            }
+
+            Item { Layout.preferredWidth: 8 }
+
+            BrowserButton {
+                symbol: "sidebar"
+                tooltip: "Show Sidebar"
+                selected: root.sidebarOpen
+                onClicked: root.sidebarOpen = !root.sidebarOpen
+            }
+            BrowserButton {
+                symbol: "chevron-left"
+                tooltip: "Back  ⌘["
+                enabled: root.currentView ? root.currentView.canGoBack : false
+                onClicked: root.currentView.goBack()
+            }
+            BrowserButton {
+                symbol: "chevron-right"
+                tooltip: "Forward  ⌘]"
+                enabled: root.currentView ? root.currentView.canGoForward : false
+                onClicked: root.currentView.goForward()
+            }
+
+            Item {
+                id: smartArea
+                Layout.fillWidth: true
+                Layout.minimumWidth: 250
+                Layout.preferredWidth: root.compactTabs ? 480 : 680
+                Layout.maximumWidth: root.compactTabs ? 620 : 760
+                height: 40
+
+                Rectangle {
+                    id: smartField
+                    anchors.centerIn: parent
+                    height: 34
+                    width: Math.min(parent.width, addressField.input.activeFocus ? 720 : 640)
+                    radius: height / 2      // Safari's Smart Search field is a capsule
+                    color: BrowserBackend.privateMode
+                        ? (Theme.dark ? "#88443a52" : "#cfe9e2ef")
+                        : (Theme.dark ? "#b63b3b40" : "#eaffffff")
+                    border {
+                        width: addressField.input.activeFocus ? 2 : 0.5
+                        color: addressField.input.activeFocus ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.55) : Theme.separator
+                    }
+                    Behavior on width { NumberAnimation { duration: Theme.reduceMotion ? 1 : 155; easing.type: Easing.OutCubic } }
+
+                    BrowserButton {
+                        id: pageButton
+                        anchors { left: parent.left; leftMargin: 3; verticalCenter: parent.verticalCenter }
+                        width: 28; height: 28
+                        symbol: BrowserBackend.privateMode ? "shield" : "gear"
+                        tooltip: "Page Menu"
+                        selected: root.pageMenuOpen
+                        onClicked: {
+                            root.pageMenuOpen = !root.pageMenuOpen
+                            root.downloadsOpen = false
+                            root.settingsOpen = false
+                        }
+                    }
+
+                    TextField {
+                        id: addressField
+                        anchors {
+                            left: pageButton.right; leftMargin: 4
+                            right: reloadInside.left; rightMargin: 5
+                            verticalCenter: parent.verticalCenter
+                        }
+                        height: 26
+                        bare: true
+                        placeholder: "Search or enter website name"
+                        placeholderOnlyWhenFocused: true
+                        fontWeight: input.activeFocus ? Font.Normal : Font.Medium
+                        input.selectedTextColor: Theme.label
+                        input.Keys.onEscapePressed: {
+                            addressField.input.focus = false
+                            root.suggestionData = []
+                            root.syncAddress()
+                        }
+                        onAccepted: root.navigateTo(text)
+                        Connections {
+                            target: addressField.input
+                            function onActiveFocusChanged() {
+                                if (addressField.input.activeFocus) {
+                                    addressField.text = root.currentUrl === "about:blank" ? "" : root.currentUrl
+                                    addressField.input.selectAll()
+                                    root.updateSuggestions()
+                                } else {
+                                    root.suggestionData = []
+                                    root.syncAddress()
+                                }
+                            }
+                            function onTextChanged() { if (addressField.input.activeFocus) suggestionTimer.restart() }
+                        }
+                    }
+                    Timer {
+                        id: suggestionTimer
+                        interval: 55
+                        onTriggered: root.updateSuggestions()
+                    }
+
+                    BrowserButton {
+                        id: reloadInside
+                        anchors { right: parent.right; rightMargin: 3; verticalCenter: parent.verticalCenter }
+                        width: 28; height: 28
+                        symbol: root.currentView && root.currentView.loading ? "xmark" : "arrow-clockwise"
+                        tooltip: root.currentView && root.currentView.loading ? "Stop" : "Reload  ⌘R"
+                        onClicked: root.reloadOrStop()
+                    }
+
+                    // Loading: the bar runs along the field; done, it runs to the end and fades.
+                    Rectangle {
+                        objectName: "loadProgress"
+                        readonly property bool loading: !!root.currentView && root.currentView.loading
+                        visible: opacity > 0.01
+                        opacity: loading ? 1 : 0
+                        Behavior on opacity {
+                            SequentialAnimation {
+                                PauseAnimation { duration: Theme.reduceMotion ? 0 : 140 }
+                                NumberAnimation { duration: Theme.reduceMotion ? 1 : 225; easing.type: Easing.OutCubic }
+                            }
+                        }
+                        anchors { bottom: parent.bottom; left: parent.left; right: parent.right; leftMargin: 10; rightMargin: 10 }
+                        height: 2
+                        radius: 1
+                        color: "transparent"
+                        Rectangle {
+                            id: progressFill
+                            height: parent.height
+                            radius: 1
+                            color: Theme.accent
+                            readonly property real goal: parent.width * (parent.loading ? Math.max(0.06, (root.currentView ? root.currentView.loadProgress : 0) / 100) : 1)
+                            // Forward it glides; a new page starts it over at once.
+                            onGoalChanged: {
+                                if (goal < width || Theme.reduceMotion) { glide.stop(); width = goal }
+                                else { glide.to = goal; glide.restart() }
+                            }
+                            NumberAnimation { id: glide; target: progressFill; property: "width"; duration: 210; easing.type: Easing.OutCubic }
+                        }
+                    }
+                }
+            }
+
+            Flickable {
+                visible: root.compactTabs
+                Layout.preferredWidth: root.compactTabs ? Math.min(330, Math.max(120, root.width * 0.27)) : 0
+                Layout.maximumWidth: 330
+                height: 34
+                contentWidth: compactTabRow.width
+                clip: true
+                boundsBehavior: Flickable.StopAtBounds
+
+                Row {
+                    id: compactTabRow
+                    spacing: 4
+                    Repeater {
+                        model: tabsModel
+                        delegate: Rectangle {
+                            required property int index
+                            required property string title
+                            required property string icon
+                            visible: index !== root.currentIndex
+                            width: visible ? 112 : 0
+                            height: 32
+                            radius: 9
+                            color: compactArea.containsMouse ? (Theme.dark ? "#12ffffff" : "#0d000000") : "transparent"
+                            Row {
+                                anchors { fill: parent; leftMargin: 8; rightMargin: 8 }
+                                spacing: 6
+                                Image {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    width: 15; height: 15
+                                    source: icon
+                                    sourceSize: Qt.size(30, 30)
+                                    visible: !!icon
+                                }
+                                Text {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    width: parent.width - 24
+                                    text: title || "New Tab"
+                                    elide: Text.ElideRight
+                                    color: Theme.label
+                                    font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                                }
+                            }
+                            MouseArea {
+                                id: compactArea
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                acceptedButtons: Qt.LeftButton | Qt.MiddleButton
+                                onClicked: function(mouse) {
+                                    if (mouse.button === Qt.MiddleButton) root.closeTab(index)
+                                    else { root.currentIndex = index; root.syncAddress() }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            BrowserButton {
+                id: bookmarkButton
+                symbol: "bookmark"
+                tooltip: "Add Favorite  ⌘D"
+                enabled: root.currentUrl !== "about:blank"
+                onClicked: { BrowserBackend.addBookmark(root.currentUrl, root.currentTitle); bookmarkButton.bump() }
+            }
+            BrowserButton {
+                id: downloadsButton
+                objectName: "downloadsButton"
+                symbol: "download"
+                tooltip: "Downloads"
+                selected: root.downloadsOpen
+                onClicked: {
+                    root.downloadsOpen = !root.downloadsOpen
+                    root.pageMenuOpen = false
+                    root.settingsOpen = false
+                }
+            }
+            BrowserButton {
+                symbol: "apps"
+                tooltip: "Tab Overview"
+                selected: root.tabOverviewOpen
+                onClicked: {
+                    root.tabOverviewOpen = !root.tabOverviewOpen
+                    root.pageMenuOpen = false
+                    root.downloadsOpen = false
+                    root.settingsOpen = false
+                }
+            }
+            BrowserButton {
+                symbol: "plus"
+                tooltip: "New Tab  ⌘T"
+                onClicked: root.newTab("about:blank", true)
+            }
+        }
+
+        Rectangle {
+            anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
+            height: 0.5
+            color: Theme.separator
+        }
+    }
+
+    Rectangle {
+        id: separateTabs
+        z: 15
+        visible: !root.compactTabs
+        anchors { top: toolbar.bottom; left: parent.left; right: parent.right }
+        height: visible ? 39 : 0
+        color: Theme.dark ? "#f1242428" : "#f1ededf0"
+
+        Flickable {
+            id: tabScroller
+            anchors { fill: parent; leftMargin: 10; rightMargin: 10 }
+            contentWidth: tabRow.width
+            clip: true
+            boundsBehavior: Flickable.StopAtBounds
+
+            // The open tab's highlight springs from tab to tab, as Safari's.
+            Rectangle {
+                id: activeTabHighlight
+                objectName: "activeTabHighlight"
+                readonly property Item tab: { root.currentIndex; tabsModel.count; tabRow.width; return tabRepeater.itemAt(root.currentIndex) }
+                visible: !!tab
+                x: tab ? tab.x + (tab.dragOffset || 0) : 0
+                y: 3
+                width: tab ? tab.width : 0
+                height: tabRow.height - 6 - 2
+                radius: 9
+                color: Theme.dark ? "#993b3b40" : "#deffffff"
+                border { width: 0.5; color: Theme.separator }
+                Behavior on x { enabled: !Theme.reduceMotion && !(activeTabHighlight.tab && activeTabHighlight.tab.dragging); Spring { spring: Theme.snappy } }
+                Behavior on width { enabled: !Theme.reduceMotion; Spring { spring: Theme.snappy } }
+            }
+
+            Row {
+                id: tabRow
+                height: parent.height
+                spacing: 2
+                // A new tab grows in; the others slide to make room, and close up after one closes.
+                add: Transition {
+                    enabled: !Theme.reduceMotion
+                    NumberAnimation { property: "opacity"; from: 0; to: 1; duration: 175; easing.type: Easing.OutCubic }
+                    NumberAnimation { property: "scale"; from: 0.8; to: 1; duration: Theme.snappy.duration; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.snappy.curve }
+                }
+                move: Transition {
+                    enabled: !Theme.reduceMotion
+                    NumberAnimation { property: "x"; duration: Theme.snappy.duration; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.snappy.curve }
+                }
+
+                Repeater {
+                    id: tabRepeater
+                    model: tabsModel
+                    delegate: Item {
+                        id: tab
+                        required property int index
+                        required property string title
+                        required property string icon
+                        required property bool loading
+                        required property bool audible
+                        required property bool muted
+                        readonly property bool active: index === root.currentIndex
+                        property real dragOffset: 0
+                        readonly property bool dragging: tabDrag.active
+                        readonly property bool closeShown: active || tabHover.hovered
+                        width: Math.max(132, Math.min(220, (tabScroller.width - 10) / Math.max(1, Math.min(6, tabsModel.count))))
+                        Behavior on width { enabled: !Theme.reduceMotion; Spring { spring: Theme.snappy } }
+                        height: 37
+                        z: tabDrag.active ? 10 : 0
+                        transform: Translate { x: tab.dragOffset }
+                        // Picked up, a tab lifts a little.
+                        scale: tabDrag.active && !Theme.reduceMotion ? 1.04 : 1
+                        Behavior on scale { NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
+
+                        // The open tab's background is activeTabHighlight; the others light up under the pointer.
+                        Rectangle {
+                            anchors { fill: parent; topMargin: 3; bottomMargin: 3 }
+                            radius: 9
+                            color: tab.active ? "transparent"
+                                : tabHover.hovered ? (Theme.dark ? "#10ffffff" : "#0d000000") : "transparent"
+                            Behavior on color { ColorAnimation { duration: Theme.reduceMotion ? 1 : 120 } }
+                        }
+
+                        Row {
+                            anchors { fill: parent; leftMargin: 9; rightMargin: 7 }
+                            spacing: 7
+
+                            Item {
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: 18; height: 18
+                                Image {
+                                    anchors.fill: parent
+                                    source: tab.icon
+                                    sourceSize: Qt.size(36, 36)
+                                    visible: !!tab.icon && !tab.loading
+                                }
+                                Rectangle {
+                                    anchors.fill: parent
+                                    radius: 5
+                                    visible: !tab.icon && !tab.loading
+                                    color: Theme.dark ? "#18ffffff" : "#0d000000"
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: (tab.title || "N").charAt(0).toUpperCase()
+                                        color: Theme.secondaryLabel
+                                        font { family: Theme.fontUi; pixelSize: Theme.fs(10); weight: Font.DemiBold }
+                                    }
+                                }
+                                Rectangle {
+                                    anchors.centerIn: parent
+                                    width: 12; height: 12
+                                    radius: 6
+                                    visible: tab.loading
+                                    color: "transparent"
+                                    border { width: 2; color: Theme.accent }
+                                    RotationAnimation on rotation {
+                                        running: tab.loading && !Theme.reduceMotion
+                                        loops: Animation.Infinite
+                                        from: 0; to: 360; duration: 650
+                                    }
+                                }
+                            }
+
+                            Text {
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: Math.max(20, parent.width - 65)
+                                text: tab.title || "New Tab"
+                                color: Theme.label
+                                elide: Text.ElideRight
+                                font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: tab.active ? Font.Medium : Font.Normal }
+                            }
+
+                            BrowserButton {
+                                visible: tab.audible && !tab.closeShown
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: 23; height: 23
+                                symbol: tab.muted ? "speaker" : "speaker-wave"
+                                tooltip: tab.muted ? "Unmute Tab" : "Mute Tab"
+                                onClicked: root.toggleMute(tab.index)
+                            }
+
+                            BrowserButton {
+                                id: closeButton
+                                // Fades in under the pointer rather than popping in.
+                                opacity: tab.closeShown ? 1 : 0
+                                visible: opacity > 0.01
+                                Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 120 } }
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: 23; height: 23
+                                symbol: "xmark"
+                                tooltip: "Close Tab  ⌘W"
+                                onClicked: root.closeTab(tab.index)
+                            }
+                        }
+                        HoverHandler { id: tabHover }
+                        TapHandler {
+                            acceptedButtons: Qt.LeftButton
+                            onTapped: {
+                                root.currentIndex = tab.index
+                                root.syncAddress()
+                            }
+                        }
+                        TapHandler {
+                            acceptedButtons: Qt.MiddleButton
+                            onTapped: root.closeTab(tab.index)
+                        }
+                        DragHandler {
+                            id: tabDrag
+                            target: null
+                            xAxis.enabled: true
+                            yAxis.enabled: false
+                            onTranslationChanged: tab.dragOffset = translation.x
+                            onActiveChanged: {
+                                if (active) return
+                                const from = tab.index
+                                const step = tab.width + tabRow.spacing
+                                const delta = Math.round(tab.dragOffset / Math.max(1, step))
+                                const to = Math.max(0, Math.min(tabsModel.count - 1, from + delta))
+                                tab.dragOffset = 0
+                                root.reorderTab(from, to)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Rectangle {
+            anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
+            height: 0.5
+            color: Theme.separator
+        }
+    }
+
+    Item {
+        id: body
+        anchors {
+            top: root.compactTabs ? toolbar.bottom : separateTabs.bottom
+            left: parent.left
+            right: parent.right
+            bottom: parent.bottom
+        }
+
+        Rectangle {
+            id: sidebar
+            anchors { top: parent.top; bottom: parent.bottom; left: parent.left }
+            width: root.sidebarOpen ? 252 : 0
+            visible: width > 0
+            clip: true
+            color: BrowserBackend.privateMode
+                ? (Theme.dark ? "#ee2b2732" : "#f5ece8f2")
+                : (Theme.dark ? "#f128282c" : "#f4ececf0")
+            border { width: 0; color: "transparent" }
+            Behavior on width { NumberAnimation { duration: Theme.reduceMotion ? 1 : 175; easing.type: Easing.OutCubic } }
+
+            Flickable {
+                anchors { fill: parent; margins: 10 }
+                contentHeight: sideColumn.height + 20
+                clip: true
+                boundsBehavior: Flickable.StopAtBounds
+
+                Column {
+                    id: sideColumn
+                    width: parent.width
+                    spacing: 4
+
+                    Column {
+                        leftPadding: 8
+                        topPadding: 8
+                        bottomPadding: 10
+                        spacing: 1
+                        Text {
+                            text: BrowserBackend.privateMode ? "Private Browsing" : "Web"
+                            color: Theme.label
+                            font { family: Theme.fontDisplay; pixelSize: Theme.fs(22); weight: Font.DemiBold; letterSpacing: -0.3 }
+                        }
+                        Text {
+                            text: BrowserBackend.profileName
+                            color: Theme.secondaryLabel
+                            font { family: Theme.fontUi; pixelSize: Theme.fs(11); weight: Font.Medium }
+                        }
+                    }
+
+                    component SideRow: Rectangle {
+                        id: row
+                        property string symbol
+                        property string label
+                        property string detail
+                        property bool selected: false
+                        signal activated()
+                        width: sideColumn.width
+                        height: 34
+                        radius: 8
+                        color: selected ? (Theme.dark ? "#22ffffff" : "#14000000")
+                            : sideArea.containsMouse ? (Theme.dark ? "#12ffffff" : "#09000000") : "transparent"
+                        Row {
+                            anchors { fill: parent; leftMargin: 8; rightMargin: 8 }
+                            spacing: 9
+                            Symbol { anchors.verticalCenter: parent.verticalCenter; name: row.symbol; size: 15; tone: row.selected ? "accent" : "auto" }
+                            Text {
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: parent.width - 58
+                                text: row.label
+                                color: Theme.label
+                                elide: Text.ElideRight
+                                font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: row.selected ? Font.Medium : Font.Normal }
+                            }
+                            Text {
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: row.detail
+                                visible: !!row.detail
+                                color: Theme.tertiaryLabel
+                                font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+                            }
+                        }
+                        MouseArea { id: sideArea; anchors.fill: parent; hoverEnabled: true; onClicked: row.activated() }
+                    }
+
+                    SideRow {
+                        symbol: "apps"
+                        label: "Start Page"
+                        selected: root.currentUrl === "about:blank" && !libraryOverlay.visible
+                        onActivated: { libraryOverlay.mode = ""; root.navigateTo("about:blank") }
+                    }
+                    SideRow {
+                        symbol: "bookmark"
+                        label: "Favorites"
+                        onActivated: libraryOverlay.showCollection("bookmarks", "Favorites")
+                    }
+                    SideRow {
+                        symbol: "clock"
+                        label: "History"
+                        onActivated: libraryOverlay.showCollection("history", "History")
+                    }
+                    SideRow {
+                        symbol: "doc"
+                        label: "Reading List"
+                        onActivated: libraryOverlay.showCollection("readingList", "Reading List")
+                    }
+                    SideRow {
+                        symbol: "arrow-clockwise"
+                        label: "Recently Closed"
+                        detail: String(root.startPageData.recentlyClosed?.length ?? 0)
+                        onActivated: libraryOverlay.showCollection("closedTabs", "Recently Closed")
+                    }
+                    SideRow {
+                        visible: !BrowserBackend.privateMode
+                        symbol: "shield"
+                        label: "New Private Window"
+                        onActivated: BrowserBackend.openPrivateWindow()
+                    }
+
+                    Text {
+                        visible: !BrowserBackend.privateMode
+                        text: "TAB GROUPS"
+                        color: Theme.tertiaryLabel
+                        leftPadding: 8
+                        topPadding: 18
+                        bottomPadding: 4
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(10); weight: Font.DemiBold; letterSpacing: 0.8 }
+                    }
+
+                    Repeater {
+                        model: root.tabGroups
+                        delegate: SideRow {
+                            required property int index
+                            required property var modelData
+                            visible: !BrowserBackend.privateMode
+                            symbol: "folder"
+                            label: modelData.name
+                            detail: String(modelData.tabs?.length ?? 0)
+                            onActivated: root.openTabGroup(index)
+                        }
+                    }
+
+                    SideRow {
+                        visible: !BrowserBackend.privateMode
+                        symbol: "plus"
+                        label: "Save Tabs as Group…"
+                        onActivated: {
+                            root.tabGroupName = ""
+                            root.tabGroupEditorOpen = true
+                        }
+                    }
+
+                    Text {
+                        text: "TABS"
+                        color: Theme.tertiaryLabel
+                        leftPadding: 8
+                        topPadding: 18
+                        bottomPadding: 4
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(10); weight: Font.DemiBold; letterSpacing: 0.8 }
+                    }
+
+                    Repeater {
+                        model: tabsModel
+                        delegate: SideRow {
+                            required property int index
+                            required property string title
+                            required property string url
+                            detail: ""
+                            symbol: url === "about:blank" ? "plus" : "globe"
+                            label: title || BrowserBackend.displayAddress(url) || "New Tab"
+                            selected: index === root.currentIndex && !libraryOverlay.visible
+                            onActivated: {
+                                libraryOverlay.mode = ""
+                                root.currentIndex = index
+                                root.syncAddress()
+                            }
+                        }
+                    }
+                }
+            }
+
+            Rectangle {
+                anchors { top: parent.top; bottom: parent.bottom; right: parent.right }
+                width: 0.5
+                color: Theme.separator
+            }
+        }
+
+        Item {
+            id: webArea
+            anchors {
+                top: parent.top
+                bottom: parent.bottom
+                left: sidebar.right
+                right: parent.right
+            }
+
+            Repeater {
+                id: tabViews
+                model: tabsModel
+                delegate: Item {
+                    id: webTab
+                    required property int index
+                    required property string url
+                    property alias view: web
+                    anchors.fill: parent
+                    visible: index === root.currentIndex
+                    // Switching tabs, the page fades in rather than cutting.
+                    opacity: 1
+                    onVisibleChanged: if (visible && !Theme.reduceMotion) pageIn.restart()
+                    NumberAnimation { id: pageIn; target: webTab; property: "opacity"; from: 0.35; to: 1; duration: 155; easing.type: Easing.OutCubic }
+                    function go(target) {
+                        if (target === "about:blank") web.stop()
+                        web.url = target
+                    }
+                    // The address it opens with; after that the page leads.
+                    Component.onCompleted: if (url !== "about:blank") web.url = url
+
+                    WebEngineView {
+                        id: web
+                        property int rendererRestarts: 0
+                        anchors.fill: parent
+                        profile: root.profile
+                        visible: webTab.visible && webTab.url !== "about:blank" && !root.readerOpen
+                        backgroundColor: Theme.dark ? "#1d1d20" : "#ffffff"
+                        settings.fullScreenSupportEnabled: true
+                        settings.scrollAnimatorEnabled: true
+                        // The current tab stays Active even while its Start Page covers
+                        // about:blank: a hidden view is frozen and then discarded, and a
+                        // discarded page restores about:blank over the address just typed.
+                        lifecycleState: webTab.visible ? WebEngineView.LifecycleState.Active : recommendedState
+
+                        onTitleChanged: {
+                            tabsModel.setProperty(webTab.index, "title", title || BrowserBackend.displayAddress(url.toString()) || "New Tab")
+                            if (webTab.index === root.currentIndex) root.syncAddress()
+                        }
+                        onIconChanged: tabsModel.setProperty(webTab.index, "icon", icon.toString())
+                        onUrlChanged: {
+                            let value = url.toString()
+                            tabsModel.setProperty(webTab.index, "url", value)
+                            if (webTab.index === root.currentIndex) root.syncAddress()
+                            root.saveTabsSoon()
+                        }
+                        onLoadingChanged: function(info) {
+                            tabsModel.setProperty(webTab.index, "loading", loading)
+                            tabsModel.setProperty(webTab.index, "progress", loadProgress)
+                            if (info.status === WebEngineView.LoadSucceededStatus && url.toString() !== "about:blank") {
+                                rendererRestarts = 0
+                                BrowserBackend.visit(url.toString(), title || BrowserBackend.displayAddress(url.toString()))
+                                // Notice sign-ins, and fill a saved login, out of the page's sight
+                                // (the logins come from the keyring in the background).
+                                passwordRequest = "page" + (++root.passwordRequests)
+                                passwordUrl = url.toString()
+                                BrowserBackend.requestPasswordScript(passwordRequest, passwordUrl)
+                            }
+                            if (info.status === WebEngineView.LoadFailedStatus && webTab.index === root.currentIndex)
+                                BrowserBackend.notify(info.errorString || "This page could not be loaded.")
+                        }
+                        onLoadProgressChanged: tabsModel.setProperty(webTab.index, "progress", loadProgress)
+                        property string passwordRequest: ""
+                        property string passwordUrl: ""
+                        Connections {
+                            target: BrowserBackend
+                            function onPasswordScriptReady(request, script) {
+                                if (request !== web.passwordRequest || web.url.toString() !== web.passwordUrl) return
+                                web.runJavaScript(script, WebEngineScript.ApplicationWorld)
+                            }
+                        }
+                        onJavaScriptConsoleMessage: function(level, message, lineNumber, sourceID) {
+                            root.pagePasswordMessage(url.toString(), message)
+                        }
+                        onRecentlyAudibleChanged: tabsModel.setProperty(webTab.index, "audible", recentlyAudible)
+                        onAudioMutedChanged: tabsModel.setProperty(webTab.index, "muted", audioMuted)
+                    onFindTextFinished: function(result) {
+                        if (webTab.index === root.currentIndex) {
+                            root.findMatches = result.numberOfMatches
+                            root.findActive = result.activeMatch
+                        }
+                    }
+                        onNewWindowRequested: function(request) { root.requestNewWindow(request) }
+                        onContextMenuRequested: function(request) {
+                            root.openWebContext(request, web)
+                        }
+                        onPermissionRequested: function(permission) {
+                            root.pendingPermission = permission
+                        }
+                        onFullScreenRequested: function(request) {
+                            request.accept()
+                            root.visibility = request.toggleOn ? Window.FullScreen : Window.Windowed
+                        }
+                        Timer {
+                            id: rendererRetry
+                            interval: 350
+                            repeat: false
+                            onTriggered: web.reload()
+                        }
+                        onRenderProcessTerminated: function(status, exitCode) {
+                            // Chromium ends a page's renderer normally when a
+                            // navigation moves to another site (about:blank →
+                            // the first page you type). Reloading then would
+                            // cancel that navigation, so only a real crash or
+                            // kill counts as a failure.
+                            if (status === WebEngineView.NormalTerminationStatus) return
+                            console.warn("Web: renderer stopped, status", status, "exit code", exitCode)
+                            rendererRestarts += 1
+                            if (rendererRestarts === 1) {
+                                if (webTab.index === root.currentIndex)
+                                    BrowserBackend.notify("Web restarted this tab after a renderer failure.")
+                                rendererRetry.restart()
+                            } else if (webTab.index === root.currentIndex) {
+                                if (!BrowserBackend.safeGraphics) {
+                                    BrowserBackend.notify("Web is restarting with compatible graphics settings.")
+                                    root.saveTabsNow()
+                                    BrowserBackend.restartInSafeMode()
+                                } else {
+                                    BrowserBackend.notify("This tab's renderer stopped again. Try another page or review the Web crash log.")
+                                }
+                            }
+                        }
+                    }
+
+                    StartPage {
+                        anchors.fill: parent
+                        visible: webTab.visible && webTab.url === "about:blank" && !root.readerOpen
+                        data: root.startPageData
+                        onOpenUrl: function(value) { root.navigateTo(value) }
+                        onAddFavoriteRequested: root.focusAddress()
+                        onPrivacyRequested: root.openPrivacyReport()
+                    }
+                }
+            }
+
+            ReaderOverlay {
+                anchors.fill: parent
+                visible: opacity > 0.01
+                opacity: root.readerOpen ? 1 : 0
+                Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 190; easing.type: Easing.OutCubic } }
+                z: 12
+                articleTitle: root.readerTitle
+                articleText: root.readerText
+                onClosed: root.readerOpen = false
+            }
+
+            Rectangle {
+                id: libraryOverlay
+                property string mode: ""
+                property string heading: ""
+                property var records: []
+                visible: mode !== ""
+                anchors.fill: parent
+                color: Theme.dark ? "#1d1d20" : "#f8f8fa"
+                z: 10
+
+                function showCollection(key, title) {
+                    mode = key
+                    heading = title
+                    reload()
+                }
+                function reload() {
+                    if (mode) records = JSON.parse(BrowserBackend.collectionJson(mode))
+                }
+
+                Flickable {
+                    anchors.fill: parent
+                    contentHeight: libraryColumn.height + 100
+                    clip: true
+                    boundsBehavior: Flickable.StopAtBounds
+
+                    Column {
+                        id: libraryColumn
+                        width: Math.min(820, parent.width - 70)
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        y: 48
+                        spacing: 14
+
+                        Row {
+                            width: parent.width
+                            Text {
+                                text: libraryOverlay.heading
+                                color: Theme.label
+                                font { family: Theme.fontDisplay; pixelSize: 28; weight: Font.DemiBold }
+                            }
+                            Item { width: Math.max(0, parent.width - parent.children[0].width - closeLibrary.width); height: 1 }
+                            BrowserButton {
+                                id: closeLibrary
+                                symbol: "xmark"; tooltip: "Close"
+                                onClicked: libraryOverlay.mode = ""
+                            }
+                        }
+
+                        Text {
+                            visible: libraryOverlay.records.length === 0
+                            text: "Nothing here yet."
+                            color: Theme.secondaryLabel
+                            font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
+                        }
+
+                        Repeater {
+                            model: libraryOverlay.records
+                            delegate: Rectangle {
+                                required property int index
+                                required property var modelData
+                                width: libraryColumn.width
+                                height: 60
+                                radius: 12
+                                color: libArea.containsMouse ? (Theme.dark ? "#12ffffff" : "#0b000000") : "transparent"
+                                border { width: 0.5; color: Theme.separator }
+
+                                Column {
+                                    anchors { left: parent.left; right: removeButton.left; leftMargin: 14; rightMargin: 12; verticalCenter: parent.verticalCenter }
+                                    Text {
+                                        width: parent.width
+                                        text: modelData.title || BrowserBackend.displayAddress(modelData.url)
+                                        color: Theme.label; elide: Text.ElideRight
+                                        font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.Medium }
+                                    }
+                                    Text {
+                                        width: parent.width
+                                        text: BrowserBackend.displayAddress(modelData.url)
+                                        color: Theme.secondaryLabel; elide: Text.ElideRight
+                                        font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+                                    }
+                                }
+                                BrowserButton {
+                                    id: removeButton
+                                    anchors { right: parent.right; rightMargin: 10; verticalCenter: parent.verticalCenter }
+                                    visible: libraryOverlay.mode !== "history" || true
+                                    width: 28; height: 28
+                                    symbol: "xmark"; tooltip: "Remove"
+                                    onClicked: {
+                                        BrowserBackend.removeCollectionItem(libraryOverlay.mode, index)
+                                        libraryOverlay.reload()
+                                    }
+                                }
+                                MouseArea {
+                                    id: libArea
+                                    anchors { left: parent.left; top: parent.top; bottom: parent.bottom; right: removeButton.left }
+                                    hoverEnabled: true
+                                    onClicked: {
+                                        libraryOverlay.mode = ""
+                                        root.activateUrl(modelData.url)
+                                    }
+                                }
+                            }
+                        }
+
+                        Button {
+                            visible: libraryOverlay.mode === "history" && libraryOverlay.records.length > 0
+                            text: "Clear History"
+                            destructive: true
+                            onClicked: BrowserBackend.clearHistory()
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Rectangle {
+        id: tabOverview
+        z: 42
+        // Grows in and fades, rather than appearing at once.
+        readonly property bool reveal: root.tabOverviewOpen
+        visible: reveal || opacity > 0.01
+        opacity: reveal ? 1 : 0
+        scale: reveal || Theme.reduceMotion ? 1 : 1.03
+        transformOrigin: Item.Center
+        Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 150; easing.type: Easing.OutCubic } }
+        Behavior on scale { enabled: !Theme.reduceMotion; Spring { spring: Theme.popover } }
+        anchors.fill: body
+        color: Theme.dark ? "#f31b1b20" : "#f5f2f3f6"
+
+        Column {
+            anchors { fill: parent; margins: 26 }
+            spacing: 18
+
+            Row {
+                width: parent.width
+                Column {
+                    width: parent.width - overviewClose.width
+                    spacing: 2
+                    Text {
+                        text: "Tab Overview"
+                        color: Theme.label
+                        font { family: Theme.fontDisplay; pixelSize: 26; weight: Font.DemiBold; letterSpacing: -0.4 }
+                    }
+                    Text {
+                        text: tabsModel.count + (tabsModel.count === 1 ? " open tab" : " open tabs")
+                        color: Theme.secondaryLabel
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                    }
+                }
+                BrowserButton {
+                    id: overviewClose
+                    symbol: "xmark"; tooltip: "Close Tab Overview"
+                    onClicked: root.tabOverviewOpen = false
+                }
+            }
+
+            Flickable {
+                width: parent.width
+                height: parent.height - 72
+                contentHeight: overviewGrid.height + 16
+                clip: true
+                boundsBehavior: Flickable.StopAtBounds
+
+                Grid {
+                    id: overviewGrid
+                    width: parent.width
+                    spacing: 14
+                    columns: Math.max(1, Math.floor((width + spacing) / 244))
+
+                    Repeater {
+                        model: tabsModel
+                        delegate: Rectangle {
+                            id: overviewCard
+                            required property int index
+                            required property string title
+                            required property string url
+                            required property string icon
+                            required property bool loading
+                            readonly property bool selected: index === root.currentIndex
+                            width: (overviewGrid.width - overviewGrid.spacing * (overviewGrid.columns - 1)) / overviewGrid.columns
+                            height: 142
+                            radius: 18
+                            color: Theme.dark ? "#ca303035" : "#ecffffff"
+                            border {
+                                width: selected ? 2 : 0.5
+                                color: selected ? Theme.accent : Theme.separator
+                            }
+                            scale: overviewArea.pressed && !Theme.reduceMotion ? 0.985 : 1
+                            Behavior on scale { NumberAnimation { duration: Theme.reduceMotion ? 1 : 80; easing.type: Easing.OutCubic } }
+                            // Opening the overview, the cards come up into place one after another.
+                            property real enter: 1
+                            opacity: enter
+                            transform: Translate { y: (1 - overviewCard.enter) * 22 }
+                            Connections {
+                                target: tabOverview
+                                function onRevealChanged() {
+                                    if (!tabOverview.reveal || Theme.reduceMotion) return
+                                    overviewCard.enter = 0
+                                    cardIn.restart()
+                                }
+                            }
+                            SequentialAnimation {
+                                id: cardIn
+                                PauseAnimation { duration: 50 + Math.min(overviewCard.index, 8) * 35 }
+                                NumberAnimation { target: overviewCard; property: "enter"; to: 1; duration: Theme.snappy.duration
+                                    easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.snappy.curve }
+                            }
+
+                            Rectangle {
+                                anchors { left: parent.left; right: parent.right; top: parent.top }
+                                height: 86
+                                radius: 18
+                                color: Theme.dark ? "#16ffffff" : "#09000000"
+                                Rectangle {
+                                    anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
+                                    height: 18
+                                    color: parent.color
+                                }
+
+                                Image {
+                                    anchors.centerIn: parent
+                                    width: 34; height: 34
+                                    source: overviewCard.icon
+                                    sourceSize: Qt.size(68, 68)
+                                    visible: !!overviewCard.icon && !overviewCard.loading
+                                }
+                                Rectangle {
+                                    anchors.centerIn: parent
+                                    width: 34; height: 34; radius: 10
+                                    visible: !overviewCard.icon && !overviewCard.loading
+                                    color: Theme.dark ? "#18ffffff" : "#10000000"
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: (overviewCard.title || "N").charAt(0).toUpperCase()
+                                        color: Theme.secondaryLabel
+                                        font { family: Theme.fontUi; pixelSize: Theme.fs(15); weight: Font.DemiBold }
+                                    }
+                                }
+                                Rectangle {
+                                    anchors.centerIn: parent
+                                    width: 22; height: 22; radius: 11
+                                    visible: overviewCard.loading
+                                    color: "transparent"
+                                    border { width: 2; color: Theme.accent }
+                                    RotationAnimation on rotation {
+                                        running: overviewCard.loading && !Theme.reduceMotion
+                                        loops: Animation.Infinite
+                                        from: 0; to: 360; duration: 650
+                                    }
+                                }
+                            }
+
+                            Column {
+                                anchors { left: parent.left; right: overviewCardClose.left; bottom: parent.bottom; leftMargin: 12; rightMargin: 8; bottomMargin: 11 }
+                                spacing: 1
+                                Text {
+                                    width: parent.width
+                                    text: overviewCard.title || "Start Page"
+                                    color: Theme.label
+                                    elide: Text.ElideRight
+                                    font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: Font.Medium }
+                                }
+                                Text {
+                                    width: parent.width
+                                    text: overviewCard.url === "about:blank" ? "Start Page" : BrowserBackend.displayAddress(overviewCard.url)
+                                    color: Theme.secondaryLabel
+                                    elide: Text.ElideRight
+                                    font { family: Theme.fontUi; pixelSize: Theme.fs(10) }
+                                }
+                            }
+
+                            BrowserButton {
+                                id: overviewCardClose
+                                anchors { right: parent.right; rightMargin: 7; bottom: parent.bottom; bottomMargin: 8 }
+                                width: 25; height: 25
+                                symbol: "xmark"; tooltip: "Close Tab"
+                                onClicked: root.closeTab(overviewCard.index)
+                            }
+
+                            MouseArea {
+                                id: overviewArea
+                                anchors { left: parent.left; right: parent.right; top: parent.top; bottom: overviewCardClose.top }
+                                hoverEnabled: true
+                                onClicked: {
+                                    root.currentIndex = overviewCard.index
+                                    root.tabOverviewOpen = false
+                                    root.syncAddress()
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Rectangle {
+        id: searchPopover
+        z: 50
+        // Grows in and fades, rather than appearing at once.
+        readonly property bool reveal: addressField.input.activeFocus && root.suggestionData.length > 0
+        visible: reveal || opacity > 0.01
+        opacity: reveal ? 1 : 0
+        scale: reveal || Theme.reduceMotion ? 1 : 0.97
+        transformOrigin: Item.Top
+        Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 150; easing.type: Easing.OutCubic } }
+        Behavior on scale { enabled: !Theme.reduceMotion; Spring { spring: Theme.popover } }
+        x: {
+            let p = smartField.mapToItem(root.contentItem, 0, smartField.height + 5)
+            return Math.max(10, Math.min(root.width - width - 10, p.x))
+        }
+        y: {
+            let p = smartField.mapToItem(root.contentItem, 0, smartField.height + 5)
+            return p.y
+        }
+        width: smartField.width
+        height: Math.min(350, suggestionColumn.height + 12)
+        radius: 16
+        color: Theme.dark ? "#f3323237" : "#fcf7f7f9"
+        border { width: 0.5; color: Theme.separator }
+
+        Column {
+            id: suggestionColumn
+            anchors { left: parent.left; right: parent.right; top: parent.top; margins: 6 }
+            spacing: 2
+            Repeater {
+                model: root.suggestionData
+                delegate: Rectangle {
+                    required property var modelData
+                    width: suggestionColumn.width
+                    height: 42
+                    radius: 10
+                    color: suggestionArea.containsMouse ? (Theme.dark ? "#16ffffff" : "#0d000000") : "transparent"
+                    Row {
+                        anchors { fill: parent; leftMargin: 10; rightMargin: 10 }
+                        spacing: 10
+                        Symbol {
+                            anchors.verticalCenter: parent.verticalCenter
+                            name: modelData.kind === "tab" ? "apps"
+                                : modelData.kind === "favorite" ? "bookmark"
+                                : modelData.kind === "history" ? "clock"
+                                : modelData.kind === "reading" ? "doc" : "search"
+                            tone: modelData.kind === "search" ? "accent" : "gray"
+                            size: 15
+                        }
+                        Column {
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: parent.width - 34
+                            Text {
+                                width: parent.width
+                                text: modelData.title
+                                color: Theme.label
+                                elide: Text.ElideRight
+                                font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.Medium }
+                            }
+                            Text {
+                                width: parent.width
+                                text: modelData.subtitle
+                                color: Theme.secondaryLabel
+                                elide: Text.ElideRight
+                                font { family: Theme.fontUi; pixelSize: Theme.fs(10) }
+                            }
+                        }
+                    }
+                    MouseArea {
+                        id: suggestionArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        onClicked: {
+                            addressField.input.focus = false
+                            root.activateUrl(modelData.url)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    PopupMenu {
+        id: webContextMenu
+        onVisibleChanged: if (!visible) root.webContextOpen = false
+    }
+
+    Glass {
+        id: findBar
+        // Grows in and fades, rather than appearing at once.
+        readonly property bool reveal: root.findOpen
+        visible: reveal || opacity > 0.01
+        opacity: reveal ? 1 : 0
+        scale: reveal || Theme.reduceMotion ? 1 : 0.94
+        transformOrigin: Item.TopRight
+        Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 150; easing.type: Easing.OutCubic } }
+        Behavior on scale { enabled: !Theme.reduceMotion; Spring { spring: Theme.popover } }
+        z: 52
+        // webArea sits inside the content row, so place the bar by mapping.
+        x: { webArea.x; root.width; return webArea.mapToItem(root.contentItem, webArea.width, 0).x - width - 16 }
+        y: { webArea.y; return webArea.mapToItem(root.contentItem, 0, 0).y + 12 }
+        width: 360
+        height: 44
+        radius: 14
+        tint: Theme.dark ? "#f034343a" : "#f2f8f8fa"
+        shadow: "#65000000"
+        Row {
+            anchors { fill: parent; margins: 6 }
+            spacing: 5
+            TextField {
+                id: findField
+                width: 210; height: 32
+                search: true
+                placeholder: "Find on Page"
+                text: root.findQuery
+                onTextChanged: { root.findQuery = text; root.performFind(false) }
+                onAccepted: root.performFind(false)
+            }
+            Text {
+                width: 50
+                anchors.verticalCenter: parent.verticalCenter
+                horizontalAlignment: Text.AlignHCenter
+                text: root.findQuery ? (root.findMatches ? root.findActive + " of " + root.findMatches : "0 of 0") : ""
+                color: Theme.secondaryLabel
+                font { family: Theme.fontUi; pixelSize: Theme.fs(10) }
+            }
+            BrowserButton { width: 26; height: 26; symbol: "chevron-left"; tooltip: "Previous Match"; enabled: root.findMatches > 0; onClicked: root.performFind(true) }
+            BrowserButton { width: 26; height: 26; symbol: "chevron-right"; tooltip: "Next Match"; enabled: root.findMatches > 0; onClicked: root.performFind(false) }
+            BrowserButton { width: 26; height: 26; symbol: "xmark"; tooltip: "Close Find"; onClicked: root.closeFind() }
+        }
+    }
+
+    PopupMenu {
+        id: pageMenu
+        menuWidth: 240
+        onVisibleChanged: if (!visible) root.pageMenuOpen = false
+    }
+
+    Rectangle {
+        id: downloadsPopover
+        z: 48
+        // Grows in and fades, rather than appearing at once.
+        readonly property bool reveal: root.downloadsOpen
+        visible: reveal || opacity > 0.01
+        opacity: reveal ? 1 : 0
+        scale: reveal || Theme.reduceMotion ? 1 : 0.92
+        transformOrigin: Item.TopRight
+        Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 150; easing.type: Easing.OutCubic } }
+        Behavior on scale { enabled: !Theme.reduceMotion; Spring { spring: Theme.popover } }
+        x: root.width - width - 16
+        y: toolbar.height + 5
+        width: 360
+        height: Math.min(420, Math.max(110, downloadsColumn.height + 18))
+        radius: 16
+        color: Theme.dark ? "#f3323237" : "#fcf7f7f9"
+        border { width: 0.5; color: Theme.separator }
+
+        Column {
+            id: downloadsColumn
+            anchors { left: parent.left; right: parent.right; top: parent.top; margins: 9 }
+            spacing: 8
+
+            Row {
+                width: parent.width
+                Text {
+                    text: "Downloads"
+                    color: Theme.label
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(14); weight: Font.DemiBold }
+                }
+                Item { width: Math.max(0, parent.width - parent.children[0].width - openDownloads.width); height: 1 }
+                Text {
+                    id: openDownloads
+                    text: "Show in Files"
+                    color: Theme.accent
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(11); weight: Font.Medium }
+                    TapHandler { onTapped: BrowserBackend.openDownloadsFolder() }
+                }
+            }
+
+            Text {
+                visible: root.downloads.length === 0
+                text: "No downloads yet."
+                color: Theme.secondaryLabel
+                font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+            }
+
+            Repeater {
+                model: root.downloads
+                delegate: Rectangle {
+                    required property var modelData
+                    width: downloadsColumn.width
+                    height: 64
+                    radius: 11
+                    color: Theme.dark ? "#0dffffff" : "#09000000"
+                    Row {
+                        anchors { fill: parent; margins: 10 }
+                        spacing: 10
+                        Symbol { anchors.verticalCenter: parent.verticalCenter; name: "download"; tone: "accent"; size: 18 }
+                        Column {
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: parent.width - cancelDownload.width - 44
+                            spacing: 4
+                            Text {
+                                width: parent.width
+                                text: modelData.downloadFileName || modelData.suggestedFileName
+                                color: Theme.label; elide: Text.ElideMiddle
+                                font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: Font.Medium }
+                            }
+                            ProgressBar {
+                                width: parent.width
+                                height: 5
+                                value: modelData.totalBytes > 0 ? modelData.receivedBytes / modelData.totalBytes : 0
+                                indeterminate: modelData.totalBytes <= 0 && modelData.state === WebEngineDownloadRequest.DownloadInProgress && !modelData.isPaused
+                            }
+                            Text {
+                                width: parent.width
+                                text: root.downloadLabel(modelData)
+                                elide: Text.ElideRight
+                                color: Theme.secondaryLabel
+                                font { family: Theme.fontUi; pixelSize: Theme.fs(10) }
+                            }
+                        }
+                        BrowserButton {
+                            id: cancelDownload
+                            anchors.verticalCenter: parent.verticalCenter
+                            visible: !modelData.isFinished && modelData.state !== WebEngineDownloadRequest.DownloadInterrupted
+                            width: 26; height: 26
+                            symbol: "xmark"; tooltip: "Cancel Download"
+                            onClicked: modelData.cancel()
+                        }
+                        BrowserButton {
+                            anchors.verticalCenter: parent.verticalCenter
+                            visible: modelData.isFinished || modelData.state === WebEngineDownloadRequest.DownloadInterrupted
+                            width: 26; height: 26
+                            symbol: modelData.state === WebEngineDownloadRequest.DownloadCompleted ? "folder" : "arrow-clockwise"
+                            tooltip: modelData.state === WebEngineDownloadRequest.DownloadCompleted ? "Show in Files" : "Retry Download"
+                            enabled: modelData.state === WebEngineDownloadRequest.DownloadCompleted || !!root.currentView
+                            onClicked: {
+                                if (modelData.state === WebEngineDownloadRequest.DownloadCompleted)
+                                    BrowserBackend.revealDownload(modelData.downloadDirectory + "/" + modelData.downloadFileName)
+                                else if (root.currentView) root.currentView.download(modelData.url)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Rectangle {
+        id: settingsSheet
+        z: 60
+        // Grows in and fades, rather than appearing at once.
+        readonly property bool reveal: root.settingsOpen
+        visible: reveal || opacity > 0.01
+        opacity: reveal ? 1 : 0
+        scale: reveal || Theme.reduceMotion ? 1 : 0.94
+        transformOrigin: Item.Center
+        Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 150; easing.type: Easing.OutCubic } }
+        Behavior on scale { enabled: !Theme.reduceMotion; Spring { spring: Theme.popover } }
+        anchors.centerIn: parent
+        width: Math.min(560, root.width - 60)
+        height: Math.min(560, root.height - 80)
+        radius: 22
+        color: Theme.dark ? "#fa2c2c30" : "#fdf8f8fa"
+        border { width: 0.5; color: Theme.separator }
+
+        Rectangle {
+            z: -1
+            anchors { fill: parent; margins: -18 }
+            radius: 30
+            color: "#40000000"
+            opacity: 0.28
+        }
+
+        Column {
+            anchors { fill: parent; margins: 22 }
+            spacing: 18
+
+            Row {
+                width: parent.width
+                Text {
+                    text: "Web Settings"
+                    color: Theme.label
+                    font { family: Theme.fontDisplay; pixelSize: Theme.fs(23); weight: Font.DemiBold }
+                }
+                Item { width: Math.max(0, parent.width - parent.children[0].width - closeSettings.width); height: 1 }
+                BrowserButton {
+                    id: closeSettings
+                    symbol: "xmark"; tooltip: "Close"
+                    onClicked: root.settingsOpen = false
+                }
+            }
+
+            Rectangle { width: parent.width; height: 1; color: Theme.separator }
+
+            Row {
+                width: parent.width
+                Text {
+                    width: 190
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: "Profile"
+                    color: Theme.label
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.Medium }
+                }
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 170
+                    text: BrowserBackend.profileName
+                    color: Theme.secondaryLabel
+                    elide: Text.ElideRight
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
+                }
+                Button {
+                    text: "Manage…"
+                    onClicked: root.profileSheetOpen = true
+                }
+            }
+
+            Row {
+                width: parent.width
+                Text {
+                    width: 190
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: "Tab Layout"
+                    color: Theme.label
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.Medium }
+                }
+                Segmented {
+                    options: ["Separate", "Compact"]
+                    current: root.browserSettings.tabLayout === "compact" ? 1 : 0
+                    onPicked: function(index) { root.setBrowserSetting("tabLayout", index === 1 ? "compact" : "separate") }
+                }
+            }
+
+            Row {
+                width: parent.width
+                Text {
+                    width: 190
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: "Tab Groups"
+                    color: Theme.label
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.Medium }
+                }
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 170
+                    text: root.tabGroups.length + (root.tabGroups.length === 1 ? " group" : " groups")
+                    color: Theme.secondaryLabel
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                }
+                Button {
+                    text: "Manage…"
+                    enabled: !BrowserBackend.privateMode
+                    onClicked: root.tabGroupsSheetOpen = true
+                }
+            }
+
+            Row {
+                width: parent.width
+                Text {
+                    width: 190
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: "Restore previous session"
+                    color: Theme.label
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.Medium }
+                }
+                Switch {
+                    checked: root.browserSettings.restoreSession !== false
+                    onToggled: function(on) { root.setBrowserSetting("restoreSession", on) }
+                }
+            }
+
+            Row {
+                width: parent.width
+                Text {
+                    width: 190
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: "Favorites when searching"
+                    color: Theme.label
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.Medium }
+                }
+                Switch {
+                    checked: root.browserSettings.showFavoritesOnFocus !== false
+                    onToggled: function(on) { root.setBrowserSetting("showFavoritesOnFocus", on) }
+                }
+            }
+
+            Row {
+                width: parent.width
+                Text {
+                    width: 190
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: "Privacy Protection"
+                    color: Theme.label
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.Medium }
+                }
+                Switch {
+                    checked: root.browserSettings.privacyProtection !== false
+                    onToggled: function(on) { root.setBrowserSetting("privacyProtection", on) }
+                }
+            }
+
+            Row {
+                width: parent.width
+                Text {
+                    width: 190
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: "Search Engine"
+                    color: Theme.label
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.Medium }
+                }
+                Segmented {
+                    readonly property var keys: ["duckduckgo", "brave", "bing", "google"]
+                    options: ["DuckDuckGo", "Brave", "Bing", "Google"]
+                    current: Math.max(0, keys.indexOf(root.browserSettings.searchEngine ?? "duckduckgo"))
+                    onPicked: function(index) { root.setBrowserSetting("searchEngine", keys[index]) }
+                }
+            }
+
+            Rectangle { width: parent.width; height: 1; color: Theme.separator }
+
+            Row {
+                width: parent.width
+                Text {
+                    width: 190
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: "Website Permissions"
+                    color: Theme.label
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.Medium }
+                }
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 170
+                    text: BrowserBackend.privateMode ? "This window only" : "Stored per website"
+                    color: Theme.secondaryLabel
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                }
+                Button {
+                    text: "Manage…"
+                    onClicked: root.showWebsitePermissions(false)
+                }
+            }
+
+            Rectangle { width: parent.width; height: 1; color: Theme.separator }
+
+            Text {
+                width: parent.width
+                wrapMode: Text.WordWrap
+                text: BrowserBackend.privateMode
+                    ? "Private windows keep history, cookies and permissions in memory for this window only."
+                    : "Website permissions are stored per origin by Qt WebEngine. Use the prompt shown by Web when a site requests access."
+                color: Theme.secondaryLabel
+                font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+            }
+        }
+    }
+
+    Rectangle {
+        id: websitePermissionsSheet
+        z: 67
+        // Grows in and fades, rather than appearing at once.
+        readonly property bool reveal: root.websitePermissionsOpen
+        visible: reveal || opacity > 0.01
+        opacity: reveal ? 1 : 0
+        scale: reveal || Theme.reduceMotion ? 1 : 0.94
+        transformOrigin: Item.Center
+        Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 150; easing.type: Easing.OutCubic } }
+        Behavior on scale { enabled: !Theme.reduceMotion; Spring { spring: Theme.popover } }
+        anchors.centerIn: parent
+        width: Math.min(570, root.width - 60)
+        height: Math.min(520, root.height - 80)
+        radius: 22
+        color: Theme.dark ? "#fc303034" : "#fff8f8fa"
+        border { width: 0.5; color: Theme.separator }
+
+        Rectangle {
+            z: -1
+            anchors { fill: parent; margins: -14 }
+            radius: 30
+            color: "#40000000"
+            opacity: 0.24
+        }
+
+        Column {
+            anchors { fill: parent; margins: 22 }
+            spacing: 14
+
+            Row {
+                width: parent.width
+                Column {
+                    width: parent.width - closeWebsitePermissions.width
+                    Text {
+                        text: root.permissionOriginFilter ? "Website Settings" : "Website Permissions"
+                        color: Theme.label
+                        font { family: Theme.fontDisplay; pixelSize: Theme.fs(21); weight: Font.DemiBold }
+                    }
+                    Text {
+                        visible: !!root.permissionOriginFilter
+                        text: BrowserBackend.displayAddress(root.permissionOriginFilter)
+                        color: Theme.secondaryLabel
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+                    }
+                }
+                BrowserButton {
+                    id: closeWebsitePermissions
+                    symbol: "xmark"; tooltip: "Close"
+                    onClicked: root.websitePermissionsOpen = false
+                }
+            }
+
+            Text {
+                width: parent.width
+                wrapMode: Text.WordWrap
+                text: BrowserBackend.privateMode
+                    ? "Permission decisions in Private Browsing last only for this private profile."
+                    : "Web remembers supported permission decisions per website. Forgetting one makes the site ask again."
+                color: Theme.secondaryLabel
+                font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+            }
+
+            Flickable {
+                width: parent.width
+                height: parent.height - 112
+                contentHeight: permissionList.height
+                clip: true
+                boundsBehavior: Flickable.StopAtBounds
+
+                Column {
+                    id: permissionList
+                    width: parent.width
+                    spacing: 4
+
+                    readonly property var filtered: root.websitePermissions.filter(function(permission) {
+                        if (!root.permissionOriginFilter) return true
+                        return permission.origin.toString() === root.permissionOriginFilter
+                    })
+
+                    Text {
+                        visible: permissionList.filtered.length === 0
+                        width: parent.width
+                        topPadding: 18
+                        text: root.permissionOriginFilter
+                            ? "This website has no stored permission decisions."
+                            : "No stored website permission decisions."
+                        color: Theme.secondaryLabel
+                        horizontalAlignment: Text.AlignHCenter
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                    }
+
+                    Repeater {
+                        model: permissionList.filtered
+                        delegate: Rectangle {
+                            required property var modelData
+                            width: permissionList.width
+                            height: 58
+                            radius: 11
+                            color: Theme.dark ? "#0dffffff" : "#08000000"
+                            border { width: 0.5; color: Theme.separator }
+
+                            Column {
+                                anchors { left: parent.left; right: forgetPermission.left; leftMargin: 12; rightMargin: 10; verticalCenter: parent.verticalCenter }
+                                spacing: 2
+                                Text {
+                                    width: parent.width
+                                    text: BrowserBackend.displayAddress(modelData.origin.toString())
+                                    color: Theme.label
+                                    elide: Text.ElideRight
+                                    font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.Medium }
+                                }
+                                Text {
+                                    width: parent.width
+                                    text: root.permissionLabel(modelData.permissionType) + " · " + root.permissionStateLabel(modelData.state)
+                                    color: Theme.secondaryLabel
+                                    elide: Text.ElideRight
+                                    font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+                                }
+                            }
+
+                            Button {
+                                id: forgetPermission
+                                anchors { right: parent.right; rightMargin: 10; verticalCenter: parent.verticalCenter }
+                                text: "Forget"
+                                onClicked: {
+                                    modelData.reset()
+                                    Qt.callLater(root.refreshWebsitePermissions)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Rectangle {
+        id: privacySheet
+        z: 67
+        // Grows in and fades, rather than appearing at once.
+        readonly property bool reveal: root.privacySheetOpen
+        visible: reveal || opacity > 0.01
+        opacity: reveal ? 1 : 0
+        scale: reveal || Theme.reduceMotion ? 1 : 0.94
+        transformOrigin: Item.Center
+        Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 150; easing.type: Easing.OutCubic } }
+        Behavior on scale { enabled: !Theme.reduceMotion; Spring { spring: Theme.popover } }
+        anchors.centerIn: parent
+        width: Math.min(500, root.width - 70)
+        height: Math.min(480, Math.max(260, privacyContent.implicitHeight + 44))
+        radius: 22
+        color: Theme.dark ? "#fc303034" : "#fff8f8fa"
+        border { width: 0.5; color: Theme.separator }
+
+        Rectangle {
+            z: -1
+            anchors { fill: parent; margins: -14 }
+            radius: 30
+            color: "#40000000"
+            opacity: 0.24
+        }
+
+        Column {
+            id: privacyContent
+            anchors { left: parent.left; right: parent.right; top: parent.top; margins: 22 }
+            spacing: 14
+
+            Row {
+                width: parent.width
+                Text {
+                    text: "Privacy Report"
+                    color: Theme.label
+                    font { family: Theme.fontDisplay; pixelSize: Theme.fs(21); weight: Font.DemiBold }
+                }
+                Item { width: Math.max(0, parent.width - parent.children[0].width - closePrivacy.width); height: 1 }
+                BrowserButton {
+                    id: closePrivacy
+                    symbol: "xmark"; tooltip: "Close"
+                    onClicked: root.privacySheetOpen = false
+                }
+            }
+
+            Text {
+                width: parent.width
+                text: root.currentUrl === "about:blank" ? "Start Page" : BrowserBackend.displayAddress(root.currentUrl)
+                color: Theme.secondaryLabel
+                elide: Text.ElideRight
+                font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+            }
+
+            Row {
+                spacing: 14
+                Rectangle {
+                    width: 50; height: 50; radius: 15
+                    color: Theme.dark ? "#1dffffff" : "#120078ff"
+                    Symbol { anchors.centerIn: parent; name: "shield"; tone: "accent"; size: 24 }
+                }
+                Column {
+                    anchors.verticalCenter: parent.verticalCenter
+                    Text {
+                        text: root.sitePrivacyReport.available === false
+                            ? "Tracker blocking is unavailable"
+                            : root.sitePrivacyReport.enabled
+                            ? (root.sitePrivacyReport.blocked + " tracking request"
+                               + (root.sitePrivacyReport.blocked === 1 ? "" : "s") + " blocked")
+                            : "Privacy Protection is off"
+                        color: Theme.label
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(15); weight: Font.DemiBold }
+                    }
+                    Text {
+                        width: privacyContent.width - 64
+                        wrapMode: Text.WordWrap
+                        text: root.sitePrivacyReport.available === false
+                            ? "This system's PySide6 doesn't match its Qt, so Web can't filter requests. It comes back after the next update."
+                            : "Known third-party tracker domains are blocked before Chromium sends the request."
+                        color: Theme.secondaryLabel
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+                    }
+                }
+            }
+
+            Rectangle { width: parent.width; height: 1; color: Theme.separator }
+
+            Text {
+                visible: root.sitePrivacyReport.enabled && root.sitePrivacyReport.domains.length === 0
+                text: "No known tracker domains have been blocked for this site in this session."
+                width: parent.width; wrapMode: Text.WordWrap
+                color: Theme.secondaryLabel
+                font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+            }
+
+            Column {
+                width: parent.width
+                spacing: 2
+                Repeater {
+                    model: root.sitePrivacyReport.domains
+                    delegate: Rectangle {
+                        required property var modelData
+                        width: privacyContent.width
+                        height: 36; radius: 8
+                        color: Theme.dark ? "#0cffffff" : "#07000000"
+                        Text {
+                            x: 10; anchors.verticalCenter: parent.verticalCenter
+                            width: parent.width - 70; elide: Text.ElideRight
+                            text: modelData.domain
+                            color: Theme.label
+                            font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                        }
+                        Text {
+                            anchors { right: parent.right; rightMargin: 10; verticalCenter: parent.verticalCenter }
+                            text: String(modelData.count)
+                            color: Theme.secondaryLabel
+                            font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+                        }
+                    }
+                }
+            }
+
+            Text {
+                width: parent.width
+                wrapMode: Text.WordWrap
+                text: "CitronOS Privacy Protection uses a conservative built-in tracker list. It is not Safari Intelligent Tracking Prevention."
+                color: Theme.tertiaryLabel
+                font { family: Theme.fontUi; pixelSize: Theme.fs(10) }
+            }
+        }
+    }
+
+    Rectangle {
+        id: profileSheet
+        z: 66
+        // Grows in and fades, rather than appearing at once.
+        readonly property bool reveal: root.profileSheetOpen
+        visible: reveal || opacity > 0.01
+        opacity: reveal ? 1 : 0
+        scale: reveal || Theme.reduceMotion ? 1 : 0.94
+        transformOrigin: Item.Center
+        Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 150; easing.type: Easing.OutCubic } }
+        Behavior on scale { enabled: !Theme.reduceMotion; Spring { spring: Theme.popover } }
+        anchors.centerIn: parent
+        width: 470
+        height: Math.min(460, root.height - 90)
+        radius: 22
+        color: Theme.dark ? "#fc303034" : "#fff8f8fa"
+        border { width: 0.5; color: Theme.separator }
+
+        Rectangle {
+            z: -1
+            anchors { fill: parent; margins: -14 }
+            radius: 30
+            color: "#40000000"
+            opacity: 0.24
+        }
+
+        Column {
+            anchors { fill: parent; margins: 22 }
+            spacing: 14
+
+            Row {
+                width: parent.width
+                Text {
+                    text: "Profiles"
+                    color: Theme.label
+                    font { family: Theme.fontDisplay; pixelSize: Theme.fs(21); weight: Font.DemiBold }
+                }
+                Item { width: Math.max(0, parent.width - parent.children[0].width - closeProfiles.width); height: 1 }
+                BrowserButton {
+                    id: closeProfiles
+                    symbol: "xmark"; tooltip: "Close"
+                    onClicked: root.profileSheetOpen = false
+                }
+            }
+
+            Text {
+                width: parent.width
+                wrapMode: Text.WordWrap
+                text: "Each profile keeps its own cookies, website data, history, Favorites, Reading List, Tab Groups, and restored tabs."
+                color: Theme.secondaryLabel
+                font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+            }
+
+            Column {
+                width: parent.width
+                spacing: 4
+                Repeater {
+                    model: root.profiles
+                    delegate: Rectangle {
+                        required property var modelData
+                        width: parent ? parent.width : 400
+                        height: 44
+                        radius: 10
+                        color: modelData === BrowserBackend.profileName
+                            ? (Theme.dark ? "#18ffffff" : "#0d000000") : "transparent"
+
+                        Row {
+                            anchors { fill: parent; leftMargin: 10; rightMargin: 8 }
+                            spacing: 10
+                            Rectangle {
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: 28; height: 28; radius: 9
+                                color: Theme.accent
+                                opacity: modelData === BrowserBackend.profileName ? 1 : 0.70
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: String(modelData).charAt(0).toUpperCase()
+                                    color: "#ffffff"
+                                    font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.DemiBold }
+                                }
+                            }
+                            Text {
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: parent.width - 130
+                                text: modelData
+                                color: Theme.label
+                                elide: Text.ElideRight
+                                font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.Medium }
+                            }
+                            Button {
+                                anchors.verticalCenter: parent.verticalCenter
+                                visible: modelData !== BrowserBackend.profileName
+                                text: "Open"
+                                onClicked: BrowserBackend.openProfile(modelData)
+                            }
+                            Text {
+                                anchors.verticalCenter: parent.verticalCenter
+                                visible: modelData === BrowserBackend.profileName
+                                text: "Current"
+                                color: Theme.secondaryLabel
+                                font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+                            }
+                        }
+                    }
+                }
+            }
+
+            Rectangle { width: parent.width; height: 1; color: Theme.separator }
+
+            Text {
+                text: "New Profile"
+                color: Theme.label
+                font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.DemiBold }
+            }
+            Row {
+                width: parent.width
+                spacing: 8
+                TextField {
+                    id: profileNameField
+                    width: parent.width - createProfileButton.width - 8
+                    placeholder: "Profile Name"
+                    text: root.newProfileName
+                    onTextChanged: root.newProfileName = text
+                    onAccepted: root.createProfile()
+                }
+                Button {
+                    id: createProfileButton
+                    text: "Create"
+                    prominent: true
+                    onClicked: root.createProfile()
+                }
+            }
+        }
+    }
+
+    Rectangle {
+        id: tabGroupsManager
+        z: 65
+        // Grows in and fades, rather than appearing at once.
+        readonly property bool reveal: root.tabGroupsSheetOpen
+        visible: reveal || opacity > 0.01
+        opacity: reveal ? 1 : 0
+        scale: reveal || Theme.reduceMotion ? 1 : 0.94
+        transformOrigin: Item.Center
+        Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 150; easing.type: Easing.OutCubic } }
+        Behavior on scale { enabled: !Theme.reduceMotion; Spring { spring: Theme.popover } }
+        anchors.centerIn: parent
+        width: 500
+        height: Math.min(480, root.height - 90)
+        radius: 22
+        color: Theme.dark ? "#fc303034" : "#fff8f8fa"
+        border { width: 0.5; color: Theme.separator }
+
+        Rectangle {
+            z: -1
+            anchors { fill: parent; margins: -14 }
+            radius: 30
+            color: "#40000000"
+            opacity: 0.24
+        }
+
+        Column {
+            anchors { fill: parent; margins: 22 }
+            spacing: 14
+
+            Row {
+                width: parent.width
+                Column {
+                    width: parent.width - closeGroups.width
+                    Text {
+                        text: "Tab Groups"
+                        color: Theme.label
+                        font { family: Theme.fontDisplay; pixelSize: Theme.fs(21); weight: Font.DemiBold }
+                    }
+                    Text {
+                        text: "Saved groups keep a reusable set of pages together."
+                        color: Theme.secondaryLabel
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+                    }
+                }
+                BrowserButton {
+                    id: closeGroups
+                    symbol: "xmark"; tooltip: "Close"
+                    onClicked: root.tabGroupsSheetOpen = false
+                }
+            }
+
+            Flickable {
+                width: parent.width
+                height: parent.height - 120
+                contentHeight: groupsManagerList.height
+                clip: true
+                boundsBehavior: Flickable.StopAtBounds
+
+                Column {
+                    id: groupsManagerList
+                    width: parent.width
+                    spacing: 5
+
+                    Text {
+                        visible: root.tabGroups.length === 0
+                        width: parent.width
+                        topPadding: 18
+                        text: "No saved Tab Groups yet."
+                        color: Theme.secondaryLabel
+                        horizontalAlignment: Text.AlignHCenter
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                    }
+
+                    Repeater {
+                        model: root.tabGroups
+                        delegate: Rectangle {
+                            required property int index
+                            required property var modelData
+                            width: groupsManagerList.width
+                            height: 56
+                            radius: 11
+                            color: Theme.dark ? "#0dffffff" : "#08000000"
+                            border { width: 0.5; color: Theme.separator }
+
+                            Row {
+                                anchors { fill: parent; leftMargin: 12; rightMargin: 8 }
+                                spacing: 8
+                                Symbol { anchors.verticalCenter: parent.verticalCenter; name: "folder"; tone: "accent"; size: 17 }
+                                Column {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    width: parent.width - openGroup.width - deleteGroup.width - 72
+                                    Text {
+                                        width: parent.width
+                                        text: modelData.name
+                                        color: Theme.label
+                                        elide: Text.ElideRight
+                                        font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.Medium }
+                                    }
+                                    Text {
+                                        text: String(modelData.tabs?.length ?? 0) + " tabs"
+                                        color: Theme.secondaryLabel
+                                        font { family: Theme.fontUi; pixelSize: Theme.fs(10) }
+                                    }
+                                }
+                                Button {
+                                    id: openGroup
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: "Open"
+                                    onClicked: {
+                                        root.openTabGroup(index)
+                                        root.tabGroupsSheetOpen = false
+                                    }
+                                }
+                                Button {
+                                    id: deleteGroup
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: "Delete"
+                                    destructive: true
+                                    onClicked: {
+                                        BrowserBackend.removeTabGroup(index)
+                                        root.refreshTabGroups()
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            Button {
+                anchors.right: parent.right
+                text: "Save Current Tabs…"
+                prominent: true
+                onClicked: {
+                    root.tabGroupsSheetOpen = false
+                    root.tabGroupName = ""
+                    root.tabGroupEditorOpen = true
+                }
+            }
+        }
+    }
+
+    Rectangle {
+        id: tabGroupSheet
+        z: 65
+        // Grows in and fades, rather than appearing at once.
+        readonly property bool reveal: root.tabGroupEditorOpen
+        visible: reveal || opacity > 0.01
+        opacity: reveal ? 1 : 0
+        scale: reveal || Theme.reduceMotion ? 1 : 0.94
+        transformOrigin: Item.Center
+        Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 150; easing.type: Easing.OutCubic } }
+        Behavior on scale { enabled: !Theme.reduceMotion; Spring { spring: Theme.popover } }
+        anchors.centerIn: parent
+        width: 430
+        height: 206
+        radius: 20
+        color: Theme.dark ? "#fc303034" : "#fff7f7f9"
+        border { width: 0.5; color: Theme.separator }
+
+        Rectangle {
+            z: -1
+            anchors { fill: parent; margins: -14 }
+            radius: 28
+            color: "#40000000"
+            opacity: 0.22
+        }
+
+        Column {
+            anchors { fill: parent; margins: 22 }
+            spacing: 14
+
+            Text {
+                text: "New Tab Group"
+                color: Theme.label
+                font { family: Theme.fontDisplay; pixelSize: Theme.fs(20); weight: Font.DemiBold }
+            }
+            Text {
+                width: parent.width
+                wrapMode: Text.WordWrap
+                text: "Save the tabs in this window as a named group you can return to from the sidebar."
+                color: Theme.secondaryLabel
+                font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+            }
+            TextField {
+                id: tabGroupField
+                width: parent.width
+                placeholder: "Tab Group Name"
+                text: root.tabGroupName
+                onTextChanged: root.tabGroupName = text
+                onAccepted: root.saveCurrentTabGroup()
+            }
+            Row {
+                anchors.right: parent.right
+                spacing: 8
+                Button {
+                    text: "Cancel"
+                    onClicked: root.tabGroupEditorOpen = false
+                }
+                Button {
+                    text: "Save"
+                    prominent: true
+                    onClicked: root.saveCurrentTabGroup()
+                }
+            }
+        }
+    }
+
+    // "Save Password?": a banner under the toolbar after a sign-in, as Safari
+    // asks. Not Now forgets it; Never stops asking on that site.
+    Rectangle {
+        id: passwordBanner
+        z: 69
+        visible: opacity > 0
+        opacity: root.passwordPrompt ? 1 : 0
+        Behavior on opacity { NumberAnimation { duration: 155 } }
+        parent: webArea       // over the page, under the toolbar
+        anchors { horizontalCenter: parent.horizontalCenter; top: parent.top; topMargin: 12 }
+        width: Math.min(520, webArea.width - 32)
+        height: bannerColumn.implicitHeight + 28
+        radius: 18
+        color: Theme.dark ? "#f2303034" : "#f7fbfbfd"
+        border { width: 0.5; color: Theme.separator }
+        Rectangle { z: -1; anchors { fill: parent; margins: -6 } radius: 22; color: "#40000000"; opacity: 0.07 }
+        Column {
+            id: bannerColumn
+            anchors { left: parent.left; right: parent.right; top: parent.top; margins: 14 }
+            spacing: 10
+            Row {
+                spacing: 12
+                width: parent.width
+                Rectangle {
+                    width: 34; height: 34; radius: 9
+                    color: Theme.accent
+                    Symbol { anchors.centerIn: parent; name: "lock"; tone: "white"; size: 16 }
+                }
+                Column {
+                    width: parent.width - 46
+                    spacing: 2
+                    Text {
+                        width: parent.width
+                        text: root.passwordPrompt
+                            ? (root.passwordPrompt.kind === "update" ? "Update the saved password for " : "Save password for ") + root.passwordPrompt.site + "?"
+                            : ""
+                        color: Theme.label
+                        elide: Text.ElideRight
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.DemiBold }
+                    }
+                    Text {
+                        width: parent.width
+                        text: root.passwordPrompt && root.passwordPrompt.username
+                            ? root.passwordPrompt.username + " · saved in your keyring, filled in next time"
+                            : "Saved in your keyring and filled in next time."
+                        color: Theme.secondaryLabel
+                        elide: Text.ElideRight
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+                    }
+                }
+            }
+            Row {
+                anchors.right: parent.right
+                spacing: 8
+                Button {
+                    text: "Never for This Website"
+                    visible: root.passwordPrompt && root.passwordPrompt.kind === "save"
+                    onClicked: root.answerPasswordPrompt("never")
+                }
+                Button { text: "Not Now"; onClicked: root.answerPasswordPrompt("later") }
+                Button {
+                    text: root.passwordPrompt && root.passwordPrompt.kind === "update" ? "Update Password" : "Save Password"
+                    prominent: true
+                    onClicked: root.answerPasswordPrompt("save")
+                }
+            }
+        }
+    }
+
+    // Passwords: every login Web has saved in this profile.
+    Rectangle {
+        id: passwordsSheet
+        z: 67
+        // Grows in and fades, rather than appearing at once.
+        readonly property bool reveal: root.passwordsOpen
+        visible: reveal || opacity > 0.01
+        opacity: reveal ? 1 : 0
+        scale: reveal || Theme.reduceMotion ? 1 : 0.94
+        transformOrigin: Item.Center
+        Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 150; easing.type: Easing.OutCubic } }
+        Behavior on scale { enabled: !Theme.reduceMotion; Spring { spring: Theme.popover } }
+        anchors.centerIn: parent
+        width: Math.min(570, root.width - 60)
+        height: Math.min(520, root.height - 80)
+        radius: 22
+        color: Theme.dark ? "#fc303034" : "#fff8f8fa"
+        border { width: 0.5; color: Theme.separator }
+        Rectangle { z: -1; anchors { fill: parent; margins: -14 } radius: 30; color: "#40000000"; opacity: 0.24 }
+        Column {
+            anchors { fill: parent; margins: 22 }
+            spacing: 14
+            Row {
+                width: parent.width
+                Text {
+                    width: parent.width - closePasswords.width
+                    text: "Passwords"
+                    color: Theme.label
+                    font { family: Theme.fontDisplay; pixelSize: Theme.fs(21); weight: Font.DemiBold }
+                }
+                BrowserButton {
+                    id: closePasswords
+                    symbol: "xmark"; tooltip: "Close"
+                    onClicked: root.passwordsOpen = false
+                }
+            }
+            Text {
+                width: parent.width
+                wrapMode: Text.WordWrap
+                text: "Web saves passwords in your keyring when you sign in to a website and fills them in when you come back. "
+                    + (BrowserBackend.privateMode ? "Private Browsing fills saved passwords but doesn't save new ones." : "")
+                color: Theme.secondaryLabel
+                font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+            }
+            Flickable {
+                width: parent.width
+                height: parent.height - 112
+                contentHeight: loginList.height
+                clip: true
+                boundsBehavior: Flickable.StopAtBounds
+                Column {
+                    id: loginList
+                    width: parent.width
+                    spacing: 4
+                    Text {
+                        visible: root.savedLogins.length === 0
+                        width: parent.width
+                        topPadding: 18
+                        text: "No saved passwords."
+                        color: Theme.secondaryLabel
+                        horizontalAlignment: Text.AlignHCenter
+                        font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                    }
+                    Repeater {
+                        model: root.savedLogins
+                        delegate: Rectangle {
+                            required property var modelData
+                            width: loginList.width
+                            height: 52
+                            radius: 11
+                            color: Theme.dark ? "#0dffffff" : "#08000000"
+                            border { width: 0.5; color: Theme.separator }
+                            Column {
+                                anchors { left: parent.left; leftMargin: 14; right: loginActions.left; rightMargin: 10; verticalCenter: parent.verticalCenter }
+                                Text {
+                                    width: parent.width
+                                    text: BrowserBackend.displayAddress(modelData.origin)
+                                    color: Theme.label
+                                    elide: Text.ElideRight
+                                    font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.DemiBold }
+                                }
+                                Text {
+                                    width: parent.width
+                                    text: modelData.username || "No username"
+                                    color: Theme.secondaryLabel
+                                    elide: Text.ElideRight
+                                    font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+                                }
+                            }
+                            Row {
+                                id: loginActions
+                                anchors { right: parent.right; rightMargin: 10; verticalCenter: parent.verticalCenter }
+                                spacing: 6
+                                Button { text: "Copy Password"; onClicked: BrowserBackend.copySavedPassword(modelData.origin, modelData.username) }
+                                Button {
+                                    text: "Remove"
+                                    destructive: true
+                                    onClicked: {
+                                        BrowserBackend.removeSavedPassword(modelData.origin, modelData.username)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Rectangle {
+        id: permissionSheet
+        z: 70
+        // Grows in and fades, rather than appearing at once.
+        readonly property bool reveal: root.pendingPermission !== null
+        visible: reveal
+        opacity: reveal ? 1 : 0
+        scale: reveal || Theme.reduceMotion ? 1 : 0.94
+        transformOrigin: Item.Center
+        Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 150; easing.type: Easing.OutCubic } }
+        Behavior on scale { enabled: !Theme.reduceMotion; Spring { spring: Theme.popover } }
+        anchors.centerIn: parent
+        width: 420
+        height: 190
+        radius: 20
+        color: Theme.dark ? "#fc303034" : "#fff7f7f9"
+        border { width: 0.5; color: Theme.separator }
+
+        Column {
+            anchors { fill: parent; margins: 22 }
+            spacing: 12
+            Text {
+                width: parent.width
+                text: "Website Permission"
+                color: Theme.label
+                font { family: Theme.fontDisplay; pixelSize: Theme.fs(20); weight: Font.DemiBold }
+            }
+            Text {
+                width: parent.width
+                wrapMode: Text.WordWrap
+                text: root.pendingPermission
+                    ? BrowserBackend.displayAddress(root.pendingPermission.origin.toString()) + " is requesting access to a protected browser feature."
+                    : ""
+                color: Theme.secondaryLabel
+                font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+            }
+            Item { width: 1; height: 8 }
+            Row {
+                anchors.right: parent.right
+                spacing: 8
+                Button {
+                    text: "Don't Allow"
+                    onClicked: {
+                        if (root.pendingPermission) root.pendingPermission.deny()
+                        root.pendingPermission = null
+                    }
+                }
+                Button {
+                    text: "Allow"
+                    prominent: true
+                    onClicked: {
+                        if (root.pendingPermission) root.pendingPermission.grant()
+                        root.pendingPermission = null
+                    }
+                }
+            }
+        }
+    }
+
+    Rectangle {
+        id: toast
+        z: 100
+        anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: 30 }
+        width: Math.min(root.width - 40, toastLabel.implicitWidth + 32)
+        height: 34
+        radius: 17
+        color: Theme.dark ? "#ee35353a" : "#eef8f8fa"
+        border { width: 0.5; color: Theme.separator }
+        opacity: 0
+        visible: opacity > 0
+        Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 140 } }
+
+        Text {
+            id: toastLabel
+            anchors.centerIn: parent
+            color: Theme.label
+            font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: Font.Medium }
+        }
+        Timer {
+            id: toastTimer
+            interval: 2200
+            onTriggered: toast.opacity = 0
+        }
+    }
+
+    Shortcut { sequence: "Ctrl+L"; onActivated: root.focusAddress() }
+    Shortcut { sequence: "Ctrl+F"; onActivated: root.openFind() }
+    Shortcut { sequences: ["Ctrl+=", "Ctrl++"]; onActivated: root.zoomBy(0.1) }
+    Shortcut { sequence: "Ctrl+-"; onActivated: root.zoomBy(-0.1) }
+    Shortcut { sequence: "Ctrl+0"; onActivated: root.zoomBy(0) }
+    Shortcut { sequence: "Ctrl+T"; onActivated: root.newTab("about:blank", true) }
+    Shortcut { sequence: "Ctrl+W"; onActivated: root.closeTab(root.currentIndex) }
+    Shortcut { sequence: "Ctrl+R"; onActivated: root.reloadOrStop() }
+    Shortcut { sequence: "F5"; onActivated: root.reloadOrStop() }
+    Shortcut { sequence: "Alt+Left"; onActivated: if (root.currentView) root.currentView.goBack() }
+    Shortcut { sequence: "Alt+Right"; onActivated: if (root.currentView) root.currentView.goForward() }
+    Shortcut { sequence: "Ctrl+D"; onActivated: if (root.currentUrl !== "about:blank") BrowserBackend.addBookmark(root.currentUrl, root.currentTitle) }
+    Shortcut { sequence: "Ctrl+Shift+T"; onActivated: root.reopenLastClosed() }
+    Shortcut { sequence: "Ctrl+Shift+N"; onActivated: BrowserBackend.openPrivateWindow() }
+    Shortcut {
+        sequence: "Ctrl+Tab"
+        onActivated: {
+            if (tabsModel.count > 1) {
+                root.currentIndex = (root.currentIndex + 1) % tabsModel.count
+                root.syncAddress()
+            }
+        }
+    }
+    Shortcut {
+        sequence: "Ctrl+Shift+Tab"
+        onActivated: {
+            if (tabsModel.count > 1) {
+                root.currentIndex = (root.currentIndex - 1 + tabsModel.count) % tabsModel.count
+                root.syncAddress()
+            }
+        }
+    }
+    Shortcut {
+        sequence: "Escape"
+        onActivated: {
+            if (root.webContextOpen) root.webContextOpen = false
+            else if (root.findOpen) root.closeFind()
+            else if (root.readerOpen) root.readerOpen = false
+            else if (root.tabOverviewOpen) root.tabOverviewOpen = false
+            else if (root.passwordsOpen) root.passwordsOpen = false
+            else if (root.passwordPrompt) root.answerPasswordPrompt("later")
+            else if (root.websitePermissionsOpen) root.websitePermissionsOpen = false
+            else if (root.privacySheetOpen) root.privacySheetOpen = false
+            else if (root.profileSheetOpen) root.profileSheetOpen = false
+            else if (root.settingsOpen) root.settingsOpen = false
+            else if (root.tabGroupsSheetOpen) root.tabGroupsSheetOpen = false
+            else if (root.tabGroupEditorOpen) root.tabGroupEditorOpen = false
+            else if (root.pageMenuOpen) root.pageMenuOpen = false
+            else if (root.downloadsOpen) root.downloadsOpen = false
+            else if (root.pendingPermission) { root.pendingPermission.deny(); root.pendingPermission = null }
+            else if (addressField.input.activeFocus) { addressField.input.focus = false; root.syncAddress() }
+            else if (root.currentView && root.currentView.loading) root.currentView.stop()
+        }
+    }
+}

@@ -1,0 +1,150 @@
+#!/bin/bash
+# Opt-in first-party build of the Qt6-fixed CitronPods M10 source archive.
+# Installs ONLY the persistent backend, not its duplicate standalone GUI.
+# The user supplies their existing LibrePods-CitronPods-M10-Qt6-Fixed.zip.
+set -euo pipefail
+# The engine is a GPL-3.0 Qt/BlueZ daemon. Golden Gate never installs
+# the duplicate standalone Qt app. Locate a verified user-provided M10 ZIP
+# after login/first install, or take a direct path from the Settings picker.
+# No arbitrary downloads, shell code or scripts are ever executed from ZIP.
+archive="${1:-}"
+downloads="${XDG_DOWNLOAD_DIR:-$HOME/Downloads}"
+if [[ -z "$archive" || "$archive" == "--find" ]]; then
+  shopt -s nullglob
+  candidates=( "$downloads"/LibrePods-CitronPods-M10-Qt6-Fixed*.zip
+               "$HOME"/Downloads/LibrePods-CitronPods-M10-Qt6-Fixed*.zip )
+  # Only auto-adopt our exact known Qt6-fixed M10 source. Matching a ZIP
+  # filename is NOT sufficient: CMake can execute commands during configure.
+  # Other source archives require an explicit choice in System Settings.
+  trusted="d14d3e74efb716357713d024bcb7c2311ae1226d8fa6bb883f4b9237661b4da4"
+  trusted_logging="7c5624dec81b6bc6d7aed79cd7041d5f88cca5430163d2164eb67ecff15d1601"
+  for candidate in "${candidates[@]}"; do
+    if [[ -f "$candidate" ]]; then
+      digest=$(sha256sum -- "$candidate" | cut -d' ' -f1)
+      if [[ "$digest" == "$trusted" || "$digest" == "$trusted_logging" ]]; then
+        archive="$candidate"
+        break
+      fi
+    fi
+  done
+  if [[ "${1:-}" == "--find" ]]; then
+    [[ -f "$archive" ]] || exit 1
+    printf '%s\n' "$archive"
+    exit 0
+  fi
+fi
+if [[ ! -f "$archive" ]]; then
+  echo "CitronPods M10 source not found in Downloads. Choose the M10 Qt6-Fixed ZIP in Settings → AirPods or pass its path." >&2
+  exit 2
+fi
+for executable in cmake ninja python3 c++; do
+  command -v "$executable" >/dev/null || {
+    echo "Missing build tool: $executable" >&2
+    echo "On Arch, install build dependencies with: sudo pacman -S --needed base-devel cmake ninja qt6-base qt6-declarative qt6-connectivity libpulse" >&2
+    exit 2
+  }
+done
+tmp=$(mktemp -d "${TMPDIR:-/tmp}/gg-citronpods.XXXXXXXX")
+trap 'rm -rf -- "$tmp"' EXIT
+python3 - "$archive" "$tmp/source" <<'PY'
+import os, pathlib, stat, sys, zipfile
+archive, target = sys.argv[1:]
+target = pathlib.Path(target)
+total = 0
+with zipfile.ZipFile(archive) as src:
+    root = [name[:-len("citronos/CMakeLists.txt")] for name in src.namelist()
+            if name.endswith("citronos/CMakeLists.txt")]
+    if len(root) != 1:
+        raise SystemExit("Not a compatible CitronPods source archive")
+    root = root[0]
+    # The upstream ZIP also contains multi-megabyte app fonts and unrelated
+    # demo assets. Import only the Qt daemon sources and the exact LibrePods
+    # parser headers it includes. Never bundle the separate Qt GUI's fonts.
+    linux_headers = {
+        "linux/battery.hpp", "linux/airpods_packets.h",
+        "linux/logger.h", "linux/enums.h", "linux/BasicControlCommand.hpp"
+    }
+    names = [m for m in src.infolist() if m.filename.startswith(root) and not m.is_dir()
+             and (m.filename[len(root):].startswith("citronos/")
+                  or m.filename[len(root):] in linux_headers)]
+    if len(names) > 200:
+        raise SystemExit("Unexpected CitronPods archive contents")
+    for entry in names:
+        rel = entry.filename[len(root):]
+        parts = pathlib.PurePosixPath(rel).parts
+        if not parts or any(part in ("", ".", "..") for part in parts):
+            raise SystemExit("Unsafe path in CitronPods archive")
+        if stat.S_ISLNK(entry.external_attr >> 16) or not stat.S_ISREG(entry.external_attr >> 16):
+            # Some ZIP creators mark ordinary files as mode=0. Those are safe.
+            if stat.S_ISLNK(entry.external_attr >> 16):
+                raise SystemExit("Linked files are not allowed")
+        if entry.file_size > 2_000_000:
+            raise SystemExit("Oversized source member")
+        total += entry.file_size
+        if total > 13_000_000:
+            raise SystemExit("Source archive exceeds limits")
+        dest = target.joinpath(*parts)
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        with src.open(entry) as read, dest.open("wb") as write:
+            while chunk := read.read(1024*128):
+                write.write(chunk)
+needed = ["citronos/CMakeLists.txt", "citronos/src/daemonmain.cpp",
+          "citronos/src/ProtocolBridge.cpp", "citronos/src/PodManager.cpp",
+          "linux/battery.hpp", "linux/airpods_packets.h"]
+if not all((target / name).is_file() for name in needed):
+    raise SystemExit("Missing expected M10 source files")
+# Qt6.7+ enum scoping: M10 Qt6 Fixed already correct, but refuse the old
+# archive's unscoped references that fail to compile.
+bridge = (target/"citronos/src/ProtocolBridge.cpp").read_text()
+if "QBluetoothSocket::UnconnectedState" in bridge or "QBluetoothSocket::ConnectedState" in bridge:
+    raise SystemExit("This source has the old Qt Bluetooth enum error. Use M10-Qt6-Fixed.zip")
+# LibrePods battery.hpp uses LOG_INFO, whose Q_DECLARE_LOGGING_CATEGORY
+# references librepods(). Upstream defines it in linux/main.cpp, which the
+# independent CitronPods daemon correctly does not link. Define it once in
+# the daemon to resolve the M10 undefined-reference-to-librepods() link error.
+daemon_main = target / "citronos/src/daemonmain.cpp"
+main_src = daemon_main.read_text()
+if "Q_LOGGING_CATEGORY(librepods," not in main_src:
+    daemon_main.write_text(main_src + "\n#include <QLoggingCategory>\nQ_LOGGING_CATEGORY(librepods, \"librepods\")\n")
+PY
+# Keep the complete compiler output: Ninja errors normally go to stdout,
+# whereas CMake emits nonfatal Qt/Quickshell warnings to stderr. Never present
+# only the last warning as the reason a build failed.
+umask 077
+log_dir="${XDG_STATE_HOME:-$HOME/.local/state}/golden-gate"
+mkdir -p -m 700 "$log_dir"
+build_log="$log_dir/citronpods-install.log"
+set +e
+(
+  set -e
+  echo 'Configuring native CitronPods system engine…'
+  cmake -S "$tmp/source/citronos" -B "$tmp/build" -G Ninja \
+    -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$HOME/.local"
+  echo 'Building only the daemon (the duplicate Qt app is intentionally not installed)…'
+  cmake --build "$tmp/build" --parallel 2 --target citronpods-daemon
+) 2>&1 | tee "$build_log"
+build_rc=${PIPESTATUS[0]}
+set -e
+if (( build_rc != 0 )); then
+  echo "CitronPods build failed (exit $build_rc). Compiler diagnostics:" >&2
+  grep -E '(^FAILED:|^CMake Error|^ninja: error|fatal error:| error:|undefined reference|No such file or directory)' "$build_log" | head -n 8 >&2 || true
+  echo "Complete build log: $build_log" >&2
+  exit "$build_rc"
+fi
+install -Dm755 "$tmp/build/citronpods-daemon" "$HOME/.local/bin/citronpods-daemon"
+unit_dir="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
+mkdir -p "$unit_dir"
+if [[ -f "${GG_CITRONPODS_UNIT:-}" ]]; then
+  install -m644 "$GG_CITRONPODS_UNIT" "$unit_dir/citronpods-daemon.service"
+elif [[ -f "/usr/share/golden-gate/apps/citronpods/citronpods-daemon.service" ]]; then
+  install -m644 /usr/share/golden-gate/apps/citronpods/citronpods-daemon.service "$unit_dir/citronpods-daemon.service"
+elif [[ -f "$(dirname "$0")/citronpods-daemon.service" ]]; then
+  # User-local Golden Gate installs store apps in XDG_DATA_HOME, not /usr.
+  install -m644 "$(dirname "$0")/citronpods-daemon.service" "$unit_dir/citronpods-daemon.service"
+else
+  echo 'Could not locate the Golden Gate CitronPods service unit.' >&2
+  exit 1
+fi
+systemctl --user daemon-reload
+systemctl --user enable --now citronpods-daemon.service
+echo 'CitronPods is integrated. Open Settings → AirPods or Control Center.'

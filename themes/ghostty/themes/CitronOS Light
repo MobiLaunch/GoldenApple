@@ -1,0 +1,22 @@
+# Terminal.app "Basic" (light): black on white with Terminal's ANSI colours.
+background = #ffffff
+foreground = #000000
+cursor-color = #7f7f7f
+selection-background = #b4d7ff
+selection-foreground = #000000
+palette = 0=#000000
+palette = 1=#c23621
+palette = 2=#25bc24
+palette = 3=#adad27
+palette = 4=#492ee1
+palette = 5=#d338d3
+palette = 6=#33bbc8
+palette = 7=#cbcccd
+palette = 8=#818383
+palette = 9=#fc391f
+palette = 10=#31e722
+palette = 11=#eaec23
+palette = 12=#5833ff
+palette = 13=#f935f8
+palette = 14=#14f0f0
+palette = 15=#e9ebeb

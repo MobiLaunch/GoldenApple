@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=AirDrop
+Comment=Share files with people nearby
+Icon=org.goldengate.AirDrop
+Exec=sh "@APPS@/airdrop/share.sh" %F
+StartupWMClass=org.goldengate.AirDrop
+Categories=Network;FileTransfer;
+Keywords=airdrop;share;send;nearby;localsend;transfer;
+MimeType=application/octet-stream;
+StartupNotify=false

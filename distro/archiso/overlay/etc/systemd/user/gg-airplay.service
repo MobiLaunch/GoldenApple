@@ -1,0 +1,17 @@
+# AirPlay Receiver (Control Center › Screen Mirroring, Settings › General ›
+# AirPlay Receiver): an iPhone, iPad or Mac on the same network can mirror its
+# screen or play video to this computer, under the computer's name. UxPlay
+# runs under apps/mirroring/airplay.py, which asks for a code the first time a
+# device connects and tells the shell who's mirroring.
+[Unit]
+Description=CitronOS AirPlay Receiver
+After=graphical-session.target
+PartOf=graphical-session.target
+
+[Service]
+ExecStart=/usr/bin/python3 /usr/share/golden-gate/apps/mirroring/airplay.py
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=graphical-session.target

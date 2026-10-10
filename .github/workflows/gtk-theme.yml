@@ -1,0 +1,62 @@
+name: GTK theme
+
+# Runs the ISO's GTK apps with the CitronOS theme in an Arch container (the
+# same GTK and libadwaita as the image) and screenshots each, light and dark.
+# Fails on any GTK CSS parser error. The screenshots are in the gtk-shots
+# artifact, and in the job log as base64 JPEGs ("--- shot <name> ---").
+on:
+  push:
+    paths:
+      - design/gtk/**
+      - design/tokens.json
+      - design/build.mjs
+      - icons/**
+      - themes/firefox/**
+      - .github/workflows/gtk-theme.yml
+  workflow_dispatch:
+    inputs:
+      shots:
+        description: Shots to take (empty = all; see design/gtk/tests/app-shots.sh)
+        type: string
+        required: false
+
+concurrency:
+  group: gtk-theme-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  shots:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Screenshot the apps in Arch Linux
+        env:
+          SHOTS: ${{ inputs.shots }}
+        run: |
+          docker run --rm -v "$PWD:/repo" -w /repo -e SHOTS archlinux:latest bash -euo pipefail -c '
+            for try in 1 2 3; do   # mirrors drop connections now and then; retries resume from the cache
+            pacman -Syu --noconfirm --needed sway swaybg grim jq gjs gtk4 libadwaita librsvg imagemagick \
+              dbus dconf nodejs util-linux libcap mesa inter-font ttf-jetbrains-mono adwaita-icon-theme \
+              nautilus gnome-text-editor gnome-calculator gnome-control-center gnome-clocks gnome-calendar \
+              gnome-weather gnome-maps loupe gnome-music gnome-software fractal ghostty gnome-keyring firefox >/dev/null && break
+              [ "$try" = 3 ] && exit 1
+              sleep $((try * 20))
+            done
+            pacman -Q gtk4 libadwaita nautilus sway
+            fc-cache -f >/dev/null
+            # Arch gives sway cap_sys_nice, which a container user may not exec with.
+            setcap -r "$(command -v sway)" 2>/dev/null || true
+            node design/build.mjs >/dev/null   # the committed gtk.css, rebuilt from its sources
+            SHOTS_B64=1 design/gtk/tests/app-shots.sh out/gtk-shots $SHOTS
+            if grep -h "Theme parser error" out/gtk-shots/*.log | sort -u | grep .; then
+              echo "::error::GTK rejected parts of the theme (see above)"; exit 1
+            fi
+          '
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: gtk-shots
+          path: out/gtk-shots
+          retention-days: 14
+

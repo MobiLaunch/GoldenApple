@@ -1,0 +1,16 @@
+# CitronOS defaults for GNOME settings. Installed to
+# /usr/share/glib-2.0/schemas by scripts/install.sh --system, then compiled.
+# Users can still change every one of these.
+
+[org.gnome.desktop.interface]
+icon-theme='GoldenGate'
+font-name='Golden Gate UI 10'
+document-font-name='Golden Gate UI 10'
+monospace-font-name='Golden Gate Mono 10'
+accent-color='blue'
+
+[org.gnome.desktop.wm.preferences]
+button-layout='close,minimize,maximize:'
+
+# CitronOS Files owns file-browsing preferences. Do not reference Nautilus
+# schemas here: Nautilus is intentionally not part of the CitronOS image.

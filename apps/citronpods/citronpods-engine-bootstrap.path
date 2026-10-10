@@ -1,0 +1,14 @@
+[Unit]
+Description=Detect newly downloaded native CitronPods engine source
+
+[Path]
+# Directory watch, not a recursive poll. Setup is idempotent and compiles
+# only if a verified M10 archive exists and no daemon is installed.
+PathChanged=%h/Downloads
+# Existing source ZIPs are handled once by the login bootstrap service.
+# Do not use PathExistsGlob: a permanent matching file would retrigger
+# the oneshot endlessly after it exits on an unsupported archive.
+Unit=citronpods-engine-bootstrap.service
+
+[Install]
+WantedBy=default.target
