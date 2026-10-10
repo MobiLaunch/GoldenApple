@@ -57,7 +57,11 @@ Item {
     // Context menus and popup sheets live in clipped Wayland surfaces; a
     // large shadow is cut to a square at those surface boundaries.
     // Keep the glass rim/refraction, but no detached rectangular shadow.
-    property bool shadowEnabled: role !== "menu"
+    // Shell overlays and transient cards are clipped to rectangular Wayland
+    // surfaces. Their off-surface shader halos produce blocky, square edges.
+    // Keep detached shadows ONLY on sufficiently padded in-window controls,
+    // sidebars and the dock; regular/menu panels use their rounded rim instead.
+    property bool shadowEnabled: role === "control" || role === "sidebar" || role === "dock"
     default property alias content: body.data
 
     // What's behind, bent as through a thick slab (shaders/glasslens.frag):
