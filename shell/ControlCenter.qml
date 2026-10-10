@@ -674,7 +674,9 @@ PanelWindow {
 
         Capsule {
             objectName: "ccAirPods"
-            visible: airpods.connected
+            visible: airpods.connected || airpods.devices.length > 0 ||
+                (Bluetooth.defaultAdapter?.devices.values ?? []).some((device) =>
+                    device.paired && String(device.name ?? device.deviceName ?? "").toLowerCase().includes("airpods"))
             width: cc.span(4)
             height: cc.unit - 12
             icon: "headphones"
@@ -1087,6 +1089,16 @@ PanelWindow {
                 text: airpods.status
                 color: Theme.secondaryLabel
                 font { family: Theme.fontUi; pixelSize: cc.cs(12) }
+            }
+            // The daemon is a system service, not another Qt application.
+            // If it is still installing, guide the user to the native Settings
+            // pane rather than leaving an unresponsive collection of toggles.
+            MirrorRow {
+                visible: !airpods.online
+                symbol: "gear"
+                title: "Finish AirPods Setup…"
+                subtitle: "Open System Settings to review the native engine"
+                onClicked: { cc.open = false; Quickshell.execDetached(["gg-settings", "airpods"]) }
             }
             RowLayout {
                 Layout.fillWidth: true
