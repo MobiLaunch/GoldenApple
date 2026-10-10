@@ -22,6 +22,9 @@ qt6-declarative
 qt6-connectivity
 qt6-svg
 qt6-wayland
+# Tablet Mode: native Wayland touch input method and optional orientation sensor
+squeekboard
+iio-sensor-proxy
 # CitronOS Music and Photos: playback (FFmpeg backend), tags, artwork, video frames
 qt6-multimedia
 qt6-multimedia-ffmpeg
