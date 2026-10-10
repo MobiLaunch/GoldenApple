@@ -212,5 +212,18 @@ class Transport(unittest.TestCase):
             self.assertEqual(proc.stderr, "")
 
 
+class CitronLiveModelDiscoveryRegression(unittest.TestCase):
+    def test_voice_model_inventory_not_discarded(self):
+        with patch.object(AI, "config", return_value=AI.DEFAULTS), \
+                patch.object(AI, "api_key", return_value="dummy"), \
+                patch.object(AI, "request", return_value={"models": [
+                    {"name": "models/gemini-3.8-flash", "supportedGenerationMethods": ["generateContent"]},
+                    {"name": "models/gemini-3.8-live", "supportedGenerationMethods": ["bidiGenerateContent"]}
+                ]}):
+            result = AI.dispatch({"action": "models"})
+        self.assertIn("gemini-3.8-flash", result["models"])
+        self.assertIn("gemini-3.8-live", result["voiceModels"])
+
+
 if __name__ == "__main__":
     unittest.main()
