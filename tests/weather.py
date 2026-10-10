@@ -113,6 +113,15 @@ class Weather(unittest.TestCase):
         places = self.app().property("places").toVariant()
         self.assertFalse(any(p.get("current") for p in places), places)
 
+    def test_sky_does_not_override_qt_palette(self):
+        # Qt Quick Item already has a palette property. Shadowing it in Sky
+        # emitted a runtime warning on each Weather scene and could disrupt
+        # inherited text colors when nested under weather cards.
+        sky = (ROOT / "apps/weather/Sky.qml").read_text()
+        self.assertIn("readonly property var skyPalette:", sky)
+        self.assertNotIn("readonly property var palette:", sky)
+        self.assertNotIn("sky.palette[", sky)
+
     def test_helper_respects_location_services(self):
         env = {**os.environ, "XDG_CONFIG_HOME": str(self.temp / "config")}
         (self.temp / "config/golden-gate/privacy.json").write_text(json.dumps({"location": False}))
