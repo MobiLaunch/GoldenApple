@@ -108,5 +108,20 @@ class SystemIntelligence(unittest.TestCase):
             self.assertIn("shadowOpacity: " + str(material["shadowOpacity"]), obj)
 
 
+class CitronReliabilityRegression(unittest.TestCase):
+    def test_timeout_finishes_with_error(self):
+        service = (ROOT / "apps/lib/intelligence/Service.qml").read_text()
+        self.assertIn('service.cancel("The request timed out. Try again.")', service)
+        self.assertIn('terminalError ? {ok: false', service)
+        self.assertIn('cancelled = !terminalError', service)
+
+    def test_voice_retry_and_prompt_capture(self):
+        qml = (ROOT / "shell/VoiceAssistant.qml").read_text()
+        self.assertIn("if (!citron.open || citron.restartingVoice) return", qml)
+        self.assertIn("id: voiceWatchdog", qml)
+        self.assertIn('Voice is still connecting. Your message has been kept.', qml)
+        self.assertIn("citron.pendingPrompt", qml)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
