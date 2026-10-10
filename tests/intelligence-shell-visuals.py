@@ -142,6 +142,18 @@ class AmbientCitronRegression(unittest.TestCase):
         self.assertIn('feather.addColorStop(1, "rgba(255,255,255,0)")', haze)
         self.assertNotIn("shadowEnabled", haze)
         self.assertNotIn("DropShadow", haze)
+        self.assertIn('id: rearSource', haze)
+        self.assertIn('sourceItem: field', haze)
+        self.assertIn('objectName: "citronGlassDepthLayer"', haze)
+        self.assertIn('objectName: "citronUnbentForegroundMotes"', haze)
+        self.assertIn("if (i % 3 === 0) continue", haze)
+        self.assertIn("i += 3", haze)
+        glass = (ROOT / "apps/lib/intelligence/CitronGlassDot.qml").read_text()
+        self.assertIn("Shared.Glass {", glass)
+        self.assertIn('fragmentShader: Qt.resolvedUrl("../shaders/glasslens.frag.qsb")', glass)
+        self.assertIn("property variant source: lens.rearTexture", glass)
+        self.assertIn("shadowEnabled: false", glass)
+        self.assertNotIn("DropShadow", glass)
 
     def test_speaking_haze_uses_output_level_not_microphone_echo(self):
         qml = (ROOT / "shell/VoiceAssistant.qml").read_text()
