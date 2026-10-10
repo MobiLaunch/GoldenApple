@@ -117,7 +117,7 @@ class CitronReliabilityRegression(unittest.TestCase):
 
     def test_voice_retry_and_prompt_capture(self):
         qml = (ROOT / "shell/VoiceAssistant.qml").read_text()
-        self.assertIn("if (!citron.open || citron.restartingVoice) return", qml)
+        self.assertIn("if (!citron.open || !citron.voiceMode || citron.restartingVoice) return", qml)
         self.assertIn("id: voiceWatchdog", qml)
         self.assertIn('Voice is still connecting. Your message has been kept.', qml)
         self.assertIn("citron.pendingPrompt", qml)
@@ -130,6 +130,13 @@ class VoiceFirstShortcutRegression(unittest.TestCase):
         self.assertIn('ToolChip { label: citron.voiceMode ? "Type" : "Ask"; kind: "ask" }', qml)
         self.assertIn("if (voiceMode) stopVoice()", qml)
         self.assertIn("voiceProc.running = false", qml)
+
+    def test_events_are_ignored_after_voice_closes_and_transcripts_deduplicate(self):
+        qml = (ROOT / "shell/VoiceAssistant.qml").read_text()
+        self.assertIn("if (!open || !voiceMode) return", qml)
+        self.assertIn("function transcriptText(current, incoming, limit)", qml)
+        self.assertIn("youSaid = transcriptText(youSaid, fragment, 1000)", qml)
+        self.assertIn('tool = "ask"\n        voiceMode = true', qml)
 
 
 if __name__ == "__main__":
