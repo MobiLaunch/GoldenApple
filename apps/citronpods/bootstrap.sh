@@ -27,6 +27,14 @@ if [ -z "$source_zip" ] || [ ! -f "$source_zip" ]; then
     printf 'Engine pending: place LibrePods-CitronPods-M10-Qt6-Fixed.zip in Downloads.\n' > "$state/citronpods-engine-status"
     exit 0
 fi
+# Validate again in case the source changed between --find and compile.
+# Automatic CMake execution must never trust a Downloads ZIP by filename.
+trusted="d14d3e74efb716357713d024bcb7c2311ae1226d8fa6bb883f4b9237661b4da4"
+actual=$(sha256sum -- "$source_zip" | cut -d' ' -f1)
+if [ "$actual" != "$trusted" ]; then
+    printf 'Unrecognized CitronPods source. Select it explicitly in Settings if trusted.\n' > "$state/citronpods-engine-status"
+    exit 0
+fi
 printf 'Building native AirPods engine from validated M10 source…\n' > "$state/citronpods-engine-status"
 if gg-install-citronpods "$source_zip" > "$state/citronpods-build.log" 2>&1; then
     printf 'Native AirPods engine installed and service started.\n' > "$state/citronpods-engine-status"
