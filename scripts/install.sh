@@ -93,7 +93,7 @@ install_extras() {
   printf '#!/bin/sh\nexec bash /usr/share/golden-gate/apps/citronpods/install-engine.sh "$@"\n' > "$BIN/gg-install-citronpods"
   printf '#!/bin/sh\nexec sh /usr/share/golden-gate/apps/citronpods/ctl.sh "$@"\n' > "$BIN/gg-citronpods"
   printf '#!/bin/sh\nexec sh /usr/share/golden-gate/apps/tablet/keyboard.sh "$@"\n' > "$BIN/gg-tablet-keyboard"
-  chmod 755 "$BIN/gg-intelligence" "$BIN/gg-install-citronpods" "$BIN/gg-citronpods"
+  chmod 755 "$BIN/gg-intelligence" "$BIN/gg-install-citronpods" "$BIN/gg-citronpods" "$BIN/gg-tablet-keyboard"
   printf '#!/bin/sh\nexec qs -n -p /usr/share/golden-gate/apps/diskutility.qml "$@"\n' > "$BIN/gg-disk-utility"
   chmod 755 "$BIN/gg-disk-utility"
   printf '#!/bin/sh\nexec python3 /usr/lib/golden-gate/pref-helper.py "$@"\n' > "$BIN/gg-pref"
