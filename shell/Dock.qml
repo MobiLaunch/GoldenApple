@@ -108,7 +108,8 @@ PanelWindow {
     property int densityCount: 0
     onTileCountChanged: densityCount = Math.max(densityCount, tileCount)
     readonly property real restingWidth: tileCount * (baseSize + 6) + 28
-    property real baseSize: Math.min(Prefs.dockSize, Math.max(16, (width - 48) / (densityCount + 3) - 6))
+    property real baseSize: Math.min(Prefs.tabletMode ? Math.max(64, Prefs.dockSize) : Prefs.dockSize,
+        Math.max(16, (width - (Prefs.tabletMode ? 64 : 48)) / (densityCount + 3) - 6))
     Behavior on baseSize { enabled: !Prefs.reduceMotion; NumberAnimation { duration: 190; easing.type: Easing.OutCubic } }
     property var launcher: null   // AppLaunch on this screen: the icon grows into the window
     property var applications: null
