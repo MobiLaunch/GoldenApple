@@ -27,6 +27,7 @@ Item {
         id: desktopLens
         anchors.fill: parent
         role: "clear"
+        ambientOnly: true
         radius: lens.r
         lens: lens.r * 0.31
         tint: "#0affffff"

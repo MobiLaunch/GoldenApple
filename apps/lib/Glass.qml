@@ -43,6 +43,11 @@ Item {
     property color rimLow: (material?.rimLow ?? "transparent")
     property color shine: (material?.shine ?? "transparent")
     property color edge: (material?.edge ?? "transparent")
+    // Opt-in optical-only treatment for ambient refractive motes. The usual
+    // reduced-transparency fill turns tiny lenses into opaque white buttons.
+    // This keeps their surface almost clear; only the rim and refracted
+    // scene supply depth. Other Glass consumers remain unchanged.
+    property bool ambientOnly: false
     property bool filled: false
     property bool pressed: false
     property bool hovered: false
@@ -143,6 +148,7 @@ Item {
     // The style's floor, raised toward Reduce Transparency's by the Glass
     // slider (clear … solid).
     readonly property real minAlpha: {
+        if (root.ambientOnly) return 0
         // Without a GPU nothing bends or blurs what's behind, and glass at its
         // usual tint left a menu's text over a sharp, readable desktop.
         const base = Theme.reduceTransparency || GraphicsInfo.api === GraphicsInfo.Software ? (material?.reduced ?? 0) : Theme.glassStyle === "tinted" ? (material?.tinted ?? 0) : 0
