@@ -205,6 +205,7 @@ ShellRoot {
             readonly property var page: panes.find((p) => p.id === current) ?? subpages[current] ?? null
 
             property string current: Quickshell.env("GG_SETTINGS_PANE") || "general"
+            property bool showMobileCategories: true
             readonly property bool sidebarShown: sys.prefs.settings?.sidebarShown ?? true
             property var back: []
             property var forward: []
