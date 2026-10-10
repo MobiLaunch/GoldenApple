@@ -431,10 +431,18 @@ PanelWindow {
             anchors.centerIn: parent
             spacing: 6
 
-            AI.CitronBlob {
+            // The visible haze occupies only the central part of its square
+            // texture. Reserve a compact visual footprint, while letting the
+            // actual 385px field overflow unclipped. The Listening/Speaking
+            // caption then stays visually attached to the glass dots instead
+            // of floating ~200px below them on desktop screens.
+            Item {
+                width: parent.width
+                height: Math.min(238, citron.height * 0.31)
+                AI.CitronBlob {
                 id: haze
                 objectName: "citronMorphingHaze"
-                anchors.horizontalCenter: parent.horizontalCenter
+                anchors.centerIn: parent
                 width: Math.min(385, stage.width - 14, citron.height * 0.44)
                 height: width
                 running: citron.open && citron.voiceMode
@@ -445,6 +453,7 @@ PanelWindow {
                 Behavior on scale {
                     enabled: !Theme.reduceMotion
                     NumberAnimation { duration: 280; easing.type: Easing.OutCubic }
+                }
                 }
             }
             Text {
