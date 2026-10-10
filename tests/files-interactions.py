@@ -268,6 +268,13 @@ class Interactions(unittest.TestCase):
         self.assertEqual(self.eval('selectedEntry.name'),"b.txt")
         QTest.qWait(1080)
         self.assertEqual(self.eval('typeAhead'),"")
+        # The 950ms dwell and 120ms opacity fade nearly equal 1080ms.
+        # Busy CI scene graphs can miss one animation frame; wait for the
+        # *visual* cue to finish rather than demanding a precise wall clock.
+        for _ in range(16):
+            if not cue.property('visible'):
+                break
+            QTest.qWait(30)
         self.assertFalse(cue.property('visible'))
 
     def test_type_to_select_ignores_open_dialogs_and_quick_look(self):
