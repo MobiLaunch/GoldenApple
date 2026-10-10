@@ -39,7 +39,8 @@ for qml in sorted((ROOT / "shell").glob("*.qml")):
     text = qml.read_text()
     glassy = re.search(r"\bGlass\s*\{|component \w+: Glass", text) is not None or "HyprGlass" in text
     for ns in re.findall(r'namespace: "(gg-[^"]+)"', text):
-        if ns in ("gg-wallpaper", "gg-launch", "gg-missioncontrol", "gg-lock-preview", "gg-applications"):
+        if ns in ("gg-wallpaper", "gg-launch", "gg-missioncontrol", "gg-lock-preview",
+                  "gg-applications", "gg-controlcenter", "gg-citronpods"):
             continue  # no glass of their own (Applications draws its own blurred backdrop)
         if glassy:
             check(ns in names, f"{qml.name}: {ns} is drawn with Glass but isn't a HyprGlass layer")
@@ -51,7 +52,9 @@ listed = re.findall(r'"(gg-[^"]+)"', re.search(r"property var glass: \[(.*?)\]",
 check(sorted(listed) == sorted(names), f"the preview's glass list matches the compositor's: {sorted(set(names) ^ set(listed))}")
 shown = dict(re.findall(r'"(gg-[^"]+)": ([\d.]+)', re.search(r"property var thresholds: \(\{(.*?)\}\)", preview, re.S).group(1)))
 check(shown == thresholds, f"the preview's glass thresholds match the compositor's: {set(shown.items()) ^ set(thresholds.items())}")
-for ns in ("gg-dock", "gg-controlcenter", "gg-spotlight", "gg-notifications", "gg-nearby", "gg-widgets"):
+check("gg-controlcenter" not in names and "gg-citronpods" not in names,
+      "full panel and native AirPods glass must not be blurred as rectangular HyprGlass layers")
+for ns in ("gg-dock", "gg-spotlight", "gg-notifications", "gg-nearby", "gg-widgets"):
     # Glass casts a shadow up to ~22% opaque; its thinnest tint is 34%.
     check(0.22 < float(thresholds.get(ns, 0)) < 0.34, f"{ns}: shadows stay shadows and glass stays glass ({thresholds.get(ns)})")
 
