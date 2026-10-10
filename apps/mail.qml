@@ -215,7 +215,7 @@ ShellRoot {
             property string query: ""
             property bool unreadOnly: false
             property real preferredListWidth: 336
-            readonly property bool compactReading: width < 700
+            readonly property bool compactReading: win.tabletCompact || width < 700
             property string queuedUid: ""
             property string readError: ""
             readonly property var filteredMessages: {
