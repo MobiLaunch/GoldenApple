@@ -285,6 +285,10 @@ jobs:
         run: python tests/settings-connectivity.py
       - name: Default Apps and Login Items respect real XDG state
         run: python tests/settings-app-preferences.py
+      - name: CitronPods M10 daemon integration, source bootstrap and clipped-glass contracts
+        run: |
+          python tests/citronpods-integration.py
+          python tests/citronpods-bootstrap.py
       - name: Licensed macOS-style application icon selection and Launchpad allowlist
         run: python tests/icon-resolver.py
       - name: Shell-only intelligence, privacy, shadow and contrast contracts
