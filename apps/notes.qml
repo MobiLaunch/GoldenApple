@@ -191,7 +191,10 @@ ShellRoot {
 
             readonly property string root: Quickshell.env("GG_NOTES_DIR") || (Quickshell.env("HOME") + "/Documents/Notes")
             readonly property string trashName: "Recently Deleted"
-            property bool sidebarOpen: true
+            property bool sidebarOpen: !win.tabletCompact
+            // iPad Notes switches between notes list and note editor on narrow
+            // touch displays, rather than squeezing three desktop columns.
+            property bool mobileShowingNote: false
             property var folders: []        // {name, path}
             property var notes: []          // {folder, folderPath, path, mtime, title, preview}
             property string folder: root + "/Notes"   // "" = all notes
