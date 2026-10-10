@@ -91,8 +91,8 @@ PopupWindow {
         }
         return deepest
     }
-    implicitWidth: menuWidth + subRoom + 24
-    implicitHeight: Math.max(menuHeight, subDepth) + 28
+    implicitWidth: menuWidth + subRoom + 8
+    implicitHeight: Math.max(menuHeight, subDepth) + 8
     mask: Region {
         item: list
         Region { item: list.sub && list.sub.visible ? list.sub : null }
