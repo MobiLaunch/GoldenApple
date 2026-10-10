@@ -44,7 +44,8 @@ PanelWindow {
     // What the orb does: it listens, thinks while connecting, speaks.
     readonly property string orbMode: aiService.busy ? "thinking" : !voiceMode ? "idle"
         : phase === "error" ? "error" : micMuted ? "muted"
-        : phase === "connecting" ? "thinking" : phase === "speaking" ? "speaking" : "listening"
+        : (phase === "connecting" || phase === "thinking") ? "thinking"
+        : phase === "speaking" ? "speaking" : "listening"
 
     function present() {
         if (open) {
