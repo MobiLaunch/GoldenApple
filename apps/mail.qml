@@ -14,8 +14,8 @@ ShellRoot {
         implicitWidth: Math.min(1100, (Quickshell.screens[0]?.width ?? 1280) - 80)
         implicitHeight: Math.min(730, (Quickshell.screens[0]?.height ?? 900) - 130)
         minimumSize: Qt.size(760, 500)
-        property bool sidebarShown: true
-        sidebarWidth: mail.configured && sidebarShown ? 205 : 0
+        property bool sidebarShown: !win.tabletCompact
+        sidebarWidth: mail.configured && sidebarShown ? (win.tabletCompact ? Math.min(245, win.width * 0.45) : 205) : 0
         fullSizeContent: false
         background: Theme.contentBg
 
