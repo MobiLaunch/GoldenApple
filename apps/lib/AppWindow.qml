@@ -36,6 +36,24 @@ FloatingWindow {
         WindowGeometry.maximumWidth(_placementScreenWidth),
         WindowGeometry.maximumHeight(_placementScreenHeight, _placementDockSize, Theme.sizeMenubar)
     )
+    // A tablet app is not a separate binary: one lightweight preference
+    // watcher switches all first-party apps into touch/compact layouts on the
+    // running desktop. Landscape can retain a real split view.
+    property bool tabletEnabled: Quickshell.env("GG_TABLET_PREVIEW") === "1"
+    readonly property bool tabletCompact: tabletEnabled && width < 960
+    readonly property real tabletTouchSize: tabletEnabled ? 44 : 32
+    FileView {
+        id: tabletPreference
+        path: (Quickshell.env("XDG_CONFIG_HOME") || Quickshell.env("HOME") + "/.config")
+              + "/golden-gate/desktop.json"
+        printErrors: false
+        watchChanges: true
+        onFileChanged: reload()
+        onLoaded: {
+            try { win.tabletEnabled = JSON.parse(text()).tablet?.enabled === true }
+            catch (e) { win.tabletEnabled = Quickshell.env("GG_TABLET_PREVIEW") === "1" }
+        }
+    }
     property real sidebarWidth: 0
     property real trailingSidebarWidth: 0  // an inspector floating at the right edge
     // Present sidebars and the content boundaries as one layout transaction.
