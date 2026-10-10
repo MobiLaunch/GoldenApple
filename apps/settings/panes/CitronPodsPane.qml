@@ -50,14 +50,27 @@ Pane {
             engineBuild.running = true
         }
     }
+    // CMake emits harmless Quickshell plugin warnings on stderr even when
+    // configuration succeeds. Real Ninja/compiler failures are often on stdout.
+    // Show the first actionable error from BOTH streams, not a warning's tail.
+    function buildFailureMessage() {
+        const output = String(engineBuildOutput.text || "") + "\n" +
+                       String(engineBuildError.text || "")
+        const lines = output.split(/\r?\n/).map((line) => line.trim()).filter((line) => line.length > 0)
+        const serious = lines.filter((line) =>
+            /(?:^FAILED:|^CMake Error|^ninja: error|fatal error:| error:|undefined reference|Permission denied|No such file or directory|Failed to start)/i.test(line))
+        const message = serious.length ? serious.slice(0, 3).join(" | ") :
+                        (lines.length ? lines.slice(-3).join(" | ") : "No compiler output was captured.")
+        return "Engine setup failed. " + message.slice(0, 600) +
+               " — Full log: ~/.local/state/golden-gate/citronpods-install.log"
+    }
     Process {
         id: engineBuild
         stdout: StdioCollector { id: engineBuildOutput }
         stderr: StdioCollector { id: engineBuildError }
         onExited: (code) => {
-            pane.engineMessage = code === 0 ? "CitronPods engine installed. Connecting…"
-                : "Engine setup failed. Check dependencies and the source archive. " +
-                  String(engineBuildError.text || "").slice(-500)
+            pane.engineMessage = code === 0 ? "CitronPods engine installed. Connecting…" :
+                pane.buildFailureMessage()
             if (code === 0) {
                 pods.snapshotValid = false
                 pods.refresh()
