@@ -28,8 +28,16 @@ with zipfile.ZipFile(archive) as src:
     if len(root) != 1:
         raise SystemExit("Not a compatible CitronPods source archive")
     root = root[0]
+    # The upstream ZIP also contains multi-megabyte app fonts and unrelated
+    # demo assets. Import only the Qt daemon sources and the exact LibrePods
+    # parser headers it includes. Never bundle the separate Qt GUI's fonts.
+    linux_headers = {
+        "linux/battery.hpp", "linux/airpods_packets.h",
+        "linux/logger.h", "linux/enums.h", "linux/BasicControlCommand.hpp"
+    }
     names = [m for m in src.infolist() if m.filename.startswith(root) and not m.is_dir()
-             and (m.filename[len(root):].startswith(("citronos/", "linux/")))]
+             and (m.filename[len(root):].startswith("citronos/")
+                  or m.filename[len(root):] in linux_headers)]
     if len(names) > 200:
         raise SystemExit("Unexpected CitronPods archive contents")
     for entry in names:
