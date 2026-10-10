@@ -558,6 +558,14 @@ class VoiceSession:
                     # task do that asynchronously instead of blocking the
                     # WebSocket receive loop and queuing the first audio.
                     self.mic_allowed.clear()
+                    # Interrupt any blocked readexactly() immediately. Its
+                    # listen() task owns the awaited reap + mic_stopped event.
+                    # Do NOT await the process here on the receive loop.
+                    if self.mic_proc is not None and self.mic_proc.returncode is None:
+                        try:
+                            self.mic_proc.terminate()
+                        except ProcessLookupError:
+                            pass
                     emit("level", value=0)
                 if not self.speaker_active and self.utterance_ended_at:
                     emit("timing", stage="first_audio",
