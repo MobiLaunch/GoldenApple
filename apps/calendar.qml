@@ -21,6 +21,13 @@ ShellRoot {
 
         toolbarSidebar: [
             ToolbarButton {
+                visible: win.tabletCompact
+                round: true; symbol: "list"
+                checked: win.tabletAgendaShown
+                Accessible.name: win.tabletAgendaShown ? "Hide Agenda" : "Show Agenda"
+                onClicked: win.tabletAgendaShown = !win.tabletAgendaShown
+            },
+            ToolbarButton {
                 round: true
                 symbol: "calendar"
                 onClicked: cal.goToday()
