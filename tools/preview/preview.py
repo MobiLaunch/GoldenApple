@@ -627,50 +627,44 @@ def main() -> int:
         steps.insert(0, "@notify")
 
     def find_surface_object(name):
-        # Qt Quick ListView/Repeater delegates belong to the VISUAL scene graph,
-        # not necessarily the QObject parent tree. Looking only for findChild()
-        # gives a false "missing tablet Home widget/columns" after the delegate
-        # is rendered correctly. Search both trees, including Instantiator
-        # PanelWindows whose QObject parent is not our preview root.
-        def find_in_scene(root):
+        # Quickshell's Variants and Surface split a PanelWindow (QtObject)
+        # from its __frameItem (visual QQuickItem). ListView additionally
+        # creates SEVERAL delegates with identical objectName: the current
+        # tablet Home page and cached offscreen pages. Prefer the actual
+        # visible, non-zero-sized instance, not whichever findChild finds first.
+        matches = []
+        roots = [window] + list(preview._panels)
+        for root in roots:
             try:
-                found = root.findChild(QObject, name)
-                if found or root.objectName() == name:
-                    return found or root
-            except RuntimeError:
-                return None
-            # Quickshell's Surface is a QtObject, not a QQuickItem.
-            # Its scene lives in the separate __frameItem whose visual parent
-            # is PreviewDesktop.layers[layer], not the PanelWindow QObject.
-            # Inspect that visual root too, or ListView delegates appear to
-            # be missing despite being plainly visible in the screenshot.
-            stack = [root]
-            for property_name in ("__frameItem", "contentItem"):
-                try:
-                    visual_root = root.property(property_name)
-                    if isinstance(visual_root, QQuickItem):
-                        stack.append(visual_root)
-                except RuntimeError:
-                    pass
-            while stack:
-                item = stack.pop()
-                try:
-                    if item.objectName() == name:
-                        return item
+                if root.objectName() == name:
+                    matches.append(root)
+                matches.extend(root.findChildren(QObject, name))
+                visual_roots = [root]
+                for key in ("__frameItem", "contentItem"):
+                    item = root.property(key)
                     if isinstance(item, QQuickItem):
-                        stack.extend(item.childItems())
-                except RuntimeError:
-                    continue
-            return None
+                        visual_roots.append(item)
+                for visual_root in visual_roots:
+                    stack = [visual_root]
+                    while stack:
+                        item = stack.pop()
+                        if item.objectName() == name:
+                            matches.append(item)
+                        if isinstance(item, QQuickItem):
+                            stack.extend(item.childItems())
+            except RuntimeError:
+                continue  # A per-screen layer was destroyed in this frame.
 
-        found = find_in_scene(window)
-        if found:
-            return found
-        for panel in preview._panels:
-            found = find_in_scene(panel)
-            if found:
-                return found
-        return None
+        def rank(obj):
+            try:
+                visible = bool(obj.property("visible"))
+                width = max(0.0, float(obj.property("width") or 0))
+                height = max(0.0, float(obj.property("height") or 0))
+                return (visible, height >= 12 and width >= 12, width * height)
+            except (RuntimeError, ValueError, TypeError):
+                return (False, False, 0.0)
+
+        return max(matches, key=rank) if matches else None
 
     def finish():
         if a.expect_menu:
