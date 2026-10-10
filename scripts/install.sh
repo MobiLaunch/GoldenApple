@@ -355,6 +355,7 @@ printf '#!/bin/sh\nexec sh "%s/airdrop/share.sh" "$@"\n' "$APPS_RUN" > "$BIN/gg-
 printf '#!/bin/sh\nexec sh "%s/intelligence/open.sh" "$@"\n' "$APPS_RUN" > "$BIN/gg-intelligence"
 printf '#!/bin/sh\nexec bash "%s/citronpods/install-engine.sh" "$@"\n' "$APPS_RUN" > "$BIN/gg-install-citronpods"
 printf '#!/bin/sh\nexec sh "%s/citronpods/ctl.sh" "$@"\n' "$APPS_RUN" > "$BIN/gg-citronpods"
+printf '#!/bin/sh\nexec sh "%s/tablet/keyboard.sh" "$@"\n' "$APPS_RUN" > "$BIN/gg-tablet-keyboard"
 # The system service is installed by --extras on system images; standalone
 # user installs keep a private unit for systemctl --user as well.
 install -Dm644 "$REPO/apps/citronpods/citronpods-daemon.service" "$CONF/systemd/user/citronpods-daemon.service"
