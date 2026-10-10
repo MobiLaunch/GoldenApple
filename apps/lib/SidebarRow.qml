@@ -19,7 +19,7 @@ Item {
     property color selectedTextColor: Theme.label
     signal clicked()
 
-    implicitHeight: Theme.fh(31)
+    implicitHeight: Touch.enabled ? Math.max(46, Theme.fh(31)) : Theme.fh(31)
     implicitWidth: 180
     activeFocusOnTab: true
     Accessible.role: Accessible.Button
