@@ -29,7 +29,7 @@ Singleton {
     readonly property bool touchIdUnlock: data.touchId?.unlock ?? true
     // Tablet Mode changes presentation only. No tablet-only partition or
     // alternate desktop session; unplugging the keyboard does not lose apps.
-    readonly property bool tabletMode: data.tablet?.enabled ?? (Quickshell.env("GG_TABLET_PREVIEW") === "1")
+    readonly property bool tabletMode: Quickshell.env("GG_TABLET_PREVIEW") === "1" || (data.tablet?.enabled ?? false)
     // Tablet Home Screen widgets are independent of desktop widgets. Their
     // order and sizes survive sign-out, rotation and mode switching.
     readonly property var tabletWidgets: Array.isArray(data.tablet?.widgets) ? data.tablet.widgets : null
