@@ -638,10 +638,17 @@ def main() -> int:
         if a.require_object:
             obj = window.findChild(QObject, a.require_object)
             height = obj.property("height") if obj else None
+            width = obj.property("width") if obj else None
             visible = obj.property("visible") if obj else False
-            if obj is None or visible is False or height is None or float(height) < 100:
+            # A gesture is intentionally only a status-bar-height touch region,
+            # whereas a widget flow should fill significantly more space.
+            minimum = 12 if a.require_object == "tabletControlCenterGesture" else 48
+            if obj is None or visible is False or height is None or float(height) < minimum or width is None or float(width) < 12:
                 print("preview: required component did not render with visible content: "
-                      + a.require_object, file=sys.stderr)
+                      + a.require_object + " (found=" + str(obj is not None)
+                      + ", visible=" + repr(visible) + ", height=" + repr(height)
+                      + ", width=" + repr(width) + ", min_height=" + str(minimum)
+                      + ")", file=sys.stderr)
                 app.exit(3)
                 return
         img: QImage = window.grabWindow()
