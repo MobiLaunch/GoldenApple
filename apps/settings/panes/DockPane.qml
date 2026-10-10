@@ -70,6 +70,22 @@ Pane {
         }
     }
     Group {
+        title: "Tablet Mode"
+        SetRow {
+            title: "Touch-first desktop"
+            subtitle: "iPad-inspired Home Screen layout, larger Dock icons and comfortable touch targets. Your desktop apps and files remain unchanged."
+            Switch {
+                objectName: "tabletModeToggle"
+                checked: pane.sys.prefs.tablet?.enabled ?? false
+                onToggled: (on) => pane.sys.setPref(["tablet", "enabled"], on)
+            }
+        }
+        SetRow {
+            title: "Touch display and rotation"
+            subtitle: "Multi-touch support depends on Linux input drivers. Auto-rotation requires a supported motion sensor and will be added separately."
+        }
+    }
+    Group {
         title: "Windows"
         SetRow {
             title: "Snap windows"
