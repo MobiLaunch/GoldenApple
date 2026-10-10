@@ -31,6 +31,8 @@ jobs:
         run: node --test tests/appearance-contracts.mjs
       - name: Tablet Home Screen layout, widget editor and swipe gesture contracts
         run: node --test tests/tablet-home.mjs
+      - name: Responsive iPad-style app navigation and touch hit targets
+        run: python tests/tablet-app-interfaces.py
       - name: Desktop window positioning and Dock motion contracts
         run: node --test tests/window-placement.mjs
       - name: Guard the login and glass paths
