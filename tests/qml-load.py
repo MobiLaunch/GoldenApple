@@ -29,6 +29,17 @@ with tempfile.TemporaryDirectory() as tmp:
     targets += [
         # Summoning the floating Citron orb must compile independently of
         # the full assistant and without contacting Gemini in preview.
+        # Run the shell with the tablet preference in a throwaway preview
+        # environment; the Home Screen and its touch gesture must compile.
+        ("tablet-home-portrait", ["shell", "--size", "760x1024",
+                                  "--env", "GG_TABLET_PREVIEW=1",
+                                  "--require-object", "tabletWidgetFlow"]),
+        ("tablet-home-landscape", ["shell", "--size", "1180x820",
+                                   "--env", "GG_TABLET_PREVIEW=1",
+                                   "--require-object", "tabletAppColumns"]),
+        ("tablet-touch-swipe", ["shell", "--size", "760x1024",
+                                "--env", "GG_TABLET_PREVIEW=1",
+                                "--require-object", "tabletControlCenterGesture"]),
         ("citron-system-overlay", ["shell", "--do", "citron.toggle",
                                  "--require-object", "citronSystemOverlay"]),
         ("settings-intelligence-start", ["app", "apps/settings.qml", "--env",
