@@ -295,10 +295,12 @@ PanelWindow {
                                 onPressAndHold: tablet.editing = true
                                 onPositionChanged: (m) => {
                                     if (!pressed || !tablet.editing) return
-                                    if (!moved && Math.hypot(m.x-origin.x,m.y-origin.y) < 10) return
+                                    const current = widgetDrag.mapToItem(widgetFlow, m.x, m.y)
+                                    const dx = current.x - origin.x, dy = current.y - origin.y
+                                    if (!moved && Math.hypot(dx, dy) < 10) return
                                     moved = true
-                                    widgetTile.dragX += m.x - origin.x
-                                    widgetTile.dragY += m.y - origin.y
+                                    widgetTile.dragX = dx
+                                    widgetTile.dragY = dy
                                 }
                                 onReleased: {
                                     if (moved && tablet.editing) {
