@@ -82,7 +82,9 @@ Pane {
         }
         SetRow {
             title: "Touch display and rotation"
-            subtitle: "Multi-touch support depends on Linux input drivers. Auto-rotation requires a supported motion sensor and will be added separately."
+            subtitle: "Compatible touchscreens use Wayland touch input. Open the on-screen keyboard when no physical keyboard is attached."
+            Button { text: "Show Keyboard"; onClicked: pane.sys.run(["gg-tablet-keyboard", "show"], () => {}) }
+            Button { text: "Hide"; onClicked: pane.sys.run(["gg-tablet-keyboard", "hide"], () => {}) }
         }
     }
     Group {
