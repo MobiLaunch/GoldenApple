@@ -244,9 +244,11 @@ PanelWindow {
                                 }
                                 onReleased: {
                                     if (moved && tablet.editing) {
+                                        // mapToItem already includes the
+                                        // Translate transform: adding dragX
+                                        // again would double the drop distance.
                                         const c = widgetTile.mapToItem(widgetFlow,
-                                            widgetTile.width/2 + widgetTile.dragX,
-                                            widgetTile.height/2 + widgetTile.dragY)
+                                            widgetTile.width/2, widgetTile.height/2)
                                         tablet.dropWidget(widgetTile.modelData.id, c)
                                     }
                                     widgetTile.dragX = 0; widgetTile.dragY = 0
