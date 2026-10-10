@@ -25,7 +25,7 @@ PanelWindow {
     anchors { top: true; right: true }
     margins { top: 46; right: 14 }
     implicitWidth: Math.min(370, (screen?.width ?? 800) - 28)
-    implicitHeight: 334
+    implicitHeight: pods.canControl ? 378 : 334
     color: "transparent"
     WlrLayershell.namespace: "gg-citronpods"
     WlrLayershell.layer: WlrLayer.Overlay
@@ -167,6 +167,34 @@ PanelWindow {
                                 color: Theme.label
                                 font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.DemiBold }
                             }
+                        }
+                    }
+                }
+            }
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+                visible: pods.canControl
+                Repeater {
+                    model: ["Off", "ANC", "Transparency", "Adaptive"]
+                    delegate: Rectangle {
+                        id: noiseChip
+                        required property string modelData
+                        required property int index
+                        Layout.fillWidth: true
+                        height: 31; radius: height / 2
+                        color: pods.state.noiseMode === index ? Theme.accent
+                             : Theme.dark ? "#30ffffff" : "#15000000"
+                        Behavior on color { enabled: !Prefs.reduceMotion; ColorAnimation { duration: 140 } }
+                        Text {
+                            anchors.centerIn: parent
+                            text: noiseChip.modelData
+                            color: pods.state.noiseMode === noiseChip.index ? "#ffffff" : Theme.label
+                            font { family: Theme.fontUi; pixelSize: Theme.fs(11); weight: Font.Medium }
+                        }
+                        MouseArea {
+                            anchors.fill: parent
+                            onClicked: pods.setNoiseMode(noiseChip.index)
                         }
                     }
                 }
