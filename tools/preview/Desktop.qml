@@ -20,7 +20,7 @@ Window {
         Image {
             anchors.fill: parent
             visible: !root.isShell
-            source: "file://" + __preview.env["GG_WALLPAPER"]
+            source: __preview.env["GG_WALLPAPER"] ? "file://" + __preview.env["GG_WALLPAPER"] : ""
             fillMode: Image.PreserveAspectCrop
         }
     }
