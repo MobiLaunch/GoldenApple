@@ -213,7 +213,9 @@ ShellRoot {
             readonly property Item overlay: win.overlay
 
             function open(id) {
-                if (id === current || !(panes.some((p) => p.id === id) || subpages[id])) return
+                if (!(panes.some((p) => p.id === id) || subpages[id])) return
+                if (win.tabletCompact) showMobileCategories = false
+                if (id === current) return
                 back = back.concat([current]); forward = []
                 current = id
             }
