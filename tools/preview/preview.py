@@ -263,6 +263,9 @@ class Preview(QObject):
         self._scheme = scheme
         self._ipc: list[QObject] = []
         self._servers: list[QObject] = []
+        # A Qt Instantiator's per-screen delegates are not necessarily QObject
+        # descendants of Desktop.qml, even when their surfaces render.
+        self._panels: list[QObject] = []
         self._bin = HERE / "cache/bin"
         self._bin.mkdir(parents=True, exist_ok=True)
         for name, body in FAKE_TOOLS.items():
@@ -338,6 +341,16 @@ class Preview(QObject):
             return QUrl.fromLocalFile(name).toString()
         p = self._icons.get(name)
         return QUrl.fromLocalFile(str(p)).toString() if p else ""
+
+    @Slot(QObject)
+    def registerPanel(self, obj):
+        if obj not in self._panels:
+            self._panels.append(obj)
+
+    @Slot(QObject)
+    def unregisterPanel(self, obj):
+        if obj in self._panels:
+            self._panels.remove(obj)
 
     @Slot(QObject)
     def registerIpc(self, obj):
@@ -609,14 +622,32 @@ def main() -> int:
     if a.notify:
         steps.insert(0, "@notify")
 
+    def find_surface_object(name):
+        found = window.findChild(QObject, name)
+        if found:
+            return found
+        # Quickshell's Variants creates PanelWindows under Qt Instantiator.
+        # Those objects exist and render but are not children of the preview
+        # root, so ordinary QObject.findChild alone misses them.
+        for panel in preview._panels:
+            try:
+                if panel.objectName() == name:
+                    return panel
+                found = panel.findChild(QObject, name)
+                if found:
+                    return found
+            except RuntimeError:
+                continue  # A per-screen delegate was destroyed.
+        return None
+
     def finish():
         if a.expect_menu:
             # Inspect the *live* QML model, not pixels from a translucent
             # software-rendered popup. Preview screenshots may vary when the
             # compositor settles; the wrong menu or stale reopened surface
             # must still fail deterministically.
-            bar = window.findChild(QObject, "globalMenuBar")
-            popup = window.findChild(QObject, "menuBarMenu")
+            bar = find_surface_object("globalMenuBar")
+            popup = find_surface_object("menuBarMenu")
             first_label = popup.property("firstShownLabel") if popup else ""
             expected_first = {"File": "New Files Window", "Edit": "Undo",
                               "View": "Edit Widgets…", "Go": "Recents",
@@ -636,7 +667,7 @@ def main() -> int:
                 return
             print("preview: active menu " + a.expect_menu + " — " + first_label)
         if a.require_object:
-            obj = window.findChild(QObject, a.require_object)
+            obj = find_surface_object(a.require_object)
             height = obj.property("height") if obj else None
             width = obj.property("width") if obj else None
             visible = obj.property("visible") if obj else False
