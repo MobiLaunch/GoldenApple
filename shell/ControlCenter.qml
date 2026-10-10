@@ -145,6 +145,8 @@ PanelWindow {
     // Bluetooth views stutter. Only the panel takes input; HyprGlass draws the
     // glass from the panel's painted shape, not the surface's.
     implicitHeight: (screen ? screen.height : 800) - 16
+    // The input region follows the actual controls below, not a fake
+    // rectangular backing card. The viewport never paints a panel shadow.
     mask: Region { item: panel }
     exclusionMode: ExclusionMode.Ignore
     color: "transparent"
