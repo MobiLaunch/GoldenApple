@@ -158,7 +158,7 @@ ShellRoot {
             readonly property string cacheDir: (Quickshell.env("XDG_CACHE_HOME") || home + "/.cache") + "/golden-gate/photos"
             readonly property string configFile: (Quickshell.env("XDG_CONFIG_HOME") || home + "/.config") + "/golden-gate/photos.json"
 
-            property bool sidebarOpen: true
+            property bool sidebarOpen: !win.tabletCompact
             property var items: []           // {path, mtime, kind, seconds, thumb, name}
             property var favorites: []
             property string section: "library"
