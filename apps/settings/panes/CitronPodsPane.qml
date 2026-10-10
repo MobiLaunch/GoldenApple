@@ -20,6 +20,14 @@ Pane {
     readonly property string address: String(device.address ?? "")
     readonly property bool paired: device.paired === true
     property string engineMessage: ""
+    property string detectedArchive: ""
+    Process {
+        id: archiveProbe
+        command: ["gg-install-citronpods", "--find"]
+        running: true
+        stdout: StdioCollector { id: archivePath }
+        onExited: (code) => pane.detectedArchive = code === 0 ? archivePath.text.trim() : ""
+    }
     FileDialog {
         id: engineArchive
         title: "Select the CitronPods M10 Qt6-Fixed source archive"
@@ -56,11 +64,18 @@ Pane {
         visible: !pods.online
         SetRow {
             title: "Install CitronPods Engine"
-            subtitle: "Choose the M10 Qt6-Fixed source ZIP. Only the background service is installed."
+            subtitle: pane.detectedArchive
+                ? "Detected your M10 Qt6-Fixed source in Downloads. Only the system daemon will be built."
+                : "Place the M10 Qt6-Fixed ZIP in Downloads for automatic setup, or choose a source ZIP."
             Button {
-                text: engineBuild.running ? "Building…" : "Choose ZIP…"
+                text: engineBuild.running ? "Building…" : pane.detectedArchive ? "Install Engine" : "Choose ZIP…"
                 enabled: !engineBuild.running
-                onClicked: engineArchive.open()
+                onClicked: {
+                    if (!pane.detectedArchive) { engineArchive.open(); return }
+                    pane.engineMessage = "Building the native system engine…"
+                    engineBuild.command = ["gg-install-citronpods", pane.detectedArchive]
+                    engineBuild.running = true
+                }
             }
         }
         SetRow {
