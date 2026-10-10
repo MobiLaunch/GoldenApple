@@ -2,6 +2,7 @@
 // icon: the system shell owns the transient surface and the M10 daemon owns
 // all Bluetooth, L2CAP, D-Bus and battery telemetry.
 import Quickshell
+import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Hyprland
 import QtQuick
