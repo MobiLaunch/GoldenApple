@@ -99,10 +99,27 @@ PanelWindow {
             Item {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 83
-                Shared.Symbol {
+                // Original CitronPods M10 silhouettes: Pro, classic, and Max.
+                // Local SVG assets; no network fetch or proprietary icon font.
+                Image {
+                    id: podArt
                     anchors.centerIn: parent
-                    name: pop.active.name?.includes("Max") ? "headphones" : "earbuds"
-                    size: 67; tone: "auto"
+                    width: Math.min(parent.width, 243)
+                    height: parent.height
+                    source: {
+                        const name = String(pop.active.name ?? "").toLowerCase()
+                        const kind = name.includes("max") ? "airpods-max.svg"
+                            : name.includes("pro") ? "airpods-pro.svg" : "airpods-classic.svg"
+                        return Qt.resolvedUrl("assets/citronpods/" + kind)
+                    }
+                    fillMode: Image.PreserveAspectFit
+                    asynchronous: true
+                    sourceSize: Qt.size(486, 254)
+                }
+                Shared.Symbol {
+                    visible: podArt.status === Image.Error
+                    anchors.centerIn: parent
+                    name: "headphones"; size: 56; tone: "auto"
                 }
             }
             Text {
