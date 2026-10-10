@@ -44,6 +44,7 @@ ShellRoot {
                     Accessible.name: app.sidebarShown ? "Hide Settings Sidebar" : "Show Settings Sidebar"
                 }
                 ToolbarPill {
+                    visible: !win.tabletCompact
                     ToolbarButton { symbol: "chevron-left"; enabled: app.back.length > 0; onClicked: app.goBack() }
                     ToolbarButton { symbol: "chevron-right"; enabled: app.forward.length > 0; onClicked: app.goForward() }
                 }
