@@ -353,7 +353,7 @@ ShellRoot {
                     { text: "Show in Files", action: () => Quickshell.execDetached(["gg-files", "--select", path]) },
                 ]))
             }
-            Rectangle { x: app.listWidth; width: 1; height: parent.height; color: Theme.separator }
+            Rectangle { visible: !win.tabletCompact; x: app.listWidth; width: 1; height: parent.height; color: Theme.separator }
 
             // ------------------------------------------------------------ editor
             NoteEditor {
