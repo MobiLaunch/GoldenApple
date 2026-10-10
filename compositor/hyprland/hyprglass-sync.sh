@@ -239,7 +239,11 @@ fi
 # pixels become glass: above its shadow (and, for the screenshot overlay, its
 # 40% dim), below its tint. The menu bar is a faint film (8%), so all of it is.
 kw plugin:hyprglass:layers:enabled 1
-kw plugin:hyprglass:layers:namespaces "gg-menubar,gg-dock,gg-controlcenter,gg-spotlight,gg-notifications,gg-notification-center,gg-nearby,gg-widgets,gg-widget-gallery,gg-osd,gg-alert,gg-switcher,gg-screenshot,gg-screenshot-thumbnail,gg-citron"
+# Control Center already owns a live Quickshell DesktopBackdrop and rounded
+# per-module refraction. Re-applying HyprGlass to its full rectangular layer
+# silhouette caused the opaque, block-like shadow around the whole panel.
+# Leave that layer to its individual glass controls instead.
+kw plugin:hyprglass:layers:namespaces "gg-menubar,gg-dock,gg-spotlight,gg-notifications,gg-notification-center,gg-nearby,gg-widgets,gg-widget-gallery,gg-osd,gg-alert,gg-switcher,gg-screenshot,gg-screenshot-thumbnail,gg-citron"
 kw plugin:hyprglass:layers:namespace_mask_thresholds "gg-menubar=0.05,gg-dock=0.25,gg-controlcenter=0.25,gg-spotlight=0.25,gg-notifications=0.25,gg-notification-center=0.3,gg-nearby=0.25,gg-widgets=0.25,gg-widget-gallery=0.25,gg-osd=0.3,gg-alert=0.3,gg-switcher=0.3,gg-screenshot=0.5,gg-screenshot-thumbnail=0.3,gg-citron=0.5"
 kw plugin:hyprglass:layers:live_resample 1
 kw plugin:hyprglass:layers:live_resample_fps 60
