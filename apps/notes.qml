@@ -340,7 +340,10 @@ ShellRoot {
                 notes: app.visibleNotes
                 current: app.current
                 showFolder: app.folder === "" || !!app.matches
-                onPicked: (path) => { if (editor.flush()) app.current = path }
+                visible: !win.tabletCompact || !app.mobileShowingNote
+                onPicked: (path) => {
+                    if (editor.flush()) { app.current = path; app.mobileShowingNote = true }
+                }
                 onMenu: (path, item, mx, my) => listMenu.popup(item, mx, my, (app.inTrash(path) ? [
                     { text: "Recover", action: () => app.recoverNote(path) },
                     { text: "Delete Immediately", action: () => app.deleteNote(path) },
