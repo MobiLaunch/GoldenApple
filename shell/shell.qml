@@ -186,6 +186,9 @@ ShellRoot {
             required property var modelData
 
             Wallpaper { screen: perScreen.modelData; onEditWidgets: desktopWidgets.editing = true }
+            // A real, touch-first Home Screen behind windows; switching tablet
+            // mode doesn't create a separate login session or move desktop files.
+            TabletHome { screen: perScreen.modelData }
             // Persistent per-screen Applications surface. Keeping the object alive
             // removes the lazy-loader race that made the Dock button appear dead.
             Applications {
