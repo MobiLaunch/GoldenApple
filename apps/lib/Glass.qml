@@ -54,7 +54,10 @@ Item {
     // the rectangular surface, producing the dark, blocky drop-shadow edges.
     // Popups and Control Center modules disable their individual shadows and
     // retain the glass thickness, specular rim and soft backdrop refraction.
-    property bool shadowEnabled: true
+    // Context menus and popup sheets live in clipped Wayland surfaces; a
+    // large shadow is cut to a square at those surface boundaries.
+    // Keep the glass rim/refraction, but no detached rectangular shadow.
+    property bool shadowEnabled: role !== "menu"
     default property alias content: body.data
 
     // What's behind, bent as through a thick slab (shaders/glasslens.frag):
