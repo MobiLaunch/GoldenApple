@@ -69,15 +69,17 @@ PanelWindow {
     // bar has been; off, a faint film over the wallpaper, as macOS 26 can
     // show it. HyprGlass turns either into blurred glass. Reduce Transparency
     // makes it solid.
-    readonly property bool band: Prefs.menuBarBackground || Prefs.reduceTransparency
+    readonly property bool band: !Prefs.tabletMode && (Prefs.menuBarBackground || Prefs.reduceTransparency)
     Rectangle {
         anchors.fill: parent
-        color: Prefs.reduceTransparency ? (Theme.dark ? "#f21e1e20" : "#f2f4f4f6")
+        color: Prefs.tabletMode ? "transparent"
+             : Prefs.reduceTransparency ? (Theme.dark ? "#f21e1e20" : "#f2f4f4f6")
              : Prefs.menuBarBackground ? (Theme.dark ? "#8c1c1c20" : "#b8f2f2f5") : "#14ffffff"
         Behavior on color { ColorAnimation { duration: Theme.reduceMotion ? 0 : 175 } }
         Rectangle {
             anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
             height: 1
+            visible: !Prefs.tabletMode
             color: bar.band ? Theme.separator : "#2effffff"
         }
     }
@@ -212,6 +214,7 @@ PanelWindow {
 
     RowLayout {
         id: titlesRow
+        visible: !Prefs.tabletMode
         anchors { left: parent.left; leftMargin: 8; verticalCenter: parent.verticalCenter }
         spacing: 1
         BarItem {
@@ -257,6 +260,7 @@ PanelWindow {
     // The status items, clipped from the left when there isn't room for all
     // (the clock and Control Center, on the right, always stay).
     Item {
+        visible: !Prefs.tabletMode
         anchors { right: parent.right; rightMargin: 8; verticalCenter: parent.verticalCenter }
         width: bar.statusRoom
         height: statusRow.implicitHeight
@@ -453,6 +457,92 @@ PanelWindow {
                 onClicked: if (bar.notifications) bar.notifications.centerOpen = !bar.notifications.centerOpen
                 SystemClock { id: clock; precision: Prefs.clockSeconds ? SystemClock.Seconds : SystemClock.Minutes }
                 BarText { text: Qt.formatDateTime(clock.date, bar.clockFormat); dark: bar.darkRight }
+            }
+        }
+    }
+
+    // Tablet mode replaces desktop menus with a slim status strip.
+    // Connection, charge and privacy status are live shell properties.
+    Item {
+        id: tabletStatus
+        objectName: "tabletStatusBar"
+        anchors.fill: parent
+        visible: Prefs.tabletMode
+        z: 8
+
+        SystemClock { id: tabletClock; precision: SystemClock.Minutes }
+        Row {
+            anchors { left: parent.left; leftMargin: 18; verticalCenter: parent.verticalCenter }
+            spacing: 12
+            BarText {
+                anchors.verticalCenter: parent.verticalCenter
+                text: Qt.formatDateTime(tabletClock.date, "h:mm AP  ddd MMM d")
+                dark: bar.darkLeft
+                font.weight: Font.DemiBold
+            }
+            BarText {
+                anchors.verticalCenter: parent.verticalCenter
+                visible: !!bar.active && bar.width >= 700
+                text: bar.appName
+                dark: bar.darkLeft
+                opacity: 0.9
+            }
+        }
+        Row {
+            anchors { right: parent.right; rightMargin: 15; verticalCenter: parent.verticalCenter }
+            spacing: 12
+            Symbol {
+                anchors.verticalCenter: parent.verticalCenter
+                visible: bar.wifiState !== "none"
+                name: "wifi"; size: 16
+                tone: bar.darkRight ? "dark" : "white"
+                opacity: bar.wifiState === "connected" ? 1 : 0.45
+            }
+            Row {
+                anchors.verticalCenter: parent.verticalCenter
+                visible: Battery.present
+                spacing: 4
+                BarText {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: Battery.percent + "%"
+                    dark: bar.darkRight
+                }
+                BatteryGlyph {
+                    anchors.verticalCenter: parent.verticalCenter
+                    level: Battery.level
+                    charging: Battery.charging
+                    full: Battery.full
+                    ink: bar.darkRight ? "#de000000" : "#ffffff"
+                    reduceMotion: Prefs.reduceMotion
+                }
+            }
+            Row {
+                anchors.verticalCenter: parent.verticalCenter
+                spacing: 4
+                Repeater {
+                    model: ["camera", "mic", "screen"]
+                    delegate: Rectangle {
+                        required property string modelData
+                        visible: Privacy[modelData].length > 0
+                        width: visible ? 6 : 0; height: 6; radius: 3
+                        color: Privacy.colors[modelData]
+                        Accessible.name: Privacy.names[modelData] + " in use"
+                    }
+                }
+            }
+            Item {
+                width: 40; height: Math.max(32, bar.height)
+                Symbol {
+                    anchors.centerIn: parent
+                    name: "control-center"; size: 17
+                    tone: bar.darkRight ? "dark" : "white"
+                }
+                MouseArea {
+                    anchors.fill: parent
+                    onClicked: if (bar.controlCenter) bar.controlCenter.toggle()
+                }
+                Accessible.role: Accessible.Button
+                Accessible.name: "Control Center"
             }
         }
     }

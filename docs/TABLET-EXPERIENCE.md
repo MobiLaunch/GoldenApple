@@ -21,6 +21,8 @@ remain unchanged. Turn it off to return to the standard macOS-like desktop.
   additional apps continue on swipeable pages. Wallpaper remains prominent,
   without permanent dashboard headings. Long-press an app or widget to edit.
   On small screens individual pages can scroll vertically to avoid clipping.
+- A compact status strip shows time/date, Wi-Fi, battery and privacy indicators
+  instead of desktop app menus, with a Control Center touch target.
 - The normal iPad-like Dock is the same Dock used throughout Golden Gate.
   Its icon set, recent running apps and notification badges remain available.
 

@@ -111,3 +111,11 @@ test('tablet lock screen uses live MPRIS data', () => {
   assert.match(session, /Quickshell\.Services\.Mpris/)
   assert.match(session, /tabletMode: Prefs\.tabletMode/)
 })
+
+test('tablet status hides desktop menus but retains the Control Center gesture', () => {
+  const bar = read('shell/MenuBar.qml')
+  assert.match(bar, /objectName: "tabletStatusBar"/)
+  assert.match(bar, /id: titlesRow\n        visible: !Prefs\.tabletMode/)
+  assert.match(bar, /objectName: "tabletControlCenterGesture"/)
+  assert.match(bar, /Qt\.formatDateTime\(tabletClock\.date/)
+})
