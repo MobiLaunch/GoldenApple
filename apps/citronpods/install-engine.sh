@@ -18,7 +18,7 @@ if [[ -z "$archive" || "$archive" == "--find" ]]; then
   done
   if [[ "${1:-}" == "--find" ]]; then
     [[ -f "$archive" ]] || exit 1
-    printf '%s\\n' "$archive"
+    printf '%s\n' "$archive"
     exit 0
   fi
 fi
