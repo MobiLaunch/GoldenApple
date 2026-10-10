@@ -132,7 +132,7 @@ Column {
     Text {
         width: parent.width
         wrapMode: Text.Wrap
-        text: "Summon the prismatic Citron overlay with ⇧⌘Space. Its microphone starts only when you choose the mic button. Audio streams to Gemini Live; Citron does not save recordings."
+        text: "Press ⇧⌘Space to start a voice conversation immediately, or use Ask Citron for typing. The microphone streams only while voice mode is open and unmuted; no recordings are saved. Choose Type to switch back to text."
         color: Theme.secondaryLabel
         font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
     }
