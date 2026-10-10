@@ -42,6 +42,15 @@ ShellRoot {
             ToolbarButton { round: true; symbol: "sidebar"; checked: app.sidebarOpen; onClicked: app.sidebarOpen = !app.sidebarOpen }
         ]
         toolbarItems: [
+            ToolbarButton {
+                objectName: "tabletNotesBack"
+                visible: win.tabletCompact && app.mobileShowingNote
+                x: win.toolbarLeadingEnd
+                anchors.verticalCenter: parent.verticalCenter
+                round: true; symbol: "chevron-left"
+                Accessible.name: "All Notes"
+                onClicked: win.whenSaved(() => app.mobileShowingNote = false)
+            },
             // Over the list: the folder and how many notes it has.
             Column {
                 visible: !win.tabletCompact || !app.mobileShowingNote
