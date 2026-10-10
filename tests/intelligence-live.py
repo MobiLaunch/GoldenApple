@@ -124,10 +124,15 @@ class Language(unittest.TestCase):
         self.assertNotIn("languageCode", bare["generationConfig"]["speechConfig"])
         self.assertIn("German", bare["systemInstruction"]["parts"][0]["text"])
 
-    def test_server_is_slow_to_start_a_reply(self):
+    def test_server_has_conversational_turn_detection(self):
         vad = voice.setup_message("m", "Aoede")["setup"]["realtimeInputConfig"]["automaticActivityDetection"]
+        # Keep start sensitivity noise-safe, but use Google's recommended
+        # 500-800ms silence range and avoid the old 700ms + 800ms wait.
         self.assertEqual(vad["startOfSpeechSensitivity"], "START_SENSITIVITY_LOW")
-        self.assertGreaterEqual(vad["silenceDurationMs"], 600)
+        self.assertEqual(vad["endOfSpeechSensitivity"], "END_SENSITIVITY_HIGH")
+        self.assertEqual(vad["prefixPaddingMs"], 200)
+        self.assertEqual(vad["silenceDurationMs"], 500)
+        self.assertEqual(voice.SpeechGate.HANGOVER, 6)
 
     def test_system_language(self):
         self.assertEqual(system_language({"LANG": "de_DE.UTF-8"}), "de-DE")
@@ -198,6 +203,26 @@ class SpeechGateTests(unittest.TestCase):
         self.assertEqual(ended.count(True), 1)
         self.assertFalse(gate.open)
 
+    def test_turn_ends_promptly_without_cutting_short_word_gaps(self):
+        gate = voice.SpeechGate()
+        quiet = white(0.0005)
+        for chunk in pcm(quiet, 1):
+            gate.feed(chunk)
+        ended = []
+        for chunk in pcm(speech(0.15), 1.5):
+            ended.append(gate.feed(chunk)[1])
+        self.assertTrue(gate.open)
+        for chunk in pcm(quiet, 0.3):
+            ended.append(gate.feed(chunk)[1])
+        self.assertTrue(gate.open, "a 300ms thinking pause is not a new turn")
+        for chunk in pcm(speech(0.15), 0.7):
+            ended.append(gate.feed(chunk)[1])
+        self.assertTrue(gate.open)
+        for chunk in pcm(quiet, 1):
+            ended.append(gate.feed(chunk)[1])
+        self.assertEqual(ended.count(True), 1)
+        self.assertFalse(gate.open)
+
     def test_talking_over_citron_takes_a_real_voice(self):
         quiet = white(0.0005)
         self.assertEqual(self.run_gate(quiet, speech(0.006), 2, talking_over=True), 0, "its own faint echo")
@@ -241,6 +266,30 @@ class LiveAudioHandling(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(session.speaker_active)
         queued = [session.play_queue.get_nowait()[1] for _ in range(2)]
         self.assertEqual(queued, [b"\\0\\0" * 100, None])
+
+    async def test_first_audio_does_not_block_on_mic_process_reap(self):
+        # Slow PipeWire shutdown must not block the WebSocket receive loop.
+        # Playback separately awaits the mic_stopped event for echo safety.
+        session = voice.VoiceSession("gemini-test", "Aoede", "not-a-key")
+        session.utterance_ended_at = voice.time.monotonic() - 0.9
+        stopped = []
+        class Proc:
+            returncode = None
+            def terminate(self): stopped.append("terminated")
+        session.mic_proc = Proc()
+        session.running = False
+        session.ws = self.Feed([self.packet(b"\\0\\0" * 100)])
+        events = []
+        async def slow_stop(proc):
+            raise AssertionError("receive() must not await PipeWire stop")
+        session.stop_proc = slow_stop
+        with patch.object(voice, "emit", side_effect=lambda event, **v: events.append((event, v))):
+            await __import__("asyncio").wait_for(session.receive(), timeout=0.3)
+        self.assertEqual(stopped, ["terminated"])
+        self.assertFalse(session.mic_allowed.is_set())
+        self.assertEqual(session.play_queue.qsize(), 1)
+        self.assertTrue(any(k == "timing" and d.get("stage") == "first_audio"
+                            and d.get("ms", 0) >= 850 for k, d in events))
 
     async def test_echo_cancellation_keeps_mic_open_for_barge_in(self):
         session = voice.VoiceSession("gemini-test", "Aoede", "not-a-key")
@@ -343,8 +392,11 @@ class LiveAudioHandling(unittest.IsolatedAsyncioTestCase):
 
         session.ws = Ws()
         session.process = process
-        with patch.object(voice, "emit"):
+        emitted = []
+        with patch.object(voice, "emit", side_effect=lambda event, **values: emitted.append((event, values))):
             await session.listen()
+        self.assertIn(("status", {"mode": "thinking"}), emitted,
+                      "the UI switches to Thinking right when local speech ends")
         audio = [m for m in sent if "audio" in m["realtimeInput"]]
         ends = [m for m in sent if m["realtimeInput"].get("audioStreamEnd")]
         self.assertGreaterEqual(len(audio), 10, "the speech, with the moment before it")

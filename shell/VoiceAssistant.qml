@@ -270,6 +270,10 @@ PanelWindow {
             }
             if (msg.role === "assistant" && fragment)
                 citronSaid = transcriptText(citronSaid, fragment, 1500)
+        } else if (msg.event === "timing" && msg.stage === "first_audio") {
+            // Timing only: never log utterances or microphone samples.
+            console.info("Citron voice: first audio " + Math.max(0, Math.round(Number(msg.ms) || 0))
+                         + "ms after speech ended")
         } else if (msg.event === "notice") {
             citronSaid = msg.text
         } else if (msg.event === "error") {
