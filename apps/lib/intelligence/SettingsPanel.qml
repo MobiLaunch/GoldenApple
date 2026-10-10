@@ -12,6 +12,7 @@ Column {
     property bool environmentKey: false
     property string status: "Loading settings…"
     property var models: []
+    property var voiceModels: []
     // Citron's spoken languages ({ code, name }), from the helper; "auto" first.
     property var languages: []
     property string systemLanguage: "English (US)"
@@ -70,8 +71,11 @@ Column {
                 panel.environmentKey = result.environmentKey
                 panel.status = result.warning || (result.hasKey ? "API key is available." : "Add a Gemini API key to get started.")
             } else if (action === "models") {
-                panel.models = result.models
-                panel.status = result.models.length ? "Models refreshed. Choose a text model and an image model below." : "No compatible models were available for this key."
+                panel.models = result.models || []
+                panel.voiceModels = result.voiceModels || []
+                panel.status = panel.models.length || panel.voiceModels.length
+                    ? "Models refreshed. Choose supported text, image and Live voice models."
+                    : "No compatible models were available for this key."
             } else {
                 panel.status = action === "forget" ? "Saved key removed. Citron Intelligence is off." : "Settings saved."
                 panel.hasKey = action !== "forget" && (panel.hasKey || apiKey.text.length > 0)
@@ -138,6 +142,12 @@ Column {
         width: parent.width; height: 32
         enabled: !panel.busy && panel.serviceAvailable
         placeholder: "gemini-3.8-live"
+    }
+    PopUpButton {
+        visible: panel.voiceModels.length > 0
+        width: parent.width; menuParent: panel.menuParent
+        options: panel.voiceModels
+        onPicked: (i) => voiceModel.text = options[i]
     }
     Text { text: "Spoken voice"; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.fs(12) } }
     PopUpButton {
