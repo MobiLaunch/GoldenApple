@@ -294,7 +294,7 @@ PanelWindow {
     readonly property real gridHeight: rows * cellH
     readonly property real cellW: gridWidth / columns
     readonly property real cellH: 146 * layoutScale
-    readonly property real iconSize: Math.round(100 * layoutScale)
+    readonly property real iconSize: Math.round((Prefs.tabletMode ? 112 : 100) * layoutScale)
 
     // ------------------------------------------------------------ backdrop
     // The desktop, blurred and dimmed, as Launchpad shows it.
