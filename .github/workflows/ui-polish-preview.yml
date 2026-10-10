@@ -1,0 +1,53 @@
+name: Desktop and tablet UI visual smoke
+
+on:
+  push:
+    branches:
+      - claude/linux-macos-golden-gate-ui-pckc7s
+    paths:
+      - shell/**
+      - apps/lib/**
+      - apps/weather/Sky.qml
+      - tools/preview/**
+      - .github/workflows/ui-polish-preview.yml
+  workflow_dispatch:
+
+jobs:
+  render-layouts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install headless Qt runtime
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libegl1 libopengl0 xvfb libx11-6 libxtst6 libpulse0 librsvg2-bin
+          python -m pip install PySide6==6.11.2
+      - name: Render and require visible desktop surfaces
+        run: |
+          mkdir -p out/ui-polish
+          python tools/preview/preview.py shell --dark --wait 700 \
+            -o out/ui-polish/desktop.png
+          python tools/preview/preview.py shell --dark \
+            --do controlcenter.toggle --wait 700 --require-object ccPanel \
+            -o out/ui-polish/control-center.png
+      - name: Validate real tablet page delegates at both orientations
+        run: |
+          python tools/preview/preview.py shell --dark \
+            --env GG_TABLET_PREVIEW=1 --size 760x1024 \
+            --require-object tabletWidgetFlow --wait 700 \
+            -o out/ui-polish/tablet-portrait.png
+          python tools/preview/preview.py shell --dark \
+            --env GG_TABLET_PREVIEW=1 --size 1180x820 \
+            --require-object tabletAppColumns --wait 700 \
+            -o out/ui-polish/tablet-landscape.png
+      - name: Upload screenshots for visual review
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: golden-gate-ui-polish
+          path: out/ui-polish/*.png
+          retention-days: 7
