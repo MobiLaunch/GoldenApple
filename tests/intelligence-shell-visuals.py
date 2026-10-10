@@ -153,6 +153,10 @@ class AmbientCitronRegression(unittest.TestCase):
         self.assertIn('fragmentShader: Qt.resolvedUrl("../shaders/glasslens.frag.qsb")', glass)
         self.assertIn("property variant source: lens.rearTexture", glass)
         self.assertIn("shadowEnabled: false", glass)
+        self.assertIn("ambientOnly: true", glass)
+        shared_glass = (ROOT / "apps/lib/Glass.qml").read_text()
+        self.assertIn("property bool ambientOnly: false", shared_glass)
+        self.assertIn("if (root.ambientOnly) return 0", shared_glass)
         self.assertNotIn("DropShadow", glass)
 
     def test_speaking_haze_uses_output_level_not_microphone_echo(self):

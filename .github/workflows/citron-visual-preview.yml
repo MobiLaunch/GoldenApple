@@ -7,6 +7,8 @@ on:
     paths:
       - shell/VoiceAssistant.qml
       - apps/lib/intelligence/CitronBlob.qml
+      - apps/lib/intelligence/CitronGlassDot.qml
+      - apps/lib/Glass.qml
       - tools/preview/preview.py
       - .github/workflows/citron-visual-preview.yml
   workflow_dispatch:
