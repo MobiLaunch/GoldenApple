@@ -30,7 +30,7 @@ to refresh/select a model; the app does not silently retry another billed model.
 | Tool | Behavior |
 | --- | --- |
 | Ask Anything | A chat: type below and press Return (Shift+Return for a new line), attach a photo, start over with the compose button. The latest 10 complete exchanges are sent as context. |
-| Talk to Citron | ⇧⌘Space: Citron's orb over a glass capsule, live captions and a glow round the screen's edges. Speak, type, or interrupt; the mic is on only while it's open and unmuted. |
+| Talk to Citron | ⇧⌘Space or Ask Citron invokes a morphing cyan/violet/pink haze and immediately starts listening. Only a brief status and speech captions appear; there is no text field, tool bar, or mic button. Esc or the global shortcut dismisses and stops capture. |
 | Writing Tools | Proofread, rewrite, friendly, professional, concise, summary, key points, table and custom instructions (including translation). |
 | Create Image | Native Gemini image generation. Preview outputs and save selected images as copies. |
 | Edit Photo | Choose a photo and describe a change, such as removing a background object or changing lighting. Toggle between original and result. |
@@ -150,3 +150,14 @@ References: [Gemini models](https://ai.google.dev/gemini-api/docs/models),
 [generateContent](https://ai.google.dev/api/generate-content),
 [native image generation/editing](https://ai.google.dev/gemini-api/docs/image-generation),
 [Qt TextSelection](https://doc.qt.io/qt-6/qml-qtquick-textselection.html).
+
+## Ambient voice identity
+
+Citron's normal invocation is voice-first. The new `apps/lib/intelligence/CitronBlob.qml`
+paints soft, morphing color fields rather than a black lens or outlined capsule.
+Movement responds to normalized microphone loudness while listening and speaker
+loudness while speaking; no PCM is shared with QML and nothing is recorded.
+Reduce Motion freezes the animation without hiding captions or status.
+The microphone starts only on explicit invocation and stops on dismissal.
+Separate Writing Tools, image generation and photo-editing entry points keep
+their editing controls without showing them during a voice conversation.

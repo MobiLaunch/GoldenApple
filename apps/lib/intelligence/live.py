@@ -475,6 +475,7 @@ class VoiceSession:
                         await asyncio.sleep(self.echo_tail)
                     if epoch == self.audio_epoch:
                         self.speaker_active = False
+                        emit("output_level", value=0)
                         if self.half_duplex and not self.muted:
                             self.mic_allowed.set()
                         self.status("muted" if self.muted else "listening")
@@ -500,6 +501,7 @@ class VoiceSession:
                 self.status("listening")
             sc = msg.get("serverContent") or {}
             if sc.get("interrupted"):
+                emit("output_level", value=0)
                 await self.reset_audio()
                 self.status("muted" if self.muted else "listening")
             if sc.get("inputTranscription", {}).get("text"):
@@ -529,6 +531,9 @@ class VoiceSession:
                     emit("level", value=0)
                 self.speaker_active = True
                 self.turn_has_audio = True
+                # Visual response uses normalized amplitude only. No raw audio
+                # crosses the helper/UI boundary and nothing is recorded.
+                emit("output_level", value=pcm_level(data))
                 # Every chunk is kept (none dropped), without ever pausing the reader.
                 self.play_queue.put_nowait((self.audio_epoch, data))
                 self.status("speaking")

@@ -49,7 +49,9 @@ class SystemIntelligence(unittest.TestCase):
         opener = (ROOT / "apps/intelligence/open.sh").read_text()
         menu = (ROOT / "shell/MenuBar.qml").read_text()
         prefs = (ROOT / "apps/settings/panes/IntelligencePane.qml").read_text()
-        self.assertIn("Shared.PrismOrb {", qml)
+        self.assertIn("AI.CitronBlob {", qml)
+        self.assertIn('objectName: "citronMorphingHaze"', qml)
+        self.assertIn('objectName: "citronVoiceOnlySurface"', qml)
         self.assertIn('objectName: "citronSystemOverlay"', qml)
         self.assertIn('objectName: "citronSystemPrompt"', qml)
         self.assertIn('import "ui/intelligence" as AI', qml)
@@ -121,6 +123,28 @@ class CitronReliabilityRegression(unittest.TestCase):
         self.assertIn("id: voiceWatchdog", qml)
         self.assertIn('Voice is still connecting. Your message has been kept.', qml)
         self.assertIn("citron.pendingPrompt", qml)
+
+
+class AmbientCitronRegression(unittest.TestCase):
+    def test_voice_summons_haze_and_hides_editor_controls(self):
+        qml = (ROOT / "shell/VoiceAssistant.qml").read_text()
+        haze = (ROOT / "apps/lib/intelligence/CitronBlob.qml").read_text()
+        self.assertIn('visible: citron.voiceMode', qml)
+        self.assertIn('visible: !citron.voiceMode', qml)
+        self.assertIn('function open(): void { citron.show("ask") }', qml)
+        self.assertIn('function ask(): void { citron.show("ask") }', qml)
+        self.assertIn('running: citron.open && citron.voiceMode', qml)
+        self.assertIn("createRadialGradient", haze)
+        self.assertIn("Theme.reduceMotion", haze)
+        self.assertNotIn("border.width", haze)
+        self.assertNotIn("Process {", haze)
+
+    def test_speaking_haze_uses_output_level_not_microphone_echo(self):
+        qml = (ROOT / "shell/VoiceAssistant.qml").read_text()
+        live = (ROOT / "apps/lib/intelligence/live.py").read_text()
+        self.assertIn('msg.event === "output_level"', qml)
+        self.assertIn('emit("output_level", value=pcm_level(data))', live)
+        self.assertIn('emit("output_level", value=0)', live)
 
 
 class VoiceFirstShortcutRegression(unittest.TestCase):
