@@ -206,9 +206,9 @@ ShellRoot {
             // Columns. listX and editorX are in window coordinates (the toolbar's);
             // inside this item the list starts at 0.
             readonly property real listX: win.contentX
-            readonly property real listWidth: Math.max(250, Math.min(320, width * 0.3))
-            readonly property real editorX: listX + listWidth
-            readonly property real editorWidth: width - listWidth
+            readonly property real listWidth: win.tabletCompact ? width : Math.max(250, Math.min(320, width * 0.3))
+            readonly property real editorX: win.tabletCompact ? listX : listX + listWidth
+            readonly property real editorWidth: win.tabletCompact ? width : width - listWidth
 
             readonly property string folderTitle: folder === "" ? "All Notes" : folder.split("/").pop()
             readonly property var visibleNotes: {
