@@ -21,7 +21,7 @@ ShellRoot {
         implicitWidth: Math.min(1180, (Quickshell.screens[0]?.width ?? 1280) - 80)
         implicitHeight: Math.min(780, (Quickshell.screens[0]?.height ?? 900) - 150)
         minimumSize: Qt.size(640, 420)
-        sidebarWidth: app.sidebarOpen ? 200 : 0
+        sidebarWidth: app.sidebarOpen ? (win.tabletCompact ? Math.min(270, win.width * 0.45) : 200) : 0
         fullSizeContent: true
         background: Theme.contentBg
 
