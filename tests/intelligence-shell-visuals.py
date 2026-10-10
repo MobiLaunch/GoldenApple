@@ -123,5 +123,14 @@ class CitronReliabilityRegression(unittest.TestCase):
         self.assertIn("citron.pendingPrompt", qml)
 
 
+class VoiceFirstShortcutRegression(unittest.TestCase):
+    def test_voice_shortcut_and_safe_fallback(self):
+        qml = (ROOT / "shell/VoiceAssistant.qml").read_text()
+        self.assertIn("else { present(); startVoice() }", qml)
+        self.assertIn('ToolChip { label: citron.voiceMode ? "Type" : "Ask"; kind: "ask" }', qml)
+        self.assertIn("if (voiceMode) stopVoice()", qml)
+        self.assertIn("voiceProc.running = false", qml)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
