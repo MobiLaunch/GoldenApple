@@ -73,8 +73,10 @@ PopupWindow {
             if (menu.open) list.forceActiveFocus()
         }
     }
-    // The menu's own size, for callers placing it; the surface adds room
-    // right and below for the shadow, and takes input only on the menu.
+    // The menu's own size; translucent spare area around a Wayland popup
+    // lets the compositor render a *rectangular* blur/shadow. MenuList
+    // already has its own rounded material and intentionally no shadow,
+    // so the surface needs only a tiny anti-aliasing margin.
     readonly property real menuWidth: list.width
     readonly property real menuHeight: list.implicitHeight
     // Room for a submenu beside its row, sized before the menu opens (a
