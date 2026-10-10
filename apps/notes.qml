@@ -72,7 +72,7 @@ ShellRoot {
             ToolbarButton {
                 id: listMore
                 visible: !win.tabletCompact || !app.mobileShowingNote
-                x: app.listX + app.listWidth - width - 10
+                x: app.listX + app.listWidth - width - (win.tabletCompact ? 60 : 10)
                 anchors.verticalCenter: parent.verticalCenter
                 round: true; symbol: "ellipsis"
                 onClicked: listMenu.popup(listMore, 0, height + 6, [
