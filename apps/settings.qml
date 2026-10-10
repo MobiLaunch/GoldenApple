@@ -41,7 +41,8 @@ ShellRoot {
                         if (win.tabletCompact) app.showMobileCategories = !app.showMobileCategories
                         else sys.setPref(["settings", "sidebarShown"], !app.sidebarShown)
                     }
-                    Accessible.name: app.sidebarShown ? "Hide Settings Sidebar" : "Show Settings Sidebar"
+                    Accessible.name: win.tabletCompact ? (app.showMobileCategories ? "Close Categories" : "All Settings") :
+                        app.sidebarShown ? "Hide Settings Sidebar" : "Show Settings Sidebar"
                 }
                 ToolbarPill {
                     visible: !win.tabletCompact
