@@ -15,6 +15,22 @@ Item {
     readonly property bool reduceMotion: Theme.reduceMotion
     property real phase: 0
     property real energy: 0
+    // Shared positions ensure rear dots and front dots drift in one field.
+    // Every third mote lives IN FRONT of the glass rather than its source.
+    readonly property var motes: [
+        [-0.12,-0.045,0.037,0.92,0.78,0.20,[82,188,240]],
+        [ 0.10,-0.092,0.031,0.84,0.96,1.00,[108,120,241]],
+        [ 0.13, 0.052,0.028,1.03,0.88,1.80,[177,108,240]],
+        [-0.08, 0.120,0.034,0.88,1.05,2.60,[231,109,195]],
+        [ 0.02,-0.132,0.025,1.10,0.72,3.10,[92,211,199]],
+        [-0.15, 0.022,0.023,0.79,0.94,4.00,[224,145,145]],
+        [ 0.06, 0.135,0.030,0.90,0.90,4.80,[139,116,240]],
+        [-0.01, 0.012,0.022,1.18,1.08,5.60,[82,169,225]],
+        [ 0.17,-0.015,0.022,0.73,1.13,2.31,[198,96,203]],
+        [-0.10,-0.122,0.027,1.14,0.80,3.56,[106,163,245]],
+        [ 0.04, 0.073,0.026,0.85,1.06,1.73,[88,219,211]],
+        [-0.035,0.165,0.022,1.12,0.77,4.47,[171,106,229]]
+    ]
     readonly property real targetEnergy: mode === "speaking"
         ? 0.22 + Math.max(0, Math.min(1, outputLevel)) * 0.78
         : mode === "listening" ? 0.12 + Math.max(0, Math.min(1, inputLevel)) * 0.88
@@ -29,13 +45,16 @@ Item {
             blob.energy += (blob.targetEnergy - blob.energy) *
                 (blob.targetEnergy > blob.energy ? 0.29 : 0.11)
             field.requestPaint()
+            frontField.requestPaint()
         }
     }
-    onModeChanged: field.requestPaint()
-    onInputLevelChanged: { if (reduceMotion) field.requestPaint() }
-    onOutputLevelChanged: { if (reduceMotion) field.requestPaint() }
-    onReduceMotionChanged: field.requestPaint()
+    onModeChanged: { field.requestPaint(); frontField.requestPaint() }
+    onInputLevelChanged: { if (reduceMotion) { field.requestPaint(); frontField.requestPaint() } }
+    onOutputLevelChanged: { if (reduceMotion) { field.requestPaint(); frontField.requestPaint() } }
+    onReduceMotionChanged: { field.requestPaint(); frontField.requestPaint() }
 
+    // Z0: diffuse cloud, bridges and REAR motes. No glass/front dots
+    // can ever enter this offscreen texture: this is the depth boundary.
     Canvas {
         id: field
         anchors.fill: parent
@@ -115,21 +134,9 @@ Item {
             // Their gradient edges stay completely transparent; these are
             // atmospheric lights, never sharp star points or hard dots.
             // [x, y, radius, x-rate, y-rate, phase, rgb]
-            const motes = [
-                [-0.12,-0.045,0.037,0.92,0.78,0.20,[82,188,240]],
-                [ 0.10,-0.092,0.031,0.84,0.96,1.00,[108,120,241]],
-                [ 0.13, 0.052,0.028,1.03,0.88,1.80,[177,108,240]],
-                [-0.08, 0.120,0.034,0.88,1.05,2.60,[231,109,195]],
-                [ 0.02,-0.132,0.025,1.10,0.72,3.10,[92,211,199]],
-                [-0.15, 0.022,0.023,0.79,0.94,4.00,[224,145,145]],
-                [ 0.06, 0.135,0.030,0.90,0.90,4.80,[139,116,240]],
-                [-0.01, 0.012,0.022,1.18,1.08,5.60,[82,169,225]],
-                [ 0.17,-0.015,0.022,0.73,1.13,2.31,[198,96,203]],
-                [-0.10,-0.122,0.027,1.14,0.80,3.56,[106,163,245]],
-                [ 0.04, 0.073,0.026,0.85,1.06,1.73,[88,219,211]],
-                [-0.035,0.165,0.022,1.12,0.77,4.47,[171,106,229]]
-            ]
+            const motes = blob.motes
             for (let i = 0; i < motes.length; i++) {
+                if (i % 3 === 0) continue // these four are foreground, not bent
                 const d = motes[i]
                 const dx = w * (0.5 + d[0] + 0.029 * Math.sin(t * d[3] + d[5]))
                 const dy = h * (0.5 + d[1] + 0.029 * Math.cos(t * d[4] + d[5]))
@@ -177,6 +184,97 @@ Item {
             ctx.fillRect(0, 0, w, h)
             ctx.globalCompositeOperation = "source-over"
 
+        }
+        Component.onCompleted: requestPaint()
+    }
+
+
+    // Backward-only texture for refractive dots. The captured source does not
+    // include desktopLens or frontField; no feedback, no double refraction.
+    ShaderEffectSource {
+        id: rearSource
+        objectName: "citronRearOnlyTexture"
+        width: blob.width
+        height: blob.height
+        visible: false
+        sourceItem: field
+        hideSource: false
+        live: blob.running && blob.visible
+        recursive: false
+        textureSize: Qt.size(Math.max(1, Math.round(blob.width)),
+                             Math.max(1, Math.round(blob.height)))
+    }
+
+    // Z1: genuine thick-glass disks refract the DESKTOP (using the shell's
+    // existing DesktopBackdrop/Glass) and the rear-only texture (the pre-
+    // compiled glasslens.frag.qsb). Foreground motes are drawn afterwards.
+    Item {
+        id: middleGlass
+        objectName: "citronGlassDepthLayer"
+        anchors.fill: parent
+        Repeater {
+            model: [
+                [0.35, 0.39, 58, 0.72, 0.40, 0.0, 1.06],
+                [0.59, 0.36, 48, 0.64, 0.71, 1.4, 1.15],
+                [0.48, 0.57, 68, 0.80, 0.62, 2.1, 1.18],
+                [0.67, 0.54, 43, 0.98, 0.77, 3.1, 1.08],
+                [0.27, 0.62, 37, 0.75, 0.89, 4.2, 1.03],
+                [0.46, 0.27, 33, 0.85, 0.96, 5.0, 1.09]
+            ]
+            delegate: CitronGlassDot {
+                required property var modelData
+                readonly property real t: blob.reduceMotion ? 0.9 : blob.phase
+                width: blob.width * modelData[2] / 360
+                height: width
+                x: blob.width * (modelData[0] +
+                   0.025 * Math.sin(t * modelData[3] + modelData[5])) - width / 2
+                y: blob.height * (modelData[1] +
+                   0.025 * Math.cos(t * modelData[4] + modelData[5])) - height / 2
+                rearTexture: rearSource
+                running: blob.running
+                phase: t + modelData[5]
+                refraction: modelData[6] + (blob.reduceMotion ? 0 : blob.energy * 0.08)
+            }
+        }
+    }
+
+    // Z2: foreground motes draw AFTER lens refraction, and stay undistorted.
+    Canvas {
+        id: frontField
+        objectName: "citronUnbentForegroundMotes"
+        anchors.fill: parent
+        renderTarget: Canvas.Image
+        antialiasing: true
+        onPaint: {
+            const ctx = getContext("2d")
+            const w = width, h = height, sz = Math.min(w, h)
+            ctx.clearRect(0, 0, w, h)
+            const t = blob.reduceMotion ? 1.14 : blob.phase
+            const e = blob.reduceMotion ? blob.targetEnergy : blob.energy
+            for (let i = 0; i < blob.motes.length; i += 3) {
+                const d = blob.motes[i]
+                const x = w * (0.5 + d[0] + 0.029 * Math.sin(t * d[3] + d[5]))
+                const y = h * (0.5 + d[1] + 0.029 * Math.cos(t * d[4] + d[5]))
+                const radius = sz * (d[2] + 0.004 * e) *
+                               (1 + 0.17 * Math.sin(t * 1.22 + d[5]))
+                const rgb = d[6].join(",")
+                const alpha = 0.32 + 0.11 * e
+                ctx.save()
+                ctx.translate(x, y)
+                ctx.rotate(0.35 * Math.sin(t * 0.58 + d[5]))
+                ctx.scale(1.09 + 0.16 * Math.sin(t * 0.84 + i),
+                          0.92 + 0.15 * Math.cos(t * 0.92 + i))
+                const light = ctx.createRadialGradient(0, 0, 0, 0, 0, radius)
+                light.addColorStop(0, "rgba(" + rgb + "," + alpha + ")")
+                light.addColorStop(0.30, "rgba(" + rgb + "," + (alpha * 0.68) + ")")
+                light.addColorStop(0.72, "rgba(" + rgb + "," + (alpha * 0.14) + ")")
+                light.addColorStop(1, "rgba(" + rgb + ",0)")
+                ctx.fillStyle = light
+                ctx.beginPath()
+                ctx.arc(0, 0, radius, 0, 6.2831853)
+                ctx.fill()
+                ctx.restore()
+            }
         }
         Component.onCompleted: requestPaint()
     }
