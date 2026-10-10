@@ -64,6 +64,7 @@ PanelWindow {
             } catch (e) { tablet.approvedIcons = ({}) }
         }
     }
+    function scrollToTop() { scroll.contentY = 0 }
     function iconFor(app) {
         const path = approvedIcons[app.id]?.icon
         if (path && String(path).startsWith("/")) return "file://" + encodeURI(path)
