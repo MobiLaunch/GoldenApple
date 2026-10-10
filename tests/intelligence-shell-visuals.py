@@ -136,6 +136,7 @@ class AmbientCitronRegression(unittest.TestCase):
         self.assertIn('running: citron.open && citron.voiceMode', qml)
         self.assertIn("createRadialGradient", haze)
         self.assertIn("Theme.reduceMotion", haze)
+        self.assertIn('phase === "connecting" || phase === "thinking"', qml)
         self.assertNotIn("border.width", haze)
         self.assertNotIn("Process {", haze)
         self.assertIn('ctx.globalCompositeOperation = "destination-in"', haze)
