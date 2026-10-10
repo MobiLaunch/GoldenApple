@@ -29,8 +29,14 @@ class TabletApps(unittest.TestCase):
         self.assertIn("round ? (Touch.enabled ? 44 : 36)", controls)
         self.assertIn("Touch.enabled ? Math.max(46", rows)
         state = source("apps/lib/theme/Touch.qml")
-        self.assertIn("onFileChanged: reload()", state)
-        self.assertIn('tablet?.enabled === true', state)
+        # Native Web also imports Touch; a Quickshell FileView in the shared
+        # singleton prevents the browser from creating its QML engine.
+        self.assertNotIn("import Quickshell", state)
+        self.assertIn("property bool enabled: false", state)
+        app = source("apps/lib/AppWindow.qml")
+        self.assertIn("onFileChanged: reload()", app)
+        self.assertIn('tablet?.enabled === true', app)
+        self.assertIn("onTabletEnabledChanged: Touch.enabled = tabletEnabled", app)
 
     def test_files_and_photos_collapse_sidebars_only_on_tablet(self):
         files = source("apps/files.qml")
