@@ -13,8 +13,15 @@ if [[ -z "$archive" || "$archive" == "--find" ]]; then
   shopt -s nullglob
   candidates=( "$downloads"/LibrePods-CitronPods-M10-Qt6-Fixed*.zip
                "$HOME"/Downloads/LibrePods-CitronPods-M10-Qt6-Fixed*.zip )
+  # Only auto-adopt our exact known Qt6-fixed M10 source. Matching a ZIP
+  # filename is NOT sufficient: CMake can execute commands during configure.
+  # Other source archives require an explicit choice in System Settings.
+  trusted="d14d3e74efb716357713d024bcb7c2311ae1226d8fa6bb883f4b9237661b4da4"
   for candidate in "${candidates[@]}"; do
-    if [[ -f "$candidate" ]]; then archive="$candidate"; break; fi
+    if [[ -f "$candidate" ]] && [[ "$(sha256sum -- "$candidate" | cut -d' ' -f1)" == "$trusted" ]]; then
+      archive="$candidate"
+      break
+    fi
   done
   if [[ "${1:-}" == "--find" ]]; then
     [[ -f "$archive" ]] || exit 1
