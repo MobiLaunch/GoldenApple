@@ -172,6 +172,7 @@ function convert(text) {
 var PANES = [
     ["wifi", "Wi-Fi", "wifi wireless internet network ssid"],
     ["bluetooth", "Bluetooth", "airpods headphones pair devices"],
+    ["airpods", "AirPods", "CitronPods Bluetooth headphones noise cancellation transparency battery conversation awareness connection card"],
     ["network", "Network", "ethernet vpn proxy ip dns"],
     ["battery", "Battery", "power energy charging low power"],
     ["general", "General", "system"],
