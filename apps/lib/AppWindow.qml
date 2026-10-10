@@ -50,7 +50,8 @@ FloatingWindow {
         watchChanges: true
         onFileChanged: reload()
         onLoaded: {
-            try { win.tabletEnabled = JSON.parse(text()).tablet?.enabled === true }
+            try { win.tabletEnabled = Quickshell.env("GG_TABLET_PREVIEW") === "1" ||
+                (JSON.parse(text()).tablet?.enabled === true) }
             catch (e) { win.tabletEnabled = Quickshell.env("GG_TABLET_PREVIEW") === "1" }
         }
     }
