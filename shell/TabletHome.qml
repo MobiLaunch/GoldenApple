@@ -288,7 +288,10 @@ PanelWindow {
                                 acceptedButtons: Qt.LeftButton
                                 property point origin: Qt.point(0,0)
                                 property bool moved: false
-                                onPressed: (m) => { origin = Qt.point(m.x,m.y); moved = false }
+                                onPressed: (m) => {
+                                    origin = widgetDrag.mapToItem(widgetFlow, m.x, m.y)
+                                    moved = false
+                                }
                                 onPressAndHold: tablet.editing = true
                                 onPositionChanged: (m) => {
                                     if (!pressed || !tablet.editing) return
