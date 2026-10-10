@@ -726,10 +726,9 @@ ShellRoot {
                     id: draftBox
                     visible: app.composing || (!!app.current && app.current.reply_ready)
                     role: "control"
-                    anchors { left: parent.left; leftMargin: 16; right: parent.right; rightMargin: 16; verticalCenter: parent.verticalCenter }
+                    anchors { left: parent.left; leftMargin: 16; right: parent.right; rightMargin: 16;
+                              bottom: parent.bottom; bottomMargin: 10 }
                     height: Math.min(120, Math.max(34, draft.input.contentHeight + 16))
-                    anchors.verticalCenter: undefined
-                    anchors { bottom: parent.bottom; bottomMargin: 10 }
                     radius: 17
                     ToolbarButton {
                         id: attachButton
