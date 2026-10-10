@@ -30,6 +30,13 @@ ShellRoot {
         // Back, once you've opened an album or playlist.
         toolbarLeft: [
             ToolbarButton {
+                visible: win.tabletCompact
+                round: true; symbol: "sidebar"
+                checked: win.showMobileNavigation
+                Accessible.name: win.showMobileNavigation ? "Hide Music Navigation" : "Show Music Navigation"
+                onClicked: win.showMobileNavigation = !win.showMobileNavigation
+            },
+            ToolbarButton {
                 round: true; symbol: "chevron-left"
                 visible: app.history.length > 0 && (app.page === "album" || app.page === "playlist")
                 onClicked: app.back()
