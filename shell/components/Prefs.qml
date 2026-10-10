@@ -27,6 +27,9 @@ Singleton {
     function soundPath(name) { return decodeURIComponent(Qt.resolvedUrl("../ui/assets/sounds/" + name + ".wav").toString().replace("file://", "")) }
     // Settings › Touch ID & Password: a finger unlocks the lock screen.
     readonly property bool touchIdUnlock: data.touchId?.unlock ?? true
+    // Tablet Mode changes presentation only. No tablet-only partition or
+    // alternate desktop session; unplugging the keyboard does not lose apps.
+    readonly property bool tabletMode: data.tablet?.enabled ?? false
     readonly property real dockSize: data.dock?.size ?? 54
     readonly property bool dockIndicators: data.dock?.indicators ?? true
     readonly property bool dockShowRecents: data.dock?.showRecents ?? true
