@@ -8,6 +8,7 @@ import ".."
 
 Pane {
     id: pane
+    objectName: "citronPodsSettingsPane"
     headerSymbol: "bluetooth"
     headerTint: "#0a84ff"
     headerTitle: "AirPods"
