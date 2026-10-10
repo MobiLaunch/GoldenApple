@@ -30,6 +30,15 @@ Singleton {
     // Tablet Mode changes presentation only. No tablet-only partition or
     // alternate desktop session; unplugging the keyboard does not lose apps.
     readonly property bool tabletMode: data.tablet?.enabled ?? false
+    // Tablet Home Screen widgets are independent of desktop widgets. Their
+    // order and sizes survive sign-out, rotation and mode switching.
+    readonly property var tabletWidgets: Array.isArray(data.tablet?.widgets) ? data.tablet.widgets : null
+    function setTabletWidgets(list) {
+        data = Object.assign({}, data, {
+            tablet: Object.assign({}, data.tablet ?? {}, { widgets: list })
+        })
+        Quickshell.execDetached(["gg-pref", "tablet.widgets", JSON.stringify(list)])
+    }
     readonly property real dockSize: data.dock?.size ?? 54
     readonly property bool dockIndicators: data.dock?.indicators ?? true
     readonly property bool dockShowRecents: data.dock?.showRecents ?? true
