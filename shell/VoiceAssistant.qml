@@ -1,8 +1,7 @@
 // Citron Live: summoned by ⇧⌘Space or Citron Intelligence → Talk.
-// As Siri on the Mac: a glow traces the screen's edges, Citron's orb floats
-// over a slim glass capsule (mic, a field to type into, send, close), and
-// live captions sit between them. Focused and dismissible, never a
-// background hot mic. The Python helper owns ephemeral mic/speaker streams;
+// When summoned, Citron begins listening with an ambient morphing haze.
+// Voice never renders text fields, tool chips, mic toggles or send controls.
+// Explicit writing/image commands keep their existing editor controls. The Python helper owns ephemeral mic/speaker streams;
 // the QML side only receives level/status/transcription, not raw audio or
 // API credentials.
 import Quickshell
@@ -39,6 +38,7 @@ PanelWindow {
     property string youSaid: ""
     property string citronSaid: ""
     property real soundLevel: 0
+    property real outputLevel: 0
     readonly property string helper: decodeURIComponent(
         Qt.resolvedUrl("ui/intelligence/live.py").toString().replace("file://", ""))
     // What the orb does: it listens, thinks while connecting, speaks.
@@ -47,7 +47,11 @@ PanelWindow {
         : phase === "connecting" ? "thinking" : phase === "speaking" ? "speaking" : "listening"
 
     function present() {
-        if (open) { textEntry.forceActiveFocus(); return }
+        if (open) {
+            if (voiceMode) stage.forceActiveFocus()
+            else textEntry.forceActiveFocus()
+            return
+        }
         open = true
         phase = "idle"
         voiceMode = false
@@ -59,12 +63,17 @@ PanelWindow {
         citronSaid = ""
         responseNote = ""
         textEntry.text = ""
-        Qt.callLater(() => textEntry.forceActiveFocus())
+        Qt.callLater(() => {
+            if (!citron.open) return
+            if (citron.voiceMode) stage.forceActiveFocus()
+            else textEntry.forceActiveFocus()
+        })
     }
     function dismiss() {
         if (!open) return
         open = false
         voiceProc.running = false
+        outputLevel = 0
         aiService.cancel()
         if (imageResults.length) cleanup.send({action:"discard", images:imageResults})
         imageResults = []
@@ -105,18 +114,27 @@ PanelWindow {
         everReady = false
         micMuted = false
         soundLevel = 0
+        outputLevel = 0
         phase = "idle"
         errorText = ""
     }
     function show(kind) {
         if (!open) present()
-        if (["ask", "writing", "image", "edit"].includes(kind)) {
+        // Every Ask/voice entry point assumes the user wants to speak.
+        if (kind === "ask" || kind === "voice") {
+            if (voiceMode && phase === "error") retry()
+            else startVoice()
+            stage.forceActiveFocus()
+            return
+        }
+        // Editing and image creation remain explicit separate tool routes.
+        if (["writing", "image", "edit"].includes(kind)) {
             if (voiceMode) stopVoice()
             tool = kind
         }
         if (tool === "writing" && !writingSource.text)
             writingSource.text = Quickshell.clipboardText || ""
-        Qt.callLater(() => textEntry.forceActiveFocus())
+        Qt.callLater(() => { if (citron.open && !citron.voiceMode) textEntry.forceActiveFocus() })
     }
     function startVoice() {
         if (voiceMode) return
@@ -124,6 +142,8 @@ PanelWindow {
         // image-generation/write command left selected from the previous tool.
         tool = "ask"
         voiceMode = true
+        outputLevel = 0
+        responseOpen = false
         restartingVoice = false
         phase = "connecting"
         errorText = ""
@@ -131,6 +151,7 @@ PanelWindow {
         micMuted = false
         voiceProc.running = true
         voiceWatchdog.restart()
+        Qt.callLater(() => { if (citron.open && citron.voiceMode) stage.forceActiveFocus() })
     }
     function chooseTool(kind) {
         if (aiService.busy || !["ask", "writing", "image", "edit"].includes(kind)) return
@@ -231,12 +252,15 @@ PanelWindow {
         try { msg = JSON.parse(line) } catch (e) { return }
         if (msg.event === "status") {
             phase = msg.mode
+            if (msg.mode !== "speaking") outputLevel = 0
             if (msg.mode === "listening") {
                 everReady = true
                 voiceWatchdog.stop()
             }
         } else if (msg.event === "level") {
             soundLevel = micMuted ? 0 : Math.max(0, Math.min(1, Number(msg.value) || 0))
+        } else if (msg.event === "output_level") {
+            outputLevel = Math.max(0, Math.min(1, Number(msg.value) || 0))
         } else if (msg.event === "transcript") {
             const fragment = String(msg.text || "").trim()
             if (msg.role === "user" && fragment) {
@@ -273,17 +297,14 @@ PanelWindow {
     IpcHandler {
         target: "citron"
         function toggle(): void { citron.toggle() }
-        function open(): void { citron.present() }
+        function open(): void { citron.show("ask") }
         function close(): void { citron.dismiss() }
         function show(kind: string): void { citron.show(kind) }
         function ask(): void { citron.show("ask") }
         function writing(): void { citron.show("writing") }
         function image(): void { citron.show("image") }
         function edit(): void { citron.show("edit") }
-        function voice(): void {
-            citron.show("ask")
-            citron.startVoice()
-        }
+        function voice(): void { citron.show("ask") }
         function photo(path: string): void {
             if (!path || !path.startsWith("/") || path.includes("\\0")) return
             citron.show("edit")
@@ -393,27 +414,84 @@ PanelWindow {
         objectName: "citronSystemOverlay"
         anchors { horizontalCenter: parent.horizontalCenter; verticalCenter: parent.verticalCenter }
         width: Math.min(610, citron.width - 36)
-        height: Math.min(citron.height - 90, content.implicitHeight)
+        height: citron.voiceMode ? Math.min(485, citron.height - 60)
+            : Math.min(citron.height - 90, content.implicitHeight)
         opacity: citron.shown
         transform: Translate { y: (1 - citron.shown) * 20 }
         focus: citron.open
         Keys.onEscapePressed: citron.dismiss()
 
+        // This is the ENTIRE summoned voice interface. Capture begins on the
+        // user gesture, not passively in the background. Esc stops it.
+        Column {
+            id: voiceScene
+            objectName: "citronVoiceOnlySurface"
+            visible: citron.voiceMode
+            width: parent.width
+            anchors.centerIn: parent
+            spacing: 6
+
+            AI.CitronBlob {
+                id: haze
+                objectName: "citronMorphingHaze"
+                anchors.horizontalCenter: parent.horizontalCenter
+                width: Math.min(385, stage.width - 14, citron.height * 0.44)
+                height: width
+                running: citron.open && citron.voiceMode
+                mode: citron.orbMode
+                inputLevel: citron.soundLevel
+                outputLevel: citron.outputLevel
+                scale: 0.92 + 0.08 * citron.shown
+                Behavior on scale {
+                    enabled: !Theme.reduceMotion
+                    NumberAnimation { duration: 280; easing.type: Easing.OutCubic }
+                }
+            }
+            Text {
+                width: parent.width
+                horizontalAlignment: Text.AlignHCenter
+                text: citron.phase === "error" ? "Connection interrupted"
+                    : citron.phase === "connecting" ? "Connecting…"
+                    : citron.micMuted ? "Microphone muted"
+                    : citron.phase === "speaking" ? "Speaking…"
+                    : citron.phase === "thinking" ? "Thinking…"
+                    : "Listening…"
+                color: "#f2f4ff"
+                font { family: Theme.fontUi; pixelSize: Theme.fs(16); weight: Font.DemiBold }
+            }
+            Text {
+                width: Math.min(parent.width - 26, 500)
+                anchors.horizontalCenter: parent.horizontalCenter
+                horizontalAlignment: Text.AlignHCenter
+                wrapMode: Text.WordWrap
+                maximumLineCount: 3
+                elide: Text.ElideRight
+                text: citron.errorText || citron.citronSaid ||
+                    (citron.youSaid ? "“" + citron.youSaid + "”" : "")
+                visible: text.length > 0
+                color: citron.phase === "error" ? "#ffe3e1" : "#e8e9f9"
+                font { family: Theme.fontUi; pixelSize: Theme.fs(14) }
+            }
+        }
+
+        // Editor chrome exists only for explicitly selected writing/image tools.
         Column {
             id: content
+            visible: !citron.voiceMode
             width: parent.width
             anchors.centerIn: parent
             spacing: 9
 
-            Shared.PrismOrb {
+            AI.CitronBlob {
                 id: orb
                 objectName: "citronPrismaticOrb"
                 anchors.horizontalCenter: parent.horizontalCenter
                 width: Math.min(citron.height < 810 ? 176 : citron.height < 1000 ? 238 : 286, citron.width * 0.40)
                 height: width
                 mode: citron.orbMode
-                level: citron.soundLevel
-                running: citron.visible
+                inputLevel: citron.soundLevel
+                outputLevel: citron.outputLevel
+                running: citron.visible && !citron.voiceMode
                 scale: 0.90 + 0.10 * citron.shown
                 Behavior on scale { enabled: !Theme.reduceMotion; NumberAnimation { duration: 270; easing.type: Easing.OutBack } }
             }
@@ -665,8 +743,8 @@ PanelWindow {
                     color: "#ffffff"
                     selectionColor: "#5a79a9"
                     font { family: Theme.fontUi; pixelSize: Theme.fs(14) }
-                    enabled: !citron.aiServiceBusy
-                    focus: citron.open
+                    enabled: !citron.aiServiceBusy && !citron.voiceMode
+                    focus: citron.open && !citron.voiceMode
                     onAccepted: citron.sendText()
                     Keys.onEscapePressed: citron.dismiss()
                     Text {
@@ -694,7 +772,7 @@ PanelWindow {
             }
             Text {
                 anchors.horizontalCenter: parent.horizontalCenter
-                text: "⌘⇧Space · Esc to close · Microphone starts only when selected"
+                text: "⌘⇧Space to talk · Esc to dismiss"
                 color: "#dce3ee"
                 font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
                 layer.enabled: GraphicsInfo.api !== GraphicsInfo.Software
