@@ -106,6 +106,9 @@ Scope {
     PanelWindow {
         id: board
         screen: root.screen
+        // Tablet Home manages a separate layout on the same desktop layer.
+        // Never paint or capture touch on top of its icon columns.
+        visible: !Prefs.tabletMode
         anchors { top: true; bottom: true; left: true; right: true }
         exclusionMode: ExclusionMode.Ignore
         WlrLayershell.layer: WlrLayer.Bottom
