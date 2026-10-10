@@ -75,7 +75,7 @@ ShellRoot {
             },
             // Over the note: new note, formatting; more and search on the right.
             ToolbarButton {
-                x: app.editorX + 12
+                x: win.tabletCompact ? Math.max(win.toolbarLeadingEnd, 182) : app.editorX + 12
                 anchors.verticalCenter: parent.verticalCenter
                 round: true; symbol: "compose"
                 onClicked: app.newNote()
