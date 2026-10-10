@@ -50,7 +50,7 @@ ShellRoot {
                 }
                 Text {
                     anchors.verticalCenter: parent.verticalCenter
-                    text: app.page?.title ?? ""
+                    text: win.tabletCompact && app.showMobileCategories ? "Settings" : (app.page?.title ?? "")
                     color: Theme.label
                     font { family: Theme.fontUi; pixelSize: Theme.fs(15); weight: Font.Bold }
                 }
