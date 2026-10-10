@@ -90,10 +90,29 @@ PanelWindow {
         phase = "stopped"
         textEntry.text = ""
     }
-    function toggle() { if (open) dismiss(); else present() }
+    // The global shortcut is voice-first, as a Siri invocation should be.
+    // IPC 'ask' and the writing/image tools remain explicitly text-first.
+    function toggle() {
+        if (open) dismiss()
+        else { present(); startVoice() }
+    }
+    function stopVoice() {
+        voiceWatchdog.stop()
+        voiceRestart.stop()
+        voiceMode = false
+        voiceProc.running = false
+        everReady = false
+        micMuted = false
+        soundLevel = 0
+        phase = "idle"
+        errorText = ""
+    }
     function show(kind) {
         if (!open) present()
-        if (["ask", "writing", "image", "edit"].includes(kind)) tool = kind
+        if (["ask", "writing", "image", "edit"].includes(kind)) {
+            if (voiceMode) stopVoice()
+            tool = kind
+        }
         if (tool === "writing" && !writingSource.text)
             writingSource.text = Quickshell.clipboardText || ""
         Qt.callLater(() => textEntry.forceActiveFocus())
@@ -110,6 +129,7 @@ PanelWindow {
     }
     function chooseTool(kind) {
         if (aiService.busy || !["ask", "writing", "image", "edit"].includes(kind)) return
+        if (voiceMode) stopVoice()
         tool = kind
         responseOpen = false
         responseNote = ""
@@ -311,7 +331,7 @@ PanelWindow {
             onRead: (line) => citron.readEvent(line)
         }
         onExited: {
-            if (!citron.open || citron.restartingVoice) return
+            if (!citron.open || !citron.voiceMode || citron.restartingVoice) return
             voiceWatchdog.stop()
             if (citron.phase !== "error" && citron.phase !== "stopped") {
                 citron.phase = "error"
@@ -569,7 +589,7 @@ PanelWindow {
                     Accessible.role: Accessible.Button
                     Accessible.name: label
                 }
-                ToolChip { label: "Ask"; kind: "ask" }
+                ToolChip { label: citron.voiceMode ? "Type" : "Ask"; kind: "ask" }
                 ToolChip { label: "Write"; kind: "writing" }
                 ToolChip { label: "Create"; kind: "image" }
                 ToolChip { label: "Edit Photo"; kind: "edit" }
@@ -602,7 +622,8 @@ PanelWindow {
                     id: micButton
                     anchors { left: parent.left; leftMargin: 9; verticalCenter: parent.verticalCenter }
                     symbol: citron.voiceMode && citron.phase === "error" ? "arrow-clockwise" : "mic"
-                    description: !citron.voiceMode ? "Start voice conversation" : citron.micMuted ? "Unmute" : "Mute"
+                    description: !citron.voiceMode ? "Start voice conversation"
+                        : citron.phase === "error" ? "Retry voice connection" : citron.micMuted ? "Unmute" : "Mute"
                     shade: citron.voiceMode && !citron.micMuted ? "#b01b4576" : "#30ffffff"
                     onClicked: citron.toggleMic()
                 }
