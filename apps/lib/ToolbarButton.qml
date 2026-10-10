@@ -33,8 +33,9 @@ Item {
     Timer { id: keyRelease; interval: 90; onTriggered: button.keyboardPressed = false }
     readonly property bool both: !!symbol && !!text && !round
 
-    implicitHeight: round ? 36 : 30
-    implicitWidth: round ? 36 : Math.max(34, (label.visible ? label.implicitWidth + 20 : 0) + (both ? symbolSize + 6 : 0))
+    implicitHeight: Touch.enabled ? 44 : round ? 36 : 30
+    implicitWidth: round ? (Touch.enabled ? 44 : 36) : Math.max(Touch.enabled ? 44 : 34,
+        (label.visible ? label.implicitWidth + (Touch.enabled ? 28 : 20) : 0) + (both ? symbolSize + 6 : 0))
     opacity: enabled ? 1 : 0.35
     scale: !Theme.reduceMotion && (tap.pressed || keyboardPressed) ? 0.965
         : !Theme.reduceMotion && hover.hovered && button.enabled ? 1.012 : 1
