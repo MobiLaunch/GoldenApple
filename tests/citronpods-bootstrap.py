@@ -50,7 +50,10 @@ class NativeAirPodsBootstrap(unittest.TestCase):
         # its success path with a deterministic digest shim; no proprietary
         # Bluetooth protocol or compiler is needed on CI.
         digest = self.bin / "sha256sum"
-        digest.write_text('#!/bin/sh\\nprintf "%s  %s\\n" "d14d3e74efb716357713d024bcb7c2311ae1226d8fa6bb883f4b9237661b4da4" "$2"\\n')
+        digest.write_text(
+            '#!/bin/sh\n'
+            'printf "%s  %s\\n" "d14d3e74efb716357713d024bcb7c2311ae1226d8fa6bb883f4b9237661b4da4" "$2"\n'
+        )
         digest.chmod(0o755)
         self.install_stub(
             'if [ "$1" = "--find" ]; then printf "%s\\n" "$HOME/Downloads/LibrePods-CitronPods-M10-Qt6-Fixed.zip"; exit 0; fi\n'
