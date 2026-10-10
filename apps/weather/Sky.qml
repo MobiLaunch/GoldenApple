@@ -31,7 +31,7 @@ Item {
         "rain-night":   ["#1b222d", "#394351", 0.9],
         "snow-night":   ["#2d3747", "#58667c", 0.8],
     })
-    readonly property var palette: palettes[kind] ?? palettes["cloudy"]
+    readonly property var skyPalette: palettes[kind] ?? palettes["cloudy"]
     readonly property bool night: kind.endsWith("-night")
     // The glass cards take their tint from the sky.
     readonly property color cardTint: night ? Qt.rgba(0.02, 0.05, 0.12, 0.30)
@@ -43,8 +43,8 @@ Item {
         anchors.fill: parent
         radius: sky.radius
         gradient: Gradient {
-            GradientStop { position: 0; color: sky.palette[0] }
-            GradientStop { position: 1; color: sky.palette[1] }
+            GradientStop { position: 0; color: sky.skyPalette[0] }
+            GradientStop { position: 1; color: sky.skyPalette[1] }
         }
     }
 
@@ -70,7 +70,7 @@ Item {
             if (w <= 0 || h <= 0) return
             let s = sky.seed
             const rand = () => { s = (s * 16807) % 2147483647; return s / 2147483647 }
-            if (sky.night && sky.palette[2] < 0.5) {
+            if (sky.night && sky.skyPalette[2] < 0.5) {
                 for (let i = 0; i < w * h / 2600; i++) {
                     const a = 0.25 + rand() * 0.6
                     ctx.fillStyle = Qt.rgba(1, 1, 1, a)
@@ -80,7 +80,7 @@ Item {
                     ctx.fillRect(sx + w, sy, d, d)
                 }
             }
-            const cover = sky.palette[2]
+            const cover = sky.skyPalette[2]
             if (cover <= 0) return
             const grey = sky.kind.startsWith("rain") || sky.kind.startsWith("storm") ? 0.55
                        : sky.night ? 0.45 : 1
