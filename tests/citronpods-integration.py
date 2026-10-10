@@ -43,7 +43,7 @@ class CitronPodsIntegration(unittest.TestCase):
         glass = (ROOT / "apps/lib/Glass.qml").read_text()
         menu = (ROOT / "apps/lib/MenuList.qml").read_text()
         control = (ROOT / "shell/ControlCenter.qml").read_text()
-        self.assertIn('property bool shadowEnabled: true', glass)
+        self.assertIn('property bool shadowEnabled: role !== "menu"', glass)
         self.assertIn('visible: root.shadowEnabled &&', glass)
         self.assertIn('shadowEnabled: false', menu)
         self.assertIn('shadowEnabled: false', control)
