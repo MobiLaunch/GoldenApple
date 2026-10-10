@@ -87,7 +87,7 @@ switches only when you ask it to, and keeps to the new one until you ask again.
 A model that refuses an explicit `languageCode` is set up again without it, with
 the instruction still in place.
 
-**Only speech is sent.** `live.py`'s `SpeechGate` listens to the microphone
+**Shortcut behavior.** ⇧⌘Space opens the live microphone with an explicit user gesture. The Ask and Writing Tools commands remain text-first; while in voice mode the Type chip stops capture and keeps the overlay open.\n\n**Only speech is sent.** `live.py`'s `SpeechGate` listens to the microphone
 100 ms at a time and sends Gemini only what sounds like someone talking: louder
 than the room's noise floor (which it learns as it goes), with its energy in the
 voice band, and rising and falling with syllables. Silence, a fan, mains hum,
