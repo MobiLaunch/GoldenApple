@@ -44,6 +44,7 @@ ShellRoot {
         toolbarItems: [
             // Over the list: the folder and how many notes it has.
             Column {
+                visible: !win.tabletCompact || !app.mobileShowingNote
                 // Past the traffic lights and sidebar buttons while the sidebar is hidden.
                 x: Math.max(win.sidebarWidth > 0 ? app.listX + 16 : 176,
                     win.toolbarLeadingEnd)
