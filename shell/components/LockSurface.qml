@@ -25,6 +25,8 @@ Item {
     property string notice: ""          // for a moment under the field ("Try Again" after a finger)
     property string message: ""         // Settings → Lock Screen: "Show message when locked"
     property bool login: false          // the login window: awake from the start
+    property bool tabletMode: false     // Quickshell lock only; SDDM remains desktop-style
+    property var player: null           // live MPRIS, passed by the lock session
     property bool busy: false
     property real battery: -1           // 0…1, or -1 for no battery
     property bool charging: false
@@ -178,7 +180,9 @@ Item {
             }
             Text {
                 id: time
-                readonly property int size: Math.round(Math.min(root.height * 0.205, root.width * 0.16, 210))
+                readonly property int size: Math.round(root.tabletMode
+                    ? Math.min(root.height * 0.28, root.width * 0.28, 300)
+                    : Math.min(root.height * 0.205, root.width * 0.16, 210))
                 anchors.horizontalCenter: parent.horizontalCenter
                 // "h" is 24-hour unless an AM/PM marker is present; the lock clock shows 1:34, not 13:34.
                 text: Qt.formatTime(clock.now, "h:mm AP").replace(/\s*[AP]M$/i, "")
@@ -232,9 +236,85 @@ Item {
             }
         }
 
+        // Now Playing is connected to MPRIS rather than decorative mock data.
+        Glass {
+            id: tabletNowPlaying
+            objectName: "tabletLockNowPlaying"
+            visible: root.tabletMode && !root.awake && !root.login && !!root.player
+            anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: Math.round(root.height * 0.12) }
+            width: Math.min(520, root.width - 48)
+            height: 164; radius: 28; role: "regular"
+            Item {
+                anchors { fill: parent; margins: 18 }
+                Image {
+                    id: cover
+                    width: 56; height: 56
+                    source: root.player?.trackArtUrl ?? ""
+                    fillMode: Image.PreserveAspectCrop
+                    asynchronous: true
+                    visible: status === Image.Ready
+                }
+                Rectangle {
+                    width: 56; height: 56; radius: 12
+                    visible: !cover.visible
+                    color: "#445e8095"
+                    Symbol { anchors.centerIn: parent; name: "music"; size: 27; tone: "white" }
+                }
+                Text {
+                    x: 70; y: 3; width: parent.width - 76
+                    text: root.player?.trackTitle || "Not Playing"
+                    elide: Text.ElideRight; color: "#ffffff"
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(16); weight: Font.DemiBold }
+                }
+                Text {
+                    x: 70; y: 29; width: parent.width - 76
+                    text: root.player?.trackArtist || root.player?.identity || "Music"
+                    elide: Text.ElideRight; color: "#d8ffffff"
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                }
+                Row {
+                    anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom }
+                    spacing: 40
+                    Repeater {
+                        model: ["backward", "play", "forward"]
+                        delegate: Item {
+                            required property int index
+                            required property string modelData
+                            width: 56; height: 54
+                            readonly property bool supported: !!root.player && (
+                                index === 0 ? root.player.canGoPrevious
+                                : index === 2 ? root.player.canGoNext
+                                : root.player.canTogglePlaying)
+                            opacity: supported ? 1 : 0.4
+                            Symbol {
+                                anchors.centerIn: parent
+                                name: index === 1 && root.player?.isPlaying ? "pause" : modelData
+                                size: index === 1 ? 29 : 23; tone: "white"
+                            }
+                            MouseArea {
+                                anchors.fill: parent
+                                enabled: parent.supported
+                                onClicked: {
+                                    if (!root.player) return
+                                    if (index === 0) root.player.previous()
+                                    else if (index === 2) root.player.next()
+                                    else root.player.togglePlaying()
+                                }
+                            }
+                            Accessible.role: Accessible.Button
+                            Accessible.name: index === 0 ? "Previous track" : index === 2 ? "Next track"
+                                : root.player?.isPlaying ? "Pause" : "Play"
+                        }
+                    }
+                }
+            }
+        }
+
         // ------------------------------------------------- the user, the field
         Column {
             id: who
+            // The user/password appears when the touch screen wakes.
+            visible: !root.tabletMode || root.awake || root.login
             anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: Math.round(root.height * 0.085) }
             property real lift: 0
             transform: Translate { y: who.lift }
@@ -388,6 +468,15 @@ Item {
                 font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: Font.Medium }
             }
         }
+    }
+
+    // A home indicator marks the tablet swipe edge without bypassing PAM.
+    Rectangle {
+        objectName: "tabletLockHomeIndicator"
+        visible: root.tabletMode && !root.awake && !root.login
+        width: Math.min(140, root.width * 0.22)
+        height: 5; radius: 3; color: "#e9ffffff"
+        anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: 14 }
     }
 
     // ------------------------------------------------------------- animations

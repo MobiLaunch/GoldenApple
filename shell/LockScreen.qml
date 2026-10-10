@@ -7,6 +7,7 @@ import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Services.Pam
 import Quickshell.Services.UPower
+import Quickshell.Services.Mpris
 import QtQuick
 import "ui/theme"
 import "components"
@@ -19,6 +20,7 @@ Scope {
     readonly property string user: Quickshell.env("USER") ?? ""
     readonly property string home: Quickshell.env("HOME") ?? ""
     property string realName: ""
+    readonly property var mediaPlayer: Mpris.players.values.length ? Mpris.players.values[0] : null
 
     IpcHandler {
         target: "lock"
@@ -86,6 +88,8 @@ Scope {
                 id: surface
                 anchors.fill: parent
                 wallpaper: Paths.fileUrl(root.wallpaper)
+                tabletMode: Prefs.tabletMode
+                player: root.mediaPlayer
                 message: Prefs.lockMessage
                 touchId: root.touchId
                 userName: root.realName || (root.user ? root.user.charAt(0).toUpperCase() + root.user.slice(1) : "Golden User")

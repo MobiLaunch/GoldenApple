@@ -27,7 +27,7 @@ PanelWindow {
     property var widgetTileItems: []
     // iPad-style finite Home Screen pages. The first page contains widgets;
     // subsequent pages fill with app icon columns at the current orientation.
-    readonly property int firstPageCapacity: iconColumns * (portrait ? 2 : 3)
+    readonly property int firstPageCapacity: iconColumns * 2
     readonly property int otherPageCapacity: iconColumns * Math.max(2,
         Math.floor((height - Theme.sizeMenubar - Math.max(100, Prefs.dockSize + 48) - 140) /
                    (iconSize + 60)))
@@ -45,8 +45,8 @@ PanelWindow {
         {kind: "battery", title: "Batteries", sizes: ["small"]}
     ]
     readonly property bool portrait: width < height
-    readonly property int iconColumns: portrait ? 4 : Math.max(5, Math.min(8, Math.floor((width - 72) / 124)))
-    readonly property int iconSize: Math.max(57, Math.min(84, (contentWidth - (iconColumns - 1) * 14) / iconColumns - 24))
+    readonly property int iconColumns: portrait ? 4 : Math.max(5, Math.min(7, Math.floor((width - 72) / 154)))
+    readonly property int iconSize: Math.max(60, Math.min(76, (contentWidth - (iconColumns - 1) * 14) / iconColumns - 24))
     readonly property real contentWidth: Math.max(300, Math.min(1100, width - (portrait ? 40 : 76)))
     readonly property var curatedApps: {
         const names = new Set(Prefs.defaultDockPinned.concat([
@@ -194,21 +194,14 @@ PanelWindow {
                     x: (pageScroll.width - width) / 2
                     width: Math.min(pageScroll.width - 20, tablet.contentWidth)
                     spacing: 20
-            Row {
+            // Wallpaper-first Home Screen: no desktop-style dashboard heading.
+            Item {
                 width: parent.width
-                height: 48
-                spacing: 10
-                Text {
-                    width: parent.width - editHome.width - 22
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: tablet.editing && page.index === 0 ? "Customize Home" : page.index === 0 ? "Home" : "Apps"
-                    color: "#ffffff"
-                    font { family: Theme.fontDisplay; pixelSize: Theme.fs(27); weight: Font.Bold }
-                }
+                height: 44
                 TouchPill {
                     id: editHome
-                    anchors.verticalCenter: parent.verticalCenter
-                    label: tablet.editing ? "Done" : "Edit Home"
+                    anchors { right: parent.right; verticalCenter: parent.verticalCenter }
+                    label: tablet.editing ? "Done" : "Edit"
                     prominent: tablet.editing
                     onTapped: tablet.editing = !tablet.editing
                 }
@@ -220,8 +213,9 @@ PanelWindow {
                 width: parent.width
                 spacing: 11
                 Row {
+                    visible: tablet.editing
                     width: parent.width
-                    height: 25
+                    height: tablet.editing ? 25 : 0
                     Text {
                         width: parent.width - 60
                         text: "WIDGETS"
@@ -369,6 +363,7 @@ PanelWindow {
                 width: parent.width
                 spacing: 12
                 Text {
+                    visible: tablet.editing
                     text: "APPS"
                     color: "#f1f4fa"
                     font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: Font.Bold; letterSpacing: 1.2 }
@@ -396,28 +391,26 @@ PanelWindow {
                                 asynchronous: true
                                 smooth: true
                             }
-                            Rectangle {
+                            // App captions sit directly over wallpaper, not in dark pills.
+                            Text {
+                                id: appName
                                 anchors { bottom: parent.bottom; horizontalCenter: parent.horizontalCenter }
-                                height: 25
-                                width: Math.min(parent.width, appName.implicitWidth + 14)
-                                radius: 10
-                                color: "#660d1420"
-                                Text {
-                                    id: appName
-                                    anchors.centerIn: parent
-                                    width: Math.min(implicitWidth, appTile.width - 12)
-                                    text: appTile.modelData.name
-                                    elide: Text.ElideRight
-                                    color: "#ffffff"
-                                    font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: Font.Medium }
-                                    horizontalAlignment: Text.AlignHCenter
-                                }
+                                width: appTile.width - 8; height: 23
+                                text: appTile.modelData.name
+                                elide: Text.ElideRight
+                                color: "#ffffff"
+                                style: Text.Outline
+                                styleColor: "#660b1b29"
+                                font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: Font.Medium }
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
                             }
                             scale: appTouch.pressed && !Theme.reduceMotion ? 0.94 : 1
                             Behavior on scale { NumberAnimation { duration: 130; easing.type: Easing.OutBack } }
                             MouseArea {
                                 id: appTouch; anchors.fill: parent
                                 onClicked: if (!tablet.editing) appTile.modelData.execute()
+                                onPressAndHold: tablet.editing = true
                             }
                             Accessible.role: Accessible.Button
                             Accessible.name: "Open " + modelData.name

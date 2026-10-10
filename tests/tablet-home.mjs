@@ -85,12 +85,29 @@ test('tablet home and tablet shortcuts are integrated in one desktop shell', () 
 test('tablet icon columns and widget sizing remain touch-friendly', () => {
   for(const [w,h] of [[390,844],[600,800],[768,1024],[1024,768],[1366,768],[1920,1080]]){
     const portrait = w < h
-    const columns = portrait ? 4 : Math.max(5,Math.min(8,Math.floor((w-72)/124)))
+    const columns = portrait ? 4 : Math.max(5,Math.min(7,Math.floor((w-72)/154)))
     const width = Math.max(300,Math.min(1100,w-(portrait?40:76)))
     const cellWidth = (width-(columns-1)*10)/columns
-    const iconSize = Math.max(57,Math.min(84,(width-(columns-1)*14)/columns-24))
+    const iconSize = Math.max(60,Math.min(76,(width-(columns-1)*14)/columns-24))
     assert.ok(iconSize <= cellWidth, 'icon fits: '+w+'x'+h)
-    assert.ok(columns>=4&&columns<=8)
+    assert.ok(columns>=4&&columns<=7)
     assert.ok(Math.min(1,width/344)>0, 'medium widget scales to portrait width')
   }
+})
+
+test('wallpaper-first tablet Home supports app long-press editing', () => {
+  assert.match(source, /firstPageCapacity: iconColumns \* 2/)
+  assert.match(source, /onPressAndHold: tablet\.editing = true/)
+  assert.match(source, /style: Text\.Outline/)
+  assert.doesNotMatch(source, /text: tablet\.editing && page\.index === 0 \? "Customize Home"/)
+})
+
+test('tablet lock screen uses live MPRIS data', () => {
+  const lock = read('shell/components/LockSurface.qml')
+  const session = read('shell/LockScreen.qml')
+  assert.match(lock, /objectName: "tabletLockNowPlaying"/)
+  assert.match(lock, /objectName: "tabletLockHomeIndicator"/)
+  assert.match(lock, /root\.player\.togglePlaying\(\)/)
+  assert.match(session, /Quickshell\.Services\.Mpris/)
+  assert.match(session, /tabletMode: Prefs\.tabletMode/)
 })

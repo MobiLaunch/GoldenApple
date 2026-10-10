@@ -17,7 +17,9 @@ remain unchanged. Turn it off to return to the standard macOS-like desktop.
   only when it moves at least the gesture threshold with little sideways drift.
 - Installed apps retain their approved macOS-style launch icons. No generic
   Linux app is allowed to leak into the curated tablet grid.
-- Widgets appear on the first page, and app pages fill based on screen size.
+- Widgets appear on the first page, followed by two rows of app icons;
+  additional apps continue on swipeable pages. Wallpaper remains prominent,
+  without permanent dashboard headings. Long-press an app or widget to edit.
   On small screens individual pages can scroll vertically to avoid clipping.
 - The normal iPad-like Dock is the same Dock used throughout Golden Gate.
   Its icon set, recent running apps and notification badges remain available.
@@ -38,6 +40,13 @@ key and are never moved or overwritten by switching modes.
 The tablet Home Screen is a Wayland **bottom-layer** surface, behind
 regular application windows. The existing Spotlight, Control Center, menu bar
 and Dock remain independent shell components.
+
+## Tablet lock screen
+
+Tablet Mode uses a larger centered clock, a bottom home indicator, and an
+MPRIS-backed Now Playing card (when a player is connected) with working
+previous/play/pause/next transport. The account portrait and PAM password field
+appear when the screen wakes. Desktop mode and SDDM remain unchanged.
 
 ## Tablet application interfaces
 
