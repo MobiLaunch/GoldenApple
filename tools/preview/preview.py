@@ -556,6 +556,8 @@ def main() -> int:
     ap.add_argument("--dark", action="store_true")
     ap.add_argument("--do", action="append", default=[], help="target.function[:arg…], as qs ipc call")
     ap.add_argument("--notify", action="store_true", help="send two sample notifications")
+    ap.add_argument("--citron-state", choices=["listening", "thinking", "speaking"], default="",
+                    help="preview-only simulated voice state, never captures a microphone")
     ap.add_argument("--env", action="append", default=[], help="NAME=value for Quickshell.env")
     ap.add_argument("--size", default="1440x900")
     ap.add_argument("--wait", type=int, default=900, help="ms to settle before each step")
@@ -615,6 +617,8 @@ def main() -> int:
     window = engine.rootObjects()[0]
 
     steps = list(a.do)
+    if a.citron_state:
+        steps.append("@citron-state:" + a.citron_state)
     # Render fully configured Mail instead of testing setup mode exclusively.
     # The fixture is installed after initial asynchronous account checks settle.
     if a.mail_fixture:
@@ -739,6 +743,33 @@ def main() -> int:
             preview.notify({"id": 2, "appName": "Calendar", "appIcon": "org.goldengate.Calendar",
                             "desktopEntry": "org.goldengate.Calendar", "summary": "Design review",
                             "body": "Today at 10:30 · Studio"})
+        elif s.startswith("@citron-state:"):
+            state = s.partition(":")[2]
+            # Simulated levels and captions on the ACTUAL Citron QML scene.
+            # Quickshell's preview Process never starts mic or Gemini.
+            stage = find_surface_object("citronSystemOverlay")
+            citron = None
+            if stage is not None:
+                for panel in preview._panels:
+                    if panel.findChild(QObject, "citronSystemOverlay") is stage:
+                        citron = panel
+                        break
+            if citron is None:
+                print("preview: Citron voice overlay was not instantiated", file=sys.stderr)
+                app.exit(8)
+                return
+            citron.setProperty("open", True)
+            citron.setProperty("voiceMode", True)
+            citron.setProperty("errorText", "")
+            citron.setProperty("everReady", True)
+            citron.setProperty("phase", state)
+            citron.setProperty("micMuted", False)
+            citron.setProperty("soundLevel", 0.57 if state == "listening" else 0.0)
+            citron.setProperty("outputLevel", 0.84 if state == "speaking" else 0.0)
+            citron.setProperty("youSaid", "" if state == "listening" else
+                              "What's on my calendar today?")
+            citron.setProperty("citronSaid",
+                              "Your first meeting is at 10:30." if state == "speaking" else "")
         else:
             fn, *args = s.split(":")
             target_name, _, function = fn.partition(".")
