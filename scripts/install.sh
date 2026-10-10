@@ -71,10 +71,12 @@ install_extras() {
   # its service, UI, Settings and command-line bridge on every normal update.
   install -Dm644 "$REPO/apps/citronpods/citronpods-daemon.service" "$R/usr/lib/systemd/user/citronpods-daemon.service"
   install -Dm644 "$REPO/apps/citronpods/citronpods-engine-bootstrap.service" "$R/usr/lib/systemd/user/citronpods-engine-bootstrap.service"
+  install -Dm644 "$REPO/apps/citronpods/citronpods-engine-bootstrap.path" "$R/usr/lib/systemd/user/citronpods-engine-bootstrap.path"
   # Run the daemon setup automatically on the first account login (and on
   # upgrades); this is a oneshot with a lock, and no ZIP means a fast no-op.
   install -d "$R/etc/systemd/user/default.target.wants"
-  ln -sfn /usr/lib/systemd/user/citronpods-engine-bootstrap.service     "$R/etc/systemd/user/default.target.wants/citronpods-engine-bootstrap.service"
+  ln -sfn /usr/lib/systemd/user/citronpods-engine-bootstrap.service "$R/etc/systemd/user/default.target.wants/citronpods-engine-bootstrap.service"
+  ln -sfn /usr/lib/systemd/user/citronpods-engine-bootstrap.path "$R/etc/systemd/user/default.target.wants/citronpods-engine-bootstrap.path"
   rm -rf "$SHARE/apps/lib"
   ln -s ../ui "$SHARE/apps/lib"
   rm -rf "$SHARE/apps/desktop"
@@ -367,13 +369,15 @@ printf '#!/bin/sh\nexec sh "%s/tablet/keyboard.sh" "$@"\n' "$APPS_RUN" > "$BIN/g
 # user installs keep a private unit for systemctl --user as well.
 install -Dm644 "$REPO/apps/citronpods/citronpods-daemon.service" "$CONF/systemd/user/citronpods-daemon.service"
 install -Dm644 "$REPO/apps/citronpods/citronpods-engine-bootstrap.service" "$CONF/systemd/user/citronpods-engine-bootstrap.service"
+install -Dm644 "$REPO/apps/citronpods/citronpods-engine-bootstrap.path" "$CONF/systemd/user/citronpods-engine-bootstrap.path"
 chmod +x "$BIN/gg-intelligence" "$BIN/gg-install-citronpods" "$BIN/gg-citronpods" "$BIN/gg-citronpods-bootstrap" "$BIN/gg-tablet-keyboard"
 # Adopt an existing M10 daemon installed by the user's previous CitronPods
 # build. Do not recompile, install a second GUI or enable a failing service
 # when no backend exists yet. Staged/offline image builds skip user systemd.
 if [[ $MODE != system ]] && command -v systemctl >/dev/null 2>&1; then
   systemctl --user daemon-reload >/dev/null 2>&1 || :
-  systemctl --user enable --now citronpods-engine-bootstrap.service >/dev/null 2>&1 || :
+  systemctl --user enable citronpods-engine-bootstrap.service citronpods-engine-bootstrap.path >/dev/null 2>&1 || :
+  systemctl --user start --no-block citronpods-engine-bootstrap.path citronpods-engine-bootstrap.service >/dev/null 2>&1 || :
   if command -v citronpods-daemon >/dev/null 2>&1; then
     systemctl --user enable --now citronpods-daemon.service >/dev/null 2>&1 || :
   fi
