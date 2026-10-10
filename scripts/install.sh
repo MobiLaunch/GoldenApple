@@ -359,7 +359,7 @@ printf '#!/bin/sh\nexec sh "%s/tablet/keyboard.sh" "$@"\n' "$APPS_RUN" > "$BIN/g
 # The system service is installed by --extras on system images; standalone
 # user installs keep a private unit for systemctl --user as well.
 install -Dm644 "$REPO/apps/citronpods/citronpods-daemon.service" "$CONF/systemd/user/citronpods-daemon.service"
-chmod +x "$BIN/gg-intelligence" "$BIN/gg-install-citronpods" "$BIN/gg-citronpods"
+chmod +x "$BIN/gg-intelligence" "$BIN/gg-install-citronpods" "$BIN/gg-citronpods" "$BIN/gg-tablet-keyboard"
 # Adopt an existing M10 daemon installed by the user's previous CitronPods
 # build. Do not recompile, install a second GUI or enable a failing service
 # when no backend exists yet. Staged/offline image builds skip user systemd.
