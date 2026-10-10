@@ -62,6 +62,7 @@ ShellRoot {
             },
             ToolbarButton {
                 id: listMore
+                visible: !win.tabletCompact || !app.mobileShowingNote
                 x: app.listX + app.listWidth - width - 10
                 anchors.verticalCenter: parent.verticalCenter
                 round: true; symbol: "ellipsis"
