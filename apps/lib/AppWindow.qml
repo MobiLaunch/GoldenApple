@@ -42,6 +42,9 @@ FloatingWindow {
     property bool tabletEnabled: Quickshell.env("GG_TABLET_PREVIEW") === "1"
     readonly property bool tabletCompact: tabletEnabled && width < 960
     readonly property real tabletTouchSize: tabletEnabled ? 44 : 32
+    // Sync the shared Qt-only theme singleton without making the theme itself
+    // depend on Quickshell (which standalone browser QML cannot import).
+    onTabletEnabledChanged: Touch.enabled = tabletEnabled
     FileView {
         id: tabletPreference
         path: (Quickshell.env("XDG_CONFIG_HOME") || Quickshell.env("HOME") + "/.config")
@@ -139,6 +142,7 @@ FloatingWindow {
     onForceDarkChanged: applyScheme()
     onAppearanceChanged: applyScheme()
     Component.onCompleted: {
+        Touch.enabled = tabletEnabled
         if (forceDark || appearance) applyScheme()
         choreographyReady = true
     }

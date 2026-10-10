@@ -119,3 +119,13 @@ class BrowserRecovery(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class SharedThemeImportRegression(unittest.TestCase):
+    def test_native_web_can_import_shared_theme_without_quickshell(self):
+        theme = (ROOT / "apps/lib/theme/Touch.qml").read_text()
+        app_window = (ROOT / "apps/lib/AppWindow.qml").read_text()
+        self.assertIn("import QtQuick", theme)
+        self.assertNotIn("import Quickshell", theme)
+        self.assertNotIn("FileView {", theme)
+        self.assertIn("onTabletEnabledChanged: Touch.enabled = tabletEnabled", app_window)

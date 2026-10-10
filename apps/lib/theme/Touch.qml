@@ -1,24 +1,11 @@
 pragma Singleton
-// Shared tablet/touch mode state. Every Quickshell app observes the same
-// Settings preference, so hit targets grow without spawning mobile copies.
-import Quickshell
-import Quickshell.Io
+// This theme singleton must be plain Qt Quick: standalone PySide6 apps such as
+// CitronOS Web import the same theme as the Quickshell desktop. Importing
+// Quickshell here makes even Symbol/Glass fail to instantiate in those apps.
+// A running first-party AppWindow updates this on its tablet preference changes.
 import QtQuick
 
-Singleton {
+QtObject {
     id: touch
-    property bool enabled: Quickshell.env("GG_TABLET_PREVIEW") === "1"
-    FileView {
-        path: (Quickshell.env("XDG_CONFIG_HOME") || Quickshell.env("HOME") + "/.config") +
-              "/golden-gate/desktop.json"
-        printErrors: false
-        watchChanges: true
-        onFileChanged: reload()
-        onLoaded: {
-            try {
-                touch.enabled = Quickshell.env("GG_TABLET_PREVIEW") === "1" ||
-                    (JSON.parse(text()).tablet?.enabled === true)
-            } catch (e) {}
-        }
-    }
+    property bool enabled: false
 }
