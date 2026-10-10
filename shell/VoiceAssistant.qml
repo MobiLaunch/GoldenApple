@@ -120,6 +120,9 @@ PanelWindow {
     }
     function startVoice() {
         if (voiceMode) return
+        // A microphone request always starts a conversation, never an
+        // image-generation/write command left selected from the previous tool.
+        tool = "ask"
         voiceMode = true
         restartingVoice = false
         phase = "connecting"
@@ -205,7 +208,25 @@ PanelWindow {
         voiceProc.write(JSON.stringify({action: "mute", enabled: micMuted}) + "\n")
         if (micMuted) soundLevel = 0
     }
+    // Live input/output transcription may repeat a full partial sentence or
+    // overlap its previous fragment. Deduplicate without losing word updates.
+    function transcriptText(current, incoming, limit) {
+        const existing = String(current || "").trim()
+        const next = String(incoming || "").trim()
+        if (!next) return existing
+        if (!existing || next.startsWith(existing)) return next.slice(-limit)
+        if (existing === next || existing.endsWith(next)) return existing.slice(-limit)
+        const a = existing.toLowerCase(), b = next.toLowerCase()
+        for (let n = Math.min(a.length, b.length); n >= 3; n--) {
+            if (a.endsWith(b.slice(0, n)))
+                return (existing + next.slice(n)).slice(-limit)
+        }
+        return (existing + " " + next).slice(-limit)
+    }
     function readEvent(line) {
+        // A just-closed worker may still flush buffered lines. They must not
+        // reawaken microphone indicators or overwrite a new text-mode draft.
+        if (!open || !voiceMode) return
         let msg
         try { msg = JSON.parse(line) } catch (e) { return }
         if (msg.event === "status") {
@@ -220,12 +241,10 @@ PanelWindow {
             const fragment = String(msg.text || "").trim()
             if (msg.role === "user" && fragment) {
                 if (citronSaid) { youSaid = ""; citronSaid = "" }
-                youSaid = (youSaid ? youSaid + " " : "") + fragment
-                youSaid = youSaid.slice(-1000)
+                youSaid = transcriptText(youSaid, fragment, 1000)
             }
-            if (msg.role === "assistant" && fragment) {
-                citronSaid = ((citronSaid ? citronSaid + " " : "") + fragment).slice(-1500)
-            }
+            if (msg.role === "assistant" && fragment)
+                citronSaid = transcriptText(citronSaid, fragment, 1500)
         } else if (msg.event === "notice") {
             citronSaid = msg.text
         } else if (msg.event === "error") {
