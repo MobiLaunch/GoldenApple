@@ -28,6 +28,9 @@ PanelWindow {
     property string answer: ""
     property var imageResults: []
     property var history: []
+    property string pendingPrompt: ""
+    property string pendingTool: ""
+    property bool restartingVoice: false
     property string responseNote: ""
     property bool responseOpen: false
     readonly property bool aiServiceBusy: aiService.busy
@@ -66,6 +69,11 @@ PanelWindow {
         if (imageResults.length) cleanup.send({action:"discard", images:imageResults})
         imageResults = []
         history = []
+        pendingPrompt = ""
+        pendingTool = ""
+        restartingVoice = false
+        voiceWatchdog.stop()
+        voiceRestart.stop()
         answer = ""
         responseNote = ""
         responseOpen = false
@@ -98,6 +106,7 @@ PanelWindow {
         everReady = false
         micMuted = false
         voiceProc.running = true
+        voiceWatchdog.restart()
     }
     function chooseTool(kind) {
         if (aiService.busy || !["ask", "writing", "image", "edit"].includes(kind)) return
@@ -132,22 +141,39 @@ PanelWindow {
         } else if (task === "edit") request.imagePath = selectedPhoto
         responseNote = ""
         responseOpen = true
-        aiService.send(request)
+        pendingPrompt = q
+        pendingTool = task
+        if (!aiService.send(request)) {
+            responseNote = "Citron is still completing the previous request."
+            pendingPrompt = ""
+            pendingTool = ""
+        }
     }
     function retry() {
+        if (!open || !voiceMode) return
+        restartingVoice = true
+        voiceWatchdog.stop()
         voiceProc.running = false
         phase = "connecting"
         errorText = ""
         everReady = false
-        Qt.callLater(() => { if (citron.open) voiceProc.running = true })
+        voiceRestart.restart()
     }
     function sendText() {
         const text = textEntry.text.trim()
         if (!text) return
-        if (voiceMode && voiceProc.running && everReady) {
-            voiceProc.write(JSON.stringify({ action: "text", text: text }) + "\n")
-            textEntry.text = ""
-        } else sendAI()
+        if (voiceMode) {
+            if (voiceProc.running && everReady && phase !== "error") {
+                voiceProc.write(JSON.stringify({ action: "text", text: text }) + "\n")
+                textEntry.text = ""
+                errorText = ""
+            } else {
+                errorText = phase === "error" ? "Retry voice to send this message."
+                    : "Voice is still connecting. Your message has been kept."
+            }
+            return
+        }
+        sendAI()
     }
     function toggleMic() {
         if (!voiceMode) { startVoice(); return }
@@ -162,17 +188,28 @@ PanelWindow {
         try { msg = JSON.parse(line) } catch (e) { return }
         if (msg.event === "status") {
             phase = msg.mode
-            if (msg.mode === "listening") everReady = true
+            if (msg.mode === "listening") {
+                everReady = true
+                voiceWatchdog.stop()
+            }
         } else if (msg.event === "level") {
             soundLevel = micMuted ? 0 : Math.max(0, Math.min(1, Number(msg.value) || 0))
         } else if (msg.event === "transcript") {
-            if (msg.role === "user") { youSaid = msg.text; citronSaid = "" }
-            if (msg.role === "assistant") citronSaid = msg.text
+            const fragment = String(msg.text || "").trim()
+            if (msg.role === "user" && fragment) {
+                if (citronSaid) { youSaid = ""; citronSaid = "" }
+                youSaid = (youSaid ? youSaid + " " : "") + fragment
+                youSaid = youSaid.slice(-1000)
+            }
+            if (msg.role === "assistant" && fragment) {
+                citronSaid = ((citronSaid ? citronSaid + " " : "") + fragment).slice(-1500)
+            }
         } else if (msg.event === "notice") {
             citronSaid = msg.text
         } else if (msg.event === "error") {
+            voiceWatchdog.stop()
             phase = "error"
-            errorText = msg.text
+            errorText = msg.text || "Citron voice could not start."
         }
     }
 
@@ -219,7 +256,14 @@ PanelWindow {
     AI.Service {
         id: aiService
         onCompleted: (action, result) => {
-            if (!result.ok) { citron.responseNote = result.error || "Couldn't complete that request."; citron.responseOpen = true; return }
+            if (!citron.open) return
+            if (!result.ok) {
+                citron.responseNote = result.error || "Couldn't complete that request."
+                citron.responseOpen = true
+                citron.pendingPrompt = ""
+                citron.pendingTool = ""
+                return
+            }
             if (action === "export") {
                 citron.responseNote = "Saved: " + result.savedPath
                 return
@@ -229,13 +273,17 @@ PanelWindow {
             citron.imageResults = result.images || []
             citron.responseOpen = true
             citron.responseNote = result.truncated ? "The answer may be incomplete." : ""
-            if (citron.tool === "ask") {
+            // Preserve the prompt actually sent and any new draft typed in
+            // the meantime. Otherwise a reply is attached to the wrong turn.
+            if (citron.pendingTool === "ask" && citron.pendingPrompt && citron.answer.trim()) {
                 citron.history = citron.history.concat([
-                    { role: "user", text: textEntry.text.trim() },
+                    { role: "user", text: citron.pendingPrompt },
                     { role: "model", text: citron.answer }
                 ]).slice(-20)
             }
-            textEntry.text = ""
+            if (textEntry.text.trim() === citron.pendingPrompt) textEntry.text = ""
+            citron.pendingPrompt = ""
+            citron.pendingTool = ""
         }
     }
     FileDialog {
@@ -263,10 +311,35 @@ PanelWindow {
             onRead: (line) => citron.readEvent(line)
         }
         onExited: {
-            if (!citron.open) return
+            if (!citron.open || citron.restartingVoice) return
+            voiceWatchdog.stop()
             if (citron.phase !== "error" && citron.phase !== "stopped") {
                 citron.phase = "error"
                 citron.errorText = "Voice disconnected. Select Retry to reconnect."
+            }
+        }
+    }
+
+    Timer {
+        id: voiceRestart
+        interval: 300
+        repeat: false
+        onTriggered: {
+            if (!citron.open || !citron.voiceMode) { citron.restartingVoice = false; return }
+            citron.restartingVoice = false
+            voiceProc.running = true
+            voiceWatchdog.restart()
+        }
+    }
+    Timer {
+        id: voiceWatchdog
+        interval: 25000
+        repeat: false
+        onTriggered: {
+            if (citron.open && citron.voiceMode && !citron.everReady) {
+                citron.phase = "error"
+                citron.errorText = "Voice connection timed out. Check your Live model and network, then Retry."
+                voiceProc.running = false
             }
         }
     }
