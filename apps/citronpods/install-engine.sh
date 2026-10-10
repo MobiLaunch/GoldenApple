@@ -3,9 +3,27 @@
 # Installs ONLY the persistent backend, not its duplicate standalone GUI.
 # The user supplies their existing LibrePods-CitronPods-M10-Qt6-Fixed.zip.
 set -euo pipefail
+# The engine is a GPL-3.0 Qt/BlueZ daemon. Golden Gate never installs
+# the duplicate standalone Qt app. Locate a verified user-provided M10 ZIP
+# after login/first install, or take a direct path from the Settings picker.
+# No arbitrary downloads, shell code or scripts are ever executed from ZIP.
 archive="${1:-}"
+downloads="${XDG_DOWNLOAD_DIR:-$HOME/Downloads}"
+if [[ -z "$archive" || "$archive" == "--find" ]]; then
+  shopt -s nullglob
+  candidates=( "$downloads"/LibrePods-CitronPods-M10-Qt6-Fixed*.zip
+               "$HOME"/Downloads/LibrePods-CitronPods-M10-Qt6-Fixed*.zip )
+  for candidate in "${candidates[@]}"; do
+    if [[ -f "$candidate" ]]; then archive="$candidate"; break; fi
+  done
+  if [[ "${1:-}" == "--find" ]]; then
+    [[ -f "$archive" ]] || exit 1
+    printf '%s\\n' "$archive"
+    exit 0
+  fi
+fi
 if [[ ! -f "$archive" ]]; then
-  echo "Usage: gg-install-citronpods ~/Downloads/LibrePods-CitronPods-M10-Qt6-Fixed.zip" >&2
+  echo "CitronPods M10 source not found in Downloads. Choose the M10 Qt6-Fixed ZIP in Settings → AirPods or pass its path." >&2
   exit 2
 fi
 for executable in cmake ninja python3 c++; do
