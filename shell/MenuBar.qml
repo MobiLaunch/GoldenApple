@@ -659,7 +659,7 @@ PanelWindow {
             { label: "Select All", shortcut: "⌘A", enabled: false }
         ]
         if (title === "View") return [
-            { label: "Edit Widgets…", action: () => bar.shell("widgets edit") },
+            { label: "Edit Widgets…", action: () => bar.shell(Prefs.tabletMode ? "tablet edit" : "widgets edit") },
             "-",
             { label: "Show Launchpad", action: () => bar.shell("launchpad toggle") },
             { label: "Mission Control", action: () => bar.shell("missioncontrol toggle") },
