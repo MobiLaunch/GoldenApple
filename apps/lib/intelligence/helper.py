@@ -370,17 +370,24 @@ def dispatch(args: dict) -> dict:
         return {"config": cfg}
     if action == "models":
         key = api_key()
-        models, token = [], ""
+        models, voice_models, token = [], [], ""
         for _ in range(10):
             page = request("models?pageSize=100" + ("&pageToken=" + urllib.parse.quote(token, safe="") if token else ""), key)
             for item in page.get("models", []):
                 name = item.get("name", "").removeprefix("models/")
-                if name.startswith("gemini-") and "generateContent" in item.get("supportedGenerationMethods", []):
+                methods = item.get("supportedGenerationMethods", [])
+                if name.startswith("gemini-") and "generateContent" in methods:
                     models.append(name)
+                # Live models can expose bidiGenerateContent without regular
+                # generateContent and must not disappear from voice settings.
+                if name.startswith("gemini-") and (
+                    "bidiGenerateContent" in methods or "live" in name
+                ):
+                    voice_models.append(name)
             token = page.get("nextPageToken", "")
             if not token:
                 break
-        return {"models": sorted(set(models))}
+        return {"models": sorted(set(models)), "voiceModels": sorted(set(voice_models))}
     if action == "discard":
         for name in args.get("images", []):
             try:
