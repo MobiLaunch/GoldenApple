@@ -558,6 +558,8 @@ jobs:
         run: python tests/mail-drafts.py
       - name: Smart Mail categories, real Important flags and reactive Dock badges
         run: python tests/mail-categories-badges.py
+      - name: CitronPods M10 OS integration and menu-shadow polish
+        run: python tests/citronpods-integration.py
       - name: "Web downloads: completed, cancelled, interrupted and paused states"
         run: python tests/browser-downloads.py
         env:
