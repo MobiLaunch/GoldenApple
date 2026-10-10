@@ -182,7 +182,7 @@ function material(name, m) {
     writeFileSync(join(dir, "Theme.qml"), q.join("\n"));
     // Release.qml (the system's name and version) and Backdrops.qml (what
     // glass bends, Glass.qml) live beside the theme.
-    writeFileSync(join(dir, "qmldir"), "singleton Theme 1.0 Theme.qml\nsingleton Release 1.0 Release.qml\nsingleton Backdrops 1.0 Backdrops.qml\n");
+    writeFileSync(join(dir, "qmldir"), "singleton Theme 1.0 Theme.qml\nsingleton Release 1.0 Release.qml\nsingleton Backdrops 1.0 Backdrops.qml\nsingleton Touch 1.0 Touch.qml\n");
   }
 }
 
