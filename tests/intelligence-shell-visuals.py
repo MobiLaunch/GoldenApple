@@ -138,6 +138,10 @@ class AmbientCitronRegression(unittest.TestCase):
         self.assertIn("Theme.reduceMotion", haze)
         self.assertNotIn("border.width", haze)
         self.assertNotIn("Process {", haze)
+        self.assertIn('ctx.globalCompositeOperation = "destination-in"', haze)
+        self.assertIn('feather.addColorStop(1, "rgba(255,255,255,0)")', haze)
+        self.assertNotIn("shadowEnabled", haze)
+        self.assertNotIn("DropShadow", haze)
 
     def test_speaking_haze_uses_output_level_not_microphone_echo(self):
         qml = (ROOT / "shell/VoiceAssistant.qml").read_text()

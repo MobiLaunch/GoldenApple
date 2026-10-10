@@ -456,7 +456,7 @@ PanelWindow {
                     : citron.phase === "speaking" ? "Speaking…"
                     : citron.phase === "thinking" ? "Thinking…"
                     : "Listening…"
-                color: "#f2f4ff"
+                color: "#e7ebff"
                 font { family: Theme.fontUi; pixelSize: Theme.fs(16); weight: Font.DemiBold }
             }
             Text {
@@ -469,7 +469,7 @@ PanelWindow {
                 text: citron.errorText || citron.citronSaid ||
                     (citron.youSaid ? "“" + citron.youSaid + "”" : "")
                 visible: text.length > 0
-                color: citron.phase === "error" ? "#ffe3e1" : "#e8e9f9"
+                color: citron.phase === "error" ? "#ffe3e1" : "#d7dbf3"
                 font { family: Theme.fontUi; pixelSize: Theme.fs(14) }
             }
         }
