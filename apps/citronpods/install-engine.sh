@@ -9,7 +9,11 @@ if [[ ! -f "$archive" ]]; then
   exit 2
 fi
 for executable in cmake ninja python3 c++; do
-  command -v "$executable" >/dev/null || { echo "Missing build tool: $executable" >&2; exit 2; }
+  command -v "$executable" >/dev/null || {
+    echo "Missing build tool: $executable" >&2
+    echo "On Arch, install build dependencies with: sudo pacman -S --needed base-devel cmake ninja qt6-base qt6-declarative qt6-connectivity libpulse" >&2
+    exit 2
+  }
 done
 tmp=$(mktemp -d "${TMPDIR:-/tmp}/gg-citronpods.XXXXXXXX")
 trap 'rm -rf -- "$tmp"' EXIT
