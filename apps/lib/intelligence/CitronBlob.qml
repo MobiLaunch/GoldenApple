@@ -73,7 +73,7 @@ Item {
                 const x = w * (0.5 + a[0] + 0.043 * Math.sin(t * a[3] + a[5]))
                 const y = h * (0.5 + a[1] + 0.043 * Math.cos(t * a[4] + a[5]))
                 const r = size * (a[2] + e * 0.023) * breath
-                const alpha = 0.28 + e * 0.095
+                const alpha = 0.255 + e * 0.095
                 ctx.save()
                 ctx.translate(x, y)
                 ctx.rotate(0.20 * Math.sin(t * 0.62 + a[5]))
@@ -89,11 +89,78 @@ Item {
                 ctx.fill()
                 ctx.restore()
             }
+            // Slow translucent color bridges overlap the six larger lobes.
+            // They unify the cyan, blue, purple and magenta rather than
+            // allowing each color to read as a separate circular bubble.
+            const bridges = [
+                [-0.045, 0.018, 0.29, 0.76, [105, 120, 234]],
+                [ 0.049,-0.024, 0.27, 1.08, [184, 102, 223]],
+                [ 0.012, 0.052, 0.26, 0.89, [83, 167, 211]]
+            ]
+            for (let i = 0; i < bridges.length; i++) {
+                const b = bridges[i]
+                const bx = w * (0.5 + b[0] + 0.026 * Math.sin(t * b[3] + i * 2.1))
+                const by = h * (0.5 + b[1] + 0.026 * Math.cos(t * b[3] * 0.84 + i))
+                const r = size * (b[2] + 0.015 * e)
+                const rgb = b[4].join(",")
+                const bridge = ctx.createRadialGradient(bx, by, 0, bx, by, r)
+                bridge.addColorStop(0, "rgba(" + rgb + "," + (0.13 + 0.04 * e) + ")")
+                bridge.addColorStop(0.50, "rgba(" + rgb + ",0.07)")
+                bridge.addColorStop(1, "rgba(" + rgb + ",0)")
+                ctx.fillStyle = bridge
+                ctx.fillRect(bx - r, by - r, r * 2, r * 2)
+            }
+
+            // Soft micro-lights drift and change shape inside the cloud.
+            // Their gradient edges stay completely transparent; these are
+            // atmospheric lights, never sharp star points or hard dots.
+            // [x, y, radius, x-rate, y-rate, phase, rgb]
+            const motes = [
+                [-0.12,-0.045,0.037,0.92,0.78,0.20,[82,188,240]],
+                [ 0.10,-0.092,0.031,0.84,0.96,1.00,[108,120,241]],
+                [ 0.13, 0.052,0.028,1.03,0.88,1.80,[177,108,240]],
+                [-0.08, 0.120,0.034,0.88,1.05,2.60,[231,109,195]],
+                [ 0.02,-0.132,0.025,1.10,0.72,3.10,[92,211,199]],
+                [-0.15, 0.022,0.023,0.79,0.94,4.00,[224,145,145]],
+                [ 0.06, 0.135,0.030,0.90,0.90,4.80,[139,116,240]],
+                [-0.01, 0.012,0.022,1.18,1.08,5.60,[82,169,225]],
+                [ 0.17,-0.015,0.022,0.73,1.13,2.31,[198,96,203]],
+                [-0.10,-0.122,0.027,1.14,0.80,3.56,[106,163,245]],
+                [ 0.04, 0.073,0.026,0.85,1.06,1.73,[88,219,211]],
+                [-0.035,0.165,0.022,1.12,0.77,4.47,[171,106,229]]
+            ]
+            for (let i = 0; i < motes.length; i++) {
+                const d = motes[i]
+                const dx = w * (0.5 + d[0] + 0.029 * Math.sin(t * d[3] + d[5]))
+                const dy = h * (0.5 + d[1] + 0.029 * Math.cos(t * d[4] + d[5]))
+                const breatheDot = 1 + 0.17 * Math.sin(t * 1.22 + d[5])
+                const radius = size * (d[2] + 0.004 * e) * breatheDot
+                const rgb = d[6].join(",")
+                const alpha = (0.24 + 0.11 * e) *
+                              (0.78 + 0.22 * Math.sin(t * 0.83 + d[5]) ** 2)
+                ctx.save()
+                ctx.translate(dx, dy)
+                ctx.rotate(0.35 * Math.sin(t * 0.58 + d[5]))
+                ctx.scale(1.03 + 0.19 * Math.sin(t * 0.84 + i),
+                          0.93 + 0.15 * Math.cos(t * 0.92 + i))
+                const mote = ctx.createRadialGradient(0, 0, 0, 0, 0, radius)
+                mote.addColorStop(0, "rgba(" + rgb + "," + alpha + ")")
+                mote.addColorStop(0.31, "rgba(" + rgb + "," + alpha * 0.68 + ")")
+                mote.addColorStop(0.72, "rgba(" + rgb + "," + alpha * 0.15 + ")")
+                mote.addColorStop(1, "rgba(" + rgb + ",0)")
+                ctx.fillStyle = mote
+                ctx.beginPath()
+                ctx.arc(0, 0, radius, 0, 6.2831853)
+                ctx.fill()
+                ctx.restore()
+            }
+
             const cx = w * (0.5 + 0.019 * Math.sin(t * 0.61))
             const cy = h * (0.5 + 0.019 * Math.cos(t * 0.79))
-            const core = ctx.createRadialGradient(cx, cy, 0, cx, cy, size * 0.27)
-            core.addColorStop(0, "rgba(157,126,223," + (0.09 + e * 0.045) + ")")
-            core.addColorStop(0.54, "rgba(94,122,214,0.05)")
+            const core = ctx.createRadialGradient(cx, cy, 0, cx, cy, size * 0.29)
+            core.addColorStop(0, "rgba(148,118,228," + (0.10 + e * 0.05) + ")")
+            core.addColorStop(0.34, "rgba(88,160,235,0.07)")
+            core.addColorStop(0.60, "rgba(102,92,220,0.05)")
             core.addColorStop(1, "rgba(77,89,210,0)")
             ctx.fillStyle = core
             ctx.fillRect(0, 0, w, h)
