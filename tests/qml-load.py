@@ -38,6 +38,11 @@ with tempfile.TemporaryDirectory() as tmp:
                                               "--require-object", "citronSettingsPanel"]),
         # Messages must always draw its own connection/onboarding surface
         # even when the optional BlueFerry daemon is unavailable.
+        ("airpods-system-popup", ["shell", "--do", "citronpods.show",
+                                  "--require-object", "citronPodsSystemPopup"]),
+        ("airpods-settings", ["app", "apps/settings.qml", "--env",
+                               "GG_SETTINGS_PANE=airpods",
+                               "--require-object", "citronPodsSettingsPane"]),
         ("messages-onboarding", ["app", "apps/messages.qml",
                                   "--require-object", "messagesOnboarding"]),
         # Mail's setup form alone cannot catch pane collisions after login.
