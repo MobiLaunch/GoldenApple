@@ -34,6 +34,7 @@ HyprGlass options that exist. Every value below is checked by
 | `gg-notification-center` | Notification Center | 0.3 |
 | `gg-nearby` | pairing card | 0.25 |
 | `gg-widgets`, `gg-widget-gallery` | desktop widgets and their gallery | 0.25 |
+| `gg-tablet-home` | Tablet Home widgets; wallpaper stays transparent and touch gestures remain intact | 0.25 |
 | `gg-osd` | volume and brightness | 0.3 |
 | `gg-alert` | Restart / Shut Down / Log Out | 0.3 |
 | `gg-switcher` | ⌘Tab | 0.3 |
