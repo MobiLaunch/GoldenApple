@@ -109,7 +109,7 @@ PanelWindow {
         property string label: ""
         property bool prominent: false
         signal tapped()
-        height: 37; width: pillText.implicitWidth + 28; radius: height/2
+        height: 44; width: pillText.implicitWidth + 30; radius: height/2
         color: prominent ? "#e13a72c5" : "#bc151b27"
         border { width: 1; color: prominent ? "#7ba9e4" : "#5fffffff" }
         scale: press.pressed && !Theme.reduceMotion ? 0.94 : 1
@@ -258,7 +258,7 @@ PanelWindow {
                             }
                             Row {
                                 visible: tablet.editing
-                                anchors { right: parent.right; top: parent.top; margins: -7 }
+                                anchors { right: parent.right; top: parent.top; margins: -5 }
                                 spacing: 4
                                 TouchPill {
                                     label: "−"
@@ -269,6 +269,11 @@ PanelWindow {
                                     label: "Size"
                                     onTapped: tablet.resize(widgetTile.modelData.id)
                                 }
+                            }
+                            Row {
+                                visible: tablet.editing
+                                anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: -5 }
+                                spacing: 6
                                 TouchPill {
                                     label: "←"
                                     onTapped: tablet.move(widgetTile.modelData.id, Math.max(0, widgetTile.place - 1))
