@@ -11,6 +11,7 @@ Item {
     property string payload: ""
     property var reply: null
     property bool cancelled: false
+    property string terminalError: ""
     property int serial: 0
     signal completed(string action, var result)
     readonly property string helper: decodeURIComponent(Qt.resolvedUrl("helper.py").toString().replace("file://", ""))
@@ -23,15 +24,18 @@ Item {
         payload = JSON.stringify(request)
         reply = null
         cancelled = false
+        terminalError = ""
         busy = true
         proc.stdinEnabled = true
         proc.running = true
         deadline.restart()
         return true
     }
-    function cancel() {
+    // User cancellation is silent; a timeout completes with an error.
+    function cancel(reason) {
         if (!busy) return
-        cancelled = true
+        terminalError = reason || ""
+        cancelled = !terminalError
         payload = ""
         proc.running = false
         if (!proc.running) { const run = serial; Qt.callLater(() => finish(run)) }
@@ -39,12 +43,14 @@ Item {
     function finish(run) {
         if (!busy || run !== serial || proc.running) return
         deadline.stop()
-        const result = reply || { ok: false, error: "The assistant could not start. Check that Python 3 is installed." }
+        const result = terminalError ? {ok: false, error: terminalError, code: "timeout"}
+            : reply || { ok: false, error: "The assistant could not start. Check that Python 3 is installed." }
         const action = operation
         const wasCancelled = cancelled
         busy = false
         payload = ""
         reply = null
+        terminalError = ""
         if (wasCancelled) return
         error = result.ok ? "" : (result.error || "The request failed.")
         completed(action, result)
@@ -77,8 +83,7 @@ Item {
         id: deadline
         interval: 150000
         onTriggered: {
-            service.error = "The request timed out. Try again."
-            service.cancel()
+            service.cancel("The request timed out. Try again.")
         }
     }
     Component.onDestruction: proc.running = false
