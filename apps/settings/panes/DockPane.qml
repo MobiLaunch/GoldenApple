@@ -81,6 +81,15 @@ Pane {
             }
         }
         SetRow {
+            title: "Home Screen widgets"
+            subtitle: "Add, resize, remove and rearrange touch widgets without changing the desktop layout."
+            Button {
+                text: "Customize Home…"
+                enabled: pane.sys.prefs.tablet?.enabled ?? false
+                onClicked: pane.sys.run(["qs", "-c", "golden-gate", "ipc", "call", "tablet", "edit"], () => {})
+            }
+        }
+        SetRow {
             title: "Touch display and rotation"
             subtitle: "Compatible touchscreens use Wayland touch input. Open the on-screen keyboard when no physical keyboard is attached."
             Button { text: "Show Keyboard"; onClicked: pane.sys.run(["gg-tablet-keyboard", "show"], () => {}) }
