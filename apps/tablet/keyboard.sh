@@ -12,7 +12,7 @@ if [ "$mode" = show ]; then
     }
     if ! busctl --user --no-pager --quiet status sm.puri.OSK0 >/dev/null 2>&1; then
         # Start one user-scoped keyboard daemon, not one per tap.
-        ( SQUEEKBOARD_DEBUG=force-show squeekboard >/dev/null 2>&1 & )
+        ( squeekboard >/dev/null 2>&1 & )
         i=0
         while [ "$i" -lt 15 ]; do
             if busctl --user --no-pager --quiet status sm.puri.OSK0 >/dev/null 2>&1; then break; fi
