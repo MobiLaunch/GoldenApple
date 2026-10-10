@@ -24,6 +24,18 @@ PanelWindow {
     property bool editing: false
     property var approvedIcons: ({})
     readonly property var widgets: TabletLayout.normalized(Prefs.tabletWidgets)
+    property var widgetTileItems: []
+    // iPad-style finite Home Screen pages. The first page contains widgets;
+    // subsequent pages fill with app icon columns at the current orientation.
+    readonly property int firstPageCapacity: iconColumns * (portrait ? 2 : 3)
+    readonly property int otherPageCapacity: iconColumns * Math.max(2,
+        Math.floor((height - Theme.sizeMenubar - Math.max(100, Prefs.dockSize + 48) - 140) /
+                   (iconSize + 60)))
+    readonly property int pageCount: 1 + Math.ceil(Math.max(0, curatedApps.length - firstPageCapacity) / otherPageCapacity)
+    function appsForPage(index) {
+        const start = index === 0 ? 0 : firstPageCapacity + (index - 1) * otherPageCapacity
+        return curatedApps.slice(start, start + (index === 0 ? firstPageCapacity : otherPageCapacity))
+    }
     readonly property var catalog: [
         {kind: "calendar", title: "Calendar", sizes: ["small", "medium"]},
         {kind: "clock", title: "Clock", sizes: ["small"]},
@@ -64,7 +76,10 @@ PanelWindow {
             } catch (e) { tablet.approvedIcons = ({}) }
         }
     }
-    function scrollToTop() { scroll.contentY = 0 }
+    function scrollToTop() {
+        pages.currentIndex = 0
+        pages.positionViewAtIndex(0, ListView.Beginning)
+    }
     function iconFor(app) {
         const path = approvedIcons[app.id]?.icon
         if (path && String(path).startsWith("/")) return "file://" + encodeURI(path)
@@ -90,9 +105,9 @@ PanelWindow {
     }
     function dropWidget(id, center) {
         let bestIndex = -1, bestDistance = Infinity
-        for (let i = 0; i < widgetRepeater.count; i++) {
-            const candidate = widgetRepeater.itemAt(i)
-            if (!candidate || candidate.modelData.id === id) continue
+        for (let i = 0; i < widgetTileItems.length; i++) {
+            const candidate = widgetTileItems[i]
+            if (!candidate || !candidate.modelData || candidate.modelData.id === id) continue
             const x = candidate.x + candidate.width / 2
             const y = candidate.y + candidate.height / 2
             const distance = (x-center.x)*(x-center.x) + (y-center.y)*(y-center.y)
@@ -126,23 +141,59 @@ PanelWindow {
         Accessible.name: pill.label
     }
 
-    // The icon grid and widgets scroll together, beneath real app windows.
-    // The actual global menu bar, Dock and Control Center stay independent.
-    Flickable {
-        id: scroll
-        anchors { fill: parent; topMargin: Theme.sizeMenubar + 8; bottomMargin: Math.max(100, Prefs.dockSize + 48) }
-        clip: true
+    // Horizontal swiping between icon pages, as on iPad. Each page can
+    // vertically scroll on shorter portrait displays without changing its
+    // horizontally snapped page position. Desktop wallpaper stays visible.
+    ListView {
+        id: pages
+        objectName: "tabletSwipePages"
+        anchors { fill: parent; topMargin: Theme.sizeMenubar + 8;
+                  bottomMargin: Math.max(150, Prefs.dockSize + 86) }
+        orientation: ListView.Horizontal
+        snapMode: ListView.SnapOneItem
+        highlightRangeMode: ListView.StrictlyEnforceRange
         boundsBehavior: Flickable.StopAtBounds
-        flickableDirection: Flickable.VerticalFlick
-        contentWidth: width
-        contentHeight: homeContent.implicitHeight + 45
+        cacheBuffer: Math.max(1, width)
+        interactive: !tablet.editing
+        clip: true
+        model: tablet.pageCount
 
-        Column {
-            id: homeContent
-            width: Math.min(scroll.width - 20, tablet.contentWidth)
-            x: (scroll.width - width)/2
-            spacing: 20
+        // Swiping DOWN on Home (not the menu bar's top-right corner) summons
+        // the native Spotlight. This does not create a second search app.
+        DragHandler {
+            id: homePull
+            target: null
+            acceptedDevices: PointerDevice.TouchScreen
+            enabled: Prefs.tabletMode && !tablet.editing
+            property bool triggered: false
+            onActiveChanged: if (!active) triggered = false
+            onTranslationChanged: {
+                if (!active || triggered || pages.currentIndex < 0) return
+                if (translation.y < 85 || Math.abs(translation.x) > 60) return
+                triggered = true
+                Quickshell.execDetached(["qs", "-c", "golden-gate", "ipc",
+                    "call", "spotlight", "search", ""])
+            }
+        }
 
+        delegate: Item {
+            id: page
+            required property int index
+            width: pages.width; height: pages.height
+            Flickable {
+                id: pageScroll
+                anchors.fill: parent
+                contentWidth: width
+                contentHeight: pageContents.implicitHeight + 32
+                flickableDirection: Flickable.VerticalFlick
+                boundsBehavior: Flickable.StopAtBounds
+                interactive: contentHeight > height && !tablet.editing
+                clip: true
+                Column {
+                    id: pageContents
+                    x: (pageScroll.width - width) / 2
+                    width: Math.min(pageScroll.width - 20, tablet.contentWidth)
+                    spacing: 20
             Row {
                 width: parent.width
                 height: 48
@@ -150,7 +201,7 @@ PanelWindow {
                 Text {
                     width: parent.width - editHome.width - 22
                     anchors.verticalCenter: parent.verticalCenter
-                    text: tablet.editing ? "Customize Home" : "Home"
+                    text: tablet.editing && page.index === 0 ? "Customize Home" : page.index === 0 ? "Home" : "Apps"
                     color: "#ffffff"
                     font { family: Theme.fontDisplay; pixelSize: Theme.fs(27); weight: Font.Bold }
                 }
@@ -164,6 +215,8 @@ PanelWindow {
             }
 
             Column {
+                visible: page.index === 0
+                height: visible ? implicitHeight : 0
                 width: parent.width
                 spacing: 11
                 Row {
@@ -190,7 +243,7 @@ PanelWindow {
                     height: implicitHeight
                     Repeater {
                         id: widgetRepeater
-                        model: tablet.widgets
+                        model: page.index === 0 ? tablet.widgets : []
                         delegate: Item {
                             id: widgetTile
                             required property var modelData
@@ -202,6 +255,8 @@ PanelWindow {
                             width: natural.width * fitScale
                             height: natural.height * fitScale
                             z: widgetDrag.pressed ? 20 : 0
+                            Component.onCompleted: tablet.widgetTileItems = tablet.widgetTileItems.concat([widgetTile])
+                            Component.onDestruction: tablet.widgetTileItems = tablet.widgetTileItems.filter(t => t !== widgetTile)
                             transform: Translate { x: widgetTile.dragX; y: widgetTile.dragY }
                             Item {
                                 width: widgetTile.natural.width
@@ -321,7 +376,7 @@ PanelWindow {
                     columnSpacing: 10
                     rowSpacing: 15
                     Repeater {
-                        model: tablet.curatedApps
+                        model: tablet.appsForPage(page.index)
                         delegate: Item {
                             id: appTile
                             required property var modelData
@@ -365,12 +420,35 @@ PanelWindow {
                     }
                 }
             }
-            Text {
-                width: parent.width
-                horizontalAlignment: Text.AlignHCenter
-                text: "Swipe down from the top-right corner for Control Center"
-                color: "#e1e8f4"
-                font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+
+                }
+            }
+        }
+    }
+    Row {
+        id: dots
+        objectName: "tabletPageDots"
+        anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom;
+                  bottomMargin: Math.max(114, Prefs.dockSize + 52) }
+        spacing: 10
+        Repeater {
+            model: tablet.pageCount
+            delegate: Rectangle {
+                required property int index
+                width: pages.currentIndex === index ? 10 : 8
+                height: width; radius: width / 2
+                color: pages.currentIndex === index ? "#ffffff" : "#82ffffff"
+                Behavior on width { enabled: !Theme.reduceMotion; NumberAnimation { duration: 140 } }
+                MouseArea {
+                    anchors.fill: parent
+                    anchors.margins: -10
+                    onClicked: {
+                        pages.currentIndex = index
+                        pages.positionViewAtIndex(index, ListView.Beginning)
+                    }
+                }
+                Accessible.role: Accessible.Button
+                Accessible.name: "Home Screen page " + (index + 1)
             }
         }
     }
