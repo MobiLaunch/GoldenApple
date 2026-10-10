@@ -21,6 +21,12 @@ Scope {
     id: root
     property var screen: Quickshell.screens[0] ?? null
     property bool editing: false
+    // Leaving desktop mode must also dismiss its separate overlay gallery;
+    // otherwise it remains above the tablet Home Screen.
+    Connections {
+        target: Prefs
+        function onTabletModeChanged() { if (Prefs.tabletMode) root.editing = false }
+    }
 
     readonly property var catalog: [
         { kind: "calendar", name: "Calendar", sizes: ["small", "medium"], app: "org.goldengate.Calendar",
@@ -311,7 +317,7 @@ Scope {
         color: "transparent"
         implicitWidth: Math.min((root.screen?.width ?? 1440) - 48, 960)
         implicitHeight: 404
-        visible: root.editing || sheet.opacity > 0
+        visible: !Prefs.tabletMode && (root.editing || sheet.opacity > 0)
         property string filter: ""
 
         Glass {
