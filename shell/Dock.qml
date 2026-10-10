@@ -206,8 +206,8 @@ PanelWindow {
     // Room for the label, its gap, the bounce and an icon dragged up off the
     // Dock. Always this tall: a surface resized under a pressed pointer moves
     // everything under it (and can cancel the press).
-    implicitHeight: Prefs.dockSize + 230
-    exclusiveZone: Prefs.dockSize + 22
+    implicitHeight: (Prefs.tabletMode ? Math.max(64, Prefs.dockSize) : Prefs.dockSize) + 230
+    exclusiveZone: (Prefs.tabletMode ? Math.max(64, Prefs.dockSize) : Prefs.dockSize) + (Prefs.tabletMode ? 30 : 22)
     color: "transparent"
     WlrLayershell.namespace: "gg-dock"
     // Keep a stable layer: changing it when Launchpad opens remaps the shelf
