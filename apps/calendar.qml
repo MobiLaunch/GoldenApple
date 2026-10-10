@@ -14,7 +14,8 @@ ShellRoot {
         implicitWidth: 960
         implicitHeight: 680
         minimumSize: Qt.size(760, 520)
-        sidebarWidth: 220
+        property bool tabletAgendaShown: false
+        sidebarWidth: win.tabletCompact ? (tabletAgendaShown ? Math.min(270, win.width * 0.45) : 0) : 220
         fullSizeContent: true
         background: Theme.contentBg
 
