@@ -76,7 +76,7 @@ Pane {
             title: "Install CitronPods Engine"
             subtitle: pane.detectedArchive
                 ? "Detected your M10 Qt6-Fixed source in Downloads. Only the system daemon will be built."
-                : "Place the M10 Qt6-Fixed ZIP in Downloads for automatic setup, or choose a source ZIP."
+                : "Golden Gate installs the native engine at login when its verified M10 source is available. Choose a ZIP to install now."
             Button {
                 text: engineBuild.running ? "Building…" : pane.detectedArchive ? "Install Engine" : "Choose ZIP…"
                 enabled: !engineBuild.running
