@@ -24,7 +24,7 @@ ShellRoot {
         title: app.page?.title ? app.page.title + " — System Settings" : "System Settings"
         implicitWidth: 860; implicitHeight: Math.min(740, (Quickshell.screens[0]?.height ?? 900) - 120)
         minimumSize: Qt.size(700, 470)
-        sidebarWidth: app.sidebarShown ? 244 : 0
+        sidebarWidth: win.tabletCompact ? (app.showMobileCategories ? win.width : 0) : app.sidebarShown ? 244 : 0
         background: Theme.contentBg
 
         // Back and forward, and the pane's title.
