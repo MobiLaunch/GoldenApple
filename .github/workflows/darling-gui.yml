@@ -11,6 +11,7 @@ on:
       - 'tests/darling-runtime.py'
       - 'tests/darling-build-modes.py'
       - 'tests/darling-fsevents-build.py'
+      - 'tests/darling-dyld-link.py'
       - '.github/workflows/darling-gui.yml'
   pull_request:
     paths:
@@ -22,6 +23,7 @@ on:
       - 'tests/darling-runtime.py'
       - 'tests/darling-build-modes.py'
       - 'tests/darling-fsevents-build.py'
+      - 'tests/darling-dyld-link.py'
       - '.github/workflows/darling-gui.yml'
   workflow_dispatch:
     inputs:
@@ -52,7 +54,8 @@ jobs:
           git clone --no-checkout https://github.com/darlinghq/darling.git "$RUNNER_TEMP/darling"
           ref=$(python3 -c 'import json; print(json.load(open("third_party/darling/source.lock.json"))["darling_commit"])')
           git -C "$RUNNER_TEMP/darling" checkout --detach "$ref"
-          git -C "$RUNNER_TEMP/darling" submodule update --init src/external/cocotron src/external/objc4
+          git -C "$RUNNER_TEMP/darling" submodule update --init src/external/cocotron src/external/objc4 \
+            src/external/libunwind src/external/dyld src/external/cctools-port
           python3 - "$RUNNER_TEMP/darling" <<'PY'
           import importlib.util, json, pathlib, sys
           spec = importlib.util.spec_from_file_location('build', 'tools/darling/build.py')
@@ -71,6 +74,11 @@ jobs:
         env:
           CC: clang
         run: python3 tests/darling-fsevents-build.py "$RUNNER_TEMP/darling"
+      - name: Dynamic-loader unwind codegen with pinned linker
+        env:
+          CC: clang
+          CXX: clang++
+        run: python3 tests/darling-dyld-link.py "$RUNNER_TEMP/darling"
       - name: Execute patched controller source
         run: bash tests/darling/run-host.sh "$RUNNER_TEMP/darling"
       - name: Compatibility evidence gates
@@ -79,7 +87,7 @@ jobs:
         run: python3 tests/darling-runtime.py
       - name: Compile Python and validate shell scripts
         run: |
-          python3 -m py_compile tools/darling/build.py tools/darling/compatibility.py tests/darling-patches.py tests/darling-build-modes.py tests/darling-fsevents-build.py
+          python3 -m py_compile tools/darling/build.py tools/darling/compatibility.py tests/darling-patches.py tests/darling-build-modes.py tests/darling-fsevents-build.py tests/darling-dyld-link.py
           bash -n tests/darling/run-host.sh tools/darling/build-fixture.sh tools/darling/build-pip-tests.sh
 
   mac-fixture:

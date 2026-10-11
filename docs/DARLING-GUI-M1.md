@@ -99,8 +99,13 @@ sudo apt-get install -y clang cmake make linux-libc-dev libgnustep-base-dev
 python3 tests/darling-patches.py "$HOME/Development/darling-gg-m1"
 CC=clang CXX=clang++ python3 tests/darling-build-modes.py "$HOME/Development/darling-gg-m1"
 CC=clang python3 tests/darling-fsevents-build.py "$HOME/Development/darling-gg-m1"
+CC=clang CXX=clang++ python3 tests/darling-dyld-link.py "$HOME/Development/darling-gg-m1"
 bash tests/darling/run-host.sh "$HOME/Development/darling-gg-m1"
 ```
+
+The linker regression additionally needs the pinned libunwind, dyld and
+cctools-port submodules; `prepare` fetches them. It builds the pinned ld64 in a
+temporary directory and checks a small Mach-O loader without executing it.
 
 The `Darling GUI compatibility` workflow runs the focused tests and builds the
 Intel GUI fixture. Source/tooling pushes also build and stage the complete

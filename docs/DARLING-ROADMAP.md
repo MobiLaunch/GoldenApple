@@ -213,6 +213,26 @@ and offset checks compare against the native Linux ABI. It also verifies repeat
 configuration and missing-header rejection. This focused check does not execute
 the daemon or validate filesystem-event delivery under Darling.
 
+### Dynamic-loader static unwind codegen
+
+The [following runtime build](https://github.com/MobiLaunch/GoldenApple/actions/runs/38111862708/job/114389016455)
+passed filesystem-events compilation, then failed at step 15,906 of 16,561 while
+linking `dyld`. Clang 18 lowered libunwind's x86_64 register-name switch into a
+relative pointer table. The pinned ld64 cannot encode its 32-bit relative fixups
+in a loader using chained fixups and reports `chained binds not implemented yet`.
+Patch `0007-dyld-static-unwind-tables.patch` applies `-fno-jump-tables` only to the
+static unwind target's C++ objects. Shared libunwind, other libraries, loader
+chained fixups and release optimization remain unchanged. Static unwind's switch
+dispatch may be less compact; no runtime performance result is claimed.
+
+`tests/darling-dyld-link.py` builds the pinned ld64 and compiles the actual pinned
+register-name function with the libunwind CMake flags and root target override.
+The original probe must reproduce the linker failure; the patched probe must
+link as an x86_64 Mach-O loader retaining its chained-fixup load command. The
+test also verifies that another target keeps ordinary table generation and that
+193 native register-name results agree before and after the compiler workaround.
+This is a focused codegen/link test, not a full dyld build or execution result.
+
 ## Recording a compatibility failure
 
 Record the app version and executable architecture, source lock/runtime package,
