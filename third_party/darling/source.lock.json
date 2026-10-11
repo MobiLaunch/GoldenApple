@@ -43,6 +43,11 @@
       "path": "patches/0008-sincos-recursion.patch",
       "repository": "darling",
       "sha256": "7aa8a92643533a858751545eff7a6c76eafb0bd34b2db1e750c2240486013505"
+    },
+    {
+      "path": "patches/0009-window-level-abi.patch",
+      "repository": "cocotron",
+      "sha256": "ef49e1e2d60cffadc412393bb22b589070fdb02ec67aa16cae6f3aca99c3daef"
     }
   ],
   "objc4_commit": "1a12df76d12bfc9fdfffadb290f7742763568765"

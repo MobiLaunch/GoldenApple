@@ -188,18 +188,24 @@ def main():
                                    capture_output=True, timeout=10, check=False)
             except (OSError, subprocess.TimeoutExpired) as error:
                 (output / "coredump-export.log").write_text(str(error) + "\n")
+        # Persist the natural failure before touching a privileged launcher.
+        # Darling can change credentials, making direct terminate() fail.
+        (output / "result.json").write_text(json.dumps(result, indent=2) + "\n")
         if process is not None and process.poll() is None:
-            process.terminate()
             try:
-                process.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                process.kill()
+                process.terminate()
+                try:
+                    process.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    process.kill()
+            except OSError as error:
+                result["launcher_cleanup_error"] = str(error)
         # Stop only the disposable prefix, never the user's regular Darling.
         if prefix.exists():
             try:
                 subprocess.run(["darling", "shutdown"], env=env, stdout=subprocess.DEVNULL,
                                stderr=subprocess.DEVNULL, timeout=10, check=False)
-            except subprocess.TimeoutExpired:
+            except (OSError, subprocess.TimeoutExpired):
                 result["cleanup"] = "Disposable-prefix shutdown timed out"
         (output / "result.json").write_text(json.dumps(result, indent=2) + "\n")
     print(json.dumps(result, indent=2))

@@ -72,6 +72,8 @@ int main(int argc, const char **argv) {
 
         [pip presentViewControllerAsPictureInPicture:video];
         NSWindow *floating = pip.view.window;
+        fprintf(stderr, "Presentation diagnostic: window=%p visible=%d level=%ld expected=%ld\n",
+                (__bridge void *)floating, floating.isVisible, (long)floating.level, (long)NSFloatingWindowLevel);
         check(floating && floating.isVisible && floating.level == NSFloatingWindowLevel,
               "presentation creates a visible floating window");
         check(video.view.superview == pip.view && video.view.window == floating,

@@ -231,3 +231,28 @@ Release, RelWithDebInfo and Debug assembly calls the scalar functions instead.
 Each mode also passes 84 numeric checks on the host, including the pi wrappers,
 signed zero, NaN and infinity. These are compiler and numeric checks; the full
 Darling rendering/input/save test must still pass with the rebuilt runtime.
+
+## Window levels and X11 shared memory, October 11, 2026
+
+Run 38152714287 built and installed the math fix. ControllerLab stayed alive
+with a uniform surface and no recorded coredump. Both fixtures reported
+`MESA: error: Failed to attach to x11 shm`. CI now disables MIT-SHM on its
+private Xvfb displays to exercise ordinary X11 image transport; rendering and
+input remain unverified until the runtime test passes. This does not alter a
+user's desktop display server.
+
+PIPLab wrote its result: 21 checks, one failure, at the visible floating-window
+assertion. The pinned Quartz header numbered window levels sequentially,
+making `NSFloatingWindowLevel` equal to 1. A Mac-built binary embeds 3.
+Patch 0009 supplies macOS values for the eight existing named levels and maps
+their Quartz keys, replacing the function's always-normal result for those
+keys. Other keys retain the existing fallback. A probe compiles the actual
+pinned Quartz implementation and AppKit enum declarations: the baseline
+reproduces the mismatch; the patch passes 16 checks. The same probe runs against
+Apple's frameworks in macOS CI, so the values are checked independently.
+
+The GUI harness saves its result before cleanup and tolerates an inability to
+signal Darling's privileged launcher. A failure-path regression confirms that
+the failing phase and false result survive cleanup permission errors. The
+PIP fixture also prints the window's visibility and actual/expected level.
+These changes improve diagnosis; they do not establish complete GUI support.

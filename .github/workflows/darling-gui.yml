@@ -14,6 +14,7 @@ on:
       - 'tests/darling-dyld-link.py'
       - 'tests/darling-gui-harness.py'
       - 'tests/darling-sincos.py'
+      - 'tests/darling-window-levels.py'
       - '.github/workflows/darling-gui.yml'
   pull_request:
     paths:
@@ -28,6 +29,7 @@ on:
       - 'tests/darling-dyld-link.py'
       - 'tests/darling-gui-harness.py'
       - 'tests/darling-sincos.py'
+      - 'tests/darling-window-levels.py'
       - '.github/workflows/darling-gui.yml'
   workflow_dispatch:
     inputs:
@@ -92,6 +94,8 @@ jobs:
         env:
           CC: clang
         run: python3 tests/darling-sincos.py "$RUNNER_TEMP/darling"
+      - name: Window level ABI regression
+        run: python3 tests/darling-window-levels.py "$RUNNER_TEMP/darling"
       - name: Execute patched controller source
         run: bash tests/darling/run-host.sh "$RUNNER_TEMP/darling"
       - name: Compatibility evidence gates
@@ -119,6 +123,10 @@ jobs:
         with:
           name: Darling-ControllerLab-Intel
           path: ${{ runner.temp }}/ControllerLab.zip
+      - name: Verify window levels against native Apple frameworks
+        run: |
+          xcrun clang -DNATIVE_APPKIT tests/darling/window-levels.m -framework Cocoa -o "$RUNNER_TEMP/window-levels"
+          "$RUNNER_TEMP/window-levels"
       - name: Build PIP-linked Intel fixture
         run: bash tools/darling/build-pip-tests.sh "$RUNNER_TEMP/pip-tests" --build-only
       - uses: actions/upload-artifact@v4
@@ -228,11 +236,11 @@ jobs:
                 -xzf "$RUNNER_TEMP/darling-runtime.tar.gz" ./usr/local
           } 2>&1 | tee "$RUNNER_TEMP/darling-install.log"
       - name: Record software rendering environment
-        run: xvfb-run -a glxinfo -B > "$RUNNER_TEMP/darling-rendering.log" 2>&1
+        run: xvfb-run -a -s "-screen 0 1280x1024x24 -nolisten tcp -extension MIT-SHM" glxinfo -B > "$RUNNER_TEMP/darling-rendering.log" 2>&1
       - name: Exercise the unchanged Mac app under Darling
         run: |
           unzip -q "$RUNNER_TEMP/darling-fixture/ControllerLab.zip" -d "$RUNNER_TEMP/darling-fixture"
-          xvfb-run -a python3 tools/darling/test-gui.py \
+          xvfb-run -a -s "-screen 0 1280x1024x24 -nolisten tcp -extension MIT-SHM" python3 tools/darling/test-gui.py \
             --app "$RUNNER_TEMP/darling-fixture/ControllerLab.app" \
             --prefix "$RUNNER_TEMP/darling-gui-prefix" \
             --output "$RUNNER_TEMP/darling-gui-results"
@@ -253,7 +261,7 @@ jobs:
           unzip -q "$RUNNER_TEMP/darling-pip-fixture/PIPLab.zip" -d "$RUNNER_TEMP/darling-pip-fixture"
           mkdir -p "$RUNNER_TEMP/darling-pip-results"
           set -o pipefail
-          xvfb-run -a env DPREFIX="$RUNNER_TEMP/darling-pip-prefix" \
+          xvfb-run -a -s "-screen 0 1280x1024x24 -nolisten tcp -extension MIT-SHM" env DPREFIX="$RUNNER_TEMP/darling-pip-prefix" \
             darling "$RUNNER_TEMP/darling-pip-fixture/PIPLab.app/Contents/MacOS/PIPLab" \
             "/Volumes/SystemRoot$RUNNER_TEMP/darling-pip-results/results.json" \
             2>&1 | tee "$RUNNER_TEMP/darling-pip-results/runtime.log"

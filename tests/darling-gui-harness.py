@@ -47,13 +47,15 @@ class HarnessTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, 'BadWindow'):
                 gui.xdo('getwindowgeometry', '123')
 
-    def exercise_failure(self, black):
+    def exercise_failure(self, black, cleanup_denied=False):
         import json
         calls = []
         state = {'exit': None}
         class Process:
             def poll(self): return state['exit']
-            def terminate(self): state['exit'] = -15
+            def terminate(self):
+                if cleanup_denied: raise PermissionError('privileged launcher')
+                state['exit'] = -15
             def kill(self): state['exit'] = -9
             def wait(self, timeout): return state['exit']
         def run(command, **kwargs):
@@ -91,6 +93,12 @@ class HarnessTests(unittest.TestCase):
         self.assertEqual(result['phase'], 'rendering')
         self.assertNotIn('text-input', result['checks'])
         self.assertFalse(any(c[:2] == ['xdotool', 'type'] for c in calls))
+
+    def test_privileged_cleanup_preserves_failure_report(self):
+        result, _ = self.exercise_failure(True, cleanup_denied=True)
+        self.assertEqual(result["phase"], "rendering")
+        self.assertIn("privileged launcher", result["launcher_cleanup_error"])
+        self.assertFalse(result["passed"])
 
     def test_input_crash_keeps_phase_stderr_and_natural_exit(self):
         result, _ = self.exercise_failure(False)
