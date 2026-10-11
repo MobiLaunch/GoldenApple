@@ -4,6 +4,12 @@ This project expands Darling's own macOS API implementations. Work is pinned,
 tested in small increments and kept separate from the installed `darling-bin`
 until the runtime is validated and packaged for Arch.
 
+M1 and M2 are validated for ControllerLab and PIPLab in the
+[October 11 runtime run](https://github.com/MobiLaunch/GoldenApple/actions/runs/38159189870):
+real rendering, input/save, resize and clean exit; 21 PIP checks and clean exit.
+The test environment uses Ubuntu/Xvfb software rendering with MIT-SHM disabled.
+TextEdit, IINA and the Arch deployment workflow still require their own evidence.
+
 ## Milestones
 
 | Milestone | Outcome | Completion gate |

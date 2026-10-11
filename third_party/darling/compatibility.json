@@ -4,7 +4,7 @@
     {
       "id": "M1",
       "name": "AppKit baseline",
-      "status": "in-progress",
+      "status": "validated",
       "requires": [],
       "goal": "An unchanged Intel Cocoa app opens, accepts input, resizes and saves under Darling.",
       "checks": [
@@ -12,20 +12,22 @@
           "id": "controller-source",
           "status": "passed",
           "evidence": [
-            "https://github.com/MobiLaunch/GoldenApple/actions/runs/38098075029/job/114348062841"
+            "https://github.com/MobiLaunch/GoldenApple/actions/runs/38159189870/job/114528421547"
           ]
         },
         {
           "id": "native-fixture-build",
           "status": "passed",
           "evidence": [
-            "https://github.com/MobiLaunch/GoldenApple/actions/runs/38098075029/job/114348062988"
+            "https://github.com/MobiLaunch/GoldenApple/actions/runs/38159189870/job/114528421670"
           ]
         },
         {
           "id": "darling-gui-workflow",
-          "status": "pending",
-          "evidence": []
+          "status": "passed",
+          "evidence": [
+            "https://github.com/MobiLaunch/GoldenApple/actions/runs/38159189870/job/114528698136"
+          ]
         }
       ],
       "files": [
@@ -37,7 +39,7 @@
     {
       "id": "M2",
       "name": "Basic PIP framework",
-      "status": "in-progress",
+      "status": "validated",
       "requires": [
         "M1"
       ],
@@ -54,13 +56,15 @@
           "id": "intel-pip-fixture-build",
           "status": "passed",
           "evidence": [
-            "https://github.com/MobiLaunch/GoldenApple/actions/runs/38099631559/job/114352693782"
+            "https://github.com/MobiLaunch/GoldenApple/actions/runs/38159189870/job/114528421670"
           ]
         },
         {
           "id": "darling-pip-behavior",
-          "status": "pending",
-          "evidence": []
+          "status": "passed",
+          "evidence": [
+            "https://github.com/MobiLaunch/GoldenApple/actions/runs/38159189870/job/114528698136"
+          ]
         }
       ],
       "files": [
@@ -144,20 +148,16 @@
     {
       "id": "controllerlab",
       "name": "ControllerLab",
-      "status": "unverified",
+      "status": "supported",
       "milestone": "M1",
-      "blockers": [
-        "Full runtime build and input/save test have not passed yet."
-      ]
+      "blockers": []
     },
     {
       "id": "piplab",
       "name": "PIPLab",
-      "status": "unverified",
+      "status": "supported",
       "milestone": "M2",
-      "blockers": [
-        "Darling framework loading and PIP behavior tests are still pending."
-      ]
+      "blockers": []
     },
     {
       "id": "textedit",

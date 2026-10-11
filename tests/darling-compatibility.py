@@ -19,13 +19,14 @@ class EvidenceGates(unittest.TestCase):
         module.validate(self.data)
 
     def test_no_supported_label_for_unvalidated_app(self):
-        target = self.data['targets'][0]
+        target = next(t for t in self.data['targets'] if t['id'] == 'textedit')
         target.update(status='supported', blockers=[])
         with self.assertRaisesRegex(ValueError, 'validated workflow'):
             module.validate(self.data)
 
     def test_no_validated_milestone_with_pending_checks(self):
         self.data['milestones'][0]['status'] = 'validated'
+        self.data['milestones'][0]['checks'][-1].update(status='pending', evidence=[])
         with self.assertRaisesRegex(ValueError, 'not all passed'):
             module.validate(self.data)
 
@@ -35,6 +36,7 @@ class EvidenceGates(unittest.TestCase):
             module.validate(self.data)
 
     def test_prerequisites_must_pass(self):
+        self.data['milestones'][0]['status'] = 'in-progress'
         milestone = self.data['milestones'][1]
         milestone['status'] = 'validated'
         for check in milestone['checks']:

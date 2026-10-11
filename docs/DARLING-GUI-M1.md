@@ -275,3 +275,21 @@ A hang or nonzero exit still fails, with a process list and live fixture
 backtrace before disposable-prefix shutdown. Regression tests ensure a passing
 behavior JSON cannot mask either failure. These harness-only changes reuse the
 source-locked runtime from that run; IINA remains unverified.
+
+## Validated fixture workflows, October 11, 2026
+
+[Run 38159189870](https://github.com/MobiLaunch/GoldenApple/actions/runs/38159189870)
+passed all three jobs, including the full Darling runtime job. ControllerLab's
+result contains visible-window, nonuniform rendering, text-input, target-action,
+UTF-8 save, resize and clean-exit, with launcher exit 0. PIPLab's behavior result
+contains 21 checks and zero failures; its runner independently records exit 0.
+The X11 protocol test also passed, delivering WM_DELETE_WINDOW without destroying
+the target window. The runtime was reused only after matching the current source
+lock, including patches 0001–0009.
+
+M1 and M2 are now validated for these fixtures in this disposable Ubuntu/Xvfb
+environment with software rendering and MIT-SHM disabled. This is actual Mac
+Mach-O GUI execution under Darling, not a host-only test. It does not validate
+TextEdit, IINA playback, Swift, hardware acceleration, the user's Wayland desktop
+or the Arch install/update workflow. The artifact remains an experimental Ubuntu
+runtime, not an update installed through Golden Gate Settings.
