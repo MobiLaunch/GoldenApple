@@ -89,10 +89,10 @@ index 0000000..c1105de
 +@end
 diff --git a/src/private-frameworks/PIP/src/PIP.m b/src/private-frameworks/PIP/src/PIP.m
 new file mode 100644
-index 0000000..4ec7ef8
+index 0000000..a7976dd
 --- /dev/null
 +++ b/src/private-frameworks/PIP/src/PIP.m
-@@ -0,0 +1,211 @@
+@@ -0,0 +1,215 @@
 +/* SPDX-License-Identifier: GPL-3.0-or-later
 + * Independent PIP compatibility code for Darling; no Apple implementation code.
 + */
@@ -198,7 +198,7 @@ index 0000000..4ec7ef8
 +    } else if ([delegate respondsToSelector:@selector(pipActionPlay:)]) [delegate pipActionPlay:self];
 +    // The player supplies the new state; a click alone doesn't change playback.
 +}
-+- (void)updatePlaybackStateUsingBlock:(void (^)(PIPMutablePlaybackState *))block {
++- (void)updatePlaybackStateUsingBlock:(void (^ __attribute__((noescape)))(PIPMutablePlaybackState *))block {
 +    requireMainThread();
 +    if (!block) return;
 +    if (_updatingPlaybackState)
@@ -287,7 +287,11 @@ index 0000000..4ec7ef8
 +            _presentedController = nil;
 +            _panel = nil;
 +        }
-+        [self viewDidDisappear];
++        // Native AppKit delivers this lifecycle callback when orderOut hides
++        // the window. M1's Cocotron controller has no such hook or delivery;
++        // provide the PIP-local fallback only for that implementation.
++        if (![NSViewController instancesRespondToSelector:@selector(viewDidDisappear)])
++            [self viewDidDisappear];
 +        if ([delegate respondsToSelector:@selector(pipDidClose:)]) [delegate pipDidClose:self];
 +    } @finally { _closing = NO; }
 +}

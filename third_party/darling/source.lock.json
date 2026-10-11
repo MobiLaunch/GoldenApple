@@ -17,7 +17,7 @@
     {
       "path": "patches/0003-pip-framework.patch",
       "repository": "darling",
-      "sha256": "248c93dc5e6066b4ce449699afc95c121d1366ec8561e981d63b749fa9daec27"
+      "sha256": "d8271f4857068ee64789404e2fe0ef2130423bc1c29cfe9511d4f1601cda164c"
     }
   ]
 }
