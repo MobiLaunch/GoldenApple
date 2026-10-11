@@ -47,7 +47,7 @@ class HarnessTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, 'BadWindow'):
                 gui.xdo('getwindowgeometry', '123')
 
-    def exercise_failure(self, black, cleanup_denied=False):
+    def exercise_failure(self, black, cleanup_denied=False, success=False):
         import json
         calls = []
         state = {'exit': None}
@@ -66,7 +66,13 @@ class HarnessTests(unittest.TestCase):
                 return subprocess.CompletedProcess(command, 0, '123\n', '')
             if command[:2] == ['xdotool', 'getwindowgeometry']:
                 return subprocess.CompletedProcess(command, 0, 'HEIGHT=380\n', '')
-            if command[:2] == ['xdotool', 'type']:
+            if command[:2] == ['xdotool', 'windowquit']:
+                state['exit'] = 0
+            if command[:2] == ['xdotool', 'type'] and success:
+                destination = root / 'prefix/Darling-ControllerLab.txt'
+                destination.parent.mkdir(exist_ok=True)
+                destination.write_text(command[-1])
+            if command[:2] == ['xdotool', 'type'] and not success:
                 state['exit'] = 7
                 return subprocess.CompletedProcess(command, 1, '', 'BadWindow during typing')
             return subprocess.CompletedProcess(command, 0, '', '')
@@ -82,11 +88,17 @@ class HarnessTests(unittest.TestCase):
                  patch.object(gui.subprocess, 'run', side_effect=run), \
                  patch.object(gui.time, 'monotonic', side_effect=range(0, 1000, 5)), \
                  patch.object(gui.time, 'sleep'), patch('builtins.print'):
-                self.assertEqual(gui.main(), 1)
+                self.assertEqual(gui.main(), 0 if success else 1)
             result = json.loads((root / 'result/result.json').read_text())
-            self.assertFalse(result['passed'])
+            self.assertEqual(result['passed'], success)
             self.assertTrue((root / 'result/processes.log').exists())
             return result, calls
+
+    def test_success_requests_graceful_close_and_requires_clean_exit(self):
+        result, calls = self.exercise_failure(False, success=True)
+        self.assertIn("clean-exit", result["checks"])
+        self.assertTrue(any(c[:2] == ["xdotool", "windowquit"] for c in calls))
+        self.assertFalse(any(c[:2] == ["xdotool", "windowclose"] for c in calls))
 
     def test_black_window_never_receives_input(self):
         result, calls = self.exercise_failure(True)

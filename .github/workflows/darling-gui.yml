@@ -13,6 +13,7 @@ on:
       - 'tests/darling-fsevents-build.py'
       - 'tests/darling-dyld-link.py'
       - 'tests/darling-gui-harness.py'
+      - 'tests/darling-pip-harness.py'
       - 'tests/darling-sincos.py'
       - 'tests/darling-window-levels.py'
       - '.github/workflows/darling-gui.yml'
@@ -28,6 +29,7 @@ on:
       - 'tests/darling-fsevents-build.py'
       - 'tests/darling-dyld-link.py'
       - 'tests/darling-gui-harness.py'
+      - 'tests/darling-pip-harness.py'
       - 'tests/darling-sincos.py'
       - 'tests/darling-window-levels.py'
       - '.github/workflows/darling-gui.yml'
@@ -101,7 +103,9 @@ jobs:
       - name: Compatibility evidence gates
         run: python3 tests/darling-compatibility.py
       - name: GUI harness failure diagnostics
-        run: python3 tests/darling-gui-harness.py
+        run: |
+          python3 tests/darling-gui-harness.py
+          python3 tests/darling-pip-harness.py
       - name: Runtime packaging rejection checks
         run: python3 tests/darling-runtime.py
       - name: Compile Python and validate shell scripts
@@ -259,17 +263,10 @@ jobs:
         timeout-minutes: 3
         run: |
           unzip -q "$RUNNER_TEMP/darling-pip-fixture/PIPLab.zip" -d "$RUNNER_TEMP/darling-pip-fixture"
-          mkdir -p "$RUNNER_TEMP/darling-pip-results"
-          set -o pipefail
-          xvfb-run -a -s "-screen 0 1280x1024x24 -nolisten tcp -extension MIT-SHM" env DPREFIX="$RUNNER_TEMP/darling-pip-prefix" \
-            darling "$RUNNER_TEMP/darling-pip-fixture/PIPLab.app/Contents/MacOS/PIPLab" \
-            "/Volumes/SystemRoot$RUNNER_TEMP/darling-pip-results/results.json" \
-            2>&1 | tee "$RUNNER_TEMP/darling-pip-results/runtime.log"
-          python3 - "$RUNNER_TEMP/darling-pip-results/results.json" <<'PY'
-          import json, sys
-          result = json.load(open(sys.argv[1]))
-          assert result['passed'] and result['checks'] > 0 and result['failures'] == 0, result
-          PY
+          xvfb-run -a -s "-screen 0 1280x1024x24 -nolisten tcp -extension MIT-SHM" python3 tools/darling/test-pip.py \
+            --app "$RUNNER_TEMP/darling-pip-fixture/PIPLab.app" \
+            --prefix "$RUNNER_TEMP/darling-pip-prefix" \
+            --output "$RUNNER_TEMP/darling-pip-results"
       - uses: actions/upload-artifact@v4
         if: always()
         with:

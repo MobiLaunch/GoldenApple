@@ -58,6 +58,29 @@ def wait_until(predicate, seconds):
     raise RuntimeError("Timed out waiting for the fixture")
 
 
+def capture_live_backtrace(output, binary):
+    """Inspect only the exact fixture process before disposable-prefix cleanup."""
+    try:
+        listing = subprocess.run(["ps", "-eo", "pid=,args="], capture_output=True,
+                                 text=True, timeout=10)
+        (output / "live-processes.log").write_text(listing.stdout + listing.stderr)
+        # Mach-O argv[0] has the SystemRoot prefix, unlike the Linux launcher.
+        matches = []
+        for line in listing.stdout.splitlines():
+            fields = line.strip().split(None, 2)
+            if len(fields) >= 2 and fields[1] == "/Volumes/SystemRoot" + str(binary):
+                matches.append(int(fields[0]))
+        if not matches:
+            (output / "live-backtrace.log").write_text("No live fixture process found.\n")
+        for pid in matches:
+            traced = subprocess.run(["sudo", "-n", "gdb", "-batch", "-p", str(pid),
+                                     "-ex", "thread apply all bt 40", "-ex", "info proc mappings",
+                                     "-ex", "detach"], capture_output=True, text=True, timeout=20)
+            (output / f"live-backtrace-{pid}.log").write_text(traced.stdout + traced.stderr)
+    except (OSError, subprocess.TimeoutExpired) as error:
+        (output / "live-backtrace.log").write_text(str(error) + "\n")
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--app", required=True, type=Path)
@@ -148,7 +171,9 @@ def main():
             subprocess.run(["xwd", "-silent", "-id", window, "-out", str(output / "resized.xwd")], check=True)
             result["checks"].append("resize-without-crash")
             result["phase"] = "close"
-            xdo("windowclose", window)
+            # windowclose destroys the X resource without Cocoa close callbacks.
+            # windowquit sends WM_DELETE_WINDOW, as a window manager would.
+            xdo("windowquit", window)
             try:
                 code = process.wait(timeout=15)
             except subprocess.TimeoutExpired as error:
@@ -172,6 +197,7 @@ def main():
             except (OSError, subprocess.TimeoutExpired) as error:
                 (output / name).write_text(str(error) + "\n")
         if not result["passed"]:
+            capture_live_backtrace(output, binary)
             try:
                 core = output / "mldr.core"
                 loader = "/usr/local/libexec/darling/usr/libexec/darling/mldr"

@@ -256,3 +256,21 @@ signal Darling's privileged launcher. A failure-path regression confirms that
 the failing phase and false result survive cleanup permission errors. The
 PIP fixture also prints the window's visibility and actual/expected level.
 These changes improve diagnosis; they do not establish complete GUI support.
+
+## Interactive GUI and PIP behavior evidence, October 11, 2026
+
+Run 38155520170 passed ControllerLab's rendering, real text input, target/action,
+UTF-8 save and resize checks. Its failure was at close/exit. The harness used
+xdotool's `windowclose`, which destroys the X resource without delivering the
+normal Cocoa close request. It now uses `windowquit` (WM_DELETE_WINDOW), retains
+the zero-exit requirement and captures a live fixture backtrace on failure.
+This test correction still needs confirmation in the runtime run.
+
+PIPLab reported 21 checks, zero failures, visible=1 and floating level=3. Its
+workflow step timed out despite that result. The PIP runner now logs to a
+regular file instead of a tee pipeline, measures the launcher's own exit with a
+30-second deadline, and retains behavior results separately from exit status.
+A hang or nonzero exit still fails, with a process list and live fixture
+backtrace before disposable-prefix shutdown. Regression tests ensure a passing
+behavior JSON cannot mask either failure. These harness-only changes reuse the
+source-locked runtime from that run; IINA remains unverified.
