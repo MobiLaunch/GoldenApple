@@ -11,7 +11,7 @@ home folder, against a local web server standing in for developers' downloads:
 - a download that doesn't match its checksum, or an Apple-silicon-only app,
   is refused and nothing is installed;
 - a .dmg is opened with 7-Zip;
-- open runs the app with Darling (via /Volumes/SystemRoot), and an app that
+- open gives Darling a real host executable path (the CLI maps it internally), and an app that
   quits with an error is reported as not having opened, with Darling's output;
 - remove takes it all away again."""
 from __future__ import annotations
@@ -178,12 +178,13 @@ class MacApps(unittest.TestCase):
         # Without Darling: say how to get it.
         code, events = self.run_helper("open", "notepad")
         self.assertEqual((code, events[-1]["code"]), (1, "no-darling"))
-        # Darling runs the app from inside its view of the file system.
-        self.tool("darling", f'echo "$@" > "{self.home}/darling-args"; sleep 30\n')
+        # Model Darling's host-side realpath check: a Darwin-mapped path does
+        # not exist on Linux, so it is refused before launching anything.
+        self.tool("darling", f'test -f "$1" || {{ echo "not a supported command or a file"; exit 1; }}\necho "$@" > "{self.home}/darling-args"; sleep 30\n')
         p = subprocess.Popen([sys.executable, str(HELPER), "open", "notepad"], stdout=subprocess.PIPE, text=True, env=self.env)
         out, _ = p.communicate(timeout=30)
         self.assertEqual(p.returncode, 0, out)
-        self.assertEqual((self.home / "darling-args").read_text().strip(), f"/Volumes/SystemRoot{exe}")
+        self.assertEqual((self.home / "darling-args").read_text().strip(), str(exe))
         self.assertTrue(self.run_helper("installed")[1][-1]["apps"]["notepad"]["opened"])
         # One that quits with an error didn't open: say so, with Darling's words.
         self.tool("darling", 'echo "dyld: Symbol not found: _NSAppearanceNameDarkAqua"; exit 1\n')

@@ -52,7 +52,7 @@ def main():
     window = None
     try:
         with (output / "darling.log").open("w") as log:
-            process = subprocess.Popen(["darling", "/Volumes/SystemRoot" + str(binary)], env=env,
+            process = subprocess.Popen(["darling", str(binary)], env=env,
                                        stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
             def find_window():
                 if process.poll() is not None:

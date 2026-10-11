@@ -27,7 +27,8 @@ permissions:
 
 concurrency:
   group: darling-gui-${{ github.event_name }}-${{ github.ref }}
-  cancel-in-progress: true
+  # Preserve an expensive runtime build when only the GUI harness is corrected.
+  cancel-in-progress: false
 
 jobs:
   controller:

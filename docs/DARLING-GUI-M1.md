@@ -6,6 +6,12 @@ Golden Gate now carries a pinned, reproducible source patch series for Darling's
 Cocotron AppKit implementation. It does not replace the installed `darling-bin`
 package automatically.
 
+The Golden Gate launcher also now passes the executable's Linux path to Darling.
+Previously it passed `/Volumes/SystemRoot` plus that path, but Darling's host CLI
+calls Linux `realpath()` and adds the prefix itself. The original argument failed
+before the executable reached Darling's compatibility frameworks. The launcher
+regression test now models that host-side file check.
+
 | Patch | Before | After |
 | --- | --- | --- |
 | Controller loading | No `isViewLoaded`, `viewIfLoaded`, `loadViewIfNeeded` or `viewDidLoad` implementation | Non-loading state queries, lazy loading, initialization callback and reentrancy protection |
@@ -36,7 +42,9 @@ Git repositories: forward application, repeat application, same-file drift,
 untracked files, wrong revisions, wrong hashes and partial series. It preserves
 the supplied source checkout and refuses to overwrite local edits.
 
-Both tests passed locally. This is host-level behavior evidence, **not evidence
+Both tests passed locally and in Linux CI; the Intel fixture also compiled and
+passed architecture verification on macOS CI. This is host-level behavior and
+binary-build evidence, **not evidence
 that a full Darling runtime or a third-party Mac GUI app runs successfully**.
 The complete runtime build and interactive GUI checks remain unverified at the
 time this milestone was written. CI separately builds an Intel Mach-O fixture on
@@ -112,7 +120,7 @@ development environment, use a **separate Darling prefix** and preserve output:
 ```bash
 export DPREFIX="$HOME/.local/share/golden-gate/darling-gui-m1"
 mkdir -p "$HOME/.local/state/golden-gate"
-darling "/Volumes/SystemRoot$HOME/Downloads/ControllerLab.app/Contents/MacOS/ControllerLab" \
+darling "$HOME/Downloads/ControllerLab.app/Contents/MacOS/ControllerLab" \
   2>&1 | tee "$HOME/.local/state/golden-gate/darling-controller-lab.log"
 ```
 

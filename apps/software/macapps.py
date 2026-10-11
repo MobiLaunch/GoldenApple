@@ -512,12 +512,13 @@ def open_app(token: str, wait: float = 6.0) -> int:
              message="Mac app support isn't set up yet. Set it up in the App Store's Mac Apps section.")
         return 1
     exe = pathlib.Path(rec["path"]) / "Contents/MacOS" / rec["executable"]
-    # Darling sees the Linux file system under /Volumes/SystemRoot.
-    inside = "/Volumes/SystemRoot" + str(exe)
+    # The host-facing Darling CLI resolves this path with Linux realpath() and
+    # adds /Volumes/SystemRoot itself. Passing an already mapped Darwin path
+    # fails before the Mach-O executable can be launched.
     LOGS.mkdir(parents=True, exist_ok=True)
     log = LOGS / f"{token}.log"
     with open(log, "w") as out:
-        proc = subprocess.Popen([darling(), inside], stdout=out, stderr=subprocess.STDOUT,
+        proc = subprocess.Popen([darling(), str(exe)], stdout=out, stderr=subprocess.STDOUT,
                                 stdin=subprocess.DEVNULL, start_new_session=True)
     deadline = time.time() + wait
     while time.time() < deadline and proc.poll() is None:
