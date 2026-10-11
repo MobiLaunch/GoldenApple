@@ -10,12 +10,42 @@ import json
 import os
 from pathlib import Path
 import shutil
+import struct
 import subprocess
 import time
 
 
 def xdo(*args):
-    return subprocess.check_output(["xdotool", *map(str, args)], text=True).strip()
+    completed = subprocess.run(["xdotool", *map(str, args)], capture_output=True, text=True)
+    if completed.returncode:
+        raise RuntimeError(f"xdotool {args}: exit {completed.returncode}: {completed.stderr.strip()}")
+    return completed.stdout.strip()
+
+
+def surface_has_content(path):
+    """Reject uniform startup surfaces; this alone does not prove usable UI."""
+    data = path.read_bytes()
+    if len(data) < 100:
+        raise RuntimeError("Truncated XWD header")
+    header = struct.unpack(">25I", data[:100])
+    size, version, image_format, depth, width, height = header[:6]
+    byte_order, bits, stride, colors = header[7], header[11], header[12], header[19]
+    if version != 7 or image_format != 2 or depth not in (24, 32) or bits not in (24, 32):
+        raise RuntimeError(f"Unsupported XWD format: version={version}, format={image_format}, depth={depth}, bits={bits}")
+    pixels = data[size + 12 * colors:]
+    if len(pixels) < stride * height or not width or not height:
+        raise RuntimeError("Truncated XWD pixels")
+    masks = header[14] | header[15] | header[16]
+    seen = set()
+    # Ignore row padding and unused alpha bits, which can look nonuniform.
+    for y in range(height):
+        for x in range(width):
+            start = y * stride + x * (bits // 8)
+            value = int.from_bytes(pixels[start:start + bits // 8], "little" if byte_order == 0 else "big") & masks
+            seen.add(value)
+            if len(seen) >= 4:
+                return True
+    return False
 
 
 def wait_until(predicate, seconds):
@@ -47,7 +77,7 @@ def main():
         parser.error("ControllerLab executable is missing")
     output.mkdir(parents=True, exist_ok=True)
     env = {**os.environ, "DPREFIX": str(prefix)}
-    result = {"passed": False, "checks": [], "binary": str(binary)}
+    result = {"passed": False, "checks": [], "binary": str(binary), "phase": "startup", "events": []}
     process = None
     window = None
     try:
@@ -62,20 +92,48 @@ def main():
                 return search.stdout.strip().splitlines()[0] if search.returncode == 0 and search.stdout.strip() else None
             window = wait_until(find_window, 60)
             result["checks"].append("visible-window")
-            subprocess.run(["xwd", "-silent", "-id", window, "-out", str(output / "opened.xwd")], check=True)
+            def checkpoint(phase, capture=True):
+                result["phase"] = phase
+                code = process.poll()
+                result["events"].append({"phase": phase, "launcher_exit": code})
+                if code is not None:
+                    raise RuntimeError(f"Darling exited during {phase}: {code}")
+                geometry = xdo("getwindowgeometry", "--shell", window)
+                if capture:
+                    completed = subprocess.run(["xwd", "-silent", "-id", window, "-out", str(output / f"{phase}.xwd")], capture_output=True, text=True)
+                    if completed.returncode:
+                        raise RuntimeError(f"Screenshot during {phase}: {completed.stderr.strip()}")
+                return dict(line.split("=", 1) for line in geometry.splitlines() if "=" in line)
+            def rendered():
+                checkpoint("rendering", capture=False)
+                completed = subprocess.run(["xwd", "-silent", "-id", window, "-out", str(output / "opened.xwd")], capture_output=True, text=True)
+                if completed.returncode:
+                    raise RuntimeError(f"Startup screenshot: {completed.stderr.strip()}")
+                return surface_has_content(output / "opened.xwd")
+            wait_until(rendered, 30)
+            result["checks"].append("nonuniform-rendered-surface")
             # No window manager is required under Xvfb. Focus the window directly.
+            result["phase"] = "focus"
             xdo("windowfocus", window)
+            checkpoint("focused")
+            result["phase"] = "editor-click"
             xdo("mousemove", "--window", window, 220, 120)
             xdo("click", 1)
+            checkpoint("editor-clicked")
             # Darling's X11 backend maps Mod4/Super to Cocoa's Command modifier.
+            result["phase"] = "select-all"
             xdo("key", "--clearmodifiers", "super+a")
+            checkpoint("selected")
             marker = "Darling GUI save regression " + str(time.monotonic_ns())
+            result["phase"] = "typing"
             xdo("type", "--clearmodifiers", "--delay", 20, marker)
             # Measure the actual surface: Darling's titlebar can change its
             # total height, but the button stays 36px above the bottom edge.
-            geometry = dict(line.split("=", 1) for line in xdo("getwindowgeometry", "--shell", window).splitlines() if "=" in line)
+            geometry = checkpoint("typed")
+            result["phase"] = "save-click"
             xdo("mousemove", "--window", window, 60, int(geometry["HEIGHT"]) - 36)
             xdo("click", 1)
+            checkpoint("save-clicked")
             def saved_document():
                 for path in prefix.rglob("Darling-ControllerLab.txt") if prefix.exists() else []:
                     if marker in path.read_text(errors="replace"):
@@ -84,10 +142,12 @@ def main():
             saved = wait_until(saved_document, 15)
             shutil.copyfile(saved, output / "saved-document.txt")
             result["checks"].extend(["text-input", "target-action", "utf8-save"])
+            result["phase"] = "resize"
             xdo("windowsize", window, 760, 480)
             time.sleep(0.5)
             subprocess.run(["xwd", "-silent", "-id", window, "-out", str(output / "resized.xwd")], check=True)
             result["checks"].append("resize-without-crash")
+            result["phase"] = "close"
             xdo("windowclose", window)
             try:
                 code = process.wait(timeout=15)
@@ -100,6 +160,16 @@ def main():
     except (OSError, RuntimeError, subprocess.CalledProcessError) as error:
         result["error"] = str(error)
     finally:
+        # Record natural termination before cleanup can replace it with SIGTERM.
+        result["launcher_exit_before_cleanup"] = process.poll() if process is not None else None
+        for name, command in (("processes.log", ["ps", "-eo", "pid,ppid,stat,args"]),
+                              ("kernel.log", ["sudo", "-n", "journalctl", "-k", "--since", "5 minutes ago", "--no-pager"]),
+                              ("coredumps.log", ["coredumpctl", "--no-pager", "list", "--since", "5 minutes ago"])):
+            try:
+                collected = subprocess.run(command, capture_output=True, text=True, timeout=10)
+                (output / name).write_text(collected.stdout + collected.stderr)
+            except (OSError, subprocess.TimeoutExpired) as error:
+                (output / name).write_text(str(error) + "\n")
         if process is not None and process.poll() is None:
             process.terminate()
             try:

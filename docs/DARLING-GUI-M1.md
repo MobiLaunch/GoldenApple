@@ -45,9 +45,14 @@ the supplied source checkout and refuses to overwrite local edits.
 Both tests passed locally and in Linux CI; the Intel fixture also compiled and
 passed architecture verification on macOS CI. This is host-level behavior and
 binary-build evidence, **not evidence
-that a full Darling runtime or a third-party Mac GUI app runs successfully**.
-The complete runtime build and interactive GUI checks remain unverified at the
-time this milestone was written. CI separately builds an Intel Mach-O fixture on
+that a third-party Mac GUI app runs successfully**.
+The full patched Ubuntu runtime compiled, passed the stage audit, and installed
+in [run 38114854748](https://github.com/MobiLaunch/GoldenApple/actions/runs/38114854748)
+on October 11, 2026. ControllerLab created an X11 window, but the captured
+surface was entirely black and the window disappeared during input. The test
+failed before saving; the log included `semaphore_timedwait failed (internally):
+-111`. That message alone does not identify the cause. Interactive GUI support
+and execution of the installed PIP fixture remain unverified. CI separately builds an Intel Mach-O fixture on
 macOS. Its build does not by itself prove Darling compatibility.
 
 ## Reproducible build
@@ -182,3 +187,20 @@ fixtures for each fix. Do not label TextEdit or any downloaded catalog app as
 supported until the workflow has been tested. Modern Auto Layout, stack/grid
 views, storyboards, Core Animation, SwiftUI and application-specific services
 remain substantial follow-on work.
+
+## Diagnosing runtime failures
+
+The GUI harness waits for a nonuniform surface before sending input. This is a
+readiness check, not proof that controls work: text entry, target/action, saving,
+resizing and clean exit still must pass. Results retain the failing phase,
+command stderr, the launcher exit before cleanup, screenshots and available
+process/kernel/coredump diagnostics. CI selects Mesa software rendering for
+Xvfb; this is an environment change whose effect needs runtime verification.
+
+CI uploads the audited runtime before GUI tests and runs PIP independently of a
+ControllerLab failure. Once a runtime artifact is available, dispatch the GUI
+workflow with `runtime_run` set to its run ID to repeat tests without rebuilding.
+The artifact must come from this repository and its source lock must match the
+current checkout. Installation preserves the launcher mode with root ownership
+in a disposable Ubuntu runner. This archive is not an Arch package or a desktop
+update; use the source packaging workflow for Arch.

@@ -12,6 +12,7 @@ on:
       - 'tests/darling-build-modes.py'
       - 'tests/darling-fsevents-build.py'
       - 'tests/darling-dyld-link.py'
+      - 'tests/darling-gui-harness.py'
       - '.github/workflows/darling-gui.yml'
   pull_request:
     paths:
@@ -24,6 +25,7 @@ on:
       - 'tests/darling-build-modes.py'
       - 'tests/darling-fsevents-build.py'
       - 'tests/darling-dyld-link.py'
+      - 'tests/darling-gui-harness.py'
       - '.github/workflows/darling-gui.yml'
   workflow_dispatch:
     inputs:
@@ -31,9 +33,14 @@ on:
         description: 'Also build and stage the full patched x86_64 Darling runtime'
         type: boolean
         default: false
+      runtime_run:
+        description: 'Reuse a successful staged runtime artifact from this repository run (lock must match)'
+        type: string
+        default: ''
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   # The corrected Objective-C profile must not wait behind an older job
@@ -83,6 +90,8 @@ jobs:
         run: bash tests/darling/run-host.sh "$RUNNER_TEMP/darling"
       - name: Compatibility evidence gates
         run: python3 tests/darling-compatibility.py
+      - name: GUI harness failure diagnostics
+        run: python3 tests/darling-gui-harness.py
       - name: Runtime packaging rejection checks
         run: python3 tests/darling-runtime.py
       - name: Compile Python and validate shell scripts
@@ -112,10 +121,14 @@ jobs:
           path: ${{ runner.temp }}/pip-tests/PIPLab.zip
 
   full-runtime:
-    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.full_runtime)
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && (inputs.full_runtime || inputs.runtime_run != ''))
     needs: [controller, mac-fixture]
     runs-on: ubuntu-24.04
     timeout-minutes: 180
+    env:
+      # Xvfb has no accelerated DRI3 device. Exercise Mesa's software backend.
+      LIBGL_ALWAYS_SOFTWARE: '1'
+      GALLIUM_DRIVER: llvmpipe
     steps:
       - uses: actions/checkout@v4
       - name: Install full runtime build dependencies
@@ -127,26 +140,53 @@ jobs:
             libfontconfig1-dev libbsd-dev libxrandr-dev libxcursor-dev libgif-dev \
             libpulse-dev libavformat-dev libavcodec-dev libswresample-dev libdbus-1-dev \
             libxkbfile-dev libssl-dev llvm-dev libelf-dev libcurl4-openssl-dev libedit-dev \
-            xvfb xauth xdotool x11-apps unzip
+            xvfb xauth xdotool x11-apps unzip mesa-utils
       - name: Fetch pinned source and required baseline assets
+        if: inputs.runtime_run == ''
         run: |
           set -o pipefail
           python3 tools/darling/build.py prepare --source "$RUNNER_TEMP/darling" \
             2>&1 | tee "$RUNNER_TEMP/darling-source.log"
       - name: Build and stage patched Darling
+        if: inputs.runtime_run == ''
         run: |
           set -o pipefail
           python3 tools/darling/build.py stage --source "$RUNNER_TEMP/darling" \
             --build "$RUNNER_TEMP/darling-build" --stage "$RUNNER_TEMP/darling-stage" \
             --jobs 2 2>&1 | tee "$RUNNER_TEMP/darling-build.log"
       - name: Archive staged runtime
+        if: inputs.runtime_run == ''
         run: tar -C "$RUNNER_TEMP/darling-stage" -czf "$RUNNER_TEMP/darling-runtime.tar.gz" .
+      - uses: actions/upload-artifact@v4
+        if: inputs.runtime_run == ''
+        with:
+          name: Darling-runtime-x86_64-experimental
+          path: ${{ runner.temp }}/darling-runtime.tar.gz
+          if-no-files-found: error
+      - name: Download previously staged runtime
+        if: inputs.runtime_run != ''
+        uses: actions/download-artifact@v4
+        with:
+          name: Darling-runtime-x86_64-experimental
+          path: ${{ runner.temp }}
+          run-id: ${{ inputs.runtime_run }}
+          github-token: ${{ github.token }}
       - uses: actions/download-artifact@v4
         with:
           name: Darling-ControllerLab-Intel
           path: ${{ runner.temp }}/darling-fixture
-      - name: Install patched runtime in disposable runner
-        run: sudo cmake --install "$RUNNER_TEMP/darling-build"
+      - name: Install verified runtime in disposable runner
+        id: install
+        run: |
+          mkdir -p "$RUNNER_TEMP/darling-runtime-check"
+          tar -C "$RUNNER_TEMP/darling-runtime-check" -xzf "$RUNNER_TEMP/darling-runtime.tar.gz"
+          python3 tools/darling/runtime.py "$RUNNER_TEMP/darling-runtime-check"
+          # Install only the audited /usr/local tree; retain upstream setuid mode
+          # with root ownership. This Ubuntu artifact is for disposable CI only.
+          sudo tar --no-same-owner --same-permissions -C / \
+            -xzf "$RUNNER_TEMP/darling-runtime.tar.gz" ./usr/local
+      - name: Record software rendering environment
+        run: xvfb-run -a glxinfo -B > "$RUNNER_TEMP/darling-rendering.log" 2>&1
       - name: Exercise the unchanged Mac app under Darling
         run: |
           unzip -q "$RUNNER_TEMP/darling-fixture/ControllerLab.zip" -d "$RUNNER_TEMP/darling-fixture"
@@ -160,10 +200,13 @@ jobs:
           name: Darling-GUI-results
           path: ${{ runner.temp }}/darling-gui-results
       - uses: actions/download-artifact@v4
+        if: always() && steps.install.outcome == 'success'
         with:
           name: Darling-PIPLab-Intel
           path: ${{ runner.temp }}/darling-pip-fixture
       - name: Exercise installed PIP with unchanged Intel fixture
+        if: always() && steps.install.outcome == 'success'
+        timeout-minutes: 3
         run: |
           unzip -q "$RUNNER_TEMP/darling-pip-fixture/PIPLab.zip" -d "$RUNNER_TEMP/darling-pip-fixture"
           mkdir -p "$RUNNER_TEMP/darling-pip-results"
@@ -189,7 +232,4 @@ jobs:
           path: |
             ${{ runner.temp }}/darling-source.log
             ${{ runner.temp }}/darling-build.log
-      - uses: actions/upload-artifact@v4
-        with:
-          name: Darling-runtime-x86_64-experimental
-          path: ${{ runner.temp }}/darling-runtime.tar.gz
+            ${{ runner.temp }}/darling-rendering.log
