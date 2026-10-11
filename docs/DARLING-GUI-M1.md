@@ -81,6 +81,14 @@ python3 tools/darling/build.py stage \
 `prepare` fetches pinned source and applies patches; `configure` also runs CMake;
 `build` additionally compiles; `stage` additionally writes installation output
 into a separate directory via DESTDIR. Nothing installs over the system Darling.
+Use an empty stage on each attempt; stale files are refused. Staging suppresses
+upstream's host-session shutdown script and verifies the locked runtime and PIP
+layout before accepting the result. `--install-prefix /usr` is available for
+Arch packaging; the development default remains `/usr/local`.
+The Objective-C baseline omits upstream's prebuilt Swift assets. Use
+`--with-swift` to fetch and install them explicitly; an unavailable asset server
+is a build failure. The selection is retained in runtime provenance. This
+baseline does not establish support for Swift applications such as IINA.
 Staged files are not a relocatable runtime: install paths and capabilities need
 packaging before they can be offered through Golden Gate's normal updater.
 

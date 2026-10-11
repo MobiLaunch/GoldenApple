@@ -18,6 +18,11 @@
       "path": "patches/0003-pip-framework.patch",
       "repository": "darling",
       "sha256": "d8271f4857068ee64789404e2fe0ef2130423bc1c29cfe9511d4f1601cda164c"
+    },
+    {
+      "path": "patches/0004-optional-swift-runtime.patch",
+      "repository": "darling",
+      "sha256": "260f9b9fe3e85daa45c99ed3047533e058ce2a083def209600b6ffb17b1e4028"
     }
   ]
 }

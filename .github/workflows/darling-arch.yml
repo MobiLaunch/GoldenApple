@@ -1,0 +1,85 @@
+name: Darling Arch packaging
+
+on:
+  push:
+    paths:
+      - 'tools/darling/arch/**'
+      - 'tools/darling/package-arch.py'
+      - 'tools/darling/runtime.py'
+      - 'tools/darling/build.py'
+      - 'third_party/darling/**'
+      - 'tests/darling-runtime.py'
+      - '.github/workflows/darling-arch.yml'
+  pull_request:
+    paths:
+      - 'tools/darling/**'
+      - 'third_party/darling/**'
+      - 'tests/darling-runtime.py'
+      - '.github/workflows/darling-arch.yml'
+  workflow_dispatch:
+    inputs:
+      build_runtime:
+        description: 'Compile the full experimental runtime on Arch; do not install it'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  recipe:
+    runs-on: ubuntu-24.04
+    container: archlinux:base-devel
+    steps:
+      - name: Prepare Arch metadata tools
+        run: pacman -Syu --needed --noconfirm git python
+      - uses: actions/checkout@v4
+      - name: Exercise staged-runtime rejection and source export
+        run: python tests/darling-runtime.py
+      - name: Export standalone source recipe and validate with makepkg
+        run: |
+          python tools/darling/package-arch.py /tmp/gg-darling-arch
+          useradd -m builder
+          chown -R builder:builder /tmp/gg-darling-arch
+          runuser -u builder -- bash -c 'cd /tmp/gg-darling-arch && makepkg --printsrcinfo > .SRCINFO'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Darling-Arch-source-recipe
+          path: |
+            /tmp/gg-darling-arch/PKGBUILD
+            /tmp/gg-darling-arch/.SRCINFO
+            /tmp/gg-darling-arch/golden-gate-darling-source.tar.gz
+
+  runtime-package:
+    if: github.event_name == 'workflow_dispatch' && inputs.build_runtime
+    needs: recipe
+    runs-on: ubuntu-24.04
+    container: archlinux:base-devel
+    timeout-minutes: 180
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: Darling-Arch-source-recipe
+          path: /tmp/gg-darling-arch
+      - name: Install declared build dependencies in disposable Arch container
+        shell: bash
+        run: |
+          source /tmp/gg-darling-arch/PKGBUILD
+          pacman -Syu --needed --noconfirm "${depends[@]}" "${makedepends[@]}"
+          useradd -m builder
+          chown -R builder:builder /tmp/gg-darling-arch
+      - name: Build package as ordinary user without installing it
+        run: |
+          set -o pipefail
+          runuser -u builder -- bash -c 'cd /tmp/gg-darling-arch && makepkg --cleanbuild --noconfirm' \
+            2>&1 | tee /tmp/darling-arch-build.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Darling-Arch-build-log
+          path: /tmp/darling-arch-build.log
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Darling-Arch-runtime-experimental
+          path: /tmp/gg-darling-arch/*.pkg.tar.zst
+          if-no-files-found: error

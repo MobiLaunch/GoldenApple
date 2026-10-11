@@ -110,7 +110,7 @@
     {
       "id": "M5",
       "name": "Golden Gate runtime packaging",
-      "status": "planned",
+      "status": "in-progress",
       "requires": [
         "M1",
         "M2"
@@ -125,7 +125,11 @@
       ],
       "files": [
         "apps/software/darling-setup.sh",
-        "tools/darling/build.py"
+        "tools/darling/build.py",
+        "tools/darling/runtime.py",
+        "tools/darling/package-arch.py",
+        "tools/darling/arch/PKGBUILD.in",
+        ".github/workflows/darling-arch.yml"
       ]
     }
   ],
@@ -165,6 +169,7 @@
       "blockers": [
         "Installed Darling cannot load Apple's private PIP.framework.",
         "The new PIP implementation has not been built into an installed Golden Gate runtime.",
+        "The Objective-C baseline excludes upstream's prebuilt Swift assets; their LFS endpoint timed out in the full-runtime attempt.",
         "Remaining Swift, AppKit and media requirements need actual runtime tracing; resolving PIP alone does not establish compatibility."
       ]
     }

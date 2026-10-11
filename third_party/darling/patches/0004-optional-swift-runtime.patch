@@ -1,0 +1,27 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 8077b7e..12692fb 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -134,6 +134,7 @@ enable_language(ASM-ATT)
+ option(TARGET_i386 "Enable i386 slices" ON)
+ option(TARGET_x86_64 "Enable x86_64 slices" ON)
+ option(DEBIAN_PACKAGING "Packaging for Debian" OFF)
++option(INSTALL_SWIFT_RUNTIME "Install prebuilt Swift runtime assets" ON)
+ option(ENABLE_TESTS "Install in-prefix unit tests" OFF)
+ option(REGENERATE_SDK "Regenerate Header Files For Open Source SDK" OFF)
+ 
+diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
+index 5c924b3..565e767 100644
+--- a/src/CMakeLists.txt
++++ b/src/CMakeLists.txt
+@@ -234,7 +234,9 @@ if (COMPONENT_system)
+ 	add_subdirectory(external/tcsh)
+ 	add_subdirectory(external/files)
+ 	add_subdirectory(external/crontabs)
+-	add_subdirectory(external/swift)
++	if (INSTALL_SWIFT_RUNTIME)
++		add_subdirectory(external/swift)
++	endif()
+ endif()
+ 
+ if (COMPONENT_cli)

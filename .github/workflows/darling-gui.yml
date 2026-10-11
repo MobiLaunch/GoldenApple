@@ -8,6 +8,7 @@ on:
       - 'tests/darling/**'
       - 'tests/darling-patches.py'
       - 'tests/darling-compatibility.py'
+      - 'tests/darling-runtime.py'
       - '.github/workflows/darling-gui.yml'
   pull_request:
     paths:
@@ -16,6 +17,7 @@ on:
       - 'tests/darling/**'
       - 'tests/darling-patches.py'
       - 'tests/darling-compatibility.py'
+      - 'tests/darling-runtime.py'
       - '.github/workflows/darling-gui.yml'
   workflow_dispatch:
     inputs:
@@ -58,6 +60,8 @@ jobs:
         run: bash tests/darling/run-host.sh "$RUNNER_TEMP/darling"
       - name: Compatibility evidence gates
         run: python3 tests/darling-compatibility.py
+      - name: Runtime packaging rejection checks
+        run: python3 tests/darling-runtime.py
       - name: Compile Python and validate shell scripts
         run: |
           python3 -m py_compile tools/darling/build.py tools/darling/compatibility.py tests/darling-patches.py
@@ -101,6 +105,11 @@ jobs:
             libpulse-dev libavformat-dev libavcodec-dev libswresample-dev libdbus-1-dev \
             libxkbfile-dev libssl-dev llvm-dev libelf-dev libcurl4-openssl-dev libedit-dev \
             xvfb xauth xdotool x11-apps unzip
+      - name: Fetch pinned source and required baseline assets
+        run: |
+          set -o pipefail
+          python3 tools/darling/build.py prepare --source "$RUNNER_TEMP/darling" \
+            2>&1 | tee "$RUNNER_TEMP/darling-source.log"
       - name: Build and stage patched Darling
         run: |
           set -o pipefail
@@ -154,7 +163,9 @@ jobs:
         if: always()
         with:
           name: Darling-runtime-build-log
-          path: ${{ runner.temp }}/darling-build.log
+          path: |
+            ${{ runner.temp }}/darling-source.log
+            ${{ runner.temp }}/darling-build.log
       - uses: actions/upload-artifact@v4
         with:
           name: Darling-runtime-x86_64-experimental

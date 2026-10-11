@@ -54,6 +54,8 @@ including newly added files. Local edits are refused and preserved. An apply
 failure rolls back completed groups. A machine interruption is not a
 cross-repository transaction; rerun preparation to preflight each group. Existing
 M1 checkouts can gain the root PIP patch without resetting Cocotron.
+When the root patch series changes, an existing partly patched root checkout is
+refused; use a fresh dedicated source directory rather than reset local work.
 
 ## M2 implementation scope
 
@@ -110,6 +112,66 @@ bash tools/darling/build-pip-tests.sh "$HOME/Development/pip-tests"
 Use the M1 build instructions for the full Linux runtime. Runtime testing belongs
 in a disposable development environment with a fresh `DPREFIX`. The default
 Golden Gate updater still does not install this patched runtime.
+
+## Arch package development
+
+The source package recipe is now implemented; installation, upgrade, rollback
+and GUI compatibility remain unvalidated. M5 cannot pass before M1 and M2.
+`tools/darling/package-arch.py` exports a standalone build context containing the
+locked patches, build tool and runtime auditor, with a deterministic source
+archive and SHA-256 checksum. It never repackages Ubuntu build output as an Arch
+binary. Arch compiles its own host executables and libraries against its own
+dependencies.
+
+The package is named `golden-gate-darling-experimental`, provides `darling`, and
+declares conflicts with `darling`, `darling-bin` and `darling-git`. It installs
+under `/usr`, preserving the upstream launcher's setuid mode and the guest root
+filesystem layout. It retains provenance in
+`/usr/share/golden-gate/darling/build.json`. It does not touch existing user
+prefixes or run applications during packaging. No Settings integration or
+automatic replacement has been enabled.
+
+Each new stage must be empty. `build.py` enables upstream's `DEBIAN_PACKAGING`
+flag solely to suppress its install-time host-session shutdown script; the
+components are still explicitly `cli,gui_frameworks`. Before accepting output,
+`runtime.py` checks the source lock, install prefix, host ELF architecture,
+launcher mode, PIP's x86_64 Mach-O dylib identity and framework links. These are
+structural checks, not proof that a GUI application works.
+
+Export a source recipe from the Golden Gate checkout:
+
+```bash
+python3 tools/darling/package-arch.py "$HOME/Development/gg-darling-arch"
+```
+
+The `Darling Arch packaging` workflow validates that recipe with Arch's
+`makepkg --printsrcinfo` and uploads the source build context. Its manual
+`build_runtime` option additionally compiles an experimental Arch package as an
+ordinary user in a disposable container; it does not install or publish it.
+The package dependencies and full Arch compilation still need build evidence.
+Do not replace the desktop runtime with this development output until the GUI,
+package installation and rollback gates pass.
+
+### Source download profiles
+
+The first full-runtime CI attempt failed **before compilation**, downloading
+prebuilt Swift assets from `git-lfs.darlinghq.org`; its connection retries lasted
+almost two hours. Source acquisition now checks out LFS pointers without
+smudging, then explicitly materializes required assets with bounded connection
+and transfer timeouts. Acquisition has its own CI step and log.
+
+The default AppKit/PIP baseline excludes the Swift submodule. Patch
+`0004-optional-swift-runtime.patch` makes upstream's previously unconditional
+Swift installation optional, keeping its upstream default enabled. Golden
+Gate's builder explicitly disables it for the baseline; it does not install LFS
+pointer files as pretend libraries. `--with-swift` fetches and enables upstream's
+prebuilt Swift assets, and fails if they cannot be downloaded. The selection is
+recorded as `swift_runtime` in package provenance.
+
+This baseline is sufficient to attempt the Objective-C fixtures, not IINA's
+Swift requirements. The Swift assets and real IINA workflow remain blocked;
+the default experimental Arch recipe uses the same baseline. No existing
+Darling installation is altered by this source-download change.
 
 ## Recording a compatibility failure
 
