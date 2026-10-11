@@ -164,12 +164,30 @@ def main():
         result["launcher_exit_before_cleanup"] = process.poll() if process is not None else None
         for name, command in (("processes.log", ["ps", "-eo", "pid,ppid,stat,args"]),
                               ("kernel.log", ["sudo", "-n", "journalctl", "-k", "--since", "5 minutes ago", "--no-pager"]),
-                              ("coredumps.log", ["coredumpctl", "--no-pager", "list", "--since", "5 minutes ago"])):
+                              ("coredumps.log", ["coredumpctl", "--no-pager", "list", "--since", "5 minutes ago"]),
+                              ("coredump-info.log", ["sudo", "-n", "coredumpctl", "--no-pager", "info", "--since", "5 minutes ago"])):
             try:
                 collected = subprocess.run(command, capture_output=True, text=True, timeout=10)
                 (output / name).write_text(collected.stdout + collected.stderr)
             except (OSError, subprocess.TimeoutExpired) as error:
                 (output / name).write_text(str(error) + "\n")
+        if not result["passed"]:
+            try:
+                core = output / "mldr.core"
+                loader = "/usr/local/libexec/darling/usr/libexec/darling/mldr"
+                dumped = subprocess.run(["sudo", "-n", "coredumpctl", "dump", "--since", "5 minutes ago",
+                                         "--output", str(core), loader], capture_output=True, text=True, timeout=15)
+                (output / "coredump-export.log").write_text(dumped.stdout + dumped.stderr)
+                if dumped.returncode == 0:
+                    # Use root to read the coredump without changing its ownership.
+                    traced = subprocess.run(["sudo", "-n", "gdb", "-batch", "-ex", "info registers",
+                                             "-ex", "thread apply all bt full", "-ex", "info proc mappings",
+                                             loader, str(core)], capture_output=True, text=True, timeout=20)
+                    (output / "backtrace.log").write_text(traced.stdout + traced.stderr)
+                    subprocess.run(["sudo", "-n", "chmod", "0644", str(core)],
+                                   capture_output=True, timeout=10, check=False)
+            except (OSError, subprocess.TimeoutExpired) as error:
+                (output / "coredump-export.log").write_text(str(error) + "\n")
         if process is not None and process.poll() is None:
             process.terminate()
             try:
