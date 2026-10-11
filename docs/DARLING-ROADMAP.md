@@ -149,6 +149,10 @@ The `Darling Arch packaging` workflow validates that recipe with Arch's
 `build_runtime` option additionally compiles an experimental Arch package as an
 ordinary user in a disposable container; it does not install or publish it.
 The package dependencies and full Arch compilation still need build evidence.
+The first [Arch recipe CI run](https://github.com/MobiLaunch/GoldenApple/actions/runs/38105408413/job/114369764248)
+passed all 14 source/staging/package checks and `makepkg --printsrcinfo` on Arch.
+The full package build was deliberately skipped in this metadata run; this
+result does not establish install, upgrade, rollback or GUI support.
 Do not replace the desktop runtime with this development output until the GUI,
 package installation and rollback gates pass.
 

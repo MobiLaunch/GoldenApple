@@ -118,6 +118,13 @@
       "goal": "A validated Arch package installs and updates through Settings with provenance, rollback and no conflict with darling-bin.",
       "checks": [
         {
+          "id": "arch-source-recipe",
+          "status": "passed",
+          "evidence": [
+            "https://github.com/MobiLaunch/GoldenApple/actions/runs/38105408413/job/114369764248"
+          ]
+        },
+        {
           "id": "arch-install-upgrade-rollback",
           "status": "pending",
           "evidence": []

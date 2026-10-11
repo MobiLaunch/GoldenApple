@@ -30,7 +30,9 @@ permissions:
   contents: read
 
 concurrency:
-  group: darling-gui-${{ github.event_name }}-${{ github.ref }}
+  # The corrected Objective-C profile must not wait behind an older job
+  # retrying the unavailable Swift asset server.
+  group: darling-gui-objc-baseline-${{ github.event_name }}-${{ github.ref }}
   # Preserve an expensive runtime build when only the GUI harness is corrected.
   cancel-in-progress: false
 
