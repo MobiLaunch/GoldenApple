@@ -85,8 +85,12 @@ bash tests/darling/run-host.sh "$HOME/Development/darling-gg-m1"
 ```
 
 The `Darling GUI compatibility` workflow runs the focused tests and builds the
-Intel GUI fixture. Its manual `full_runtime` option also builds/stages Darling
-and uploads the build log even on failure.
+Intel GUI fixture. Source/tooling pushes also build and stage the complete
+runtime in a disposable runner, then attempt the unchanged fixture under Xvfb.
+Its manual `full_runtime` option performs the same build. Build logs and GUI
+results are uploaded even on failure. `tools/darling/test-gui.py` checks a visible
+window, real typed input and saved file contents, resizing and clean exit; it
+refuses to use an existing prefix.
 
 ## GUI fixture
 

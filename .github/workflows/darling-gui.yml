@@ -25,6 +25,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: darling-gui-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   controller:
     runs-on: ubuntu-24.04
@@ -70,7 +74,8 @@ jobs:
           path: ${{ runner.temp }}/ControllerLab.zip
 
   full-runtime:
-    if: github.event_name == 'workflow_dispatch' && inputs.full_runtime
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.full_runtime)
+    needs: mac-fixture
     runs-on: ubuntu-24.04
     timeout-minutes: 180
     steps:
@@ -83,7 +88,8 @@ jobs:
             libglu1-mesa-dev libtiff5-dev libfreetype6-dev libxml2-dev libegl1-mesa-dev \
             libfontconfig1-dev libbsd-dev libxrandr-dev libxcursor-dev libgif-dev \
             libpulse-dev libavformat-dev libavcodec-dev libswresample-dev libdbus-1-dev \
-            libxkbfile-dev libssl-dev llvm-dev libelf-dev libcurl4-openssl-dev libedit-dev
+            libxkbfile-dev libssl-dev llvm-dev libelf-dev libcurl4-openssl-dev libedit-dev \
+            xvfb xauth xdotool x11-apps unzip
       - name: Build and stage patched Darling
         run: |
           set -o pipefail
@@ -92,6 +98,24 @@ jobs:
             --jobs 2 2>&1 | tee "$RUNNER_TEMP/darling-build.log"
       - name: Archive staged runtime
         run: tar -C "$RUNNER_TEMP/darling-stage" -czf "$RUNNER_TEMP/darling-runtime.tar.gz" .
+      - uses: actions/download-artifact@v4
+        with:
+          name: Darling-ControllerLab-Intel
+          path: ${{ runner.temp }}/darling-fixture
+      - name: Install patched runtime in disposable runner
+        run: sudo cmake --install "$RUNNER_TEMP/darling-build"
+      - name: Exercise the unchanged Mac app under Darling
+        run: |
+          unzip -q "$RUNNER_TEMP/darling-fixture/ControllerLab.zip" -d "$RUNNER_TEMP/darling-fixture"
+          xvfb-run -a python3 tools/darling/test-gui.py \
+            --app "$RUNNER_TEMP/darling-fixture/ControllerLab.app" \
+            --prefix "$RUNNER_TEMP/darling-gui-prefix" \
+            --output "$RUNNER_TEMP/darling-gui-results"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Darling-GUI-results
+          path: ${{ runner.temp }}/darling-gui-results
       - uses: actions/upload-artifact@v4
         if: always()
         with:
