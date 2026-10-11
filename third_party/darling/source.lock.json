@@ -28,6 +28,11 @@
       "path": "patches/0005-objc-build-mode.patch",
       "repository": "objc4",
       "sha256": "bb6e70eeedcbd11f015fef0141e2c257fd931301979e98c07fef240328ed25f1"
+    },
+    {
+      "path": "patches/0006-fsevents-linux-uapi.patch",
+      "repository": "darling",
+      "sha256": "31a95e6108ff8618a84cb283fe6832ce96c6b3ebb48f1b47084778132c8d2ce0"
     }
   ],
   "objc4_commit": "1a12df76d12bfc9fdfffadb290f7742763568765"

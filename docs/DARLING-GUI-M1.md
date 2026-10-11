@@ -65,7 +65,7 @@ Clang, CMake and Ninja, plus the framework build dependencies. On Ubuntu 24.04:
 
 ```bash
 sudo apt-get update
-sudo apt-get install -y cmake ninja-build clang bison flex libfuse-dev libudev-dev \
+sudo apt-get install -y cmake ninja-build clang linux-libc-dev bison flex libfuse-dev libudev-dev \
   pkg-config libcap2-bin git git-lfs libcairo2-dev libgl1-mesa-dev \
   libglu1-mesa-dev libtiff5-dev libfreetype6-dev libxml2-dev libegl1-mesa-dev \
   libfontconfig1-dev libbsd-dev libxrandr-dev libxcursor-dev libgif-dev \
@@ -95,9 +95,10 @@ packaging before they can be offered through Golden Gate's normal updater.
 Run the focused tests after preparing the source:
 
 ```bash
-sudo apt-get install -y clang cmake make libgnustep-base-dev
+sudo apt-get install -y clang cmake make linux-libc-dev libgnustep-base-dev
 python3 tests/darling-patches.py "$HOME/Development/darling-gg-m1"
 CC=clang CXX=clang++ python3 tests/darling-build-modes.py "$HOME/Development/darling-gg-m1"
+CC=clang python3 tests/darling-fsevents-build.py "$HOME/Development/darling-gg-m1"
 bash tests/darling/run-host.sh "$HOME/Development/darling-gg-m1"
 ```
 

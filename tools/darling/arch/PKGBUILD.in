@@ -11,7 +11,7 @@ depends=('glibc' 'gcc-libs' 'fuse2' 'libcap' 'systemd-libs' 'cairo' 'fontconfig'
          'libxrandr' 'libxcursor' 'libxext' 'libxkbfile' 'libxkbcommon' 'giflib'
          'libpulse' 'ffmpeg' 'dbus' 'openssl' 'libelf' 'curl' 'libedit' 'icu')
 makedepends=('git' 'git-lfs' 'python' 'cmake' 'ninja' 'clang' 'llvm' 'bison'
-             'flex' 'pkgconf')
+             'flex' 'pkgconf' 'linux-api-headers')
 provides=('darling')
 conflicts=('darling' 'darling-bin' 'darling-git')
 # Preserve Mach-O binaries, upstream privilege modes and guest rootfs directories.

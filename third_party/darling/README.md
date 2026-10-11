@@ -8,7 +8,9 @@ output stay outside the Golden Gate repository.
 The Cocotron patches implement NSViewController loading and correct the intrinsic
 size sentinel. Root patches add a limited PIP framework implementation and an
 optional Swift asset profile. The objc4 patch aligns the runtime's debug macro
-with CMake's standard build configurations.
+with CMake's standard build configurations. The FSEvents root patch exposes
+Linux architecture headers privately to the Darwin guest daemon on multiarch
+hosts, without adding host libc headers to its include path.
 See [the roadmap](../../docs/DARLING-ROADMAP.md) and
 [`compatibility.json`](compatibility.json) for milestones, evidence gates and
 per-app blockers; [M1](../../docs/DARLING-GUI-M1.md) records the initial baseline.

@@ -81,7 +81,8 @@ with tempfile.TemporaryDirectory() as directory:
     module.apply_patches(temp, config)
     assert snapshot() == first, 'all three repositories must be idempotent'
     for changed in (coco / 'AppKit/NSViewController.m', temp / 'src/private-frameworks/CMakeLists.txt',
-                    temp / 'src/private-frameworks/PIP/src/PIP.m', objc / 'runtime/CMakeLists.txt'):
+                    temp / 'src/private-frameworks/PIP/src/PIP.m', objc / 'runtime/CMakeLists.txt',
+                    temp / 'src/frameworks/CoreServices/src/FSEvents/CMakeLists.txt'):
         expected = changed.read_bytes()
         changed.write_bytes(expected + b'\n// unrelated local edit\n')
         before = snapshot()

@@ -10,6 +10,7 @@ on:
       - 'tests/darling-compatibility.py'
       - 'tests/darling-runtime.py'
       - 'tests/darling-build-modes.py'
+      - 'tests/darling-fsevents-build.py'
       - '.github/workflows/darling-gui.yml'
   pull_request:
     paths:
@@ -20,6 +21,7 @@ on:
       - 'tests/darling-compatibility.py'
       - 'tests/darling-runtime.py'
       - 'tests/darling-build-modes.py'
+      - 'tests/darling-fsevents-build.py'
       - '.github/workflows/darling-gui.yml'
   workflow_dispatch:
     inputs:
@@ -44,7 +46,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install Objective-C test dependencies
-        run: sudo apt-get update && sudo apt-get install -y clang cmake make libgnustep-base-dev
+        run: sudo apt-get update && sudo apt-get install -y clang cmake make linux-libc-dev libgnustep-base-dev
       - name: Fetch pinned source files and apply patches
         run: |
           git clone --no-checkout https://github.com/darlinghq/darling.git "$RUNNER_TEMP/darling"
@@ -65,6 +67,10 @@ jobs:
           CC: clang
           CXX: clang++
         run: python3 tests/darling-build-modes.py "$RUNNER_TEMP/darling"
+      - name: Filesystem-events guest header discovery and ABI
+        env:
+          CC: clang
+        run: python3 tests/darling-fsevents-build.py "$RUNNER_TEMP/darling"
       - name: Execute patched controller source
         run: bash tests/darling/run-host.sh "$RUNNER_TEMP/darling"
       - name: Compatibility evidence gates
@@ -73,7 +79,7 @@ jobs:
         run: python3 tests/darling-runtime.py
       - name: Compile Python and validate shell scripts
         run: |
-          python3 -m py_compile tools/darling/build.py tools/darling/compatibility.py tests/darling-patches.py tests/darling-build-modes.py
+          python3 -m py_compile tools/darling/build.py tools/darling/compatibility.py tests/darling-patches.py tests/darling-build-modes.py tests/darling-fsevents-build.py
           bash -n tests/darling/run-host.sh tools/darling/build-fixture.sh tools/darling/build-pip-tests.sh
 
   mac-fixture:
@@ -99,7 +105,7 @@ jobs:
 
   full-runtime:
     if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.full_runtime)
-    needs: mac-fixture
+    needs: [controller, mac-fixture]
     runs-on: ubuntu-24.04
     timeout-minutes: 180
     steps:
@@ -107,7 +113,7 @@ jobs:
       - name: Install full runtime build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y cmake ninja-build clang bison flex libfuse-dev libudev-dev \
+          sudo apt-get install -y cmake ninja-build clang linux-libc-dev bison flex libfuse-dev libudev-dev \
             pkg-config libcap2-bin git git-lfs libcairo2-dev libgl1-mesa-dev \
             libglu1-mesa-dev libtiff5-dev libfreetype6-dev libxml2-dev libegl1-mesa-dev \
             libfontconfig1-dev libbsd-dev libxrandr-dev libxcursor-dev libgif-dev \

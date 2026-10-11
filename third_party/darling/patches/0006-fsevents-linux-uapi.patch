@@ -1,0 +1,23 @@
+diff --git a/src/frameworks/CoreServices/src/FSEvents/CMakeLists.txt b/src/frameworks/CoreServices/src/FSEvents/CMakeLists.txt
+--- a/src/frameworks/CoreServices/src/FSEvents/CMakeLists.txt
++++ b/src/frameworks/CoreServices/src/FSEvents/CMakeLists.txt
+@@ -24,6 +24,19 @@
+ )
+ 
+ add_darling_executable(fseventsd fseventsd.m)
++# fseventsd is a Darwin guest executable that consumes Linux fanotify UAPI.
++# Clang's Darwin target omits the native multiarch include directory on Debian
++# and Ubuntu. Expose only its asm subtree, not the host libc headers.
++find_path(FSEVENTS_LINUX_ASM_INCLUDE_DIR asm/types.h
++    HINTS ${CMAKE_C_IMPLICIT_INCLUDE_DIRECTORIES}
++    PATHS "/usr/include/${CMAKE_LIBRARY_ARCHITECTURE}" /usr/include
++)
++if(NOT FSEVENTS_LINUX_ASM_INCLUDE_DIR)
++    message(FATAL_ERROR "fseventsd needs Linux userspace asm headers (linux-libc-dev on Debian/Ubuntu, linux-api-headers on Arch)")
++endif()
++file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/linux-uapi")
++create_symlink("${FSEVENTS_LINUX_ASM_INCLUDE_DIR}/asm" "${CMAKE_CURRENT_BINARY_DIR}/linux-uapi/asm")
++target_include_directories(fseventsd PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/linux-uapi")
+ target_link_libraries(fseventsd system Foundation CarbonCore)
+ 
+ install(TARGETS fseventsd DESTINATION libexec/darling/usr/sbin)

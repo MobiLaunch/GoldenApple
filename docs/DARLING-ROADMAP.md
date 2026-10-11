@@ -194,6 +194,25 @@ target/link graph is replaced by static probes; this is a configuration check,
 not a complete runtime build or GUI compatibility result. The full build still
 has to pass before the unchanged Intel fixtures can run.
 
+### Filesystem-events guest headers
+
+The [next runtime attempt](https://github.com/MobiLaunch/GoldenApple/actions/runs/38108726501/job/114379715729)
+passed objc4 and reached step 15,512 of 16,561 before `fseventsd.m` failed to find
+`asm/types.h`. The guest daemon consumes Linux fanotify UAPI definitions, but
+Clang's Darwin target omits Ubuntu's native multiarch include directory.
+Patch `0006-fsevents-linux-uapi.patch` finds the Linux architecture headers and
+exposes only their `asm` subtree through a private build-directory symlink for
+that target. Host libc include directories are not added to the guest SDK.
+Missing userspace kernel headers now fail during configuration with the required
+package names: `linux-libc-dev` on Debian/Ubuntu and `linux-api-headers` on Arch.
+
+`tests/darling-fsevents-build.py` reproduces the original compiler failure using
+the pinned fanotify header and FSEvents CMake file, then compiles a Darwin-target
+probe with both multiarch and flat header layouts. Ten structure size, alignment
+and offset checks compare against the native Linux ABI. It also verifies repeat
+configuration and missing-header rejection. This focused check does not execute
+the daemon or validate filesystem-event delivery under Darling.
+
 ## Recording a compatibility failure
 
 Record the app version and executable architecture, source lock/runtime package,
