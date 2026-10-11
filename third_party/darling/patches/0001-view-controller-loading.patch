@@ -1,0 +1,157 @@
+diff --git a/AppKit/NSViewController.m b/AppKit/NSViewController.m
+index 27ccda2..4761099 100644
+--- a/AppKit/NSViewController.m
++++ b/AppKit/NSViewController.m
+@@ -8,25 +8,34 @@
+ @synthesize identifier = _identifier;
+ 
+ - initWithNibName: (NSString *) name bundle: (NSBundle *) bundle {
+-    _nibName = [name copy];
+-    _nibBundle = [bundle retain];
++    self = [super init];
++    if (self != nil) {
++        _nibName = [name copy];
++        _nibBundle = [bundle retain];
++    }
+     return self;
+ }
+ 
+ - initWithCoder: (NSCoder *) coder {
+-    if ([coder allowsKeyedCoding]) {
++    self = [super initWithCoder: coder];
++    if (self != nil && [coder allowsKeyedCoding]) {
+         _nibName = [[coder decodeObjectForKey: @"NSNibName"] copy];
+         _title = [[coder decodeObjectForKey: @"NSTitle"] copy];
+         NSString *bundleIdentifier =
+                 [coder decodeObjectForKey: @"NSNibBundleIdentifier"];
+         if (bundleIdentifier != nil)
+-            _nibBundle = [NSBundle bundleWithIdentifier: bundleIdentifier];
++            _nibBundle = [[NSBundle bundleWithIdentifier: bundleIdentifier] retain];
+     }
+ 
+     return self;
+ }
+ 
+ - (void) dealloc {
++    [_nibName release];
++    [_nibBundle release];
++    [_representedObject release];
++    [_title release];
++    [_view release];
+     [_identifier release];
+ 
+     [super dealloc];
+@@ -41,12 +50,49 @@
+ }
+ 
+ - (NSView *) view {
+-    if (_view == nil)
+-        [self loadView];
++    [self loadViewIfNeeded];
++
++    return _view;
++}
++
++- (BOOL) isViewLoaded {
++    return _view != nil;
++}
+ 
++- (NSView *) viewIfLoaded {
+     return _view;
+ }
+ 
++- (void) _notifyViewDidLoad {
++    if (_view != nil && !_didLoadView) {
++        // Mark first: a callback may read self.view or replace the view.
++        _didLoadView = YES;
++        [self viewDidLoad];
++    }
++}
++
++- (void) loadViewIfNeeded {
++    if (_isLoadingView)
++        return;
++    if (_view != nil) {
++        [self _notifyViewDidLoad];
++        return;
++    }
++
++    _isLoadingView = YES;
++    @try {
++        [self loadView];
++    } @finally {
++        // A failed load must remain retryable.
++        _isLoadingView = NO;
++    }
++    [self _notifyViewDidLoad];
++}
++
++- (void) viewDidLoad {
++    // Subclasses may call super; the default implementation does nothing.
++}
++
+ - (NSString *) title {
+     return _title;
+ }
+@@ -71,6 +117,10 @@
+     value = [value retain];
+     [_view release];
+     _view = value;
++    if (value == nil)
++        _didLoadView = NO;
++    else if (!_isLoadingView || _isLoadingNib)
++        [self _notifyViewDidLoad];
+ }
+ 
+ - (void) loadView {
+@@ -80,7 +130,8 @@
+     if (name == nil) {
+         // should pathForResource assert name for non-nil?
+         [NSException raise: NSInvalidArgumentException
+-                    format: @"-[%@ %s] nibName is nil", [self class], _cmd];
++                    format: @"-[%@ %@] nibName is nil", [self class],
++                            NSStringFromSelector(_cmd)];
+         return;
+     }
+ 
+@@ -95,7 +146,14 @@
+         NSLog(@"NSViewController unable to find nib named %@, bundle=%@", name,
+               bundle);
+ 
+-    [bundle loadNibFile: path externalNameTable: nameTable withZone: NULL];
++    // Nib-backed controllers notify immediately when the view outlet is set;
++    // programmatic loadView overrides notify only after loadView returns.
++    _isLoadingNib = YES;
++    @try {
++        [bundle loadNibFile: path externalNameTable: nameTable withZone: NULL];
++    } @finally {
++        _isLoadingNib = NO;
++    }
+ }
+ 
+ - (void) discardEditing {
+diff --git a/AppKit/include/AppKit/NSViewController.h b/AppKit/include/AppKit/NSViewController.h
+index 7d00246..9561bf8 100644
+--- a/AppKit/include/AppKit/NSViewController.h
++++ b/AppKit/include/AppKit/NSViewController.h
+@@ -10,6 +10,9 @@
+     NSString *_title;
+     NSView *_view;
+     NSUserInterfaceItemIdentifier _identifier;
++    BOOL _isLoadingView;
++    BOOL _isLoadingNib;
++    BOOL _didLoadView;
+ }
+ 
+ - initWithNibName: (NSString *) name bundle: (NSBundle *) bundle;
+@@ -18,6 +21,10 @@
+ - (NSBundle *) nibBundle;
+ 
+ - (NSView *) view;
++- (BOOL) isViewLoaded;
++- (NSView *) viewIfLoaded;
++- (void) loadViewIfNeeded;
++- (void) viewDidLoad;
+ - (NSString *) title;
+ - representedObject;
+ 

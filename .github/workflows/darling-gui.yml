@@ -1,0 +1,103 @@
+name: Darling GUI compatibility
+
+on:
+  push:
+    paths:
+      - 'third_party/darling/**'
+      - 'tools/darling/**'
+      - 'tests/darling/**'
+      - 'tests/darling-patches.py'
+      - '.github/workflows/darling-gui.yml'
+  pull_request:
+    paths:
+      - 'third_party/darling/**'
+      - 'tools/darling/**'
+      - 'tests/darling/**'
+      - 'tests/darling-patches.py'
+      - '.github/workflows/darling-gui.yml'
+  workflow_dispatch:
+    inputs:
+      full_runtime:
+        description: 'Also build and stage the full patched x86_64 Darling runtime'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  controller:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Objective-C test dependencies
+        run: sudo apt-get update && sudo apt-get install -y clang libgnustep-base-dev
+      - name: Fetch pinned source files and apply patches
+        run: |
+          git clone --no-checkout https://github.com/darlinghq/darling.git "$RUNNER_TEMP/darling"
+          ref=$(python3 -c 'import json; print(json.load(open("third_party/darling/source.lock.json"))["darling_commit"])')
+          git -C "$RUNNER_TEMP/darling" checkout --detach "$ref"
+          git -C "$RUNNER_TEMP/darling" submodule update --init src/external/cocotron
+          python3 - "$RUNNER_TEMP/darling" <<'PY'
+          import importlib.util, json, pathlib, sys
+          spec = importlib.util.spec_from_file_location('build', 'tools/darling/build.py')
+          build = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(build)
+          build.apply_patches(pathlib.Path(sys.argv[1]), json.loads((build.VENDOR / 'source.lock.json').read_text()))
+          PY
+      - name: Patch application and local-edit protection
+        run: python3 tests/darling-patches.py "$RUNNER_TEMP/darling"
+      - name: Execute patched controller source
+        run: bash tests/darling/run-host.sh "$RUNNER_TEMP/darling"
+      - name: Compile Python and validate shell scripts
+        run: |
+          python3 -m py_compile tools/darling/build.py tests/darling-patches.py
+          bash -n tests/darling/run-host.sh tools/darling/build-fixture.sh
+
+  mac-fixture:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Intel Cocoa app
+        run: bash tools/darling/build-fixture.sh "$RUNNER_TEMP/ControllerLab.app"
+      - name: Verify binary architecture
+        run: lipo -verify_arch x86_64 "$RUNNER_TEMP/ControllerLab.app/Contents/MacOS/ControllerLab"
+      - name: Package app preserving executable permissions
+        run: ditto -c -k --keepParent "$RUNNER_TEMP/ControllerLab.app" "$RUNNER_TEMP/ControllerLab.zip"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Darling-ControllerLab-Intel
+          path: ${{ runner.temp }}/ControllerLab.zip
+
+  full-runtime:
+    if: github.event_name == 'workflow_dispatch' && inputs.full_runtime
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install full runtime build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build clang bison flex libfuse-dev libudev-dev \
+            pkg-config libcap2-bin git git-lfs libcairo2-dev libgl1-mesa-dev \
+            libglu1-mesa-dev libtiff5-dev libfreetype6-dev libxml2-dev libegl1-mesa-dev \
+            libfontconfig1-dev libbsd-dev libxrandr-dev libxcursor-dev libgif-dev \
+            libpulse-dev libavformat-dev libavcodec-dev libswresample-dev libdbus-1-dev \
+            libxkbfile-dev libssl-dev llvm-dev libelf-dev libcurl4-openssl-dev libedit-dev
+      - name: Build and stage patched Darling
+        run: |
+          set -o pipefail
+          python3 tools/darling/build.py stage --source "$RUNNER_TEMP/darling" \
+            --build "$RUNNER_TEMP/darling-build" --stage "$RUNNER_TEMP/darling-stage" \
+            --jobs 2 2>&1 | tee "$RUNNER_TEMP/darling-build.log"
+      - name: Archive staged runtime
+        run: tar -C "$RUNNER_TEMP/darling-stage" -czf "$RUNNER_TEMP/darling-runtime.tar.gz" .
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Darling-runtime-build-log
+          path: ${{ runner.temp }}/darling-build.log
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Darling-runtime-x86_64-experimental
+          path: ${{ runner.temp }}/darling-runtime.tar.gz

@@ -1,0 +1,2 @@
+# Unified diffs preserve a leading space on empty context lines.
+third_party/darling/patches/*.patch whitespace=-blank-at-eol,-blank-at-eof

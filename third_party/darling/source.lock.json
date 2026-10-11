@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "repository": "https://github.com/darlinghq/darling.git",
+  "darling_commit": "60ba801decee7a00782f74f6be4c8ffb013f79ff",
+  "cocotron_commit": "c8d38d16a9f613d300157bebbab2b9501bc0c274",
+  "patches": [
+    {
+      "path": "patches/0001-view-controller-loading.patch",
+      "sha256": "0a298be5b49af58543b16d4a33a589ba123291da4934b6e6215b4531603a3c53"
+    },
+    {
+      "path": "patches/0002-intrinsic-metric.patch",
+      "sha256": "1b5d8ac9bbcc924b0d60045ed8f22d0b0c2b8048387e496bc045544d1b867ec4"
+    }
+  ]
+}
