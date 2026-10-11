@@ -61,7 +61,7 @@ jobs:
       - name: Build Intel Cocoa app
         run: bash tools/darling/build-fixture.sh "$RUNNER_TEMP/ControllerLab.app"
       - name: Verify binary architecture
-        run: lipo -verify_arch x86_64 "$RUNNER_TEMP/ControllerLab.app/Contents/MacOS/ControllerLab"
+        run: lipo "$RUNNER_TEMP/ControllerLab.app/Contents/MacOS/ControllerLab" -verify_arch x86_64
       - name: Package app preserving executable permissions
         run: ditto -c -k --keepParent "$RUNNER_TEMP/ControllerLab.app" "$RUNNER_TEMP/ControllerLab.zip"
       - uses: actions/upload-artifact@v4
