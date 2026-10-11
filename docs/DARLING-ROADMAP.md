@@ -92,6 +92,15 @@ override framework lookup to use the built implementation. The Darling job uses
 the same Intel fixture without that override, so it must load the framework from
 the installed patched runtime. Native tests do not prove Darling GUI support.
 
+The initial native suite passed all **21 behavior checks**, and the Intel fixture
+compiled with the required framework install name. The verified
+[CI result](https://github.com/MobiLaunch/GoldenApple/actions/runs/38099631559/job/114352693782)
+includes playback snapshots, view reparenting/restoration, play/pause delegation,
+reentrant close handling, weak ownership and teardown. Native AppKit already
+delivers disappearance callbacks; the implementation supplies an explicit
+fallback only when the base controller lacks that hook, avoiding duplicate
+native delivery. Full Darling execution remains pending in the evidence record.
+
 Build and run on macOS:
 
 ```bash

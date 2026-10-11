@@ -2,48 +2,171 @@
   "schema": 1,
   "milestones": [
     {
-      "id": "M1", "name": "AppKit baseline", "status": "in-progress", "requires": [],
+      "id": "M1",
+      "name": "AppKit baseline",
+      "status": "in-progress",
+      "requires": [],
       "goal": "An unchanged Intel Cocoa app opens, accepts input, resizes and saves under Darling.",
       "checks": [
-        {"id": "controller-source", "status": "passed", "evidence": ["https://github.com/MobiLaunch/GoldenApple/actions/runs/38098075029/job/114348062841"]},
-        {"id": "native-fixture-build", "status": "passed", "evidence": ["https://github.com/MobiLaunch/GoldenApple/actions/runs/38098075029/job/114348062988"]},
-        {"id": "darling-gui-workflow", "status": "pending", "evidence": []}
+        {
+          "id": "controller-source",
+          "status": "passed",
+          "evidence": [
+            "https://github.com/MobiLaunch/GoldenApple/actions/runs/38098075029/job/114348062841"
+          ]
+        },
+        {
+          "id": "native-fixture-build",
+          "status": "passed",
+          "evidence": [
+            "https://github.com/MobiLaunch/GoldenApple/actions/runs/38098075029/job/114348062988"
+          ]
+        },
+        {
+          "id": "darling-gui-workflow",
+          "status": "pending",
+          "evidence": []
+        }
       ],
-      "files": ["tests/darling/controller.m", "tools/darling/fixtures/ControllerLab.m", "tools/darling/test-gui.py"]
+      "files": [
+        "tests/darling/controller.m",
+        "tools/darling/fixtures/ControllerLab.m",
+        "tools/darling/test-gui.py"
+      ]
     },
     {
-      "id": "M2", "name": "Basic PIP framework", "status": "in-progress", "requires": ["M1"],
+      "id": "M2",
+      "name": "Basic PIP framework",
+      "status": "in-progress",
+      "requires": [
+        "M1"
+      ],
       "goal": "A PIP-linked Intel fixture loads the implemented framework and completes presentation, playback-state and restoration checks under Darling.",
       "checks": [
-        {"id": "native-pip-behavior", "status": "pending", "evidence": []},
-        {"id": "intel-pip-fixture-build", "status": "pending", "evidence": []},
-        {"id": "darling-pip-behavior", "status": "pending", "evidence": []}
+        {
+          "id": "native-pip-behavior",
+          "status": "passed",
+          "evidence": [
+            "https://github.com/MobiLaunch/GoldenApple/actions/runs/38099631559/job/114352693782"
+          ]
+        },
+        {
+          "id": "intel-pip-fixture-build",
+          "status": "passed",
+          "evidence": [
+            "https://github.com/MobiLaunch/GoldenApple/actions/runs/38099631559/job/114352693782"
+          ]
+        },
+        {
+          "id": "darling-pip-behavior",
+          "status": "pending",
+          "evidence": []
+        }
       ],
-      "files": ["third_party/darling/patches/0003-pip-framework.patch", "tests/darling/pip.m", "tools/darling/build-pip-tests.sh"]
+      "files": [
+        "third_party/darling/patches/0003-pip-framework.patch",
+        "tests/darling/pip.m",
+        "tools/darling/build-pip-tests.sh"
+      ]
     },
     {
-      "id": "M3", "name": "TextEdit document workflow", "status": "planned", "requires": ["M1"],
+      "id": "M3",
+      "name": "TextEdit document workflow",
+      "status": "planned",
+      "requires": [
+        "M1"
+      ],
       "goal": "Open an existing document, edit, save, close and reopen without data loss.",
-      "checks": [{"id": "darling-document-workflow", "status": "pending", "evidence": []}],
-      "files": ["docs/DARLING-GUI-M1.md"]
+      "checks": [
+        {
+          "id": "darling-document-workflow",
+          "status": "pending",
+          "evidence": []
+        }
+      ],
+      "files": [
+        "docs/DARLING-GUI-M1.md"
+      ]
     },
     {
-      "id": "M4", "name": "IINA playback workflow", "status": "blocked", "requires": ["M2"],
+      "id": "M4",
+      "name": "IINA playback workflow",
+      "status": "blocked",
+      "requires": [
+        "M2"
+      ],
       "goal": "The unchanged IINA app loads, opens media, plays audio/video, enters and exits PIP, and closes cleanly.",
-      "checks": [{"id": "darling-media-workflow", "status": "pending", "evidence": []}],
-      "files": ["docs/DARLING-ROADMAP.md"]
+      "checks": [
+        {
+          "id": "darling-media-workflow",
+          "status": "pending",
+          "evidence": []
+        }
+      ],
+      "files": [
+        "docs/DARLING-ROADMAP.md"
+      ]
     },
     {
-      "id": "M5", "name": "Golden Gate runtime packaging", "status": "planned", "requires": ["M1", "M2"],
+      "id": "M5",
+      "name": "Golden Gate runtime packaging",
+      "status": "planned",
+      "requires": [
+        "M1",
+        "M2"
+      ],
       "goal": "A validated Arch package installs and updates through Settings with provenance, rollback and no conflict with darling-bin.",
-      "checks": [{"id": "arch-install-upgrade-rollback", "status": "pending", "evidence": []}],
-      "files": ["apps/software/darling-setup.sh", "tools/darling/build.py"]
+      "checks": [
+        {
+          "id": "arch-install-upgrade-rollback",
+          "status": "pending",
+          "evidence": []
+        }
+      ],
+      "files": [
+        "apps/software/darling-setup.sh",
+        "tools/darling/build.py"
+      ]
     }
   ],
   "targets": [
-    {"id": "controllerlab", "name": "ControllerLab", "status": "unverified", "milestone": "M1", "blockers": ["Full runtime build and input/save test have not passed yet."]},
-    {"id": "piplab", "name": "PIPLab", "status": "unverified", "milestone": "M2", "blockers": ["Native PIP tests and Darling framework loading are pending."]},
-    {"id": "textedit", "name": "TextEdit", "status": "unverified", "milestone": "M3", "blockers": ["Existing upstream target needs build and document-workflow validation."]},
-    {"id": "iina", "name": "IINA 1.5.0", "status": "blocked", "milestone": "M4", "blockers": ["Installed Darling cannot load Apple's private PIP.framework.", "The new PIP implementation has not been built into an installed Golden Gate runtime.", "Remaining Swift, AppKit and media requirements need actual runtime tracing; resolving PIP alone does not establish compatibility."]}
+    {
+      "id": "controllerlab",
+      "name": "ControllerLab",
+      "status": "unverified",
+      "milestone": "M1",
+      "blockers": [
+        "Full runtime build and input/save test have not passed yet."
+      ]
+    },
+    {
+      "id": "piplab",
+      "name": "PIPLab",
+      "status": "unverified",
+      "milestone": "M2",
+      "blockers": [
+        "Darling framework loading and PIP behavior tests are still pending."
+      ]
+    },
+    {
+      "id": "textedit",
+      "name": "TextEdit",
+      "status": "unverified",
+      "milestone": "M3",
+      "blockers": [
+        "Existing upstream target needs build and document-workflow validation."
+      ]
+    },
+    {
+      "id": "iina",
+      "name": "IINA 1.5.0",
+      "status": "blocked",
+      "milestone": "M4",
+      "blockers": [
+        "Installed Darling cannot load Apple's private PIP.framework.",
+        "The new PIP implementation has not been built into an installed Golden Gate runtime.",
+        "Remaining Swift, AppKit and media requirements need actual runtime tracing; resolving PIP alone does not establish compatibility."
+      ]
+    }
   ]
 }

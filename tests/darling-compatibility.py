@@ -30,7 +30,7 @@ class EvidenceGates(unittest.TestCase):
             module.validate(self.data)
 
     def test_result_requires_evidence(self):
-        self.data['milestones'][1]['checks'][0]['status'] = 'passed'
+        self.data['milestones'][1]['checks'][0].update(status='passed', evidence=[])
         with self.assertRaisesRegex(ValueError, 'requires evidence'):
             module.validate(self.data)
 
