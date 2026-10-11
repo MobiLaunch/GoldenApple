@@ -71,6 +71,55 @@ runtime=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}
   storelog="$HOME/.local/state/golden-gate/app-store.log"
   [ -f "$storelog" ] && tail -n 40 "$storelog" | cut -c1-240
   echo
+  echo "== Mac app launches (Darling)"
+  printf 'Darling executable: '
+  command -v darling 2>/dev/null || echo unavailable
+  pacman -Q darling-bin darling darling-git 2>/dev/null || true
+  # Do not probe by launching Darling: an already broken loader would crash
+  # again. Read the launch output that the App Store already captured instead.
+  python3 - "${XDG_CACHE_HOME:-$HOME/.cache}/golden-gate" <<'PY'
+from pathlib import Path
+import sys
+
+cache = Path(sys.argv[1])
+logs = cache / "mac-logs"
+try:
+    launches = sorted((p for p in logs.glob("*.log")
+                       if p.is_file() and not p.is_symlink()
+                       and not p.name.startswith("install-")),
+                      key=lambda p: p.stat().st_mtime, reverse=True)[:5]
+    if not launches:
+        print("No Mac app launch logs recorded.")
+    for p in launches:
+        print(f"\nLaunch log: {p}")
+        # dyld's missing-library reason often precedes hundreds of unrelated
+        # shutdown lines. Preserve both ends, with bounded memory and output.
+        with p.open("rb") as stream:
+            head = stream.read(65536)
+            size = stream.seek(0, 2)
+            if size > len(head):
+                stream.seek(max(len(head), size - 65536))
+                tail = stream.read(65536)
+                lines = (head.decode(errors="replace").splitlines()[:60]
+                         + ["... log excerpt; full log at the path above ..."]
+                         + tail.decode(errors="replace").splitlines()[-60:])
+            else:
+                lines = head.decode(errors="replace").splitlines()
+                if len(lines) > 120:
+                    lines = lines[:60] + ["... omitted middle lines ..."] + lines[-60:]
+        for line in lines:
+            print(line[:240])
+    setup = cache / "darling-setup.log"
+    if setup.is_file() and not setup.is_symlink():
+        print(f"\nSetup log (end): {setup}")
+        with setup.open("rb") as stream:
+            stream.seek(max(0, stream.seek(0, 2) - 65536))
+            for line in stream.read(65536).decode(errors="replace").splitlines()[-40:]:
+                print(line[:240])
+except OSError as exc:
+    print(f"Could not read Mac app logs: {exc}")
+PY
+  echo
   echo "== CitronOS shell"
   pgrep -a qs 2>/dev/null || true
   shelllog="$HOME/.local/state/golden-gate-shell.log"

@@ -347,6 +347,8 @@ jobs:
         run: python tests/mac-apps.py
       - name: Mac app support installs Darling's release after readying pacman
         run: python tests/darling-setup.py
+      - name: Diagnostics preserve Darling loader errors without launching the runtime
+        run: python tests/diagnostics.py
       - name: Liquid Glass is set up system-wide with valid Hyprland rules
         run: python tests/liquid-glass.py
       - name: Exercise native control keyboard and pointer behavior
