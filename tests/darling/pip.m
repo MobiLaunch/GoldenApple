@@ -102,6 +102,8 @@ int main(int argc, const char **argv) {
               "dismissal restores parent, frame and autoresizing settings");
         check(!floating.isVisible && pip.disappearances == 1,
               "dismissal hides window and delivers subclass disappearance hook");
+        if (floating.isVisible || pip.disappearances != 1)
+            fprintf(stderr, "Close diagnostic: visible=%d disappearances=%d\n", floating.isVisible, pip.disappearances);
         [pip dismissViewController:video];
         check(delegate.didClose == 1, "repeat dismissal does not repeat callbacks");
         [pip presentViewControllerAsPictureInPicture:video];
