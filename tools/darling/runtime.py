@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 import stat
 import struct
+import subprocess
 
 ROOT = Path(__file__).resolve().parents[2]
 LOCK = ROOT / "third_party/darling/source.lock.json"
@@ -116,14 +117,28 @@ def verify_stage(stage, prefix="/usr/local", lock=None):
             "gui_compatibility": "unverified"}
 
 
+def verify_archive(archive, stage, prefix="/usr/local", lock=None):
+    """Unpack a trusted CI build into a fresh directory and audit its modes."""
+    stage = Path(stage).resolve()
+    stage.mkdir(parents=True, exist_ok=False)
+    # Non-root tar defaults discard setuid bits. Preserve the archived mode;
+    # numeric build-runner ownership is irrelevant to this temporary audit.
+    subprocess.run(["tar", "--no-same-owner", "--same-permissions", "-C", str(stage),
+                    "-xzf", str(Path(archive).resolve())], check=True)
+    return verify_stage(stage, prefix, lock)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("stage", type=Path)
+    parser.add_argument("--archive", type=Path, help="Trusted CI archive to unpack into a fresh stage")
     parser.add_argument("--install-prefix", choices=("/usr", "/usr/local"), default="/usr/local")
     args = parser.parse_args()
     try:
-        print(json.dumps(verify_stage(args.stage, args.install_prefix), indent=2))
-    except (OSError, ValueError, struct.error) as error:
+        result = (verify_archive(args.archive, args.stage, args.install_prefix) if args.archive
+                  else verify_stage(args.stage, args.install_prefix))
+        print(json.dumps(result, indent=2))
+    except (OSError, ValueError, struct.error, subprocess.CalledProcessError) as error:
         parser.exit(1, f"Runtime verification failed: {error}\n")
 
 

@@ -103,6 +103,24 @@ class RuntimeStage(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "setuid mode"):
             self.verify()
 
+    def test_archive_roundtrip_preserves_launcher_mode(self):
+        archive = Path(self.tmp.name) / "runtime.tar.gz"
+        subprocess.run(["tar", "-C", str(self.stage), "-czf", str(archive), "."], check=True)
+        old_stage = Path(self.tmp.name) / "old-unpack"
+        old_stage.mkdir()
+        # Reproduce the non-root tar default even when tests themselves run as root.
+        subprocess.run(["tar", "--no-same-owner", "--no-same-permissions", "-C",
+                        str(old_stage), "-xzf", str(archive)], check=True)
+        with self.assertRaisesRegex(ValueError, "setuid mode"):
+            runtime.verify_stage(old_stage, "/usr", self.lock)
+        fresh = Path(self.tmp.name) / "fixed-unpack"
+        result = runtime.verify_archive(archive, fresh, "/usr", self.lock)
+        self.assertTrue(result["passed"])
+        self.assertEqual((fresh / "usr/bin/darling").stat().st_mode & 0o7777, 0o4755)
+        self.assertEqual(result["gui_compatibility"], "unverified")
+        with self.assertRaises(FileExistsError):
+            runtime.verify_archive(archive, fresh, "/usr", self.lock)
+
     def test_wrong_host_architecture(self):
         p = self.stage / "usr/bin/darlingserver"
         header = bytearray(p.read_bytes())

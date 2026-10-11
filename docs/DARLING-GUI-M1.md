@@ -198,9 +198,14 @@ process/kernel/coredump diagnostics. CI selects Mesa software rendering for
 Xvfb; this is an environment change whose effect needs runtime verification.
 
 CI uploads the audited runtime before GUI tests and runs PIP independently of a
-ControllerLab failure. Once a runtime artifact is available, dispatch the GUI
-workflow with `runtime_run` set to its run ID to repeat tests without rebuilding.
-The artifact must come from this repository and its source lock must match the
-current checkout. Installation preserves the launcher mode with root ownership
+ControllerLab failure. It looks for a previous runtime artifact on the same
+branch and reuses it only after the current source-lock audit passes; an
+unavailable or mismatched candidate triggers a fresh build. You can also
+dispatch with `runtime_run` set to a specific run ID; an explicitly selected
+invalid artifact is rejected. The artifact must come from this repository.
+Archive verification preserves the stored setuid mode with
+`--no-same-owner --same-permissions`: ordinary unprivileged tar extraction
+discarded that bit in run 38116480508 and prevented testing. The fixed archive
+roundtrip passes the same audit, including the original saved CI artifact. Installation preserves the launcher mode with root ownership
 in a disposable Ubuntu runner. This archive is not an Arch package or a desktop
 update; use the source packaging workflow for Arch.

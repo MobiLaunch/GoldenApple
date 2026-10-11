@@ -141,36 +141,72 @@ jobs:
             libpulse-dev libavformat-dev libavcodec-dev libswresample-dev libdbus-1-dev \
             libxkbfile-dev libssl-dev llvm-dev libelf-dev libcurl4-openssl-dev libedit-dev \
             xvfb xauth xdotool x11-apps unzip mesa-utils
-      - name: Fetch pinned source and required baseline assets
+      - name: Find previous runtime artifact on this branch
+        id: previous
         if: inputs.runtime_run == ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPOSITORY: ${{ github.repository }}
+          GH_BRANCH: ${{ github.ref_name }}
+        run: |
+          python3 - <<'PY'
+          import json, os, urllib.request
+          url = 'https://api.github.com/repos/' + os.environ['GH_REPOSITORY'] + '/actions/artifacts?per_page=100'
+          request = urllib.request.Request(url, headers={'Authorization': 'Bearer ' + os.environ['GH_TOKEN'], 'Accept': 'application/vnd.github+json'})
+          try:
+              with urllib.request.urlopen(request, timeout=30) as response:
+                  artifacts = json.load(response)['artifacts']
+              candidates = [a for a in artifacts if a['name'] == 'Darling-runtime-x86_64-experimental'
+                            and not a['expired'] and a.get('workflow_run', {}).get('head_branch') == os.environ['GH_BRANCH']]
+              if candidates:
+                  latest = max(candidates, key=lambda a: a['created_at'])
+                  with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+                      output.write('run=' + str(latest['workflow_run']['id']) + '\n')
+                  print('Found runtime candidate from run', latest['workflow_run']['id'])
+          except (OSError, ValueError, KeyError) as error:
+              print('Runtime discovery unavailable; building from source:', type(error).__name__)
+          PY
+      - name: Download previously staged runtime
+        id: download-runtime
+        if: inputs.runtime_run != '' || steps.previous.outputs.run != ''
+        continue-on-error: ${{ inputs.runtime_run == '' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: Darling-runtime-x86_64-experimental
+          path: ${{ runner.temp }}
+          run-id: ${{ inputs.runtime_run || steps.previous.outputs.run }}
+          github-token: ${{ github.token }}
+      - name: Verify previously staged runtime against current source lock
+        id: reuse
+        if: steps.download-runtime.outcome == 'success'
+        continue-on-error: ${{ inputs.runtime_run == '' }}
+        run: |
+          set -o pipefail
+          python3 tools/darling/runtime.py "$RUNNER_TEMP/darling-reuse-check" \
+            --archive "$RUNNER_TEMP/darling-runtime.tar.gz" \
+            2>&1 | tee "$RUNNER_TEMP/darling-reuse.log"
+      - name: Fetch pinned source and required baseline assets
+        if: inputs.runtime_run == '' && steps.reuse.outcome != 'success'
         run: |
           set -o pipefail
           python3 tools/darling/build.py prepare --source "$RUNNER_TEMP/darling" \
             2>&1 | tee "$RUNNER_TEMP/darling-source.log"
       - name: Build and stage patched Darling
-        if: inputs.runtime_run == ''
+        if: inputs.runtime_run == '' && steps.reuse.outcome != 'success'
         run: |
           set -o pipefail
           python3 tools/darling/build.py stage --source "$RUNNER_TEMP/darling" \
             --build "$RUNNER_TEMP/darling-build" --stage "$RUNNER_TEMP/darling-stage" \
             --jobs 2 2>&1 | tee "$RUNNER_TEMP/darling-build.log"
       - name: Archive staged runtime
-        if: inputs.runtime_run == ''
+        if: inputs.runtime_run == '' && steps.reuse.outcome != 'success'
         run: tar -C "$RUNNER_TEMP/darling-stage" -czf "$RUNNER_TEMP/darling-runtime.tar.gz" .
       - uses: actions/upload-artifact@v4
-        if: inputs.runtime_run == ''
+        if: inputs.runtime_run == '' && steps.reuse.outcome != 'success'
         with:
           name: Darling-runtime-x86_64-experimental
           path: ${{ runner.temp }}/darling-runtime.tar.gz
           if-no-files-found: error
-      - name: Download previously staged runtime
-        if: inputs.runtime_run != ''
-        uses: actions/download-artifact@v4
-        with:
-          name: Darling-runtime-x86_64-experimental
-          path: ${{ runner.temp }}
-          run-id: ${{ inputs.runtime_run }}
-          github-token: ${{ github.token }}
       - uses: actions/download-artifact@v4
         with:
           name: Darling-ControllerLab-Intel
@@ -178,13 +214,13 @@ jobs:
       - name: Install verified runtime in disposable runner
         id: install
         run: |
-          mkdir -p "$RUNNER_TEMP/darling-runtime-check"
-          tar -C "$RUNNER_TEMP/darling-runtime-check" -xzf "$RUNNER_TEMP/darling-runtime.tar.gz"
-          python3 tools/darling/runtime.py "$RUNNER_TEMP/darling-runtime-check"
-          # Install only the audited /usr/local tree; retain upstream setuid mode
-          # with root ownership. This Ubuntu artifact is for disposable CI only.
-          sudo tar --no-same-owner --same-permissions -C / \
-            -xzf "$RUNNER_TEMP/darling-runtime.tar.gz" ./usr/local
+          set -o pipefail
+          {
+            python3 tools/darling/runtime.py "$RUNNER_TEMP/darling-runtime-check" \
+              --archive "$RUNNER_TEMP/darling-runtime.tar.gz" &&
+              sudo tar --no-same-owner --same-permissions -C / \
+                -xzf "$RUNNER_TEMP/darling-runtime.tar.gz" ./usr/local
+          } 2>&1 | tee "$RUNNER_TEMP/darling-install.log"
       - name: Record software rendering environment
         run: xvfb-run -a glxinfo -B > "$RUNNER_TEMP/darling-rendering.log" 2>&1
       - name: Exercise the unchanged Mac app under Darling
@@ -233,3 +269,5 @@ jobs:
             ${{ runner.temp }}/darling-source.log
             ${{ runner.temp }}/darling-build.log
             ${{ runner.temp }}/darling-rendering.log
+            ${{ runner.temp }}/darling-reuse.log
+            ${{ runner.temp }}/darling-install.log
