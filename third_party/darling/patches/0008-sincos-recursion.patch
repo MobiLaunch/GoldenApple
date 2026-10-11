@@ -1,0 +1,16 @@
+diff --git a/src/libm/CMakeLists.txt b/src/libm/CMakeLists.txt
+--- a/src/libm/CMakeLists.txt
++++ b/src/libm/CMakeLists.txt
+@@ -16,6 +16,12 @@
+ 	include_directories(${CMAKE_CURRENT_SOURCE_DIR}/Source/Intel)
+ 	add_definitions(-Dmovsxw=movsw)
+ endif ()
++
++# These functions implement Darwin's sin/cos pair entry points. Clang can
++# otherwise combine their scalar calls into a recursive call to themselves.
++# Keep scalar libcalls only for this source, retaining other libm optimizations.
++set_source_files_properties(Source/sincos.c PROPERTIES COMPILE_OPTIONS
++    "-fno-builtin-sin;-fno-builtin-cos;-fno-builtin-sinf;-fno-builtin-cosf")
+ 
+ set(libm_sources
+ 	Source/abs.c

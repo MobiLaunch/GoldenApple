@@ -13,6 +13,8 @@ Linux architecture headers privately to the Darwin guest daemon on multiarch
 hosts, without adding host libc headers to its include path.
 The loader-link patch disables relative switch-table generation only in static
 libunwind C++ objects, which must work with the pinned ld64 chained-fixup writer.
+The math wrapper patch prevents Clang from combining scalar sin/cos calls into
+a recursive call to the Darwin sin/cos pair implementation during rendering.
 See [the roadmap](../../docs/DARLING-ROADMAP.md) and
 [`compatibility.json`](compatibility.json) for milestones, evidence gates and
 per-app blockers; [M1](../../docs/DARLING-GUI-M1.md) records the initial baseline.

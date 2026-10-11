@@ -38,6 +38,11 @@
       "path": "patches/0007-dyld-static-unwind-tables.patch",
       "repository": "darling",
       "sha256": "69d258c5f1b85e483316aa6307b311ad8ae47fd23d4a7f64d53293f30fd42913"
+    },
+    {
+      "path": "patches/0008-sincos-recursion.patch",
+      "repository": "darling",
+      "sha256": "7aa8a92643533a858751545eff7a6c76eafb0bd34b2db1e750c2240486013505"
     }
   ],
   "objc4_commit": "1a12df76d12bfc9fdfffadb290f7742763568765"

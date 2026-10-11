@@ -209,3 +209,25 @@ discarded that bit in run 38116480508 and prevented testing. The fixed archive
 roundtrip passes the same audit, including the original saved CI artifact. Installation preserves the launcher mode with root ownership
 in a disposable Ubuntu runner. This archive is not an Arch package or a desktop
 update; use the source packaging workflow for Arch.
+
+## Rendering stack overflow, October 11, 2026
+
+The audited archive installed successfully in runs 38151150502 and 38151581057.
+The latter [GUI diagnostic artifact](https://github.com/MobiLaunch/GoldenApple/actions/runs/38151581057)
+contains ControllerLab's core dump. Linux recorded SIGSEGV, but Darling forwards
+signals and re-sends a fatal signal to the process, so the ordinary core's
+current thread can be waiting in a syscall rather than at the original fault.
+The saved Linux signal context on the alternate stack identifies the original
+instruction as `__sincos_stret+4` in `libsystem_m.dylib`. Its stack repeats the
+return address `__sincos_stret+9` down to the stack guard page.
+
+Patch 0008 adds four source-specific `-fno-builtin-*` options to
+`src/libm/Source/sincos.c`. Clang's Darwin backend had combined the wrapper's
+`sin(v), cos(v)` pair into a call to the wrapper itself. The float wrapper had
+the same code generation problem. Other libm sources retain their optimizations.
+`tests/darling-sincos.py` uses the pinned source, aggregate declarations and CMake
+flags: the unpatched Darwin assembly reproduces both recursive calls; patched
+Release, RelWithDebInfo and Debug assembly calls the scalar functions instead.
+Each mode also passes 84 numeric checks on the host, including the pi wrappers,
+signed zero, NaN and infinity. These are compiler and numeric checks; the full
+Darling rendering/input/save test must still pass with the rebuilt runtime.

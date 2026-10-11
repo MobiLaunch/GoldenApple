@@ -13,6 +13,7 @@ on:
       - 'tests/darling-fsevents-build.py'
       - 'tests/darling-dyld-link.py'
       - 'tests/darling-gui-harness.py'
+      - 'tests/darling-sincos.py'
       - '.github/workflows/darling-gui.yml'
   pull_request:
     paths:
@@ -26,6 +27,7 @@ on:
       - 'tests/darling-fsevents-build.py'
       - 'tests/darling-dyld-link.py'
       - 'tests/darling-gui-harness.py'
+      - 'tests/darling-sincos.py'
       - '.github/workflows/darling-gui.yml'
   workflow_dispatch:
     inputs:
@@ -86,6 +88,10 @@ jobs:
           CC: clang
           CXX: clang++
         run: python3 tests/darling-dyld-link.py "$RUNNER_TEMP/darling"
+      - name: Math wrapper code generation and numeric behavior
+        env:
+          CC: clang
+        run: python3 tests/darling-sincos.py "$RUNNER_TEMP/darling"
       - name: Execute patched controller source
         run: bash tests/darling/run-host.sh "$RUNNER_TEMP/darling"
       - name: Compatibility evidence gates
@@ -96,7 +102,7 @@ jobs:
         run: python3 tests/darling-runtime.py
       - name: Compile Python and validate shell scripts
         run: |
-          python3 -m py_compile tools/darling/build.py tools/darling/compatibility.py tests/darling-patches.py tests/darling-build-modes.py tests/darling-fsevents-build.py tests/darling-dyld-link.py
+          python3 -m py_compile tools/darling/build.py tools/darling/compatibility.py tests/darling-patches.py tests/darling-build-modes.py tests/darling-fsevents-build.py tests/darling-dyld-link.py tests/darling-sincos.py
           bash -n tests/darling/run-host.sh tools/darling/build-fixture.sh tools/darling/build-pip-tests.sh
 
   mac-fixture:
