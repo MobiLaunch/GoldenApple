@@ -14,6 +14,7 @@ import platform
 import shutil
 import subprocess
 import sys
+import tempfile
 
 ROOT = Path(__file__).resolve().parents[2]
 VENDOR = ROOT / "third_party/darling"
@@ -29,48 +30,70 @@ def output(args, cwd):
 
 
 def apply_patches(source: Path, lock: dict):
-    """Accept the pinned pristine tree or an exactly patched tree; reject drift."""
+    """Preflight every repository before applying pinned patches; reject drift."""
     coco = source / "src/external/cocotron"
+    repositories = {"darling": source, "cocotron": coco}
     for directory, expected in ((source, lock["darling_commit"]), (coco, lock["cocotron_commit"])):
         actual = output(["git", "rev-parse", "HEAD"], directory)
         if actual != expected:
             raise RuntimeError(f"Unexpected revision in {directory}: {actual}; expected {expected}")
-    patches = []
+    groups = {name: [] for name in repositories}
     for item in lock["patches"]:
+        name = item.get("repository", "cocotron")
+        if name not in groups:
+            raise RuntimeError(f"Unknown patch repository: {name}")
         patch = VENDOR / item["path"]
+        if VENDOR.resolve() not in patch.resolve().parents:
+            raise RuntimeError("Patch path must stay inside third_party/darling")
         if hashlib.sha256(patch.read_bytes()).hexdigest() != item["sha256"]:
             raise RuntimeError(f"Patch checksum mismatch: {patch.name}")
-        patches.append(patch)
-    # Validate all patches before changing anything. Use one apply operation so
-    # an interrupted prepare does not leave only part of this patch series.
-    forward = subprocess.run(["git", "apply", "--check", *map(str, patches)], cwd=coco, capture_output=True)
-    if forward.returncode == 0:
-        if output(["git", "status", "--porcelain"], coco):
-            raise RuntimeError("Cocotron has local changes; use a dedicated clean checkout")
-        run(["git", "apply", *patches], cwd=coco)
-    else:
-        reverse = subprocess.run(["git", "apply", "--reverse", "--check", *map(str, patches)], cwd=coco, capture_output=True)
+        groups[name].append(patch)
+    pending = []
+    for name, directory in repositories.items():
+        patches = groups[name]
+        if not patches:
+            if output(["git", "status", "--porcelain", "--ignore-submodules=all"], directory):
+                raise RuntimeError(f"{name} contains local changes")
+            continue
+        forward = subprocess.run(["git", "apply", "--check", *map(str, patches)], cwd=directory, capture_output=True)
+        if forward.returncode == 0:
+            if output(["git", "status", "--porcelain", "--ignore-submodules=all"], directory):
+                raise RuntimeError(f"{name} has local changes; use a dedicated clean checkout")
+            pending.append((directory, patches))
+            continue
+        reverse = subprocess.run(["git", "apply", "--reverse", "--check", *map(str, patches)], cwd=directory, capture_output=True)
         if reverse.returncode:
-            raise RuntimeError("Cocotron is neither pristine nor the expected patched tree")
-        expected = b"".join(p.read_bytes() for p in patches)
-        # Compare reconstructed pristine blobs rather than requiring git diff's
-        # formatting to match patch concatenation.
-        paths = output(["git", "diff", "--name-only"], coco).splitlines()
-        patch_paths = {line.split(" b/", 1)[1] for line in expected.decode().splitlines() if line.startswith("diff --git ")}
-        if set(paths) != patch_paths or output(["git", "ls-files", "--others", "--exclude-standard"], coco):
-            raise RuntimeError("Cocotron contains additional local changes")
-        # Reverse-check catches nearby conflicts, but unrelated edits in the
-        # same file also need checking: apply into a temporary pristine index.
-        import tempfile
+            raise RuntimeError(f"{name} is neither pristine nor the expected patched tree")
+        # Root patches can add files. Their untracked files must match the
+        # expected series exactly; no other local files may be overwritten.
+        paths = set(output(["git", "diff", "--name-only", "--ignore-submodules=all"], directory).splitlines())
+        paths.update(output(["git", "ls-files", "--others", "--exclude-standard"], directory).splitlines())
+        patch_paths = {line.split(" b/", 1)[1] for p in patches for line in p.read_text().splitlines()
+                       if line.startswith("diff --git ")}
+        if paths != patch_paths:
+            raise RuntimeError(f"{name} contains additional local changes")
+        # Reconstruct pristine blobs in a temporary index to catch unrelated
+        # edits in files that still happen to pass a reverse-apply check.
         with tempfile.TemporaryDirectory() as temp:
             env = {**os.environ, "GIT_INDEX_FILE": str(Path(temp) / "index")}
-            subprocess.run(["git", "read-tree", "HEAD"], cwd=coco, env=env, check=True)
-            subprocess.run(["git", "apply", "--cached", *map(str, patches)], cwd=coco, env=env, check=True)
+            subprocess.run(["git", "read-tree", "HEAD"], cwd=directory, env=env, check=True)
+            subprocess.run(["git", "apply", "--cached", *map(str, patches)], cwd=directory, env=env, check=True)
             for path in paths:
-                wanted = subprocess.check_output(["git", "show", ":" + path], cwd=coco, env=env)
-                if (coco / path).read_bytes() != wanted:
+                wanted = subprocess.check_output(["git", "show", ":" + path], cwd=directory, env=env)
+                if (directory / path).read_bytes() != wanted:
                     raise RuntimeError(f"Additional edits in {path}; refusing to continue")
-        print("Pinned patch series already applied.", flush=True)
+        print(f"Pinned {name} patches already applied.", flush=True)
+    applied = []
+    try:
+        for directory, patches in pending:
+            run(["git", "apply", *patches], cwd=directory)
+            applied.append((directory, patches))
+    except subprocess.CalledProcessError:
+        # git apply is atomic per repository. Roll back only our completed
+        # groups; validation above has already ruled out local edits.
+        for directory, patches in reversed(applied):
+            run(["git", "apply", "--reverse", *patches], cwd=directory)
+        raise
 
 
 def main():
@@ -108,9 +131,8 @@ def main():
     if output(["git", "rev-parse", "HEAD"], source) != lock["darling_commit"]:
         raise RuntimeError("Source revision differs from the lock; use a fresh checkout")
     # Never reset an existing checkout or discard local edits.
-    dirty = output(["git", "status", "--porcelain", "--ignore-submodules=all"], source)
-    if dirty:
-        raise RuntimeError("Darling source has local changes; use a dedicated checkout")
+    # apply_patches validates root changes as well as Cocotron. Root framework
+    # patches are expected local modifications in a prepared checkout.
     run(["git", "lfs", "install", "--local"], cwd=source)
     run(["git", "lfs", "pull"], cwd=source)
     run(["git", "submodule", "update", "--init", "--recursive"], cwd=source)

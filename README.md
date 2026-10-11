@@ -147,8 +147,10 @@ an AUR-only build helper, 32-bit compilers and a library Arch dropped. CitronOS
 also turns on Arch's `[multilib]` repository, which 32-bit software such as
 Wine and Steam needs. Be aware that
 Darling runs command-line programs well but its support for apps with windows is
-experimental, so many Mac apps don't open yet: each app's page says whether it
-opened on your computer, and Darling's output when it didn't. Apps built only for
+experimental, so many Mac apps don't open yet: each app's page records launch
+attempts and explains failures. A surviving process does not establish GUI
+compatibility. Development of the patched runtime follows the
+[Darling roadmap](docs/DARLING-ROADMAP.md); it is not installed by the normal updater yet. Apps built only for
 Apple silicon are refused (Darling translates Intel code), and Mac App Store apps
 aren't offered (they're tied to an Apple ID and encrypted).
 
