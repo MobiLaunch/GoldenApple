@@ -29,7 +29,7 @@ ln -sfn Versions/Current/PIP "$framework/PIP"
 install_name=/System/Library/PrivateFrameworks/PIP.framework/Versions/A/PIP
 for architecture in x86_64 arm64; do
   minimum=11.0
-  [[ $architecture != x86_64 ]] || minimum=10.10
+  [[ $architecture != x86_64 ]] || minimum=10.13
   xcrun clang -arch "$architecture" -mmacosx-version-min="$minimum" -fobjc-arc -fblocks \
     -I"$pip_source/include" -dynamiclib "$pip_source/src/PIP.m" -framework Cocoa \
     -install_name "$install_name" -compatibility_version 1.0 -current_version 1.0 \
@@ -39,7 +39,7 @@ lipo -create "$out/native/PIP-x86_64" "$out/native/PIP-arm64" -output "$framewor
 for architecture in "$(uname -m)" x86_64; do
   binary="$out/native/PIPLab-$architecture"
   minimum=11.0
-  [[ $architecture != x86_64 ]] || minimum=10.10
+  [[ $architecture != x86_64 ]] || minimum=10.13
   xcrun clang -arch "$architecture" -mmacosx-version-min="$minimum" -fobjc-arc -fblocks \
     -I"$pip_source/include" "$root/tests/darling/pip.m" "$framework/Versions/A/PIP" \
     -framework Cocoa -o "$binary"
@@ -52,7 +52,7 @@ cat > "$out/PIPLab.app/Contents/Info.plist" <<'EOF'
 <key>CFBundleExecutable</key><string>PIPLab</string>
 <key>CFBundleIdentifier</key><string>org.goldengate.DarlingPIPLab</string>
 <key>CFBundlePackageType</key><string>APPL</string>
-<key>LSMinimumSystemVersion</key><string>10.10</string>
+<key>LSMinimumSystemVersion</key><string>10.13</string>
 </dict></plist>
 EOF
 lipo "$out/PIPLab.app/Contents/MacOS/PIPLab" -verify_arch x86_64
