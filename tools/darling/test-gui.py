@@ -58,6 +58,21 @@ def wait_until(predicate, seconds):
     raise RuntimeError("Timed out waiting for the fixture")
 
 
+def request_window_close(window):
+    """Send the ICCCM close request directly; old xdotool lacks windowquit."""
+    from Xlib import X, display, protocol
+    connection = display.Display()
+    try:
+        target = connection.create_resource_object("window", int(window))
+        event = protocol.event.ClientMessage(
+            window=int(window), client_type=connection.intern_atom("WM_PROTOCOLS"),
+            data=(32, [connection.intern_atom("WM_DELETE_WINDOW"), X.CurrentTime, 0, 0, 0]))
+        target.send_event(event, event_mask=0)
+        connection.sync()
+    finally:
+        connection.close()
+
+
 def capture_live_backtrace(output, binary):
     """Inspect only the exact fixture process before disposable-prefix cleanup."""
     try:
@@ -172,8 +187,8 @@ def main():
             result["checks"].append("resize-without-crash")
             result["phase"] = "close"
             # windowclose destroys the X resource without Cocoa close callbacks.
-            # windowquit sends WM_DELETE_WINDOW, as a window manager would.
-            xdo("windowquit", window)
+            # Send WM_DELETE_WINDOW, as a window manager would.
+            request_window_close(window)
             try:
                 code = process.wait(timeout=15)
             except subprocess.TimeoutExpired as error:

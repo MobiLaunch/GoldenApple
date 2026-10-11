@@ -66,8 +66,6 @@ class HarnessTests(unittest.TestCase):
                 return subprocess.CompletedProcess(command, 0, '123\n', '')
             if command[:2] == ['xdotool', 'getwindowgeometry']:
                 return subprocess.CompletedProcess(command, 0, 'HEIGHT=380\n', '')
-            if command[:2] == ['xdotool', 'windowquit']:
-                state['exit'] = 0
             if command[:2] == ['xdotool', 'type'] and success:
                 destination = root / 'prefix/Darling-ControllerLab.txt'
                 destination.parent.mkdir(exist_ok=True)
@@ -85,6 +83,7 @@ class HarnessTests(unittest.TestCase):
             with patch.object(sys, 'argv', argv), patch.dict(gui.os.environ, {'DISPLAY': ':99'}), \
                  patch.object(gui.shutil, 'which', return_value='/fake/tool'), \
                  patch.object(gui.subprocess, 'Popen', return_value=Process()), \
+                 patch.object(gui, 'request_window_close', side_effect=lambda window: (calls.append(['WM_DELETE_WINDOW', window]), state.update(exit=0))), \
                  patch.object(gui.subprocess, 'run', side_effect=run), \
                  patch.object(gui.time, 'monotonic', side_effect=range(0, 1000, 5)), \
                  patch.object(gui.time, 'sleep'), patch('builtins.print'):
@@ -97,7 +96,7 @@ class HarnessTests(unittest.TestCase):
     def test_success_requests_graceful_close_and_requires_clean_exit(self):
         result, calls = self.exercise_failure(False, success=True)
         self.assertIn("clean-exit", result["checks"])
-        self.assertTrue(any(c[:2] == ["xdotool", "windowquit"] for c in calls))
+        self.assertTrue(any(c[0] == "WM_DELETE_WINDOW" for c in calls))
         self.assertFalse(any(c[:2] == ["xdotool", "windowclose"] for c in calls))
 
     def test_black_window_never_receives_input(self):

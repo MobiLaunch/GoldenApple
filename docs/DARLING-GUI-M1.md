@@ -262,7 +262,8 @@ These changes improve diagnosis; they do not establish complete GUI support.
 Run 38155520170 passed ControllerLab's rendering, real text input, target/action,
 UTF-8 save and resize checks. Its failure was at close/exit. The harness used
 xdotool's `windowclose`, which destroys the X resource without delivering the
-normal Cocoa close request. It now uses `windowquit` (WM_DELETE_WINDOW), retains
+normal Cocoa close request. It now sends WM_DELETE_WINDOW directly with Python Xlib (the Ubuntu runner's
+xdotool predates `windowquit`), retains
 the zero-exit requirement and captures a live fixture backtrace on failure.
 This test correction still needs confirmation in the runtime run.
 

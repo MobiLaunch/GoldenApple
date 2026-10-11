@@ -14,6 +14,7 @@ on:
       - 'tests/darling-dyld-link.py'
       - 'tests/darling-gui-harness.py'
       - 'tests/darling-pip-harness.py'
+      - 'tests/darling-x11-close.py'
       - 'tests/darling-sincos.py'
       - 'tests/darling-window-levels.py'
       - '.github/workflows/darling-gui.yml'
@@ -30,6 +31,7 @@ on:
       - 'tests/darling-dyld-link.py'
       - 'tests/darling-gui-harness.py'
       - 'tests/darling-pip-harness.py'
+      - 'tests/darling-x11-close.py'
       - 'tests/darling-sincos.py'
       - 'tests/darling-window-levels.py'
       - '.github/workflows/darling-gui.yml'
@@ -158,7 +160,9 @@ jobs:
             libfontconfig1-dev libbsd-dev libxrandr-dev libxcursor-dev libgif-dev \
             libpulse-dev libavformat-dev libavcodec-dev libswresample-dev libdbus-1-dev \
             libxkbfile-dev libssl-dev llvm-dev libelf-dev libcurl4-openssl-dev libedit-dev \
-            xvfb xauth xdotool x11-apps unzip mesa-utils gdb
+            xvfb xauth xdotool x11-apps unzip mesa-utils gdb python3-xlib
+      - name: Verify graceful close protocol on X11
+        run: xvfb-run -a python3 tests/darling-x11-close.py
       - name: Find previous runtime artifact on this branch
         id: previous
         if: inputs.runtime_run == ''
