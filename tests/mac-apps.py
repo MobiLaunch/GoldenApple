@@ -185,18 +185,50 @@ class MacApps(unittest.TestCase):
         out, _ = p.communicate(timeout=30)
         self.assertEqual(p.returncode, 0, out)
         self.assertEqual((self.home / "darling-args").read_text().strip(), str(exe))
-        self.assertTrue(self.run_helper("installed")[1][-1]["apps"]["notepad"]["opened"])
+        rec = self.run_helper("installed")[1][-1]["apps"]["notepad"]
+        self.assertIsNone(rec["opened"], "a surviving process doesn't prove a GUI opened")
+        self.assertEqual(rec["launchStatus"], "attempted")
         # One that quits with an error didn't open: say so, with Darling's words.
         self.tool("darling", 'echo "dyld: Symbol not found: _NSAppearanceNameDarkAqua"; exit 1\n')
         code, events = self.run_helper("open", "notepad")
         self.assertEqual((code, events[-1]["code"]), (1, "didnt-open"))
         self.assertIn("Symbol not found", events[-1]["details"])
+        self.assertEqual(events[-1]["failure"]["kind"], "missing-symbol")
         self.assertFalse(self.run_helper("installed")[1][-1]["apps"]["notepad"]["opened"])
 
         self.assertEqual(self.run_helper("remove", "notepad")[0], 0)
         self.assertFalse(app.exists())
         self.assertFalse((self.home / ".local/share/applications/gg-mac-notepad.desktop").exists())
         self.assertEqual(self.run_helper("installed")[1][-1]["apps"], {})
+
+    def test_missing_private_framework_is_explained_and_log_preserved(self):
+        self.assertEqual(self.run_helper("install", "notepad")[0], 0)
+        library = "/System/Library/PrivateFrameworks/PIP.framework/Versions/A/PIP"
+        output = (f"dyld: Library not loaded: {library}\n"
+                  "  Referenced from: /Volumes/SystemRoot/home/jordan/Applications/IINA.app/Contents/MacOS/IINA\n"
+                  "  Reason: image not found\n" + "secondary warning\n" * 15 +
+                  "abort_with_payload: reason: dyld: No shared cache present.\n")
+        self.tool("darling", "cat <<'DARLING_LOG'\n" + output + "DARLING_LOG\nexit 1\n")
+        code, events = self.run_helper("open", "notepad")
+        failure = events[-1]
+        self.assertEqual((code, failure["code"]), (1, "didnt-open"))
+        self.assertEqual(failure["failure"]["library"], library)
+        self.assertIn("Apple's private PIP.framework", failure["message"])
+        self.assertNotIn("shared cache", failure["message"], "the primary error matters")
+        self.assertIn("Full log:", failure["details"])
+        log = self.home / ".cache/golden-gate/mac-logs/notepad.log"
+        self.assertEqual(log.read_text(), output)
+        rec = self.run_helper("installed")[1][-1]["apps"]["notepad"]
+        self.assertFalse(rec["opened"])
+        self.assertEqual(rec["lastFailure"], failure["failure"])
+
+        self.tool("darling", "exit 0\n")
+        self.assertEqual(self.run_helper("open", "notepad")[0], 0)
+        rec = self.run_helper("installed")[1][-1]["apps"]["notepad"]
+        self.assertIsNone(rec["opened"], "a clean exit doesn't prove GUI compatibility either")
+        self.assertEqual(rec["launchStatus"], "attempted")
+        self.assertNotIn("lastFailure", rec)
+        self.assertNotIn("lastError", rec)
 
     def test_wrong_checksum_is_refused(self):
         code, events = self.run_helper("install", "bad")

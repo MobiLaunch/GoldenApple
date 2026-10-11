@@ -140,7 +140,8 @@ ShellRoot {
                     source: "mac", id: c.token, name: c.name, summary: c.desc, icon: iconValue,
                     installed: !!r, update: !!r && !!c.version && r.catalogVersion !== c.version,
                     homepage: c.homepage, version: r?.version ?? c.version, minMacOS: c.minMacOS ?? "", checksum: !!c.checksum,
-                    opened: r?.opened ?? null, lastError: r?.lastError ?? "", arch: r?.arch ?? []
+                    opened: r?.opened ?? null, launchStatus: r?.launchStatus ?? (r?.opened === true ? "attempted" : ""),
+                    lastError: r?.lastError ?? "", failureSummary: r?.lastFailure?.summary ?? "", arch: r?.arch ?? []
                 }
             }
             readonly property var macApps: mac.map((c) => macEntry(c))
@@ -560,7 +561,7 @@ ShellRoot {
                                 }
                                 Text {
                                     width: parent.width
-                                    text: "Get apps made for the Mac straight from their developers. They install cleanly with Darling, open in your Applications folder, and show their native Mac-style icon once downloaded."
+                                    text: "Download Mac apps straight from their developers into your Applications folder. Try Intel apps with Darling; GUI compatibility is experimental and many apps won't open yet."
                                     wrapMode: Text.WordWrap
                                     color: "#e6ffffff"
                                     font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
@@ -621,7 +622,7 @@ ShellRoot {
                                     Layout.fillWidth: true
                                     spacing: 3
                                     Text {
-                                        text: store.darling ? "Mac app support is ready" : "Set up Mac app support"
+                                        text: store.darling ? "Darling is installed" : "Set up Darling"
                                         color: Theme.label
                                         font { family: Theme.fontUi; pixelSize: Theme.fs(15); weight: Font.DemiBold }
                                     }
@@ -631,8 +632,8 @@ ShellRoot {
                                         color: Theme.secondaryLabel
                                         font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
                                         text: (store.darling
-                                            ? "Mac apps open with Darling, the macOS translation layer."
-                                            : "Mac apps open with Darling, the macOS translation layer. Setting it up installs Darling's official release in a Terminal window. Darling runs Intel Mac apps; many apps with windows still need manual testing and you can see the result per app.")
+                                            ? "GUI compatibility is experimental. Having Darling installed doesn't mean a particular Mac app will work."
+                                            : "Setting up Darling installs a macOS translation layer in a Terminal window. Intel Mac GUI compatibility is experimental; many apps won't open yet.")
                                     }
                                 }
                                 Button {
@@ -773,8 +774,8 @@ ShellRoot {
                             ["SOURCE", "Developer", "download"],
                             ["VERSION", page.app.version || "—", ""],
                             ["REQUIRES", page.app.minMacOS ? "macOS " + page.app.minMacOS + "+" : "Intel Mac app", "on the Mac"],
-                            ["RUNS WITH", "Darling", store.darling ? "ready" : "not set up"],
-                            ["ON THIS COMPUTER", page.app.opened === true ? "Opens" : page.app.opened === false ? "Didn't open" : page.app.installed ? "Not opened yet" : "Not tried", ""]
+                            ["RUNTIME", "Darling", store.darling ? "experimental" : "not installed"],
+                            ["ON THIS COMPUTER", page.app.opened === false ? "Didn't open" : page.app.launchStatus === "attempted" ? "Unverified" : "Not tried", ""]
                         ] : [
                             ["SOURCE", "Flathub", "Linux app"],
                             ["CATEGORY", (page.app.categories ?? [])[0] ?? "App", ""],
@@ -815,7 +816,7 @@ ShellRoot {
                                 wrapMode: Text.WordWrap
                                 color: Theme.label
                                 font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.DemiBold }
-                                text: page.app?.opened === false ? "This app didn't open under Darling last time." : page.app?.opened === true ? "This app opened under Darling on this computer." : "A Mac app, run with Darling"
+                                text: page.app?.failureSummary || (page.app?.opened === false ? "This app didn't open under Darling last time." : page.app?.launchStatus === "attempted" ? "Launch attempted; window and app functionality haven't been verified." : "Mac GUI compatibility is experimental.")
                             }
                             Text {
                                 width: parent.width
@@ -866,7 +867,7 @@ ShellRoot {
                         Text { width: parent.width; horizontalAlignment: Text.AlignHCenter; text: "Mac app support isn't set up"; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.fs(15); weight: Font.DemiBold } }
                         Text {
                             width: parent.width; horizontalAlignment: Text.AlignHCenter; wrapMode: Text.WordWrap
-                            text: "Mac apps open with Darling. Setting it up builds it on this computer, which takes about an hour, in a Terminal window."
+                            text: "Setting up Darling installs a macOS translation layer in a Terminal window. GUI compatibility is experimental; many Intel Mac apps won't open yet."
                             color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
                         }
                         Item { width: 1; height: 4 }

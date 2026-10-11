@@ -29,6 +29,7 @@ import json
 import os
 import pathlib
 import plistlib
+import re
 import shutil
 import stat
 import struct
@@ -499,6 +500,27 @@ def remove(token: str) -> int:
 
 
 # ---------------------------------------------------------------- open
+def launch_failure(name: str, output: str, code: int) -> dict:
+    """Explain the primary loader failure; cache warnings are secondary."""
+    library = re.search(r"^\s*(?:dyld:\s*)?Library not (?:loaded|found):\s*(.+)$", output, re.MULTILINE)
+    if library and ("image not found" in output or "Library not found:" in output):
+        path = library.group(1).strip()
+        framework = re.search(r"([^/]+\.framework)(?:/|$)", path)
+        dependency = framework.group(1) if framework else pathlib.PurePosixPath(path).name
+        private = path.startswith("/System/Library/PrivateFrameworks/")
+        description = f"Apple's private {dependency}" if private else dependency
+        return {"kind": "missing-library", "library": path,
+                "summary": f"{name} requires {description}, which this Darling runtime couldn't load. "
+                           "This app needs additional Darling compatibility work."}
+    symbol = re.search(r"Symbol not found:\s*(\S+)", output)
+    if symbol:
+        return {"kind": "missing-symbol", "symbol": symbol.group(1),
+                "summary": f"{name} requires a macOS API that this Darling runtime couldn't provide "
+                           f"({symbol.group(1)}). This app needs additional Darling compatibility work."}
+    return {"kind": "launch-error",
+            "summary": f"{name} didn't open under Darling (exit {code}). GUI compatibility is experimental."}
+
+
 def open_app(token: str, wait: float = 6.0) -> int:
     """Open with Darling. A Darling program that ends within a few seconds with
     an error didn't open: say so, with Darling's last words, and remember it."""
@@ -525,16 +547,23 @@ def open_app(token: str, wait: float = 6.0) -> int:
         time.sleep(0.2)
     code = proc.poll()
     if code is not None and code != 0:
-        tail = [l for l in log.read_text(errors="replace").splitlines() if l.strip()][-6:]
+        output = log.read_text(errors="replace")
+        tail = [l for l in output.splitlines() if l.strip()][-12:]
+        failure = launch_failure(rec["name"], output, code)
         rec["opened"] = False
+        rec["launchStatus"] = "failed"
+        rec["lastFailure"] = failure
         rec["lastError"] = "\n".join(tail)
         save_records(data)
         emit("error", id=token, code="didnt-open",
-             message=f"{rec['name']} didn't open under Darling (exit {code}). Many Mac apps don't run yet.",
-             details=rec["lastError"])
+             message=failure["summary"], failure=failure,
+             details=rec["lastError"] + f"\n\nFull log: {log}")
         return 1
-    rec["opened"] = True
+    # A surviving process (or a clean early exit) proves no GUI workflow.
+    rec["opened"] = None
+    rec["launchStatus"] = "attempted"
     rec.pop("lastError", None)
+    rec.pop("lastFailure", None)
     save_records(data)
     emit("done", id=token)
     return 0

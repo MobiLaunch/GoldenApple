@@ -137,6 +137,27 @@ and results. A surviving process alone does not prove a usable GUI.
 
 ## Next compatibility target
 
+### IINA 1.5.0: observed loader blocker
+
+A user launch reached dyld and failed to load
+`/System/Library/PrivateFrameworks/PIP.framework/Versions/A/PIP` with
+`image not found`, followed by `No shared cache present`. The missing framework
+is the primary reported dependency; changing the launcher path or waiting for
+the current AppKit patch build does not implement it. The pinned Darling source
+has no PIP framework target. IINA 1.5.0 explicitly links this framework in its
+[Xcode project](https://github.com/iina/iina/blob/v1.5.0/iina.xcodeproj/project.pbxproj)
+and declares its interface in its
+[bridging header](https://github.com/iina/iina/blob/v1.5.0/iina/iina-Bridging-Header.h).
+This is a recorded blocker, not a complete inventory of IINA's requirements.
+
+The App Store now identifies missing-library and missing-symbol failures from
+the full launch log, retains the raw log, and presents the primary dependency
+above the trailing diagnostic output. Runtime installation is labelled
+experimental. A surviving launch process or a clean early exit is recorded only
+as an attempted launch; neither is evidence of a visible, usable application.
+IINA remains unsupported by this milestone. PIP needs an implementation and
+real app validation before compatibility can be claimed.
+
 After a complete build and ControllerLab pass, inspect Darling's existing
 open-source TextEdit target (`src/external/TextEdit`) and trace its first failures.
 Implement the APIs needed for a real open/edit/save workflow, with regression
