@@ -2,11 +2,13 @@
 
 This directory carries changes to Darling itself, not GUI replacements in Qt.
 The upstream repositories remain authoritative. `source.lock.json` pins Darling,
-its Cocotron submodule and SHA-256 hashes for every patch. Source trees and build
+its Cocotron and objc4 submodules and SHA-256 hashes for every patch. Source trees and build
 output stay outside the Golden Gate repository.
 
 The Cocotron patches implement NSViewController loading and correct the intrinsic
-size sentinel. The root patch adds a limited PIP framework implementation.
+size sentinel. Root patches add a limited PIP framework implementation and an
+optional Swift asset profile. The objc4 patch aligns the runtime's debug macro
+with CMake's standard build configurations.
 See [the roadmap](../../docs/DARLING-ROADMAP.md) and
 [`compatibility.json`](compatibility.json) for milestones, evidence gates and
 per-app blockers; [M1](../../docs/DARLING-GUI-M1.md) records the initial baseline.

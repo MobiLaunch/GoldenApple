@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Test pinned root/Cocotron patches in isolated repositories; input is read only."""
+"""Test pinned root/Cocotron/objc4 patches in isolated repos; input is read only."""
 import copy
 import importlib.util
 import json
@@ -33,8 +33,11 @@ with tempfile.TemporaryDirectory() as directory:
     temp = Path(directory)
     coco = temp / 'src/external/cocotron'
     coco.mkdir(parents=True)
-    repositories = {'darling': temp, 'cocotron': coco}
-    upstream = {'darling': source, 'cocotron': source / 'src/external/cocotron'}
+    objc = temp / 'src/external/objc4'
+    objc.mkdir(parents=True)
+    repositories = {'darling': temp, 'cocotron': coco, 'objc4': objc}
+    upstream = {'darling': source, 'cocotron': source / 'src/external/cocotron',
+                'objc4': source / 'src/external/objc4'}
     paths = {name: set() for name in repositories}
     new_paths = {name: set() for name in repositories}
     for patch in lock['patches']:
@@ -51,7 +54,7 @@ with tempfile.TemporaryDirectory() as directory:
         if name == 'darling':
             # Model the real root repository's submodule without treating its
             # separate working tree as untracked user work in this tiny fixture.
-            (repo / '.git/info/exclude').write_text('src/external/cocotron/\n')
+            (repo / '.git/info/exclude').write_text('src/external/cocotron/\nsrc/external/objc4/\n')
         for path in paths[name] - new_paths[name]:
             target = repo / path
             target.parent.mkdir(parents=True, exist_ok=True)
@@ -76,13 +79,13 @@ with tempfile.TemporaryDirectory() as directory:
     module.apply_patches(temp, config)
     first = snapshot()
     module.apply_patches(temp, config)
-    assert snapshot() == first, 'root and Cocotron must both be idempotent'
+    assert snapshot() == first, 'all three repositories must be idempotent'
     for changed in (coco / 'AppKit/NSViewController.m', temp / 'src/private-frameworks/CMakeLists.txt',
-                    temp / 'src/private-frameworks/PIP/src/PIP.m'):
+                    temp / 'src/private-frameworks/PIP/src/PIP.m', objc / 'runtime/CMakeLists.txt'):
         expected = changed.read_bytes()
         changed.write_bytes(expected + b'\n// unrelated local edit\n')
         before = snapshot()
-        rejects(temp, config, 'same-file changes must be refused in either repository')
+        rejects(temp, config, 'same-file changes must be refused in every repository')
         assert snapshot() == before, 'preflight must preserve all local changes'
         changed.write_bytes(expected)
     for repo in repositories.values():
@@ -128,6 +131,19 @@ with tempfile.TemporaryDirectory() as directory:
         else:
             raise AssertionError('injected apply failure must propagate')
     assert snapshot() == pristine, 'completed root group must roll back after second-group failure'
+    # A failure in the third repository must also roll back both earlier groups.
+    def fail_third_group(args, *, cwd=None, env=None):
+        if cwd == objc and args[1] == 'apply' and '--reverse' not in args:
+            raise subprocess.CalledProcessError(1, args)
+        actual_run(args, cwd=cwd, env=env)
+    with mock.patch.object(module, 'run', fail_third_group):
+        try:
+            module.apply_patches(temp, config)
+        except subprocess.CalledProcessError:
+            pass
+        else:
+            raise AssertionError('third-repository failure must propagate')
+    assert snapshot() == pristine, 'both completed groups must roll back after third-group failure'
     # An existing M1 checkout may already carry Cocotron patches. Preflight
     # permits adding the separate root framework series without resetting it.
     cocoa_patches = [str(module.VENDOR / p['path']) for p in lock['patches']

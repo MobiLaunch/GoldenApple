@@ -23,6 +23,12 @@
       "path": "patches/0004-optional-swift-runtime.patch",
       "repository": "darling",
       "sha256": "260f9b9fe3e85daa45c99ed3047533e058ce2a083def209600b6ffb17b1e4028"
+    },
+    {
+      "path": "patches/0005-objc-build-mode.patch",
+      "repository": "objc4",
+      "sha256": "bb6e70eeedcbd11f015fef0141e2c257fd931301979e98c07fef240328ed25f1"
     }
-  ]
+  ],
+  "objc4_commit": "1a12df76d12bfc9fdfffadb290f7742763568765"
 }

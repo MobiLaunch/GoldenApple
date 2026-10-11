@@ -56,7 +56,7 @@ First target: x86_64 Linux, x86_64 Mac binaries, ordinary AppKit and the existin
 X11 backend (XWayland for a Hyprland desktop). Metal is disabled explicitly for
 this milestone to keep the baseline independent of GPU translation. Components
 are `cli,gui_frameworks`, with i386 and Python 2 bytecode disabled. Upstream
-Darling/Cocotron revisions and patch hashes are in
+Darling/Cocotron/objc4 revisions and patch hashes are in
 `third_party/darling/source.lock.json`.
 
 Use a development machine with sufficient free space; upstream documentation
@@ -95,8 +95,9 @@ packaging before they can be offered through Golden Gate's normal updater.
 Run the focused tests after preparing the source:
 
 ```bash
-sudo apt-get install -y clang libgnustep-base-dev
+sudo apt-get install -y clang cmake make libgnustep-base-dev
 python3 tests/darling-patches.py "$HOME/Development/darling-gg-m1"
+CC=clang CXX=clang++ python3 tests/darling-build-modes.py "$HOME/Development/darling-gg-m1"
 bash tests/darling/run-host.sh "$HOME/Development/darling-gg-m1"
 ```
 

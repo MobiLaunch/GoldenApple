@@ -40,7 +40,7 @@ after reviewing the actual results.
 | Location | Responsibility |
 | --- | --- |
 | `third_party/darling/source.lock.json` | Exact source revisions, patch repositories and SHA-256 checksums |
-| `third_party/darling/patches/` | Cocotron and Darling root changes; no bundled Apple framework binaries |
+| `third_party/darling/patches/` | Cocotron, objc4 and Darling root changes; no bundled Apple framework binaries |
 | `third_party/darling/compatibility.json` | Milestones, dependencies, evidence and per-app blockers |
 | `tools/darling/build.py` | Prepare, configure, build and stage; never replace the host runtime |
 | `tests/darling/` | Behavior tests exercising actual implementation source |
@@ -48,7 +48,7 @@ after reviewing the actual results.
 | `.github/workflows/darling-pip.yml` | Fast native framework validation independent of the lengthy full build |
 | `.github/workflows/darling-gui.yml` | Source protection, native fixtures, full build and Darling runtime tests |
 
-Root and Cocotron patches are checked before either repository is changed.
+Root, Cocotron and objc4 patches are checked before any repository is changed.
 Each repository must be pristine or match its complete expected patch series,
 including newly added files. Local edits are refused and preserved. An apply
 failure rolls back completed groups. A machine interruption is not a
@@ -176,6 +176,23 @@ This baseline is sufficient to attempt the Objective-C fixtures, not IINA's
 Swift requirements. The Swift assets and real IINA workflow remain blocked;
 the default experimental Arch recipe uses the same baseline. No existing
 Darling installation is altered by this source-download change.
+
+### Objective-C runtime build configurations
+
+After the download fix, [the baseline build](https://github.com/MobiLaunch/GoldenApple/actions/runs/38105520143/job/114370175926)
+reached compilation and failed in `objc-runtime.mm` with `mismatch in debug-ness
+macros`. The pinned objc4 CMake file unconditionally defined
+`OBJC_IS_DEBUG_BUILD=1`, while `RelWithDebInfo` supplied `NDEBUG` and the runtime
+header set `DEBUG=0`. Patch `0005-objc-build-mode.patch` selects zero for CMake's
+Release, RelWithDebInfo and MinSizeRel modes, and one for Debug or an unspecified
+mode. The objc4 revision and patch hash are locked alongside the other sources.
+
+`tests/darling-build-modes.py` uses the actual pinned runtime CMake file, config
+header and consistency guard. It reproduces the original RelWithDebInfo failure,
+then compiles C and C++ probes in all five patched configurations. Only the
+target/link graph is replaced by static probes; this is a configuration check,
+not a complete runtime build or GUI compatibility result. The full build still
+has to pass before the unchanged Intel fixtures can run.
 
 ## Recording a compatibility failure
 

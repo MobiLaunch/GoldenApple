@@ -59,8 +59,9 @@ def fetch_submodules(source, with_swift=False):
 def apply_patches(source: Path, lock: dict):
     """Preflight every repository before applying pinned patches; reject drift."""
     coco = source / "src/external/cocotron"
-    repositories = {"darling": source, "cocotron": coco}
-    for directory, expected in ((source, lock["darling_commit"]), (coco, lock["cocotron_commit"])):
+    repositories = {"darling": source, "cocotron": coco, "objc4": source / "src/external/objc4"}
+    for name, directory in repositories.items():
+        expected = lock[name + "_commit"]
         actual = output(["git", "rev-parse", "HEAD"], directory)
         if actual != expected:
             raise RuntimeError(f"Unexpected revision in {directory}: {actual}; expected {expected}")
