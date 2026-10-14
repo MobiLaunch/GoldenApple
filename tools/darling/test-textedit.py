@@ -36,6 +36,24 @@ def marker_inserted(before, after, marker):
     return False
 
 
+def visible_windows():
+    search = subprocess.run(["xdotool", "search", "--onlyvisible", "--name", "."],
+                            capture_output=True, text=True)
+    windows = []
+    for window in search.stdout.split():
+        name = subprocess.run(["xdotool", "getwindowname", window], capture_output=True, text=True)
+        windows.append(f"{window}: {name.stdout.strip()}")
+    return windows
+
+
+def print_diagnostics(output, lines=150):
+    """CI artifacts are not always reachable; put the key evidence in the job log."""
+    for path in sorted(output.glob("session-*.log")) + sorted(output.glob("live-backtrace*.log")):
+        text = path.read_text(errors="replace").splitlines()
+        print(f"===== {path.name} (last {min(lines, len(text))} of {len(text)} lines) =====")
+        print("\n".join(text[-lines:]))
+
+
 def run_session(number, binary, document, env, output, result):
     """Open, edit, save and quit once; return the saved text."""
     before = document.read_text()
@@ -59,7 +77,15 @@ def run_session(number, binary, document, env, output, result):
                                     capture_output=True, text=True)
             lines = search.stdout.strip().splitlines()
             return lines[0] if search.returncode == 0 and lines else None
-        window = gui.wait_until(find_window, 90)
+        try:
+            window = gui.wait_until(find_window, 90)
+        except RuntimeError:
+            # An untitled window or an error alert means the document never
+            # opened; record what is on screen instead of only a timeout.
+            session["visible_windows"] = visible_windows()
+            subprocess.run(["xwd", "-silent", "-root", "-out", str(output / f"{tag}-screen.xwd")],
+                           capture_output=True, check=False)
+            raise RuntimeError(f"{tag}: no document window; visible: {session['visible_windows']}") from None
         session["window_title"] = gui.xdo("getwindowname", window)
         result["checks"].append(f"{tag}-document-window")
 
@@ -182,6 +208,8 @@ def main():
                 result["cleanup"] = "Disposable-prefix shutdown timed out"
         (output / "result.json").write_text(json.dumps(result, indent=2) + "\n")
     print(json.dumps(result, indent=2))
+    if not result["passed"]:
+        print_diagnostics(output)
     return 0 if result["passed"] else 1
 
 
