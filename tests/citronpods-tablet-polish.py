@@ -31,7 +31,9 @@ class IntegrationPolish(unittest.TestCase):
         menu = self.src("apps/lib/MenuList.qml")
         cc = self.src("shell/ControlCenter.qml")
         hyprglass = self.src("compositor/hyprland/hyprglass-sync.sh")
-        self.assertIn('property bool shadowEnabled: role !== "menu"', glass)
+        # Only small window controls, sidebars and the Dock cast the slab shadow;
+        # menus and panels must not draw a rectangle behind their rounded glass.
+        self.assertIn('property bool shadowEnabled: role === "control" || role === "sidebar" || role === "dock"', glass)
         self.assertIn("shadowEnabled: false", menu)
         self.assertIn("shadowEnabled: false", cc)
         self.assertNotIn('gg-controlcenter=0.25', hyprglass)
@@ -44,7 +46,7 @@ class IntegrationPolish(unittest.TestCase):
         home = self.src("shell/Applications.qml")
         control = self.src("shell/ControlCenter.qml")
         settings = self.src("apps/settings/panes/DockPane.qml")
-        self.assertIn('readonly property bool tabletMode: data.tablet?.enabled ?? false', prefs)
+        self.assertIn('readonly property bool tabletMode: Quickshell.env("GG_TABLET_PREVIEW") === "1" || (data.tablet?.enabled ?? false)', prefs)
         self.assertIn('Prefs.tabletMode ? Math.max(64, Prefs.dockSize)', dock)
         self.assertIn('Prefs.tabletMode ? (width < height ? 4 : 6)', home)
         self.assertIn('Prefs.tabletMode ? 112 : 100', home)
@@ -59,12 +61,14 @@ class IntegrationPolish(unittest.TestCase):
             downloads = home / "Downloads"
             downloads.mkdir()
             archive = downloads / "LibrePods-CitronPods-M10-Qt6-Fixed.zip"
-            archive.write_bytes(b"source-is-validated-later")
+            # A matching name alone is not trusted: CMake can run commands during
+            # configure, so --find adopts only the pinned M10 source digests.
+            archive.write_bytes(b"not-the-pinned-m10-source")
             env = dict(os.environ, HOME=str(home), XDG_DOWNLOAD_DIR=str(downloads))
             proc = subprocess.run(["bash", str(installer), "--find"], env=env,
                                   text=True, capture_output=True, timeout=5)
-            self.assertEqual(proc.returncode, 0, proc.stderr)
-            self.assertEqual(proc.stdout.strip(), str(archive))
+            self.assertNotEqual(proc.returncode, 0)
+            self.assertEqual(proc.stdout.strip(), "")
             archive.unlink()
             proc = subprocess.run(["bash", str(installer), "--find"], env=env,
                                   text=True, capture_output=True, timeout=5)

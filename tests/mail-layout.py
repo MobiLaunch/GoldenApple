@@ -106,7 +106,7 @@ class MailLayoutTests(unittest.TestCase):
         for part in ("mailWorkspace", "mailMessageListPane", "mailReadingPane",
                      "mailComposerPane", "mailDraftsPane", "mailSplitDivider"):
             self.assertIn('objectName: "' + part + '"', qml)
-        self.assertIn("readonly property bool compactReading: width < 700", qml)
+        self.assertIn("readonly property bool compactReading: win.tabletCompact || width < 700", qml)
         self.assertIn("mail.width - messageListPane.width - mailDivider.width", qml)
         self.assertIn("anchors { fill: parent; leftMargin: 28;", qml)
         self.assertIn("top: composeFields.bottom; bottom: composeActions.top", qml)
