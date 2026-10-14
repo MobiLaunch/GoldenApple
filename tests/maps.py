@@ -157,6 +157,21 @@ class Api(unittest.TestCase):
         self.assertIn("photon", url)
         self.assertIn("lat=29.76", url)
 
+    def test_carto_key_only_on_carto_tiles(self):
+        # A placeholder, not a real key.
+        carto = self.node("withKey(STYLES.standard.url(3, 1, 2), 'cb1_test_key')")
+        self.assertTrue(carto.endswith("@2x.png?key=cb1_test_key"), carto)
+        self.assertEqual(self.node("withKey(STYLES.standard.url(3, 1, 2), '')"), self.node("STYLES.standard.url(3, 1, 2)"))
+        labels = self.node("withKey(STYLES.hybrid.labels(3, 1, 2), 'k&1')")
+        self.assertTrue(labels.endswith("?key=k%261"), labels)
+        # Esri imagery and search never receive the CARTO key.
+        imagery = self.node("withKey(STYLES.satellite.url(3, 1, 2), 'cb1_test_key')")
+        self.assertNotIn("key=", imagery)
+        qml = (ROOT / "apps/maps.qml").read_text()
+        self.assertIn('"secret-tool", "lookup", "service", "golden-gate-maps"', qml)
+        self.assertIn("onStarted: { write(app.pendingKey); stdinEnabled = false }", qml)
+        self.assertNotIn("cartoKey", qml[qml.index("function save()"):qml.index("FileView {", qml.index("function save()"))])
+
 
 if __name__ == "__main__":
     unittest.main()

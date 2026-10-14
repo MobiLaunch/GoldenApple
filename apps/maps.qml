@@ -40,6 +40,7 @@ ShellRoot {
                 anchors.fill: parent
                 style: app.mapStyle === "standard" && Theme.dark ? "dark" : app.mapStyle
                 online: !app.fixture
+                cartoKey: app.cartoKey
                 imperial: app.imperial
                 scaleInset: win.contentX + app.panelWidth + 16
                 onLongPressed: (la, lo) => app.dropPin(la, lo)
@@ -170,6 +171,22 @@ ShellRoot {
             property bool sidebarOpen: true
             property string mode: "search"          // search | place | directions
             property string mapStyle: "standard"
+            // CARTO's Basemaps key, from the login keyring (service
+            // golden-gate-maps). Never written to maps.json or the log.
+            property string cartoKey: ""
+            property string keyStatus: ""
+            property string pendingKey: ""
+            function saveKey(value) {
+                const k = value.trim()
+                if (!/^[A-Za-z0-9_\-]{8,200}$/.test(k)) { keyStatus = "That doesn't look like a CARTO API key."; return }
+                pendingKey = k
+                keyStatus = "Saving…"
+                keyStore.running = true
+            }
+            function removeKey() {
+                keyStatus = "Removing…"
+                keyClear.running = true
+            }
             property var results: []
             property bool searching: false
             property int searchRevision: 0
@@ -348,7 +365,34 @@ ShellRoot {
                 }
                 onLoadFailed: { zoneProc.running = true; app.locateMe(true) }
             }
-            Component.onCompleted: app.locateMe(false)
+            Component.onCompleted: { app.locateMe(false); if (!app.fixture) keyLookup.running = true }
+            Process {
+                id: keyLookup
+                command: ["secret-tool", "lookup", "service", "golden-gate-maps", "provider", "carto"]
+                stdout: StdioCollector { onStreamFinished: app.cartoKey = text.trim() }
+            }
+            Process {
+                id: keyStore
+                command: ["secret-tool", "store", "--label=CitronOS Maps: CARTO Basemaps key",
+                          "service", "golden-gate-maps", "provider", "carto"]
+                stdinEnabled: true
+                // The key goes in on stdin, so it never appears in a process list.
+                onStarted: { write(app.pendingKey); stdinEnabled = false }
+                onExited: (code) => {
+                    stdinEnabled = true
+                    if (code === 0) { app.cartoKey = app.pendingKey; app.keyStatus = "Saved in your keyring." }
+                    else app.keyStatus = "The keyring didn't save the key. It may be locked."
+                    app.pendingKey = ""
+                }
+            }
+            Process {
+                id: keyClear
+                command: ["secret-tool", "clear", "service", "golden-gate-maps", "provider", "carto"]
+                onExited: (code) => {
+                    if (code === 0) { app.cartoKey = ""; app.keyStatus = "Removed." }
+                    else app.keyStatus = "The keyring didn't remove the key. It may be locked."
+                }
+            }
             Process {
                 id: locator
                 command: ["python3", decodeURIComponent(Qt.resolvedUrl("lib/location/locate.py").toString().replace("file://", "")), "--app", "Maps"]
@@ -768,7 +812,8 @@ ShellRoot {
                     id: styleBtn
                     symbol: "layers"
                     onClicked: menu.popup(styleBtn, -180, height + 6, Object.keys(Api.STYLES).filter((k) => k !== "dark").map((k) => ({
-                        text: Api.STYLES[k].name, checked: app.mapStyle === k, action: () => { app.mapStyle = k; app.save() } })))
+                        text: Api.STYLES[k].name, checked: app.mapStyle === k, action: () => { app.mapStyle = k; app.save() } }))
+                        .concat(["-", { text: "CARTO Key…", action: () => { app.keyStatus = ""; keySheet.open() } }]))
                 }
             }
             Column {
@@ -806,6 +851,55 @@ ShellRoot {
         }
 
         PopupMenu { id: menu; parent: win.overlay }
+
+        // CARTO watermarks its tiles without a key. Paste the Basemaps key
+        // from CARTO's email; it is kept in the login keyring.
+        ModalSheet {
+            id: keySheet
+            objectName: "mapsKeySheet"
+            parent: win.overlay
+            panelWidth: 440
+            panelHeight: keyContent.implicitHeight + 40
+            z: 110
+            onShownChanged: if (shown) { keyField.text = ""; Qt.callLater(() => keyField.input.forceActiveFocus()) }
+            Column {
+                id: keyContent
+                width: parent.width
+                spacing: 12
+                Text { text: "CARTO Basemaps Key"; color: Theme.label; font { pixelSize: Theme.fs(17); weight: Font.DemiBold } }
+                Text {
+                    width: parent.width; wrapMode: Text.WordWrap
+                    color: Theme.secondaryLabel; font.pixelSize: Theme.fs(13)
+                    text: app.cartoKey
+                        ? "A key is saved. Standard, Muted and the Hybrid labels use it. Paste a new one to replace it."
+                        : "Without a key, CARTO marks its map tiles \"API key required\". Paste the key from CARTO's email. It is kept in your keyring and sent only to CARTO."
+                }
+                TextField {
+                    id: keyField
+                    objectName: "mapsKeyField"
+                    width: parent.width; height: 30
+                    password: true
+                    placeholder: app.cartoKey ? "Saved key (hidden)" : "CARTO API key"
+                    onAccepted: if (text.trim()) app.saveKey(text)
+                }
+                Text {
+                    width: parent.width; wrapMode: Text.WordWrap
+                    visible: !!app.keyStatus
+                    text: app.keyStatus
+                    color: Theme.secondaryLabel; font.pixelSize: Theme.fs(12)
+                }
+                Row {
+                    spacing: 8
+                    Button { text: "Remove Key"; visible: !!app.cartoKey; enabled: !keyClear.running; onClicked: app.removeKey() }
+                    Button { text: "Done"; onClicked: keySheet.close() }
+                    Button {
+                        text: "Save"; prominent: true
+                        enabled: !!keyField.text.trim() && !keyStore.running
+                        onClicked: app.saveKey(keyField.text)
+                    }
+                }
+            }
+        }
     }
 }
 

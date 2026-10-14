@@ -19,6 +19,14 @@ var STYLES = {
                 credit: "© Esri, Maxar · © OpenStreetMap contributors © CARTO", bg: "#1b2a1f" },
 };
 
+// CARTO watermarks raster tiles requested without an API key. A key the user
+// saved (in the keyring, never in maps.json) goes on CARTO's requests only;
+// Esri imagery and search never see it.
+function withKey(url, key) {
+    if (!key || url.indexOf(".basemaps.cartocdn.com/") < 0) return url;
+    return url + (url.indexOf("?") < 0 ? "?" : "&") + "key=" + encodeURIComponent(key);
+}
+
 // Find Nearby: Maps' categories, as OpenStreetMap tags Photon can filter by.
 var NEARBY = [
     { name: "Restaurants", tag: "amenity:restaurant", symbol: "heart", tint: "#ff9500" },

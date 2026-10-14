@@ -21,6 +21,7 @@ Item {
     signal longPressed(real lat, real lon)
 
     readonly property var styleDef: Api.STYLES[style] ?? Api.STYLES.standard
+    property string cartoKey: ""           // the user's CARTO Basemaps key, if any
     readonly property int tz: Math.max(2, Math.min(19, Math.round(zoom)))
     readonly property real scale: Math.pow(2, zoom - tz)
     readonly property real ts: 256 * scale
@@ -94,7 +95,7 @@ Item {
             y: map.height / 2 + (ty * 256 - map.c.y) * map.scale
             width: Math.ceil(map.ts) + 1; height: width
             visible: ty >= 0 && ty < n
-            source: visible && map.online ? map.styleDef.url(map.tz, ((tx % n) + n) % n, ty) : ""
+            source: visible && map.online ? Api.withKey(map.styleDef.url(map.tz, ((tx % n) + n) % n, ty), map.cartoKey) : ""
             asynchronous: true
             smooth: true
         }
@@ -114,7 +115,7 @@ Item {
             y: map.height / 2 + (ty * 256 - map.c.y) * map.scale
             width: Math.ceil(map.ts) + 1; height: width
             visible: ty >= 0 && ty < n
-            source: visible && map.online ? map.styleDef.labels(map.tz, ((tx % n) + n) % n, ty) : ""
+            source: visible && map.online ? Api.withKey(map.styleDef.labels(map.tz, ((tx % n) + n) % n, ty), map.cartoKey) : ""
             asynchronous: true
             smooth: true
         }
