@@ -48,6 +48,16 @@
       "path": "patches/0009-window-level-abi.patch",
       "repository": "cocotron",
       "sha256": "ef49e1e2d60cffadc412393bb22b589070fdb02ec67aa16cae6f3aca99c3daef"
+    },
+    {
+      "path": "patches/0010-core-uti-fallback.patch",
+      "repository": "darling",
+      "sha256": "05b018124bbc277e9f21ba88e6f63ea18f3ccdcad542fac2ed047d703455ba71"
+    },
+    {
+      "path": "patches/0011-uti-document-types.patch",
+      "repository": "cocotron",
+      "sha256": "7811cd1eb91a432ffa74718316e9ac0a60b5257a9d3eb668949228b8e4380cc3"
     }
   ],
   "objc4_commit": "1a12df76d12bfc9fdfffadb290f7742763568765"

@@ -25,3 +25,9 @@ fi
   "$coco/AppKit/NSViewController.m" "$coco/AppKit/NSLayoutConstraint.m" \
   "$here/controller.m" -o "$temp/controller" "${libs[@]}"
 "$temp/controller"
+# Patch 0011: document types declared as UTIs (TextEdit, M3).
+"${CC:-clang}" "${flags[@]}" -I"$(gcc -print-file-name=include)" \
+  -I"$(dirname -- "$objc_library")/include" -L"$(dirname -- "$objc_library")" \
+  -I"$coco/AppKit" "$coco/AppKit/NSDocumentTypes.m" "$here/document-types.m" \
+  -o "$temp/document-types" "${libs[@]}"
+"$temp/document-types"

@@ -42,7 +42,8 @@ class DiagnosticsTests(unittest.TestCase):
             output = Path(folder)
             (output / 'xtrace').mkdir()
             (output / 'xtrace/session-1.101').write_text('\n'.join(f'call {i}' for i in range(200)) + '\n')
-            (output / 'xtrace/session-1.102').write_text('mach_msg_overwrite_trap()\n')
+            (output / 'xtrace/session-1.102').write_text('open("/x/GoldenGateNote.txt", O_RDONLY) -> 9\n'
+                                                         'mach_msg_overwrite_trap()\n')
             with patch('builtins.print') as printed:
                 textedit.print_diagnostics(output, lines=30)
             text = '\n'.join(str(call.args[0]) for call in printed.call_args_list)
@@ -50,6 +51,8 @@ class DiagnosticsTests(unittest.TestCase):
         self.assertIn('call 199', text)
         self.assertNotIn('call 189\n', text)
         self.assertIn('mach_msg_overwrite_trap()', text)
+        self.assertIn('xtrace document access (1 of 1 lines)', text)
+        self.assertIn('session-1.102: open("/x/GoldenGateNote.txt", O_RDONLY) -> 9', text)
 
 
 class WorkflowTests(unittest.TestCase):

@@ -18,6 +18,7 @@ on:
       - 'tests/darling-x11-close.py'
       - 'tests/darling-sincos.py'
       - 'tests/darling-window-levels.py'
+      - 'tests/darling-core-utis.py'
       - '.github/workflows/darling-gui.yml'
   pull_request:
     paths:
@@ -36,6 +37,7 @@ on:
       - 'tests/darling-x11-close.py'
       - 'tests/darling-sincos.py'
       - 'tests/darling-window-levels.py'
+      - 'tests/darling-core-utis.py'
       - '.github/workflows/darling-gui.yml'
   workflow_dispatch:
     inputs:
@@ -102,6 +104,10 @@ jobs:
         run: python3 tests/darling-sincos.py "$RUNNER_TEMP/darling"
       - name: Window level ABI regression
         run: python3 tests/darling-window-levels.py "$RUNNER_TEMP/darling"
+      - name: Core type identifier fallback (M3)
+        env:
+          CC: clang
+        run: python3 tests/darling-core-utis.py "$RUNNER_TEMP/darling"
       - name: Execute patched controller source
         run: bash tests/darling/run-host.sh "$RUNNER_TEMP/darling"
       - name: Compatibility evidence gates
@@ -115,7 +121,7 @@ jobs:
         run: python3 tests/darling-runtime.py
       - name: Compile Python and validate shell scripts
         run: |
-          python3 -m py_compile tools/darling/build.py tools/darling/compatibility.py tools/darling/test-textedit.py tests/darling-patches.py tests/darling-build-modes.py tests/darling-fsevents-build.py tests/darling-dyld-link.py tests/darling-sincos.py
+          python3 -m py_compile tools/darling/build.py tools/darling/compatibility.py tools/darling/test-textedit.py tests/darling-patches.py tests/darling-build-modes.py tests/darling-fsevents-build.py tests/darling-dyld-link.py tests/darling-sincos.py tests/darling-core-utis.py
           bash -n tests/darling/run-host.sh tools/darling/build-fixture.sh tools/darling/build-pip-tests.sh tools/darling/build-textedit.sh
 
   mac-fixture:

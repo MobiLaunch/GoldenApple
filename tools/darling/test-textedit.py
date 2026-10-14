@@ -69,7 +69,14 @@ def print_diagnostics(output, lines=150):
         text = path.read_text(errors="replace").splitlines()
         print(f"===== {path.name} (last {min(lines, len(text))} of {len(text)} lines) =====")
         print("\n".join(text[-lines:]))
-    for path in sorted((output / "xtrace").glob("session-*")):
+    traces = sorted((output / "xtrace").glob("session-*"))
+    # Whether TextEdit ever touched the document, wherever the thread ended.
+    access = [f"{path.name}: {line}" for path in traces
+              for line in path.read_text(errors="replace").splitlines() if Path(DOCUMENT).stem in line]
+    if traces:
+        print(f"===== xtrace document access ({min(lines // 3, len(access))} of {len(access)} lines) =====")
+        print("\n".join(access[:lines // 3]))
+    for path in traces:
         text = path.read_text(errors="replace").splitlines()
         print(f"===== xtrace {path.name} (last {min(lines // 3, len(text))} of {len(text)} lines) =====")
         print("\n".join(text[-(lines // 3):]))

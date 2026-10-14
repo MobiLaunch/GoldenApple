@@ -258,6 +258,20 @@ second save proves the reopened document loaded the first save.
 `tests/darling-textedit-harness.py` checks that logic with simulated X11 and
 processes.
 
+The first full-runtime run showed TextEdit idle in its run loop with no window:
+the `xtrace` rerun (`test-textedit.py --xtrace`, run automatically after a
+failure) showed launch completing normally. TextEdit declares its documents
+only as UTIs (`LSItemContentTypes`), and its default type is `public.text`.
+Pinned Cocotron matched `CFBundleTypeName` only, so neither the `-NSOpen` file
+nor an untitled document found a document class. The workspace UTI methods
+TextEdit calls were unimplemented, and Darling declares no core UTIs because it
+has no CoreTypes.bundle:
+
+| Patch | Repository | Change | Host test |
+| --- | --- | --- | --- |
+| `0010-core-uti-fallback` | darling | Built-in core UTI table (identifiers, parents, extensions); reflexive, transitive `UTTypeConformsTo` | `tests/darling-core-utis.py` |
+| `0011-uti-document-types` | cocotron | Document types match names or UTIs, by conformance; file UTIs come from LaunchServices; `MacWorkspace` UTI methods | `tests/darling/document-types.m` via `run-host.sh` |
+
 The CI step is non-blocking while M3 is in progress, so a TextEdit failure is
 recorded without hiding M1/M2 regressions. The first documents are ASCII plain
 text; rich text, UTF-8 encoding detection and the Save panel for untitled

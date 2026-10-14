@@ -1,0 +1,310 @@
+diff --git a/AppKit/CMakeLists.txt b/AppKit/CMakeLists.txt
+index 393a1eb..5e07c0e 100644
+--- a/AppKit/CMakeLists.txt
++++ b/AppKit/CMakeLists.txt
+@@ -283,6 +283,7 @@ set(AppKit_sources
+ 	NSAnimation/NSAnimationContext.m
+ 
+ 	NSDocumentController.m
++	NSDocumentTypes.m
+ 	NSStatusItem.m
+ 	NSShadow.m
+ 	NSPathComponentCell.m
+diff --git a/AppKit/MacWorkspace.m b/AppKit/MacWorkspace.m
+index ba52cd3..84a88a7 100644
+--- a/AppKit/MacWorkspace.m
++++ b/AppKit/MacWorkspace.m
+@@ -31,35 +31,59 @@
+ }
+ 
+ - (NSString *) localizedDescriptionForType: (NSString *) type {
+-    // TODO: call UTTypeCopyDescription()
+-    NSUnimplementedMethod();
+-    return NULL;
++    if (type == nil)
++        return nil;
++    NSString *description = (NSString *) UTTypeCopyDescription((CFStringRef) type);
++    return (description != nil) ? [description autorelease] : type;
+ }
+ 
+ - (BOOL) filenameExtension: (NSString *) extension
+             isValidForType: (NSString *) type
+ {
+-    // TODO: call UTTypeCreateAllIdentifiersForTag
+-    NSUnimplementedMethod();
+-    return NO;
++    if (extension == nil || type == nil)
++        return NO;
++    NSArray *types = (NSArray *) UTTypeCreateAllIdentifiersForTag(
++            kUTTagClassFilenameExtension, (CFStringRef) extension, NULL);
++    BOOL valid = NO;
++    for (NSString *candidate in types)
++        valid = valid || UTTypeConformsTo((CFStringRef) candidate, (CFStringRef) type);
++    [types release];
++    return valid;
+ }
+ 
+ - (NSString *) preferredFilenameExtensionForType: (NSString *) type {
+-    // TODO: call UTTypeCopyPreferredTagWithClass(kUTTagClassFilenameExtension)
+-    NSUnimplementedMethod();
+-    return NULL;
++    if (type == nil)
++        return nil;
++    return [(NSString *) UTTypeCopyPreferredTagWithClass(
++            (CFStringRef) type, kUTTagClassFilenameExtension) autorelease];
+ }
+ 
+ - (BOOL) type: (NSString *) type conformsToType: (NSString *) conformsToType {
+-    // TODO: call UTTypeConformsTo()
+-    NSUnimplementedMethod();
+-    return NO;
++    if (type == nil || conformsToType == nil)
++        return NO;
++    return UTTypeConformsTo((CFStringRef) type, (CFStringRef) conformsToType);
+ }
+ 
+ - (NSString *) typeOfFile: (NSString *) path error: (NSError **) error {
+-    // TODO: call LSCopyItemAttribute(kLSItemContentType)
+-    NSUnimplementedMethod();
+-    return NULL;
++    BOOL isDirectory = NO;
++    if (path == nil || ![[NSFileManager defaultManager] fileExistsAtPath: path
++                                                             isDirectory: &isDirectory]) {
++        if (error != NULL)
++            *error = [NSError errorWithDomain: NSCocoaErrorDomain
++                                         code: NSFileReadNoSuchFileError
++                                     userInfo: nil];
++        return nil;
++    }
++
++    NSString *extension = [path pathExtension];
++    NSString *type = nil;
++    if ([extension length] > 0)
++        type = [(NSString *) UTTypeCreatePreferredIdentifierForTag(
++                kUTTagClassFilenameExtension, (CFStringRef) extension,
++                isDirectory ? CFSTR("com.apple.package") : NULL) autorelease];
++    if (type == nil)
++        type = isDirectory ? @"public.folder" : @"public.data";
++    return type;
+ }
+ 
+ - (BOOL) openFile: (NSString *) path {
+diff --git a/AppKit/NSDocumentController.m b/AppKit/NSDocumentController.m
+index 70a33ff..27e09c2 100644
+--- a/AppKit/NSDocumentController.m
++++ b/AppKit/NSDocumentController.m
+@@ -26,7 +26,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
+ #import <AppKit/NSOpenPanel.h>
+ #import <AppKit/NSRaise.h>
+ #import <AppKit/NSWindowController.h>
++#import <AppKit/NSWorkspace.h>
+ #import <objc/runtime.h>
++#import "NSDocumentTypes.h"
++
++static BOOL workspaceConforms(NSString *type, NSString *parent) {
++    return [[NSWorkspace sharedWorkspace] type: type conformsToType: parent];
++}
+ 
+ @interface _NSUnsupportedDocument : NSObject
+ 
+@@ -134,11 +140,7 @@ static NSDocumentController *shared = nil;
+ }
+ 
+ - (NSString *) defaultType {
+-    if ([_fileTypes count] == 0)
+-        return nil;
+-
+-    return [(NSDictionary *) [_fileTypes objectAtIndex: 0]
+-            objectForKey: @"CFBundleTypeName"];
++    return _NSDocumentDefaultType(_fileTypes);
+ }
+ 
+ - (NSArray *) documentClassNames {
+@@ -157,16 +159,7 @@ static NSDocumentController *shared = nil;
+ }
+ 
+ - (NSDictionary *) _infoForType: (NSString *) type {
+-    int i, count = [_fileTypes count];
+-
+-    for (i = 0; i < count; i++) {
+-        NSDictionary *check = [_fileTypes objectAtIndex: i];
+-        NSString *name = [check objectForKey: @"CFBundleTypeName"];
+-
+-        if ([name isEqualToString: type])
+-            return check;
+-    }
+-    return nil;
++    return _NSDocumentTypeInfo(_fileTypes, type, workspaceConforms);
+ }
+ 
+ - (NSString *) displayNameForType: (NSString *) type {
+@@ -177,21 +170,23 @@ static NSDocumentController *shared = nil;
+ }
+ 
+ - (Class) documentClassForType: (NSString *) type {
+-    NSString *result = nil;
+-    for (NSDictionary *fileType in _fileTypes) {
+-        if ([type isEqualToString: [fileType objectForKey: @"CFBundleTypeName"]]) {
+-            result = [fileType objectForKey: @"NSDocumentClass"];
+-            break;
+-        }
+-    }
++    NSString *result = [[self _infoForType: type] objectForKey: @"NSDocumentClass"];
+ 
+     return (result == nil) ? nil : NSClassFromString(result);
+ }
+ 
+ - (NSArray *) fileExtensionsFromType: (NSString *) type {
+     NSDictionary *info = [self _infoForType: type];
+-
+-    return [info objectForKey: @"CFBundleTypeExtensions"];
++    NSArray *extensions = [info objectForKey: @"CFBundleTypeExtensions"];
++
++    if (extensions == nil && info != nil) {
++        // UTI declarations carry no extensions; LaunchServices knows them.
++        NSString *preferred = [[NSWorkspace sharedWorkspace]
++                preferredFilenameExtensionForType: type];
++        if (preferred != nil)
++            extensions = [NSArray arrayWithObject: preferred];
++    }
++    return extensions;
+ }
+ 
+ - (NSArray *) _allFileExtensions {
+@@ -296,25 +291,25 @@ static NSDocumentController *shared = nil;
+     if (![url isFileURL])
+         return nil;
+ 
+-    NSString *extension = [[url path] pathExtension];
+-    if (extension == nil)
+-        return nil;
+-
+-    NSString *UTI;
+-
+-    BOOL success = [url getResourceValue: &UTI
+-                                  forKey: NSURLTypeIdentifierKey
+-                                   error: error];
+-    if (!success) {
+-        return nil;
+-    }
+-
+-    for(NSDictionary *fileType in _fileTypes) {
+-        if ([[fileType objectForKey: @"LSItemContentTypes"] containsObject: UTI]) {
+-            return [fileType objectForKey: @"CFBundleTypeName"];
+-        }
++    NSString *path = [url path];
++    NSString *UTI = nil;
++
++    // Darling's CFURL does not report type identifiers; LaunchServices
++    // resolves the file's UTI from its extension instead.
++    if (![url getResourceValue: &UTI forKey: NSURLTypeIdentifierKey error: NULL] ||
++        UTI == nil)
++        UTI = [[NSWorkspace sharedWorkspace] typeOfFile: path error: NULL];
++
++    NSString *type = _NSDocumentTypeForUTI(_fileTypes, UTI, workspaceConforms);
++    if (type == nil)
++        type = [self typeFromFileExtension: [path pathExtension]];
++    if (type == nil && error != NULL) {
++        *error = [NSError errorWithDomain: NSCocoaErrorDomain
++                                     code: NSFileReadUnknownError
++                                 userInfo: [NSDictionary dictionaryWithObject: path
++                                                                       forKey: NSFilePathErrorKey]];
+     }
+-    return nil;
++    return type;
+ }
+ 
+ - makeDocumentWithContentsOfFile: (NSString *) path ofType: (NSString *) type {
+diff --git a/AppKit/NSDocumentTypes.h b/AppKit/NSDocumentTypes.h
+new file mode 100644
+index 0000000..8c22834
+--- /dev/null
++++ b/AppKit/NSDocumentTypes.h
+@@ -0,0 +1,19 @@
++#import <Foundation/Foundation.h>
++
++// Document types from CFBundleDocumentTypes. Since Mac OS X 10.5 a type is
++// either a CFBundleTypeName or, for entries with LSItemContentTypes, a UTI;
++// apps such as TextEdit use UTIs exclusively.
++typedef BOOL (*NSDocumentTypeConformance)(NSString *type, NSString *parent);
++
++// The declaration for a type: an exact name or UTI first, then the first
++// declared UTI the type conforms to (conforms may be NULL).
++NSDictionary *_NSDocumentTypeInfo(NSArray *fileTypes, NSString *type,
++                                  NSDocumentTypeConformance conforms);
++
++// The document type for a file's UTI: the UTI itself when its declaration
++// uses UTIs, else that declaration's name; nil when no declaration accepts it.
++NSString *_NSDocumentTypeForUTI(NSArray *fileTypes, NSString *uti,
++                                NSDocumentTypeConformance conforms);
++
++// The first Editor type, as a UTI when declared with LSItemContentTypes.
++NSString *_NSDocumentDefaultType(NSArray *fileTypes);
+diff --git a/AppKit/NSDocumentTypes.m b/AppKit/NSDocumentTypes.m
+new file mode 100644
+index 0000000..6d50426
+--- /dev/null
++++ b/AppKit/NSDocumentTypes.m
+@@ -0,0 +1,62 @@
++#import "NSDocumentTypes.h"
++
++static NSArray *contentTypes(NSDictionary *info) {
++    id types = [info objectForKey: @"LSItemContentTypes"];
++    return [types isKindOfClass: [NSArray class]] ? types : nil;
++}
++
++static BOOL declaresType(NSDictionary *info, NSString *type) {
++    if ([type isEqualToString: [info objectForKey: @"CFBundleTypeName"]])
++        return YES;
++    // UTIs compare case-insensitively, like UTTypeEqual.
++    for (NSString *uti in contentTypes(info))
++        if ([uti caseInsensitiveCompare: type] == NSOrderedSame)
++            return YES;
++    return NO;
++}
++
++NSDictionary *_NSDocumentTypeInfo(NSArray *fileTypes, NSString *type,
++                                  NSDocumentTypeConformance conforms)
++{
++    if (type == nil)
++        return nil;
++    for (NSDictionary *info in fileTypes)
++        if (declaresType(info, type))
++            return info;
++    if (conforms == NULL)
++        return nil;
++    for (NSDictionary *info in fileTypes)
++        for (NSString *uti in contentTypes(info))
++            if (conforms(type, uti))
++                return info;
++    return nil;
++}
++
++NSString *_NSDocumentTypeForUTI(NSArray *fileTypes, NSString *uti,
++                                NSDocumentTypeConformance conforms)
++{
++    NSDictionary *info = _NSDocumentTypeInfo(fileTypes, uti, conforms);
++    if (info == nil)
++        return nil;
++    if ([contentTypes(info) count] > 0)
++        return uti;
++    return [info objectForKey: @"CFBundleTypeName"];
++}
++
++NSString *_NSDocumentDefaultType(NSArray *fileTypes) {
++    NSDictionary *chosen = nil;
++    for (NSDictionary *info in fileTypes) {
++        NSString *role = [info objectForKey: @"CFBundleTypeRole"];
++        if (role == nil || [role isEqualToString: @"Editor"]) {
++            chosen = info;
++            break;
++        }
++    }
++    if (chosen == nil && [fileTypes count] > 0)
++        chosen = [fileTypes objectAtIndex: 0];
++
++    NSArray *utis = contentTypes(chosen);
++    if ([utis count] > 0)
++        return [utis objectAtIndex: 0];
++    return [chosen objectForKey: @"CFBundleTypeName"];
++}

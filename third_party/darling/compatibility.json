@@ -84,8 +84,10 @@
       "checks": [
         {
           "id": "intel-textedit-build",
-          "status": "pending",
-          "evidence": []
+          "status": "passed",
+          "evidence": [
+            "https://github.com/MobiLaunch/GoldenApple/actions/runs/38654144129/job/116159778625"
+          ]
         },
         {
           "id": "darling-document-workflow",
@@ -98,7 +100,12 @@
         "docs/DARLING-ROADMAP.md",
         "tools/darling/build-textedit.sh",
         "tools/darling/test-textedit.py",
-        "tests/darling-textedit-harness.py"
+        "tests/darling-textedit-harness.py",
+        "third_party/darling/patches/0010-core-uti-fallback.patch",
+        "third_party/darling/patches/0011-uti-document-types.patch",
+        "tests/darling-core-utis.py",
+        "tests/darling/core-utis.c",
+        "tests/darling/document-types.m"
       ]
     },
     {
@@ -174,7 +181,7 @@
       "status": "unverified",
       "milestone": "M3",
       "blockers": [
-        "Existing upstream target needs build and document-workflow validation."
+        "Document workflow is not yet validated under Darling: the pinned runtime opened no window because Cocotron resolved document types by name only and Darling declares no core UTIs; patches 0010 and 0011 address this and await a full-runtime run."
       ]
     },
     {
