@@ -85,11 +85,15 @@ Item {
             const grey = sky.kind.startsWith("rain") || sky.kind.startsWith("storm") ? 0.55
                        : sky.night ? 0.45 : 1
             // Clouds are clusters of soft blobs, thicker towards the top of the sky.
+            // Blobs scale with the sky's area, so a sidebar card has the same
+            // cover as the window instead of hundreds of full-size blobs piling
+            // up into a white box.
+            const scale = Math.min(1, Math.sqrt(w * h / (900 * 700)))
             const clusters = Math.round(6 + cover * 22) * Math.max(1, w / 900)
             for (let c = 0; c < clusters; c++) {
                 const cx = rand() * w * 1.1 - w * 0.05
                 const cy = Math.pow(rand(), 1.4) * h * (sky.kind.startsWith("fog") ? 1 : 0.85)
-                const size = 60 + rand() * 170
+                const size = (60 + rand() * 170) * scale
                 const blobs = 5 + Math.floor(rand() * 7)
                 for (let b = 0; b < blobs; b++) {
                     const bx = cx + (rand() - 0.5) * size * 2.2

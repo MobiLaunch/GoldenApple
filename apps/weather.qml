@@ -28,12 +28,15 @@ ShellRoot {
         fullSizeContent: true
         forceDark: true              // white text and glass whatever the appearance
         sidebarWidth: app.sidebarOpen ? 262 : 0
-        background: sky.palette[1]
+        background: sky.skyPalette[1]
 
         toolbarLeft: [
             ToolbarButton {
                 round: true; symbol: "sidebar"; tone: "white"
-                glassColor: "#2effffff"; checked: app.sidebarOpen
+                // Dark glass under a white symbol: when there is no GPU, or with
+                // Reduce Transparency, the tint is raised toward opaque, and a
+                // white tint then hid the symbol in a white disc.
+                glassColor: "#4d16202c"; checked: app.sidebarOpen
                 onClicked: app.sidebarOpen = !app.sidebarOpen
             }
         ]
@@ -518,7 +521,7 @@ ShellRoot {
                 width: parent.width; height: win.toolbarHeight + 16 + (header.height - 30) * header.fold
                 radius: win.contentX > 0 ? 0 : Theme.radiusWindow
                 opacity: Math.min(1, scroller.contentY / 40)
-                readonly property color edge: Qt.darker(sky.palette[0], 1.0)
+                readonly property color edge: Qt.darker(sky.skyPalette[0], 1.0)
                 gradient: Gradient {
                     GradientStop { position: 0; color: Qt.rgba(edgeFade.edge.r, edgeFade.edge.g, edgeFade.edge.b, 1) }
                     GradientStop { position: 0.55; color: Qt.rgba(edgeFade.edge.r, edgeFade.edge.g, edgeFade.edge.b, 0.8) }
