@@ -48,10 +48,21 @@ def visible_windows():
 
 def print_diagnostics(output, lines=150):
     """CI artifacts are not always reachable; put the key evidence in the job log."""
-    for path in sorted(output.glob("session-*.log")) + sorted(output.glob("live-backtrace*.log")):
+    for path in sorted(output.glob("session-*.log")):
         text = path.read_text(errors="replace").splitlines()
         print(f"===== {path.name} (last {min(lines, len(text))} of {len(text)} lines) =====")
         print("\n".join(text[-lines:]))
+    processes = output / "live-processes.log"
+    if processes.exists():
+        print("===== Darling processes =====")
+        print("\n".join(line for line in processes.read_text(errors="replace").splitlines()
+                        if "darling" in line.lower() or "TextEdit" in line or "launchd" in line))
+    for path in sorted(output.glob("live-backtrace*.log")):
+        # Thread stacks come first; the memory map that follows is in the artifact.
+        text = path.read_text(errors="replace").splitlines()
+        end = next((i for i, line in enumerate(text) if "Mapped address spaces" in line), len(text))
+        print(f"===== {path.name} (thread stacks, {min(end, 4 * lines)} of {len(text)} lines) =====")
+        print("\n".join(text[:min(end, 4 * lines)]))
 
 
 def run_session(number, binary, document, env, output, result):
