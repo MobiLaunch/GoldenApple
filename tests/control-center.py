@@ -249,7 +249,7 @@ class GoldenGateControls(harness.Harness):
             self.assertEqual(grid.property('scale'), 1)
             self.assertEqual(self.eval(first, 'mapToItem(null,width/2,height/2)'), center)
             self.assertIs(first, self.find('launchpadIcon:org.goldengate.Files'))
-        self.eval(apps, 'customIcons={}; userApps={}; scanned=false')
+        self.eval(apps, 'approvedIcons={}; iconCatalogReady=false')
         self.assertEqual(self.eval(apps, 'entries.map(e=>e.id).join()'), entries)
         apps.setProperty('query', 'Music')
         QTest.qWait(30)
