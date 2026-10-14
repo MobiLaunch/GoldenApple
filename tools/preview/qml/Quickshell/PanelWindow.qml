@@ -24,6 +24,8 @@ Surface {
     __glass: PreviewDesktop.glass.includes(WlrLayershell.namespace)
     __threshold: PreviewDesktop.thresholds[WlrLayershell.namespace] ?? 0.07
 
-    Component.onCompleted: { PreviewDesktop.register(panel); if (__preview.env["GG_PREVIEW_DEBUG"]) console.log("panel", WlrLayershell.namespace, width, height, __sw, margins.left, __top, __bottom, implicitHeight, __x, __y) }
+    // The lock preview stands in for ext-session-lock, above every layer
+    // surface; on its own layer it would sit under the Overlay menu bar and Dock.
+    Component.onCompleted: { if (WlrLayershell.namespace === "gg-lock-preview") __frame.z = 1; PreviewDesktop.register(panel); if (__preview.env["GG_PREVIEW_DEBUG"]) console.log("panel", WlrLayershell.namespace, width, height, __sw, margins.left, __top, __bottom, implicitHeight, __x, __y) }
     Component.onDestruction: PreviewDesktop.unregister(panel)
 }

@@ -12,10 +12,7 @@ ShellRoot {
     id: root
     // The shell's own output goes to ~/.local/state/golden-gate-shell.log;
     // the journal (and the ISO boot test, over the serial console) hears this.
-    Component.onCompleted: {
-        Quickshell.execDetached(["logger", "-t", "gg-shell", "desktop ready"])
-        if (Quickshell.env("GG_LOCK_PREVIEW") === "1") Qt.callLater(() => lockPreview.active = true)
-    }
+    Component.onCompleted: Quickshell.execDetached(["logger", "-t", "gg-shell", "desktop ready"])
     // One AppLaunch per screen; Spotlight picks the one on its own screen.
     property var launchers: []
     // Launchpad (F4, or the Dock's Applications), on the focused screen.
@@ -193,6 +190,7 @@ ShellRoot {
     Switcher {}
     // Loaded separately so a Quickshell built without PAM still runs the shell.
     LazyLoader { active: true; source: "LockScreen.qml" }
+    LazyLoader { active: Quickshell.env("GG_LOCK_PREVIEW") === "1"; source: "LockPreview.qml" }
 
     Variants {
         model: Quickshell.screens
@@ -260,10 +258,5 @@ ShellRoot {
             if (on === "1") Hyprland.dispatch("movetoworkspacesilent special:minimized,address:" + (addr.startsWith("0x") ? addr : "0x" + addr))
         }
     }
-
-    // Created after startup so the preview maps above the menu bar and Dock,
-    // which share its Overlay layer. The real lock uses ext-session-lock,
-    // above every layer, and needs no such ordering.
-    LazyLoader { id: lockPreview; source: "LockPreview.qml" }
 }
 
