@@ -58,11 +58,52 @@ def print_diagnostics(output, lines=150):
         print("\n".join(line for line in processes.read_text(errors="replace").splitlines()
                         if "darling" in line.lower() or "TextEdit" in line or "launchd" in line))
     for path in sorted(output.glob("live-backtrace*.log")):
-        # Thread stacks come first; the memory map that follows is in the artifact.
         text = path.read_text(errors="replace").splitlines()
         end = next((i for i, line in enumerate(text) if "Mapped address spaces" in line), len(text))
         print(f"===== {path.name} (thread stacks, {min(end, 4 * lines)} of {len(text)} lines) =====")
-        print("\n".join(text[:min(end, 4 * lines)]))
+        print("\n".join(symbolize(text[:min(end, 4 * lines)], mappings(text[end:]))))
+
+
+def mappings(lines):
+    """gdb's `info proc mappings`: (start, end, file offset, path) for files."""
+    found = []
+    for line in lines:
+        fields = line.split()
+        if len(fields) >= 6 and fields[0].startswith("0x") and fields[-1].startswith("/"):
+            try:
+                found.append((int(fields[0], 16), int(fields[1], 16), int(fields[3], 16), fields[-1]))
+            except ValueError:
+                continue
+    return found
+
+
+def symbolize(stack, maps):
+    """gdb cannot read Darling's Mach-O images; name frames as image+offset
+    and, where llvm-symbolizer can read the image, its function."""
+    tool = shutil.which("llvm-symbolizer") or next(
+        (p for p in sorted(Path("/usr/bin").glob("llvm-symbolizer-*"), reverse=True)), None)
+    out = []
+    for line in stack:
+        parts = line.split()
+        if len(parts) >= 2 and parts[0].startswith("#") and parts[1].startswith("0x"):
+            address = int(parts[1], 16)
+            hit = next(((start, offset, image) for start, end, offset, image in maps
+                        if start <= address < end), None)
+            if hit:
+                start, offset, image = hit
+                # A dylib's __TEXT maps from file offset 0 at vmaddr 0.
+                vm = address - start + offset
+                name = ""
+                if tool:
+                    try:
+                        resolved = subprocess.run([str(tool), "--obj=" + image, hex(vm)], capture_output=True,
+                                                  text=True, timeout=10).stdout.split("\n")[0].strip()
+                        name = "" if resolved in ("", "??") else " " + resolved
+                    except (OSError, subprocess.TimeoutExpired):
+                        pass
+                line = f"{line}  <{Path(image).name}+{hex(vm)}{name}>"
+        out.append(line)
+    return out
 
 
 def run_session(number, binary, document, env, output, result):
