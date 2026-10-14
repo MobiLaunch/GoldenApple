@@ -304,6 +304,7 @@ jobs:
           name: Darling-TextEdit-Intel
           path: ${{ runner.temp }}/darling-textedit
       - name: TextEdit document workflow (M3, in progress)
+        id: textedit
         if: always() && steps.install.outcome == 'success'
         # M3 is not yet validated. Its result is recorded and uploaded, but
         # does not mask M1/M2 regressions in this job's status.
@@ -315,11 +316,24 @@ jobs:
             --app "$RUNNER_TEMP/darling-textedit/TextEdit.app" \
             --prefix "$RUNNER_TEMP/darling-textedit-prefix" \
             --output "$RUNNER_TEMP/darling-textedit-results"
+      - name: TextEdit xtrace diagnostic (M3)
+        # Only after a failure: trace the same workflow's syscalls and Mach
+        # messages per thread so the job log shows where TextEdit stops.
+        if: always() && steps.textedit.outcome == 'failure'
+        continue-on-error: true
+        timeout-minutes: 8
+        run: |
+          xvfb-run -a -s "-screen 0 1280x1024x24 -nolisten tcp -extension MIT-SHM" python3 tools/darling/test-textedit.py \
+            --app "$RUNNER_TEMP/darling-textedit/TextEdit.app" \
+            --prefix "$RUNNER_TEMP/darling-textedit-xtrace-prefix" \
+            --output "$RUNNER_TEMP/darling-textedit-xtrace" --xtrace
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: Darling-TextEdit-results
-          path: ${{ runner.temp }}/darling-textedit-results
+          path: |
+            ${{ runner.temp }}/darling-textedit-results
+            ${{ runner.temp }}/darling-textedit-xtrace
       - uses: actions/upload-artifact@v4
         if: always()
         with:

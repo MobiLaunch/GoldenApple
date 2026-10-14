@@ -46,12 +46,33 @@ def visible_windows():
     return windows
 
 
+def launch_command(binary, document, output, number, xtrace):
+    """The Darling launcher command and extra environment for one session.
+
+    With xtrace, Darling's libxtrace logs every BSD syscall and Mach message
+    per thread, so a hang shows the last call each thread made."""
+    target = ["/Volumes/SystemRoot" + str(binary), "-NSOpen", "/Volumes/SystemRoot" + str(document)]
+    if not xtrace:
+        return ["darling", str(binary), *target[1:]], {}
+    logs = output / "xtrace"
+    logs.mkdir(exist_ok=True)
+    return ["darling", "shell", "xtrace", *target], {
+        "XTRACE_NO_COLOR": "1",
+        "XTRACE_LOG_FILE": f"/Volumes/SystemRoot{logs}/session-{number}",
+        "XTRACE_LOG_FILE_PER_THREAD": "1",
+    }
+
+
 def print_diagnostics(output, lines=150):
     """CI artifacts are not always reachable; put the key evidence in the job log."""
     for path in sorted(output.glob("session-*.log")):
         text = path.read_text(errors="replace").splitlines()
         print(f"===== {path.name} (last {min(lines, len(text))} of {len(text)} lines) =====")
         print("\n".join(text[-lines:]))
+    for path in sorted((output / "xtrace").glob("session-*")):
+        text = path.read_text(errors="replace").splitlines()
+        print(f"===== xtrace {path.name} (last {min(lines // 3, len(text))} of {len(text)} lines) =====")
+        print("\n".join(text[-(lines // 3):]))
     processes = output / "live-processes.log"
     if processes.exists():
         print("===== Darling processes =====")
@@ -106,14 +127,15 @@ def symbolize(stack, maps):
     return out
 
 
-def run_session(number, binary, document, env, output, result):
+def run_session(number, binary, document, env, output, result, xtrace=False):
     """Open, edit, save and quit once; return the saved text."""
     before = document.read_text()
     marker = f" [session {number} {time.monotonic_ns()}]"
     tag = f"session-{number}"
+    command, extra = launch_command(binary, document, output, number, xtrace)
     with (output / f"{tag}.log").open("w") as log:
-        process = subprocess.Popen(["darling", str(binary), "-NSOpen", "/Volumes/SystemRoot" + str(document)],
-                                   env=env, stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
+        process = subprocess.Popen(command, env={**env, **extra}, stdout=log, stderr=subprocess.STDOUT,
+                                   start_new_session=True)
     result["sessions"].append({"session": number, "marker": marker})
     session = result["sessions"][-1]
     try:
@@ -214,6 +236,8 @@ def main():
     parser.add_argument("--app", required=True, type=Path)
     parser.add_argument("--prefix", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
+    parser.add_argument("--xtrace", action="store_true",
+                        help="Diagnose: trace syscalls and Mach messages per thread (slow)")
     args = parser.parse_args()
     app, prefix, output = args.app.resolve(), args.prefix.resolve(), args.output.resolve()
     if not os.environ.get("DISPLAY"):
@@ -232,12 +256,13 @@ def main():
     document = documents / DOCUMENT
     document.write_text(BASELINE)
     env = {**os.environ, "DPREFIX": str(prefix)}
-    result = {"passed": False, "checks": [], "binary": str(binary), "phase": "startup", "sessions": []}
+    result = {"passed": False, "checks": [], "binary": str(binary), "phase": "startup", "sessions": [],
+              "xtrace": args.xtrace}
     try:
-        run_session(1, binary, document, env, output, result)
+        run_session(1, binary, document, env, output, result, args.xtrace)
         # Session 2's save must equal session 1's save plus one marker, so it
         # proves the reopened document loaded the saved contents intact.
-        run_session(2, binary, document, env, output, result)
+        run_session(2, binary, document, env, output, result, args.xtrace)
         result["checks"].append("reopened-without-data-loss")
         result["phase"] = "complete"
         result["passed"] = True

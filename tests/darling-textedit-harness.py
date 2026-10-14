@@ -36,13 +36,29 @@ class MarkerTests(unittest.TestCase):
         self.assertFalse(textedit.marker_inserted('one\n', 'one\n', '[m]'))
 
 
+class DiagnosticsTests(unittest.TestCase):
+    def test_xtrace_tail_of_every_thread_reaches_the_job_log(self):
+        with tempfile.TemporaryDirectory() as folder:
+            output = Path(folder)
+            (output / 'xtrace').mkdir()
+            (output / 'xtrace/session-1.101').write_text('\n'.join(f'call {i}' for i in range(200)) + '\n')
+            (output / 'xtrace/session-1.102').write_text('mach_msg_overwrite_trap()\n')
+            with patch('builtins.print') as printed:
+                textedit.print_diagnostics(output, lines=30)
+            text = '\n'.join(str(call.args[0]) for call in printed.call_args_list)
+        self.assertIn('xtrace session-1.101 (last 10 of 200 lines)', text)
+        self.assertIn('call 199', text)
+        self.assertNotIn('call 189\n', text)
+        self.assertIn('mach_msg_overwrite_trap()', text)
+
+
 class WorkflowTests(unittest.TestCase):
-    def run_workflow(self, save=True, lose_content=False, quit_code=0):
+    def run_workflow(self, save=True, lose_content=False, quit_code=0, xtrace=False):
         launches = []
 
         class Process:
             def __init__(self, command, **kwargs):
-                self.command, self.code = command, None
+                self.command, self.env, self.code = command, kwargs['env'], None
                 launches.append(self)
             def poll(self): return self.code
             def wait(self, timeout=None):
@@ -78,7 +94,7 @@ class WorkflowTests(unittest.TestCase):
             binary.parent.mkdir(parents=True)
             binary.write_text('')
             argv = ['test-textedit.py', '--app', str(root / 'TextEdit.app'),
-                    '--prefix', str(root / 'prefix'), '--output', str(root / 'out')]
+                    '--prefix', str(root / 'prefix'), '--output', str(root / 'out')] + (['--xtrace'] if xtrace else [])
             with patch.object(sys, 'argv', argv), \
                     patch.dict(textedit.os.environ, {'DISPLAY': ':99'}), \
                     patch.object(textedit.shutil, 'which', return_value='/usr/bin/tool'), \
@@ -92,6 +108,8 @@ class WorkflowTests(unittest.TestCase):
                 code = textedit.main()
             result = json.loads((root / 'out/result.json').read_text())
             final = (root / 'out/documents' / textedit.DOCUMENT).read_text()
+            self.launches = launches
+            self.root = root
             return code, result, final, len(launches)
 
     @staticmethod
@@ -122,6 +140,24 @@ class WorkflowTests(unittest.TestCase):
         code, result, _, _ = self.run_workflow(lose_content=True)
         self.assertEqual(code, 1)
         self.assertIn('lost or changed', result['error'])
+
+    def test_plain_run_does_not_trace(self):
+        self.run_workflow()
+        self.assertEqual(self.launches[0].command[:2], ['darling', str(self.root / 'TextEdit.app/Contents/MacOS/TextEdit')])
+        self.assertNotIn('XTRACE_LOG_FILE', self.launches[0].env)
+
+    def test_xtrace_traces_each_session_per_thread(self):
+        code, result, _, _ = self.run_workflow(xtrace=True)
+        self.assertEqual(code, 0)
+        self.assertTrue(result['xtrace'])
+        logs = self.root / 'out/xtrace'
+        for number, launch in enumerate(self.launches, 1):
+            self.assertEqual(launch.command[:4], ['darling', 'shell', 'xtrace',
+                             '/Volumes/SystemRoot' + str(self.root / 'TextEdit.app/Contents/MacOS/TextEdit')])
+            self.assertEqual(launch.command[4], '-NSOpen')
+            self.assertEqual(launch.env['XTRACE_LOG_FILE'], f'/Volumes/SystemRoot{logs}/session-{number}')
+            self.assertEqual(launch.env['XTRACE_LOG_FILE_PER_THREAD'], '1')
+            self.assertEqual(launch.env['XTRACE_NO_COLOR'], '1')
 
     def test_nonzero_quit_fails(self):
         code, result, _, _ = self.run_workflow(quit_code=6)
