@@ -239,6 +239,30 @@ test also verifies that another target keeps ordinary table generation and that
 193 native register-name results agree before and after the compiler workaround.
 This is a focused codegen/link test, not a full dyld build or execution result.
 
+## M3 TextEdit workflow
+
+The pinned Darling tree carries Apple's open-source TextEdit sample at
+`src/external/TextEdit`, but upstream has its CMake target disabled and installs
+no app bundle. `tools/darling/build-textedit.sh` builds that exact source
+revision (the submodule commit recorded by the locked Darling commit, so the
+runtime source lock is unchanged) as an unchanged x86_64 Mac app with Apple's
+SDK. Its nibs are already compiled in the source; no Interface Builder step is
+needed. The macOS job also launches it natively once as a sanity check.
+
+`tools/darling/test-textedit.py` runs two Darling sessions on the same plain
+text file outside the prefix, passed as `-NSOpen`: open, type a unique marker,
+Command-S, Command-Q with exit 0, then reopen and repeat. Each saved file must
+equal the previous contents with exactly that session's marker inserted, so a
+lost, truncated or replaced document fails wherever the caret lands; the
+second save proves the reopened document loaded the first save.
+`tests/darling-textedit-harness.py` checks that logic with simulated X11 and
+processes.
+
+The CI step is non-blocking while M3 is in progress, so a TextEdit failure is
+recorded without hiding M1/M2 regressions. The first documents are ASCII plain
+text; rich text, UTF-8 encoding detection and the Save panel for untitled
+documents are follow-on checks, not covered by this gate.
+
 ## Recording a compatibility failure
 
 Record the app version and executable architecture, source lock/runtime package,

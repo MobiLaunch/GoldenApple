@@ -76,12 +76,17 @@
     {
       "id": "M3",
       "name": "TextEdit document workflow",
-      "status": "planned",
+      "status": "in-progress",
       "requires": [
         "M1"
       ],
       "goal": "Open an existing document, edit, save, close and reopen without data loss.",
       "checks": [
+        {
+          "id": "intel-textedit-build",
+          "status": "pending",
+          "evidence": []
+        },
         {
           "id": "darling-document-workflow",
           "status": "pending",
@@ -89,7 +94,11 @@
         }
       ],
       "files": [
-        "docs/DARLING-GUI-M1.md"
+        "docs/DARLING-GUI-M1.md",
+        "docs/DARLING-ROADMAP.md",
+        "tools/darling/build-textedit.sh",
+        "tools/darling/test-textedit.py",
+        "tests/darling-textedit-harness.py"
       ]
     },
     {

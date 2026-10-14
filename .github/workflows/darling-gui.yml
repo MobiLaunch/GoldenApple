@@ -14,6 +14,7 @@ on:
       - 'tests/darling-dyld-link.py'
       - 'tests/darling-gui-harness.py'
       - 'tests/darling-pip-harness.py'
+      - 'tests/darling-textedit-harness.py'
       - 'tests/darling-x11-close.py'
       - 'tests/darling-sincos.py'
       - 'tests/darling-window-levels.py'
@@ -31,6 +32,7 @@ on:
       - 'tests/darling-dyld-link.py'
       - 'tests/darling-gui-harness.py'
       - 'tests/darling-pip-harness.py'
+      - 'tests/darling-textedit-harness.py'
       - 'tests/darling-x11-close.py'
       - 'tests/darling-sincos.py'
       - 'tests/darling-window-levels.py'
@@ -108,12 +110,13 @@ jobs:
         run: |
           python3 tests/darling-gui-harness.py
           python3 tests/darling-pip-harness.py
+          python3 tests/darling-textedit-harness.py
       - name: Runtime packaging rejection checks
         run: python3 tests/darling-runtime.py
       - name: Compile Python and validate shell scripts
         run: |
-          python3 -m py_compile tools/darling/build.py tools/darling/compatibility.py tests/darling-patches.py tests/darling-build-modes.py tests/darling-fsevents-build.py tests/darling-dyld-link.py tests/darling-sincos.py
-          bash -n tests/darling/run-host.sh tools/darling/build-fixture.sh tools/darling/build-pip-tests.sh
+          python3 -m py_compile tools/darling/build.py tools/darling/compatibility.py tools/darling/test-textedit.py tests/darling-patches.py tests/darling-build-modes.py tests/darling-fsevents-build.py tests/darling-dyld-link.py tests/darling-sincos.py
+          bash -n tests/darling/run-host.sh tools/darling/build-fixture.sh tools/darling/build-pip-tests.sh tools/darling/build-textedit.sh
 
   mac-fixture:
     runs-on: macos-15
@@ -139,6 +142,25 @@ jobs:
         with:
           name: Darling-PIPLab-Intel
           path: ${{ runner.temp }}/pip-tests/PIPLab.zip
+      - name: Build Darling's TextEdit as an Intel Mac app
+        run: bash tools/darling/build-textedit.sh "$RUNNER_TEMP/TextEdit.app"
+      - name: Verify TextEdit architecture and native launch
+        run: |
+          lipo "$RUNNER_TEMP/TextEdit.app/Contents/MacOS/TextEdit" -verify_arch x86_64
+          printf 'Native launch check\n' > "$RUNNER_TEMP/GoldenGateNote.txt"
+          "$RUNNER_TEMP/TextEdit.app/Contents/MacOS/TextEdit" -NSOpen "$RUNNER_TEMP/GoldenGateNote.txt" \
+            > "$RUNNER_TEMP/textedit-native.log" 2>&1 &
+          pid=$!
+          sleep 10
+          cat "$RUNNER_TEMP/textedit-native.log"
+          kill -0 "$pid" || { wait "$pid"; echo "TextEdit exited during native launch: $?"; exit 1; }
+          kill "$pid"
+      - name: Package TextEdit preserving executable permissions
+        run: ditto -c -k --keepParent "$RUNNER_TEMP/TextEdit.app" "$RUNNER_TEMP/TextEdit.zip"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Darling-TextEdit-Intel
+          path: ${{ runner.temp }}/TextEdit.zip
 
   full-runtime:
     if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && (inputs.full_runtime || inputs.runtime_run != ''))
@@ -276,6 +298,28 @@ jobs:
         with:
           name: Darling-PIP-results
           path: ${{ runner.temp }}/darling-pip-results
+      - uses: actions/download-artifact@v4
+        if: always() && steps.install.outcome == 'success'
+        with:
+          name: Darling-TextEdit-Intel
+          path: ${{ runner.temp }}/darling-textedit
+      - name: TextEdit document workflow (M3, in progress)
+        if: always() && steps.install.outcome == 'success'
+        # M3 is not yet validated. Its result is recorded and uploaded, but
+        # does not mask M1/M2 regressions in this job's status.
+        continue-on-error: true
+        timeout-minutes: 8
+        run: |
+          unzip -q "$RUNNER_TEMP/darling-textedit/TextEdit.zip" -d "$RUNNER_TEMP/darling-textedit"
+          xvfb-run -a -s "-screen 0 1280x1024x24 -nolisten tcp -extension MIT-SHM" python3 tools/darling/test-textedit.py \
+            --app "$RUNNER_TEMP/darling-textedit/TextEdit.app" \
+            --prefix "$RUNNER_TEMP/darling-textedit-prefix" \
+            --output "$RUNNER_TEMP/darling-textedit-results"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Darling-TextEdit-results
+          path: ${{ runner.temp }}/darling-textedit-results
       - uses: actions/upload-artifact@v4
         if: always()
         with:
