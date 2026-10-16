@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CitronOS Desktop</title>
+  <meta name="description" content="Reference implementation of the CitronOS desktop shell: Liquid Glass menu bar, Control Center, Dock, Files, Photos and Settings.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,100..900&family=JetBrains+Mono:wght@400;600&display=swap">
+  <link rel="stylesheet" href="assets/tokens.css">
+  <link rel="stylesheet" href="css/shell.css">
+  <link rel="stylesheet" href="css/window.css">
+  <link rel="stylesheet" href="css/apps.css">
+  <link rel="stylesheet" href="css/apps2.css">
+  <link rel="stylesheet" href="css/polish.css">
+  <style>:root { --font-ui: "Inter", "Inter Variable", system-ui, sans-serif; --font-display: "Inter", "Inter Variable", system-ui, sans-serif; --font-mono: "JetBrains Mono", ui-monospace, monospace; }</style>
+</head>
+<body>
+  <main id="desktop">
+    <div id="wallpaper"></div>
+    <div id="desktop-icons"></div>
+    <div id="windows"></div>
+    <header id="menubar"></header>
+    <div id="dock-wrap"><nav id="dock" aria-label="Dock"></nav></div>
+    <div id="flash"></div>
+  </main>
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

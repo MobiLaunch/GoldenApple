@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE policyconfig PUBLIC "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN"
+ "http://www.freedesktop.org/standards/PolicyKit/1/policyconfig.dtd">
+<!-- Settings › General › Software Update installs updates with this one
+     helper. 49-golden-gate-update.rules lets an administrator at the computer
+     run it without a password, so updating is one click; anyone else is
+     asked for an administrator's password. -->
+<policyconfig>
+  <vendor>CitronOS</vendor>
+  <action id="org.goldengate.update">
+    <description>Install software updates</description>
+    <message>Software Update wants to install updates.</message>
+    <icon_name>system-software-update</icon_name>
+    <defaults>
+      <allow_any>auth_admin</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/share/golden-gate/apps/settings/update-helper.py</annotate>
+  </action>
+</policyconfig>

@@ -1,0 +1,528 @@
+/* CitronOS for GTK 4 / libadwaita (1.6+).
+ *
+ * Appended to the colour variables that design/build.mjs generates from
+ * tokens.json (--gg-* and libadwaita's own), and installed as
+ * ~/.config/gtk-4.0/gtk.css. User CSS outranks the libadwaita stylesheet
+ * whatever the selector specificity, so rules here can stay short.
+ *
+ * Metrics follow the browser prototype (prototype/css/window.css), which is
+ * the spec: 13 px text, 52 px toolbar with 36 px glass pills, 13 px traffic
+ * lights 8 px apart, a sidebar floating 8 px inside the window, 26 px capsule
+ * buttons, 26 px menu items, 38 × 22 switches.
+ */
+
+/* ------------------------------------------------------------------ type */
+:root { font-size: 13px; }
+.title-1 { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; }
+.title-2 { font-size: 22px; font-weight: 700; letter-spacing: -0.018em; }
+.title-3 { font-size: 17px; font-weight: 600; letter-spacing: -0.01em; }
+.title-4 { font-size: 15px; font-weight: 600; }
+.heading { font-size: 13px; font-weight: 600; }
+.body { font-size: 13px; }
+.caption-heading { font-size: 11px; font-weight: 600; }
+.caption { font-size: 11px; }
+.monospace { font-family: "JetBrains Mono", monospace; }
+.dim-label, .dimmed, label.subtitle { opacity: 1; color: var(--gg-secondary-label); }
+selection, text selection { background-color: color-mix(in srgb, var(--accent-bg-color) 30%, transparent); color: inherit; }
+
+/* ------------------------------------------------------------------ window */
+window.csd {
+  border-radius: var(--window-radius);
+  box-shadow: var(--gg-window-shadow);
+}
+window.csd:backdrop { box-shadow: var(--gg-window-shadow-inactive); }
+window.csd.maximized, window.csd.fullscreen, window.csd.tiled,
+window.csd.tiled-top, window.csd.tiled-left, window.csd.tiled-right, window.csd.tiled-bottom {
+  border-radius: 0;
+  box-shadow: none;
+}
+
+/* ------------------------------------------------------------------ toolbar */
+headerbar {
+  min-height: 52px;
+  background: none;
+  box-shadow: none;
+  color: var(--gg-label);
+}
+headerbar > windowhandle > box { padding: 8px 10px 8px 12px; }
+headerbar > windowhandle > box > box.start,
+headerbar > windowhandle > box > box.end { border-spacing: 8px; }
+headerbar:backdrop > windowhandle { filter: opacity(0.62); }
+headerbar .title, windowtitle > .title { font-size: 15px; font-weight: 700; letter-spacing: -0.012em; }
+headerbar .subtitle, windowtitle > .subtitle { font-size: 11.5px; font-weight: 400; color: var(--gg-secondary-label); opacity: 1; }
+toolbarview > .top-bar, toolbarview > .top-bar.raised,
+toolbarview > .bottom-bar, toolbarview > .bottom-bar.raised { background: none; box-shadow: none; }
+toolbarview > .top-bar.raised headerbar { background: var(--gg-scroll-edge); }
+
+/* Glass controls: each toolbar item is a pill; grouped items share one. */
+headerbar button,
+headerbar .linked:not(.vertical):not(.search):not(.entry-combo),
+headerbar splitbutton,
+headerbar viewswitcher,
+headerbar toggle-group {
+  min-height: 36px;
+  min-width: 36px;
+  padding: 0 10px;
+  border-radius: 18px;
+  background: var(--gg-pill);
+  box-shadow: var(--gg-pill-shadow);
+  color: var(--gg-label);
+  font-weight: 500;
+}
+headerbar button.image-button { min-width: 36px; padding: 0; }
+headerbar button > image, headerbar button image { -gtk-icon-size: 17px; }
+headerbar button:hover { background: var(--gg-pill-hover); }
+headerbar button:active, headerbar button:checked { background: var(--gg-pill-active); }
+headerbar button:disabled > image, headerbar button:disabled > label { opacity: 0.3; }
+
+/* (The .linked selectors repeat the segmented-control rule's :not()s below so they outrank it.) */
+headerbar .linked:not(.vertical):not(.search):not(.entry-combo), headerbar splitbutton, headerbar viewswitcher, headerbar toggle-group { padding: 3px; min-width: 0; min-height: 30px; }   /* 36 px outside, like the buttons beside them */
+headerbar .linked:not(.vertical):not(.search):not(.entry-combo) > button, headerbar .linked:not(.vertical):not(.search):not(.entry-combo) > menubutton > button,
+headerbar splitbutton > button, headerbar splitbutton > menubutton > button,
+headerbar viewswitcher button, headerbar toggle-group > toggle {
+  min-height: 30px;
+  min-width: 34px;
+  padding: 0 7px;
+  border-radius: 15px;
+  background: none;
+  box-shadow: none;
+}
+headerbar .linked:not(.vertical):not(.search):not(.entry-combo) > button:hover, headerbar splitbutton > button:hover,
+headerbar splitbutton > menubutton > button:hover, headerbar viewswitcher button:hover { background: var(--gg-fill); }
+headerbar .linked:not(.vertical):not(.search):not(.entry-combo) > button:checked, headerbar viewswitcher button:checked,
+headerbar toggle-group > toggle:checked { background: var(--gg-selection); }
+headerbar splitbutton > menubutton > button { min-width: 20px; padding: 0 4px; }
+headerbar splitbutton > separator, headerbar .linked > separator { min-width: 1px; margin: 6px 0; background: var(--gg-separator); }
+headerbar button.suggested-action { background: var(--accent-bg-color); color: var(--accent-fg-color); }
+headerbar entry, headerbar searchbar entry, headerbar entry.search {
+  min-height: 36px;
+  border-radius: 18px;
+  background: var(--gg-pill);
+  box-shadow: var(--gg-pill-shadow);
+  padding: 0 11px;
+}
+
+/* ------------------------------------------------------------------ traffic lights */
+windowcontrols { border-spacing: 8px; margin: 0; }
+/* The first light sits 20 px from the window edge: 12 px header padding + 8 px here
+   (in a sidebar, its 8 px inset takes the place of this margin). */
+headerbar windowcontrols.start { margin-left: 8px; }
+.sidebar-pane headerbar windowcontrols.start { margin-left: 0; }
+/* Each light is a circle painted by a gradient sized to the button's width, so it
+   stays round however tall a header stretches the button (Clocks' is 46 px). */
+windowcontrols > button,
+windowcontrols > button.image-button,
+windowcontrols > button:hover,
+windowcontrols > button:checked {
+  min-width: 13px;
+  min-height: 13px;
+  padding: 0;
+  margin: 11px 0 12px;   /* in the usual 36 px header row */
+  border-radius: 0;
+  background: radial-gradient(circle closest-side, var(--gg-tl-inactive) 91%, rgba(0, 0, 0, 0.14) 93%, rgba(0, 0, 0, 0.14) 97%, transparent 100%);
+  box-shadow: none;
+  outline: none;
+  transition: filter 120ms ease;
+}
+windowcontrols > button > image,
+windowcontrols > button:hover > image,
+windowcontrols > button:active > image {
+  min-width: 13px;
+  min-height: 13px;
+  padding: 0;
+  margin: 0;
+  background: none;
+  box-shadow: none;
+  -gtk-icon-size: 9px;
+  color: transparent;
+}
+windowcontrols > button.close { background: radial-gradient(circle closest-side, var(--gg-tl-close) 91%, rgba(0, 0, 0, 0.14) 93%, rgba(0, 0, 0, 0.14) 97%, transparent 100%); }
+windowcontrols > button.minimize { background: radial-gradient(circle closest-side, var(--gg-tl-minimize) 91%, rgba(0, 0, 0, 0.14) 93%, rgba(0, 0, 0, 0.14) 97%, transparent 100%); }
+windowcontrols > button.maximize { background: radial-gradient(circle closest-side, var(--gg-tl-zoom) 91%, rgba(0, 0, 0, 0.14) 93%, rgba(0, 0, 0, 0.14) 97%, transparent 100%); }
+windowcontrols:hover > button > image { color: rgba(0, 0, 0, 0.70); }
+windowcontrols > button:active { filter: brightness(0.82); }
+window:backdrop windowcontrols:not(:hover) > button,
+windowcontrols > button:disabled { background: radial-gradient(circle closest-side, var(--gg-tl-inactive) 93%, rgba(0, 0, 0, 0.08) 95%, rgba(0, 0, 0, 0.08) 97%, transparent 100%); opacity: 1; }
+headerbar:backdrop > windowhandle windowcontrols { filter: none; }
+
+/* ------------------------------------------------------------------ sidebar */
+.sidebar-pane,
+.sidebar-pane:dir(ltr),
+.sidebar-pane:backdrop {
+  margin: 8px 0 8px 8px;
+  border-radius: calc(var(--window-radius) - 6px);
+  background: var(--gg-sidebar);
+  color: var(--gg-label);
+  box-shadow: var(--gg-sidebar-shadow);
+}
+.sidebar-pane.end, .sidebar-pane:dir(rtl) { margin: 8px 8px 8px 0; }
+.sidebar-pane .sidebar-pane { margin: 0; border-radius: 0; background: none; box-shadow: none; }
+/* Mac sidebars carry only the traffic lights and tools; the window title lives in the toolbar. */
+.sidebar-pane headerbar windowtitle, .sidebar-pane headerbar .title { opacity: 0; }
+/* The sidebar starts 8 px down, so its header is 36 px: the traffic lights then sit
+   on the toolbar's centre line (26 px from the top), as in the prototype. */
+.sidebar-pane headerbar { min-height: 36px; }
+.sidebar-pane headerbar > windowhandle > box { padding: 0 8px 0 12px; }
+.sidebar-pane headerbar windowcontrols.start { margin-right: 4px; }
+.sidebar-pane headerbar box.start > button, .sidebar-pane headerbar box.end > button,
+.sidebar-pane headerbar box.start > menubutton > button, .sidebar-pane headerbar box.end > menubutton > button,
+.sidebar-pane headerbar .linked { background: none; box-shadow: none; }
+.sidebar-pane headerbar box.start > button:hover, .sidebar-pane headerbar box.end > button:hover,
+.sidebar-pane headerbar menubutton > button:hover { background: var(--gg-fill); }
+
+.navigation-sidebar { padding: 2px 8px 10px; }
+.navigation-sidebar > row {
+  min-height: 30px;
+  padding: 0 10px;
+  margin: 0 0 1px;
+  border-radius: 9px;
+  font-size: 13px;
+}
+.navigation-sidebar > row.activatable:hover { background: none; }
+.navigation-sidebar > row:selected,
+.navigation-sidebar > row:selected:hover { background: var(--gg-selection); color: var(--gg-label); }
+.navigation-sidebar > row:selected label { font-weight: 600; }
+.navigation-sidebar > row image { color: var(--accent-color); -gtk-icon-size: 16px; }
+.navigation-sidebar > row .heading,
+.navigation-sidebar > .header .heading,
+.navigation-sidebar .header label.heading {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--gg-secondary-label);
+  opacity: 1;
+  margin: 12px 0 2px;
+}
+.navigation-sidebar > separator { margin: 6px 10px; background: var(--gg-separator); }
+sidebar .navigation-sidebar > row { padding: 0; }
+sidebar .navigation-sidebar > row > box { padding: 0 10px; min-height: 30px; border-spacing: 9px; }
+
+/* ------------------------------------------------------------------ push buttons */
+/* Liquid Glass: a sheen across the top, a hairline rim lit from above, a lens
+   catch along the bottom edge; presses squash with a spring (the overshooting
+   cubic-bezier is the tokens' snappy spring, approximated). */
+button {
+  min-height: 26px;
+  padding: 0 14px;
+  border-radius: 13px;
+  font-weight: 500;
+  background-color: var(--gg-button);
+  background-image: var(--gg-glass-sheen);
+  box-shadow: var(--gg-glass-rim);
+  color: var(--gg-label);
+  transition: transform 280ms cubic-bezier(0.34, 1.56, 0.64, 1), background-color 150ms ease-out, box-shadow 150ms ease-out;
+}
+button:hover { background-color: var(--gg-button-hover); }
+button:active { transform: scale(0.96); }
+button:active, button:checked { background-color: var(--gg-button-active); }
+button:disabled { opacity: 0.5; }
+button.image-button { min-width: 26px; padding: 0 5px; }
+button.text-button.image-button, button.image-text-button { padding: 0 12px; }
+button.circular { min-width: 26px; padding: 0; border-radius: 50%; }
+button.pill { min-height: 34px; padding: 0 22px; border-radius: 17px; font-weight: 600; }
+button.flat, button.flat:disabled, menubutton.flat > button, splitbutton.flat > button { background: none; box-shadow: none; }
+button.flat:active { transform: scale(0.92); }
+button.flat:hover, menubutton.flat > button:hover { background: var(--gg-fill); }
+button.flat:active, button.flat:checked { background: var(--gg-selection); }
+button.suggested-action, button.default,
+button.suggested-action:hover, button.default:hover {
+  background-color: var(--accent-bg-color);
+  background-image: linear-gradient(to bottom, rgba(255, 255, 255, 0.28), rgba(255, 255, 255, 0) 60%);
+  color: var(--accent-fg-color);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), inset 0 -1px 1px rgba(255, 255, 255, 0.15),
+              0 1px 3px color-mix(in srgb, var(--accent-bg-color) 40%, transparent);
+}
+button.suggested-action:active { filter: brightness(0.9); }
+button.destructive-action, button.destructive-action:hover { color: var(--gg-red); }
+button.opaque { color: #ffffff; box-shadow: none; }
+button.osd, .osd button { background: rgba(0, 0, 0, 0.70); color: #ffffff; box-shadow: none; }
+
+/* Segmented controls: linked buttons and toggle groups */
+.linked:not(.vertical):not(.search):not(.entry-combo) {
+  padding: 2px;
+  border-radius: 9px;
+  background: var(--gg-fill);
+  box-shadow: inset 0 0 0 0.5px var(--gg-separator);
+}
+.linked:not(.vertical) > button,
+.linked:not(.vertical) > menubutton > button,
+.linked:not(.vertical) > dropdown > button {
+  min-height: 22px;
+  padding: 0 12px;
+  border-radius: 7px;
+  background: none;
+  box-shadow: none;
+}
+.linked:not(.vertical) > button.image-button { padding: 0 6px; }
+.linked:not(.vertical) > button:checked { background: var(--gg-segment-on); box-shadow: var(--gg-segment-on-shadow); }
+.linked:not(.vertical) > entry { box-shadow: none; background: none; }
+toggle-group {
+  padding: 2px;
+  border-radius: 9px;
+  background: var(--gg-fill);
+  box-shadow: inset 0 0 0 0.5px var(--gg-separator);
+}
+toggle-group > toggle { min-height: 22px; padding: 0 12px; border-radius: 7px; background: none; box-shadow: none; font-weight: 500; }
+toggle-group > toggle:checked { background: var(--gg-segment-on); box-shadow: var(--gg-segment-on-shadow); color: var(--gg-label); }
+toggle-group > separator { background: none; }
+
+/* ------------------------------------------------------------------ checks, radios, switches */
+check, radio {
+  min-width: 14px;
+  min-height: 14px;
+  margin: 0 6px 0 0;
+  padding: 0;
+  border-radius: 4px;
+  background: var(--gg-control);
+  box-shadow: var(--gg-control-border);
+  -gtk-icon-size: 12px;
+  color: transparent;
+}
+radio { border-radius: 50%; }
+check:checked, check:indeterminate, radio:checked {
+  background: var(--accent-bg-color);
+  box-shadow: none;
+  color: var(--accent-fg-color);
+}
+radio:checked {
+  -gtk-icon-source: none;
+  background-image: radial-gradient(circle, #ffffff 3px, transparent 3.5px);
+}
+check:disabled, radio:disabled { opacity: 0.5; }
+checkbutton { border-spacing: 6px; padding: 2px 0; }
+checkbutton > check, checkbutton > radio { margin: 0; }
+
+switch {
+  min-width: 0;
+  min-height: 0;
+  padding: 2px;
+  border: none;
+  border-radius: 11px;
+  background: var(--gg-switch-off);
+  box-shadow: none;
+}
+switch:checked { background: var(--accent-bg-color); }
+switch { transition: background-color 200ms ease-out; }
+/* The knob is Liquid Glass: white at rest, a clear stretched lens while held. */
+switch > slider {
+  min-width: 18px;
+  min-height: 18px;
+  margin: 0;
+  border-radius: 50%;
+  background-color: #ffffff;
+  background-image: linear-gradient(to bottom, #ffffff, #f1f1f4);
+  box-shadow: inset 0 1px 0 #ffffff, 0 0 0 0.5px rgba(0, 0, 0, 0.06), 0 6px 20px rgba(0, 0, 0, 0.12);
+  transition: transform 300ms cubic-bezier(0.34, 1.56, 0.64, 1), background-color 160ms ease-out, box-shadow 160ms ease-out;
+}
+switch:active > slider, switch > slider:active {
+  transform: scale(1.3, 1.15);
+  background-color: var(--gg-glass-lens);
+  background-image: linear-gradient(to bottom, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.05) 65%);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.85), inset 0 1px 1px #ffffff, inset 0 -2px 3px rgba(255, 255, 255, 0.3), 0 2px 8px rgba(0, 0, 0, 0.22);
+}
+switch > image { color: transparent; }
+switch:disabled { opacity: 0.5; }
+
+/* ------------------------------------------------------------------ text fields */
+entry, spinbutton, passwordentry {
+  min-height: 26px;
+  padding: 0 8px;
+  border-radius: 7px;
+  background: var(--gg-control);
+  box-shadow: var(--gg-field-border);
+  color: var(--gg-label);
+  outline-offset: 0;
+}
+entry:focus-within, spinbutton:focus-within {
+  outline: 3px solid var(--gg-focus-ring);
+  outline-offset: 0;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-bg-color) 70%, transparent);
+}
+entry > text > placeholder, text > placeholder { color: var(--gg-tertiary-label); }
+entry > image { color: var(--gg-secondary-label); opacity: 1; }
+entry.search, searchbar entry, searchentry, entry.search:focus-within {
+  border-radius: 13px;
+  background: var(--gg-fill);
+  box-shadow: none;
+}
+spinbutton { padding: 0; }
+spinbutton > text { padding: 0 6px; }
+spinbutton > button, spinbutton > button:hover, spinbutton > button:disabled {
+  min-width: 20px;
+  min-height: 20px;
+  padding: 0;
+  margin: 3px;
+  border-radius: 6px;
+  background: none;
+  box-shadow: none;
+}
+spinbutton > button:hover { background: var(--gg-fill); }
+
+/* Pop-up buttons */
+dropdown > button, combobox > button, menubutton:not(.flat) > button.popup { padding: 0 8px 0 12px; }
+dropdown > button > box > arrow, combobox > button arrow { -gtk-icon-size: 12px; color: var(--gg-secondary-label); }
+
+/* ------------------------------------------------------------------ sliders and progress */
+scale { padding: 10px 11px; }
+scale > trough {
+  min-height: 4px;
+  border-radius: 2px;
+  background: var(--gg-fill-strong);
+  box-shadow: none;
+}
+scale > trough > highlight { border-radius: 2px; background: var(--accent-bg-color); }
+/* Slider knob: a glass pill that lifts into a clear lens while dragged. */
+scale > trough > slider {
+  min-width: 22px;
+  min-height: 14px;
+  margin: -5px -11px;
+  border-radius: 7px;
+  background-color: #ffffff;
+  background-image: linear-gradient(to bottom, #ffffff, #f1f1f4);
+  box-shadow: inset 0 1px 0 #ffffff, 0 0 0 0.5px rgba(0, 0, 0, 0.15), 0 1px 4px rgba(0, 0, 0, 0.25);
+  transition: transform 300ms cubic-bezier(0.34, 1.56, 0.64, 1), background-color 160ms ease-out, box-shadow 160ms ease-out;
+}
+scale > trough > slider:hover { transform: scale(1.08); }
+scale > trough > slider:active {
+  transform: scale(1.4, 1.35);
+  background-color: var(--gg-glass-lens);
+  background-image: linear-gradient(to bottom, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.05) 65%);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.85), inset 0 1px 1px #ffffff, inset 0 -2px 3px rgba(255, 255, 255, 0.3), 0 2px 8px rgba(0, 0, 0, 0.22);
+}
+scale.vertical > trough { min-width: 4px; }
+scale.vertical > trough > slider { min-width: 14px; min-height: 22px; margin: -11px -5px; }
+progressbar > trough, levelbar > trough { min-height: 6px; border-radius: 3px; background: var(--gg-fill-strong); box-shadow: none; }
+progressbar > trough > progress { min-height: 6px; border-radius: 3px; background: var(--accent-bg-color); }
+
+/* ------------------------------------------------------------------ lists */
+list.boxed-list, .boxed-list, .boxed-list-separate > row, list.content {
+  border-radius: 12px;
+  background: var(--gg-fill);
+  box-shadow: inset 0 0 0 0.5px var(--gg-separator);
+}
+.boxed-list > row, list.content > row { background: none; }
+.boxed-list > row:not(:last-child), list.content > row:not(:last-child) { border-bottom: 1px solid var(--gg-separator); }
+.boxed-list > row.activatable:hover { background: var(--gg-hover); }
+row.action-row > box.header, row.expander > box > list > row > box.header, row.entry > box.header { min-height: 32px; padding: 6px 14px; }
+row .title, row.action-row .title { font-size: 13px; }
+row .subtitle { font-size: 11.5px; color: var(--gg-secondary-label); opacity: 1; }
+row switch { margin: 0; }
+row spinbutton, row.spin spinbutton { background: none; box-shadow: none; outline: none; }
+listview.inline, listview.inline > row { background: none; }
+preferencesgroup > box > box.header { margin-bottom: 8px; }
+preferencesgroup > box > box.header .title, preferencesgroup > box > box.header label.heading { font-size: 13px; font-weight: 700; }
+preferencesgroup > box > box.header .description { font-size: 12px; color: var(--gg-secondary-label); opacity: 1; }
+
+listview > row:selected, gridview > child:selected {
+  background: var(--accent-bg-color);
+  color: var(--accent-fg-color);
+}
+listview > row:selected .dim-label, listview > row:selected .dimmed { color: color-mix(in srgb, currentColor 80%, transparent); }
+
+/* Finder-style tables: alternating rows, inset rounded selection */
+columnview > listview { padding: 0 10px; }
+columnview > listview > row { min-height: 24px; border-radius: 6px; }
+columnview > listview > row:nth-child(even) { background: var(--gg-alt-row); }
+columnview > listview > row:selected { background: var(--accent-bg-color); color: var(--accent-fg-color); }
+columnview > listview > row > cell { padding: 0 8px; }
+columnview > header { background: var(--view-bg-color); box-shadow: inset 0 -1px var(--gg-separator); padding: 0 10px; }
+columnview > header > button {
+  min-height: 24px;
+  padding: 0 8px;
+  border-radius: 0;
+  background: none;
+  box-shadow: inset -1px 0 var(--gg-separator-soft);
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--gg-secondary-label);
+}
+columnview > header > button:last-child { box-shadow: none; }
+columnview > header > button sort-indicator { -gtk-icon-size: 10px; color: var(--gg-secondary-label); }
+
+/* ------------------------------------------------------------------ menus and popovers */
+popover > contents, popover.menu > contents {
+  padding: 5px;
+  border-radius: 14px;
+  background: var(--gg-menu);
+  color: var(--gg-label);
+  box-shadow: var(--gg-menu-shadow);
+}
+popover > arrow, popover.menu > arrow { background: none; border: none; box-shadow: none; }
+popover.menu modelbutton, popover.menu > contents modelbutton {
+  min-height: 22px;
+  padding: 2px 10px 2px 8px;
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--gg-label);
+}
+popover.menu modelbutton:hover, popover.menu modelbutton:selected,
+popover.menu modelbutton:focus-visible {
+  background: var(--accent-bg-color);
+  color: var(--accent-fg-color);
+}
+popover.menu modelbutton accelerator { color: var(--gg-secondary-label); font-size: 12.5px; letter-spacing: 0.04em; margin-left: 18px; }
+popover.menu modelbutton:hover accelerator, popover.menu modelbutton:selected accelerator { color: color-mix(in srgb, var(--accent-fg-color) 85%, transparent); }
+popover.menu modelbutton:disabled { color: var(--gg-tertiary-label); }
+popover.menu modelbutton check, popover.menu modelbutton radio {
+  min-width: 14px;
+  min-height: 14px;
+  margin: 0 4px 0 0;
+  background: none;
+  box-shadow: none;
+  color: inherit;
+}
+popover.menu modelbutton radio:checked { background-image: radial-gradient(circle, currentColor 3px, transparent 3.5px); }
+popover.menu separator { min-height: 1px; margin: 5px 10px; background: var(--gg-separator); }
+popover.menu .title, popover.menu label.title { font-size: 11.5px; font-weight: 600; color: var(--gg-secondary-label); }
+popover.menu arrow.left, popover.menu arrow.right { -gtk-icon-size: 11px; color: var(--gg-secondary-label); }
+popover.menu box.inline-buttons button { min-height: 26px; }
+
+tooltip, tooltip.background {
+  padding: 3px 7px;
+  border-radius: 7px;
+  background: var(--gg-tooltip);
+  color: var(--gg-label);
+  box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.15), 0 10px 26px rgba(0, 0, 0, 0.10);
+  font-size: 11.5px;
+}
+
+/* ------------------------------------------------------------------ dialogs */
+dialog.alert sheet, window.dialog-window.alert, dialog-host > dialog.alert sheet { border-radius: 26px; }
+dialog.alert .message-area { padding-top: 22px; border-spacing: 8px; }
+dialog.alert .message-area.has-heading.has-body { border-spacing: 6px; }
+dialog.alert .message-area .heading, dialog.alert .message-area .title-2 { font-size: 13px; font-weight: 700; }
+dialog.alert .message-area .body { font-size: 11.5px; }
+dialog.alert .response-area { padding: 18px 16px 16px; border-spacing: 8px; }
+dialog.alert .response-area > button { min-height: 28px; padding: 0 14px; border-radius: 14px; }
+dialog.alert .response-area > button.suggested { background: var(--accent-bg-color); color: var(--accent-fg-color); }
+dialog.alert .response-area > button.destructive { color: var(--gg-red); }
+dialog sheet, dialog.floating sheet { border-radius: var(--window-radius); box-shadow: var(--gg-window-shadow); }
+
+/* ------------------------------------------------------------------ scrolling */
+scrollbar, scrollbar.overlay-indicator { background: none; box-shadow: none; }
+scrollbar slider {
+  min-width: 7px;
+  min-height: 7px;
+  margin: 3px;
+  border-radius: 999px;
+  background: var(--gg-scrollbar);
+  box-shadow: none;
+}
+scrollbar.overlay-indicator:not(.hovering) slider { min-width: 5px; min-height: 5px; }
+scrollbar.hovering slider { min-width: 9px; min-height: 9px; }
+
+/* ------------------------------------------------------------------ tabs */
+tabbar .box { min-height: 36px; padding: 4px 8px; background: none; box-shadow: none; border: none; }
+tabbar tab { min-height: 28px; border-radius: 14px; background: none; }
+tabbar tab:hover { background: var(--gg-fill); }
+tabbar tab:selected { background: var(--gg-pill); box-shadow: var(--gg-pill-shadow); }
+tabbar tab label { font-size: 12.5px; font-weight: 500; }
+tabbar tab button.tab-close-button { min-width: 18px; min-height: 18px; padding: 0; border-radius: 5px; background: none; box-shadow: none; }
+
+/* ------------------------------------------------------------------ misc */
+.card { border-radius: 12px; background: var(--gg-fill); box-shadow: inset 0 0 0 0.5px var(--gg-separator); }
+.view, textview > text, iconview { background-color: var(--view-bg-color); }
+separator { background: var(--gg-separator); }
+statuspage > scrolledwindow > viewport > box > clamp > box > .title { font-size: 22px; font-weight: 700; }
+statuspage .icon { color: var(--gg-tertiary-label); }
+toast { border-radius: 14px; background: var(--gg-menu); color: var(--gg-label); box-shadow: var(--gg-menu-shadow); }
+banner > revealer > widget { background: color-mix(in srgb, var(--accent-bg-color) 14%, var(--window-bg-color)); }

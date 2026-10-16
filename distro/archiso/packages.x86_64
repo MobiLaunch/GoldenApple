@@ -1,0 +1,137 @@
+# CitronOS additions on top of archiso's releng package list.
+# Official Arch repositories only; see packages.extra for the rest.
+
+# Compositor + session
+hyprland
+hypridle
+hyprsunset
+xdg-desktop-portal-hyprland
+xdg-desktop-portal-gtk
+polkit-gnome
+gnome-keyring
+# Touch ID: fingerprint readers (libfprint's drivers), used by the lock screen
+# and, if chosen, sudo and system password prompts (Settings › Touch ID & Password).
+fprintd
+libsecret
+plymouth
+sddm
+# SDDM draws its Wayland login screen inside Weston's kiosk shell (there is no X server).
+weston
+qt6-declarative
+# CitronPods can compile its GPL-3.0 daemon locally from the verified M10
+# archive without installing a separate GUI or requiring manual tool setup.
+cmake
+ninja
+gcc
+# CitronPods: Qt Bluetooth discovery and L2CAP protocol support
+qt6-connectivity
+qt6-svg
+qt6-wayland
+# Tablet Mode: native Wayland touch input method and optional orientation sensor
+squeekboard
+iio-sensor-proxy
+# CitronOS Music and Photos: playback (FFmpeg backend), tags, artwork, video frames
+qt6-multimedia
+qt6-multimedia-ffmpeg
+ffmpeg
+# CitronOS Photos: WebP, TIFF and other image formats
+qt6-imageformats
+
+# Look
+inter-font
+ttf-jetbrains-mono
+noto-fonts
+noto-fonts-emoji
+adwaita-icon-theme
+gsettings-desktop-schemas
+librsvg
+
+# Hardware firmware. The live image must boot on unknown machines, so keep the
+# complete Arch firmware meta-package rather than relying on the build host.
+linux-firmware
+wireless-regdb
+
+# Services the shell talks to
+pipewire
+pipewire-pulse
+# CitronPods: pactl audio-output routing
+libpulse
+wireplumber
+networkmanager
+bluez
+bluez-utils
+brightnessctl
+playerctl
+upower
+power-profiles-daemon
+keyd
+grim
+slurp
+wf-recorder
+sound-theme-freedesktop
+wl-clipboard
+7zip
+libnotify
+xdg-user-dirs
+
+# External apps retained only where they provide mature system/protocol backends.
+# CitronOS owns Settings, App Store, Clock, TextEdit, Photos and other primary UI.
+# App Store backend: native CitronOS frontend + Flatpak/Flathub metadata.
+flatpak
+ca-certificates
+curl
+# Chromium engine and Python bindings for CitronOS Web
+qt6-webengine
+pyside6
+python
+python-websockets
+python-dbus-next
+ghostty
+sudo
+
+# Native Files / MIME launch plumbing.
+glib2
+xdg-utils
+desktop-file-utils
+shared-mime-info
+
+# CitronOS installer and in-pane Software Update backend.
+arch-install-scripts
+gptfdisk
+parted
+dosfstools
+e2fsprogs
+# Disks: Files' Locations and Disk Utility mount, eject, check and erase
+# through udisks (polkit asks for the password), with each format's tools.
+udisks2
+exfatprogs
+ntfs-3g
+btrfs-progs
+mkinitcpio
+rsync
+pacman-contrib
+# checkupdates refreshes a private copy of the package databases under fakeroot.
+fakeroot
+
+
+# LCode (CitronOS's IDE): Git for projects, and the Simulator's private
+# display (Xvfb) and input injection (XTEST). Swift itself comes from the AUR
+# (swift-bin) or swiftly, so the image stays small.
+git
+xorg-server-xvfb
+libxtst
+
+# Screen Mirroring. AirPlay Receiver (UxPlay, packages.extra) lets an iPhone,
+# iPad or Mac mirror to this computer: Avahi announces it, GStreamer decodes
+# the H.264 stream. Mirroring this computer to a TV goes through GNOME Network
+# Displays (Miracast and Chromecast, packages.extra).
+avahi
+gst-plugins-base
+gst-plugins-good
+gst-plugins-bad
+gst-libav
+
+# Compile Golden Gate's unified font/symbol assets on installation
+nodejs
+# Desktop Entry autostart engine for Settings › Login Items
+dex

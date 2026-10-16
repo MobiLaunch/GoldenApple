@@ -1,0 +1,434 @@
+[
+{
+"token": "iina",
+"name": [
+"IINA"
+],
+"desc": "Modern media player for macOS",
+"homepage": "https://iina.example",
+"version": "1.0",
+"url": "https://downloads.example/iina.dmg",
+"sha256": "no_check",
+"artifacts": [
+{
+"app": [
+"IINA.app"
+]
+}
+]
+},
+{
+"token": "coteditor",
+"name": [
+"CotEditor"
+],
+"desc": "Plain-text editor for web pages, program source codes and more",
+"homepage": "https://coteditor.example",
+"version": "1.0",
+"url": "https://downloads.example/coteditor.dmg",
+"sha256": "no_check",
+"artifacts": [
+{
+"app": [
+"CotEditor.app"
+]
+}
+]
+},
+{
+"token": "netnewswire",
+"name": [
+"NetNewsWire"
+],
+"desc": "Free and open-source RSS reader",
+"homepage": "https://netnewswire.example",
+"version": "1.0",
+"url": "https://downloads.example/netnewswire.dmg",
+"sha256": "no_check",
+"artifacts": [
+{
+"app": [
+"NetNewsWire.app"
+]
+}
+]
+},
+{
+"token": "textmate",
+"name": [
+"TextMate"
+],
+"desc": "General-purpose text editor",
+"homepage": "https://textmate.example",
+"version": "1.0",
+"url": "https://downloads.example/textmate.dmg",
+"sha256": "no_check",
+"artifacts": [
+{
+"app": [
+"TextMate.app"
+]
+}
+]
+},
+{
+"token": "hex-fiend",
+"name": [
+"Hex Fiend"
+],
+"desc": "Fast and clever hex editor",
+"homepage": "https://hex-fiend.example",
+"version": "1.0",
+"url": "https://downloads.example/hex-fiend.dmg",
+"sha256": "no_check",
+"artifacts": [
+{
+"app": [
+"Hex Fiend.app"
+]
+}
+]
+},
+{
+"token": "skim",
+"name": [
+"Skim"
+],
+"desc": "PDF reader and note-taker",
+"homepage": "https://skim.example",
+"version": "1.0",
+"url": "https://downloads.example/skim.dmg",
+"sha256": "no_check",
+"artifacts": [
+{
+"app": [
+"Skim.app"
+]
+}
+]
+},
+{
+"token": "keka",
+"name": [
+"Keka"
+],
+"desc": "File archiver",
+"homepage": "https://keka.example",
+"version": "1.0",
+"url": "https://downloads.example/keka.dmg",
+"sha256": "no_check",
+"artifacts": [
+{
+"app": [
+"Keka.app"
+]
+}
+]
+},
+{
+"token": "bbedit",
+"name": [
+"BBEdit"
+],
+"desc": "Text, code, and markup editor",
+"homepage": "https://bbedit.example",
+"version": "1.0",
+"url": "https://downloads.example/bbedit.dmg",
+"sha256": "no_check",
+"artifacts": [
+{
+"app": [
+"BBEdit.app"
+]
+}
+]
+},
+{
+"token": "imageoptim",
+"name": [
+"ImageOptim"
+],
+"desc": "Tool to optimise images to a smaller size",
+"homepage": "https://imageoptim.example",
+"version": "1.0",
+"url": "https://downloads.example/imageoptim.dmg",
+"sha256": "no_check",
+"artifacts": [
+{
+"app": [
+"ImageOptim.app"
+]
+}
+]
+},
+{
+"token": "cyberduck",
+"name": [
+"Cyberduck"
+],
+"desc": "Server and cloud storage browser",
+"homepage": "https://cyberduck.example",
+"version": "1.0",
+"url": "https://downloads.example/cyberduck.dmg",
+"sha256": "no_check",
+"artifacts": [
+{
+"app": [
+"Cyberduck.app"
+]
+}
+]
+},
+{
+"token": "macdown",
+"name": [
+"MacDown"
+],
+"desc": "Open-source Markdown editor",
+"homepage": "https://macdown.example",
+"version": "1.0",
+"url": "https://downloads.example/macdown.dmg",
+"sha256": "no_check",
+"artifacts": [
+{
+"app": [
+"MacDown.app"
+]
+}
+]
+},
+{
+"token": "sequel-ace",
+"name": [
+"Sequel Ace"
+],
+"desc": "MySQL/MariaDB database management",
+"homepage": "https://sequel-ace.example",
+"version": "1.0",
+"url": "https://downloads.example/sequel-ace.dmg",
+"sha256": "no_check",
+"artifacts": [
+{
+"app": [
+"Sequel Ace.app"
+]
+}
+]
+},
+{
+"token": "the-unarchiver",
+"name": [
+"The Unarchiver"
+],
+"desc": "Unpacks archive files",
+"homepage": "https://the-unarchiver.example",
+"version": "1.0",
+"url": "https://downloads.example/the-unarchiver.dmg",
+"sha256": "no_check",
+"artifacts": [
+{
+"app": [
+"The Unarchiver.app"
+]
+}
+]
+},
+{
+"token": "appcleaner",
+"name": [
+"AppCleaner"
+],
+"desc": "Application uninstaller",
+"homepage": "https://appcleaner.example",
+"version": "1.0",
+"url": "https://downloads.example/appcleaner.dmg",
+"sha256": "no_check",
+"artifacts": [
+{
+"app": [
+"AppCleaner.app"
+]
+}
+]
+},
+{
+"token": "stats",
+"name": [
+"Stats"
+],
+"desc": "System monitor for the menu bar",
+"homepage": "https://stats.example",
+"version": "1.0",
+"url": "https://downloads.example/stats.dmg",
+"sha256": "no_check",
+"artifacts": [
+{
+"app": [
+"Stats.app"
+]
+}
+]
+},
+{
+"token": "maccy",
+"name": [
+"Maccy"
+],
+"desc": "Clipboard manager",
+"homepage": "https://maccy.example",
+"version": "1.0",
+"url": "https://downloads.example/maccy.dmg",
+"sha256": "no_check",
+"artifacts": [
+{
+"app": [
+"Maccy.app"
+]
+}
+]
+},
+{
+"token": "audacity",
+"name": [
+"Audacity"
+],
+"desc": "Cross-platform audio software",
+"homepage": "https://audacity.example",
+"version": "1.0",
+"url": "https://downloads.example/audacity.dmg",
+"sha256": "no_check",
+"artifacts": [
+{
+"app": [
+"Audacity.app"
+]
+}
+]
+},
+{
+"token": "blender",
+"name": [
+"Blender"
+],
+"desc": "3D creation suite",
+"homepage": "https://blender.example",
+"version": "1.0",
+"url": "https://downloads.example/blender.dmg",
+"sha256": "no_check",
+"artifacts": [
+{
+"app": [
+"Blender.app"
+]
+}
+]
+},
+{
+"token": "calibre",
+"name": [
+"calibre"
+],
+"desc": "E-books management software",
+"homepage": "https://calibre.example",
+"version": "1.0",
+"url": "https://downloads.example/calibre.dmg",
+"sha256": "no_check",
+"artifacts": [
+{
+"app": [
+"calibre.app"
+]
+}
+]
+},
+{
+"token": "dbeaver-community",
+"name": [
+"DBeaver Community Edition"
+],
+"desc": "Universal database tool and SQL client",
+"homepage": "https://dbeaver-community.example",
+"version": "1.0",
+"url": "https://downloads.example/dbeaver-community.dmg",
+"sha256": "no_check",
+"artifacts": [
+{
+"app": [
+"DBeaver Community Edition.app"
+]
+}
+]
+},
+{
+"token": "firefox",
+"name": [
+"Mozilla Firefox"
+],
+"desc": "Web browser",
+"homepage": "https://firefox.example",
+"version": "1.0",
+"url": "https://downloads.example/firefox.dmg",
+"sha256": "no_check",
+"artifacts": [
+{
+"app": [
+"Mozilla Firefox.app"
+]
+}
+]
+},
+{
+"token": "gimp",
+"name": [
+"GIMP"
+],
+"desc": "Free and open-source image editor",
+"homepage": "https://gimp.example",
+"version": "1.0",
+"url": "https://downloads.example/gimp.dmg",
+"sha256": "no_check",
+"artifacts": [
+{
+"app": [
+"GIMP.app"
+]
+}
+]
+},
+{
+"token": "handbrake",
+"name": [
+"HandBrake"
+],
+"desc": "Open-source video transcoder",
+"homepage": "https://handbrake.example",
+"version": "1.0",
+"url": "https://downloads.example/handbrake.dmg",
+"sha256": "no_check",
+"artifacts": [
+{
+"app": [
+"HandBrake.app"
+]
+}
+]
+},
+{
+"token": "inkscape",
+"name": [
+"Inkscape"
+],
+"desc": "Vector graphics editor",
+"homepage": "https://inkscape.example",
+"version": "1.0",
+"url": "https://downloads.example/inkscape.dmg",
+"sha256": "no_check",
+"artifacts": [
+{
+"app": [
+"Inkscape.app"
+]
+}
+]
+}
+]
