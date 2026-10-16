@@ -89,6 +89,89 @@ index ba52cd3..84a88a7 100644
  }
  
  - (BOOL) openFile: (NSString *) path {
+diff --git a/AppKit/NSDocument.m b/AppKit/NSDocument.m
+index 49205a6..f9870ca 100644
+--- a/AppKit/NSDocument.m
++++ b/AppKit/NSDocument.m
+@@ -30,66 +30,30 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
+ #import <AppKit/NSSavePanel.h>
+ #import <AppKit/NSWindowController.h>
+ #import <objc/runtime.h>
++#import "NSDocumentTypes.h"
+ 
+ @implementation NSDocument
+ 
+ static int untitled_document_number = 0;
+ 
+ + (NSArray *) readableTypes {
+-    NSArray *knownDocTypes =
+-            [[NSBundle mainBundle] infoDictionary][@"CFBundleDocumentTypes"];
+-    NSMutableArray *readableTypes = [NSMutableArray array];
+-
+-    for (NSDictionary *typeDict in knownDocTypes) {
+-        NSString *typeRole = typeDict[@"CFBundleTypeRole"];
+-        Class documentClass =
+-                NSClassFromString((NSString *) typeDict[@"NSDocumentClass"]);
+-        if (documentClass == self && ([typeRole isEqualToString: @"Viewer"] ||
+-                                      [typeRole isEqualToString: @"Editor"])) {
+-            NSString *typeName = typeDict[@"CFBundleTypeName"];
+-            if (typeName)
+-                [readableTypes addObject: typeName];
+-        }
+-    }
+-
+-    return [NSArray arrayWithArray: readableTypes];
++    return _NSDocumentTypesForClass(
++            [[NSBundle mainBundle] infoDictionary][@"CFBundleDocumentTypes"],
++            self, NO);
+ }
+ 
+ + (NSArray *) writableTypes {
+-    NSArray *knownDocTypes =
+-            [[NSBundle mainBundle] infoDictionary][@"CFBundleDocumentTypes"];
+-    NSMutableArray *writableTypes = [NSMutableArray array];
+-
+-    for (NSDictionary *typeDict in knownDocTypes) {
+-        NSString *typeRole = typeDict[@"CFBundleTypeRole"];
+-        Class documentClass =
+-                NSClassFromString((NSString *) typeDict[@"NSDocumentClass"]);
+-        if (documentClass == self && [typeRole isEqualToString: @"Editor"]) {
+-            NSString *typeName = typeDict[@"CFBundleTypeName"];
+-            if (typeName)
+-                [writableTypes addObject: typeName];
+-        }
+-    }
+-
+-    return [NSArray arrayWithArray: writableTypes];
++    return _NSDocumentTypesForClass(
++            [[NSBundle mainBundle] infoDictionary][@"CFBundleDocumentTypes"],
++            self, YES);
+ }
+ 
+ + (BOOL) isNativeType: (NSString *) type {
+-    BOOL result = NO;
+-    NSArray *knownDocTypes =
+-            [[NSBundle mainBundle] infoDictionary][@"CFBundleDocumentTypes"];
+-
+-    for (NSDictionary *typeDict in knownDocTypes) {
+-        NSString *typeRole = typeDict[@"CFBundleTypeRole"];
+-        NSString *typeName = typeDict[@"CFBundleTypeName"];
+-        Class documentClass =
+-                NSClassFromString((NSString *) typeDict[@"NSDocumentClass"]);
+-        result |= documentClass == self &&
+-                  [typeRole isEqualToString: @"Editor"] &&
+-                  [typeName isEqualToString: type];
+-    }
+-
+-    return result;
++    // UTIs compare case-insensitively, like UTTypeEqual.
++    for (NSString *native in [self writableTypes])
++        if ([native caseInsensitiveCompare: type] == NSOrderedSame)
++            return YES;
++    return NO;
+ }
+ 
+ - (BOOL) _isSelectorOverridden: (SEL) selector {
 diff --git a/AppKit/NSDocumentController.m b/AppKit/NSDocumentController.m
 index 70a33ff..27e09c2 100644
 --- a/AppKit/NSDocumentController.m
@@ -217,10 +300,10 @@ index 70a33ff..27e09c2 100644
  - makeDocumentWithContentsOfFile: (NSString *) path ofType: (NSString *) type {
 diff --git a/AppKit/NSDocumentTypes.h b/AppKit/NSDocumentTypes.h
 new file mode 100644
-index 0000000..8c22834
+index 0000000..2d77113
 --- /dev/null
 +++ b/AppKit/NSDocumentTypes.h
-@@ -0,0 +1,19 @@
+@@ -0,0 +1,24 @@
 +#import <Foundation/Foundation.h>
 +
 +// Document types from CFBundleDocumentTypes. Since Mac OS X 10.5 a type is
@@ -240,12 +323,17 @@ index 0000000..8c22834
 +
 +// The first Editor type, as a UTI when declared with LSItemContentTypes.
 +NSString *_NSDocumentDefaultType(NSArray *fileTypes);
++
++// The types documentClass reads (Viewer or Editor) or writes (Editor only):
++// each declaration's UTIs, or its name when it declares none.
++NSArray *_NSDocumentTypesForClass(NSArray *fileTypes, Class documentClass,
++                                  BOOL editorsOnly);
 diff --git a/AppKit/NSDocumentTypes.m b/AppKit/NSDocumentTypes.m
 new file mode 100644
-index 0000000..6d50426
+index 0000000..69ba25a
 --- /dev/null
 +++ b/AppKit/NSDocumentTypes.m
-@@ -0,0 +1,62 @@
+@@ -0,0 +1,82 @@
 +#import "NSDocumentTypes.h"
 +
 +static NSArray *contentTypes(NSDictionary *info) {
@@ -289,6 +377,26 @@ index 0000000..6d50426
 +    if ([contentTypes(info) count] > 0)
 +        return uti;
 +    return [info objectForKey: @"CFBundleTypeName"];
++}
++
++NSArray *_NSDocumentTypesForClass(NSArray *fileTypes, Class documentClass,
++                                  BOOL editorsOnly)
++{
++    NSMutableArray *result = [NSMutableArray array];
++    for (NSDictionary *info in fileTypes) {
++        NSString *role = [info objectForKey: @"CFBundleTypeRole"];
++        BOOL accepted = [role isEqualToString: @"Editor"] ||
++                        (!editorsOnly && [role isEqualToString: @"Viewer"]);
++        if (!accepted ||
++            NSClassFromString([info objectForKey: @"NSDocumentClass"]) != documentClass)
++            continue;
++        NSArray *utis = contentTypes(info);
++        NSString *name = [info objectForKey: @"CFBundleTypeName"];
++        for (NSString *type in ([utis count] > 0 ? utis : (name ? [NSArray arrayWithObject: name] : nil)))
++            if (![result containsObject: type])
++                [result addObject: type];
++    }
++    return result;
 +}
 +
 +NSString *_NSDocumentDefaultType(NSArray *fileTypes) {

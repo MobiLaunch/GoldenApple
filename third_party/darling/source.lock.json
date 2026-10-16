@@ -57,7 +57,12 @@
     {
       "path": "patches/0011-uti-document-types.patch",
       "repository": "cocotron",
-      "sha256": "7811cd1eb91a432ffa74718316e9ac0a60b5257a9d3eb668949228b8e4380cc3"
+      "sha256": "bb5eb28c95f07eaf1b73918eb60b9eb29b1471a7035e701fd912fab0a23447e5"
+    },
+    {
+      "path": "patches/0012-plain-text-documents.patch",
+      "repository": "cocotron",
+      "sha256": "9ce70773bc8b61a6c21d0a03a5ef9262cba5c20ef6511239eb46a38befd6d501"
     }
   ],
   "objc4_commit": "1a12df76d12bfc9fdfffadb290f7742763568765"

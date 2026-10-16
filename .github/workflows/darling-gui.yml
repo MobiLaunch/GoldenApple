@@ -188,7 +188,7 @@ jobs:
             libfontconfig1-dev libbsd-dev libxrandr-dev libxcursor-dev libgif-dev \
             libpulse-dev libavformat-dev libavcodec-dev libswresample-dev libdbus-1-dev \
             libxkbfile-dev libssl-dev llvm-dev libelf-dev libcurl4-openssl-dev libedit-dev \
-            xvfb xauth xdotool x11-apps unzip mesa-utils gdb python3-xlib
+            xvfb xauth xdotool x11-apps unzip mesa-utils gdb python3-xlib imagemagick tesseract-ocr
       - name: Verify graceful close protocol on X11
         run: xvfb-run -a python3 tests/darling-x11-close.py
       - name: Find previous runtime artifact on this branch

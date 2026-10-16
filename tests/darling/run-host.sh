@@ -31,3 +31,9 @@ fi
   -I"$coco/AppKit" "$coco/AppKit/NSDocumentTypes.m" "$here/document-types.m" \
   -o "$temp/document-types" "${libs[@]}"
 "$temp/document-types"
+# Patch 0012: plain-text documents read into and saved from text storage.
+"${CC:-clang}" "${flags[@]}" -I"$(gcc -print-file-name=include)" \
+  -I"$(dirname -- "$objc_library")/include" -L"$(dirname -- "$objc_library")" \
+  -I"$coco/AppKit" "$coco/AppKit/NSPlainTextCoding.m" "$here/plain-text.m" \
+  -o "$temp/plain-text" "${libs[@]}"
+"$temp/plain-text"

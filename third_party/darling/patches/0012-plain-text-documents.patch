@@ -1,0 +1,202 @@
+diff --git a/AppKit/CMakeLists.txt b/AppKit/CMakeLists.txt
+index 5e07c0e..7514755 100644
+--- a/AppKit/CMakeLists.txt
++++ b/AppKit/CMakeLists.txt
+@@ -328,6 +328,7 @@ set(AppKit_sources
+ 	NSImageView.m
+ 	NSActionCell.m
+ 	NSAttributedString.m
++	NSPlainTextCoding.m
+ 	RTF.subproj/NSRichTextReader.m
+ 	RTF.subproj/NSRichTextWriter.m
+ 	NSRulerMarker.m
+diff --git a/AppKit/NSAttributedString.m b/AppKit/NSAttributedString.m
+index c36d0d9..6aa24a5 100644
+--- a/AppKit/NSAttributedString.m
++++ b/AppKit/NSAttributedString.m
+@@ -26,6 +26,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
+ #import <AppKit/NSRichTextWriter.h>
+ #import <AppKit/NSStringDrawer.h>
+ #import <AppKit/NSTextAttachment.h>
++#import <AppKit/NSFileWrapper.h>
++#import "NSPlainTextCoding.h"
+ 
+ NSAttributedStringKey NSFontAttributeName = @"NSFontAttributeName";
+ NSAttributedStringKey NSParagraphStyleAttributeName = @"NSParagraphStyleAttributeName";
+@@ -144,8 +146,11 @@ NSUInteger NSUnderlineByWordMask = 0x8000;
+         documentAttributes: (NSDictionary **) attributes
+                      error: (NSError **) error
+ {
+-    NSUnimplementedMethod();
+-    NSString *docType = [options objectForKey:NSDocumentTypeDocumentAttribute];
++    if (data == nil) {
++        [self release];
++        return nil;
++    }
++    NSString *docType = [options objectForKey:NSDocumentTypeDocumentOption];
+    
+     //Infer the document format if not provided
+     if(docType == nil){
+@@ -207,8 +212,25 @@ NSUInteger NSUnderlineByWordMask = 0x8000;
+         return nil;
+     }
+     else if([docType isEqual: NSPlainTextDocumentType]){
+-        NSLog(@"NSAttributedString initFromData - dont know how to parse %@", docType);
+-        return nil;
++        NSStringEncoding used;
++        NSString *text = _NSPlainTextDecode(data,
++                [options objectForKey: NSCharacterEncodingDocumentOption], &used);
++        if (text == nil) {
++            if (error != NULL)
++                *error = [NSError errorWithDomain: NSCocoaErrorDomain
++                                             code: NSFileReadInapplicableStringEncodingError
++                                         userInfo: nil];
++            [self release];
++            return nil;
++        }
++        if (attributes != NULL)
++            *attributes = [NSDictionary dictionaryWithObjectsAndKeys:
++                    NSPlainTextDocumentType, NSDocumentTypeDocumentAttribute,
++                    [NSNumber numberWithUnsignedInteger: used], NSCharacterEncodingDocumentAttribute,
++                    nil];
++        NSDictionary *defaults = [options objectForKey: NSDefaultAttributesDocumentOption];
++        return [self initWithString: text
++                         attributes: defaults ? defaults : [NSDictionary dictionary]];
+     }
+     else if([docType isEqual: NSRTFTextDocumentType]){
+         return [self initWithRTF: data documentAttributes: attributes];
+@@ -519,8 +541,20 @@ NSUInteger NSUnderlineByWordMask = 0x8000;
+         documentAttributes: (NSDictionary *) attributes
+                      error: (NSError **) error
+ {
+-    NSUnimplementedMethod();
+-    return 0;
++    NSString *docType = [attributes objectForKey: NSDocumentTypeDocumentAttribute];
++
++    if ([docType isEqual: NSPlainTextDocumentType])
++        return _NSPlainTextEncode([[self string] substringWithRange: range],
++                [attributes objectForKey: NSCharacterEncodingDocumentAttribute], error);
++    if ([docType isEqual: NSRTFTextDocumentType])
++        return [self RTFFromRange: range documentAttributes: attributes];
++
++    // Other formats have no writer here yet.
++    if (error != NULL)
++        *error = [NSError errorWithDomain: NSCocoaErrorDomain
++                                     code: NSFileWriteUnknownError
++                                 userInfo: nil];
++    return nil;
+ }
+ 
+ - (NSData *) docFormatFromRange: (NSRange) range
+@@ -534,8 +568,12 @@ NSUInteger NSUnderlineByWordMask = 0x8000;
+                       documentAttributes: (NSDictionary *) attributes
+                                    error: (NSError **) error
+ {
+-    NSUnimplementedMethod();
+-    return nil;
++    // Flat formats only; RTFD directories are not written yet.
++    NSData *data = [self dataFromRange: range documentAttributes: attributes error: error];
++
++    if (data == nil)
++        return nil;
++    return [[[NSFileWrapper alloc] initRegularFileWithContents: data] autorelease];
+ }
+ 
+ #pragma mark -
+diff --git a/AppKit/NSPlainTextCoding.h b/AppKit/NSPlainTextCoding.h
+new file mode 100644
+index 0000000..fdeab4d
+--- /dev/null
++++ b/AppKit/NSPlainTextCoding.h
+@@ -0,0 +1,14 @@
++#import <Foundation/Foundation.h>
++
++// Plain-text document reading and writing for NSAttributedString.
++
++// Decodes data with the requested encoding (an NSNumber, or nil to detect
++// one). Detection honors a UTF-8 or UTF-16 byte order mark, then tries
++// UTF-8, then Windows Latin 1, then ISO Latin 1, which accepts any bytes.
++// Returns nil when the requested encoding cannot decode the data.
++NSString *_NSPlainTextDecode(NSData *data, NSNumber *encoding,
++                             NSStringEncoding *usedEncoding);
++
++// Encodes text without loss in the requested encoding (UTF-8 when nil).
++// Returns nil with NSFileWriteInapplicableStringEncodingError otherwise.
++NSData *_NSPlainTextEncode(NSString *text, NSNumber *encoding, NSError **error);
+diff --git a/AppKit/NSPlainTextCoding.m b/AppKit/NSPlainTextCoding.m
+new file mode 100644
+index 0000000..770226d
+--- /dev/null
++++ b/AppKit/NSPlainTextCoding.m
+@@ -0,0 +1,55 @@
++#import "NSPlainTextCoding.h"
++
++static NSString *decode(NSData *data, NSStringEncoding encoding) {
++    return [[[NSString alloc] initWithData: data encoding: encoding] autorelease];
++}
++
++NSString *_NSPlainTextDecode(NSData *data, NSNumber *encoding,
++                             NSStringEncoding *usedEncoding)
++{
++    if (data == nil)
++        return nil;
++
++    NSStringEncoding chosen = NSUTF8StringEncoding;
++    NSString *text = nil;
++    const unsigned char *bytes = [data bytes];
++    NSUInteger length = [data length];
++
++    if (encoding != nil) {
++        chosen = [encoding unsignedIntegerValue];
++        text = decode(data, chosen);
++    } else if (length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF) {
++        chosen = NSUTF8StringEncoding;
++        text = decode([data subdataWithRange: NSMakeRange(3, length - 3)], chosen);
++    } else if (length >= 2 && ((bytes[0] == 0xFF && bytes[1] == 0xFE) ||
++                               (bytes[0] == 0xFE && bytes[1] == 0xFF))) {
++        chosen = NSUnicodeStringEncoding;
++        text = decode(data, chosen);
++    } else {
++        NSStringEncoding candidates[] = {NSUTF8StringEncoding, NSWindowsCP1252StringEncoding,
++                                         NSISOLatin1StringEncoding};
++        for (unsigned i = 0; text == nil && i < sizeof(candidates) / sizeof(candidates[0]); i++) {
++            chosen = candidates[i];
++            text = decode(data, chosen);
++        }
++    }
++
++    if (text != nil && usedEncoding != NULL)
++        *usedEncoding = chosen;
++    return text;
++}
++
++NSData *_NSPlainTextEncode(NSString *text, NSNumber *encoding, NSError **error) {
++    NSStringEncoding chosen = (encoding != nil) ? [encoding unsignedIntegerValue]
++                                                : NSUTF8StringEncoding;
++    NSData *data = [text dataUsingEncoding: chosen allowLossyConversion: NO];
++
++    if (data == nil && error != NULL) {
++        *error = [NSError errorWithDomain: NSCocoaErrorDomain
++                                     code: NSFileWriteInapplicableStringEncodingError
++                                 userInfo: [NSDictionary dictionaryWithObject:
++                                                   [NSNumber numberWithUnsignedInteger: chosen]
++                                                                       forKey: NSStringEncodingErrorKey]];
++    }
++    return data;
++}
+diff --git a/AppKit/NSTextView.subproj/NSTextContainer.m b/AppKit/NSTextView.subproj/NSTextContainer.m
+index 40b8682..fd49093 100644
+--- a/AppKit/NSTextView.subproj/NSTextContainer.m
++++ b/AppKit/NSTextView.subproj/NSTextContainer.m
+@@ -224,6 +224,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
+     _maximumNumberOfLines = maximumNumberOfLines;
+ }
+ 
++// NSTextLayoutOrientationProvider. Cocotron lays out horizontally only.
++- (NSTextLayoutOrientation) layoutOrientation {
++    return NSTextLayoutOrientationHorizontal;
++}
++
+ - (BOOL) isSimpleRectangularTextContainer {
+     return YES;
+ }

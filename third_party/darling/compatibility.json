@@ -105,7 +105,9 @@
         "third_party/darling/patches/0011-uti-document-types.patch",
         "tests/darling-core-utis.py",
         "tests/darling/core-utis.c",
-        "tests/darling/document-types.m"
+        "tests/darling/document-types.m",
+        "third_party/darling/patches/0012-plain-text-documents.patch",
+        "tests/darling/plain-text.m"
       ]
     },
     {
@@ -181,7 +183,7 @@
       "status": "unverified",
       "milestone": "M3",
       "blockers": [
-        "Document workflow is not yet validated under Darling: the pinned runtime opened no window because Cocotron resolved document types by name only and Darling declares no core UTIs; patches 0010 and 0011 address this and await a full-runtime run."
+        "Document workflow is not yet validated under Darling. With patches 0010 and 0011 TextEdit opened the file but showed an alert: Cocotron could not read or write plain text and listed NSDocument types by name only. Patch 0012 and the amended 0011 address this and await a full-runtime run."
       ]
     },
     {

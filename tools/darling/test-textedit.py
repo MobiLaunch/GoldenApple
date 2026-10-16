@@ -63,12 +63,31 @@ def launch_command(binary, document, output, number, xtrace):
     }
 
 
+def read_windows(output, tag, windows):
+    """OCR each visible window, so an alert's message reaches the job log."""
+    if not (shutil.which("convert") and shutil.which("tesseract")):
+        return
+    for entry in windows:
+        window = entry.split(":", 1)[0]
+        image = output / f"{tag}-window-{window}"
+        captured = subprocess.run(["xwd", "-silent", "-id", window, "-out", f"{image}.xwd"], capture_output=True)
+        converted = captured.returncode == 0 and subprocess.run(
+            ["convert", f"xwd:{image}.xwd", "-resize", "200%", f"{image}.png"], capture_output=True).returncode == 0
+        if not converted:
+            continue
+        text = subprocess.run(["tesseract", f"{image}.png", "-"], capture_output=True, text=True, timeout=60).stdout
+        Path(f"{image}.txt").write_text(f"{entry}\n{text.strip()}\n")
+
+
 def print_diagnostics(output, lines=150):
     """CI artifacts are not always reachable; put the key evidence in the job log."""
     for path in sorted(output.glob("session-*.log")):
         text = path.read_text(errors="replace").splitlines()
         print(f"===== {path.name} (last {min(lines, len(text))} of {len(text)} lines) =====")
         print("\n".join(text[-lines:]))
+    for path in sorted(output.glob("session-*-window-*.txt")):
+        print(f"===== {path.stem} (OCR) =====")
+        print(path.read_text(errors="replace").strip())
     traces = sorted((output / "xtrace").glob("session-*"))
     # Whether TextEdit ever touched the document, wherever the thread ended.
     access = [f"{path.name}: {line}" for path in traces
@@ -164,6 +183,7 @@ def run_session(number, binary, document, env, output, result, xtrace=False):
             # An untitled window or an error alert means the document never
             # opened; record what is on screen instead of only a timeout.
             session["visible_windows"] = visible_windows()
+            read_windows(output, tag, session["visible_windows"])
             subprocess.run(["xwd", "-silent", "-root", "-out", str(output / f"{tag}-screen.xwd")],
                            capture_output=True, check=False)
             raise RuntimeError(f"{tag}: no document window; visible: {session['visible_windows']}") from None

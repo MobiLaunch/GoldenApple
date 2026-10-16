@@ -55,6 +55,35 @@ class DiagnosticsTests(unittest.TestCase):
         self.assertIn('session-1.102: open("/x/GoldenGateNote.txt", O_RDONLY) -> 9', text)
 
 
+    def test_alert_text_is_read_into_the_job_log(self):
+        calls = []
+
+        def run(command, **kwargs):
+            calls.append(command[0])
+            if command[0] == 'tesseract':
+                return subprocess.CompletedProcess(command, 0, "Can't open file\n", '')
+            return subprocess.CompletedProcess(command, 0, '', '')
+
+        with tempfile.TemporaryDirectory() as folder:
+            output = Path(folder)
+            with patch.object(textedit.shutil, 'which', return_value='/usr/bin/tool'), \
+                    patch.object(textedit.subprocess, 'run', side_effect=run):
+                textedit.read_windows(output, 'session-1', ['4194310: Alert'])
+            with patch('builtins.print') as printed:
+                textedit.print_diagnostics(output)
+            text = '\n'.join(str(call.args[0]) for call in printed.call_args_list)
+        self.assertEqual(calls, ['xwd', 'convert', 'tesseract'])
+        self.assertIn('session-1-window-4194310 (OCR)', text)
+        self.assertIn("4194310: Alert\nCan't open file", text)
+
+    def test_alert_ocr_is_skipped_without_tools(self):
+        with tempfile.TemporaryDirectory() as folder, \
+                patch.object(textedit.shutil, 'which', return_value=None), \
+                patch.object(textedit.subprocess, 'run') as run:
+            textedit.read_windows(Path(folder), 'session-1', ['1: Alert'])
+        run.assert_not_called()
+
+
 class WorkflowTests(unittest.TestCase):
     def run_workflow(self, save=True, lose_content=False, quit_code=0, xtrace=False):
         launches = []

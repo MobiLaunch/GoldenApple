@@ -21,8 +21,11 @@ static BOOL conforms(NSString *type, NSString *parent) {
     return NO;
 }
 
+@interface ProbeDocument : NSObject @end
+@implementation ProbeDocument @end
+
 static NSDictionary *type(NSString *name, NSArray *utis, NSString *role) {
-    NSMutableDictionary *info = [NSMutableDictionary dictionaryWithObject: @"Document" forKey: @"NSDocumentClass"];
+    NSMutableDictionary *info = [NSMutableDictionary dictionaryWithObject: @"ProbeDocument" forKey: @"NSDocumentClass"];
     if (name) [info setObject: name forKey: @"CFBundleTypeName"];
     if (utis) [info setObject: utis forKey: @"LSItemContentTypes"];
     if (role) [info setObject: role forKey: @"CFBundleTypeRole"];
@@ -74,6 +77,19 @@ int main(void) {
         NSArray *viewerFirst = @[[textEdit objectAtIndex: 2], [textEdit objectAtIndex: 4]];
         check([_NSDocumentDefaultType(viewerFirst) isEqualToString: @"public.plain-text"], "Viewer types are skipped");
         check(_NSDocumentDefaultType(@[]) == nil, "no declarations, no default type");
+
+        // NSDocument's readable and writable types: TextEdit's readableTypeForType:
+        // asks which of these a file's UTI conforms to, so names alone fail.
+        Class document = [ProbeDocument class];
+        NSArray *readable = _NSDocumentTypesForClass(textEdit, document, NO);
+        NSArray *writable = _NSDocumentTypesForClass(textEdit, document, YES);
+        check([readable containsObject: @"public.plain-text"] && [readable containsObject: @"org.openoffice.text"],
+              "readable types are the declared UTIs, Viewer roles included");
+        check(![readable containsObject: @"NSStringPboardType"], "UTI declarations do not add their names");
+        check([writable containsObject: @"public.rtf"] && ![writable containsObject: @"public.data"],
+              "writable types are Editor UTIs only");
+        check([_NSDocumentTypesForClass(legacy, document, YES) isEqual: @[@"Text"]], "name-only declarations keep names");
+        check([_NSDocumentTypesForClass(textEdit, [NSObject class], NO) count] == 0, "other classes declare nothing");
     }
     [pool release];
     if (failures)
