@@ -67,7 +67,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install Objective-C test dependencies
-        run: sudo apt-get update && sudo apt-get install -y clang cmake make linux-libc-dev libgnustep-base-dev
+        run: sudo apt-get update && sudo apt-get install -y clang cmake make linux-libc-dev libgnustep-base-dev libblocksruntime-dev
       - name: Fetch pinned source files and apply patches
         run: |
           git clone --no-checkout https://github.com/darlinghq/darling.git "$RUNNER_TEMP/darling"

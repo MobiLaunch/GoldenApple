@@ -272,11 +272,16 @@ has no CoreTypes.bundle:
 | `0010-core-uti-fallback` | darling | Built-in core UTI table (identifiers, parents, extensions); reflexive, transitive `UTTypeConformsTo` | `tests/darling-core-utis.py` |
 | `0011-uti-document-types` | cocotron | Document types match names or UTIs, by conformance; file UTIs come from LaunchServices; `NSDocument` readable/writable types list UTIs; `MacWorkspace` UTI methods | `tests/darling/document-types.m` via `run-host.sh` |
 | `0012-plain-text-documents` | cocotron | `NSAttributedString` reads plain text (BOM, UTF-8, then Latin fallbacks) and writes it losslessly; `NSTextContainer` reports horizontal layout | `tests/darling/plain-text.m` via `run-host.sh` |
+| `0013-paragraph-tab-stops` | cocotron | Copied and decoded paragraph styles own mutable tab stops; `-[NSMutableParagraphStyle copy]` returns an immutable copy, not itself | `tests/darling/paragraph-style.m` via `run-host.sh` |
 
 With 0010 and 0011 the next run opened the file (`open(GoldenGateNote.txt)` in the trace) and then showed
 an alert: Cocotron had no plain-text reader or writer, and `NSDocument` listed its readable types by
 name, so TextEdit's `readableTypeForType:` matched nothing. When no document window appears, the
 harness now OCRs each visible window into the job log.
+
+With 0012 TextEdit read the file and then aborted with "attempting to mutate an immutable object":
+for plain text it copies the default paragraph style and clears its tab stops, and Cocotron's copy
+kept an immutable tab-stop array.
 
 The CI step is non-blocking while M3 is in progress, so a TextEdit failure is
 recorded without hiding M1/M2 regressions. The first documents are ASCII plain

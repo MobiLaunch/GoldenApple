@@ -107,7 +107,9 @@
         "tests/darling/core-utis.c",
         "tests/darling/document-types.m",
         "third_party/darling/patches/0012-plain-text-documents.patch",
-        "tests/darling/plain-text.m"
+        "tests/darling/plain-text.m",
+        "third_party/darling/patches/0013-paragraph-tab-stops.patch",
+        "tests/darling/paragraph-style.m"
       ]
     },
     {
@@ -183,7 +185,7 @@
       "status": "unverified",
       "milestone": "M3",
       "blockers": [
-        "Document workflow is not yet validated under Darling. With patches 0010 and 0011 TextEdit opened the file but showed an alert: Cocotron could not read or write plain text and listed NSDocument types by name only. Patch 0012 and the amended 0011 address this and await a full-runtime run."
+        "Document workflow is not yet validated under Darling. With patches 0010-0012 TextEdit read the file, then aborted preparing plain-text attributes: a copied NSMutableParagraphStyle held an immutable tab-stop array. Patch 0013 addresses this and awaits a full-runtime run."
       ]
     },
     {

@@ -63,6 +63,11 @@
       "path": "patches/0012-plain-text-documents.patch",
       "repository": "cocotron",
       "sha256": "9ce70773bc8b61a6c21d0a03a5ef9262cba5c20ef6511239eb46a38befd6d501"
+    },
+    {
+      "path": "patches/0013-paragraph-tab-stops.patch",
+      "repository": "cocotron",
+      "sha256": "22fb6d6661828d50e61196420ac8f9e413db948e5a106bcfa8e9ce345d0d1c56"
     }
   ],
   "objc4_commit": "1a12df76d12bfc9fdfffadb290f7742763568765"

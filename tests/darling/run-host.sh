@@ -37,3 +37,11 @@ fi
   -I"$coco/AppKit" "$coco/AppKit/NSPlainTextCoding.m" "$here/plain-text.m" \
   -o "$temp/plain-text" "${libs[@]}"
 "$temp/plain-text"
+# Patch 0013: mutable tab stops in copied and decoded paragraph styles.
+"${CC:-clang}" "${flags[@]}" -fblocks -I"$(gcc -print-file-name=include)" \
+  -I"$(dirname -- "$objc_library")/include" -L"$(dirname -- "$objc_library")" \
+  -I"$here/host-text" -I"$here/host" -I"$coco/AppKit/include" \
+  "$coco/AppKit/NSParagraphStyle.m" "$coco/AppKit/NSMutableParagraphStyle.m" \
+  "$coco/AppKit/NSTextView.subproj/NSTextTab.m" "$here/paragraph-style.m" \
+  -o "$temp/paragraph-style" "${libs[@]}" -lBlocksRuntime
+"$temp/paragraph-style"
