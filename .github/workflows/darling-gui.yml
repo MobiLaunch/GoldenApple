@@ -309,12 +309,9 @@ jobs:
         with:
           name: Darling-TextEdit-Intel
           path: ${{ runner.temp }}/darling-textedit
-      - name: TextEdit document workflow (M3, in progress)
+      - name: TextEdit document workflow (M3)
         id: textedit
         if: always() && steps.install.outcome == 'success'
-        # M3 is not yet validated. Its result is recorded and uploaded, but
-        # does not mask M1/M2 regressions in this job's status.
-        continue-on-error: true
         timeout-minutes: 8
         run: |
           unzip -q "$RUNNER_TEMP/darling-textedit/TextEdit.zip" -d "$RUNNER_TEMP/darling-textedit"

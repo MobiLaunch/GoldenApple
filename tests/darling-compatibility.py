@@ -19,7 +19,7 @@ class EvidenceGates(unittest.TestCase):
         module.validate(self.data)
 
     def test_no_supported_label_for_unvalidated_app(self):
-        target = next(t for t in self.data['targets'] if t['id'] == 'textedit')
+        target = next(t for t in self.data['targets'] if t['id'] == 'iina')
         target.update(status='supported', blockers=[])
         with self.assertRaisesRegex(ValueError, 'validated workflow'):
             module.validate(self.data)

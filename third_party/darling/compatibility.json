@@ -76,7 +76,7 @@
     {
       "id": "M3",
       "name": "TextEdit document workflow",
-      "status": "in-progress",
+      "status": "validated",
       "requires": [
         "M1"
       ],
@@ -91,8 +91,10 @@
         },
         {
           "id": "darling-document-workflow",
-          "status": "pending",
-          "evidence": []
+          "status": "passed",
+          "evidence": [
+            "https://github.com/MobiLaunch/GoldenApple/actions/runs/38862450758/job/116848051630"
+          ]
         }
       ],
       "files": [
@@ -182,11 +184,9 @@
     {
       "id": "textedit",
       "name": "TextEdit",
-      "status": "unverified",
+      "status": "supported",
       "milestone": "M3",
-      "blockers": [
-        "Document workflow is not yet validated under Darling. With patches 0010-0012 TextEdit read the file, then aborted preparing plain-text attributes: a copied NSMutableParagraphStyle held an immutable tab-stop array. Patch 0013 addresses this and awaits a full-runtime run."
-      ]
+      "blockers": []
     },
     {
       "id": "iina",

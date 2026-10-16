@@ -283,10 +283,11 @@ With 0012 TextEdit read the file and then aborted with "attempting to mutate an 
 for plain text it copies the default paragraph style and clears its tab stops, and Cocotron's copy
 kept an immutable tab-stop array.
 
-The CI step is non-blocking while M3 is in progress, so a TextEdit failure is
-recorded without hiding M1/M2 regressions. The first documents are ASCII plain
-text; rich text, UTF-8 encoding detection and the Save panel for untitled
-documents are follow-on checks, not covered by this gate.
+With 0013 both sessions passed: open, render, type, Command-S without loss, Command-Q with exit 0,
+then reopen and repeat ([evidence](https://github.com/MobiLaunch/GoldenApple/actions/runs/38862450758/job/116848051630)).
+M3 is validated and the TextEdit step now gates the full-runtime job like M1 and M2. The documents are
+ASCII plain text; rich text, UTF-8 detection in the app and the Save panel for untitled documents are
+follow-on checks, not covered by this gate.
 
 ## Recording a compatibility failure
 
