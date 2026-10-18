@@ -106,7 +106,7 @@ class GoldenUpdate(unittest.TestCase):
         (STAGE / "usr/share/golden-gate/version.json").write_text(json.dumps(
             {"repo": "MobiLaunch/GoldenApple", "branch": BRANCH, "commit": OLD}))
         skel = STAGE / "etc/skel/.config"
-        for rel, text in (("hypr/hyprland.conf", "old hyprland\n"), ("gtk-4.0/gtk.css", "old gtk\n")):
+        for rel, text in (("hypr/hyprland.lua", "old hyprland\n"), ("gtk-4.0/gtk.css", "old gtk\n")):
             (skel / rel).parent.mkdir(parents=True, exist_ok=True)
             (skel / rel).write_text(text)
         if USER:
@@ -114,7 +114,8 @@ class GoldenUpdate(unittest.TestCase):
             (conf / "quickshell/golden-gate").mkdir(parents=True)
             (conf / "quickshell/golden-gate/old.qml").write_text("old shell")
             (conf / "hypr").mkdir(parents=True)
-            (conf / "hypr/hyprland.conf").write_text("old hyprland\n# my own binds\n")   # edited
+            (conf / "hypr/hyprland.lua").write_text("old hyprland\n-- my own binds\n")  # edited
+            (conf / "hypr/hyprland.conf").write_text("legacy\n")                          # from before Lua
             (conf / "gtk-4.0").mkdir(parents=True)
             (conf / "gtk-4.0/gtk.css").write_text("old gtk\n")                            # untouched
 
@@ -201,13 +202,14 @@ class GoldenUpdate(unittest.TestCase):
             conf = STAGE / USER.pw_dir.lstrip("/") / ".config"
             self.assertTrue((conf / "quickshell/golden-gate/shell.qml").exists())
             self.assertTrue((conf / "quickshell/golden-gate/VoiceAssistant.qml").exists())
-            self.assertIn("qs -c golden-gate ipc call citron toggle",
-                          (STAGE / "etc/skel/.config/hypr/hyprland.conf").read_text())
+            self.assertIn('ipc("citron toggle")', (STAGE / "etc/skel/.config/hypr/hyprland.lua").read_text())
+            self.assertTrue((conf / "quickshell/golden-gate-lock/shell.qml").exists(), "the lock screen's config too")
             self.assertFalse((conf / "quickshell/golden-gate/old.qml").exists())
             self.assertEqual((conf / "gtk-4.0/gtk.css").read_text(),
                              (STAGE / "etc/skel/.config/gtk-4.0/gtk.css").read_text())
-            self.assertIn("my own binds", (conf / "hypr/hyprland.conf").read_text())
-            self.assertTrue((conf / "hypr/hyprland.conf.golden-gate-new").exists())
+            self.assertIn("my own binds", (conf / "hypr/hyprland.lua").read_text())
+            self.assertTrue((conf / "hypr/hyprland.lua.golden-gate-new").exists())
+            self.assertEqual((conf / "hypr/hyprland.conf").read_text(), "legacy\n", "an old hyprland.conf is left alone")
             self.assertTrue(any("Kept your edited" in kw.get("message", "") for e, kw in events if e == "notice"))
 
 
