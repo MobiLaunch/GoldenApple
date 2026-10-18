@@ -72,6 +72,10 @@ trap 'kill $SWAY 2>/dev/null || true; pkill -u "$(id -u)" -x qs 2>/dev/null || t
 for _ in $(seq 300); do ls "$XDG_RUNTIME_DIR"/sway-ipc.*.sock >/dev/null 2>&1 && break; sleep 0.1; done
 ls "$XDG_RUNTIME_DIR"/sway-ipc.*.sock >/dev/null 2>&1 || { echo "Sway did not start:"; tail -30 "$OUT/sway.log"; exit 1; }
 SWAYSOCK="$(ls "$XDG_RUNTIME_DIR"/sway-ipc.*.sock)"; export WAYLAND_DISPLAY=wayland-1 SWAYSOCK
+# The environment the session gives the shell (hyprland.lua's hl.env lines:
+# the icon theme, the Qt platform theme), then this run's own.
+while IFS=$'\t' read -r key value; do export "$key=$value"; done < <(
+  sed -nE 's/^hl\.env\("([A-Z_]+)", "([^"]*)"\).*/\1\t\2/p' "$HYPR/hyprland.lua")
 export QT_QPA_PLATFORM=wayland GG_WALLPAPER="$XDG_DATA_HOME/backgrounds/golden-gate/tide.png"
 gsettings set org.gnome.desktop.interface color-scheme default 2>/dev/null || true
 

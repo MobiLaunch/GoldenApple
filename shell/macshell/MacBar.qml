@@ -6432,27 +6432,31 @@ Scope {
                     Component {
                         id: cBt
                         CCTile {
+                            id: btTile
                             t: pal; gx: ccg
+                            // CitronOS: the grid's `slot` belongs to the delegate that loads this
+                            // component, out of its scope; a tile two cells wide is wider than tall.
+                            readonly property bool wide: width > height * 1.5
                             CCBtn {
                                 t: pal; gx: ccg
-                                x: slot.w > 1 ? 12 : (parent.width - width) / 2
+                                x: btTile.wide ? 12 : (parent.width - width) / 2
                                 anchors.verticalCenter: parent.verticalCenter
                                 kind: "bluetooth"; on: root.btOn
                                 onClicked: root.toggleBt()
                             }
                             MouseArea {
-                                visible: slot.w > 1
+                                visible: btTile.wide
                                 x: 56; width: parent.width - 56; height: parent.height
                                 onClicked: ui.openPop("bt", ui.width)
                             }
                             Glyph {
-                                visible: slot.w > 1
+                                visible: btTile.wide
                                 x: parent.width - 22; anchors.verticalCenter: parent.verticalCenter
                                 width: 12; height: 12
                                 kind: "chevR"; color: pal.fg2
                             }
                             Column {
-                                visible: slot.w > 1
+                                visible: btTile.wide
                                 x: 62; anchors.verticalCenter: parent.verticalCenter
                                 width: parent.width - 62 - 24
                                 spacing: 1
