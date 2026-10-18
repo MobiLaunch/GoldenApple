@@ -86,7 +86,28 @@ shoot() { # shoot NAME LOG SECONDS COMMAND...
   local pid=$!
   sleep "$wait"
   grim "$OUT/$name.png" || true
+  local alive=1 crashes="$HOME/.cache/quickshell/crashes"
+  kill -0 "$pid" 2>/dev/null || alive=0
   kill "$pid" 2>/dev/null || true; wait "$pid" 2>/dev/null || true
+  # A crash shows Quickshell's crash window instead of the shell: fail, with
+  # what it logged and its crash report.
+  if [[ $alive == 0 ]] || compgen -G "$crashes/*" >/dev/null; then
+    echo "::error::$name: Quickshell crashed or quit"; failed=1
+    sed 's/^/  /' "$OUT/$log" | tail -n 120
+    for d in "$crashes"/*/; do
+      [[ -d $d ]] || continue
+      say "crash report $d"; ls -la "$d"
+      for f in "$d"*; do
+        case $f in
+          *.qslog) qs log "$f" 2>&1 | tail -n 150 || true ;;
+          *.dmp) ;;
+          *) grep -Iq . "$f" && { echo "--- $f"; tail -n 200 "$f"; } ;;
+        esac
+      done
+      cp -r "$d" "$OUT/crash-$name" 2>/dev/null || true
+    done
+    rm -rf "$crashes"
+  fi
   # QML that didn't load or threw, in CitronOS's or MacShell's files.
   local errs
   errs=$(grep -E '(golden-gate|golden-gate-lock|shell|macshell)/[^ ]*\.qml.*(is not a type|is not defined|Cannot assign|Type error|TypeError|ReferenceError|failed to load|Unable to assign|Non-existent)|Failed to load configuration|QML .* Error|ERROR: ' "$OUT/$log" | grep -v 'Hyprland\|HYPRLAND_INSTANCE' | head -n 40 || true)
@@ -94,6 +115,8 @@ shoot() { # shoot NAME LOG SECONDS COMMAND...
     echo "::error::$name: QML errors"; printf '%s\n' "$errs"; failed=1
   fi
   say "$name: $(grep -c . "$OUT/$log") log lines"
+  # Warnings don't fail the run, but they belong in the log.
+  grep -E 'WARN|qml:|\.qml:[0-9]+' "$OUT/$log" | grep -v 'Hyprland\|HYPRLAND_INSTANCE' | head -n 25 | sed 's/^/  /' || true
 }
 shoot shell shell.log 25 qs -c golden-gate
 shoot lock lock.log 12 env MACLOCK_PREVIEW=1 qs -c golden-gate-lock
