@@ -294,19 +294,25 @@ if command -v node >/dev/null; then
     say "building design tokens"
     node "$REPO/design/build.mjs" >/dev/null
   fi
-  say "building shared icons"
-  node "$REPO/icons/build.mjs" >/dev/null
+  # A read-only source tree (another account's checkout) keeps its built icons.
+  if [[ -w "$REPO/icons" ]]; then
+    say "building shared icons"
+    node "$REPO/icons/build.mjs" >/dev/null
+  fi
 fi
 
 # 2. Compositor
 say "Hyprland config → $CONF/hypr"
 BG_ABS="${BG_PATH/#\~/$HOME}"
 if [[ $MODE == system ]]; then APPS_RUN=/usr/share/golden-gate/apps; else APPS_RUN="$DATA/golden-gate/apps"; fi
-sed -e "s#__GG_WALLPAPER__#$BG_ABS/tide.png#" -e "s#__GG_APPS__#$APPS_RUN#" "$REPO/compositor/hyprland/hyprland.lua" > "$REPO/.hyprland.tmp"
+# The source tree may be read-only (another account's checkout): fill in the
+# paths in a temporary file of our own.
+HYPR_TMP="$(mktemp)"
+sed -e "s#__GG_WALLPAPER__#$BG_ABS/tide.png#" -e "s#__GG_APPS__#$APPS_RUN#" "$REPO/compositor/hyprland/hyprland.lua" > "$HYPR_TMP"
 # Hyprland 0.55+ reads hyprland.lua when it exists; an older hyprland.conf
 # beside it is kept but no longer read.
-place "$REPO/.hyprland.tmp" "$CONF/hypr/hyprland.lua"
-rm -f "$REPO/.hyprland.tmp"
+place "$HYPR_TMP" "$CONF/hypr/hyprland.lua"
+rm -f "$HYPR_TMP"
 place "$REPO/design/dist/hyprland-motion.lua" "$CONF/hypr/golden-gate/motion.lua"
 place "$REPO/compositor/hyprland/hypridle.conf" "$CONF/hypr/hypridle.conf"
 place "$REPO/compositor/hyprland/report-config-errors.sh" "$CONF/hypr/golden-gate/report-config-errors.sh"
