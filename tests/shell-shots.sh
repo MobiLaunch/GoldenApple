@@ -116,8 +116,13 @@ shoot() { # shoot NAME LOG SECONDS COMMAND...
   fi
   say "$name: $(grep -c . "$OUT/$log") log lines"
   # Warnings don't fail the run, but they belong in the log.
-  grep -E 'WARN|qml:|\.qml:[0-9]+' "$OUT/$log" | grep -v 'Hyprland\|HYPRLAND_INSTANCE' | head -n 25 | sed 's/^/  /' || true
+  [[ $name == start-* ]] || grep -E 'WARN|qml:|\.qml:[0-9]+' "$OUT/$log" | grep -v 'Hyprland\|HYPRLAND_INSTANCE' | head -n 25 | sed 's/^/  /' || true
 }
+# A crash at startup that only some starts hit: start it a few more times.
+for i in 1 2 3 4 5; do
+  shoot "start-$i" "start-$i.log" 10 qs -c golden-gate
+  [[ $failed == 1 ]] || rm -f "$OUT/start-$i.png"
+done
 shoot shell shell.log 25 qs -c golden-gate
 shoot lock lock.log 12 env MACLOCK_PREVIEW=1 qs -c golden-gate-lock
 
