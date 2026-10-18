@@ -9,7 +9,8 @@ harness can't load MacShell itself (CI's Shell workflow runs it in Quickshell):
   added once to an existing layout; its Focus is CitronOS's Focus;
 - the menu bar has the Focus moon, Citron and the location arrow;
 - the Dock's red badges count an app's notifications, and Mail's unread mail;
-- MacShell's Light/Dark and accent follow Settings › Appearance."""
+- MacShell's Light/Dark and accent follow Settings › Appearance;
+- Reduce Motion stops MacShell's movement and zooms, keeping fades."""
 from __future__ import annotations
 
 import json
@@ -74,6 +75,18 @@ check("Badge application icon" in pane, "Settings › Notifications can turn an 
 # Appearance.
 check("ggFollowDark" in SHELL and '"color-scheme"' in SHELL and "ggFollowAccent" in SHELL, "Light/Dark and accent follow Settings")
 
+# Reduce Motion (Settings › Accessibility): what moves or zooms stops; fades stay.
+import re
+moving = []
+for f in sorted((ROOT / "shell/macshell").glob("*.qml")):
+    if f.name == "ClockApp.qml":       # the clocks' hands keep time
+        continue
+    for m in re.finditer(r"Behavior on ([A-Za-z_.]+)\s*\{([^\n]*\n?[^\n]*)", f.read_text()):
+        if m.group(1) not in ("opacity", "color", "border.color", "ac") and "Theme.reduceMotion" not in m.group(2):
+            moving.append(f"{f.name}:{m.group(1)}")
+check(not moving, f"MacShell's motion follows Reduce Motion ({moving[:5]})")
+check("Binding { target: Theme; property: \"reduceMotion\"" in (ROOT / "shell/shell.qml").read_text(), "…which the shell takes from Settings")
+
 # The location watcher, for real: a helper's file names the app, a stale one goes.
 with tempfile.TemporaryDirectory() as tmp:
     run = Path(tmp) / "citron-location"
@@ -91,4 +104,4 @@ with tempfile.TemporaryDirectory() as tmp:
 
 if failures:
     sys.exit(1)
-print("MacShell ports: Window menu, shortcuts, Control Center, Focus, menu bar, badges, appearance")
+print("MacShell ports: Window menu, shortcuts, Control Center, Focus, menu bar, badges, appearance, Reduce Motion")

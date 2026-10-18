@@ -29,6 +29,7 @@ import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Services.Pipewire
 import Quickshell.Services.UPower
+import "../ui/theme"
 
 Scope {
     id: root
@@ -301,7 +302,7 @@ Scope {
             color: "white"
             border.width: 1
             border.color: Qt.rgba(0, 0, 0, 0.10)
-            Behavior on x { NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
+            Behavior on x { enabled: !Theme.reduceMotion; NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
         }
         MouseArea {
             anchors.fill: parent
@@ -407,7 +408,7 @@ Scope {
             color: g.t.ctrlSel
             border.width: g.t.dark ? 0 : 1
             border.color: Qt.rgba(0, 0, 0, 0.10)
-            Behavior on x { NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
+            Behavior on x { enabled: !Theme.reduceMotion; NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
         }
         Row {
             x: 2; y: 2
@@ -1882,7 +1883,7 @@ Scope {
                                     colorizationColor: root.iconTintColor
                                     transformOrigin: Item.Bottom
                                     scale: root.magnificationEnabled ? 1 + (root.magnification - 1) * pi.f : 1
-                                    Behavior on scale { NumberAnimation { duration: 120 } }
+                                    Behavior on scale { enabled: !Theme.reduceMotion; NumberAnimation { duration: 120 } }
                                 }
                             }
                         }
@@ -2942,7 +2943,7 @@ Scope {
                                             GradientStop { position: 1; color: "#3E3530" }
                                         }
                                         border.width: tile.sel ? 3 : 0; border.color: pal.accent
-                                        Behavior on border.width { NumberAnimation { duration: 160 } }
+                                        Behavior on border.width { enabled: !Theme.reduceMotion; NumberAnimation { duration: 160 } }
                                         Text {
                                             anchors.centerIn: parent
                                             text: "9:41"
@@ -3014,7 +3015,7 @@ Scope {
                                     border.width: sel ? 2.5 : 1
                                     border.color: sel ? pal.accent : Qt.rgba(0, 0, 0, 0.2)
                                     scale: swMa.pressed ? 0.88 : 1
-                                    Behavior on scale { NumberAnimation { duration: 200; easing.type: Easing.OutQuint } }
+                                    Behavior on scale { enabled: !Theme.reduceMotion; NumberAnimation { duration: 200; easing.type: Easing.OutQuint } }
                                     MouseArea { id: swMa; anchors.fill: parent; anchors.margins: -3; cursorShape: Qt.PointingHandCursor; onClicked: if (root.bar) root.bar.lockClockTint = parent.modelData }
                                 }
                             }
@@ -4255,7 +4256,7 @@ Scope {
                     // closer it gets to the window's real size, held near its title bar (no wiggle — it's a window)
                     readonly property real liftRaw: isWin ? Math.max(0, Math.min(1, (ui.activeTop - ui.tearY) / 240)) : 0
                     property real lift: 1 - Math.pow(1 - liftRaw, 3)
-                    Behavior on lift { NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
+                    Behavior on lift { enabled: !Theme.reduceMotion; NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
                     readonly property real thumbW: 170
                     readonly property real liftW: thumbW + (ui.tearW - thumbW) * lift
                     readonly property real grabFy: 0.5 + (0.035 - 0.5) * lift
@@ -4318,7 +4319,7 @@ Scope {
                 anchors.fill: parent
 
                 property real mx: 0
-                Behavior on mx { NumberAnimation { duration: 55; easing.type: Easing.OutQuad } }
+                Behavior on mx { enabled: !Theme.reduceMotion; NumberAnimation { duration: 55; easing.type: Easing.OutQuad } }
                 property bool revealed: false
                 property var menuItem: null
                 property var menuModel: []
@@ -4524,7 +4525,7 @@ Scope {
                                                   - root.iconSize * (root.effMag - 1) - 12
                 readonly property bool active: dragging || (hh.hovered && hh.point.position.y > activeTop && !tucked)
                 property real strength: active ? 1 : 0
-                Behavior on strength { NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
+                Behavior on strength { enabled: !Theme.reduceMotion; NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
 
                 HoverHandler {
                     id: hh
@@ -4677,7 +4678,7 @@ Scope {
                     height: root.bgHeight
                     anchors.horizontalCenter: parent.horizontalCenter
                     y: ui.height - root.margin - height + (ui.tucked ? height + root.margin + 6 : 0)
-                    Behavior on y { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
+                    Behavior on y { enabled: !Theme.reduceMotion; NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
 
                     // ── Apple Liquid Glass: real-time refraction of the backdrop (see liquidglass.frag) ──
                     Loader {
@@ -4837,7 +4838,7 @@ Scope {
                                     return ui.shiftFor(index);
                                 }
                                 Behavior on dx {
-                                    enabled: !cell.isDragged
+                                    enabled: !Theme.reduceMotion && (!cell.isDragged)
                                     NumberAnimation { duration: 160; easing.type: Easing.OutCubic }
                                 }
                                 transform: Translate { x: cell.dx }
@@ -4845,7 +4846,7 @@ Scope {
 
                                 readonly property bool leavingCell: modelData.leaving === true
                                 property real appear: modelData.fresh ? 0 : 1
-                                Behavior on appear { NumberAnimation { duration: cell.leavingCell ? root.leaveMs : 320; easing.type: cell.leavingCell ? Easing.InOutCubic : Easing.OutCubic } }
+                                Behavior on appear { enabled: !Theme.reduceMotion; NumberAnimation { duration: cell.leavingCell ? root.leaveMs : 320; easing.type: cell.leavingCell ? Easing.InOutCubic : Easing.OutCubic } }
                                 Component.onCompleted: { heldTl = thumbWin; Qt.callLater(function () { cell.appear = cell.leavingCell ? 0 : 1; cell.bounceStep(); }); }
                                 onLeavingCellChanged: appear = leavingCell ? 0 : 1
                                 enabled: !leavingCell
@@ -4921,7 +4922,7 @@ Scope {
                                     anchors.right: img.right; anchors.rightMargin: -width * 0.22
                                     anchors.top: img.top; anchors.topMargin: -height * 0.18
                                     scale: visible ? 1 : 0.4
-                                    Behavior on scale { NumberAnimation { duration: 260; easing.type: Easing.OutBack; easing.overshoot: 2.2 } }
+                                    Behavior on scale { enabled: !Theme.reduceMotion; NumberAnimation { duration: 260; easing.type: Easing.OutBack; easing.overshoot: 2.2 } }
                                     Text {
                                         id: badgeText
                                         anchors.centerIn: parent
@@ -5134,7 +5135,7 @@ Scope {
                     scale: ui.menuOpen ? 1 : 0.96
                     transformOrigin: Item.Bottom
                     Behavior on opacity { NumberAnimation { duration: 110 } }
-                    Behavior on scale { NumberAnimation { duration: 110; easing.type: Easing.OutCubic } }
+                    Behavior on scale { enabled: !Theme.reduceMotion; NumberAnimation { duration: 110; easing.type: Easing.OutCubic } }
 
                     width: 230
                     height: menuCol.height + 10

@@ -79,6 +79,7 @@ import "EmojiData.js" as EmojiData
 import "../components"
 import "../ui" as GG
 import "../ui/FocusPolicy.js" as FocusPolicy
+import "../ui/theme"
 
 Scope {
     id: root
@@ -384,7 +385,7 @@ Scope {
     property int bgTone: 0
     readonly property bool effDark: (autoContrast && bgTone !== 0) ? bgTone < 0 : darkMode
     property real dk: effDark ? 1 : 0
-    Behavior on dk { NumberAnimation { duration: 360; easing.type: Easing.OutCubic } }
+    Behavior on dk { enabled: !Theme.reduceMotion; NumberAnimation { duration: 360; easing.type: Easing.OutCubic } }
     function mixc(l, d) { return Qt.rgba(l.r + (d.r - l.r) * dk, l.g + (d.g - l.g) * dk, l.b + (d.b - l.b) * dk, l.a + (d.a - l.a) * dk); }
     QtObject {
         id: bpal
@@ -987,7 +988,7 @@ Scope {
         property vector2d mouse: Qt.vector2d(at.x, at.y)
         property real cornerRadius: cornerR
         property real amount: hovered ? 1 : 0
-        Behavior on amount { NumberAnimation { duration: 320; easing.type: Easing.OutCubic } }
+        Behavior on amount { enabled: !Theme.reduceMotion; NumberAnimation { duration: 320; easing.type: Easing.OutCubic } }
         property real spread: Math.max(40, Math.min(width, height) * 0.9)
         property vector4d tint: Qt.vector4d(glowColor.r, glowColor.g, glowColor.b, 1)
         visible: amount > 0.005
@@ -1008,7 +1009,7 @@ Scope {
         property bool bounce: false
         width: d; height: d
         scale: (bounce && bma.pressed) ? 0.88 : 1
-        Behavior on scale { NumberAnimation { duration: 230; easing.type: Easing.OutBack; easing.overshoot: 3.2 } }
+        Behavior on scale { enabled: !Theme.reduceMotion; NumberAnimation { duration: 230; easing.type: Easing.OutBack; easing.overshoot: 3.2 } }
         GGlass { anchors.fill: parent; gx: b.gx; cornerR: b.d / 2; thickness: 14; strengthMul: 0.6; shadowAmt: b.shadow }
         Rectangle {
             anchors.fill: parent
@@ -1293,7 +1294,7 @@ Scope {
         Rectangle { anchors.fill: parent; radius: 11; color: sw.checked ? sw.t.accent : sw.t.switchOff }
         Rectangle {
             x: sw.checked ? 18 : 2; y: 2; width: 18; height: 18; radius: 9; color: "white"
-            Behavior on x { NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
+            Behavior on x { enabled: !Theme.reduceMotion; NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
         }
         MouseArea { anchors.fill: parent; onClicked: sw.toggled(!sw.checked) }
     }
@@ -1335,7 +1336,7 @@ Scope {
         Rectangle {
             y: 2; x: 2 + sg.current * sg.segWidth; width: sg.segWidth; height: parent.height - 4; radius: 5
             color: sg.t.dark ? "#636366" : "#FFFFFF"
-            Behavior on x { NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
+            Behavior on x { enabled: !Theme.reduceMotion; NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
         }
         Row {
             x: 2; y: 2
@@ -4531,7 +4532,7 @@ Scope {
                     scale: root.osdVisible ? 1 : 0.94
                     transformOrigin: Item.TopRight
                     Behavior on opacity { NumberAnimation { duration: 160 } }
-                    Behavior on scale { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
+                    Behavior on scale { enabled: !Theme.reduceMotion; NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
                     LGlass {
                         anchors.fill: parent
                         backdrop: ui.glassSrc
@@ -4942,7 +4943,7 @@ Scope {
                             // the widget grows to the right while a privacy dot is showing, so the dot sits beside the icon
                             readonly property bool dotsOn: root.privacyAny && root.barWidgetEnabled("privacy")
                             width: (root.ccEnabled && root.barWidgetEnabled("controlCenter")) ? 30 + (dotsOn ? ccDots.width + 2 : 0) : 0; height: 28
-                            Behavior on width { NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
+                            Behavior on width { enabled: !Theme.reduceMotion; NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
                             Rectangle {
                                 anchors.centerIn: parent
                                 width: parent.width - 2; height: parent.height - 6; radius: 6
@@ -5005,7 +5006,7 @@ Scope {
                     scale: root.barPopupScale * (ui.pop === "vol" ? 1 : 0.96)
                     transformOrigin: Item.Top
                     Behavior on opacity { NumberAnimation { duration: 110 } }
-                    Behavior on scale { NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
+                    Behavior on scale { enabled: !Theme.reduceMotion; NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
                     LGlass {
                         anchors.fill: parent
                         backdrop: ui.glassSrc
@@ -5149,7 +5150,7 @@ Scope {
                     scale: root.barPopupScale * (ui.pop === "kb" ? 1 : 0.96)
                     transformOrigin: Item.Top
                     Behavior on opacity { NumberAnimation { duration: 110 } }
-                    Behavior on scale { NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
+                    Behavior on scale { enabled: !Theme.reduceMotion; NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
                     LGlass {
                         anchors.fill: parent
                         backdrop: ui.glassSrc
@@ -5234,7 +5235,7 @@ Scope {
                         return b;
                     }
                     y: popBottom > 0 ? popBottom + 12 : root.barHeight + 8
-                    Behavior on y { NumberAnimation { duration: 770; easing.type: Easing.OutQuint } }
+                    Behavior on y { enabled: !Theme.reduceMotion; NumberAnimation { duration: 770; easing.type: Easing.OutQuint } }
                     height: toastCol.height
                     visible: ui.toastsShown && root.notificationsEnabled
                     Column {
@@ -5260,7 +5261,7 @@ Scope {
                                 readonly property int life: timeout > 0 ? timeout : (urgency === 2 ? 10000 : 6000)
                                 // t: 0 = a small pill at the right edge (off to the side), 1 = the full card in place
                                 property real t: (shown && !leaving) ? 1 : 0
-                                Behavior on t { NumberAnimation { duration: 770; easing.type: toast.leaving ? Easing.OutCubic : Easing.OutQuint } }
+                                Behavior on t { enabled: !Theme.reduceMotion; NumberAnimation { duration: 770; easing.type: toast.leaving ? Easing.OutCubic : Easing.OutQuint } }
                                 readonly property real tc: Math.max(0, Math.min(1, t))
                                 width: toastCol.width
                                 // the slot grows with the card, so the stack below makes room smoothly
@@ -5359,7 +5360,7 @@ Scope {
                     // while clearing it tracks the collapsing list frame by frame (never shorter than the empty state),
                     // so the dust and the shrink are one motion; otherwise it eases to its new size
                     height: 92 + (notifHist.count === 0 ? 70 : (root.notifClearing ? Math.max(70, nfl.height) : nfl.height)) + 14
-                    Behavior on height { enabled: !root.notifClearing; NumberAnimation { duration: 560; easing.type: Easing.OutQuint } }
+                    Behavior on height { enabled: !Theme.reduceMotion && (!root.notifClearing); NumberAnimation { duration: 560; easing.type: Easing.OutQuint } }
                     x: Math.max(6, ui.width - width - 8)
                     y: root.barHeight + 6
                     opacity: ui.pop === "notif" ? 1 : 0
@@ -5370,9 +5371,9 @@ Scope {
                     // its chrome (glass, header, Do Not Disturb) builds in around them
                     readonly property bool merging: ui.toastsShown
                     property real chrome: ui.pop === "notif" ? 1 : 0
-                    Behavior on chrome { NumberAnimation { duration: 320; easing.type: Easing.OutCubic } }
+                    Behavior on chrome { enabled: !Theme.reduceMotion; NumberAnimation { duration: 320; easing.type: Easing.OutCubic } }
                     Behavior on opacity { enabled: !notifPop.merging; NumberAnimation { duration: 280; easing.type: Easing.OutCubic } }
-                    Behavior on scale { enabled: !notifPop.merging; NumberAnimation { duration: 420; easing.type: Easing.OutQuint } }
+                    Behavior on scale { enabled: !Theme.reduceMotion && (!notifPop.merging); NumberAnimation { duration: 420; easing.type: Easing.OutQuint } }
 
                     LGlass {
                         anchors.fill: parent
@@ -5437,7 +5438,7 @@ Scope {
                             Rectangle {
                                 y: 2; width: 18; height: 18; radius: 9; color: "white"
                                 x: root.notifDnd ? 18 : 2
-                                Behavior on x { NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
+                                Behavior on x { enabled: !Theme.reduceMotion; NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
                             }
                             MouseArea { anchors.fill: parent; onClicked: root.toggleDnd() }
                         }
@@ -5482,7 +5483,7 @@ Scope {
                                     property real inT: 0
                                     property bool snapIn: false
                                     Component.onCompleted: inT = 1
-                                    Behavior on inT { enabled: !hcd.snapIn && !root.notifClearing; NumberAnimation { duration: 560; easing.type: Easing.OutQuint } }
+                                    Behavior on inT { enabled: !Theme.reduceMotion && (!hcd.snapIn && !root.notifClearing); NumberAnimation { duration: 560; easing.type: Easing.OutQuint } }
                                     // morph from the popup: the card starts at the popup's spot / width and flies into its slot
                                     property real flipX: 0
                                     property real flipY: 0
@@ -5583,7 +5584,7 @@ Scope {
                     scale: root.barPopupScale * (ui.isMenu ? 1 : 0.97)
                     transformOrigin: Item.TopLeft
                     Behavior on opacity { NumberAnimation { duration: 90 } }
-                    Behavior on scale { NumberAnimation { duration: 110; easing.type: Easing.OutCubic } }
+                    Behavior on scale { enabled: !Theme.reduceMotion; NumberAnimation { duration: 110; easing.type: Easing.OutCubic } }
 
                     LGlass {
                         anchors.fill: parent
@@ -5706,7 +5707,7 @@ Scope {
                     scale: root.barPopupScale * (shown ? 1 : 0.97)
                     transformOrigin: Item.TopLeft
                     Behavior on opacity { NumberAnimation { duration: 90 } }
-                    Behavior on scale { NumberAnimation { duration: 110; easing.type: Easing.OutCubic } }
+                    Behavior on scale { enabled: !Theme.reduceMotion; NumberAnimation { duration: 110; easing.type: Easing.OutCubic } }
 
                     QsMenuOpener { id: trayOpener; menu: trayPop.cur }
 
@@ -5873,7 +5874,7 @@ Scope {
                     scale: root.barPopupScale * (ui.pop === "wifi" ? 1 : 0.96)
                     transformOrigin: Item.Top
                     Behavior on opacity { NumberAnimation { duration: 110 } }
-                    Behavior on scale { NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
+                    Behavior on scale { enabled: !Theme.reduceMotion; NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
 
                     LGlass {
                         anchors.fill: parent
@@ -6151,7 +6152,7 @@ Scope {
                     scale: root.barPopupScale * (ui.pop === "bt" ? 1 : 0.96)
                     transformOrigin: Item.Top
                     Behavior on opacity { NumberAnimation { duration: 110 } }
-                    Behavior on scale { NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
+                    Behavior on scale { enabled: !Theme.reduceMotion; NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
 
                     LGlass {
                         anchors.fill: parent
@@ -6401,7 +6402,7 @@ Scope {
                     scale: root.barPopupScale * (ui.pop === "cal" ? 1 : 0.96)
                     transformOrigin: Item.TopRight
                     Behavior on opacity { NumberAnimation { duration: 110 } }
-                    Behavior on scale { NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
+                    Behavior on scale { enabled: !Theme.reduceMotion; NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
 
                     LGlass {
                         anchors.fill: parent
@@ -6516,6 +6517,7 @@ Scope {
                     property int openSeq: 0
                     property real openT: opening ? 1 : 0
                     Behavior on openT {
+                        enabled: !Theme.reduceMotion
                         NumberAnimation {
                             duration: cc.opening ? 520 : 150
                             easing.type: cc.opening ? Easing.OutBack : Easing.OutCubic
@@ -6979,7 +6981,7 @@ Scope {
                                             kind: pbtn.modelData === "play" ? (np.pl && np.pl.isPlaying ? "pause" : "play") : pbtn.modelData
                                             color: pal.fg
                                             scale: pma.pressed ? 0.88 : 1
-                                            Behavior on scale { NumberAnimation { duration: 230; easing.type: Easing.OutBack; easing.overshoot: 3.2 } }
+                                            Behavior on scale { enabled: !Theme.reduceMotion; NumberAnimation { duration: 230; easing.type: Easing.OutBack; easing.overshoot: 3.2 } }
                                         }
                                         MouseArea {
                                             id: pma
@@ -7158,9 +7160,9 @@ Scope {
                                     transform: Translate { y: (1 - ct.ap) * 16 }
                                     opacity: Math.max(0, Math.min(1, ct.ap * 1.6))
                                     scale: dragging ? 1.04 : 1
-                                    Behavior on x { enabled: !ct.dragging; NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
-                                    Behavior on y { enabled: !ct.dragging; NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
-                                    Behavior on scale { NumberAnimation { duration: 110; easing.type: Easing.OutCubic } }
+                                    Behavior on x { enabled: !Theme.reduceMotion && (!ct.dragging); NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
+                                    Behavior on y { enabled: !Theme.reduceMotion && (!ct.dragging); NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
+                                    Behavior on scale { enabled: !Theme.reduceMotion; NumberAnimation { duration: 110; easing.type: Easing.OutCubic } }
 
                                     Loader {
                                         anchors.fill: parent
@@ -7373,9 +7375,9 @@ Scope {
                     scale: shown ? 1 : 0.92
                     transformOrigin: Item.Center
                     Behavior on opacity { NumberAnimation { duration: swPanel.shown ? 220 : 160; easing.type: Easing.OutCubic } }
-                    Behavior on scale { NumberAnimation { duration: swPanel.shown ? 420 : 200; easing.type: Easing.OutQuint } }
+                    Behavior on scale { enabled: !Theme.reduceMotion; NumberAnimation { duration: swPanel.shown ? 420 : 200; easing.type: Easing.OutQuint } }
                     property real soft: shown ? 0 : 1
-                    Behavior on soft { NumberAnimation { duration: swPanel.shown ? 300 : 160; easing.type: Easing.OutCubic } }
+                    Behavior on soft { enabled: !Theme.reduceMotion; NumberAnimation { duration: swPanel.shown ? 300 : 160; easing.type: Easing.OutCubic } }
                     layer.enabled: soft > 0.01
                     layer.effect: MultiEffect { blurEnabled: true; blurMax: 32; blur: swPanel.soft * 0.8; autoPaddingEnabled: true }
 
@@ -7419,7 +7421,7 @@ Scope {
                         color: root.darkMode ? Qt.rgba(1, 1, 1, 0.20) : Qt.rgba(0, 0, 0, 0.11)
                         border.width: 1
                         border.color: root.darkMode ? Qt.rgba(1, 1, 1, 0.12) : Qt.rgba(0, 0, 0, 0.06)
-                        Behavior on x { NumberAnimation { duration: 320; easing.type: Easing.OutQuint } }
+                        Behavior on x { enabled: !Theme.reduceMotion; NumberAnimation { duration: 320; easing.type: Easing.OutQuint } }
                     }
                     Repeater {
                         model: root.swApps
@@ -7435,7 +7437,7 @@ Scope {
                                 width: swPanel.ico; height: swPanel.ico
                                 // the selected app's icon lifts a little
                                 scale: root.swIndex === swCell.index ? 1.06 : 0.96
-                                Behavior on scale { NumberAnimation { duration: 320; easing.type: Easing.OutQuint } }
+                                Behavior on scale { enabled: !Theme.reduceMotion; NumberAnimation { duration: 320; easing.type: Easing.OutQuint } }
                                 source: root.swIcon(swCell.modelData)
                                 sourceSize.width: 128; sourceSize.height: 128
                                 fillMode: Image.PreserveAspectFit
@@ -7465,7 +7467,7 @@ Scope {
                         readonly property real cxc: Math.max(10 + tw / 2, Math.min(swPanel.width - 10 - tw / 2, cx))
                         x: cxc - width / 2
                         y: swPanel.padY + swPanel.cellH + 3
-                        Behavior on x { NumberAnimation { duration: 320; easing.type: Easing.OutQuint } }
+                        Behavior on x { enabled: !Theme.reduceMotion; NumberAnimation { duration: 320; easing.type: Easing.OutQuint } }
                         MorphText {
                             id: swName
                             width: parent.width
@@ -7531,7 +7533,7 @@ Scope {
                     scale: (root.wpOpen && ui.toastScreen) ? 1 : 0.96
                     transformOrigin: Item.Center
                     Behavior on opacity { NumberAnimation { duration: 120 } }
-                    Behavior on scale { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
+                    Behavior on scale { enabled: !Theme.reduceMotion; NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
 
                     LGlass {
                         anchors.fill: parent
@@ -7827,7 +7829,7 @@ Scope {
                             height: wpTrack.thumbH
                             radius: width / 2
                             color: wpThumbMa.drag.active ? pal.fg2 : pal.fg3
-                            Behavior on width { NumberAnimation { duration: 100 } }
+                            Behavior on width { enabled: !Theme.reduceMotion; NumberAnimation { duration: 100 } }
                             Binding {
                                 target: wpThumb; property: "y"
                                 when: !wpThumbMa.drag.active
@@ -8041,7 +8043,7 @@ Scope {
                     x: Math.round((spotRoot.width - width) / 2)
                     // the search pill sits a little above the vertical centre of the screen (0.4 of the height; 0.5 = dead centre); the Applications panel centres itself instead
                     y: Math.round(spotRoot.height * 0.4 - (ui.spFull ? curPanel.height / 2 : 24))
-                    Behavior on y { enabled: spot.vis > 0.99; NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
+                    Behavior on y { enabled: !Theme.reduceMotion && (spot.vis > 0.99); NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
                     // opens with a springy pop; dismiss: quick fade + shrink
                     property real vis: 0
                     opacity: vis
@@ -8183,7 +8185,7 @@ Scope {
                         visible: opacity > 0
                         Behavior on opacity { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
                         height: (items.length > 0 ? items.length : keep) * 46 + 16
-                        Behavior on height { NumberAnimation { duration: 320; easing.type: Easing.OutQuint } }
+                        Behavior on height { enabled: !Theme.reduceMotion; NumberAnimation { duration: 320; easing.type: Easing.OutQuint } }
                         GGlass { anchors.fill: parent; gx: spg; cornerR: 26; thickness: 22; strengthMul: 0.75; shadowAmt: 0.22 }
                         Item {
                             x: 8; y: 8
@@ -8195,7 +8197,7 @@ Scope {
                                 width: parent.width; height: 46; radius: 16
                                 color: (resPanel.items[resPanel.selIdx] && resPanel.items[resPanel.selIdx].confirm === true
                                         && ui.armed === resPanel.items[resPanel.selIdx].title) ? "#FF453A" : root.accent
-                                Behavior on y { NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
+                                Behavior on y { enabled: !Theme.reduceMotion; NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
                                 Behavior on color { ColorAnimation { duration: 120 } }
                             }
                         Column {
@@ -8269,7 +8271,7 @@ Scope {
                         scale: ui.spMode === "clip" ? 1 : 0.96
                         transformOrigin: Item.Top
                         Behavior on opacity { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
-                        Behavior on scale { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
+                        Behavior on scale { enabled: !Theme.reduceMotion; NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
                         width: spot.width
                         readonly property var items: ui.spMode === "clip" ? ui.spResults : []
                         readonly property int rowH: 56
@@ -8282,7 +8284,7 @@ Scope {
                             : (!root.clipHistory ? "Turn it on in System Settings \u2192 Menu Bar"
                             : (ui.spQuery.trim() === "" && !root.clipLoading ? "Copy some text or an image and it will show up here" : ""))
                         height: 64 + (items.length > 0 ? shown * rowH + 14 : 118)
-                        Behavior on height { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+                        Behavior on height { enabled: !Theme.reduceMotion; NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
                         GGlass { anchors.fill: parent; gx: spg; cornerR: 32; thickness: 30; strengthMul: 0.85; shadowAmt: 0.5 }
 
                         Item {
@@ -8557,7 +8559,7 @@ Scope {
                         scale: ui.spMode === "emoji" ? 1 : 0.96
                         transformOrigin: Item.Top
                         Behavior on opacity { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
-                        Behavior on scale { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
+                        Behavior on scale { enabled: !Theme.reduceMotion; NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
                         width: spot.width
                         readonly property int cell: 50
                         readonly property int gridRows: 6
@@ -8726,7 +8728,7 @@ Scope {
                         scale: ui.spMode === "apps" ? 1 : 0.96
                         transformOrigin: Item.Top
                         Behavior on opacity { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
-                        Behavior on scale { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
+                        Behavior on scale { enabled: !Theme.reduceMotion; NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
                         width: spot.width
                         height: Math.min(64 + appsCol.height + 14, 520)
                         GGlass { anchors.fill: parent; gx: spg; cornerR: 32; thickness: 30; strengthMul: 0.85; shadowAmt: 0.5 }

@@ -98,9 +98,11 @@ Carried over from the old shell (`tests/macshell-ports.py`):
   Notifications turns the app's badges off.
 - Light/Dark and the accent colour follow Settings › Appearance, and
   MacShell's own Light/Dark switch sets the system's.
+- Reduce Motion (Settings › Accessibility) stops what MacShell moves, slides
+  and zooms; fades and colour changes stay, as on a Mac. The clocks' hands
+  keep moving.
 
-Not on MacShell yet: Reduce Motion for MacShell's own animations and the
-tablet top-right swipe for Control Center.
+Not on MacShell yet: the tablet top-right swipe for Control Center.
 
 ## Hyprland's Lua config
 

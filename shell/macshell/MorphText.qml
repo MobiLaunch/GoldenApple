@@ -5,6 +5,7 @@
 //                    result yourself — needed when this item is the hidden source of another effect (the glass clock).
 import QtQuick
 import QtQuick.Effects
+import "../ui/theme"
 
 Item {
     id: mt
@@ -26,13 +27,13 @@ Item {
 
     // always the width of the text that is showing; animated so re-alignment glides
     property real wTarget: (flip ? b : a).textW
-    Behavior on wTarget { enabled: mt.animateWidth && mt.ready; NumberAnimation { duration: mt.duration; easing.type: Easing.OutQuint } }
+    Behavior on wTarget { enabled: !Theme.reduceMotion && (mt.animateWidth && mt.ready); NumberAnimation { duration: mt.duration; easing.type: Easing.OutQuint } }
     implicitWidth: wTarget
     implicitHeight: (flip ? b : a).implicitHeight
 
     // 0 = left, 0.5 = centre, 1 = right — animated, so switching alignment slides the text over
     property real alignT: horizontalAlignment === Text.AlignHCenter ? 0.5 : (horizontalAlignment === Text.AlignRight ? 1 : 0)
-    Behavior on alignT { enabled: mt.ready; NumberAnimation { duration: mt.alignDuration; easing.type: Easing.OutQuint } }
+    Behavior on alignT { enabled: !Theme.reduceMotion && (mt.ready); NumberAnimation { duration: mt.alignDuration; easing.type: Easing.OutQuint } }
 
     property bool flip: false
     property bool ready: false

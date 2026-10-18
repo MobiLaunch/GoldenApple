@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Effects
+import "../ui/theme"
 
 Item {
     id: b
@@ -34,7 +35,7 @@ Item {
         NumberAnimation { target: b; property: "pulse"; to: 0; duration: 300; easing.type: Easing.OutCubic }
     }
     scale: ma.pressed ? 0.86 : 1.0
-    Behavior on scale { NumberAnimation { duration: 180; easing.type: Easing.OutBack } }
+    Behavior on scale { enabled: !Theme.reduceMotion; NumberAnimation { duration: 180; easing.type: Easing.OutBack } }
     opacity: b.wd.hasPlayer && b.enabledBtn ? (ma.pressed ? 0.6 : 1) : 0.4
     Rectangle {
         anchors.centerIn: parent

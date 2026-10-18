@@ -14,6 +14,7 @@
 // togglePlaying() / nextTrack() / previousTrack().
 import QtQuick
 import QtQuick.Effects
+import "../ui/theme"
 
 Item {
     id: w
@@ -385,7 +386,7 @@ Item {
             scale: w.lyricsView ? 0.9 : 1
             transformOrigin: Item.TopLeft
             Behavior on opacity { NumberAnimation { duration: 420; easing.type: Easing.OutCubic } }
-            Behavior on scale { NumberAnimation { duration: 480; easing.type: Easing.OutCubic } }
+            Behavior on scale { enabled: !Theme.reduceMotion; NumberAnimation { duration: 480; easing.type: Easing.OutCubic } }
             layer.enabled: opacity > 0 && opacity < 0.999
             layer.sourceRect: Qt.rect(-16, -16, width + 32, height + 32)
             layer.effect: MultiEffect { blurEnabled: true; blurMax: 32; blur: Math.min(1, (1 - artItem.opacity) * 0.9) }
@@ -459,13 +460,13 @@ Item {
             y: 16 * w.k
             width: (w.wr - 2 * w.mx - 52) * w.k
             height: ((w.lyricsView ? w.ctlCY - 40 : w.barCY - 14) - 16) * w.k
-            Behavior on height { NumberAnimation { duration: 480; easing.type: Easing.OutCubic } }
+            Behavior on height { enabled: !Theme.reduceMotion; NumberAnimation { duration: 480; easing.type: Easing.OutCubic } }
             opacity: w.lyricsView ? 1 : 0
             visible: opacity > 0
             scale: w.lyricsView ? 1 : 0.94
             transformOrigin: Item.Left
             Behavior on opacity { NumberAnimation { duration: 420; easing.type: Easing.OutCubic } }
-            Behavior on scale { NumberAnimation { duration: 480; easing.type: Easing.OutCubic } }
+            Behavior on scale { enabled: !Theme.reduceMotion; NumberAnimation { duration: 480; easing.type: Easing.OutCubic } }
             layer.enabled: opacity > 0 && opacity < 0.999
             layer.sourceRect: Qt.rect(-16, -16, width + 32, height + 32)
             layer.effect: MultiEffect { blurEnabled: true; blurMax: 32; blur: Math.min(1, (1 - lyr.opacity) * 0.9) }
@@ -513,7 +514,7 @@ Item {
                     readonly property real dist: w.lyricsSynced ? Math.abs(index - w.lyricIdx) : 0
                     readonly property bool cur: w.lyricsSynced && index === w.lyricIdx
                     property real bl: (!w.lyricsSynced || cur) ? 0 : Math.min(1, 0.22 + dist * 0.16)
-                    Behavior on bl { NumberAnimation { duration: 480; easing.type: Easing.OutCubic } }
+                    Behavior on bl { enabled: !Theme.reduceMotion; NumberAnimation { duration: 480; easing.type: Easing.OutCubic } }
                     width: ListView.view.width
                     height: txt.implicitHeight + 12 * w.k
                     Text {
@@ -530,7 +531,7 @@ Item {
                         scale: (!w.lyricsSynced || ln.cur) ? 1 : 0.86
                         transformOrigin: Item.Left
                         Behavior on opacity { NumberAnimation { duration: 480; easing.type: Easing.OutCubic } }
-                        Behavior on scale { NumberAnimation { duration: 480; easing.type: Easing.OutCubic } }
+                        Behavior on scale { enabled: !Theme.reduceMotion; NumberAnimation { duration: 480; easing.type: Easing.OutCubic } }
                         layer.enabled: ln.bl > 0.01
                         layer.sourceRect: Qt.rect(-12, -8, width + 24, height + 16)
                         layer.effect: MultiEffect { blurEnabled: true; blurMax: 24; blur: ln.bl }
@@ -569,7 +570,7 @@ Item {
             y: w.barCY * w.k - height / 2
             width: (w.wr - 2 * w.mx) * w.k
             height: (seekMa.pressed || seekMa.containsMouse ? 11 : 7) * w.k
-            Behavior on height { NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
+            Behavior on height { enabled: !Theme.reduceMotion; NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
             radius: height / 2
             color: w.trackCol
             Rectangle {

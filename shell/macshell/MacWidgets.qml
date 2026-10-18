@@ -15,6 +15,7 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Services.Mpris
+import "../ui/theme"
 
 Scope {
     id: root
@@ -705,7 +706,7 @@ Scope {
                         }
 
                         scale: dragArea.pressed ? 1.03 : 1.0
-                        Behavior on scale { NumberAnimation { duration: 120; easing.type: Easing.OutCubic } }
+                        Behavior on scale { enabled: !Theme.reduceMotion; NumberAnimation { duration: 120; easing.type: Easing.OutCubic } }
                         z: dragArea.pressed ? 10 : 1
 
                         // edit mode: outline + drag + remove
