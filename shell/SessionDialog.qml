@@ -35,7 +35,7 @@ PanelWindow {
         action = ""
         if (what === "shutdown") Quickshell.execDetached(["systemctl", "poweroff"])
         else if (what === "restart") Quickshell.execDetached(["systemctl", "reboot"])
-        else if (what === "logout") Hyprland.dispatch("exit")
+        else if (what === "logout") Hyprland.dispatch("hl.dsp.exit()")
     }
 
     IpcHandler {

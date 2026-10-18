@@ -425,35 +425,6 @@ test('LCode devices: your own Simulator devices', () => {
   assert.ok(d.runTarget(x, 0).side >= 2048 - 1);
 });
 
-// Spotlight answers: arithmetic, conversions and Settings panes, from the shell's library.
-function spotlightAnswers() {
-  const src = readFileSync(new URL('../shell/spotlight/answers.js', import.meta.url), 'utf8').replace('.pragma library', '');
-  const c = vm.createContext({}); vm.runInContext(src, c); return c;
-}
-test('Spotlight calculates, and leaves words and plain numbers alone', () => {
-  const a = spotlightAnswers();
-  for (const [q, shown] of [['2+2', '4'], ['12*(3+4)', '84'], ['2^10', '1,024'], ['sqrt(144)', '12'], ['20% of 150', '30'],
-                            ['2x3', '6'], ['1/3', '0.3333333333'], ['1234567*3', '3,703,701'], ['-5+2', '-3']])
-    assert.equal(a.calculate(q)?.display, shown, q);
-  for (const q of ['photos', '42', '(1+2', '100/0', 'rm -rf', 'Messages']) assert.equal(a.calculate(q), null, q);
-});
-test('Spotlight converts units, and refuses mismatched kinds', () => {
-  const a = spotlightAnswers();
-  assert.equal(a.convert('5 km in mi').display, '3.11 mi');
-  assert.equal(a.convert('100 c in f').display, '212 °F');
-  assert.equal(a.convert('70 f to c').display, '21.11 °C');
-  assert.equal(a.convert('3 cups in ml').display, '709.8 mL');
-  assert.equal(a.convert('5 km in kg'), null);
-  assert.equal(a.convert('5 apples to oranges'), null);
-});
-test('Spotlight finds Settings panes by name and by what people call them', () => {
-  const a = spotlightAnswers();
-  assert.equal(a.settings('dark mode')[0].pane, 'appearance');
-  assert.equal(a.settings('brightness')[0].pane, 'displays');
-  assert.equal(a.settings('wi')[0].pane, 'wifi');
-  assert.equal(a.settings('x').length, 0);
-});
-
 function missionControl() {
   const src = readFileSync(new URL('../shell/missioncontrol/layout.js', import.meta.url), 'utf8').replace('.pragma library', '');
   const c = vm.createContext({}); vm.runInContext(src, c);
@@ -571,67 +542,6 @@ test('Files drops: move within Files, copy from other apps, Trash, never into it
   d = drop({}, 2);
   c.dropOn(d, 'trash:');
   assert.deepEqual(ops.pop(), ['trash', 'trash', '/home/j/Documents/Plan B.txt']);
-});
-
-test('Screenshots: grim gets the right region and a Mac-style file name, quoted safely', async () => {
-  const { execFileSync } = await import('node:child_process');
-  const { mkdtempSync, writeFileSync, chmodSync, readFileSync: read, existsSync } = await import('node:fs');
-  const { tmpdir } = await import('node:os');
-  const dir = mkdtempSync(tmpdir() + '/gg-shot-');
-  // A grim that writes down its arguments and makes the file it's given.
-  writeFileSync(dir + '/grim', '#!/bin/sh\nprintf "%s\\n" "$@" > "$GG_ARGS"\nfor a; do last=$a; done\n[ "$last" = - ] && printf png || : > "$last"\n');
-  writeFileSync(dir + '/wl-copy', '#!/bin/sh\ncat > "$GG_CLIP"\n');
-  chmodSync(dir + '/grim', 0o755); chmodSync(dir + '/wl-copy', 0o755);
-  const shooter = {};
-  const state = {
-    toClipboard: false, saveTo: 'desktop', showPointer: false, lastFile: '',
-    pendingRect: { x: 100.4, y: 50, width: 640, height: 400 }, screen: { name: 'DP-2' },
-    monitor: { x: 1440, y: 0 }, shooter, Quickshell: { env: () => dir },
-    Qt: { formatDateTime: () => '2026-10-04 at 9.41.12 PM' },
-  };
-  const c = context('shell/Screenshot.qml', ['home', 'folder', 'stamp', 'geometry', 'capture'], state);
-  const run = () => execFileSync(shooter.command[0], shooter.command.slice(1),
-    { env: { ...process.env, PATH: dir + ':' + process.env.PATH, GG_ARGS: dir + '/args', GG_CLIP: dir + '/clip' } });
-
-  c.capture();
-  run();
-  const file = dir + '/Desktop/Screenshot 2026-10-04 at 9.41.12 PM.png';
-  assert.equal(c.lastFile, file);
-  assert.ok(existsSync(file), 'saved on the Desktop, spaces and all');
-  assert.deepEqual(read(dir + '/args', 'utf8').trim().split('\n'), ['-g', '1540,50 640x400', file]);
-
-  c.pendingRect = null; c.showPointer = true; c.saveTo = 'pictures';
-  c.capture(); run();
-  assert.deepEqual(read(dir + '/args', 'utf8').trim().split('\n'),
-    ['-c', '-o', 'DP-2', dir + '/Pictures/Screenshot 2026-10-04 at 9.41.12 PM.png'], 'the whole screen, with the pointer');
-
-  c.toClipboard = true;
-  c.capture(); run();
-  assert.equal(c.lastFile, '', 'nothing saved');
-  assert.equal(read(dir + '/clip', 'utf8'), 'png', 'the picture goes to the clipboard');
-});
-
-test('Screen recording: wf-recorder records the selection or the screen to a named file', () => {
-  const recorder = {};
-  const c = context('shell/Screenshot.qml', ['home', 'folder', 'stamp', 'geometry', 'startRecording'], {
-    saveTo: 'documents', lastFile: '', pendingRect: { x: 0, y: 30, width: 800, height: 600 },
-    screen: { name: 'eDP-1' }, monitor: { x: 0, y: 0 }, recorder, Quickshell: { env: () => '/home/j' },
-    Qt: { formatDateTime: () => '2026-10-04 at 9.41.12 PM' },
-  });
-  c.startRecording();
-  assert.deepEqual(Array.from(recorder.command), ['wf-recorder', '-y', '-f', '/home/j/Documents/Screen Recording 2026-10-04 at 9.41.12 PM.mp4', '-g', '0,30 800x600']);
-  assert.equal(recorder.running, true);
-});
-
-test('Dock: dragging an icon reorders, removes or adds it', () => {
-  const { orderAfter } = context('shell/Dock.qml', ['orderAfter'], {});
-  const ids = ['files', 'web', 'mail', 'notes'];
-  assert.deepEqual(Array.from(orderAfter(ids, 'files', 2)), ['web', 'mail', 'files', 'notes'], 'moved right');
-  assert.deepEqual(Array.from(orderAfter(ids, 'notes', 0)), ['notes', 'files', 'web', 'mail'], 'moved to the front');
-  assert.deepEqual(Array.from(orderAfter(ids, 'web', -1)), ['files', 'mail', 'notes'], 'dragged off: removed');
-  assert.deepEqual(Array.from(orderAfter(ids, 'music', 1)), ['files', 'music', 'web', 'mail', 'notes'], 'a running app kept');
-  assert.deepEqual(Array.from(orderAfter(ids, 'mail', 99)), ['files', 'web', 'notes', 'mail'], 'past the end: last');
-  assert.deepEqual(Array.from(orderAfter(ids, '', -1)), ids, 'nothing dragged');
 });
 
 test('Desktop widgets: snap to free cells, never overlap, fill down the left first', () => {

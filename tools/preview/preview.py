@@ -424,12 +424,16 @@ class Preview(QObject):
 class SingletonDirs(QQmlAbstractUrlInterceptor):
     """Quickshell honours `pragma Singleton` in a folder without a qmldir
     (shell/components/Prefs.qml); Qt needs the folder's qmldir to say so.
-    Such folders get a generated one, next to nothing in the repository."""
+    Such folders get a generated one, next to nothing in the repository.
+    shell/macshell/MacShell.qml is answered with the preview's stand-in
+    (macshell/MacShell.qml)."""
     def __init__(self):
         super().__init__()
         self.cache = HERE / "cache/qmldirs"
 
     def intercept(self, url, kind):
+        if url.isLocalFile() and url.toLocalFile() == str(ROOT / "shell/macshell/MacShell.qml"):
+            return QUrl.fromLocalFile(str(HERE / "macshell/MacShell.qml"))
         if kind != QQmlAbstractUrlInterceptor.DataType.QmldirFile or not url.isLocalFile():
             return url
         path = Path(url.toLocalFile())

@@ -1,7 +1,8 @@
-// Golden Gate Desktop & Dock: compact macOS-style grouped settings.
-// Each control writes its real consumer: Dock's Prefs singleton or the Hyprland
-// floating-window engine, via Sys's atomic windows.json + windows.conf writer.
-// Magnification is deliberately absent: it previously caused motion stutter.
+// Desktop & Dock: the Dock's apps (MacShell's Dock, through Sys's dockPins),
+// Tablet Mode, and how windows move, resize and snap (the Hyprland
+// floating-window engine, via Sys's atomic windows.json + windows.lua writer).
+// The Dock's look and behaviour are set in MacShell's own Desktop & Dock
+// Settings window, which this pane opens.
 import Quickshell
 import QtQuick
 import "../../lib"
@@ -15,17 +16,8 @@ Pane {
     headerTitle: "Desktop & Dock"
     headerText: "Customize the Dock, arrange apps, and adjust how windows move, resize and snap."
 
-    readonly property var dock: sys.prefs.dock ?? ({})
     readonly property var windows: sys.windows ?? ({})
-    readonly property var defaults: [
-        "org.goldengate.Files", "org.goldengate.Web", "org.goldengate.Mail",
-        "org.goldengate.Messages", "org.goldengate.Maps", "org.goldengate.Photos",
-        "org.goldengate.Music", "org.goldengate.Calendar", "org.goldengate.Notes",
-        "org.goldengate.Weather", "org.goldengate.Software",
-        "org.goldengate.Settings", "org.goldengate.Terminal"
-    ]
-    readonly property var pinned: Array.isArray(dock.pinned) ? dock.pinned : defaults
-    function setDock(key, value) { sys.setPref(["dock", key], value) }
+    readonly property var pinned: sys.dockPins
     function setWindow(key, value) { sys.setWindow(key, value) }
     function moveApp(index, offset) {
         const ids = pinned.slice()
@@ -33,40 +25,23 @@ Pane {
         if (target < 0 || target >= ids.length) return
         const value = ids.splice(index, 1)[0]
         ids.splice(target, 0, value)
-        setDock("pinned", ids)
+        sys.setDockPins(ids)
     }
-    function removeApp(id) { setDock("pinned", pinned.filter((x) => x !== id)) }
+    function removeApp(id) { sys.setDockPins(pinned.filter((x) => x !== id)) }
     function addApp(id) {
-        if (id && !pinned.includes(id)) setDock("pinned", pinned.concat([id]))
+        if (id && !pinned.includes(id)) sys.setDockPins(pinned.concat([id]))
     }
 
     Group {
         title: "Dock"
         SetRow {
-            title: "Size"
-            subtitle: "Changes the size of icons and the glass shelf."
-            Text { text: "Small"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.fs(11) } }
-            Slider {
-                objectName: "dockSizeSlider"
-                width: 155
-                value: ((pane.dock.size ?? 54) - 36) / 44
-                onMoved: (v) => pane.setDock("size", Math.round(36 + 44 * v))
+            title: "Size, magnification, position and more"
+            subtitle: "The Dock, the menu bar and the desktop widgets have their own settings window."
+            Button {
+                objectName: "openDockSettings"
+                text: "Dock Settings…"
+                onClicked: Quickshell.execDetached(["qs", "-c", "golden-gate", "ipc", "call", "settings", "pane", "dock"])
             }
-            Text { text: "Large"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.fs(11) } }
-        }
-        SetRow {
-            title: "Animate opening applications"
-            subtitle: "Subtle, low-overhead Dock feedback on launch."
-            Switch { checked: pane.dock.animateLaunch ?? true; onToggled: (on) => pane.setDock("animateLaunch", on) }
-        }
-        SetRow {
-            title: "Show indicators for open applications"
-            Switch { checked: pane.dock.indicators ?? true; onToggled: (on) => pane.setDock("indicators", on) }
-        }
-        SetRow {
-            title: "Show recent applications"
-            subtitle: "After closing an unpinned app, its icon lingers briefly then fades away."
-            Switch { checked: pane.dock.showRecents ?? true; onToggled: (on) => pane.setDock("showRecents", on) }
         }
     }
     Group {
@@ -161,7 +136,7 @@ Pane {
         SetRow {
             title: "Pinned applications"
             subtitle: "Move an app up or down to change its position in the Dock."
-            Button { text: "Restore Defaults"; onClicked: pane.setDock("pinned", pane.defaults.slice()) }
+            Button { text: "Restore Defaults"; onClicked: pane.sys.setDockPins(pane.sys.defaultDockPins.slice()) }
         }
         Repeater {
             model: pane.pinned
@@ -178,7 +153,7 @@ Pane {
         }
         SetRow {
             title: "Add an app"
-            subtitle: "You can also drag a running app into the Dock, or use its Dock context menu."
+            subtitle: "You can also use an app's Dock menu (Keep in Dock), or Add to Dock in Launchpad."
             Button {
                 text: "Add…"
                 onClicked: pane.nav.open("dockapps")

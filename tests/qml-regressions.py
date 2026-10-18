@@ -30,30 +30,6 @@ for forbidden in ("function show()", "function hide()"):
     if forbidden in applications:
         errors.append(f"shell/Applications.qml: shadows inherited QWindow method {forbidden}")
 
-# Dock hover geometry must remain stable. Moving/resizing the HoverHandler item
-# on entry changes its local pointer coordinates and produces a one-frame jump.
-dock = (root / "shell" / "Dock.qml").read_text(encoding="utf-8")
-for forbidden in ("x: hover.hovered ?", "width: hover.hovered", "y: hover.hovered ?"):
-    if forbidden in dock:
-        errors.append(f"shell/Dock.qml: hover-dependent hitbox geometry reintroduced: {forbidden}")
-
-for forbidden in ("dockMagnification", "dockMagnifiedSize", "pointerTargetX", "sizeAt(", "offsetAt("):
-    if forbidden in dock:
-        errors.append(f"shell/Dock.qml: removed magnification path reintroduced: {forbidden}")
-
-control_center = (root / "shell" / "ControlCenter.qml").read_text(encoding="utf-8")
-# Golden Gate's layout: independent circular/capsule controls and rounded
-# glass cards, Now Playing, the two vertical sliders, and Edit Controls.
-for required in ("component Capsule", "component Circle", "component SliderTile", "id: nowPlaying",
-                 'title: "Display"', 'title: "Sound"', "Edit Controls", "function span(n)"):
-    if required not in control_center:
-        errors.append(f"shell/ControlCenter.qml: the Control Center grid is missing {required!r}")
-# Real GPUs make the light clear tint a bright white bar; the Dock keeps its
-# smoked graphite material, now a role in the design tokens.
-theme_qml = (root / "apps" / "lib" / "theme" / "Theme.qml").read_text(encoding="utf-8")
-if 'role: "dock"' not in dock or 'dark ? "#7021262e" : "#5f343941"' not in theme_qml:
-    errors.append("shell/Dock.qml: smoked real-hardware Dock material was removed")
-
 prefs = (root / "shell" / "components" / "Prefs.qml").read_text(encoding="utf-8")
 for forbidden in ("dockMagnification", "dockMagnifiedSize", "magnifiedSize"):
     if forbidden in prefs:
@@ -64,7 +40,6 @@ applications_qml = (root / "shell" / "Applications.qml").read_text(encoding="utf
 files_qml = (root / "apps" / "files.qml").read_text(encoding="utf-8")
 for path_name, text in (
     ("shell/Wallpaper.qml", wallpaper),
-    ("shell/Dock.qml", dock),
     ("shell/Applications.qml", applications_qml),
 ):
     if "Qt.RightButton" not in text:

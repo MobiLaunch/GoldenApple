@@ -5,6 +5,16 @@
 hyprland
 hypridle
 hyprsunset
+# The shell (MacShell, shell/macshell): its Liquid Glass shaders are compiled
+# with qsb; jq reads settings for the lock screen; cliphist keeps Spotlight's
+# clipboard history; hyprpicker is Control Center's colour picker; inotifywait
+# watches the Trash; zenity is the folder and picture picker in its settings.
+qt6-shadertools
+jq
+cliphist
+hyprpicker
+inotify-tools
+zenity
 xdg-desktop-portal-hyprland
 xdg-desktop-portal-gtk
 polkit-gnome

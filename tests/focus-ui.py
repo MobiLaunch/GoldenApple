@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Real Focus Settings/Control Center and notification delivery, isolated from host services."""
+"""Real Focus Settings, isolated from host services. Also the Harness that
+other shell tests (tests/launchpad.py) load surfaces with."""
 import json
 import os
 import re
@@ -201,84 +202,6 @@ class Settings(Harness):
         y=end.mapToItem(self.pane,QPointF(0,0)).y()
         self.assertGreaterEqual(y,0)
         self.assertLessEqual(y+end.property("height"),self.pane.property("height"))
-
-
-class Notifications(Harness):
-    def setUp(self):
-        super().setUp()
-        self.n=self.desktop("shell/Notifications.qml","notifications")
-    def policy(self, p, notification_prefs=None):
-        self.eval(self.n,"Prefs.data="+json.dumps({"focus":p,"notifications":notification_prefs or {"sounds":False}}))
-    def send(self, app, nid, **extra):
-        self.system.notify({"id":nid,"appName":app,"summary":app,"body":"Hello",**extra})
-    def names(self, prop="banners"):
-        return self.eval(self.n,prop+".map(n=>n.appName)")
-    def test_focus_keeps_history_and_shows_only_allowed_app(self):
-        self.policy({"session":{"on":True,"until":0},"allowedApps":{"org%2Egoldengate%2Eclock":True}})
-        self.send("Clock",1); self.send("Mail",2)
-        self.assertEqual(self.names(),["Clock"])
-        self.assertEqual(sorted(self.names("list")),["Clock","Mail"])
-    def test_disabled_clock_stays_disabled_even_when_focus_allows_it(self):
-        self.policy({"session":{"on":True,"until":0},"allowedApps":{"org%2Egoldengate%2Eclock":True}},
-                    {"sounds":False,"apps":{"org.goldengate.clock":{"allow":False}}})
-        self.send("Clock",1)
-        self.assertEqual(self.names(),[])
-        self.assertEqual(self.names("list"),[])
-    def test_critical_opt_in_still_respects_app_allow_and_banner_settings(self):
-        self.policy({"session":{"on":True,"until":0},"allowCritical":True},
-                    {"sounds":False,"apps":{"mail":{"allow":False},"calendar":{"banners":False}}})
-        self.send("Mail",1,urgency=2); self.send("Calendar",2,urgency=2); self.send("Chat",3,urgency=2); self.send("Other",4)
-        self.assertEqual(self.names(),["Chat"])
-        self.assertNotIn("Mail",self.names("list"))
-    def test_starting_focus_removes_existing_disallowed_banners_without_replay(self):
-        self.send("Mail",1); self.send("Clock",2)
-        self.policy({"dnd":True,"allowedApps":{"org%2Egoldengate%2Eclock":True}})
-        self.assertEqual(self.names(),["Clock"])
-        self.policy({"session":{"on":False}})
-        self.assertEqual(self.names(),["Clock"],"Silenced banners are not replayed when Focus ends")
-    def test_expired_persisted_session_allows_new_banner(self):
-        self.policy({"session":{"on":True,"until":1}})
-        self.send("Mail",1)
-        self.assertEqual(self.names(),["Mail"])
-    def test_allowed_app_sounds_follow_focus_and_app_sound_choice(self):
-        p={"session":{"on":True,"until":0},"allowedApps":{"org%2Egoldengate%2Eclock":True}}
-        self.policy(p,{"sounds":True})
-        self.send("Mail",1)
-        self.assertFalse(any("pw-play" in line for line in self.system.logs))
-        self.send("Clock",2)
-        self.assertEqual(sum("pw-play" in line for line in self.system.logs),1)
-        self.policy(p,{"sounds":True,"apps":{"clock":{"sound":False}}})
-        self.send("Clock",3)
-        self.assertEqual(sum("pw-play" in line for line in self.system.logs),1)
-
-
-class ControlCenter(Harness):
-    def test_focus_duration_and_settings_are_keyboard_reachable(self):
-        cc=self.desktop("shell/ControlCenter.qml","controlCenter")
-        self.eval(cc,"open=true")
-        self.root.requestActivate()
-        capsule=self.find("ccFocus"); capsule.forceActiveFocus()
-        QTest.keyClick(self.root,Qt.Key_Space)
-        self.assertEqual(cc.property("detail"),"focus")
-        button=self.find("ccFocusDuration:15"); button.forceActiveFocus()
-        QTest.keyClick(self.root,Qt.Key_Space); self.wait_for(cc,"!Prefs.focusBusy")
-        self.assertTrue(self.eval(cc,"Prefs.focusDnd"))
-        button=self.find("ccDetailSettings"); button.forceActiveFocus()
-        QTest.keyClick(self.root,Qt.Key_Return)
-        self.assertFalse(cc.property("open"))
-    def test_duration_saves_real_record_and_failed_write_reports_error(self):
-        cc=self.desktop("shell/ControlCenter.qml","controlCenter")
-        self.eval(cc,'open=true; showDetail("focus"); Prefs.setFocus(60)')
-        self.wait_for(cc,"!Prefs.focusBusy")
-        self.assertTrue(self.eval(cc,"Prefs.focusDnd"))
-        self.assertIn("Until ",self.eval(cc,"Prefs.focusSummary"))
-        self.assertEqual(cc.property("detail"),"focus")
-        saved=json.loads((self.home/"config/golden-gate/desktop.json").read_text())
-        self.assertTrue(saved["focus"]["session"]["on"])
-        self.system.fail=True
-        self.eval(cc,"Prefs.setFocus(-1)"); self.wait_for(cc,"!Prefs.focusBusy")
-        self.assertTrue(self.eval(cc,"Prefs.focusDnd"))
-        self.assertIn("disk full",self.eval(cc,"Prefs.focusError"))
 
 
 if __name__ == "__main__": unittest.main(verbosity=2)

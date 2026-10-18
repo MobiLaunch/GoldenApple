@@ -4,7 +4,7 @@
 With sample windows on three desktops (GG_PREVIEW_WINDOWS=1), Mission Control
 draws the desktops along the top and this desktop's four windows spread out
 below; App Exposé shows only the front app's window. The keys and trackpad
-gestures that open it are wired in hyprland.conf. (The spread itself is tested
+gestures that open it are wired in hyprland.lua. (The spread itself is tested
 in tests/logic.mjs.)"""
 from __future__ import annotations
 
@@ -76,15 +76,15 @@ with tempfile.TemporaryDirectory() as tmp:
         bar = windows_across(img, empty, 20, 130)
         check(bar == 0, "App Exposé: no desktops bar")
 
-conf = (ROOT / "compositor/hyprland/hyprland.conf").read_text()
-for line, what in [("bind = CTRL, up, exec, $qs missioncontrol toggle", "⌃↑ opens Mission Control"),
-                   ("bind = CTRL, down, exec, $qs missioncontrol appExpose", "⌃↓ opens App Exposé"),
-                   ("bind = , XF86LaunchA, exec, $qs missioncontrol toggle", "the Mission Control key"),
-                   ("gesture = 3, horizontal, workspace", "three fingers across switch desktops"),
-                   ("gesture = 3, up, dispatcher, exec, qs -c golden-gate ipc call missioncontrol toggle", "three fingers up"),
-                   ("gesture = 3, down, dispatcher, exec, qs -c golden-gate ipc call missioncontrol appExpose", "three fingers down")]:
+conf = (ROOT / "compositor/hyprland/hyprland.lua").read_text()
+for line, what in [('hl.bind("CTRL + up", ipc("missioncontrol toggle"))', "⌃↑ opens Mission Control"),
+                   ('hl.bind("CTRL + down", ipc("missioncontrol appExpose"))', "⌃↓ opens App Exposé"),
+                   ('hl.bind("XF86LaunchA", ipc("missioncontrol toggle"))', "the Mission Control key"),
+                   ('direction = "horizontal", action = "workspace"', "three and four fingers across switch desktops"),
+                   ('direction = "up", action = function() hl.exec_cmd(qs .. "missioncontrol toggle") end', "three and four fingers up"),
+                   ('direction = "down", action = function() hl.exec_cmd(qs .. "missioncontrol appExpose") end', "three and four fingers down")]:
     check(line in conf, what)
-check(re.search(r"^# gesture", conf, re.M) is None, "no gesture left commented out")
+check(re.search(r"^\s*--\s*hl\.gesture", conf, re.M) is None, "no gesture left commented out")
 
 if failures:
     print("\n".join("FAIL " + f for f in failures), file=sys.stderr)

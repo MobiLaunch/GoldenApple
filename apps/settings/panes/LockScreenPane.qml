@@ -86,7 +86,7 @@ Pane {
         SetRow {
             title: "Lock Screen Now"
             subtitle: "Or press Control-Command-Q."
-            Button { text: "Lock"; onClicked: Quickshell.execDetached(["qs", "-c", "golden-gate", "ipc", "call", "lock", "lock"]) }
+            Button { text: "Lock"; onClicked: Quickshell.execDetached(["gg-lock"]) }
         }
     }
 }

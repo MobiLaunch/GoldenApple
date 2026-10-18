@@ -47,8 +47,8 @@ Row {
                     if (lights.closeAction) lights.closeAction()
                     else Qt.quit()
                 } else if (modelData.kind === "minimize")
-                    Hyprland.dispatch("movetoworkspacesilent special:minimized")
-                else Hyprland.dispatch("fullscreen 1")
+                    Hyprland.dispatch('hl.dsp.window.move({ workspace = "special:minimized", follow = false })')
+                else Hyprland.dispatch('hl.dsp.window.fullscreen({ mode = "maximized" })')
             }
             Timer { id: keyRelease; interval: 90; onTriggered: light.keyboardPressed = false }
             FocusRing { visible: light.activeFocus && light.enabled_ }

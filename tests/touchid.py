@@ -74,9 +74,9 @@ with tempfile.TemporaryDirectory() as t:
 service = (ROOT / "distro/archiso/overlay/etc/pam.d/gg-touchid").read_text()
 auth = [l for l in service.splitlines() if l.split() and l.split()[0] == "auth"]
 check(len(auth) == 1 and "pam_fprintd.so" in auth[0], f"gg-touchid asks only for a finger: {auth}")
-lock = (ROOT / "shell/LockScreen.qml").read_text()
+lock = (ROOT / "shell-lock/shell.qml").read_text()
 check('config: "gg-touchid"' in lock and 'config: "login"' in lock, "the lock screen listens for a finger beside the password")
-check("fprintd-list" in lock and "Prefs.touchIdUnlock" in lock, "…only with a finger enrolled and Unlock with Touch ID on")
+check("fprintd-list" in lock and ".touchId.unlock" in lock, "…only with a finger enrolled and Unlock with Touch ID on")
 check("touch.abort()" in lock, "…and stops listening once unlocked")
 
 # Packaging: fprintd, the PAM service and the helper's polkit action.

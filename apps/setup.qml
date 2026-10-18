@@ -8,7 +8,7 @@
 // the rest of the desktop.
 //
 // It runs once: finishing writes ~/.config/golden-gate/setup-done, and
-// hyprland.conf only starts it while that file is missing (and not with
+// hyprland.lua only starts it while that file is missing (and not with
 // gg.nosetup on the kernel command line). GG_SETUP_STEP=<n> opens a step
 // directly (screenshots).
 import Quickshell
@@ -119,7 +119,7 @@ ShellRoot {
             function run(cmd) { Quickshell.execDetached(cmd) }
             function setKeyboard(kb) {
                 const l = Regions.layout(kb)
-                run(["hyprctl", "--batch", "keyword input:kb_layout " + l.layout + " ; keyword input:kb_variant " + l.variant])
+                run(["gg-hyprset", "input:kb_layout", l.layout, "input:kb_variant", l.variant])
             }
             function setLook(v) {
                 look = v

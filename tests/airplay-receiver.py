@@ -98,9 +98,6 @@ with tempfile.TemporaryDirectory() as t:
 
 service = (ROOT / "distro/archiso/overlay/etc/systemd/user/gg-airplay.service").read_text()
 check("apps/mirroring/airplay.py" in service, "the user service runs the receiver")
-cc = (ROOT / "shell/ControlCenter.qml").read_text()
-check("gg-airplay.json" in cc and "stopMirroring()" in cc and "_googlecast._tcp" in cc and "airplay.pinPending" in cc,
-      "Control Center shows who's mirroring, the code, Stop, and Google Cast displays")
 settings = (ROOT / "apps/settings.qml").read_text()
 check('airplay: { title: "AirPlay Receiver", file: "AirPlayPane"' in settings
       and (ROOT / "apps/settings/panes/AirPlayPane.qml").exists(), "Settings › General › AirPlay Receiver")

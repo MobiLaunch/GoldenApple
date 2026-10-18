@@ -5,7 +5,7 @@ The hyprbars patcher (distro/hyprbars/patch.py) is run on a copy of the plugin
 source's shape: it must swap hyprbars' "every window" test for CitronOS's
 (xdg-decoration clients and X11 windows only, never CitronOS's own), keep
 one of each button, leave a patched file alone, and refuse when upstream moved
-its anchors. Then gg-hyprglass-sync runs against a stand-in hyprctl: it loads
+its anchors. Then gg-hyprglass-sync writes golden-gate/glass.lua: it loads
 the plugin and sets the macOS look (left traffic lights in their colours,
 theme-matched bar), and does nothing for title bars when the plugin is absent."""
 from __future__ import annotations
@@ -79,52 +79,54 @@ class Patcher(unittest.TestCase):
 
 
 class Sync(unittest.TestCase):
-    def run_sync(self, theme: str, with_plugin: bool) -> list[str]:
+    def run_sync(self, theme: str, with_plugin: bool) -> str:
         with tempfile.TemporaryDirectory() as d:
             d = Path(d)
-            log = d / "hyprctl.log"
             (d / "bin").mkdir()
-            hyprctl = d / "bin/hyprctl"
-            hyprctl.write_text('#!/bin/sh\nprintf "%s\\n" "$*" >> "$HYPRCTL_LOG"\n'
-                               '[ "$1 $2" = "plugin list" ] && exit 0\nexit 0\n')
-            hyprctl.chmod(0o755)
             for tool in ("logger", "systemd-detect-virt", "gsettings"):
                 (d / "bin" / tool).write_text("#!/bin/sh\nexit 0\n")
                 (d / "bin" / tool).chmod(0o755)
             plugin = d / "hyprbars.so"
             if with_plugin:
                 plugin.write_bytes(b"\x7fELF")
-            env = {**os.environ, "PATH": f"{d / 'bin'}:{os.environ['PATH']}", "HYPRCTL_LOG": str(log),
+            out = d / "glass.lua"
+            env = {**os.environ, "PATH": f"{d / 'bin'}:{os.environ['PATH']}", "GG_GLASS_LUA": str(out),
                    "GG_HYPRBARS_PLUGIN": str(plugin), "GG_HYPRGLASS_PLUGIN": str(d / "missing.so"),
                    "HOME": str(d), "XDG_CONFIG_HOME": str(d / "config")}
+            env.pop("HYPRLAND_INSTANCE_SIGNATURE", None)
             subprocess.run(["bash", str(SYNC), theme], env=env, check=True, timeout=30)
-            return log.read_text().splitlines() if log.exists() else []
+            return out.read_text()
 
     def test_traffic_lights_on_the_left(self):
-        calls = self.run_sync("light", True)
-        self.assertTrue(any(c.startswith("plugin load ") and c.endswith("hyprbars.so") for c in calls), calls)
-        self.assertIn("keyword plugin:hyprbars:bar_buttons_alignment left", calls)
-        buttons = [c for c in calls if c.startswith("keyword plugin:hyprbars:hyprbars-button ")]
-        self.assertEqual(len(buttons), 3, calls)
+        lua = self.run_sync("light", True)
+        self.assertRegex(lua, r'hl\.plugin\.load\("[^"]*hyprbars\.so"\)')
+        self.assertIn("if hl.plugin.hyprbars then", lua)
+        self.assertIn('bar_buttons_alignment = "left"', lua)
+        buttons = [l for l in lua.splitlines() if "hl.plugin.hyprbars.add_button" in l]
+        actions = [l for l in lua.splitlines() if l.strip().startswith("action = ")]
+        self.assertEqual(len(buttons), 3, lua)
         # Close, minimise, zoom: left to right, in the traffic-light colours.
-        for button, colour, action in zip(buttons, ("ff5f57", "febc2e", "28c840"),
-                                          ("killactive", "special:minimized", "fullscreen 1")):
-            self.assertIn(f"rgb({colour}), 13,", button)
-            self.assertIn(action, button)
-        self.assertIn("keyword plugin:hyprbars:bar_color rgb(ececec)", calls)
+        for button, action, colour, does in zip(buttons, actions, ("ff5f57", "febc2e", "28c840"),
+                                                ("hl.dsp.window.close()", "special:minimized", 'mode = "maximized"')):
+            self.assertIn(f'bg_color = "rgb({colour})", fg_color = ', button)
+            self.assertIn("size = 13", button)
+            self.assertIn(does, action)
+        self.assertIn('bar_color = "rgb(ececec)"', lua)
 
     def test_dark_bar_in_dark_mode(self):
-        calls = self.run_sync("dark", True)
-        self.assertIn("keyword plugin:hyprbars:bar_color rgb(2c2c2e)", calls)
-        self.assertIn("keyword plugin:hyprbars:inactive_button_color rgb(4a4a4d)", calls)
+        lua = self.run_sync("dark", True)
+        self.assertIn('bar_color = "rgb(2c2c2e)"', lua)
+        self.assertIn('inactive_button_color = "rgb(4a4a4d)"', lua)
 
     def test_nothing_without_the_plugin(self):
-        calls = self.run_sync("light", False)
-        self.assertFalse([c for c in calls if "hyprbars" in c], calls)
+        lua = self.run_sync("light", False)
+        self.assertNotIn("hyprbars", lua)
 
-    def test_reloads_run_it_again(self):
-        conf = (ROOT / "compositor/hyprland/hyprland.conf").read_text()
-        self.assertIn("\nexec = gg-hyprglass-sync\n", conf)
+    def test_reloads_keep_them(self):
+        # glass.lua is part of the config: every reload runs it again.
+        conf = (ROOT / "compositor/hyprland/hyprland.lua").read_text()
+        self.assertIn('part("glass")', conf)
+        self.assertIn('hl.exec_cmd("gg-hyprglass-sync")', conf)
 
 
 if __name__ == "__main__":

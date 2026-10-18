@@ -42,6 +42,10 @@ install_extras() {
   install -Dm755 "$REPO/compositor/hyprland/tile.py" "$R/usr/lib/golden-gate/tile.py"
   install -Dm755 "$REPO/icons/icon-resolver.py" "$R/usr/lib/golden-gate/icon-resolver.py"
   install -Dm755 "$REPO/compositor/hyprland/idle.py" "$R/usr/lib/golden-gate/idle.py"
+  install -Dm755 "$REPO/compositor/hyprland/hyprset.py" "$R/usr/lib/golden-gate/hyprset.py"
+  install -Dm755 "$REPO/compositor/hyprland/migrate-fragments.py" "$R/usr/lib/golden-gate/migrate-fragments.py"
+  install -Dm755 "$REPO/shell-lock/lock-via-ipc.sh" "$R/usr/lib/golden-gate/lock-via-ipc.sh"
+  install -Dm644 "$REPO/third_party/macshell/LICENSE" "$R/usr/share/licenses/golden-gate/macshell/LICENSE"
   # Standard password-authenticated administration for accounts created in Hello.
   install -d -m755 "$R/etc/sudoers.d"
   if [[ ! -e "$R/etc/sudoers.d/20-golden-wheel" ]]; then
@@ -110,8 +114,10 @@ install_extras() {
   printf '#!/bin/sh\nexec python3 /usr/lib/golden-gate/tile.py "$@"\n' > "$BIN/gg-tile"
   printf '#!/bin/sh\nexec python3 /usr/lib/golden-gate/icon-resolver.py "$@"\n' > "$BIN/gg-icon-resolver"
   printf '#!/bin/sh\nexec python3 /usr/lib/golden-gate/idle.py "$@"\n' > "$BIN/gg-idle"
+  printf '#!/bin/sh\nexec python3 /usr/lib/golden-gate/hyprset.py "$@"\n' > "$BIN/gg-hyprset"
+  printf '#!/bin/sh\nexec sh /usr/lib/golden-gate/lock-via-ipc.sh "$@"\n' > "$BIN/gg-lock"
   cp "$REPO/distro/archiso/overlay/usr/local/bin/gg-session" "$BIN/gg-session"
-  chmod 755 "$BIN/gg-diagnostics" "$BIN/gg-settings" "$BIN/gg-web" "$BIN/gg-install" "$BIN/gg-software" "$BIN/gg-files" "$BIN/gg-archive" "$BIN/gg-lcode" "$BIN/gg-airdrop" "$BIN/gg-pref" "$BIN/gg-hyprglass-sync" "$BIN/gg-apply-preferences" "$BIN/gg-tile" "$BIN/gg-icon-resolver" "$BIN/gg-idle" "$BIN/gg-mac-open" "$BIN/gg-session"
+  chmod 755 "$BIN/gg-diagnostics" "$BIN/gg-settings" "$BIN/gg-web" "$BIN/gg-install" "$BIN/gg-software" "$BIN/gg-files" "$BIN/gg-archive" "$BIN/gg-lcode" "$BIN/gg-airdrop" "$BIN/gg-pref" "$BIN/gg-hyprglass-sync" "$BIN/gg-apply-preferences" "$BIN/gg-tile" "$BIN/gg-icon-resolver" "$BIN/gg-idle" "$BIN/gg-hyprset" "$BIN/gg-lock" "$BIN/gg-mac-open" "$BIN/gg-session"
   mkdir -p "$R/usr/share/wayland-sessions"
   cat > "$R/usr/share/wayland-sessions/golden-gate.desktop" <<'EOF'
 [Desktop Entry]
@@ -139,20 +145,18 @@ EOF
     mkdir -p "$SKEL/.config/hypr/golden-gate" "$SKEL/.config/quickshell" \
              "$SKEL/.config/ghostty/themes" "$SKEL/.config/gtk-4.0" "$SKEL/.config/gtk-3.0" \
              "$SKEL/.config/fontconfig/conf.d"
+    # Hyprland's Lua config; the golden-gate/*.lua it loads are written by
+    # Setup Assistant, Settings and gg-session when there is something to say.
     sed -e 's#__GG_WALLPAPER__#/usr/share/backgrounds/golden-gate/tide.png#' \
         -e 's#__GG_APPS__#/usr/share/golden-gate/apps#' \
-        "$REPO/compositor/hyprland/hyprland.conf" > "$SKEL/.config/hypr/hyprland.conf"
-    cp "$REPO/design/dist/hyprland-motion.conf" "$SKEL/.config/hypr/golden-gate/motion.conf"
+        "$REPO/compositor/hyprland/hyprland.lua" > "$SKEL/.config/hypr/hyprland.lua"
+    cp "$REPO/design/dist/hyprland-motion.lua" "$SKEL/.config/hypr/golden-gate/motion.lua"
     cp "$REPO/compositor/hyprland/hypridle.conf" "$SKEL/.config/hypr/hypridle.conf"
     cp "$REPO/compositor/hyprland/report-config-errors.sh" "$SKEL/.config/hypr/golden-gate/report-config-errors.sh"
     cp "$REPO/compositor/hyprland/machine-conf.sh" "$SKEL/.config/hypr/golden-gate/machine-conf.sh"
     chmod 755 "$SKEL/.config/hypr/golden-gate/report-config-errors.sh" "$SKEL/.config/hypr/golden-gate/machine-conf.sh"
-    printf '# Written by Setup Assistant (keyboard layout).\n' > "$SKEL/.config/hypr/golden-gate/input.conf"
-    printf '# Written by Settings.\n' > "$SKEL/.config/hypr/golden-gate/accessibility.conf"
-    printf '# Written by Settings.\n' > "$SKEL/.config/hypr/golden-gate/displays.conf"
-    printf '# Written by Settings: window snapping and resize.\n' > "$SKEL/.config/hypr/golden-gate/windows.conf"
-    printf '# Filled in by machine-conf.sh when the session starts.\n' > "$SKEL/.config/hypr/golden-gate/machine.conf"
     cp -a "$REPO/shell" "$SKEL/.config/quickshell/golden-gate"
+    cp -a "$REPO/shell-lock" "$SKEL/.config/quickshell/golden-gate-lock"
     # The shell reaches the canonical shared UI (Theme, Glass, Symbol, controls)
     # only through its ui/ link, so the shell and every shared control resolve
     # one Theme module and one Theme singleton: dark mode, accent, glass style
@@ -173,16 +177,19 @@ EOF
   # managed files, preserving customized files as .golden-gate-new.
   if [[ -d "$SKEL/.config/quickshell/golden-gate" ]]; then
     say "refreshing CitronOS shell and keyboard shortcut defaults → $SKEL"
-    rm -rf "$SKEL/.config/quickshell/golden-gate"
+    rm -rf "$SKEL/.config/quickshell/golden-gate" "$SKEL/.config/quickshell/golden-gate-lock"
     cp -a "$REPO/shell" "$SKEL/.config/quickshell/golden-gate"
+    cp -a "$REPO/shell-lock" "$SKEL/.config/quickshell/golden-gate-lock"
     rm -rf "$SKEL/.config/quickshell/golden-gate/ui"
     ln -s "/usr/share/golden-gate/ui" "$SKEL/.config/quickshell/golden-gate/ui"
     mkdir -p "$SKEL/.config/hypr/golden-gate"
-    [[ -e "$SKEL/.config/hypr/golden-gate/windows.conf" ]] ||
-        printf '# Written by Settings: window snapping and resize.\n' > "$SKEL/.config/hypr/golden-gate/windows.conf"
+    # Hyprland 0.55+ reads hyprland.lua; the old .conf and its placeholders go.
+    rm -f "$SKEL/.config/hypr/hyprland.conf" "$SKEL/.config/hypr/golden-gate/motion.conf" \
+          "$SKEL/.config/hypr/golden-gate/"{input,accessibility,displays,windows,machine}.conf
     sed -e 's#__GG_WALLPAPER__#/usr/share/backgrounds/golden-gate/tide.png#' \
         -e 's#__GG_APPS__#/usr/share/golden-gate/apps#' \
-        "$REPO/compositor/hyprland/hyprland.conf" > "$SKEL/.config/hypr/hyprland.conf"
+        "$REPO/compositor/hyprland/hyprland.lua" > "$SKEL/.config/hypr/hyprland.lua"
+    cp "$REPO/design/dist/hyprland-motion.lua" "$SKEL/.config/hypr/golden-gate/motion.lua"
   fi
   say "GNOME defaults (fonts and icons) → $R/usr/share/glib-2.0/schemas"
   local schema_dir="$R/usr/share/glib-2.0/schemas"
@@ -295,34 +302,32 @@ fi
 say "Hyprland config → $CONF/hypr"
 BG_ABS="${BG_PATH/#\~/$HOME}"
 if [[ $MODE == system ]]; then APPS_RUN=/usr/share/golden-gate/apps; else APPS_RUN="$DATA/golden-gate/apps"; fi
-sed -e "s#__GG_WALLPAPER__#$BG_ABS/tide.png#" -e "s#__GG_APPS__#$APPS_RUN#" "$REPO/compositor/hyprland/hyprland.conf" > "$REPO/.hyprland.tmp"
-place "$REPO/.hyprland.tmp" "$CONF/hypr/hyprland.conf"
+sed -e "s#__GG_WALLPAPER__#$BG_ABS/tide.png#" -e "s#__GG_APPS__#$APPS_RUN#" "$REPO/compositor/hyprland/hyprland.lua" > "$REPO/.hyprland.tmp"
+# Hyprland 0.55+ reads hyprland.lua when it exists; an older hyprland.conf
+# beside it is kept but no longer read.
+place "$REPO/.hyprland.tmp" "$CONF/hypr/hyprland.lua"
 rm -f "$REPO/.hyprland.tmp"
-place "$REPO/design/dist/hyprland-motion.conf" "$CONF/hypr/golden-gate/motion.conf"
+place "$REPO/design/dist/hyprland-motion.lua" "$CONF/hypr/golden-gate/motion.lua"
 place "$REPO/compositor/hyprland/hypridle.conf" "$CONF/hypr/hypridle.conf"
 place "$REPO/compositor/hyprland/report-config-errors.sh" "$CONF/hypr/golden-gate/report-config-errors.sh"
 chmod +x "$CONF/hypr/golden-gate/report-config-errors.sh"
-# Keyboard layout, written by Setup Assistant; empty until then.
-[[ -e "$CONF/hypr/golden-gate/input.conf" ]] || { mkdir -p "$CONF/hypr/golden-gate"; echo "# Written by Setup Assistant (keyboard layout)." > "$CONF/hypr/golden-gate/input.conf"; }
-# Written by Settings (Accessibility, Displays); empty until you change something.
-for f in accessibility displays windows; do
-  [[ -e "$CONF/hypr/golden-gate/$f.conf" ]] || echo "# Written by Settings." > "$CONF/hypr/golden-gate/$f.conf"
-done
+# input.lua, accessibility.lua, windows.lua and displays.lua are written by
+# Setup Assistant and Settings when there is something to keep; settings this
+# account kept in the hyprland.conf-era files are carried over now.
+mkdir -p "$CONF/hypr/golden-gate"
+python3 "$REPO/compositor/hyprland/migrate-fragments.py" "$CONF/hypr/golden-gate"
 place "$REPO/compositor/hyprland/machine-conf.sh" "$CONF/hypr/golden-gate/machine-conf.sh"
 chmod +x "$CONF/hypr/golden-gate/machine-conf.sh"
-if [[ $MODE == system ]]; then
-  # An image is built on another machine: leave the file empty; gg-session fills
-  # it in on the machine that boots.
-  echo "# Filled in by machine-conf.sh when the session starts." > "$CONF/hypr/golden-gate/machine.conf"
-else
-  sh "$CONF/hypr/golden-gate/machine-conf.sh" "$CONF/hypr/golden-gate/machine.conf"
-fi
+# An image is built on another machine: gg-session writes machine.lua on the
+# machine that boots.
+[[ $MODE == system ]] || sh "$CONF/hypr/golden-gate/machine-conf.sh" "$CONF/hypr/golden-gate/machine.lua"
 
-# 3. Shell
-say "Quickshell shell → $CONF/quickshell/golden-gate"
-rm -rf "$CONF/quickshell/golden-gate"
+# 3. Shell: MacShell's bar and Dock with CitronOS's surfaces, and its lock screen
+say "Quickshell shell → $CONF/quickshell/golden-gate (+ golden-gate-lock)"
+rm -rf "$CONF/quickshell/golden-gate" "$CONF/quickshell/golden-gate-lock"
 mkdir -p "$CONF/quickshell"
 cp -a "$REPO/shell" "$CONF/quickshell/golden-gate"
+cp -a "$REPO/shell-lock" "$CONF/quickshell/golden-gate-lock"
 
 # CitronOS's own apps (Calculator, …): Quickshell configs with desktop entries.
 say "apps → $DATA/golden-gate/apps"
@@ -392,7 +397,10 @@ cp "$REPO/compositor/hyprland/apply-preferences.sh" "$RUNTIME/apply-preferences.
 cp "$REPO/compositor/hyprland/tile.py" "$RUNTIME/tile.py"
 cp "$REPO/icons/icon-resolver.py" "$RUNTIME/icon-resolver.py"
 cp "$REPO/compositor/hyprland/idle.py" "$RUNTIME/idle.py"
-chmod 755 "$RUNTIME/pref-helper.py" "$RUNTIME/hyprglass-sync.sh" "$RUNTIME/apply-preferences.sh" "$RUNTIME/tile.py" "$RUNTIME/icon-resolver.py" "$RUNTIME/idle.py"
+cp "$REPO/compositor/hyprland/hyprset.py" "$RUNTIME/hyprset.py"
+cp "$REPO/compositor/hyprland/migrate-fragments.py" "$RUNTIME/migrate-fragments.py"
+cp "$REPO/shell-lock/lock-via-ipc.sh" "$RUNTIME/lock-via-ipc.sh"
+chmod 755 "$RUNTIME/pref-helper.py" "$RUNTIME/hyprglass-sync.sh" "$RUNTIME/apply-preferences.sh" "$RUNTIME/tile.py" "$RUNTIME/icon-resolver.py" "$RUNTIME/idle.py" "$RUNTIME/hyprset.py" "$RUNTIME/migrate-fragments.py" "$RUNTIME/lock-via-ipc.sh"
 if [[ $MODE == system ]]; then
   printf '#!/bin/sh\nexec python3 /usr/share/golden-gate/runtime/pref-helper.py "$@"\n' > "$BIN/gg-pref"
   printf '#!/bin/sh\nexec /usr/share/golden-gate/runtime/hyprglass-sync.sh "$@"\n' > "$BIN/gg-hyprglass-sync"
@@ -400,6 +408,8 @@ if [[ $MODE == system ]]; then
   printf '#!/bin/sh\nexec python3 /usr/share/golden-gate/runtime/tile.py "$@"\n' > "$BIN/gg-tile"
   printf '#!/bin/sh\nexec python3 /usr/share/golden-gate/runtime/icon-resolver.py "$@"\n' > "$BIN/gg-icon-resolver"
   printf '#!/bin/sh\nexec python3 /usr/share/golden-gate/runtime/idle.py "$@"\n' > "$BIN/gg-idle"
+  printf '#!/bin/sh\nexec python3 /usr/share/golden-gate/runtime/hyprset.py "$@"\n' > "$BIN/gg-hyprset"
+  printf '#!/bin/sh\nexec sh /usr/share/golden-gate/runtime/lock-via-ipc.sh "$@"\n' > "$BIN/gg-lock"
 else
   printf '#!/bin/sh\nexec python3 "%s/pref-helper.py" "$@"\n' "$RUNTIME" > "$BIN/gg-pref"
   printf '#!/bin/sh\nexec "%s/hyprglass-sync.sh" "$@"\n' "$RUNTIME" > "$BIN/gg-hyprglass-sync"
@@ -407,8 +417,10 @@ else
   printf '#!/bin/sh\nexec python3 "%s/tile.py" "$@"\n' "$RUNTIME" > "$BIN/gg-tile"
   printf '#!/bin/sh\nexec python3 "%s/icon-resolver.py" "$@"\n' "$RUNTIME" > "$BIN/gg-icon-resolver"
   printf '#!/bin/sh\nexec python3 "%s/idle.py" "$@"\n' "$RUNTIME" > "$BIN/gg-idle"
+  printf '#!/bin/sh\nexec python3 "%s/hyprset.py" "$@"\n' "$RUNTIME" > "$BIN/gg-hyprset"
+  printf '#!/bin/sh\nexec sh "%s/lock-via-ipc.sh" "$@"\n' "$RUNTIME" > "$BIN/gg-lock"
 fi
-chmod +x "$BIN/gg-settings" "$BIN/gg-software" "$BIN/gg-mac-open" "$BIN/gg-files" "$BIN/gg-archive" "$BIN/gg-lcode" "$BIN/gg-airdrop" "$BIN/gg-pref" "$BIN/gg-hyprglass-sync" "$BIN/gg-apply-preferences" "$BIN/gg-tile" "$BIN/gg-icon-resolver" "$BIN/gg-idle"
+chmod +x "$BIN/gg-settings" "$BIN/gg-software" "$BIN/gg-mac-open" "$BIN/gg-files" "$BIN/gg-archive" "$BIN/gg-lcode" "$BIN/gg-airdrop" "$BIN/gg-pref" "$BIN/gg-hyprglass-sync" "$BIN/gg-apply-preferences" "$BIN/gg-tile" "$BIN/gg-icon-resolver" "$BIN/gg-idle" "$BIN/gg-hyprset" "$BIN/gg-lock"
 for f in "$REPO"/apps/desktop/*.desktop; do
   sed "s#@APPS@#$APPS_RUN#g" "$f" > "$DATA/applications/$(basename "$f")"
 done
@@ -540,4 +552,4 @@ else
   say "system pieces (keyd ⌘ layer, login screen, boot splash): sudo scripts/install.sh --extras"
 fi
 
-say "done. Log into a Hyprland session (or run: hyprctl reload && qs -c golden-gate)."
+say "done. Log into a Hyprland session (or run: hyprctl reload && qs -c golden-gate). Needs Hyprland 0.55+ (Lua config)."

@@ -1,63 +1,60 @@
 #!/usr/bin/env bash
 # CitronOS → HyprGlass bridge.
-# Loads the version-matched plugins if available (HyprGlass, and hyprbars for
-# title bars) and applies the current appearance/accessibility preferences.
-# Safe to run repeatedly; runs at login, on every config reload and when the
-# appearance changes.
+# Writes ~/.config/hypr/golden-gate/glass.lua, which hyprland.lua loads: the
+# version-matched plugins if available (HyprGlass, and hyprbars for title bars)
+# and the current appearance/accessibility preferences. Hyprland reloads its
+# config when the file changes, so it is only rewritten when something did.
+# Safe to run repeatedly; runs at login and when the appearance changes.
+#
+#   gg-hyprglass-sync [dark|light]     (default: the gsettings colour scheme)
+#   GG_GLASS_LUA=FILE                  write there instead (tests)
 set -u
 
 PLUGIN="${GG_HYPRGLASS_PLUGIN:-/usr/lib/golden-gate/hyprglass.so}"
+BARS="${GG_HYPRBARS_PLUGIN:-/usr/lib/golden-gate/hyprbars.so}"
 CONFIG="${XDG_CONFIG_HOME:-$HOME/.config}/golden-gate/desktop.json"
+OUT="${GG_GLASS_LUA:-${XDG_CONFIG_HOME:-$HOME/.config}/hypr/golden-gate/glass.lua}"
 THEME="${1:-}"
-
-command -v hyprctl >/dev/null 2>&1 || exit 0
 
 if [ -z "$THEME" ]; then
   scheme="$(gsettings get org.gnome.desktop.interface color-scheme 2>/dev/null || true)"
   case "$scheme" in *dark*) THEME=dark ;; *) THEME=light ;; esac
 fi
 
-kw() { hyprctl keyword "$1" "$2" >/dev/null 2>&1 || true; }
+LUA=""
+add() { LUA="$LUA$1
+"; }
+# A Lua string literal (the values here are ours, but quote them anyway).
+q() { printf '"%s"' "$(printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g')"; }
+
+add "-- Written by gg-hyprglass-sync ($THEME) from Settings › Appearance and Accessibility."
+add "-- It is rewritten when they change; your own settings go in hyprland.lua."
 
 # ------------------------------------------------------------- title bars
 # Apps that leave their title bar to the compositor (Qt and Electron apps from
 # the App Store, X11 apps) get a macOS one: traffic lights on the left, the
 # title centred. GTK apps and CitronOS's own draw theirs (hyprbars is built
-# to leave them alone, see distro/hyprbars/patch.py). Loading it reloads the
-# config, which runs this script again (exec in hyprland.conf), so everything
-# set here survives reloads; the plugin keeps one of each button.
-BARS="${GG_HYPRBARS_PLUGIN:-/usr/lib/golden-gate/hyprbars.so}"
+# to leave them alone, see distro/hyprbars/patch.py).
 if [ -r "$BARS" ]; then
-  if hyprctl plugin list 2>/dev/null | grep -qi 'hyprbars' || hyprctl plugin load "$BARS" >/dev/null 2>&1; then
-    kw plugin:hyprbars:enabled 1
-    kw plugin:hyprbars:bar_height 28
-    kw plugin:hyprbars:bar_padding 13
-    kw plugin:hyprbars:bar_button_padding 8
-    kw plugin:hyprbars:bar_buttons_alignment left
-    kw plugin:hyprbars:bar_text_font "Inter Variable"
-    kw plugin:hyprbars:bar_text_size 10
-    kw plugin:hyprbars:bar_text_weight semibold
-    kw plugin:hyprbars:bar_text_align center
-    kw plugin:hyprbars:bar_part_of_window 1
-    kw plugin:hyprbars:bar_precedence_over_border 1
-    kw plugin:hyprbars:icon_on_hover 1
-    kw plugin:hyprbars:on_double_click "hyprctl dispatch fullscreen 1"
-    if [ "$THEME" = dark ]; then
-      kw plugin:hyprbars:bar_color "rgb(2c2c2e)"
-      kw plugin:hyprbars:col.text "rgba(ffffffd9)"
-      kw plugin:hyprbars:inactive_button_color "rgb(4a4a4d)"
-    else
-      kw plugin:hyprbars:bar_color "rgb(ececec)"
-      kw plugin:hyprbars:col.text "rgba(000000d9)"
-      kw plugin:hyprbars:inactive_button_color "rgb(d4d4d4)"
-    fi
-    # Close, minimise (as ⌘M), zoom: 13 px, 8 px apart, glyphs on hover (apps/lib/TrafficLights.qml).
-    kw plugin:hyprbars:hyprbars-button "rgb(ff5f57), 13, ×, hyprctl dispatch killactive, rgb(8c1a10)"
-    kw plugin:hyprbars:hyprbars-button "rgb(febc2e), 13, −, hyprctl dispatch movetoworkspacesilent special:minimized, rgb(8f591d)"
-    kw plugin:hyprbars:hyprbars-button "rgb(28c840), 13, +, hyprctl dispatch fullscreen 1, rgb(0a6517)"
-  else
-    logger -t gg-hyprglass "could not load $BARS"
-  fi
+  if [ "$THEME" = dark ]; then bar=2c2c2e; text=ffffffd9; idle=4a4a4d; else bar=ececec; text=000000d9; idle=d4d4d4; fi
+  add "hl.plugin.load($(q "$BARS"))"
+  add "if hl.plugin.hyprbars then"
+  add "    hl.config({ plugin = { hyprbars = {"
+  add "        enabled = true, bar_height = 28, bar_padding = 13, bar_button_padding = 8,"
+  add "        bar_buttons_alignment = \"left\", bar_text_font = \"Inter Variable\", bar_text_size = 10,"
+  add "        bar_text_weight = \"semibold\", bar_text_align = \"center\", bar_part_of_window = true,"
+  add "        bar_precedence_over_border = true, icon_on_hover = true,"
+  add "        on_double_click = [[hyprctl dispatch 'hl.dsp.window.fullscreen({ mode = \"maximized\" })']],"
+  add "        bar_color = \"rgb($bar)\", col = { text = \"rgba($text)\" }, inactive_button_color = \"rgb($idle)\","
+  add "    } } })"
+  # Close, minimise (as ⌘M), zoom: 13 px, 8 px apart, glyphs on hover (apps/lib/TrafficLights.qml).
+  add "    hl.plugin.hyprbars.add_button({ bg_color = \"rgb(ff5f57)\", fg_color = \"rgb(8c1a10)\", size = 13, icon = \"×\","
+  add "        action = [[hyprctl dispatch 'hl.dsp.window.close()']] })"
+  add "    hl.plugin.hyprbars.add_button({ bg_color = \"rgb(febc2e)\", fg_color = \"rgb(8f591d)\", size = 13, icon = \"−\","
+  add "        action = [[hyprctl dispatch 'hl.dsp.window.move({ workspace = \"special:minimized\", follow = false })']] })"
+  add "    hl.plugin.hyprbars.add_button({ bg_color = \"rgb(28c840)\", fg_color = \"rgb(0a6517)\", size = 13, icon = \"+\","
+  add "        action = [[hyprctl dispatch 'hl.dsp.window.fullscreen({ mode = \"maximized\" })']] })"
+  add "end"
 fi
 
 # glassSolidity (Settings › Appearance › Transparency, 0 clear … 1 solid)
@@ -78,7 +75,7 @@ try:
 except (TypeError, ValueError):
     s = 0.0
 reduce = d.get("reduceTransparency", False) or s >= 0.999
-print(glass, "1" if reduce else "0", f"{s:.2f}")
+print(glass if glass in ("clear", "tinted") else "clear", "1" if reduce else "0", f"{s:.2f}")
 PY
 )
 EOF
@@ -89,30 +86,19 @@ EOF
 # over the compositor's blur); Reduce Transparency makes every window solid,
 # terminals included.
 if [ "$THEME" = dark ]; then
-  kw general:col.active_border "rgba(ffffff66) rgba(ffffff11) 45deg"
-  kw general:col.inactive_border "rgba(ffffff22) rgba(00000011) 45deg"
+  rim='"rgba(ffffff66)", "rgba(ffffff11)"'; rim_idle='"rgba(ffffff22)", "rgba(00000011)"'
 else
   # Over light glass a white rim alone disappears: its far side darkens.
-  kw general:col.active_border "rgba(ffffffb3) rgba(0000001f) 45deg"
-  kw general:col.inactive_border "rgba(ffffff59) rgba(00000014) 45deg"
+  rim='"rgba(ffffffb3)", "rgba(0000001f)"'; rim_idle='"rgba(ffffff59)", "rgba(00000014)"'
 fi
-OPAQUE_FLAG="${XDG_RUNTIME_DIR:-/tmp}/gg-glass-opaque-$(id -u)"
+add "hl.config({"
+add "    general = { col = { active_border = { colors = { $rim }, angle = 45 }, inactive_border = { colors = { $rim_idle }, angle = 45 } } },"
+add "    decoration = { active_opacity = 1.0, inactive_opacity = 1.0 },"
+add "})"
 if [ "$REDUCE" = 1 ]; then
-  kw decoration:active_opacity 1.0
-  kw decoration:inactive_opacity 1.0
-  # The per-app opacity rules in hyprland.conf set theirs outright: this one
-  # makes every window solid over them.
-  kw windowrule "match:class .*, opaque on"
-  touch "$OPAQUE_FLAG"
-elif [ -e "$OPAQUE_FLAG" ]; then
-  # Reduce Transparency was just turned off: a rule added at run time stays
-  # until the config is loaded again. Reloading runs this script once more.
-  rm -f "$OPAQUE_FLAG"
-  hyprctl reload >/dev/null 2>&1 || true
-  exit 0
-else
-  kw decoration:active_opacity 1.0
-  kw decoration:inactive_opacity 1.0
+  # The per-app opacity rules in hyprland.lua set theirs outright: this one,
+  # loaded after them, makes every window solid over them.
+  add "hl.window_rule({ name = \"gg-reduce-transparency\", match = { class = \".*\" }, opaque = true })"
 fi
 
 # ------------------------------------------------------------- HyprGlass
@@ -120,133 +106,89 @@ fi
 # stay frosted and readable instead of turning plain see-through.
 fallback() {
   logger -t gg-hyprglass "$1; using Hyprland's blur"
-  kw decoration:blur:enabled 1
-  kw decoration:blur:size 10
-  kw decoration:blur:passes 3
-  exit 0
+  add "-- HyprGlass is not used: $1."
+  add "hl.config({ decoration = { blur = { enabled = true, size = 10, passes = 3 } } })"
 }
-[ -r "$PLUGIN" ] || fallback "no plugin at $PLUGIN"
+VIRT="$(systemd-detect-virt --vm 2>/dev/null || true)"
 # Only into the Hyprland it was built for (its stamp, from the release pin).
 BUILT_FOR="$(cat "$PLUGIN.hyprland" 2>/dev/null || true)"
 RUNNING="$(pacman -Q hyprland 2>/dev/null | awk '{print $2}' | cut -d- -f1)"
-[ -e "$PLUGIN.incompatible" ] && fallback "plugin marked incompatible: $(cat "$PLUGIN.incompatible")"
-if [ -z "$BUILT_FOR" ] || { [ -n "$RUNNING" ] && [ "$BUILT_FOR" != "$RUNNING" ]; }; then
+if [ ! -r "$PLUGIN" ]; then
+  fallback "no plugin at $PLUGIN"
+elif [ -e "$PLUGIN.incompatible" ]; then
+  fallback "plugin marked incompatible: $(cat "$PLUGIN.incompatible")"
+elif [ -z "$BUILT_FOR" ] || { [ -n "$RUNNING" ] && [ "$BUILT_FOR" != "$RUNNING" ]; }; then
   fallback "plugin built for Hyprland ${BUILT_FOR:-unknown}, running ${RUNNING:-unknown}"
-fi
-
-if ! hyprctl plugin list 2>/dev/null | grep -qi 'hyprglass'; then
-  if ! hyprctl plugin load "$PLUGIN" >/dev/null 2>&1; then
-    fallback "could not load $PLUGIN"
-  fi
-fi
-kw decoration:blur:enabled 0
-
-
-# HyprGlass owns backdrop blur/refraction. QML only paints the material/tint and
-# control chrome, so there is one compositor optical pipeline rather than two.
-kw plugin:hyprglass:enabled 1
-kw plugin:hyprglass:manage_window_blur 1
-kw plugin:hyprglass:default_theme "$THEME"
-kw plugin:hyprglass:default_preset default
-# Real GPUs render HyprGlass' specular/brightness path much more strongly than
-# llvmpipe/virtual GPUs. Preserve the existing VM profile, but use a restrained
-# optical profile on physical hardware so light glass stays translucent instead
-# of collapsing toward opaque white. The shell draws its own (faint) light catch
-# and rim, so the compositor's specular and fresnel stay low in both profiles.
-VIRT="$(systemd-detect-virt --vm 2>/dev/null || true)"
-if [ -n "$VIRT" ] && [ "$VIRT" != none ]; then
-  kw plugin:hyprglass:blur_strength 1.5
-  kw plugin:hyprglass:blur_iterations 3
-  kw plugin:hyprglass:refraction_strength 0.6
-  kw plugin:hyprglass:chromatic_aberration 0.14
-  kw plugin:hyprglass:fresnel_strength 0.36
-  kw plugin:hyprglass:specular_strength 0.42
-  kw plugin:hyprglass:edge_thickness 0.08
-  kw plugin:hyprglass:lens_distortion 0.45
-  kw plugin:hyprglass:dark:brightness 0.82
-  kw plugin:hyprglass:dark:contrast 0.94
-  kw plugin:hyprglass:dark:saturation 0.88
-  kw plugin:hyprglass:dark:vibrancy 0.16
-  kw plugin:hyprglass:dark:adaptive_dim 0.32
-  kw plugin:hyprglass:light:brightness 1.08
-  kw plugin:hyprglass:light:contrast 0.95
-  kw plugin:hyprglass:light:saturation 0.90
-  kw plugin:hyprglass:light:vibrancy 0.12
-  kw plugin:hyprglass:light:adaptive_boost 0.28
 else
-  # The Liquid Glass physics (docs/LIQUID-GLASS.md): thick glass. What's behind
-  # bends at the edge, where a wide bevel pulls in what lies just beyond it,
-  # and swells a little under the middle (the dome lens), so it visibly morphs
-  # as the glass moves over it; a lighter blur so the shapes stay readable
-  # through it, and a trace of dispersion at the rim.
-  kw plugin:hyprglass:blur_strength 0.95
-  # Two passes: the shell's glass draws its own bent backdrop over this, so
-  # the compositor's blur mostly shows in app sidebars, where two is plenty.
-  kw plugin:hyprglass:blur_iterations 2
-  kw plugin:hyprglass:refraction_strength 0.55
-  kw plugin:hyprglass:chromatic_aberration 0.08
-  kw plugin:hyprglass:fresnel_strength 0.22
-  kw plugin:hyprglass:specular_strength 0.16
-  kw plugin:hyprglass:edge_thickness 0.08
-  kw plugin:hyprglass:lens_distortion 0.42
-  kw plugin:hyprglass:dark:brightness 0.80
-  kw plugin:hyprglass:dark:contrast 0.98
-  kw plugin:hyprglass:dark:saturation 0.92
-  kw plugin:hyprglass:dark:vibrancy 0.08
-  kw plugin:hyprglass:dark:adaptive_dim 0.24
-  kw plugin:hyprglass:light:brightness 0.88
-  kw plugin:hyprglass:light:contrast 1.01
-  kw plugin:hyprglass:light:saturation 0.94
-  kw plugin:hyprglass:light:vibrancy 0.06
-  kw plugin:hyprglass:light:adaptive_boost 0.03
+  # The Liquid Glass physics (docs/LIQUID-GLASS.md). Real GPUs render
+  # HyprGlass' specular/brightness path much more strongly than llvmpipe /
+  # virtual GPUs, so physical hardware gets a restrained optical profile and
+  # light glass stays translucent instead of collapsing toward opaque white.
+  if [ -n "$VIRT" ] && [ "$VIRT" != none ]; then
+    physics="blur_strength = 1.5, blur_iterations = 3, refraction_strength = 0.6, chromatic_aberration = 0.14,
+        fresnel_strength = 0.36, specular_strength = 0.42, edge_thickness = 0.08, lens_distortion = 0.45,
+        dark = { brightness = 0.82, contrast = 0.94, saturation = 0.88, vibrancy = 0.16, adaptive_dim = 0.32, vibrancy_darkness = 0.15 },
+        light = { brightness = 1.08, contrast = 0.95, saturation = 0.90, vibrancy = 0.12, adaptive_boost = 0.28, vibrancy_darkness = 0.15 },"
+  else
+    # Thick glass: what's behind bends at the edge, where a wide bevel pulls
+    # in what lies just beyond it, and swells a little under the middle (the
+    # dome lens); a lighter blur so the shapes stay readable through it, two
+    # passes, and a trace of dispersion at the rim.
+    physics="blur_strength = 0.95, blur_iterations = 2, refraction_strength = 0.55, chromatic_aberration = 0.08,
+        fresnel_strength = 0.22, specular_strength = 0.16, edge_thickness = 0.08, lens_distortion = 0.42,
+        dark = { brightness = 0.80, contrast = 0.98, saturation = 0.92, vibrancy = 0.08, adaptive_dim = 0.24, vibrancy_darkness = 0.15 },
+        light = { brightness = 0.88, contrast = 1.01, saturation = 0.94, vibrancy = 0.06, adaptive_boost = 0.03, vibrancy_darkness = 0.15 },"
+  fi
+  # The glass's own opacity, from the style's look toward solid (0.96) as the
+  # Transparency slider moves.
+  opacity() { awk -v g="$1" -v s="$SOLID" 'BEGIN { printf "%.2f", g + (0.96 - g) * s }'; }
+  virtual=0; [ -n "$VIRT" ] && [ "$VIRT" != none ] && virtual=1
+  if [ "$REDUCE" = 1 ]; then
+    look="glass_opacity = 0.96, refraction_strength = 0.04, chromatic_aberration = 0.0,"
+  elif [ "$GLASS" = tinted ]; then
+    if [ $virtual = 1 ]; then o=$(opacity 0.90); [ "$THEME" = dark ] && t=0x283c6e70 || t=0xf5f7ff72
+    else o=$(opacity 0.76); [ "$THEME" = dark ] && t=0x283c6e42 || t=0xf5f7ff38; fi
+    look="glass_opacity = $o, tint_color = $t,"
+  else
+    if [ $virtual = 1 ]; then o=$(opacity 0.80); [ "$THEME" = dark ] && t=0x283c6e38 || t=0xffffff42
+    else o=$(opacity 0.58); [ "$THEME" = dark ] && t=0x283c6e24 || t=0x7f879018; fi
+    look="glass_opacity = $o, tint_color = $t,"
+  fi
+  add "hl.plugin.load($(q "$PLUGIN"))"
+  add "if hl.plugin.hyprglass then"
+  add "    local hg = hl.plugin.hyprglass"
+  # HyprGlass owns backdrop blur/refraction. QML only paints the material/tint and
+  # control chrome, so there is one compositor optical pipeline rather than two.
+  add "    hl.config({ decoration = { blur = { enabled = false } } })"
+  add "    hg.config({"
+  add "        enabled = true, manage_window_blur = true, default_theme = \"$THEME\", default_preset = \"default\","
+  add "        $physics"
+  add "        $look"
+  # Layer glass where the surface asks for blur, else where it draws.
+  add "        layers = { enabled = true, mask_mode = \"auto\", live_resample = true, live_resample_fps = 60, manage_blur = true },"
+  add "    })"
+  # The shell surfaces CitronOS draws, and for each the opacity above which
+  # its pixels become glass: above its shadow, below its tint. MacShell's bar,
+  # Dock and menus draw their own Liquid Glass (shell/macshell/liquidglass.frag),
+  # so HyprGlass leaves them alone.
+  for ns in gg-nearby=0.25 gg-tablet-home=0.25 gg-alert=0.3 gg-citron=0.5; do
+    add "    hg.layer(\"${ns%%=*}\", { mask_threshold = ${ns#*=} })"
+  done
+  add "end"
+  logger -t gg-hyprglass "HyprGlass set ($THEME, $GLASS, reduceTransparency=$REDUCE, virt=${VIRT:-none})"
 fi
 
-# Vibrancy lifts colour through the glass but holds back in the darks.
-kw plugin:hyprglass:dark:vibrancy_darkness 0.15
-kw plugin:hyprglass:light:vibrancy_darkness 0.15
-# No glass under a window nothing shows through (saves the GPU), and layer
-# glass where the surface asks for blur, else where it draws.
-kw plugin:hyprglass:skip_opaque_windows 1
-kw plugin:hyprglass:layers:mask_mode auto
-
-# The glass's own opacity, from the style's look toward solid (0.96) as the
-# Transparency slider moves.
-glass_opacity() { kw plugin:hyprglass:glass_opacity "$(awk -v g="$1" -v s="$SOLID" 'BEGIN { printf "%.2f", g + (0.96 - g) * s }')"; }
-if [ "$REDUCE" = 1 ]; then
-  kw plugin:hyprglass:glass_opacity 0.96
-  kw plugin:hyprglass:refraction_strength 0.04
-  kw plugin:hyprglass:chromatic_aberration 0.0
-elif [ "$GLASS" = tinted ]; then
-  if [ -n "$VIRT" ] && [ "$VIRT" != none ]; then
-    glass_opacity 0.90
-    [ "$THEME" = dark ] && kw plugin:hyprglass:tint_color 0x283c6e70 || kw plugin:hyprglass:tint_color 0xf5f7ff72
-  else
-    glass_opacity 0.76
-    [ "$THEME" = dark ] && kw plugin:hyprglass:tint_color 0x283c6e42 || kw plugin:hyprglass:tint_color 0xf5f7ff38
-  fi
-else
-  if [ -n "$VIRT" ] && [ "$VIRT" != none ]; then
-    glass_opacity 0.80
-    [ "$THEME" = dark ] && kw plugin:hyprglass:tint_color 0x283c6e38 || kw plugin:hyprglass:tint_color 0xffffff42
-  else
-    glass_opacity 0.58
-    [ "$THEME" = dark ] && kw plugin:hyprglass:tint_color 0x283c6e24 || kw plugin:hyprglass:tint_color 0x7f879018
-  fi
+mkdir -p "$(dirname "$OUT")"
+if [ -e "$OUT" ] && [ "$(cat "$OUT")" = "${LUA%
+}" ]; then
+  exit 0   # unchanged: no reload
 fi
-
-# ------------------------------------------------------------- shell glass
-# Every shell surface made of glass, and for each the opacity above which its
-# pixels become glass: above its shadow (and, for the screenshot overlay, its
-# 40% dim), below its tint. The menu bar is a faint film (8%), so all of it is.
-kw plugin:hyprglass:layers:enabled 1
-# Control Center already owns a live Quickshell DesktopBackdrop and rounded
-# per-module refraction. Re-applying HyprGlass to its full rectangular layer
-# silhouette caused the opaque, block-like shadow around the whole panel.
-# Leave that layer to its individual glass controls instead.
-kw plugin:hyprglass:layers:namespaces "gg-menubar,gg-dock,gg-spotlight,gg-notifications,gg-notification-center,gg-nearby,gg-widgets,gg-widget-gallery,gg-tablet-home,gg-osd,gg-alert,gg-switcher,gg-screenshot,gg-screenshot-thumbnail,gg-citron"
-kw plugin:hyprglass:layers:namespace_mask_thresholds "gg-menubar=0.05,gg-dock=0.25,gg-spotlight=0.25,gg-notifications=0.25,gg-notification-center=0.3,gg-nearby=0.25,gg-widgets=0.25,gg-widget-gallery=0.25,gg-tablet-home=0.25,gg-osd=0.3,gg-alert=0.3,gg-switcher=0.3,gg-screenshot=0.5,gg-screenshot-thumbnail=0.3,gg-citron=0.5"
-kw plugin:hyprglass:layers:live_resample 1
-kw plugin:hyprglass:layers:live_resample_fps 60
-kw plugin:hyprglass:layers:manage_blur 1
-
-logger -t gg-hyprglass "HyprGlass applied ($THEME, $GLASS, reduceTransparency=$REDUCE, virt=${VIRT:-none})"
+new=1; [ -e "$OUT" ] && new=0
+tmp="$(mktemp "$OUT.XXXXXX")" || exit 0
+printf '%s' "$LUA" > "$tmp" && mv -f "$tmp" "$OUT"
+# Hyprland reloads a config file it loaded when it changes; a file that
+# wasn't there when it last loaded isn't watched yet, so ask.
+if [ $new = 1 ] && command -v hyprctl >/dev/null 2>&1 && [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]; then
+  hyprctl reload >/dev/null 2>&1
+fi
+exit 0

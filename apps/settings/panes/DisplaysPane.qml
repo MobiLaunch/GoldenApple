@@ -34,6 +34,15 @@ Pane {
         return m.name + ", " + m.width + "x" + m.height + "@" + Number(m.refreshRate).toFixed(3) + ", "
             + Math.round(x ?? m.x) + "x" + Math.round(y ?? m.y) + ", " + (scale ?? m.scale)
     }
+    // A rule (name,mode,position,scale) as the line displays.lua keeps for it,
+    // marked with its display's name so the next change replaces it.
+    function luaRule(r) {
+        const f = r.split(",").map((x) => x.trim())
+        const q = (v) => '"' + String(v).replace(/\\/g, "\\\\").replace(/"/g, '\\"') + '"'
+        const scale = /^[0-9.]+$/.test(f[3] ?? "") ? f[3] : q(f[3] ?? "auto")
+        return "hl.monitor({ output = " + q(f[0]) + ", mode = " + q(f[1] ?? "preferred") + ", position = " + q(f[2] ?? "auto")
+            + ", scale = " + scale + " }) -- display " + f[0]
+    }
     // Rules that change m's scale and keep the arrangement: displays to its
     // right or below move by however much m grew or shrank.
     function scaledRules(m, s) {
@@ -53,7 +62,7 @@ Pane {
     // confirmed). The going-back is a watchdog process of its own
     // (display-watchdog.py), so closing Settings, leaving the pane or a crash
     // doesn't keep a change nobody confirmed. Keep Changes ends it only once
-    // displays.conf is saved; if saving fails, the change goes back too.
+    // displays.lua is saved; if saving fails, the change goes back too.
     readonly property string watchdog: decodeURIComponent(Qt.resolvedUrl("../display-watchdog.py").toString().replace("file://", ""))
     property var previous: []           // the rules to go back to
     property var pending: []            // the rules being tried
@@ -61,7 +70,7 @@ Pane {
     property int countdown: 0
     property string scaleError: ""
     function apply(rules, done) {
-        sys.run(["hyprctl", "--batch", rules.map((r) => "keyword monitor " + r).join(" ; ")], (out, code) => done(code === 0 && !/error|invalid/i.test(out)))
+        sys.run(["gg-hyprset", "--monitor"].concat(rules), (out, code) => done(code === 0 && !/error|invalid/i.test(out)))
     }
     function setScale(m, s) {
         if (pending.length || !fits(m, s)) return
@@ -91,12 +100,12 @@ Pane {
     function keep() {
         revertTimer.stop()
         const rules = pending, token = trial
-        // displays.conf: this computer's rules, one per display, the others kept.
-        const f = sys.config + "/hypr/golden-gate/displays.conf"
+        // displays.lua: this computer's rules, one per display, the others kept.
+        const f = sys.config + "/hypr/golden-gate/displays.lua"
         sys.run(["cat", f], (text) => {
             const names = rules.map((r) => r.split(",")[0])
-            const kept = text.split("\n").filter((l) => l.trim() && !names.some((n) => l.startsWith("monitor = " + n + ",")))
-            sys.writeFile(f, kept.concat(rules.map((r) => "monitor = " + r)).join("\n") + "\n", "displays.conf", (ok) => {
+            const kept = text.split("\n").filter((l) => l.trim() && !names.some((n) => l.endsWith(" -- display " + n)))
+            sys.writeFile(f, kept.concat(rules.map((r) => pane.luaRule(r))).join("\n") + "\n", "displays.lua", (ok) => {
                 if (!ok) {
                     revert()
                     scaleError = "The new display settings couldn't be saved, so the previous ones were put back."

@@ -21,14 +21,14 @@ Pane {
             subtitle: "Windows and menus fade instead of springing, and Dock icons don't bounce."
             Switch {
                 checked: pane.reduceMotion
-                // The shell's (desktop.json) and Hyprland's (accessibility.conf,
+                // The shell's (desktop.json) and Hyprland's (accessibility.lua,
                 // saved with accessibility.json) are both saved and acknowledged;
                 // the running session changes once Hyprland's is saved.
                 onToggled: (on) => {
                     pane.sys.setPref(["reduceMotion"], on)
                     pane.sys.setRecord("accessibility", "reduceMotion", on, (ok) => {
                         if (!ok) return
-                        pane.sys.applyLive(["hyprctl", "keyword", "animations:enabled", on ? "0" : "1"], "accessibility.conf")
+                        pane.sys.applyLive(["gg-hyprset", "animations:enabled", on ? "false" : "true"], "accessibility.lua")
                         pane.sys.applyLive(["gsettings", "set", "org.gnome.desktop.interface", "enable-animations", on ? "false" : "true"], "GTK")
                     })
                 }

@@ -42,9 +42,9 @@ def conf(s: dict) -> str:
     lines = [
         "# Written by CitronOS Settings → Lock Screen (gg-idle); changes here are replaced.",
         "general {",
-        "    lock_cmd = qs -c golden-gate ipc call lock lock",
+        "    lock_cmd = gg-lock",   # MacLock (shell-lock/), its own process
         "    before_sleep_cmd = loginctl lock-session",
-        "    after_sleep_cmd = hyprctl dispatch dpms on",
+        "    after_sleep_cmd = hyprctl dispatch 'hl.dsp.dpms({ action = \"enable\" })'",
         "}",
     ]
 
@@ -55,7 +55,7 @@ def conf(s: dict) -> str:
     if off:
         if s["dim"] and off >= 20:
             listener(off // 2, "brightnessctl -s set 20%", "brightnessctl -r")
-        listener(off, "hyprctl dispatch dpms off", "hyprctl dispatch dpms on")
+        listener(off, "hyprctl dispatch 'hl.dsp.dpms({ action = \"disable\" })'", "hyprctl dispatch 'hl.dsp.dpms({ action = \"enable\" })'")
         if require >= 0:
             listener(off + require, "loginctl lock-session")
     return "\n".join(lines) + "\n"

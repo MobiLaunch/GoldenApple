@@ -13,17 +13,16 @@ import sys
 root = Path(__file__).resolve().parents[1]
 errors: list[str] = []
 
-dock = (root / "shell/Dock.qml").read_text(encoding="utf-8")
+dock = (root / "shell/macshell/MacDock.qml").read_text(encoding="utf-8")
 desktop_dir = root / "apps/desktop"
 desktop_ids = {p.stem for p in desktop_dir.glob("*.desktop")}
 
-# Every CitronOS app pinned in the Dock must have a desktop entry. Ignore the
-# live-only installer distinction; it is still a real entry.
-# The default set is Prefs.defaultDockPinned; the user's own list lives in desktop.json.
-prefs = (root / "shell/components/Prefs.qml").read_text(encoding="utf-8")
+# Every CitronOS app pinned in the Dock must have a desktop entry. The default
+# set is MacShell's Dock's defaultPinned; the user's own list lives in
+# ~/.config/macdock/pinned.json.
 pinned_match = re.search(
-    r"property var defaultDockPinned:\s*\[(.*?)\]",
-    prefs,
+    r"property var defaultPinned:\s*\[(.*?)\]",
+    dock,
     flags=re.S,
 )
 if not pinned_match:
@@ -31,8 +30,6 @@ if not pinned_match:
     pinned_ids: list[str] = []
 else:
     pinned_ids = re.findall(r'"(org\.goldengate\.[A-Za-z0-9_-]+)"', pinned_match.group(1))
-    # The live session adds Installer in front of the kept apps.
-    pinned_ids += re.findall(r'"(org\.goldengate\.Installer)"', dock)
 
 for app_id in sorted(set(pinned_ids)):
     if app_id not in desktop_ids:

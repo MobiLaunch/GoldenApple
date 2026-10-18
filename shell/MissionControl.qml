@@ -90,16 +90,16 @@ PanelWindow {
 
     function focus(i) {
         const w = windows[i]
-        if (w) dismiss(() => Hyprland.dispatch("focuswindow address:" + w.address))
+        if (w) dismiss(() => Hyprland.dispatch(`hl.dsp.focus({ window = "address:${w.address}" })`))
     }
     function goTo(id) {
         if (id === workspaceId) dismiss()
-        else dismiss(() => Hyprland.dispatch("workspace " + id))
+        else dismiss(() => Hyprland.dispatch(`hl.dsp.focus({ workspace = "${id}" })`))
     }
     function moveTo(i, id) {
         const w = windows[i]
         if (!w || id === workspaceId) return
-        Hyprland.dispatch("movetoworkspacesilent " + id + ",address:" + w.address)
+        Hyprland.dispatch(`hl.dsp.window.move({ workspace = "${id}", follow = false, window = "address:${w.address}" })`)
         Hyprland.refreshToplevels()
     }
 
@@ -231,7 +231,7 @@ PanelWindow {
             border { width: 0.5; color: "#59ffffff" }
             Text { anchors.centerIn: parent; text: "+"; color: "#ffffff"; font { family: Theme.fontUi; pixelSize: Theme.fs(24); weight: Font.Light } }
             HoverHandler { id: plusHover }
-            TapHandler { onTapped: mc.dismiss(() => Hyprland.dispatch("workspace emptym")) }
+            TapHandler { onTapped: mc.dismiss(() => Hyprland.dispatch('hl.dsp.focus({ workspace = "emptym" })')) }
             Accessible.role: Accessible.Button
             Accessible.name: "Add Desktop"
         }

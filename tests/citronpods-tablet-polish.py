@@ -29,28 +29,21 @@ class IntegrationPolish(unittest.TestCase):
     def test_no_extra_rectangular_shadow_behind_controls(self):
         glass = self.src("apps/lib/Glass.qml")
         menu = self.src("apps/lib/MenuList.qml")
-        cc = self.src("shell/ControlCenter.qml")
         hyprglass = self.src("compositor/hyprland/hyprglass-sync.sh")
         # Only small window controls, sidebars and the Dock cast the slab shadow;
         # menus and panels must not draw a rectangle behind their rounded glass.
         self.assertIn('property bool shadowEnabled: role === "control" || role === "sidebar" || role === "dock"', glass)
         self.assertIn("shadowEnabled: false", menu)
-        self.assertIn("shadowEnabled: false", cc)
         self.assertNotIn('gg-controlcenter=0.25', hyprglass)
         self.assertNotIn('gg-dock,gg-controlcenter,gg-spotlight', hyprglass)
-        self.assertIn('DesktopBackdrop { surface: cc;', cc)
 
     def test_tablet_mode_has_real_touch_consumers(self):
         prefs = self.src("shell/components/Prefs.qml")
-        dock = self.src("shell/Dock.qml")
         home = self.src("shell/Applications.qml")
-        control = self.src("shell/ControlCenter.qml")
         settings = self.src("apps/settings/panes/DockPane.qml")
         self.assertIn('readonly property bool tabletMode: Quickshell.env("GG_TABLET_PREVIEW") === "1" || (data.tablet?.enabled ?? false)', prefs)
-        self.assertIn('Prefs.tabletMode ? Math.max(64, Prefs.dockSize)', dock)
         self.assertIn('Prefs.tabletMode ? (width < height ? 4 : 6)', home)
         self.assertIn('Prefs.tabletMode ? 112 : 100', home)
-        self.assertIn('Prefs.tabletMode ? 54 : 48', control)
         self.assertIn('objectName: "tabletModeToggle"', settings)
         self.assertIn('pane.sys.setPref(["tablet", "enabled"], on)', settings)
 

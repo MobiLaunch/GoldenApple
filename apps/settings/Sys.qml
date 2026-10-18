@@ -61,6 +61,21 @@ Item {
         w.running = true
     }
     function writeJson(file, obj) { writeFile(gg + "/" + file, JSON.stringify(obj, null, 1) + "\n", file) }
+    // The Dock's apps are MacShell's (~/.config/macdock/pinned.json), which its
+    // Dock watches; null until it's read, an empty file is MacShell's defaults.
+    readonly property string dockPinsFile: Quickshell.env("HOME") + "/.config/macdock/pinned.json"
+    readonly property var defaultDockPins: [
+        "org.goldengate.Files", "org.goldengate.Launchpad", "org.goldengate.Web", "org.goldengate.Mail",
+        "org.goldengate.Messages", "org.goldengate.Maps", "org.goldengate.Photos",
+        "org.goldengate.Music", "org.goldengate.Calendar", "org.goldengate.Notes",
+        "org.goldengate.Weather", "org.goldengate.Software", "org.goldengate.Settings", "org.goldengate.Terminal"
+    ]
+    readonly property var dockPins: {
+        try { const a = JSON.parse(dockPinsView.text()); if (Array.isArray(a)) return a } catch (e) {}
+        return defaultDockPins
+    }
+    FileView { id: dockPinsView; path: sys.dockPinsFile; printErrors: false; watchChanges: true; onFileChanged: reload() }
+    function setDockPins(ids) { writeFile(dockPinsFile, JSON.stringify(ids, null, 2) + "\n", "pinned.json", () => dockPinsView.reload()) }
     function failed(what, why) {
         writeError = "Your change couldn't be saved (" + what + ": " + why + "). The previous setting was kept."
         for (const f of [desktopFile, privacyFile, inputFile, windowsFile]) f.reload()
@@ -152,8 +167,9 @@ Item {
 
     function setPrivacy(key, value) { setRecord("privacy", key, value) }
 
-    // Keyboard and pointer: input.json is the record; hypr's input.conf is
-    // generated from it with it (sourced by hyprland.conf).
+    // Keyboard and pointer: input.json is the record; hypr's input.lua is
+    // generated from it with it (loaded by hyprland.lua). gg-hyprset changes
+    // the running session (hyprctl eval; Hyprland's Lua config has no keyword).
     readonly property var inputKeywords: ({ layout: "input:kb_layout", variant: "input:kb_variant", repeatRate: "input:repeat_rate", repeatDelay: "input:repeat_delay",
                                             sensitivity: "input:sensitivity", naturalScroll: "input:touchpad:natural_scroll", tapToClick: "input:touchpad:tap-to-click",
                                             twoFingerClick: "input:touchpad:clickfinger_behavior", disableWhileTyping: "input:touchpad:disable_while_typing",
@@ -162,12 +178,12 @@ Item {
     function setInput(key, value) {
         setRecord("input", key, value, (ok) => {
             const kw = inputKeywords[key]
-            if (ok && kw) applyLive(["hyprctl", "keyword", kw, String(typeof value === "number" && key !== "sensitivity" ? Math.round(value) : value)], "input.conf")
+            if (ok && kw) applyLive(["gg-hyprset", kw, String(typeof value === "number" && key !== "sensitivity" ? Math.round(value) : value)], "input.lua")
         })
     }
 
     // Persist and apply the exact Hyprland controls from Desktop & Dock.
-    // The record writer generates ~/.config/hypr/golden-gate/windows.conf
+    // The record writer generates ~/.config/hypr/golden-gate/windows.lua
     // atomically, so the same values survive restart or Settings OTA updates.
     readonly property var windowKeywords: ({
         snapEnabled: "general:snap:enabled",
@@ -180,19 +196,8 @@ Item {
     function setWindow(key, value) {
         if (!windowKeywords[key]) return
         setRecord("windows", key, value, (ok) => {
-            if (ok) {
-                // machine.conf contains the optional windows.conf snapshot.
-                // Refresh it after each saved change so a Hyprland reload
-                // keeps the user's choices without ever sourcing a missing
-                // windows.conf from the main configuration.
-                const setup = sys.config + "/hypr/golden-gate/machine-conf.sh"
-                const generated = sys.config + "/hypr/golden-gate/machine.conf"
-                run(["sh", setup, generated], (out, code) => {
-                    if (code !== 0) sys.notApplied("machine.conf", out || "Could not update session defaults.")
-                })
-                applyLive(["hyprctl", "keyword", windowKeywords[key],
-                    typeof value === "boolean" ? String(value).toLowerCase() : String(value)], "windows.conf")
-            }
+            if (ok) applyLive(["gg-hyprset", windowKeywords[key],
+                    typeof value === "boolean" ? String(value).toLowerCase() : String(value)], "windows.lua")
         })
     }
 
@@ -246,7 +251,7 @@ Item {
     // it in input.json the first time it saves, so a later change, such as the
     // repeat rate, keeps the same layout and variant).
     Component.onCompleted: { refreshRegion(); readSetupKeyboard() }
-    function readSetupKeyboard() { sh('sed -n "s/^ *\\(kb_layout\\|kb_variant\\) *= *\\(.*\\)/\\1=\\2/p" "' + config + '/hypr/golden-gate/input.conf" 2>/dev/null', (out) => {
+    function readSetupKeyboard() { sh('grep -oE "kb_(layout|variant) *= *\\"[^\\"]*\\"" "' + config + '/hypr/golden-gate/input.lua" 2>/dev/null | tr -d \'" \'', (out) => {
         if (input.layout) return
         let i = input
         for (const line of out.split("\n")) {

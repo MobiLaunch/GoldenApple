@@ -1,4 +1,4 @@
-// Add desktop entries to Golden Gate's real Dock pinned list.
+// Add desktop entries to the Dock's pinned list (MacShell's, through Sys).
 // Uses the same Quickshell registry as Launchpad and the Dock, not a hardcoded
 // app list, so newly installed Flatpaks are discoverable after their scan.
 import Quickshell
@@ -14,12 +14,7 @@ Pane {
     headerTitle: "Add to Dock"
     headerText: "Choose installed applications to keep in the Dock."
     property string filter: ""
-    readonly property var pinned: Array.isArray(sys.prefs.dock?.pinned) ? sys.prefs.dock.pinned :
-        ["org.goldengate.Files", "org.goldengate.Web", "org.goldengate.Mail",
-         "org.goldengate.Messages", "org.goldengate.Maps", "org.goldengate.Photos",
-         "org.goldengate.Music", "org.goldengate.Calendar", "org.goldengate.Notes",
-         "org.goldengate.Weather", "org.goldengate.Software", "org.goldengate.Settings",
-         "org.goldengate.Terminal"]
+    readonly property var pinned: sys.dockPins
     readonly property var available: {
         const sources = DesktopEntries.applications.values
         const seen = new Set()
@@ -57,7 +52,7 @@ Pane {
                 Button {
                     text: "Add"
                     onClicked: {
-                        pane.sys.setPref(["dock", "pinned"], pane.pinned.concat([entryRow.modelData.id]))
+                        pane.sys.setDockPins(pane.pinned.concat([entryRow.modelData.id]))
                         pane.nav.open("dock")
                     }
                 }

@@ -217,10 +217,6 @@ require("apps/files.qml", [
     'objectName: "filesTypeAheadCue"',
     "Keys.onEscapePressed: confirmEmpty.close()",
 ])
-require("shell/MenuBar.qml", [
-    'barMenu.open && !wasOpen && key !== "Window"',
-    '&& openTitle !== key) barMenu.reopen()',
-])
 
 require("apps/lib/ModalSheet.qml", [
     "property bool closing: false",

@@ -40,8 +40,8 @@ class SettingsConnectivity(unittest.TestCase):
         row = self.save("windows", "snapEnabled=false", "windowGap=24",
                         "monitorGap=16", "resizeOnBorder=true", "grabArea=20")
         self.assertEqual(row["windowGap"], 24)
-        config = (self.config / "hypr/golden-gate/windows.conf").read_text()
-        for word in ("snap {", "enabled = false", "window_gap = 24",
+        config = (self.config / "hypr/golden-gate/windows.lua").read_text()
+        for word in ("snap = {", "enabled = false", "window_gap = 24",
                      "monitor_gap = 16", "resize_on_border = true",
                      "extend_border_grab_area = 20", "respect_gaps = true"):
             self.assertIn(word, config)
@@ -53,7 +53,7 @@ class SettingsConnectivity(unittest.TestCase):
     def test_conf_generation_limits_numbers_and_escapes_untrusted_values(self):
         self.save("windows", 'windowGap=9000', 'monitorGap=-8',
                   'snapEnabled="true\\nexec = rm -rf /"', "grabArea=999")
-        config = (self.config / "hypr/golden-gate/windows.conf").read_text()
+        config = (self.config / "hypr/golden-gate/windows.lua").read_text()
         self.assertIn("window_gap = 100", config)
         self.assertIn("monitor_gap = 0", config)
         self.assertIn("extend_border_grab_area = 100", config)
@@ -63,13 +63,13 @@ class SettingsConnectivity(unittest.TestCase):
         self.save("input", "naturalScroll=false", "twoFingerClick=true",
                   "disableWhileTyping=true", "tapAndDrag=false",
                   "dragLock=2", "scrollFactor=1.65")
-        config = (self.config / "hypr/golden-gate/input.conf").read_text()
+        config = (self.config / "hypr/golden-gate/input.lua").read_text()
         for keyword in ("natural_scroll = false", "clickfinger_behavior = true",
                         "disable_while_typing = true", "tap_and_drag = false",
                         "drag_lock = 2", "scroll_factor = 1.65"):
             self.assertIn(keyword, config)
         self.save("input", "tapToClick=true")
-        self.assertIn("scroll_factor = 1.65", (self.config / "hypr/golden-gate/input.conf").read_text())
+        self.assertIn("scroll_factor = 1.65", (self.config / "hypr/golden-gate/input.lua").read_text())
 
     def test_settings_panes_have_live_consumers_and_navigation(self):
         qml = (ROOT / "apps/settings.qml").read_text()
@@ -78,11 +78,10 @@ class SettingsConnectivity(unittest.TestCase):
         picker = (ROOT / "apps/settings/panes/DockAppsPane.qml").read_text()
         pointer = (ROOT / "apps/settings/panes/TrackpadPane.qml").read_text()
         appearance = (ROOT / "apps/settings/panes/AppearancePane.qml").read_text()
-        hypr = (ROOT / "compositor/hyprland/hyprland.conf").read_text()
+        hypr = (ROOT / "compositor/hyprland/hyprland.lua").read_text()
         install = (ROOT / "scripts/install.sh").read_text()
         updater = (ROOT / "apps/settings/golden_update.py").read_text()
         prefs = (ROOT / "shell/components/Prefs.qml").read_text()
-        dock_shell = (ROOT / "shell/Dock.qml").read_text()
 
         for needle in ('file: "DockAppsPane"', 'objectName: "settingsSidebarToggle"',
                        'current: Quickshell.env("GG_SETTINGS_PANE") || "general"'):
@@ -95,17 +94,14 @@ class SettingsConnectivity(unittest.TestCase):
             self.assertIn(option, sysqml)
         self.assertIn('pane.sys.prefs.glassWindows ?? true', appearance)
         self.assertIn('readonly property bool glassWindows', prefs)
-        self.assertIn('readonly property bool dockShowRecents', prefs)
-        self.assertIn('Prefs.dockShowRecents', dock_shell)
-        # windows.conf is generated for settings compatibility but deliberately
-        # not sourced: older accounts might not have it, making Hyprland reject
-        # an unmatched source glob at startup.
-        self.assertNotIn('source = ~/.config/hypr/golden-gate/windows.conf', hypr)
-        self.assertIn('source = ~/.config/hypr/golden-gate/machine.conf', hypr)
-        self.assertIn('accessibility displays windows', install)
-        self.assertIn('"hypr/golden-gate/windows.conf"', updater)
+        self.assertIn('sys.setDockPins(', picker)   # the Dock's apps are MacShell's (pinned.json)
+        # windows.lua is written by Settings only after a change; hyprland.lua
+        # loads it (and machine.lua) with part(), so a missing one is no error.
+        self.assertIn('part("windows")', hypr)
+        self.assertIn('part("machine")', hypr)
+        self.assertIn('migrate-fragments.py', install)
+        self.assertIn('"hypr/golden-gate/motion.lua"', updater)
         self.assertIn('DesktopEntries.applications.values', picker)
-        self.assertIn('pane.sys.setPref(["dock", "pinned"]', picker)
         self.assertIn('dex --autostart --environment Hyprland', hypr)
         self.assertIn('dex', (ROOT / "distro/archiso/packages.x86_64").read_text().splitlines())
         self.assertIn('"glassWindows"', (ROOT / "apps/settings/Sys.qml").read_text())
@@ -115,11 +111,11 @@ class SettingsConnectivity(unittest.TestCase):
             "WifiPane.qml": "nmcli",
             "BluetoothPane.qml": "bluetoothctl",
             "SoundPane.qml": "wpctl",
-            "DisplaysPane.qml": "hyprctl",
+            "DisplaysPane.qml": "gg-hyprset",
             "BatteryPane.qml": "upower",
             "WallpaperPane.qml": 'sys.setPref(["wallpaper"]',
             "MenuBarPane.qml": '"menuBar"',
-            "ControlCenterPane.qml": '"menuBar"',
+            "ControlCenterPane.qml": '"settings", "pane", "menubar"',
             "NotificationsPane.qml": '"notifications"',
             "LockScreenPane.qml": '"lockScreen"',
             "NetworkPane.qml": '"nmcli"',

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Settings' system panes and what follows them: Lock Screen's timers
-(gg-idle writes hypridle.conf), Spotlight finding every pane, and the shell
-reading the Control Center, Notifications, Spotlight and Lock Screen
-choices that the panes write."""
+(gg-idle writes hypridle.conf), and the shell (MacShell, with its CitronOS
+patches) reading the Notifications, Focus, Dock and Lock Screen choices that
+the panes write."""
 import json
 import os
 from pathlib import Path
@@ -36,7 +36,7 @@ class LockScreen(unittest.TestCase):
     def test_timers_follow_the_pane(self):
         got = listeners(idle({"displayOff": 1200, "requireAfter": 60, "dim": True}))
         self.assertIn((600, "brightnessctl -s set 20%"), got)
-        self.assertIn((1200, "hyprctl dispatch dpms off"), got)
+        self.assertIn((1200, """hyprctl dispatch 'hl.dsp.dpms({ action = "disable" })'"""), got)
         self.assertIn((1260, "loginctl lock-session"), got)
 
     def test_never(self):
@@ -44,7 +44,7 @@ class LockScreen(unittest.TestCase):
         self.assertEqual(listeners(conf), [], "the display never turns off, so nothing locks by idling")
         self.assertIn("before_sleep_cmd = loginctl lock-session", conf, "sleep still locks")
         got = listeners(idle({"displayOff": 300, "requireAfter": -1, "dim": False}))
-        self.assertEqual(got, [(300, "hyprctl dispatch dpms off")])
+        self.assertEqual(got, [(300, """hyprctl dispatch 'hl.dsp.dpms({ action = "disable" })'""")])
 
     def test_bad_values_fall_back(self):
         self.assertEqual(idle({"displayOff": "soon", "dim": "yes"}), idle())
@@ -67,32 +67,24 @@ class Panes(unittest.TestCase):
         for pane in ("controlcenter", "notifications", "lockscreen", "spotlight"):
             self.assertIn(pane, dict(self.panes))
 
-    def test_spotlight_finds_every_pane(self):
-        answers = (ROOT / "shell/spotlight/answers.js").read_text()
-        indexed = set(re.findall(r'^\s+\["([a-z]+)", "', answers, re.M))
-        ids = {p for p, _ in self.panes} | set(self.subpages)
-        self.assertEqual(ids - indexed, set(), "panes Spotlight can't find")
-        self.assertEqual(indexed - ids, set(), "Spotlight opens panes that don't exist")
-
 
 class ShellFollows(unittest.TestCase):
     """The shell reads what the panes write (desktop.json keys)."""
 
     def test_keys_match(self):
+        bar = (ROOT / "shell/macshell/MacBar.qml").read_text()
         prefs = (ROOT / "shell/components/Prefs.qml").read_text()
-        cc = (ROOT / "apps/settings/panes/ControlCenterPane.qml").read_text()
-        for key in re.findall(r'pane\.set\("([a-zA-Z]+)"', cc):
-            self.assertIn(f"barItems.{key}", prefs, key)
-        spot = (ROOT / "apps/settings/panes/SpotlightPane.qml").read_text()
-        shell_spot = (ROOT / "shell/Spotlight.qml").read_text()
-        for kind in re.findall(r'\["([a-z]+)", "[A-Z]', spot):
-            self.assertIn(f'spotlightShows("{kind}")', shell_spot, kind)
-        notes = (ROOT / "shell/Notifications.qml").read_text()
-        for field in ("allow", "banners", "sound", "badges"):
-            self.assertIn(field, notes)
-        self.assertIn("Prefs.notifyPreviews", notes)
-        self.assertIn("message: Prefs.lockMessage", (ROOT / "shell/LockScreen.qml").read_text())
-
+        for field in ("allow", "banners", "sound"):
+            self.assertIn(f"ggChoice.{field}", bar)
+            self.assertIn(field, prefs)
+        self.assertIn("Prefs.notifyPreviews", bar)
+        self.assertIn("Prefs.focusStatus.permits(", bar)
+        self.assertIn(".lockScreen.message", (ROOT / "shell-lock/shell.qml").read_text())
+        dock = (ROOT / "shell/macshell/MacDock.qml").read_text()
+        sys_qml = (ROOT / "apps/settings/Sys.qml").read_text()
+        self.assertIn('/.config/macdock/pinned.json', sys_qml)
+        self.assertIn('path: root.configDir + "/pinned.json"', dock)
+        self.assertRegex(dock, r'pinned\.json"\n\s+printErrors: false\n(\s+//.*\n)?\s+watchChanges: true')
 
 if __name__ == "__main__":
     unittest.main()

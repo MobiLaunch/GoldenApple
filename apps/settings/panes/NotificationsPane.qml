@@ -46,7 +46,7 @@ Pane {
     function summary(key) {
         const c = choice(key)
         if (!c.allow) return "Off"
-        const parts = [c.banners ? "Banners" : "", c.sound ? "Sounds" : "", c.badges ? "Badges" : ""].filter((s) => s)
+        const parts = [c.banners ? "Banners" : "", c.sound ? "Sounds" : ""].filter((s) => s)
         return parts.length ? parts.join(", ") : "In Notification Center only"
     }
 
@@ -108,10 +108,6 @@ Pane {
         SetRow {
             title: "Play sound for notifications"
             Switch { enabled: detail.c.allow; checked: detail.c.sound; onToggled: (on) => pane.setApp(pane.selected, "sound", on) }
-        }
-        SetRow {
-            title: "Badge application icon"
-            Switch { enabled: detail.c.allow; checked: detail.c.badges; onToggled: (on) => pane.setApp(pane.selected, "badges", on) }
         }
     }
 }

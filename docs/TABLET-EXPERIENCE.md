@@ -78,7 +78,6 @@ iPadOS or iPad apps.
 - `shell/TabletHome.qml`: horizontal page snap, app columns, page dots,
   touch widget editor and the Home-to-Spotlight gesture
 - `shell/widgets/tablet-layout.js`: validate, save and reorder tablet widgets
-- `shell/MenuBar.qml`: top-right Control Center touch gesture
 - `shell/components/Prefs.qml`: live tablet preference and widget state
 - `apps/lib/AppWindow.qml`: shared tablet-width responsive policy
 - `apps/lib/theme/Touch.qml`: touch-mode state for shared first-party controls

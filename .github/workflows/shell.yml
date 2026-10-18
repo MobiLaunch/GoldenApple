@@ -1,0 +1,71 @@
+name: Shell
+
+# The shell (MacShell's bar, Dock and widgets with CitronOS's surfaces, shell/)
+# and Hyprland's Lua config (compositor/hyprland/hyprland.lua).
+#   lua    the config and every golden-gate/*.lua part against Hyprland 0.56's
+#          API (tests/hyprland-lua.py), in seconds
+#   arch   in an Arch Linux container (the image's packages): install.sh into a
+#          new account, Hyprland's own --verify-config, then the shell and the
+#          lock screen in headless Sway: a QML error fails, and the screenshots
+#          are in the shell-shots artifact and the job log ("--- shot <name> ---").
+# The ISO's boot test runs the whole session in QEMU.
+on:
+  push:
+    paths:
+      - shell/**
+      - shell-lock/**
+      - compositor/hyprland/**
+      - design/dist/hyprland-motion.lua
+      - apps/settings/set-prefs.py
+      - apps/setup/save-preferences.py
+      - scripts/install.sh
+      - tests/hyprland-lua.py
+      - tests/data/hyprland-0.56-api.json
+      - tests/shell-shots.sh
+      - .github/workflows/shell.yml
+  workflow_dispatch:
+
+concurrency:
+  group: shell-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lua:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install lupa
+      - name: Hyprland Lua config against Hyprland 0.56's API
+        run: python tests/hyprland-lua.py
+
+  arch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install, verify and screenshot in Arch Linux
+        run: |
+          docker run --rm -v "$PWD:/repo" -w /repo archlinux:latest bash -euo pipefail -c '
+            for try in 1 2 3; do   # mirrors drop connections now and then; retries resume from the cache
+            pacman -Syu --noconfirm --needed hyprland quickshell qt6-declarative qt6-wayland qt6-svg qt6-shadertools \
+              qt6-5compat qt6-multimedia jq sway grim imagemagick librsvg dbus dconf glib2 gsettings-desktop-schemas \
+              python mesa inter-font ttf-jetbrains-mono adwaita-icon-theme libnotify cliphist wl-clipboard upower \
+              pipewire wireplumber util-linux procps-ng gtk3 >/dev/null && break
+              [ "$try" = 3 ] && exit 1
+              sleep $((try * 20))
+            done
+            pacman -Q hyprland quickshell qt6-declarative sway
+            fc-cache -f >/dev/null
+            setcap -r "$(command -v sway)" 2>/dev/null || true
+            SHOTS_B64=1 tests/shell-shots.sh out/shell-shots
+          '
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: shell-shots
+          path: out/shell-shots
+          retention-days: 14

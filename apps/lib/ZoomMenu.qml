@@ -23,7 +23,7 @@ Item {
 
     function run(command) {
         open = false
-        Hyprland.dispatch("exec " + command)
+        Quickshell.execDetached(["sh", "-c", command])
     }
 
     Glass {
@@ -113,7 +113,7 @@ Item {
             MenuRow { text: "Center"; command: "gg-tile center" }
             MenuRow { text: "Return to Previous Size"; command: "gg-tile restore" }
             Rectangle { width: parent.width; height: 1; color: Theme.separator }
-            MenuRow { text: "Enter Full Screen"; command: "hyprctl dispatch fullscreen 0" }
+            MenuRow { text: "Enter Full Screen"; command: "hyprctl dispatch 'hl.dsp.window.fullscreen({ mode = \"fullscreen\" })'" }
         }
         HoverHandler { onHoveredChanged: if (!hovered) hint.text = "Move & Resize" }
     }

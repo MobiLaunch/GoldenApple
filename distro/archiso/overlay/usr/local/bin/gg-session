@@ -25,7 +25,10 @@ fi
 
 # Screen scale and effects for this machine (virtual screen, no GPU).
 conf="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/golden-gate"
-sh "$conf/machine-conf.sh" && head -n 1 "$conf/machine.conf" | logger -t gg-session
+# Settings from before Hyprland's Lua config (input.conf, displays.conf, …)
+# carried over to the .lua files hyprland.lua loads, once.
+python3 /usr/lib/golden-gate/migrate-fragments.py "$conf" 2>&1 | logger -t gg-session
+sh "$conf/machine-conf.sh" "$conf/machine.lua" && head -n 1 "$conf/machine.lua" | logger -t gg-session
 
 # Hyprland must own the Wayland display before Quickshell starts. Launching qs
 # before the compositor exists can create a restart loop and leave the live VT

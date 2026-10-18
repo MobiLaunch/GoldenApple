@@ -40,7 +40,7 @@ for the source-backed status, this Dock lifecycle batch and acceptance gates.
 - [ ] Screenshot for the 3D boot test (QEMU's screendump can't read a GL display)
 - [ ] Run on hardware under Hyprland with a GPU: blur, the focus grab,
       global shortcuts and the PAM lock can only be checked there
-- [ ] Port hyprland.conf to Lua (Hyprland 0.56 loads .conf as its legacy format)
+- [x] Port hyprland.conf to Lua (`compositor/hyprland/hyprland.lua`, docs/SHELL.md)
 - [ ] Verify the keyd per-app classes against real window classes
 - [ ] Compare the QML shell with the prototype screenshot by screenshot
 

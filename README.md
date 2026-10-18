@@ -45,7 +45,7 @@ In supported editors, right-click → **Writing Tools…** or press
 | **Design tokens**: materials, colour, type, radii, spring physics | `design/` | Done. One JSON compiles to CSS, QML, GTK and Hyprland config |
 | **Icons**: first-party app icons, file/place icons and shared symbols | `icons/` | Done. One generated freedesktop theme plus optional imported artwork; [bring your own](icons/custom/README.md) |
 | **Reference shell**: the desktop interaction/design reference, interactive in the browser | `prototype/` | Kept as a design reference; the live QML desktop is authoritative for native functionality |
-| **Linux shell**: menu bar, Control Center, Dock (drag to rearrange), Applications, Spotlight, desktop widgets, notifications, app switcher, lock screen | `shell/` | Quickshell (QML), tested on the live ISO and real Intel/i915 hardware as well as VM/headless sessions |
+| **Linux shell**: the menu bar, Control Center, Dock, Spotlight, notifications, desktop widgets, app switcher and lock screen are [MacShell](https://github.com/0-ss/MacShell)'s (MIT); CitronOS adds Launchpad, Mission Control, Citron, the AirPods and nearby-device cards and the tablet Home Screen ([docs/SHELL.md](docs/SHELL.md)) | `shell/`, `shell-lock/` | Quickshell (QML), tested on the live ISO and real Intel/i915 hardware as well as VM/headless sessions |
 | **Compositor**: blur, refraction, squircle corners, springs, key bindings | `compositor/` | Hyprland + HyprGlass; the ISO bundles a Hyprland-version-matched plugin and CitronOS applies its presets per shell surface |
 | **Shared UI**: AppWindow, Glass, buttons, fields, switches, sliders, progress, sidebars, motion and symbols | `apps/lib/` | One canonical QML component store, consumed by apps, shell adapters, Setup and SDDM; Web has a centralized Qt adapter around its isolated Chromium process |
 | **CitronOS apps**: Files, Web, Mail, Messages, Maps, Photos, Music, Calendar, Notes, Weather, App Store, Settings, Clock, TextEdit, Calculator and Installer | `apps/` | First-party frontends use the shared component store; mature backends such as Qt WebEngine, Flatpak, IMAP/SMTP, BlueFerry (iMessage and SMS through a paired iPhone) and Ghostty remain isolated behind CitronOS UI |
@@ -279,7 +279,7 @@ Without GitHub, from a USB stick, either way keeps accounts and files:
 ```sh
 npm run test:ui       # Playwright clicks through every app and system surface
 npm run screenshots   # regenerates docs/screenshots from the prototype
-shell/tests/screenshot.sh out/   # runs the real Quickshell shell in headless Sway
+tests/shell-shots.sh out/        # installs into a new account, checks hyprland.lua, shoots the shell in headless Sway
 ```
 
 The test suite covers the browser reference, QML parsing, native control behavior,
@@ -310,10 +310,11 @@ the shared QML material/chrome from `apps/lib`, installed once as
 ~/Documents/Diagnostics, and if you opted in, a notification offers one when an
 app crashes; nothing is sent until you submit it yourself.
 Settings writes what the shell and apps watch through the atomic `gg-pref`
-backend: ~/.config/golden-gate/desktop.json (wallpaper, Dock size and magnification,
-glass style, reduce motion and transparency), plus Hyprland fragments in
-~/.config/hypr/golden-gate (input.conf, accessibility.conf, displays.conf) applied
-live with `hyprctl keyword`. Unknown legacy `gnome-control-center` panel names
+backend: ~/.config/golden-gate/desktop.json (wallpaper, glass style, reduce motion
+and transparency, notifications, Focus), plus the Lua parts of Hyprland's config in
+~/.config/hypr/golden-gate (input.lua, accessibility.lua, windows.lua, displays.lua)
+applied live with `gg-hyprset` (`hyprctl eval`). The Dock's apps are MacShell's
+(~/.config/macdock/pinned.json), which Settings › Desktop & Dock edits too. Unknown legacy `gnome-control-center` panel names
 remain inside CitronOS Settings instead of opening a second settings UI.
 Notes keeps each note as a Markdown file in ~/Documents/Notes/<folder>/, named
 after its first line. Photos shows ~/Pictures and ~/Videos, with the folders in
@@ -322,9 +323,10 @@ for Satellite and Hybrid, Photon search and Find Nearby, OSRM routes), so it
 needs no account; with Location Services on it shows where you are (⌘L) and
 starts directions there, and it keeps Favorites in maps.json.
 
-`shell/tests/screenshot.sh` starts Sway with the pixman renderer and Mesa's
-llvmpipe, loads the shell, drives it over IPC and captures the screenshots
-above. No GPU needed. Two things this turned up that static checks never would:
+`tests/shell-shots.sh` (CI: the Shell workflow) starts Sway with the pixman
+renderer and Mesa's llvmpipe, loads the shell and the lock screen and captures
+them. No GPU needed. Two things screenshots like these turned up that static
+checks never would:
 
 - Qt's `BezierEase` keeps at most 8 spline segments; longer curves corrupt the
   heap. The QML springs are fitted with exactly 8.

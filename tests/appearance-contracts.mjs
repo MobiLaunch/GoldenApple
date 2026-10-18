@@ -45,23 +45,9 @@ test("system font aliases prefer locally installed SFWindows while shipping Inte
   assert.doesNotMatch(install, /curl |wget |git clone/);
 });
 
-test("menu bar battery draws real green charging fill, bolt and Reduce Motion fallback", () => {
-  const glyph = text("shell/components/BatteryGlyph.qml");
-  const bar = text("shell/MenuBar.qml");
-  const battery = text("shell/components/Battery.qml");
-  assert.match(bar, /BatteryGlyph \{/);
-  assert.match(bar, /full: Battery\.full/);
-  assert.match(glyph, /fraction: Math\.max\(0, Math\.min\(1, level\)\)/);
-  assert.match(glyph, /activeCharge: charging && !full/);
-  assert.match(glyph, /activeCharge \? "#30d158"/);
-  assert.match(glyph, /id: bolt/);
-  assert.match(glyph, /running: glyph\.activeCharge && !glyph\.reduceMotion/);
-  assert.match(battery, /device\.state === UPowerDeviceState\.FullyCharged/);
-});
-
 test("native compositor snapping is active without a frame-by-frame QML poll", () => {
-  const conf = text("compositor/hyprland/hyprland.conf");
-  assert.match(conf, /snap \{\s+enabled = true/);
+  const conf = text("compositor/hyprland/hyprland.lua");
+  assert.match(conf, /snap = \{\s+enabled = true/);
   assert.match(conf, /window_gap = 12/);
   assert.match(conf, /monitor_gap = 12/);
   assert.match(conf, /respect_gaps = true/);

@@ -8,8 +8,8 @@ reports as reserved), with a gap around and between tiles.
     gg-tile fill|center|restore [ADDRESS]
 
 restore puts the window back where it was before it was first tiled. Bound to
-⌃⌥ + arrows/U I J K/Return/C/Backspace in hyprland.conf, and in the menu
-bar's Window menu and the green button's menu.
+⌃⌥ + arrows/U I J K/Return/C/Backspace in hyprland.lua, and in the green
+button's menu.
 """
 from __future__ import annotations
 
@@ -127,8 +127,10 @@ def main(argv: list[str]) -> int:
     except OSError:
         pass
     target = f"address:{address}"
-    commands = [] if window.get("floating") else [f"dispatch setfloating {target}"]
-    commands += [f"dispatch resizewindowpixel exact {w} {h},{target}", f"dispatch movewindowpixel exact {x} {y},{target}"]
+    # Hyprland's Lua dispatchers (0.55+): `hyprctl dispatch` takes hl.dsp.* calls.
+    commands = [] if window.get("floating") else [f'dispatch hl.dsp.window.float({{ action = "enable", window = "{target}" }})']
+    commands += [f'dispatch hl.dsp.window.resize({{ x = {w}, y = {h}, window = "{target}" }})',
+                 f'dispatch hl.dsp.window.move({{ x = {x}, y = {y}, window = "{target}" }})']
     hyprctl("--batch", " ; ".join(commands))
     return 0
 

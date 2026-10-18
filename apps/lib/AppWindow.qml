@@ -314,7 +314,7 @@ FloatingWindow {
             }
             TapHandler {
                 acceptedButtons: Qt.LeftButton
-                onDoubleTapped: Hyprland.dispatch("fullscreen 1")
+                onDoubleTapped: Hyprland.dispatch('hl.dsp.window.fullscreen({ mode = "maximized" })')
             }
             DragHandler {
                 target: null

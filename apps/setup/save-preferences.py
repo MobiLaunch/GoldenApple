@@ -56,7 +56,8 @@ def save(data, config, done=False):
         raise ValueError('Invalid deferred choices')
     privacy = {k: bool(data.get(k, False)) for k in ('location', 'shareDiagnostics', 'shareWithDevelopers')}
 
-    atomic(config / 'hypr/golden-gate/input.conf', f'input {{\n    kb_layout = {layout}\n    kb_variant = {variant}\n}}\n')
+    atomic(config / 'hypr/golden-gate/input.lua',
+           f'-- Written by Setup Assistant (keyboard layout).\nhl.config({{ input = {{ kb_layout = "{layout}", kb_variant = "{variant}" }} }})\n')
     atomic(config / 'golden-gate/privacy.json', json.dumps(privacy) + '\n')
     atomic(config / 'golden-gate/appearance.json', json.dumps({'mode': mode}) + '\n')
     if zone or formats or region:

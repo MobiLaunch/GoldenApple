@@ -419,9 +419,10 @@ def install() -> int:
         live_home = pathlib.Path("/home/golden")
         for relative in [
             pathlib.Path(".config/golden-gate"),
-            pathlib.Path(".config/hypr/golden-gate/input.conf"),
-            pathlib.Path(".config/hypr/golden-gate/accessibility.conf"),
-            pathlib.Path(".config/hypr/golden-gate/displays.conf"),
+            pathlib.Path(".config/hypr/golden-gate/input.lua"),
+            pathlib.Path(".config/hypr/golden-gate/accessibility.lua"),
+            pathlib.Path(".config/hypr/golden-gate/windows.lua"),
+            pathlib.Path(".config/hypr/golden-gate/displays.lua"),
             pathlib.Path(".config/gtk-3.0"),
             pathlib.Path(".config/gtk-4.0"),
             pathlib.Path(".config/ghostty"),

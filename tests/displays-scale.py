@@ -4,7 +4,7 @@
 display keeps its position and exact mode, a display to its right moves by
 however much it grew or shrank, only scales its resolution divides into
 are offered, a scale Hyprland won't take is put back at once, and a change
-is written to displays.conf only after Keep Changes; otherwise it reverts
+is written to displays.lua only after Keep Changes; otherwise it reverts
 by itself, through a watchdog process of its own, so closing Settings or
 leaving the pane doesn't keep an unconfirmed change; and a Keep whose
 save fails puts the previous settings back."""
@@ -73,9 +73,9 @@ class Hypr(preview.Preview):
         self.ran.append(line)
         if cmd[:3] == ["hyprctl", "monitors", "-j"]:
             return {"stdout": json.dumps(self.mons), "stderr": "", "code": 0}
-        if cmd[:2] == ["hyprctl", "--batch"]:
-            for r in cmd[2].split(" ; "):
-                name, mode, pos, scale = [x.strip() for x in r[len("keyword monitor "):].split(",")]
+        if cmd[:2] == ["gg-hyprset", "--monitor"]:
+            for r in cmd[2:]:
+                name, mode, pos, scale = [x.strip() for x in r.split(",")]
                 m = next(m for m in self.mons if m["name"] == name)
                 x, y = pos.split("x")
                 m.update(x=int(x), y=int(y), scale=float(scale) if not self.refuse else m["scale"])
@@ -125,14 +125,14 @@ class Displays(unittest.TestCase):
         self.scale("eDP-1", 2)
         self.assertEqual((self.mon("eDP-1")["x"], self.mon("eDP-1")["scale"]), (0, 2.0))
         self.assertEqual(self.mon("DP-1")["x"], 1280, "the display to the right follows the new edge")
-        batch = next(l for l in self.hypr.ran if l.startswith("hyprctl --batch"))
+        batch = next(l for l in self.hypr.ran if l.startswith("gg-hyprset --monitor"))
         self.assertIn("eDP-1, 2560x1600@59.999, 0x0, 2", batch, "the exact mode, and its place")
         self.assertTrue(self.eval("pending.length > 0"), "asks to keep it")
         self.assertFalse(any("write-file.py" in l for l in self.hypr.ran), "nothing saved yet")
         self.assertEqual(len(self.hypr.armed), 1, "a watchdog of its own is armed")
         self.eval("keep()")
         QTest.qWait(200)
-        self.assertTrue(any("write-file.py" in l and l.endswith("displays.conf") for l in self.hypr.ran))
+        self.assertTrue(any("write-file.py" in l and l.endswith("displays.lua") for l in self.hypr.ran))
         self.assertEqual(self.hypr.armed, {}, "kept: the watchdog stands down once it's saved")
         self.assertEqual(self.mon("eDP-1")["scale"], 2.0)
 
@@ -176,14 +176,14 @@ class Displays(unittest.TestCase):
 
 
 class Watchdog(unittest.TestCase):
-    """display-watchdog.py on its own, with hyprctl stood in for."""
+    """display-watchdog.py on its own, with gg-hyprset stood in for."""
     def setUp(self):
         import subprocess
         self.sp = subprocess
         self.tmp = Path(tempfile.mkdtemp())
         (self.tmp / "bin").mkdir()
-        (self.tmp / "bin/hyprctl").write_text('#!/bin/sh\necho "$*" >> "$CALLS"\necho ok\n')
-        (self.tmp / "bin/hyprctl").chmod(0o755)
+        (self.tmp / "bin/gg-hyprset").write_text('#!/bin/sh\necho "$*" >> "$CALLS"\necho ok\n')
+        (self.tmp / "bin/gg-hyprset").chmod(0o755)
         self.env = {**os.environ, "PATH": f"{self.tmp/'bin'}:{os.environ['PATH']}", "CALLS": str(self.tmp / "calls"),
                     "XDG_RUNTIME_DIR": str(self.tmp)}
 
@@ -198,7 +198,7 @@ class Watchdog(unittest.TestCase):
     def test_goes_back_with_nobody_there(self):
         r = self.run_dog("arm", "t1", "0.5", "eDP-1, 2560x1600@59.999, 0x0, 1")
         self.assertIn("reverted", r.stdout)
-        self.assertIn("keyword monitor eDP-1, 2560x1600@59.999, 0x0, 1", self.calls())
+        self.assertIn("--monitor eDP-1, 2560x1600@59.999, 0x0, 1", self.calls())
 
     def test_kept_means_nothing_happens(self):
         p = self.run_dog("arm", "t2", "2", "eDP-1, 2560x1600@59.999, 0x0, 1", wait=False)
@@ -215,7 +215,7 @@ class Watchdog(unittest.TestCase):
         time.sleep(0.4)
         self.run_dog("revert", "t3")
         p.communicate(timeout=10)
-        self.assertEqual(self.calls().count("keyword monitor"), 1, "put back once")
+        self.assertEqual(self.calls().count("--monitor"), 1, "put back once")
 
 
 if __name__ == "__main__":

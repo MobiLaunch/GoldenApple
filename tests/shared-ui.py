@@ -54,8 +54,8 @@ for desktop in sorted((root / "apps/desktop").glob("*.desktop")):
         if f"exec={command}" in text or f"exec=sh -c '{command}" in text:
             errors.append(f"CitronOS desktop entry launches foreign primary UI: {desktop.name} -> {command}")
 
-# The Dock's default apps are kept with the other desktop preferences.
-dock = (root / "shell/Dock.qml").read_text(encoding="utf-8") + (root / "shell/components/Prefs.qml").read_text(encoding="utf-8")
+# The Dock's default apps (MacShell's Dock).
+dock = (root / "shell/macshell/MacDock.qml").read_text(encoding="utf-8")
 for app_id in [
     "org.goldengate.Files", "org.goldengate.Web", "org.goldengate.Mail",
     "org.goldengate.Messages", "org.goldengate.Calendar", "org.goldengate.Software",
@@ -162,7 +162,8 @@ if "Shared.MenuList" not in menu_popup:
 if "MenuList {" not in (lib / "PopupMenu.qml").read_text(encoding="utf-8"):
     errors.append("apps/lib/PopupMenu.qml no longer uses the shared MenuList")
 for qml in sorted([*(root / "apps").rglob("*.qml"), *(root / "shell").rglob("*.qml")]):
-    if lib in qml.parents or qml.name == "MenuPopup.qml":
+    # MacShell's own files (shell/macshell, third_party/macshell) keep its menus.
+    if lib in qml.parents or qml.name == "MenuPopup.qml" or "macshell" in qml.parts:
         continue
     text = qml.read_text(encoding="utf-8")
     if "radiusMenu" in text:

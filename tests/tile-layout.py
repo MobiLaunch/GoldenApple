@@ -74,7 +74,7 @@ class WindowTileTests(unittest.TestCase):
             self.window["size"] = [700, 720]
             self.assertEqual(tile.main(["restore"]), 0)
             self.assertNotIn("0xabc", json.loads(self.saved.read_text()))
-            self.assertTrue(any("movewindowpixel exact 180 120" in args[-1] for args in commands))
+            self.assertTrue(any("hl.dsp.window.move({ x = 180, y = 120," in args[-1] for args in commands))
 
     def test_stale_address_does_not_resize_unrelated_focused_app(self):
         fake, commands = self.fake_compositor()
