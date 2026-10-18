@@ -76,13 +76,31 @@ everything else: Wi-Fi, Bluetooth, displays, keyboard, trackpad (MacShell's
 own input sliders change only the running session), accounts, wallpaper,
 appearance, notifications, Focus, Software Update.
 
-Not on MacShell yet (the old shell had them): notification badges on Dock
-icons (Mail's unread count is still written to `mail-badges.json`), the
-Window menu's tiling items (⌃⌥ + arrows and the green button still tile),
-Reduce Motion for MacShell's own animations, the AirPlay status in Control
-Center, a Citron item in the menu bar (⇧⌘Space summons it), the tablet
-top-right swipe for Control Center, and the location arrow among the
-privacy dots.
+Carried over from the old shell (`tests/macshell-ports.py`):
+
+- The Window menu has Sequoia's Move & Resize (Fill, Center, halves,
+  quarters, Return to Previous Size) through `gg-tile`, Bring All to Front
+  and Mission Control; the app menu's Hide Others and Show All minimise and
+  restore the other apps' windows. Menu shortcuts are written as on a Mac
+  (⇧⌘Z, not Ctrl+Shift+Z): keyd makes ⌘ Ctrl for apps.
+- Control Center adds AirDrop (`gg-airdrop`), Screen Mirroring (the AirPlay
+  Receiver, `gg-airplay.service`, with its status and code), AirPods
+  (CitronPods) and the quick actions Mission Control, Screenshot, Calculator,
+  Timer, Quick Note and Lock Screen. AirDrop and Screen Mirroring are added
+  once to a layout made before them. Its Focus is CitronOS's Focus
+  (`focus.session`), so Settings, the Focus moon and Do Not Disturb agree.
+- The menu bar has the Focus moon, a Citron item (`citron toggle`) and the
+  location arrow, a blue privacy dot while an app locates
+  (`apps/lib/privacy/location.py`: Weather's and Maps' helpers, GeoClue).
+  Desktop & Dock › Menu Bar can hide the first two.
+- Dock icons wear red badges: an app's notifications in Notification Center,
+  or Mail's unread count (`mail-badges.json`), unless Settings ›
+  Notifications turns the app's badges off.
+- Light/Dark and the accent colour follow Settings › Appearance, and
+  MacShell's own Light/Dark switch sets the system's.
+
+Not on MacShell yet: Reduce Motion for MacShell's own animations and the
+tablet top-right swipe for Control Center.
 
 ## Hyprland's Lua config
 

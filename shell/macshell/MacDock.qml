@@ -1653,6 +1653,14 @@ Scope {
                         t: pal; title: "Spotlight search"
                         SSwitch { t: pal; checked: root.bar ? root.bar.showSearch : true; onToggled: v => { if (root.bar) root.bar.showSearch = v; } }
                     }
+                    SRow {   // CitronOS
+                        t: pal; title: "Focus"
+                        SSwitch { t: pal; checked: root.bar ? root.bar.barWidgetEnabled("focus") : true; onToggled: v => { if (root.bar) root.bar.setBarWidget("focus", v); } }
+                    }
+                    SRow {   // CitronOS
+                        t: pal; title: "Citron"
+                        SSwitch { t: pal; checked: root.bar ? root.bar.barWidgetEnabled("citron") : true; onToggled: v => { if (root.bar) root.bar.setBarWidget("citron", v); } }
+                    }
                     SRow {
                         t: pal; title: "Privacy indicators"
                         SSwitch { t: pal; checked: root.bar ? root.bar.barWidgetEnabled("privacy") : true; onToggled: v => { if (root.bar) root.bar.setBarWidget("privacy", v); } }
@@ -4898,6 +4906,29 @@ Scope {
                                     colorizationColor: root.iconTintColor
                                 }
 
+                                // CitronOS: the red badge, as the Mac's Dock shows an app's count
+                                Rectangle {
+                                    readonly property int count: cell.isSep || !root.bar ? 0
+                                        : root.bar.ggBadgeFor(cell.modelData.appId || (cell.modelData.entry ? cell.modelData.entry.id : ""),
+                                                              cell.modelData.entry ? cell.modelData.entry.startupClass : "")
+                                    visible: count > 0 && !cell.isDragged
+                                    z: 5
+                                    height: Math.max(16, root.iconSize * cell.s * 0.36)
+                                    width: Math.max(height, badgeText.implicitWidth + height * 0.5)
+                                    radius: height / 2
+                                    color: "#FF3B30"
+                                    border.width: 1; border.color: Qt.rgba(1, 1, 1, 0.35)
+                                    anchors.right: img.right; anchors.rightMargin: -width * 0.22
+                                    anchors.top: img.top; anchors.topMargin: -height * 0.18
+                                    scale: visible ? 1 : 0.4
+                                    Behavior on scale { NumberAnimation { duration: 260; easing.type: Easing.OutBack; easing.overshoot: 2.2 } }
+                                    Text {
+                                        id: badgeText
+                                        anchors.centerIn: parent
+                                        text: parent.count > 99 ? "99+" : String(parent.count)
+                                        color: "white"; font.family: root.fontFamily; font.pixelSize: parent.height * 0.62; font.weight: Font.DemiBold
+                                    }
+                                }
                                 // ── window thumbnail (same box as the icon, so magnification just works) ──
                                 Item {
                                     id: th

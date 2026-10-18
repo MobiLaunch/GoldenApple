@@ -77,6 +77,7 @@ import Quickshell.Services.Notifications
 import "EmojiData.js" as EmojiData
 // CitronOS: Settings › Notifications, Focus and Sound (see notifReceive).
 import "../components"
+import "../ui" as GG
 import "../ui/FocusPolicy.js" as FocusPolicy
 
 Scope {
@@ -227,6 +228,8 @@ Scope {
     property int nightTemp: 4000
     // Control Center: ids of the enabled controls, in order (edit with Control Center → Edit Controls)
     property var ccControls: ["wifi", "nowplaying", "bluetooth", "airplane", "focus", "record", "nightshift", "keepawake", "display", "sound"]
+    property bool barMigGG: false              // CitronOS: one-time, add the Focus and Citron items
+    property bool ccMigGG: false               // CitronOS: one-time, add AirDrop and Screen Mirroring
     property bool ccMigRec: false              // one-time: add the Screen Recording tile to an existing Control Center layout
     property bool recording: false
     property int recSecs: 0
@@ -245,12 +248,12 @@ Scope {
         "barStyle", "barGlass", "glassRim", "glassGrain", "glassLiquid", "glassBlur", "barBgOpacity", "glassRealtime", "glassDebug", "wallpaperPath", "use24h", "showDate",
         "showSeconds", "showBatteryPercent", "showTray", "showSearch",
         "spotlightEnabled", "ccEnabled", "notificationsEnabled", "clockAppEnabled", "ccStyle", "barLogoMode", "barCustomLogoPath", "barWidgets", "weekStartsMonday", "terminal", "launcher",
-        "filesCmd", "clipboardCmd", "appUsage", "clipHistory", "clipAutoPaste", "emojiRecent", "screenshotDir", "screenshotSave", "screenshotClipboard", "screenshotNotify", "nightTemp", "ccControls", "ccMigRec", "wallpaperDir", "wallpaperFavs", "wallpaperCmd", "wallpaperVideo", "wpRestorePath", "uiSounds", "gamingMode", "gamingAuto", "ccMigGame", "lockArtBackground",
+        "filesCmd", "clipboardCmd", "appUsage", "clipHistory", "clipAutoPaste", "emojiRecent", "screenshotDir", "screenshotSave", "screenshotClipboard", "screenshotNotify", "nightTemp", "ccControls", "ccMigRec", "ccMigGG", "barMigGG", "wallpaperDir", "wallpaperFavs", "wallpaperCmd", "wallpaperVideo", "wpRestorePath", "uiSounds", "gamingMode", "gamingAuto", "ccMigGame", "lockArtBackground",
         "lockClockStyle", "switcherStyle", "lockClockFont", "lockClockWeight", "lockClockMaterial", "lockClockIntensity", "lockClockTint", "lockClockTall", "lockClockDate", "autoContrast", "wallpaperAppearance", "wpPairLight", "wpPairDark",
-        "notifDnd", "dnd", "nightOn", "keepAwake",
+        "nightOn", "keepAwake",   // CitronOS: Do Not Disturb is Focus, kept in desktop.json (below)
         "kbRepeatRate", "kbRepeatDelay", "mouseSens", "mouseNatural", "tpNatural", "tpTap", "tpDwt", "tpScroll"]
     // Optional bar widgets; tray and Spotlight use their existing showTray/showSearch settings.
-    property var barWidgets: ["appleMenu", "appMenus", "workspaces", "volume", "keyboard", "notifications", "wifi", "bluetooth", "privacy", "controlCenter", "clock"]
+    property var barWidgets: ["appleMenu", "appMenus", "workspaces", "volume", "keyboard", "notifications", "wifi", "bluetooth", "privacy", "focus", "citron", "controlCenter", "clock"]
     function barWidgetEnabled(id) { return barWidgets.indexOf(id) >= 0; }
     function resolvedBarLogoUrl() {
         var p = String(barCustomLogoPath || "").trim();
@@ -290,9 +293,20 @@ Scope {
         { id: "record",     label: "Screen Recording", glyph: "record",  w: 2, h: 1 },
         { id: "nowplaying", label: "Now Playing",   glyph: "note",       w: 2, h: 2 },
         { id: "display",    label: "Display",       glyph: "sun",        w: 4, h: 1 },
-        { id: "sound",      label: "Sound",         glyph: "speaker",    w: 4, h: 1 }
+        { id: "sound",      label: "Sound",         glyph: "speaker",    w: 4, h: 1 },
+        // CitronOS: its own controls (AirDrop, the AirPlay Receiver, AirPods) and quick actions.
+        { id: "airdrop",    label: "AirDrop",       glyph: "",  sym: "broadcast",  w: 2, h: 1 },
+        { id: "mirroring",  label: "Screen Mirroring", glyph: "", sym: "mirror",   w: 2, h: 1 },
+        { id: "airpods",    label: "AirPods",       glyph: "headphones",  w: 2, h: 1 },
+        { id: "mission",    label: "Mission Control", glyph: "", sym: "stage",     w: 1, h: 1 },
+        { id: "screenshot", label: "Screenshot",    glyph: "", sym: "screenshot",  w: 1, h: 1 },
+        { id: "calculator", label: "Calculator",    glyph: "", sym: "calculator",  w: 1, h: 1 },
+        { id: "timer",      label: "Timer",         glyph: "", sym: "timer",       w: 1, h: 1 },
+        { id: "quicknote",  label: "Quick Note",    glyph: "", sym: "compose",     w: 1, h: 1 },
+        { id: "lockscreen", label: "Lock Screen",   glyph: "lock",        w: 1, h: 1 }
     ]
-    readonly property var ccDefault: ["wifi", "nowplaying", "bluetooth", "airplane", "focus", "record", "nightshift", "keepawake", "display", "sound"]
+    // CitronOS: AirDrop and Screen Mirroring by default, as macOS's Control Center has them.
+    readonly property var ccDefault: ["wifi", "nowplaying", "bluetooth", "airdrop", "focus", "mirroring", "airplane", "nightshift", "display", "sound"]
     function ccDef(id) {
         for (var i = 0; i < ccCatalog.length; i++) if (ccCatalog[i].id === id) return ccCatalog[i];
         return null;
@@ -525,6 +539,8 @@ Scope {
                 line(9, 3.2, 9, 5);
                 line(3.6, 5.6, 4.9, 6.9);
                 line(14.4, 5.6, 13.1, 6.9);
+            } else if (k === "location") {   // CitronOS: the Mac's location arrow
+                poly([15, 3, 3, 8.2, 8.6, 9.4, 9.8, 15], true);
             } else if (k === "coffee") {
                 ctx.beginPath(); ctx.moveTo(3.5, 7.5); ctx.lineTo(12, 7.5); ctx.lineTo(12, 11.5);
                 ctx.quadraticCurveTo(12, 15, 7.75, 15); ctx.quadraticCurveTo(3.5, 15, 3.5, 11.5); ctx.closePath(); ctx.stroke();
@@ -1009,7 +1025,19 @@ Scope {
             NumberAnimation { target: b; property: "pop"; to: 1; duration: 120; easing.type: Easing.OutCubic }
             NumberAnimation { target: b; property: "pop"; to: 0; duration: 420; easing.type: Easing.OutQuint }
         }
+        // CitronOS: a symbol of its own (ui/assets/symbols) where MacShell has no glyph.
+        property string sym: ""
+        Image {
+            visible: b.sym !== ""
+            scale: 1 - 0.22 * b.pop
+            rotation: (b.on ? -14 : 14) * b.pop
+            anchors.centerIn: parent
+            width: b.d * 0.46; height: width
+            sourceSize: Qt.size(width * 2, height * 2)
+            source: b.sym === "" ? "" : Qt.resolvedUrl("../ui/assets/symbols/" + b.sym + (b.on || b.t.dark ? "" : "@dark") + ".svg")
+        }
         Glyph {
+            visible: b.sym === ""
             scale: 1 - 0.22 * b.pop
             rotation: (b.on ? -14 : 14) * b.pop
             anchors.centerIn: parent
@@ -1930,12 +1958,21 @@ Scope {
         return { mic: mic, cam: cam, share: share };
     }
     readonly property var privacy: computePrivacy()
-    readonly property bool privacyAny: privacy.mic.length > 0 || privacy.cam.length > 0 || privacy.share.length > 0 || recording
+    // CitronOS: location too, the Mac's blue arrow (apps/lib/privacy/location.py: CitronOS's
+    // location helper, and GeoClue for other apps).
+    property var ggLocation: []
+    Process {
+        running: true
+        command: ["python3", decodeURIComponent(Qt.resolvedUrl("../ui/privacy/location.py").toString().replace("file://", ""))]
+        stdout: SplitParser { onRead: (line) => { try { root.ggLocation = JSON.parse(line); } catch (e) { } } }
+    }
+    readonly property bool privacyAny: privacy.mic.length > 0 || privacy.cam.length > 0 || privacy.share.length > 0 || recording || ggLocation.length > 0
     readonly property var privacyDots: {
         var a = [];
         if (privacy.mic.length > 0) a.push("#FF9F0A");
         if (privacy.cam.length > 0) a.push("#30D158");
         if (privacy.share.length > 0 || recording) a.push("#BF5AF2");
+        if (ggLocation.length > 0) a.push("#0A84FF");
         return a;
     }
     readonly property var privacyRows: {
@@ -1944,6 +1981,7 @@ Scope {
         if (privacy.cam.length > 0) a.push({ k: "cam", glyph: "camera", c: "#30D158", title: "Camera", sub: privacy.cam.join(", ") });
         if (privacy.share.length > 0) a.push({ k: "share", glyph: "monitor", c: "#BF5AF2", title: "Screen Sharing", sub: privacy.share.join(", ") });
         if (recording) a.push({ k: "rec", glyph: "monitor", c: "#BF5AF2", title: "Screen Recording", sub: "Recording " + recTime() });
+        if (ggLocation.length > 0) a.push({ k: "loc", glyph: "location", c: "#0A84FF", title: "Location", sub: ggLocation.join(", ") });
         return a;
     }
     // ── screen recording ──
@@ -2030,8 +2068,14 @@ Scope {
     property bool dnd: false
     onNotifDndChanged: if (dnd !== notifDnd) dnd = notifDnd
     onDndChanged: if (notifDnd !== dnd) notifDnd = dnd
+    // CitronOS: Do Not Disturb is CitronOS's Focus (Settings › Focus: its schedule, the apps
+    // and people it lets through, critical alerts). Turning it on here starts Focus until it's
+    // turned off; turning it off ends this session, or pauses the scheduled one.
+    readonly property bool ggFocusOn: Prefs.focusStatus.active
+    onGgFocusOnChanged: if (dnd !== ggFocusOn) dnd = ggFocusOn
     function toggleDnd() {
         dnd = !dnd;
+        Quickshell.execDetached(["gg-pref", "focus.session", JSON.stringify(dnd ? Prefs.focusStatus.start(0) : Prefs.focusStatus.stop())]);
         if (dnd) sh("dunstctl set-paused true 2>/dev/null || makoctl mode -a do-not-disturb 2>/dev/null || swaync-client -dn 2>/dev/null");
         else sh("dunstctl set-paused false 2>/dev/null || makoctl mode -r do-not-disturb 2>/dev/null || swaync-client -df 2>/dev/null");
     }
@@ -2045,11 +2089,107 @@ Scope {
     }
 
     // ═════════════ MENUS ═════════════
+    // CitronOS: Control Center's AirDrop and Screen Mirroring. AirDrop's setting is the file
+    // its service keeps; the AirPlay Receiver (gg-airplay, UxPlay) writes who's mirroring, or
+    // the code a device asking has to type, to $XDG_RUNTIME_DIR/gg-airplay.json.
+    property bool ggAirdropOn: true
+    FileView {
+        path: (Quickshell.env("XDG_CONFIG_HOME") || Quickshell.env("HOME") + "/.config") + "/golden-gate/airdrop.json"
+        printErrors: false
+        watchChanges: true
+        onFileChanged: reload()
+        onLoaded: { try { root.ggAirdropOn = JSON.parse(text() || "{}").discoverable !== "off"; } catch (e) { root.ggAirdropOn = true; } }
+    }
+    function ggSetAirdrop(on) { ggAirdropOn = on; Quickshell.execDetached(["gg-airdrop", "--set", on ? "everyone" : "off"]); }
+    property bool ggAirplayOn: false
+    property var ggAirplay: ({})
+    readonly property bool ggMirroring: ggAirplayOn && ggAirplay.connected === true
+    readonly property string ggAirplayStatus: !ggAirplayOn ? "Off"
+        : ggMirroring ? (ggAirplay.device || "A device") + " is mirroring"
+        : ggAirplay.pinPending ? "Code: " + ggAirplay.pin
+        : "Receiving"
+    FileView {
+        path: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/gg-airplay.json"
+        printErrors: false
+        watchChanges: true
+        onFileChanged: { reload(); airplayProbe.running = true; }
+        onLoaded: { try { root.ggAirplay = JSON.parse(text()); } catch (e) { root.ggAirplay = ({}); } }
+        onLoadFailed: root.ggAirplay = ({})
+    }
+    Process {
+        id: airplayProbe
+        running: true
+        command: ["systemctl", "--user", "is-active", "--quiet", "gg-airplay.service"]
+        onExited: (code) => root.ggAirplayOn = code === 0
+    }
+    Connections { target: root; function onCcRequest(open) { if (open) airplayProbe.running = true; } }
+    function ggSetAirplay(on) {
+        ggAirplayOn = on;
+        Quickshell.execDetached(["systemctl", "--user", on ? "enable" : "disable", "--now", "gg-airplay.service"]);
+    }
+    // Stop: the receiver starts again at once, without the device.
+    function ggStopMirroring() { Quickshell.execDetached(["systemctl", "--user", "restart", "gg-airplay.service"]); }
+    function ggLaunch(id) {
+        var e = DesktopEntries.byId(id);
+        if (e) e.execute(); else Quickshell.execDetached(["gtk-launch", id]);
+    }
+    function ggCcAction(id) {
+        if (id === "mission") Quickshell.execDetached(["qs", "-c", "golden-gate", "ipc", "call", "missioncontrol", "toggle"]);
+        else if (id === "screenshot") shotStart();
+        else if (id === "calculator") ggLaunch("org.goldengate.Calculator");
+        else if (id === "timer") ggLaunch("org.goldengate.Clock");
+        else if (id === "quicknote") ggLaunch("org.goldengate.Notes");
+        else if (id === "lockscreen") Quickshell.execDetached(["gg-lock"]);
+    }
+
+    // CitronOS: shortcuts as the Mac writes them. keyd makes ⌘ + a letter Ctrl + that letter
+    // for apps (themes/keyd), so an app's "Ctrl+Shift+Z" is ⇧⌘Z; ones already in glyphs stay.
+    function ggKeys(sc) {
+        if (!sc || /[⌘⌃⌥⇧]/.test(sc)) return sc || "";
+        var parts = String(sc).split("+"), key = parts.pop(), mods = {};
+        parts.forEach(function (p) { mods[p.toLowerCase()] = true; });
+        var names = { "Left": "←", "Right": "→", "Up": "↑", "Down": "↓", "Return": "↩", "Enter": "↩", "Backspace": "⌫",
+                      "Delete": "⌦", "Escape": "⎋", "Tab": "⇥", "Space": "Space", "comma": ",", "equal": "=", "minus": "-" };
+        return (mods.alt ? "⌥" : "") + (mods.shift ? "⇧" : "") + (mods.ctrl ? "⌘" : "") + (mods.super ? "⌘" : "")
+            + (names[key] || (key.length === 1 ? key.toUpperCase() : key));
+    }
     function mi(label, shortcut, run) { return { kind: "item", label: label, shortcut: shortcut || "", run: run }; }
     function mc(label, run) { return { kind: "item", label: label, shortcut: "", run: run, confirm: true }; }
     function msep() { return { kind: "sep" }; }
     // Hyprland 0.55+ is configured and driven in Lua: `hyprctl dispatch` takes a Lua expression (the old "killactive" style strings fail).
     function hlx(expr) { Quickshell.execDetached(["hyprctl", "dispatch", expr]); }
+    // CitronOS: Hide Others, Show All and Bring All to Front, as the Mac's app and Window menus
+    // have them. Hidden windows wait on special:hidden (Hide), minimised ones on special:minimized.
+    function ggAddr(t) { var a = t && t.lastIpcObject ? t.lastIpcObject.address : (t ? t.address : ""); return a ? "0x" + String(a).replace(/^0x/, "") : ""; }
+    function ggWs(t) { var o = t && t.lastIpcObject ? t.lastIpcObject.workspace : null; return o ? o.name || String(o.id) : (t && t.workspace ? t.workspace.name : ""); }
+    function ggClass(t) { var o = t && t.lastIpcObject; return o ? String(o["class"] || "") : (t && t.wayland ? String(t.wayland.appId) : ""); }
+    function ggHidden(minimizedToo) {
+        return Hyprland.toplevels.values.filter(function (t) { var w = ggWs(t); return w === "special:hidden" || (minimizedToo && w === "special:minimized"); });
+    }
+    function ggMove(t, ws) {
+        var a = ggAddr(t);
+        if (a) hlx('hl.dsp.window.move({ workspace = "' + ws + '", follow = false, window = "address:' + a + '" })');
+    }
+    function ggHideOthers(keepClass) {
+        var cur = Hyprland.focusedWorkspace ? String(Hyprland.focusedWorkspace.id) : "";
+        Hyprland.toplevels.values.forEach(function (t) {
+            var o = t.lastIpcObject;
+            if (!o || !o.workspace || String(o.workspace.id) !== cur || ggClass(t) === keepClass) return;
+            ggMove(t, "special:hidden");
+        });
+    }
+    function ggShowAll(minimizedToo) {
+        var cur = Hyprland.focusedWorkspace ? String(Hyprland.focusedWorkspace.id) : "1";
+        ggHidden(minimizedToo).forEach(function (t) { ggMove(t, cur); });
+    }
+    function ggBringToFront(cls, addr) {
+        var cur = Hyprland.focusedWorkspace ? String(Hyprland.focusedWorkspace.id) : "1";
+        Hyprland.toplevels.values.forEach(function (t) {
+            var o = t.lastIpcObject;
+            if (o && ggClass(t) === cls && o.workspace && String(o.workspace.id) !== cur) ggMove(t, cur);
+        });
+        if (addr) hlx('hl.dsp.focus({ window = "address:' + addr + '" })');
+    }
     function disp(expr) { return function () { root.hlx(expr); }; }
     // Menu shortcuts are sent to the focused window with Hyprland's sendshortcut (no extra tool needed).
     // If some app ignores them, set this to true to type them with wtype instead.
@@ -2605,7 +2745,9 @@ Scope {
                     }
                     m.push(msep());
                     m.push(mi("Hide " + n, "", disp('hl.dsp.window.move({ workspace = "special:hidden", follow = false })')));
-                    m.push(mi("Show Hidden Windows", "", disp('hl.dsp.workspace.toggle_special("hidden")')));
+                    // CitronOS: Hide Others and Show All, as the Mac's application menu has them.
+                    m.push(mi("Hide Others", "", function () { root.ggHideOthers(aw ? String(aw["class"]) : ""); }));
+                    m.push(dis(mi("Show All", "", function () { root.ggShowAll(false); }), root.ggHidden().length === 0));
                     m.push(msep());
                     m.push(mi("Quit " + n, "Ctrl+Q", function () { root.quitActive(); }));
                     m.push(mc("Force Quit " + n, function () { root.forceQuitActive(aw); }));
@@ -2686,22 +2828,39 @@ Scope {
                 }
                 m.push(mchk("Dark Mode", "", root.darkMode, function () { root.darkMode = !root.darkMode; }));
             } else if (name === "window") {
+                // CitronOS: the Mac's Window menu with Sequoia's Move & Resize (gg-tile, which
+                // CitronOS's ⌃⌥ keys and the green button's menu use too).
                 if (has) {
-                    m.push(mi("Minimize", "", disp('hl.dsp.window.move({ workspace = "special:minimized", follow = false })')));
+                    var addr = aw && aw.address ? String(aw.address) : "";
+                    var tile = function (layout) { return function () { Quickshell.execDetached(addr ? ["gg-tile", layout, addr] : ["gg-tile", layout]); }; };
+                    m.push(mi("Minimize", "⌘M", disp('hl.dsp.window.move({ workspace = "special:minimized", follow = false })')));
                     m.push(mchk("Zoom", "", fsMode === 1, disp('hl.dsp.window.fullscreen({ mode = "maximized", action = "toggle" })')));
-                    m.push(mi(floating ? "Tile Window" : "Float Window", "", disp('hl.dsp.window.float({ action = "toggle" })')));
                     m.push(msep());
-                    m.push(mi("Move Window Left", "", disp('hl.dsp.window.move({ direction = "left" })')));
-                    m.push(mi("Move Window Right", "", disp('hl.dsp.window.move({ direction = "right" })')));
-                    m.push(mi("Make Wider", "", disp('hl.dsp.window.resize({ x = 100, y = 0, relative = true })')));
-                    m.push(mi("Make Narrower", "", disp('hl.dsp.window.resize({ x = -100, y = 0, relative = true })')));
-                    if (Quickshell.screens.length > 1) m.push(mi("Move to Next Monitor", "", disp('hl.dsp.window.move({ monitor = "+1" })')));
-                    m.push(mi("Move to Next Workspace", "", disp('hl.dsp.window.move({ workspace = "+1" })')));
-                    m.push(mi("Move to Previous Workspace", "", disp('hl.dsp.window.move({ workspace = "-1" })')));
+                    m.push(mi("Fill", "⌃⌥↩", tile("fill")));
+                    m.push(mi("Center", "⌃⌥C", tile("center")));
                     m.push(msep());
+                    m.push(mi("Move & Resize: Left", "⌃⌥←", tile("left")));
+                    m.push(mi("Move & Resize: Right", "⌃⌥→", tile("right")));
+                    m.push(mi("Move & Resize: Top", "⌃⌥↑", tile("top")));
+                    m.push(mi("Move & Resize: Bottom", "⌃⌥↓", tile("bottom")));
+                    m.push(mi("Move & Resize: Top Left", "⌃⌥U", tile("top-left")));
+                    m.push(mi("Move & Resize: Top Right", "⌃⌥I", tile("top-right")));
+                    m.push(mi("Move & Resize: Bottom Left", "⌃⌥J", tile("bottom-left")));
+                    m.push(mi("Move & Resize: Bottom Right", "⌃⌥K", tile("bottom-right")));
+                    m.push(msep());
+                    m.push(mi("Return to Previous Size", "⌃⌥⌫", tile("restore")));
+                    m.push(msep());
+                    m.push(mi(fsMode === 2 ? "Exit Full Screen" : "Enter Full Screen", "", disp('hl.dsp.window.fullscreen({ mode = "fullscreen", action = "toggle" })')));
+                    if (Quickshell.screens.length > 1) m.push(mi("Move to Next Display", "", disp('hl.dsp.window.move({ monitor = "+1" })')));
+                    m.push(msep());
+                    m.push(mi("Bring All to Front", "", function () { root.ggBringToFront(aw ? String(aw["class"]) : "", addr); }));
+                } else {
+                    m.push(dis(mi("Minimize", "⌘M", function () {}), true));
+                    m.push(dis(mi("Zoom", "", function () {}), true));
+                    m.push(msep());
+                    m.push(dis(mi("Bring All to Front", "", function () { root.ggShowAll(true); }), root.ggHidden(true).length === 0));
                 }
-                m.push(mi("Show Hidden Windows", "", disp('hl.dsp.workspace.toggle_special("hidden")')));
-                m.push(mi("Show Minimized Windows", "", disp('hl.dsp.workspace.toggle_special("minimized")')));
+                m.push(mi("Mission Control", "", function () { Quickshell.execDetached(["qs", "-c", "golden-gate", "ipc", "call", "missioncontrol", "toggle"]); }));
                 var tls = ToplevelManager.toplevels.values;
                 if (tls.length > 0) m.push(msep());
                 for (i = 0; i < tls.length && i < 8; i++) {
@@ -3053,7 +3212,7 @@ Scope {
         showTray = true; showSearch = true;
         spotlightEnabled = true; ccEnabled = true; notificationsEnabled = true; clockAppEnabled = true; ccStyle = "tiles";
         barLogoMode = "arch"; barCustomLogoPath = "";
-        barWidgets = ["appleMenu", "appMenus", "workspaces", "volume", "keyboard", "notifications", "wifi", "bluetooth", "privacy", "controlCenter", "clock"];
+        barWidgets = ["appleMenu", "appMenus", "workspaces", "volume", "keyboard", "notifications", "wifi", "bluetooth", "privacy", "focus", "citron", "controlCenter", "clock"];
         ccControls = ccDefault.slice();
     }
 
@@ -3083,6 +3242,19 @@ Scope {
                 var cg = root.ccControls.slice();
                 if (cg.indexOf("gaming") < 0) { var ri = cg.indexOf("record"); cg.splice(ri >= 0 ? ri + 1 : cg.length, 0, "gaming"); root.ccControls = cg; }
             }
+            if (!root.barMigGG) {   // CitronOS: the Focus and Citron items join an existing menu bar once
+                root.barMigGG = true;
+                var bw = root.barWidgets.slice();
+                ["focus", "citron"].forEach(function (w) { if (bw.indexOf(w) < 0) { var ci = bw.indexOf("controlCenter"); bw.splice(ci >= 0 ? ci : bw.length, 0, w); } });
+                root.barWidgets = bw;
+            }
+            if (!root.ccMigGG) {   // CitronOS: AirDrop and Screen Mirroring join an existing layout once
+                root.ccMigGG = true;
+                var cz = root.ccControls.slice();
+                if (cz.indexOf("airdrop") < 0) { var bi = cz.indexOf("bluetooth"); cz.splice(bi >= 0 ? bi + 1 : cz.length, 0, "airdrop"); }
+                if (cz.indexOf("mirroring") < 0) { var fo = cz.indexOf("focus"); cz.splice(fo >= 0 ? fo + 1 : cz.length, 0, "mirroring"); }
+                root.ccControls = cz;
+            }
             if (!root.ccMigRec) {
                 root.ccMigRec = true;
                 var cl = root.ccControls.slice();
@@ -3092,7 +3264,7 @@ Scope {
             inputApplyT.restart();
             if (root.barStyle === "liquid") root.startGlass();
         }
-        onLoadFailed: { root.ccMigRec = true; root.settingsReady = true; if (root.barStyle === "liquid") root.startGlass(); }
+        onLoadFailed: { root.ccMigRec = true; root.ccMigGG = true; root.barMigGG = true; root.settingsReady = true; if (root.barStyle === "liquid") root.startGlass(); }
     }
 
     // ═════════════ LIQUID GLASS BACKEND (same pipeline as macdock) ═════════════
@@ -3150,6 +3322,7 @@ Scope {
     // window captures are admitted by the shared gate in shell.qml (hub.tlFor): 0.2 s after a window appears, one every 110 ms
 
     Component.onCompleted: {
+        dnd = ggFocusOn;   // CitronOS: Focus, as saved
         Quickshell.execDetached(["mkdir", "-p", configDir]);
         refreshBrightness();
         refreshWifi();
@@ -3228,6 +3401,36 @@ Scope {
         ggNotifiers = all;
         Quickshell.execDetached(["sh", "-c", 'mkdir -p "${1%/*}" && printf "%s\\n" "$2" > "$1"', "sh", ggNotifiersFile, JSON.stringify(all)]);
     }
+    // CitronOS: the Dock's red badges. An app's count is its notifications in Notification
+    // Center (unless Settings › Notifications turns its badges off); Mail's is its real unread
+    // count, which Mail writes after each inbox sync.
+    property int ggBadgeRev: 0
+    Connections { target: notifHist; function onCountChanged() { root.ggBadgeRev++; } }
+    property int ggMailUnread: 0
+    FileView {
+        id: mailBadges
+        path: (Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state") + "/golden-gate/mail-badges.json"
+        printErrors: false
+        watchChanges: true
+        onFileChanged: reload()
+        onLoaded: { try { root.ggMailUnread = Math.max(0, Math.min(9999, Math.round(Number(JSON.parse(text()).unread) || 0))); } catch (e) { root.ggMailUnread = 0; } }
+    }
+    Timer { interval: 30000; running: true; repeat: true; onTriggered: mailBadges.reload() }   // Mail may write it after we start
+    function ggBadgeFor(appId, cls) {
+        var rev = ggBadgeRev;
+        var name = String(appId || "").toLowerCase().replace(/\.desktop$/, "");
+        if (!name) return 0;
+        var aliases = [name, name.split(".").pop(), String(cls || "").toLowerCase()].filter(function (a) { return a !== ""; });
+        var n = 0;
+        for (var i = 0; i < notifHist.count; i++) {
+            var r = notifHist.get(i);
+            if (!Prefs.notifyApp(r.key).badges) continue;
+            var raw = [r.desk, r.app, r.key].map(function (x) { return String(x || "").toLowerCase().replace(/\.desktop$/, ""); });
+            if (raw.some(function (v) { return v !== "" && (aliases.indexOf(v) >= 0 || aliases.indexOf(v.split(".").pop()) >= 0); })) n++;
+        }
+        if (name === "org.goldengate.mail" && Prefs.notifyApp("org.goldengate.Mail").badges) n = Math.max(n, ggMailUnread);
+        return n;
+    }
     function ggChime() {
         Quickshell.execDetached(["sh", "-c", "pw-play \"$1\" 2>/dev/null || paplay \"$1\" 2>/dev/null"
             + " || pw-play /usr/share/sounds/freedesktop/stereo/message-new-instant.oga 2>/dev/null || true", "sh", Prefs.soundPath(Prefs.alertSound)]);
@@ -3250,7 +3453,8 @@ Scope {
         // CitronOS: Settings › Notifications › Show previews: Never shows the app only.
         var ggHide = Prefs.notifyPreviews === "never";
         var rec = {
-            nid: id, app: n.appName || "", summary: ggHide ? "Notification" : (n.summary || ""), body: ggHide ? "" : (n.body || ""),
+            nid: id, app: n.appName || "", desk: String(n.desktopEntry || ""), key: ggKey,
+            summary: ggHide ? "Notification" : (n.summary || ""), body: ggHide ? "" : (n.body || ""),
             icon: ic || "", urgency: urg, time: Date.now(),
             timeout: n.expireTimeout > 0 ? Math.round(n.expireTimeout * 1000) : 0
         };
@@ -4699,6 +4903,31 @@ Scope {
                             Glyph { anchors.centerIn: parent; width: 16; height: 16; kind: root.showEthernet ? "ethernet" : "wifi"; level: root.wifiOn ? (root.wifiLevel || 1) : 3; flag: !root.wifiOn && !root.showEthernet; color: (root.wifiOn || root.showEthernet) ? bpal.fg : bpal.fg2 }
                             MouseArea { anchors.fill: parent; onClicked: ui.openPop("wifi", wifiBtn.mapToItem(ui, 0, 0).x) }
                         }
+                        // CitronOS: the Focus moon while Do Not Disturb (Focus) is on, as the Mac shows it
+                        Item {
+                            visible: root.dnd && root.barWidgetEnabled("focus")
+                            width: visible ? 26 : 0; height: 28
+                            Glyph { anchors.centerIn: parent; width: 15; height: 15; kind: "moon"; color: bpal.fg }
+                            MouseArea { anchors.fill: parent; onClicked: ui.openPop("cc", 0) }
+                        }
+                        // CitronOS: Citron, as Siri has its item (⇧⌘Space summons it too)
+                        Item {
+                            id: citronBtn
+                            visible: root.barWidgetEnabled("citron")
+                            width: visible ? 28 : 0; height: 28
+                            Rectangle {   // a small static counterpart to Citron's orb, no shader in the bar
+                                anchors.centerIn: parent
+                                width: 14; height: 14; radius: 7
+                                gradient: Gradient {
+                                    orientation: Gradient.Horizontal
+                                    GradientStop { position: 0; color: "#ff9f0a" }
+                                    GradientStop { position: 0.5; color: "#ff375f" }
+                                    GradientStop { position: 1; color: "#bf5af2" }
+                                }
+                                Rectangle { anchors.centerIn: parent; width: 6; height: 6; radius: 3; color: Qt.rgba(1, 1, 1, 0.85) }
+                            }
+                            MouseArea { anchors.fill: parent; onClicked: Quickshell.execDetached(["qs", "-c", "golden-gate", "ipc", "call", "citron", "toggle"]) }
+                        }
                         // search
                         Item {
                             visible: root.showSearch
@@ -5210,7 +5439,7 @@ Scope {
                                 x: root.notifDnd ? 18 : 2
                                 Behavior on x { NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
                             }
-                            MouseArea { anchors.fill: parent; onClicked: root.notifDnd = !root.notifDnd }
+                            MouseArea { anchors.fill: parent; onClicked: root.toggleDnd() }
                         }
                     }
                     Text {
@@ -5427,7 +5656,7 @@ Scope {
                                     anchors.right: parent.right
                                     anchors.rightMargin: 12
                                     anchors.verticalCenter: parent.verticalCenter
-                                    text: it.isSep ? "" : (it.modelData.shortcut || "")
+                                    text: it.isSep ? "" : root.ggKeys(it.modelData.shortcut || "")
                                     color: it.hot ? Qt.rgba(1, 1, 1, 0.8) : pal.fg2
                                     font.family: pal.fam
                                     font.pixelSize: 12
@@ -6392,6 +6621,10 @@ Scope {
                         case "sound": return cSound;
                         case "record": return cRecord;
                         case "gaming": return cGaming;
+                        case "airdrop": return cAirDrop;
+                        case "mirroring": return cMirroring;
+                        case "airpods": return cAirPods;
+                        case "mission": case "screenshot": case "calculator": case "timer": case "quicknote": case "lockscreen": return cAction;
                         }
                         return null;
                     }
@@ -6495,7 +6728,7 @@ Scope {
                                 x: 62; anchors.verticalCenter: parent.verticalCenter
                                 spacing: 1
                                 Text { text: "Focus"; color: pal.fg; font.family: pal.fam; font.pixelSize: 13; font.weight: Font.DemiBold }
-                                MorphText { animateWidth: false; duration: 420; text: root.dnd ? "Do Not Disturb" : "Off"; color: pal.fg2; font.family: pal.fam; font.pixelSize: 12 }
+                                MorphText { animateWidth: false; duration: 420; text: root.dnd ? Prefs.focusStatus.summary : "Off"; color: pal.fg2; font.family: pal.fam; font.pixelSize: 12 }
                             }
                         }
                     }
@@ -6516,6 +6749,101 @@ Scope {
                                 Text { width: parent.width; elide: Text.ElideRight; text: "Game Mode"; color: pal.fg; font.family: pal.fam; font.pixelSize: 13; font.weight: Font.DemiBold }
                                 MorphText { animateWidth: false; duration: 420; width: parent.width; elide: Text.ElideRight; text: root.gamingAutoActive && !root.gamingMode ? "On (game detected)" : (root.gaming ? "On" : (root.gamingAuto ? "Auto" : "Off"))
                                        color: root.gaming ? "#30D158" : pal.fg2; font.family: pal.fam; font.pixelSize: 12 }
+                            }
+                        }
+                    }
+                    // CitronOS: AirDrop. The button sets who can send to this computer (gg-airdrop);
+                    // the rest opens the AirDrop app.
+                    Component {
+                        id: cAirDrop
+                        CCTile {
+                            t: pal; gx: ccg
+                            CCBtn {
+                                t: pal; gx: ccg
+                                x: 12; anchors.verticalCenter: parent.verticalCenter
+                                sym: "broadcast"; on: root.ggAirdropOn
+                                onClicked: root.ggSetAirdrop(!root.ggAirdropOn)
+                            }
+                            MouseArea {
+                                x: 56; width: parent.width - 56; height: parent.height
+                                onClicked: { root.ggLaunch("org.goldengate.AirDrop"); root.ccRequest(false); }
+                            }
+                            Column {
+                                x: 62; anchors.verticalCenter: parent.verticalCenter
+                                width: parent.width - 62 - 10
+                                spacing: 1
+                                Text { text: "AirDrop"; color: pal.fg; font.family: pal.fam; font.pixelSize: 13; font.weight: Font.DemiBold }
+                                MorphText { animateWidth: false; duration: 420; width: parent.width; elide: Text.ElideRight
+                                    text: root.ggAirdropOn ? "Everyone" : "Receiving Off"; color: pal.fg2; font.family: pal.fam; font.pixelSize: 12 }
+                            }
+                        }
+                    }
+                    // CitronOS: Screen Mirroring. The button turns the AirPlay Receiver (gg-airplay) on
+                    // and off, or stops a device that's mirroring; the rest opens Settings › AirPlay.
+                    Component {
+                        id: cMirroring
+                        CCTile {
+                            t: pal; gx: ccg
+                            CCBtn {
+                                t: pal; gx: ccg
+                                x: 12; anchors.verticalCenter: parent.verticalCenter
+                                sym: "mirror"; on: root.ggAirplayOn
+                                onClicked: root.ggMirroring ? root.ggStopMirroring() : root.ggSetAirplay(!root.ggAirplayOn)
+                            }
+                            MouseArea {
+                                x: 56; width: parent.width - 56; height: parent.height
+                                onClicked: { Quickshell.execDetached(["gg-settings", "airplay"]); root.ccRequest(false); }
+                            }
+                            Column {
+                                x: 62; anchors.verticalCenter: parent.verticalCenter
+                                width: parent.width - 62 - 10
+                                spacing: 1
+                                Text { width: parent.width; elide: Text.ElideRight; text: "Screen Mirroring"; color: pal.fg; font.family: pal.fam; font.pixelSize: 13; font.weight: Font.DemiBold }
+                                MorphText { animateWidth: false; duration: 420; width: parent.width; elide: Text.ElideRight
+                                    text: root.ggAirplayStatus; color: pal.fg2; font.family: pal.fam; font.pixelSize: 12 }
+                            }
+                        }
+                    }
+                    // CitronOS: AirPods, from the CitronPods engine: the one in use and its charge;
+                    // Settings › AirPods has the rest.
+                    Component {
+                        id: cAirPods
+                        CCTile {
+                            t: pal; gx: ccg
+                            GG.CitronPodsService { id: pods; enabled: cc.opening }
+                            CCBtn {
+                                t: pal; gx: ccg
+                                x: 12; anchors.verticalCenter: parent.verticalCenter
+                                kind: "headphones"; on: pods.connected
+                                onClicked: { Quickshell.execDetached(["gg-settings", "airpods"]); root.ccRequest(false); }
+                            }
+                            MouseArea {
+                                x: 56; width: parent.width - 56; height: parent.height
+                                onClicked: { Quickshell.execDetached(["gg-settings", "airpods"]); root.ccRequest(false); }
+                            }
+                            Column {
+                                x: 62; anchors.verticalCenter: parent.verticalCenter
+                                width: parent.width - 62 - 10
+                                spacing: 1
+                                Text { width: parent.width; elide: Text.ElideRight; text: pods.activeDevice.name || "AirPods"; color: pal.fg; font.family: pal.fam; font.pixelSize: 13; font.weight: Font.DemiBold }
+                                MorphText { animateWidth: false; duration: 420; width: parent.width; elide: Text.ElideRight
+                                    text: !pods.connected ? "Not Connected"
+                                        : (typeof pods.activeDevice.leftBattery === "number" && pods.activeDevice.leftBattery >= 0 ? pods.activeDevice.leftBattery + "% left" : "Connected")
+                                    color: pal.fg2; font.family: pal.fam; font.pixelSize: 12 }
+                            }
+                        }
+                    }
+                    // CitronOS: the quick actions its Control Center offered (Edit Controls adds them).
+                    Component {
+                        id: cAction
+                        CCTile {
+                            id: actTile
+                            t: pal; gx: ccg
+                            readonly property var def: root.ccDef(parent && parent.parent && parent.parent.modelData ? parent.parent.modelData.id : "") || ({})
+                            CCBtn {
+                                t: pal; gx: ccg; anchors.centerIn: parent
+                                kind: actTile.def.glyph || ""; sym: actTile.def.sym || ""
+                                onClicked: { root.ccRequest(false); root.ggCcAction(actTile.def.id || ""); }
                             }
                         }
                     }
@@ -6923,9 +7251,16 @@ Scope {
                                                 Text { anchors.centerIn: parent; text: "+"; color: "white"; font.pixelSize: 14; font.weight: Font.Bold }
                                             }
                                             Glyph {
+                                                visible: !chip.modelData.sym
                                                 width: 16; height: 16
                                                 anchors.verticalCenter: parent.verticalCenter
                                                 kind: chip.modelData.glyph; color: pal.fg
+                                            }
+                                            Image {   // CitronOS: its own controls' symbols
+                                                visible: !!chip.modelData.sym
+                                                width: 16; height: 16; sourceSize: Qt.size(32, 32)
+                                                anchors.verticalCenter: parent.verticalCenter
+                                                source: chip.modelData.sym ? Qt.resolvedUrl("../ui/assets/symbols/" + chip.modelData.sym + (pal.dark ? "" : "@dark") + ".svg") : ""
                                             }
                                             Text {
                                                 anchors.verticalCenter: parent.verticalCenter

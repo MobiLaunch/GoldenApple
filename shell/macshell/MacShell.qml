@@ -25,6 +25,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import Quickshell.Hyprland
+import "../ui/theme"
 
 Scope {
     id: macShell
@@ -288,6 +289,32 @@ Scope {
 
     MacBar { id: macBar; hub: sharedHub }
     MacDock { id: macDock; hub: sharedHub }
+
+    // CitronOS: one appearance. MacShell's Light and Dark follow the system's (Settings ›
+    // Appearance, Control Center, the Auto schedule: gsettings color-scheme, which shell.qml
+    // turns into Theme.dark), and choosing one in MacShell sets the system's. For the first
+    // seconds, while MacShell reads its own settings files, the system's wins.
+    property bool ggDarkSettled: false
+    Timer { interval: 4000; running: true; onTriggered: { macShell.ggDarkSettled = true; macShell.ggFollowDark(); } }
+    function ggFollowDark() {
+        if (macBar.darkMode !== Theme.dark) macBar.darkMode = Theme.dark;
+        if (macDock.darkMode !== Theme.dark) macDock.darkMode = Theme.dark;
+        ggFollowAccent();
+    }
+    // The accent colour too (Settings › Appearance › Color, gsettings accent-color).
+    function ggFollowAccent() {
+        if (!Qt.colorEqual(macBar.accent, Theme.accent)) macBar.accent = Theme.accent;
+        if (!Qt.colorEqual(macDock.accent, Theme.accent)) macDock.accent = Theme.accent;
+    }
+    Connections { target: Theme; function onAccentNameChanged() { if (macShell.ggDarkSettled) macShell.ggFollowAccent(); } }
+    function ggChoseDark(dark) {
+        if (dark === Theme.dark) return;
+        if (!ggDarkSettled) { ggFollowDark(); return; }
+        Quickshell.execDetached(["gsettings", "set", "org.gnome.desktop.interface", "color-scheme", dark ? "prefer-dark" : "default"]);
+    }
+    Connections { target: Theme; function onDarkChanged() { macShell.ggFollowDark(); } }
+    Connections { target: macBar; function onDarkModeChanged() { macShell.ggChoseDark(macBar.darkMode); } }
+    Connections { target: macDock; function onDarkModeChanged() { macShell.ggChoseDark(macDock.darkMode); } }
     MacWidgets { id: macWidgets; hub: sharedHub }
     ClockApp { id: clockApp; hub: sharedHub }
 
