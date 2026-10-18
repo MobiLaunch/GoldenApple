@@ -104,6 +104,19 @@ for qml in sorted([*(root / "shell").rglob("*.qml"), *(root / "apps").rglob("*.q
                 errors.append(f"{qml.relative_to(root)}:{line_no}: \"#ffffff{colour}\" is opaque yellow in Qt; "
                               f"white at that alpha is \"#{colour}ffffff\"")
 
+# Quickshell's image://icon provider calls QIcon::pixmap, which must run on the
+# GUI thread: an asynchronous Image loading a theme icon aborted the shell at
+# startup under Qt 6.12 ("pure virtual method called" in QPixmap::load).
+icon_source = re.compile(r"\bsource:.*(iconPath|iconFor|IconSrc|iconSrc|swIcon|\.ico\b|nb\.icon)")
+for qml in sorted((root / "shell").rglob("*.qml")):
+    lines = qml.read_text(encoding="utf-8").splitlines()
+    for i, line in enumerate(lines):
+        if "asynchronous: true" not in line:
+            continue
+        near = lines[max(0, i - 10):i + 10]
+        if any(icon_source.search(l) for l in near):
+            errors.append(f"{qml.relative_to(root)}:{i + 1}: a theme icon must not load asynchronously")
+
 if errors:
     print("\n".join(errors), file=sys.stderr)
     raise SystemExit(1)

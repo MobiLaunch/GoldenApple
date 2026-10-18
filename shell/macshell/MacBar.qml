@@ -1184,7 +1184,7 @@ Scope {
                 source: nb.icon
                 sourceSize.width: 96; sourceSize.height: 96
                 fillMode: Image.PreserveAspectFit
-                asynchronous: true; smooth: true
+                asynchronous: !String(source).startsWith("image://"); smooth: true
             }
         }
         Column {
@@ -4587,6 +4587,30 @@ Scope {
                     height: root.barHeight
                     color: "transparent"      // Tahoe: the bar is fully clear, no fill and no border on any side
                     MouseArea { anchors.fill: parent; onClicked: ui.pop = "" }
+                    // CitronOS: in tablet mode, a swipe down that starts at the top-right corner
+                    // opens Control Center, as on an iPad. Only touch moves it, so the mouse still
+                    // reaches the status items underneath.
+                    Item {
+                        id: tabletCorner
+                        objectName: "tabletControlCenterGesture"
+                        visible: Prefs.tabletMode && root.ccEnabled
+                        anchors { top: parent.top; right: parent.right }
+                        width: Math.min(116, parent.width * 0.22)
+                        height: parent.height
+                        z: 50
+                        property bool triggered: false
+                        DragHandler {
+                            target: null
+                            acceptedDevices: PointerDevice.TouchScreen
+                            onTranslationChanged: {
+                                if (!active || tabletCorner.triggered) return;
+                                if (translation.y < 58 || Math.abs(translation.x) > 92) return;
+                                tabletCorner.triggered = true;
+                                if (ui.pop !== "cc") ui.pop = "cc";
+                            }
+                            onActiveChanged: if (!active) tabletCorner.triggered = false
+                        }
+                    }
 
                     // ── left: Apple menu + app menus ──
                     Row {
@@ -4597,7 +4621,9 @@ Scope {
                         transformOrigin: Item.Left
                         scale: root.barWidgetScale
                         Repeater {
+                            // CitronOS: a tablet shows the app's name, not the desktop's menus.
                             model: root.menuTitles.filter(function (item) {
+                                if (Prefs.tabletMode) return item.id === "app" && root.barWidgetEnabled("appMenus");
                                 return item.id === "apple" ? root.barWidgetEnabled("appleMenu") : root.barWidgetEnabled("appMenus");
                             })
                             delegate: Item {
@@ -7442,7 +7468,7 @@ Scope {
                                 sourceSize.width: 128; sourceSize.height: 128
                                 fillMode: Image.PreserveAspectFit
                                 smooth: true; mipmap: true
-                                asynchronous: true
+                                asynchronous: !String(source).startsWith("image://")   // CitronOS: theme icons (QIcon) only load on the GUI thread
                             }
                             MouseArea {
                                 anchors.fill: parent
@@ -8223,7 +8249,7 @@ Scope {
                                             source: rr.ico
                                             sourceSize: Qt.size(64, 64)
                                             fillMode: Image.PreserveAspectFit
-                                            asynchronous: true
+                                            asynchronous: !String(source).startsWith("image://")   // CitronOS: theme icons (QIcon) only load on the GUI thread
                                             smooth: true
                                         }
                                         Glyph {
@@ -8848,7 +8874,7 @@ Scope {
                                                         source: root.iconSrc(cell.e.icon)
                                                         sourceSize: Qt.size(128, 128)
                                                         fillMode: Image.PreserveAspectFit
-                                                        asynchronous: true
+                                                        asynchronous: !String(source).startsWith("image://")   // CitronOS: theme icons (QIcon) only load on the GUI thread
                                                         smooth: true
                                                     }
                                                     Text {

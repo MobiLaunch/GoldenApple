@@ -4888,7 +4888,7 @@ Scope {
                                     fillMode: Image.PreserveAspectFit
                                     smooth: true
                                     mipmap: true
-                                    asynchronous: true
+                                    asynchronous: !String(source).startsWith("image://")   // CitronOS: theme icons (QIcon) only load on the GUI thread
                                 }
                                 MultiEffect {
                                     visible: !cell.isSep && !cell.thumbReady

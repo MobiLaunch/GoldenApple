@@ -75,6 +75,12 @@ check("Badge application icon" in pane, "Settings › Notifications can turn an 
 # Appearance.
 check("ggFollowDark" in SHELL and '"color-scheme"' in SHELL and "ggFollowAccent" in SHELL, "Light/Dark and accent follow Settings")
 
+# Tablet mode: the top-right swipe opens Control Center, menus give way to the
+# app's name, and the desktop widgets leave Tablet Home to its own.
+check('objectName: "tabletControlCenterGesture"' in BAR and "PointerDevice.TouchScreen" in BAR, "tablet: the top-right swipe opens Control Center")
+check('if (Prefs.tabletMode) return item.id === "app"' in BAR, "tablet: the app's name instead of the menus")
+check("!Prefs.tabletMode" in (ROOT / "shell/macshell/MacWidgets.qml").read_text(), "tablet: no desktop widgets over Tablet Home")
+
 # Reduce Motion (Settings › Accessibility): what moves or zooms stops; fades stay.
 import re
 moving = []

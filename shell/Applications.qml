@@ -490,7 +490,7 @@ PanelWindow {
                             source: cell.isFolder ? "" : apps.iconFor(cell.modelData)
                             sourceSize: Qt.size(apps.iconSize * 2, apps.iconSize * 2)
                             smooth: true; mipmap: true
-                            asynchronous: true
+                            asynchronous: !String(source).startsWith("image://")   // CitronOS: theme icons (QIcon) only load on the GUI thread
                             scale: area.pressed && !Theme.reduceMotion ? 0.92 : 1
                             Behavior on scale { enabled: !Theme.reduceMotion; NumberAnimation { duration: 90; easing.type: Easing.OutCubic } }
                             // No offscreen layer allocated on each press.

@@ -101,8 +101,9 @@ Carried over from the old shell (`tests/macshell-ports.py`):
 - Reduce Motion (Settings › Accessibility) stops what MacShell moves, slides
   and zooms; fades and colour changes stay, as on a Mac. The clocks' hands
   keep moving.
-
-Not on MacShell yet: the tablet top-right swipe for Control Center.
+- In tablet mode a swipe down from the top-right corner opens Control
+  Center, the menu bar shows the app's name instead of its menus, and the
+  desktop widgets give way to Tablet Home's.
 
 ## Hyprland's Lua config
 

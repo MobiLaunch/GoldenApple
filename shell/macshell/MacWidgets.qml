@@ -16,6 +16,7 @@ import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Services.Mpris
 import "../ui/theme"
+import "../components"
 
 Scope {
     id: root
@@ -620,7 +621,8 @@ Scope {
 
     // ───────────── the desktop layer ─────────────
     Variants {
-        model: (root.ready && Quickshell.screens.length > 0 && (root.widgetCount > 0 || root.editing)) ? [Quickshell.screens[0]] : []
+        // CitronOS: Tablet Home has its own widgets; the desktop's stay off in tablet mode.
+        model: (root.ready && !Prefs.tabletMode && Quickshell.screens.length > 0 && (root.widgetCount > 0 || root.editing)) ? [Quickshell.screens[0]] : []
 
         PanelWindow {
             id: win
