@@ -133,13 +133,12 @@ PanelWindow {
         const point = item.mapToItem(backdrop, localX, localY)
         contextItems = [
             { label: "Open", action: () => { entry.execute(); apps.dismiss() } },
-            { label: "Open New Window", action: () => entry.execute() }
+            { label: "Open New Window", action: () => entry.execute() },
+            "-",
+            Prefs.keptInDock.includes(entry.id)
+                ? { label: "Remove from Dock", action: () => Prefs.setDockPinned(Prefs.keptInDock.filter((id) => id !== entry.id)) }
+                : { label: "Add to Dock", action: () => Prefs.setDockPinned(Prefs.keptInDock.concat([entry.id])) }
         ]
-        // MacShell's Dock keeps its own pins (~/.config/macdock/pinned.json).
-        if (apps.dock?.setPinned)
-            contextItems = contextItems.concat(["-", apps.dock.isPinned(entry.id)
-                ? { label: "Remove from Dock", action: () => apps.dock.setPinned(entry.id, false) }
-                : { label: "Add to Dock", action: () => apps.dock.setPinned(entry.id, true) }])
         contextX = point.x
         contextY = point.y
         appMenu.open = true
@@ -248,7 +247,6 @@ PanelWindow {
     readonly property var catalog: {
         const list = [...DesktopEntries.applications.values].filter((e) => {
             if (!e || !e.name || e.noDisplay || !hasApprovedIcon(e)) return false
-            if (e.id === "org.goldengate.Launchpad") return false   // the Dock's way in
             return true
         })
         const rank = (e) => { const i = firstParty.indexOf(e.id); return i < 0 ? 1000 : i }
@@ -282,8 +280,8 @@ PanelWindow {
     // Reference proportions: eight columns on a desktop, compact round search,
     // and space below the page dots for the real Dock rather than a duplicate.
     readonly property real layoutScale: Math.max(0.6, Math.min(1.15, width / 1536,
-        (height - (dock?.iconSize ?? 54)) / (998 - 54)))
-    readonly property real bottomClearance: (dock?.iconSize ?? 54) + 65 * layoutScale
+        (height - (dock?.baseSize ?? 54)) / (998 - 54)))
+    readonly property real bottomClearance: (dock?.baseSize ?? 54) + 65 * layoutScale
     readonly property real gridTop: 116 * layoutScale
     // Tablet Mode: iPad-inspired four columns in portrait, six in
     // landscape. Larger hit areas are easier to use without a pointer.
@@ -490,7 +488,7 @@ PanelWindow {
                             source: cell.isFolder ? "" : apps.iconFor(cell.modelData)
                             sourceSize: Qt.size(apps.iconSize * 2, apps.iconSize * 2)
                             smooth: true; mipmap: true
-                            asynchronous: !String(source).startsWith("image://")   // CitronOS: theme icons (QIcon) only load on the GUI thread
+                            asynchronous: true
                             scale: area.pressed && !Theme.reduceMotion ? 0.92 : 1
                             Behavior on scale { enabled: !Theme.reduceMotion; NumberAnimation { duration: 90; easing.type: Easing.OutCubic } }
                             // No offscreen layer allocated on each press.

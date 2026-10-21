@@ -31,11 +31,9 @@ jobs:
           mkdir -p out/ui-polish
           python tools/preview/preview.py shell --dark --wait 700 \
             -o out/ui-polish/desktop.png
-          # The menu bar, Dock and Control Center are MacShell's (the Shell
-          # workflow screenshots them under Quickshell); here, CitronOS's own.
           python tools/preview/preview.py shell --dark \
-            --do launchpad.toggle --wait 700 --require-object launchpadGrid \
-            -o out/ui-polish/launchpad.png
+            --do controlcenter.toggle --wait 700 --require-object ccPanel \
+            -o out/ui-polish/control-center.png
       - name: Validate real tablet page delegates at both orientations
         run: |
           python tools/preview/preview.py shell --dark \

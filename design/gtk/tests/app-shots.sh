@@ -88,7 +88,7 @@ mkdir -p "$HOME/.schemas" && cp /usr/share/glib-2.0/schemas/*.xml "$REPO/themes/
 glib-compile-schemas "$HOME/.schemas" && export GSETTINGS_SCHEMA_DIR="$HOME/.schemas"
 dbus-update-activation-environment GSETTINGS_SCHEMA_DIR
 # GTK 4 on Wayland takes these from GSettings (the session sets them the same way
-# in hyprland.lua), not from settings.ini.
+# in hyprland.conf), not from settings.ini.
 gsettings set org.gnome.desktop.wm.preferences button-layout 'close,minimize,maximize:'
 gsettings set org.gnome.desktop.interface icon-theme GoldenGate
 gsettings set org.gnome.desktop.interface font-name "${GG_FONT:-Inter Variable 10}"

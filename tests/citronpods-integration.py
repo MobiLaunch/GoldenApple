@@ -16,6 +16,7 @@ INSTALL = ROOT / "apps/citronpods/install-engine.sh"
 class CitronPodsIntegration(unittest.TestCase):
     def test_shell_owns_one_popup_and_native_settings(self):
         shell = (ROOT / "shell/shell.qml").read_text()
+        cc = (ROOT / "shell/ControlCenter.qml").read_text()
         popup = (ROOT / "shell/CitronPodsPopup.qml").read_text()
         service = (ROOT / "apps/lib/CitronPodsService.qml").read_text()
         settings = (ROOT / "apps/settings.qml").read_text()
@@ -23,9 +24,12 @@ class CitronPodsIntegration(unittest.TestCase):
         pane = (ROOT / "apps/settings/panes/CitronPodsPane.qml").read_text()
         self.assertIn('source: "CitronPodsPopup.qml"', shell)
         self.assertIn('objectName: "citronPodsSystemPopup"', popup)
+        self.assertIn('Shared.CitronPodsService', cc)
         self.assertIn('Shared.CitronPodsService', popup)
         self.assertIn('shadowEnabled: false', popup)
         self.assertIn('CitronPodsService {', pane)
+        self.assertIn('["", "wifi", "bluetooth", "sound"', cc)
+        self.assertIn('airpods: "AirPods"', cc)
         self.assertIn('"airpods", "AirPods"', settings)
         self.assertIn('pane.nav.open("airpods")', bluetooth)
         self.assertIn('org.citronos.CitronPods1', service)
@@ -35,12 +39,15 @@ class CitronPodsIntegration(unittest.TestCase):
         self.assertIn('if (canControl && Number.isInteger(mode)', service)
         self.assertNotIn('citronpods -n', popup)
 
-    def test_context_shadows_disabled(self):
+    def test_clipped_control_center_and_context_shadows_disabled(self):
         glass = (ROOT / "apps/lib/Glass.qml").read_text()
         menu = (ROOT / "apps/lib/MenuList.qml").read_text()
+        control = (ROOT / "shell/ControlCenter.qml").read_text()
         self.assertIn('property bool shadowEnabled: role === "control" || role === "sidebar" || role === "dock"', glass)
         self.assertIn('visible: root.shadowEnabled &&', glass)
         self.assertIn('shadowEnabled: false', menu)
+        self.assertIn('shadowEnabled: false', control)
+        self.assertIn('lens: 13', control)
 
     def test_native_engine_is_installed_only_when_user_supplies_m10(self):
         with tempfile.TemporaryDirectory() as tmp:

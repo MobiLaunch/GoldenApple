@@ -14,8 +14,10 @@ test('tablet widgets start separately from desktop widgets', () => {
   assert.deepEqual(Array.from(cards, card => card.kind), ['weather', 'calendar', 'clock'])
   assert.equal(cards[0].size, 'medium')
   const desktop = read('shell/components/Prefs.qml')
+  assert.match(desktop, /readonly property var widgets: Array\.isArray\(data\.widgets\)/)
   assert.match(desktop, /readonly property var tabletWidgets: Array\.isArray\(data\.tablet\?\.widgets\)/)
   assert.match(desktop, /gg-pref", "tablet\.widgets"/)
+  assert.match(read('shell/DesktopWidgets.qml'), /visible: !Prefs\.tabletMode/)
 })
 
 test('widget add remove resize and drag reorder are safe and immutable', () => {
@@ -55,6 +57,7 @@ test('tablet widgets reject malicious content, duplicates and limit count', () =
 
 test('tablet home and tablet shortcuts are integrated in one desktop shell', () => {
   const shell = read('shell/shell.qml')
+  const bar = read('shell/MenuBar.qml')
   const dockSettings = read('apps/settings/panes/DockPane.qml')
   assert.match(shell,/TabletHome \{/)
   assert.match(shell,/target: "tablet"/)
@@ -71,6 +74,10 @@ test('tablet home and tablet shortcuts are integrated in one desktop shell', () 
   assert.match(source,/spotlight", "search"/)
   assert.match(source,/function dropWidget\(/)
   assert.match(source,/tablet\.iconFor\(appTile\.modelData\)/)
+  assert.match(bar,/objectName: "tabletControlCenterGesture"/)
+  assert.match(bar,/acceptedDevices: PointerDevice\.TouchScreen/)
+  assert.match(bar,/translation\.y < 58/)
+  assert.match(bar,/bar\.controlCenter\.toggle\(\)/)
   assert.match(dockSettings,/Customize Home…/)
   assert.match(dockSettings,/ipc", "call", "tablet", "edit"/)
 })
@@ -97,7 +104,18 @@ test('wallpaper-first tablet Home supports app long-press editing', () => {
 
 test('tablet lock screen uses live MPRIS data', () => {
   const lock = read('shell/components/LockSurface.qml')
+  const session = read('shell/LockScreen.qml')
   assert.match(lock, /objectName: "tabletLockNowPlaying"/)
   assert.match(lock, /objectName: "tabletLockHomeIndicator"/)
   assert.match(lock, /root\.player\.togglePlaying\(\)/)
+  assert.match(session, /Quickshell\.Services\.Mpris/)
+  assert.match(session, /tabletMode: Prefs\.tabletMode/)
+})
+
+test('tablet status hides desktop menus but retains the Control Center gesture', () => {
+  const bar = read('shell/MenuBar.qml')
+  assert.match(bar, /objectName: "tabletStatusBar"/)
+  assert.match(bar, /id: titlesRow\n        visible: !Prefs\.tabletMode/)
+  assert.match(bar, /objectName: "tabletControlCenterGesture"/)
+  assert.match(bar, /Qt\.formatDateTime\(tabletClock\.date/)
 })

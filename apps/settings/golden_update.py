@@ -69,14 +69,12 @@ BRANCH_RE = re.compile(r"^(?!.*\.\.)[A-Za-z0-9_./-]{1,200}$")
 
 # Files every account gets from /etc/skel/.config that CitronOS keeps current.
 MANAGED = [
-    "hypr/hyprland.lua", "hypr/hypridle.conf", "hypr/golden-gate/motion.lua",
+    "hypr/hyprland.conf", "hypr/hypridle.conf", "hypr/golden-gate/motion.conf",
     "hypr/golden-gate/report-config-errors.sh", "hypr/golden-gate/machine-conf.sh",
+    "hypr/golden-gate/windows.conf",
     "gtk-4.0/gtk.css", "gtk-3.0/gtk.css", "fontconfig/conf.d/60-golden-gate.conf",
     "ghostty/config",
 ]
-# The shell (MacShell's bar and Dock with CitronOS's surfaces) and its lock
-# screen, two Quickshell configs every account gets whole from /etc/skel.
-SHELL_TREES = ["quickshell/golden-gate", "quickshell/golden-gate-lock"]
 # Live-session-only parts of the ISO overlay that an installed system must not get.
 LIVE_ONLY = (
     "etc/sudoers.d/10-golden-live",
@@ -478,16 +476,15 @@ def refresh_accounts(old_skel: Path) -> list[str]:
     themes = [f"ghostty/themes/{p.name}" for p in (skel / "ghostty/themes").glob("*")]
     for entry, home in _accounts():
         conf = home / ".config"
-        for shell_tree in SHELL_TREES:
-            shell = conf / shell_tree
-            fresh = skel / shell_tree
-            if fresh.is_dir():
-                tmp = shell.with_name(shell.name + ".updating")
-                shutil.rmtree(tmp, ignore_errors=True)
-                shutil.copytree(fresh, tmp, symlinks=True)
-                shutil.rmtree(shell, ignore_errors=True)
-                tmp.rename(shell)
-                _chown_tree(shell, entry.pw_uid, entry.pw_gid)
+        shell = conf / "quickshell/golden-gate"
+        fresh = skel / "quickshell/golden-gate"
+        if fresh.is_dir():
+            tmp = shell.with_name("golden-gate.updating")
+            shutil.rmtree(tmp, ignore_errors=True)
+            shutil.copytree(fresh, tmp, symlinks=True)
+            shutil.rmtree(shell, ignore_errors=True)
+            tmp.rename(shell)
+            _chown_tree(shell, entry.pw_uid, entry.pw_gid)
         for rel in MANAGED + themes:
             new, old, mine = skel / rel, old_skel / rel, conf / rel
             if not new.is_file():
@@ -662,7 +659,7 @@ JOURNAL = "/var/lib/golden-gate/update-journal.json"
 # What install.sh --system replaces wholesale; everything else it writes is
 # a single file. (The staged run says exactly which.)
 REPLACED_TREES = ["usr/share/golden-gate/ui", "usr/share/golden-gate/apps", "usr/share/icons/GoldenGate",
-                  "etc/skel/.config/quickshell/golden-gate", "etc/skel/.config/quickshell/golden-gate-lock"]
+                  "etc/skel/.config/quickshell/golden-gate"]
 
 
 def _journal(state: str, step: str, version: dict, detail: str = "") -> None:
@@ -850,8 +847,7 @@ def install_tree(tree: Path, version: dict, emit: Emit, work: Path) -> bool:
         themes = [f"ghostty/themes/{p.name}" for p in (stage / "etc/skel/.config/ghostty/themes").glob("*")]
         for entry, home in _accounts():
             conf = home / ".config"
-            for shell_tree in SHELL_TREES:
-                rollback.keep(conf / shell_tree)
+            rollback.keep(conf / "quickshell/golden-gate")
             for rel in MANAGED + themes:
                 rollback.keep(conf / rel)
                 rollback.keep(conf / (rel + ".golden-gate-new"))

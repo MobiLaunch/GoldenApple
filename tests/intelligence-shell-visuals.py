@@ -47,6 +47,7 @@ class SystemIntelligence(unittest.TestCase):
     def test_overlay_keeps_all_working_backend_routes(self):
         qml = (ROOT / "shell/VoiceAssistant.qml").read_text()
         opener = (ROOT / "apps/intelligence/open.sh").read_text()
+        menu = (ROOT / "shell/MenuBar.qml").read_text()
         prefs = (ROOT / "apps/settings/panes/IntelligencePane.qml").read_text()
         self.assertIn("AI.CitronBlob {", qml)
         self.assertIn('objectName: "citronMorphingHaze"', qml)
@@ -64,6 +65,7 @@ class SystemIntelligence(unittest.TestCase):
         self.assertNotIn('exec qs -n -p "$here/intelligence.qml"', opener)
         self.assertIn('ipc call citron "$mode"', opener)
         self.assertIn('ipc call citron photo "$photo"', opener)
+        self.assertIn('["qs", "-c", "golden-gate", "ipc", "call", "citron", "ask"]', menu)
         self.assertIn('text: "Summon Citron"', prefs)
         self.assertIn("gg-settings intelligence", opener)
 
@@ -90,12 +92,12 @@ class SystemIntelligence(unittest.TestCase):
         qml = (ROOT / "apps/lib/theme/Theme.qml").read_text()
         css = (ROOT / "design/dist/tokens.css").read_text()
         gtk = (ROOT / "design/dist/gtk.css").read_text()
-        motion = (ROOT / "design/dist/hyprland-motion.lua").read_text()
+        motion = (ROOT / "design/dist/hyprland-motion.conf").read_text()
         self.assertIn('root.role === "menu" ? 20 :', glass)
         self.assertIn("Math.max(0, (root.material?.shadowOpacity ?? 0)", glass)
         self.assertIn("range = 46", motion)
         self.assertIn("render_power = 2", motion)
-        self.assertIn("offset = { 0, 9 }", motion)
+        self.assertIn("offset = 0 9", motion)
         self.assertIn("--dim-opacity: 78%", gtk)
         self.assertIn("Math.max(12, n)", qml)
         for role in ("glassClear", "glassRegular", "menu", "glassControl", "glassSidebar", "glassDock"):

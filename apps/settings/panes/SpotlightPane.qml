@@ -1,7 +1,5 @@
-// Spotlight, as in macOS. Spotlight is MacShell's: it finds apps and files,
-// and keeps the clipboard history and the emoji picker. This pane says how to
-// reach each; it has nothing to set.
-import Quickshell
+// Spotlight, as in macOS: which kinds of result it shows. The shell's
+// Spotlight follows desktop.json's "spotlight" at once.
 import QtQuick
 import "../../lib"
 import "../../lib/theme"
@@ -10,21 +8,27 @@ import ".."
 Pane {
     id: pane
     headerSymbol: "search"; headerTint: "#8e8e93"; headerTitle: "Spotlight"
-    headerText: "Spotlight finds apps and files as you type. Press Command-Space to search."
-    readonly property var ways: [
-        ["Search", "Command-Space", "search", "#8e8e93", "toggle"],
-        ["Clipboard History", "Shift-Command-V", "paste", "#0a84ff", "clipboard"],
-        ["Emoji & Symbols", "Control-Command-Space", "smile", "#ff9f0a", "emoji"]
+    headerText: "Spotlight finds apps, settings, documents and answers as you type. Press Command-Space to search."
+    readonly property var shown: sys.prefs.spotlight ?? {}
+    readonly property var kinds: [
+        ["apps", "Applications", "apps", "#0a84ff"],
+        ["answers", "Calculator and Conversions", "calculator", "#8e8e93"],
+        ["settings", "System Settings", "gear", "#8e8e93"],
+        ["files", "Documents and Folders", "doc", "#0a84ff"],
+        ["web", "Search the Web", "globe", "#30b0c7"]
     ]
     Group {
-        title: "Spotlight"
+        title: "Search Results"
         Repeater {
-            model: pane.ways
+            model: pane.kinds
             delegate: SetRow {
-                id: wayRow
+                id: kindRow
                 required property var modelData
-                title: modelData[0]; subtitle: modelData[1]; symbol: modelData[2]; symbolTint: modelData[3]
-                Button { text: "Open"; onClicked: Quickshell.execDetached(["qs", "-c", "golden-gate", "ipc", "call", "spotlight", wayRow.modelData[4]]) }
+                title: modelData[1]; symbol: modelData[2]; symbolTint: modelData[3]
+                Switch {
+                    checked: pane.shown[kindRow.modelData[0]] ?? true
+                    onToggled: (on) => pane.sys.setPref(["spotlight", kindRow.modelData[0]], on)
+                }
             }
         }
     }

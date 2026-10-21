@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""The line in hyprland.lua that keeps the shell running: on a new account
+"""The line in hyprland.conf that keeps the shell running: on a new account
 (no ~/.local/state) the shell still starts, a big log is set aside as .old,
 and the shell is started again when it stops."""
 import os
@@ -10,9 +10,9 @@ import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
-LINE = next(l.strip() for l in (ROOT / "compositor/hyprland/hyprland.lua").read_text().splitlines()
-            if l.strip().startswith("hl.exec_cmd([[sh -c") and "qs -c golden-gate >>" in l)
-CMD = LINE.removeprefix("hl.exec_cmd([[").removesuffix("]])")
+LINE = next(l for l in (ROOT / "compositor/hyprland/hyprland.conf").read_text().splitlines()
+            if l.startswith("exec-once = sh -c") and "qs -c golden-gate >>" in l)
+CMD = LINE.removeprefix("exec-once = ")
 
 
 class Supervisor(unittest.TestCase):

@@ -31,7 +31,7 @@ case "${1:-}" in
     pane=general ;;
 esac
 if [ -n "$pane" ] && qs -p "$here/settings.qml" ipc call settings open "$pane" 2>/dev/null; then
-  exec hyprctl dispatch 'hl.dsp.focus({ window = "class:org.goldengate.Settings" })' >/dev/null 2>&1
+  exec hyprctl dispatch focuswindow class:org.goldengate.Settings >/dev/null 2>&1
 fi
-qs -p "$here/settings.qml" ipc show >/dev/null 2>&1 && exec hyprctl dispatch 'hl.dsp.focus({ window = "class:org.goldengate.Settings" })' >/dev/null 2>&1
+qs -p "$here/settings.qml" ipc show >/dev/null 2>&1 && exec hyprctl dispatch focuswindow class:org.goldengate.Settings >/dev/null 2>&1
 GG_SETTINGS_PANE=$pane exec qs -n -p "$here/settings.qml"

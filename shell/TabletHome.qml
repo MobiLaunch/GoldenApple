@@ -416,7 +416,7 @@ PanelWindow {
                                     source: tablet.iconFor(appTile.modelData)
                                     sourceSize: Qt.size(tablet.iconSize * 2, tablet.iconSize * 2)
                                     fillMode: Image.PreserveAspectFit
-                                    asynchronous: !String(source).startsWith("image://")   // CitronOS: theme icons (QIcon) only load on the GUI thread
+                                    asynchronous: true
                                     smooth: true
                                 }
                             }

@@ -99,13 +99,13 @@ class LiveProtocol(unittest.TestCase):
         qml = (ROOT / "shell/VoiceAssistant.qml").read_text()
         shell = (ROOT / "shell/shell.qml").read_text()
         opener = (ROOT / "apps/intelligence/open.sh").read_text()
-        bindings = (ROOT / "compositor/hyprland/hyprland.lua").read_text()
+        bindings = (ROOT / "compositor/hyprland/hyprland.conf").read_text()
         self.assertIn('target: "citron"', qml)
         self.assertIn("objectName: \"citronSystemOverlay\"", qml)
         self.assertIn("voiceProc.running = false", qml)
         self.assertIn("source: \"VoiceAssistant.qml\"", shell)
         self.assertIn('ipc call citron "$mode"', opener)
-        self.assertIn('ipc("citron toggle")', bindings)
+        self.assertIn("ipc call citron toggle", bindings)
 
 
 

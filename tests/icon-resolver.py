@@ -137,10 +137,10 @@ class ResolverTests(unittest.TestCase):
 
     def test_store_hooks_and_filtered_launcher(self):
         launch = (ROOT / "shell/Applications.qml").read_text()
-        dock = (ROOT / "shell/macshell/MacDock.qml").read_text()
+        dock = (ROOT / "shell/Dock.qml").read_text()
         install = (ROOT / "scripts/install.sh").read_text()
         store = (ROOT / "apps/software/helper.py").read_text()
-        hypr = (ROOT / "compositor/hyprland/hyprland.lua").read_text()
+        hypr = (ROOT / "compositor/hyprland/hyprland.conf").read_text()
         self.assertIn("hasApprovedIcon(e)", launch)
         self.assertIn("!hasApprovedIcon(e)", launch)
         self.assertNotIn('name: "Other"', launch)

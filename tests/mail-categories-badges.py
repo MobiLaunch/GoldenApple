@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Mac-style Mail categories, Important state, VIP and the unread count kept for badges.
+"""Mac-style Mail categories, Important state, VIP and live Dock badges.
 
 All backends are faked; no real account, password, network, or desktop config
 is read. Checks local IMAP flags against actual UID STORE semantics.
@@ -92,15 +92,23 @@ class CategoryTests(unittest.TestCase):
         self.assertNotEqual(self.m.cmd_category("foo", "primary"), 0)
         self.assertNotEqual(self.m.cmd_category("123", "bad"), 0)
 
-    def test_ui_contracts(self):
+    def test_ui_and_notification_contracts(self):
         qml = (ROOT / "apps/mail.qml").read_text()
+        center = (ROOT / "shell/Notifications.qml").read_text()
+        dock = (ROOT / "shell/Dock.qml").read_text()
         sliders = (ROOT / "apps/lib/LevelSlider.qml").read_text()
+        cc = (ROOT / "shell/ControlCenter.qml").read_text()
         for token in ('"primary"', '"transactions"', '"updates"', '"promotions"',
                       '"flagged"', '"vip"', '"unread"'):
             self.assertIn(token, qml)
         for name in ("flagProc", "categoryProc", "vipProc"):
             self.assertIn("id: " + name, qml)
         self.assertIn('menuParent: win.overlay', qml)
+        self.assertIn("root.badgeEpoch++", center)
+        self.assertIn("mail-badges.json", center)
+        self.assertIn("Math.max(active, mailUnread)", center)
+        self.assertIn("countFor(modelData.id", dock)
+        self.assertIn('lens: 13', cc)
         self.assertIn('blurMax: 6', sliders)
         self.assertIn('import QtQuick.Effects', sliders)
 

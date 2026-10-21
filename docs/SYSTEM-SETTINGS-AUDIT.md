@@ -70,9 +70,9 @@ that saves a preference no process reads.
   updates shared with the shell, Settings, and Control Center.
 - For input, privacy, accessibility, and **new windows**, Settings uses
   `set-prefs.py` with a locked read-modify-write of the latest record.
-- Changing a trackpad/window property generates the relevant `input.lua`
-  or `windows.lua` **and** applies it live with `gg-hyprset` (`hyprctl eval`).
-- `hyprland.lua` loads these files on every session start. The installer
+- Changing a trackpad/window property generates the relevant `input.conf`
+  or `windows.conf` **and** sends the mapped `hyprctl keyword` command.
+- `hyprland.conf` sources these files on every session start. The installer
   creates blank safe defaults when the system is first installed, including
   for already-created `/etc/skel` accounts.
 - A failed write or live apply appears in the Settings error panel; the

@@ -8,7 +8,7 @@ Settings meanwhile (closed, the pane left, a crash).
 
 arm writes TOKEN (in $XDG_RUNTIME_DIR), waits SECONDS, and if TOKEN is still
 there applies the RULEs (the monitor rules from before the change) with
-gg-hyprset and removes it. keep removes TOKEN, so nothing happens; revert
+hyprctl and removes it. keep removes TOKEN, so nothing happens; revert
 applies the rules at once. Each prints {"ok": …}."""
 from __future__ import annotations
 
@@ -30,7 +30,8 @@ def apply(rules: list[str]) -> bool:
     if not rules:
         return True
     try:
-        p = subprocess.run(["gg-hyprset", "--monitor", *rules], capture_output=True, text=True, timeout=20)
+        p = subprocess.run(["hyprctl", "--batch", " ; ".join("keyword monitor " + r for r in rules)],
+                           capture_output=True, text=True, timeout=20)
     except (OSError, subprocess.SubprocessError):
         return False
     return p.returncode == 0 and "invalid" not in p.stdout.lower() and "error" not in p.stdout.lower()

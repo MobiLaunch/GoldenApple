@@ -81,7 +81,6 @@ for f, needle in (("apps/lib/AppWindow.qml", "Theme.textScale = d.textScale"), (
         failures.append(f"{f} doesn't read or write textScale")
 left = [m for p in list((ROOT / "apps").rglob("*.qml")) + list((ROOT / "shell").rglob("*.qml"))
         if not str(p).startswith(str(ROOT / "apps/lib/kit")) and "shell/ui" not in str(p) and "lcode/design/" not in str(p)
-        and "shell/macshell" not in str(p)   # MacShell sizes its own text
         for m in re.findall(r"pixelSize:\s*(1\d|2[0-4]|[89])\s*$", p.read_text(), re.M)]
 if left:
     failures.append(f"{len(left)} body text sizes don't follow Text Size (use Theme.fs)")

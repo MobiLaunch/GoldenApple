@@ -7,7 +7,7 @@ repeat rate.
 
 privacy, input and accessibility change key by key (set-prefs.py): two
 Settings windows with their own (stale) copies each keep their change; a
-damaged record is refused, not replaced; input.lua and accessibility.lua
+damaged record is refused, not replaced; input.conf and accessibility.conf
 are written with their record or not at all; a change is applied to the
 running session only once saved, and one the session refuses is reported
 as saved but not applied."""
@@ -108,10 +108,10 @@ class Records(unittest.TestCase):
                                                             "naturalScroll=false", "sensitivity=0.5", 'layout="de"']))
         i = self.read("input.json")
         self.assertEqual((i["repeatRate"], i["repeatDelay"], i["tapToClick"], i["layout"]), (40, 300, False, "de"))
-        conf = (self.dir / "hypr/golden-gate/input.lua").read_text()
-        for line in ('kb_layout = "de"', "repeat_rate = 40", "repeat_delay = 300", "tap_to_click = false",
+        conf = (self.dir / "hypr/golden-gate/input.conf").read_text()
+        for line in ("kb_layout = de", "repeat_rate = 40", "repeat_delay = 300", "tap-to-click = false",
                      "natural_scroll = false", "sensitivity = 0.50"):
-            self.assertIn(line, conf, "the .lua is the merged record, not one writer's")
+            self.assertIn(line, conf, "the .conf is the merged record, not one writer's")
 
     def test_only_the_keys_given(self):
         (self.dir / "golden-gate").mkdir()
@@ -133,10 +133,10 @@ class Records(unittest.TestCase):
     def test_conf_and_record_go_together(self):
         self.set("input", "repeatRate=30")
         before = (self.dir / "golden-gate/input.json").read_text()
-        conf = self.dir / "hypr/golden-gate/input.lua"
+        conf = self.dir / "hypr/golden-gate/input.conf"
         old = conf.read_text()
         conf.unlink()
-        conf.mkdir()                             # input.lua can't be replaced
+        conf.mkdir()                             # input.conf can't be replaced
         (conf / "x").write_text("")
         r, code = self.set("input", "repeatRate=45")
         self.assertNotEqual(code, 0)
@@ -144,18 +144,18 @@ class Records(unittest.TestCase):
         self.assertIn("repeat_rate = 30", old)
 
     def test_setup_keyboard_is_kept_the_first_time(self):
-        conf = self.dir / "hypr/golden-gate/input.lua"
+        conf = self.dir / "hypr/golden-gate/input.conf"
         conf.parent.mkdir(parents=True)
-        conf.write_text('hl.config({ input = { kb_layout = "ch", kb_variant = "fr" } })\n')
+        conf.write_text("input {\n    kb_layout = ch\n    kb_variant = fr\n}\n")
         r, _ = self.set("input", "repeatRate=40")
         self.assertEqual((r["record"]["layout"], r["record"]["variant"]), ("ch", "fr"))
-        self.assertIn('kb_variant = "fr"', conf.read_text())
+        self.assertIn("kb_variant = fr", conf.read_text())
 
     def test_accessibility_conf(self):
         self.set("accessibility", "reduceMotion=true")
-        self.assertIn("enabled = false", (self.dir / "hypr/golden-gate/accessibility.lua").read_text())
+        self.assertIn("enabled = false", (self.dir / "hypr/golden-gate/accessibility.conf").read_text())
         self.set("accessibility", "reduceMotion=false")
-        self.assertIn("enabled = true", (self.dir / "hypr/golden-gate/accessibility.lua").read_text())
+        self.assertIn("enabled = true", (self.dir / "hypr/golden-gate/accessibility.conf").read_text())
 
     def test_bad_arguments(self):
         self.assertNotEqual(self.set("privacy", "no-equals")[1], 0)
@@ -185,8 +185,8 @@ class LocationConsent(unittest.TestCase):
 
 
 class Stand(preview.Preview):
-    """set-prefs.py runs for real, in this stand's home; gg-hyprset answers as
-    told (refusing: as Hyprland does a setting it won't take)."""
+    """set-prefs.py runs for real, in this stand's home; hyprctl answers as
+    told (refusing: as Hyprland does a keyword it won't take)."""
     def __init__(self, env, failing=(), refusing=False):
         super().__init__(env, str(ROOT / "apps"), "'default'")
         self.home_env = env
@@ -199,7 +199,7 @@ class Stand(preview.Preview):
         cmd = cmd.toVariant() if hasattr(cmd, "toVariant") else cmd
         line = " ".join(str(c) for c in cmd)
         self.ran.append(line)
-        if "kb_layout" in line or "kb_(layout|variant)" in line:   # readSetupKeyboard
+        if "kb_layout" in line:
             return {"stdout": "kb_layout=ch\nkb_variant=fr\n", "stderr": "", "code": 0}
         if any(f in line for f in self.failing):
             return {"stdout": "", "stderr": "Read-only file system", "code": 1}
@@ -207,8 +207,8 @@ class Stand(preview.Preview):
             p = subprocess.run([sys.executable, *[str(c) for c in cmd[1:]]], env={**os.environ, **self.home_env},
                                capture_output=True, text=True)
             return {"stdout": p.stdout, "stderr": p.stderr, "code": p.returncode}
-        if cmd[:1] == ["gg-hyprset"] and self.refusing:
-            return {"stdout": "", "stderr": "gg-hyprset: invalid field: input.repeat_rate", "code": 1}
+        if cmd[:2] == ["hyprctl", "keyword"] and self.refusing:
+            return {"stdout": "invalid field: input:repeat_rate", "stderr": "", "code": 0}
         return {"stdout": "ok", "stderr": "", "code": 0}
 
 
@@ -246,15 +246,15 @@ class SettingsSys(unittest.TestCase):
     def test_setup_keyboard_variant_survives(self):
         self.load()
         self.assertEqual((self.value("input")["layout"], self.value("input")["variant"]), ("ch", "fr"))
-        conf = self.home / ".config/hypr/golden-gate/input.lua"
+        conf = self.home / ".config/hypr/golden-gate/input.conf"
         conf.parent.mkdir(parents=True)
-        conf.write_text('hl.config({ input = { kb_layout = "ch", kb_variant = "fr" } })\n')
+        conf.write_text("input {\n    kb_layout = ch\n    kb_variant = fr\n}\n")
         self.call("setInput", "repeatRate", 40)
         text = conf.read_text()
-        self.assertIn('kb_layout = "ch"', text)
-        self.assertIn('kb_variant = "fr"', text, "the repeat rate doesn't change the keyboard")
+        self.assertIn("kb_layout = ch", text)
+        self.assertIn("kb_variant = fr", text, "the repeat rate doesn't change the keyboard")
         self.assertIn("repeat_rate = 40", text)
-        self.assertTrue(any(l.startswith("gg-hyprset input:repeat_rate 40") for l in self.stand.ran))
+        self.assertTrue(any(l.startswith("hyprctl keyword input:repeat_rate 40") for l in self.stand.ran))
 
     def test_two_windows_keep_both_changes(self):
         a = self.load()
@@ -273,7 +273,7 @@ class SettingsSys(unittest.TestCase):
         self.load(failing=("set-prefs.py",))
         self.call("setInput", "repeatRate", 40)
         self.assertIn("couldn't be saved", self.value("writeError"))
-        self.assertFalse(any(l.startswith("gg-hyprset") for l in self.stand.ran), "nothing applied that isn't saved")
+        self.assertFalse(any(l.startswith("hyprctl keyword") for l in self.stand.ran), "nothing applied that isn't saved")
 
     def test_saved_but_not_applied(self):
         self.load(refusing=True)
@@ -287,7 +287,7 @@ class SettingsSys(unittest.TestCase):
         from PySide6.QtQml import QQmlExpression
         QQmlExpression(self.view.engine().rootContext(), self.sys, 'setRecord("accessibility", "reduceMotion", true)').evaluate()
         QTest.qWait(400)
-        self.assertIn("enabled = false", (self.home / ".config/hypr/golden-gate/accessibility.lua").read_text())
+        self.assertIn("enabled = false", (self.home / ".config/hypr/golden-gate/accessibility.conf").read_text())
         self.assertEqual(self.value("writeError"), "")
 
     def test_a_failed_save_is_reported(self):

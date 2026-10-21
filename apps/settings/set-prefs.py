@@ -2,9 +2,9 @@
 """Change some keys of one Settings record, and only those keys.
 
     set-prefs.py privacy       KEY=JSON ...   privacy.json
-    set-prefs.py input         KEY=JSON ...   input.json, and hypr's input.lua from it
-    set-prefs.py accessibility KEY=JSON ...   accessibility.json, and hypr's accessibility.lua
-    set-prefs.py windows       KEY=JSON ...   windows.json, and hypr's windows.lua
+    set-prefs.py input         KEY=JSON ...   input.json, and hypr's input.conf from it
+    set-prefs.py accessibility KEY=JSON ...   accessibility.json, and hypr's accessibility.conf
+    set-prefs.py windows       KEY=JSON ...   windows.json, and hypr's windows.conf
 
 Under the record's lock it reads the latest saved record, changes the keys
 given and nothing else, and replaces the file atomically; so two Settings
@@ -13,11 +13,9 @@ both keep their change, and a window with an old copy can't write it back.
 A record whose file is damaged is left as it is and the change refused, so
 nothing already saved is lost to a guess.
 
-input.lua, accessibility.lua and windows.lua (golden-gate/ beside
-hyprland.lua, which loads them) are generated from the merged record and put
-in place with it, under the same lock: if the .lua can't be, the record is
-put back as it was, so they never disagree. Hyprland reloads them when they
-change.
+input.conf and accessibility.conf are generated from the merged record and
+put in place with it, under the same lock: if the .conf can't be, the record
+is put back as it was, so they never disagree.
 
 Prints {"ok": true, "record": {...}} (the record as saved) or
 {"ok": false, "error": "..."}; the exit status says the same."""
@@ -93,15 +91,14 @@ def put_back(path: pathlib.Path, raw: bytes | None) -> None:
 
 
 def setup_keyboard() -> dict:
-    """input.lua's layout and variant from Setup Assistant, the first time
+    """input.conf's layout and variant from Setup Assistant, the first time
     input.json is written, so a change of repeat rate keeps the keyboard."""
     seed = {}
     try:
-        text = (HYPR / "input.lua").read_text(encoding="utf-8")
-        for key in ("kb_layout", "kb_variant"):
-            m = re.search(key + r'\s*=\s*"([^"]*)"', text)
+        for line in (HYPR / "input.conf").read_text(encoding="utf-8").splitlines():
+            m = re.match(r"\s*(kb_layout|kb_variant)\s*=\s*(.*?)\s*$", line)
             if m:
-                seed["layout" if key == "kb_layout" else "variant"] = m.group(1)
+                seed["layout" if m.group(1) == "kb_layout" else "variant"] = m.group(2)
     except OSError:
         pass
     if not seed.get("layout"):
@@ -120,22 +117,21 @@ def input_conf(i: dict) -> str:
     def word(key, default):
         v = i.get(key, default)
         return v if isinstance(v, str) and re.fullmatch(r"[A-Za-z0-9_(),+-]*", v) else default
-    return ("-- Written by CitronOS Settings (Keyboard, Trackpad). Do not hand-edit.\n"
-            "hl.config({ input = {\n"
-            f"    kb_layout = \"{word('layout', 'us') or 'us'}\",\n"
-            f"    kb_variant = \"{word('variant', '')}\",\n"
-            f"    repeat_rate = {round(num('repeatRate', 25))},\n"
-            f"    repeat_delay = {round(num('repeatDelay', 600))},\n"
-            f"    sensitivity = {num('sensitivity', 0):.2f},\n"
-            "    touchpad = {\n"
-            f"        natural_scroll = {flag('naturalScroll')},\n"
-            f"        tap_to_click = {flag('tapToClick')},\n"
-            f"        clickfinger_behavior = {flag('twoFingerClick')},\n"
-            f"        disable_while_typing = {flag('disableWhileTyping')},\n"
-            f"        tap_and_drag = {flag('tapAndDrag')},\n"
-            f"        drag_lock = {max(0, min(2, round(num('dragLock', 0))))},\n"
-            f"        scroll_factor = {max(0.3, min(3.0, num('scrollFactor', 0.6))):.2f},\n"
-            "    },\n} })\n")
+    return ("input {\n"
+            f"    kb_layout = {word('layout', 'us') or 'us'}\n"
+            f"    kb_variant = {word('variant', '')}\n"
+            f"    repeat_rate = {round(num('repeatRate', 25))}\n"
+            f"    repeat_delay = {round(num('repeatDelay', 600))}\n"
+            f"    sensitivity = {num('sensitivity', 0):.2f}\n"
+            "    touchpad {\n"
+            f"        natural_scroll = {flag('naturalScroll')}\n"
+            f"        tap-to-click = {flag('tapToClick')}\n"
+            f"        clickfinger_behavior = {flag('twoFingerClick')}\n"
+            f"        disable_while_typing = {flag('disableWhileTyping')}\n"
+            f"        tap_and_drag = {flag('tapAndDrag')}\n"
+            f"        drag_lock = {max(0, min(2, round(num('dragLock', 0))))}\n"
+            f"        scroll_factor = {max(0.3, min(3.0, num('scrollFactor', 0.6))):.2f}\n"
+            "    }\n}\n")
 
 
 def windows_conf(w: dict) -> str:
@@ -155,32 +151,31 @@ def windows_conf(w: dict) -> str:
         return max(0, min(100, round(val)))
 
     return (
-        "-- Generated by Golden Gate Settings. Do not hand-edit.\n"
-        "hl.config({ general = {\n"
-        f"    resize_on_border = {flag('resizeOnBorder', True)},\n"
-        f"    extend_border_grab_area = {integer('grabArea', 12)},\n"
-        "    snap = {\n"
-        f"        enabled = {flag('snapEnabled', True)},\n"
-        f"        window_gap = {integer('windowGap', 12)},\n"
-        f"        monitor_gap = {integer('monitorGap', 12)},\n"
-        f"        border_overlap = false,\n"
-        f"        respect_gaps = {flag('respectGaps', True)},\n"
-        "    },\n"
-        "} })\n"
+        "# Generated by Golden Gate Settings. Do not hand-edit.\n"
+        "general {\n"
+        f"    resize_on_border = {flag('resizeOnBorder', True)}\n"
+        f"    extend_border_grab_area = {integer('grabArea', 12)}\n"
+        "    snap {\n"
+        f"        enabled = {flag('snapEnabled', True)}\n"
+        f"        window_gap = {integer('windowGap', 12)}\n"
+        f"        monitor_gap = {integer('monitorGap', 12)}\n"
+        f"        border_overlap = false\n"
+        f"        respect_gaps = {flag('respectGaps', True)}\n"
+        "    }\n"
+        "}\n"
     )
 
 
 def accessibility_conf(a: dict) -> str:
-    return ("-- Written by CitronOS Settings (Accessibility). Do not hand-edit.\n"
-            "hl.config({ animations = { enabled = %s } })\n" % ("false" if a.get("reduceMotion") is True else "true"))
+    return "animations {\n    enabled = %s\n}\n" % ("false" if a.get("reduceMotion") is True else "true")
 
 
 RECORDS = {
     # name: (record file, generated file and how, first-time seed)
     "privacy": (GG / "privacy.json", None, None),
-    "input": (GG / "input.json", (HYPR / "input.lua", input_conf), setup_keyboard),
-    "accessibility": (GG / "accessibility.json", (HYPR / "accessibility.lua", accessibility_conf), None),
-    "windows": (GG / "windows.json", (HYPR / "windows.lua", windows_conf), None),
+    "input": (GG / "input.json", (HYPR / "input.conf", input_conf), setup_keyboard),
+    "accessibility": (GG / "accessibility.json", (HYPR / "accessibility.conf", accessibility_conf), None),
+    "windows": (GG / "windows.json", (HYPR / "windows.conf", windows_conf), None),
 }
 
 

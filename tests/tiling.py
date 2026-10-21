@@ -62,9 +62,8 @@ with tempfile.TemporaryDirectory() as tmp:
         return r.returncode, [c.strip() for line in log.read_text().splitlines() for c in line.split(";") if c.strip()]
 
     def geometry(commands: list[str]) -> tuple[int, int, int, int] | None:
-        # Hyprland's Lua dispatchers: hl.dsp.window.resize({ x = W, y = H, window = … }).
-        size = next((re.findall(r"= (-?\d+)", c) for c in commands if c.startswith("dispatch hl.dsp.window.resize(")), None)
-        at = next((re.findall(r"= (-?\d+)", c) for c in commands if c.startswith("dispatch hl.dsp.window.move(")), None)
+        size = next((re.findall(r"-?\d+", c.split(",")[0]) for c in commands if c.startswith("dispatch resizewindowpixel exact")), None)
+        at = next((re.findall(r"-?\d+", c.split(",")[0]) for c in commands if c.startswith("dispatch movewindowpixel exact")), None)
         return (int(at[0]), int(at[1]), int(size[0]), int(size[1])) if size and at else None
 
     window = {"address": "0xabc", "at": [300, 200], "size": [800, 500], "floating": True, "monitor": 0, "fullscreen": 0}
@@ -80,7 +79,7 @@ with tempfile.TemporaryDirectory() as tmp:
         code, commands = tile(layout, window)
         got = geometry(commands)
         check(code == 0 and got == want, f"{layout}: expected {want}, got {got} (exit {code}, {commands})")
-        check(all('window = "address:0xabc"' in c for c in commands), f"{layout}: every dispatch names the window: {commands}")
+        check(all(",address:0xabc" in c for c in commands), f"{layout}: every dispatch names the window: {commands}")
 
     # Neighbours share one gap, and nothing leaves the usable area.
     l, r = expect["left"], expect["right"]
@@ -99,8 +98,7 @@ with tempfile.TemporaryDirectory() as tmp:
 
     # A tiled (not floating) window floats first; a full-screen one is left alone.
     code, commands = tile("left", {**window, "floating": False})
-    check(bool(commands) and commands[0] == 'dispatch hl.dsp.window.float({ action = "enable", window = "address:0xabc" })',
-          f"tiled window floats first: {commands}")
+    check(bool(commands) and commands[0] == "dispatch setfloating address:0xabc", f"tiled window floats first: {commands}")
     code, commands = tile("left", {**window, "fullscreen": 1})
     check(code != 0 and not commands, "a full-screen window isn't moved")
     # An explicit address (the Window menu holds focus) picks that client.
@@ -115,11 +113,13 @@ with tempfile.TemporaryDirectory() as tmp:
     code, _ = tile("sideways", window)
     check(code == 2, "an unknown layout is refused")
 
-conf = (ROOT / "compositor/hyprland/hyprland.lua").read_text()
-check('hl.bind("CTRL + ALT + " .. key, hl.dsp.exec_cmd("gg-tile " .. layout))' in conf, "⌃⌥ keys run gg-tile")
+conf = (ROOT / "compositor/hyprland/hyprland.conf").read_text()
 for key, layout in [("left", "left"), ("right", "right"), ("up", "top"), ("down", "bottom"),
                     ("RETURN", "fill"), ("C", "center"), ("BACKSPACE", "restore")]:
-    check(re.search(rf'\b{key} = "{layout}"', conf) is not None, f"⌃⌥{key} → gg-tile {layout}")
+    check(re.search(rf"^bind = CTRL ALT, {key}, exec, gg-tile {layout}$", conf, re.M) is not None, f"⌃⌥{key} → gg-tile {layout}")
+menubar = (ROOT / "shell/MenuBar.qml").read_text()
+check("id: windowMenu" in menubar and 'bar.tile("left")' in menubar and 'bar.tile("restore")' in menubar,
+      "the menu bar has a Window menu with Move & Resize")
 zoom = (ROOT / "apps/lib/ZoomMenu.qml").read_text()
 check(all(f'layout: "{l}"' in zoom for l in ["left", "right", "top", "bottom", "top-left", "bottom-right"]),
       "the green button's menu offers halves and quarters")

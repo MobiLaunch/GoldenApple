@@ -147,6 +147,31 @@ check("apps/lib/AppWindow.qml", [
     "enabled: !Theme.reduceMotion",
 ], "inactive windows recede through a non-interactive toolbar layer")
 
+check("shell/Dock.qml", [
+    "property bool tooltipReady: false",
+    "id: tooltipDwell",
+    "interval: 300",
+    "onEntered: { tile.tooltipReady = false; tooltipDwell.restart() }",
+    "onExited: { tooltipDwell.stop(); tile.tooltipReady = false }",
+    "Behavior on scale { enabled: !Prefs.reduceMotion; Spring { spring: Theme.popover } }",
+], "Dock hover dwell suppresses tooltip flicker and honors Reduce Motion")
+
+check("shell/Notifications.qml", [
+    "duration: bannerList.still ? 0 : 260",
+    "Behavior on x { enabled: !Theme.reduceMotion; Spring { spring: Theme.snappy } }",
+    "enabled: !drag.active && !Theme.reduceMotion",
+], "notification dismissal and stack transitions avoid unintended motion")
+
+check("shell/ControlCenter.qml", [
+    "Behavior on tint { ColorAnimation { duration: Prefs.reduceMotion ? 0 : 120 } }",
+    "Behavior on x { enabled: !Prefs.reduceMotion; NumberAnimation { duration: 225;",
+], "Control Center respects reduced motion while changing modules")
+
+check("shell/Switcher.qml", [
+    "scale: sw.open || Theme.reduceMotion ? 1 : 0.92",
+    "Behavior on scale { enabled: !Theme.reduceMotion; Spring { spring: Theme.popover } }",
+], "switcher panel appears in place under Reduce Motion")
+
 check("shell/MissionControl.qml", [
     "scale: !Theme.reduceMotion && (tileHover.hovered || desk.target) ? 1.025 : 1",
     "Behavior on scale { enabled: !Theme.reduceMotion;",

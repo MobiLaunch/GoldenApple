@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Finishing touches: the battery reads the firmware's own level (weighted
-across batteries; 100% when fully charged) with a smoothed time left;
-CitronOS's own alert sounds (chosen in Settings ›
+across batteries; 100% when fully charged) with a smoothed time left and a
+menu in the menu bar; CitronOS's own alert sounds (chosen in Settings ›
 Sound) play with notifications, and a chime when power is connected."""
 from __future__ import annotations
 
@@ -42,9 +42,11 @@ check("/sys/class/power_supply" in battery and "capacity" in battery, "the level
 check("level: full ? 1" in battery, "fully charged reads 100%")
 check("Calculating…" in battery and "smoothed * 0.8" in battery, "the time left is smoothed, and Calculating… at first")
 check('Prefs.chargingSound' in battery and 'soundPath("Charging")' in battery, "connecting power plays the chime, if chosen")
-for f in ("shell/widgets/Feeds.qml",):
+for f in ("shell/MenuBar.qml", "shell/LockScreen.qml", "shell/widgets/Feeds.qml"):
     text = (ROOT / f).read_text()
     check("Battery." in text and "UPower.displayDevice.percentage" not in text, f"{f} shows the same level (Battery)")
+bar = (ROOT / "shell/MenuBar.qml").read_text()
+check('id: batteryMenu' in bar and "Battery.timeText" in bar and "Battery Settings…" in bar, "the menu bar's battery has its menu")
 
 # The sounds: CitronOS's own, made by design/sounds.py, short and clean.
 sounds = ROOT / "apps/lib/assets/sounds"
@@ -70,7 +72,7 @@ with tempfile.TemporaryDirectory() as t:
     check(all((Path(t) / f"{n}.wav").read_bytes() == (sounds / f"{n}.wav").read_bytes() for n in names),
           "the sounds are what design/sounds.py makes")
 
-notes = (ROOT / "shell/macshell/MacBar.qml").read_text()
+notes = (ROOT / "shell/Notifications.qml").read_text()
 check("Prefs.soundPath(Prefs.alertSound)" in notes, "notifications play the alert sound chosen")
 pane = (ROOT / "apps/settings/panes/SoundPane.qml").read_text()
 for name in names[:-1]:

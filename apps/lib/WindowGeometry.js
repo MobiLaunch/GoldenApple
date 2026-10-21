@@ -1,6 +1,6 @@
 .pragma library
 // Window placement is shared by Quickshell app windows and the Qt Web browser.
-// The compositor's launch rule in compositor/hyprland/hyprland.lua centers a
+// The compositor's launch rule in compositor/hyprland/hyprland.conf centers a
 // floating window with a 28px upward bias, between the menu bar and the Dock.
 // Keep CENTER_BIAS in sync with that rule if its geometry ever changes.
 var CENTER_BIAS = 28;
