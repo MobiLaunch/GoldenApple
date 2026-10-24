@@ -195,7 +195,13 @@ same fields, more briefly, and should be expanded when their milestone starts.
   notification.
 - **Done when:** `systemctl --user list-units 'citronos-*'` shows them active on the ISO.
 
-### T-1.7: Keep Wi-Fi passwords off argv (CS2-016, interim) · **P2** · S
+### T-1.7: Keep Wi-Fi passwords off argv (CS2-016, interim) · **P2** · S · **done**
+- **As built:** no new helper. Settings › Wi-Fi and Setup Assistant run
+  `nmcli --ask … device wifi connect <ssid>` and write the password to its stdin
+  (`Sys.runWithInput`, and the Setup step's own Process). `tests/wifi-password.py` records
+  every argv and every stdin write in the preview harness: the password is only ever on
+  stdin, once (and the test fails on the old code). The `ps` check on a real join is
+  still to do.
 - **Files:** `apps/settings/panes/WifiPane.qml:44-51`; a new `gg-wifi-join` mode
   `--password-stdin`.
 - **Changes:** Settings runs `["gg-wifi-join", "--password-stdin", ssid]` and writes the
@@ -217,7 +223,15 @@ same fields, more briefly, and should be expanded when their milestone starts.
   clock). Plain HTTP is never used.
 - **Done when:** `ss -lntup` on a fresh login shows no 53317 listener.
 
-### T-1.9: Report preference-write failures in the shell (CS2-023, interim) · **P2** · S
+### T-1.9: Report preference-write failures in the shell (CS2-023, interim) · **P2** · S · **done**
+- **As built:** `Prefs.write(key, value, what)` is the one way the shell changes a
+  preference (Dock, widgets, Home Screen, Control Center, Night Shift, brightness,
+  screenshot options, battery percentage). It shows the change at once, runs gg-pref in a
+  watched Process, and on failure puts the old value back (unless something changed it
+  again meanwhile), sets `Prefs.saveError` and posts "Your Dock change wasn't saved" with
+  gg-pref's reason. gg-pref keeps one `desktop.json.damaged-<time>` copy of a damaged file
+  and names it. `tests/prefs-write-errors.py` covers success, failure, a damaged file and
+  Control Center (and fails on the old code).
 - **Files:** `shell/components/Prefs.qml:33-58` (`setTabletWidgets`, `setDockPinned`,
   `setWidgets`); `shell/Notifications.qml` (post a local notification);
   `apps/setup/pref-helper.py` (on a damaged file, also copy it to

@@ -30,6 +30,11 @@ def logged(self, text):
     ran.append(text)
     log(self, text)
 P.Preview.log = P.Slot(str)(logged)
+run = P.Preview.run
+def ran_process(self, cmd):            # Prefs saves through a Process it watches
+    ran.append("run " + json.dumps([str(c) for c in plain(cmd) or []]))
+    return run(self, cmd)
+P.Preview.run = P.Slot("QVariant", result="QVariantMap")(ran_process)
 
 def plain(v):
     return v.toVariant() if hasattr(v, "toVariant") else v

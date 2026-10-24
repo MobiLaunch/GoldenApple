@@ -35,6 +35,25 @@ Item {
         p.running = true
     }
     function sh(script, done) { run(["sh", "-c", script], done) }
+    // Like run(), with `input` written to the program's stdin: for secrets,
+    // which must never be in argv (any account can read /proc/PID/cmdline).
+    Component {
+        id: inputComp
+        Process {
+            id: ip
+            property var done: null
+            property string input: ""
+            stdinEnabled: true
+            stdout: StdioCollector { id: iout }
+            stderr: StdioCollector { id: ierr }
+            onStarted: { write(ip.input); stdinEnabled = false }
+            onExited: (code) => { if (ip.done) ip.done(iout.text, code, ierr.text); ip.destroy() }
+        }
+    }
+    function runWithInput(args, input, done) {
+        const p = inputComp.createObject(sys, { command: args, input: input, done: done ?? null })
+        p.running = true
+    }
 
     Component {
         id: writeComp

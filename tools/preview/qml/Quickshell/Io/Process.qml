@@ -14,7 +14,8 @@ QtObject {
     property int processId: 0
     signal started()
     signal exited(int exitCode, int exitStatus)
-    function write(data) {}
+    // What a program would be sent on stdin, for tests (secrets go here, not argv).
+    function write(data) { __preview.log("stdin " + JSON.stringify({ command: proc.command, data: String(data) })) }
     function signal(sig) {}
     function startDetached() { __preview.log("detached " + JSON.stringify(command)) }
     property QtObject __timer: Timer {

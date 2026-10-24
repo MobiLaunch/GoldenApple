@@ -39,10 +39,7 @@ Scope {
     readonly property bool showThumbnail: Prefs.data.screenshot?.thumbnail ?? true
     readonly property bool showPointer: Prefs.data.screenshot?.pointer ?? false
     function setOption(key, value) {
-        const next = Object.assign({}, Prefs.data.screenshot ?? {})
-        next[key] = value
-        Prefs.data = Object.assign({}, Prefs.data, { screenshot: next })   // at once, before the file is rewritten
-        Quickshell.execDetached(["gg-pref", "screenshot." + key, JSON.stringify(value)])
+        Prefs.write("screenshot." + key, value, "screenshot")   // at once, before the file is rewritten
     }
 
     // The screen in front, and where it sits in the desktop's coordinates.

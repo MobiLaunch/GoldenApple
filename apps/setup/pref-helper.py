@@ -7,6 +7,7 @@ import os
 import pathlib
 import sys
 import tempfile
+import time
 
 if len(sys.argv) != 3:
     raise SystemExit("usage: gg-pref dotted.path JSON_VALUE")
@@ -26,16 +27,33 @@ directory.mkdir(parents=True, exist_ok=True)
 lock = open(directory / ".desktop.json.lock", "a")
 fcntl.flock(lock, fcntl.LOCK_EX)
 
+def damaged(why: str, raw: bytes | None):
+    """Refuse, and keep a copy of the damaged file for repair (one per content)."""
+    kept = ""
+    if raw is not None:
+        copies = sorted(directory.glob("desktop.json.damaged-*"))
+        same = next((c for c in copies if c.read_bytes() == raw), None)
+        if same is None:
+            same = directory / f"desktop.json.damaged-{time.strftime('%Y%m%d-%H%M%S')}"
+            same.write_bytes(raw)
+        kept = f"; a copy is in {same.name}"
+    raise SystemExit(f"desktop.json can't be used ({why}); it was left as it is{kept}")
+
+
 # A damaged file is left as it is and the change refused: starting again
 # from {} would throw away every other preference on a guess.
+raw = None
 try:
-    data = json.loads(path.read_bytes().decode("utf-8"))
+    raw = path.read_bytes()
+    data = json.loads(raw.decode("utf-8"))
 except FileNotFoundError:
     data = {}
-except (OSError, ValueError) as exc:
-    raise SystemExit(f"desktop.json can't be used ({getattr(exc, 'strerror', None) or exc}); it was left as it is")
+except OSError as exc:
+    damaged(exc.strerror or str(exc), None)
+except ValueError as exc:
+    damaged(str(exc), raw)
 if not isinstance(data, dict):
-    raise SystemExit("desktop.json is damaged; it was left as it is")
+    damaged("it isn't a set of preferences", raw)
 
 node = data
 parts = [p for p in key.split(".") if p]

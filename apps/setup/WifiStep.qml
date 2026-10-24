@@ -77,7 +77,12 @@ StepFrame {
         id: connect
         property string ssid
         property string password
-        command: password ? ["nmcli", "device", "wifi", "connect", ssid, "password", password] : ["nmcli", "device", "wifi", "connect", ssid]
+        // The password goes to nmcli on stdin (--ask), never on its command
+        // line, where every account on the computer could read it.
+        command: password ? ["nmcli", "--ask", "device", "wifi", "connect", ssid] : ["nmcli", "device", "wifi", "connect", ssid]
+        stdinEnabled: true
+        onStarted: { if (password) write(password + "\n"); stdinEnabled = false }
+        onRunningChanged: if (!running) stdinEnabled = true
         stderr: StdioCollector { id: connectErr }
         onExited: (code) => {
             if (code === 0) { step.joining = ""; step.error = ""; step.refresh() }

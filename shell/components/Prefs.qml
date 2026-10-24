@@ -33,12 +33,7 @@ Singleton {
     // Tablet Home Screen widgets are independent of desktop widgets. Their
     // order and sizes survive sign-out, rotation and mode switching.
     readonly property var tabletWidgets: Array.isArray(data.tablet?.widgets) ? data.tablet.widgets : null
-    function setTabletWidgets(list) {
-        data = Object.assign({}, data, {
-            tablet: Object.assign({}, data.tablet ?? {}, { widgets: list })
-        })
-        Quickshell.execDetached(["gg-pref", "tablet.widgets", JSON.stringify(list)])
-    }
+    function setTabletWidgets(list) { write("tablet.widgets", list, "Home Screen") }
     readonly property real dockSize: data.dock?.size ?? 54
     readonly property bool dockIndicators: data.dock?.indicators ?? true
     readonly property bool dockShowRecents: data.dock?.showRecents ?? true
@@ -52,16 +47,10 @@ Singleton {
     ]
     readonly property var keptInDock: dockPinned ?? defaultDockPinned
     // Changes the Dock at once, and saves it (gg-pref writes desktop.json).
-    function setDockPinned(ids) {
-        data = Object.assign({}, data, { dock: Object.assign({}, data.dock ?? {}, { pinned: ids }) })
-        Quickshell.execDetached(["gg-pref", "dock.pinned", JSON.stringify(ids)])
-    }
+    function setDockPinned(ids) { write("dock.pinned", ids, "Dock") }
     // Desktop widgets, [{ id, kind, size, col, row }]; null: the default set.
     readonly property var widgets: Array.isArray(data.widgets) ? data.widgets : null
-    function setWidgets(list) {
-        data = Object.assign({}, data, { widgets: list })
-        Quickshell.execDetached(["gg-pref", "widgets", JSON.stringify(list)])
-    }
+    function setWidgets(list) { write("widgets", list, "widgets") }
     readonly property string glass: data.glass ?? "clear"
     readonly property bool reduceMotion: data.reduceMotion ?? false
     readonly property bool reduceTransparency: data.reduceTransparency ?? false
@@ -120,6 +109,52 @@ Singleton {
         const session = minutes < 0 ? focusStatus.stop() : focusStatus.start(minutes)
         const p = focusWriter.createObject(prefs, {command:["gg-pref", "focus.session", JSON.stringify(session)]})
         p.running = true
+    }
+    // Every change the shell makes to a preference: shown at once, saved by
+    // gg-pref (which refuses to touch a damaged desktop.json), and if the save
+    // fails, put back as it was with a notification saying why: a change that
+    // looks made but was never saved is lost at the next login.
+    //   Prefs.write("dock.pinned", ids, "Dock")
+    property string saveError: ""
+    function write(key, value, what) {
+        const before = data
+        data = setIn(data, key.split("."), value)
+        const p = prefWriter.createObject(prefs, { command: ["gg-pref", key, JSON.stringify(value)],
+                                                   before: before, key: key, wrote: JSON.stringify(value), what: what || "setting" })
+        p.running = true
+    }
+    function setIn(obj, path, value) {
+        const out = Object.assign({}, obj ?? {})
+        out[path[0]] = path.length === 1 ? value : setIn(typeof out[path[0]] === "object" && out[path[0]] !== null ? out[path[0]] : {}, path.slice(1), value)
+        return out
+    }
+    Component {
+        id: prefWriter
+        Process {
+            id: w
+            property var before
+            property string key
+            property string wrote
+            property string what
+            stderr: StdioCollector { id: writeErr }
+            onExited: (code) => {
+                if (code !== 0) {
+                    // Only undo it if nothing changed it again meanwhile.
+                    if (JSON.stringify(prefs.valueAt(prefs.data, w.key)) === w.wrote)
+                        prefs.data = prefs.setIn(prefs.data, w.key.split("."), prefs.valueAt(w.before, w.key))
+                    const why = writeErr.text.trim() || "it couldn't be saved"
+                    prefs.saveError = why
+                    Quickshell.execDetached(["notify-send", "-a", "CitronOS", "-i", "dialog-warning",
+                                             "Your " + w.what + " change wasn't saved", why])
+                }
+                w.destroy()
+            }
+        }
+    }
+    function valueAt(obj, key) {
+        let node = obj
+        for (const part of key.split(".")) node = (node && typeof node === "object") ? node[part] : undefined
+        return node
     }
     readonly property bool nightShift: data.display?.nightShift ?? false
     readonly property int displayWarmth: data.display?.warmth ?? 4500

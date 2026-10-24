@@ -544,6 +544,14 @@ jobs:
         run: python tests/control-center-join.py
         env:
           QT_QPA_PLATFORM: offscreen
+      - name: "A preference change the shell can't save is put back and said"
+        run: python tests/prefs-write-errors.py
+        env:
+          QT_QPA_PLATFORM: offscreen
+      - name: "Wi-Fi passwords go to nmcli on stdin, never on a command line"
+        run: python tests/wifi-password.py
+        env:
+          QT_QPA_PLATFORM: offscreen
       - name: Desktop widgets draw, edit and add
         run: python tests/desktop-widgets.py
         env:

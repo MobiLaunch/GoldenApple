@@ -125,7 +125,7 @@ PanelWindow {
     // Coalesce drag events; hardware follows at 25 Hz and the last chosen
     // value is saved once the pointer settles, including after dismissal.
     Timer { id: brightnessApply; interval: 40; onTriggered: cc.run(["brightnessctl", "-q", "set", Math.round(cc.brightness * 100) + "%"]) }
-    Timer { id: brightnessSave; interval: 240; onTriggered: Quickshell.execDetached(["gg-pref", "display.brightness", String(cc.brightness)]) }
+    Timer { id: brightnessSave; interval: 240; onTriggered: Prefs.write("display.brightness", cc.brightness, "brightness") }
     function setDarkMode() {
         Theme.dark = !Theme.dark
         run(["gsettings", "set", "org.gnome.desktop.interface", "color-scheme", Theme.dark ? "prefer-dark" : "default"])
@@ -135,7 +135,9 @@ PanelWindow {
     }
     function setNightShift() {
         const enabled = !nightShift
-        Quickshell.execDetached(["gg-pref", "display.nightShift", enabled ? "true" : "false"])
+        // A turn later: a Prefs change re-evaluates every binding on it, and
+        // the press's squash should start before that, not after.
+        Qt.callLater(Prefs.write, "display.nightShift", enabled, "Night Shift")
         run(enabled ? ["hyprsunset", "-t", String(Prefs.displayWarmth)] : ["pkill", "-x", "hyprsunset"])
     }
 
@@ -258,8 +260,7 @@ PanelWindow {
         .map((id) => extraCatalog.find((e) => e.id === id)).filter((e) => !!e)
     property bool editing: false
     function setExtras(ids) {
-        Prefs.data = Object.assign({}, Prefs.data, { controlCenter: Object.assign({}, Prefs.data.controlCenter ?? {}, { extras: ids }) })
-        Quickshell.execDetached(["gg-pref", "controlCenter.extras", JSON.stringify(ids)])
+        Prefs.write("controlCenter.extras", ids, "Control Center")
     }
     function toggleExtra(id) {
         const ids = extras.map((e) => e.id)

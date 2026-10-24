@@ -44,12 +44,15 @@ Pane {
     function join(ssid, password) {
         if (connecting || radioBusy) return
         error = ""; joining = ssid; connecting = true
-        sys.run(password ? ["nmcli", "--wait", "30", "device", "wifi", "connect", ssid, "password", password] : ["nmcli", "--wait", "30", "device", "wifi", "connect", ssid],
-                (o, code, err) => {
+        // The password goes to nmcli on stdin (--ask), never on its command
+        // line, where every account on the computer could read it.
+        const done = (o, code, err) => {
                     connecting = false
                     if (code === 0) { joining = ""; refresh() }
                     else error = "Couldn't join “" + ssid + "”. " + (err || o || "Check the password and try again.").trim()
-                })
+                }
+        if (password) sys.runWithInput(["nmcli", "--ask", "--wait", "30", "device", "wifi", "connect", ssid], password + "\n", done)
+        else sys.run(["nmcli", "--wait", "30", "device", "wifi", "connect", ssid], done)
     }
     readonly property var current: networks.find((n) => n.active) ?? null
 

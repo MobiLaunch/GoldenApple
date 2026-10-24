@@ -790,7 +790,7 @@ PanelWindow {
             { text: "Power Source: " + Battery.sourceText, enabled: false },
             "-",
             { text: "Show Percentage in Menu Bar", checked: Prefs.barBatteryPercent,
-              action: () => Quickshell.execDetached(["gg-pref", "menuBar.items.batteryPercent", Prefs.barBatteryPercent ? "false" : "true"]) },
+              action: () => Prefs.write("menuBar.items.batteryPercent", !Prefs.barBatteryPercent, "menu bar") },
             { text: "Battery Settings…", action: () => Quickshell.execDetached(["gg-settings", "battery"]) }
         ]
     }
