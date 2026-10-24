@@ -132,6 +132,10 @@ EOF
       rsvg-convert -w 3840 -h 2400 -o "$R/usr/share/backgrounds/golden-gate/$name.png" "$svg"
     fi
   done
+  # Photographs, as they are (Club Soda's own picture among them).
+  for photo in "$REPO"/themes/wallpapers/*.jpg; do
+    [[ -e $photo ]] && install -m644 "$photo" "$R/usr/share/backgrounds/golden-gate/"
+  done
 
   local SKEL="$R/etc/skel"
   if [[ ! -d "$SKEL/.config/quickshell/golden-gate" ]]; then
@@ -139,7 +143,7 @@ EOF
     mkdir -p "$SKEL/.config/hypr/golden-gate" "$SKEL/.config/quickshell" \
              "$SKEL/.config/ghostty/themes" "$SKEL/.config/gtk-4.0" "$SKEL/.config/gtk-3.0" \
              "$SKEL/.config/fontconfig/conf.d"
-    sed -e 's#__GG_WALLPAPER__#/usr/share/backgrounds/golden-gate/tide.png#' \
+    sed -e 's#__GG_WALLPAPER__#/usr/share/backgrounds/golden-gate/club-soda.jpg#' \
         -e 's#__GG_APPS__#/usr/share/golden-gate/apps#' \
         "$REPO/compositor/hyprland/hyprland.conf" > "$SKEL/.config/hypr/hyprland.conf"
     cp "$REPO/design/dist/hyprland-motion.conf" "$SKEL/.config/hypr/golden-gate/motion.conf"
@@ -180,7 +184,7 @@ EOF
     mkdir -p "$SKEL/.config/hypr/golden-gate"
     [[ -e "$SKEL/.config/hypr/golden-gate/windows.conf" ]] ||
         printf '# Written by Settings: window snapping and resize.\n' > "$SKEL/.config/hypr/golden-gate/windows.conf"
-    sed -e 's#__GG_WALLPAPER__#/usr/share/backgrounds/golden-gate/tide.png#' \
+    sed -e 's#__GG_WALLPAPER__#/usr/share/backgrounds/golden-gate/club-soda.jpg#' \
         -e 's#__GG_APPS__#/usr/share/golden-gate/apps#' \
         "$REPO/compositor/hyprland/hyprland.conf" > "$SKEL/.config/hypr/hyprland.conf"
   fi
@@ -295,7 +299,7 @@ fi
 say "Hyprland config → $CONF/hypr"
 BG_ABS="${BG_PATH/#\~/$HOME}"
 if [[ $MODE == system ]]; then APPS_RUN=/usr/share/golden-gate/apps; else APPS_RUN="$DATA/golden-gate/apps"; fi
-sed -e "s#__GG_WALLPAPER__#$BG_ABS/tide.png#" -e "s#__GG_APPS__#$APPS_RUN#" "$REPO/compositor/hyprland/hyprland.conf" > "$REPO/.hyprland.tmp"
+sed -e "s#__GG_WALLPAPER__#$BG_ABS/club-soda.jpg#" -e "s#__GG_APPS__#$APPS_RUN#" "$REPO/compositor/hyprland/hyprland.conf" > "$REPO/.hyprland.tmp"
 place "$REPO/.hyprland.tmp" "$CONF/hypr/hyprland.conf"
 rm -f "$REPO/.hyprland.tmp"
 place "$REPO/design/dist/hyprland-motion.conf" "$CONF/hypr/golden-gate/motion.conf"
@@ -458,7 +462,7 @@ mkdir -p "$DATA/icons"
 cp -a "$REPO/icons/GoldenGate" "$DATA/icons/GoldenGate"
 command -v gtk-update-icon-cache >/dev/null && gtk-update-icon-cache -q -f "$DATA/icons/GoldenGate" || true
 
-# 6. Wallpapers: PNGs for the shell, lock screen and menu-bar sampling
+# 6. Wallpapers: PNGs (from the SVGs) and photographs for the shell, lock screen and menu-bar sampling
 BG_DIR="$DATA/backgrounds/golden-gate"
 mkdir -p "$BG_DIR"
 for svg in "$REPO"/prototype/assets/wallpapers/*.svg; do
@@ -469,6 +473,9 @@ for svg in "$REPO"/prototype/assets/wallpapers/*.svg; do
   else
     say "rsvg-convert not found (install librsvg); skipping $name.png"
   fi
+done
+for photo in "$REPO"/themes/wallpapers/*.jpg; do
+  [[ -e $photo ]] && install -m644 "$photo" "$BG_DIR/"
 done
 
 # What the system calls itself (os-release), from apps/lib/theme/Release.qml:

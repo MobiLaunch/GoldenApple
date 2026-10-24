@@ -16,7 +16,7 @@ Singleton {
     readonly property string file: (Quickshell.env("XDG_CONFIG_HOME") || Quickshell.env("HOME") + "/.config") + "/golden-gate/desktop.json"
     property var data: ({})
 
-    readonly property string wallpaper: data.wallpaper || Quickshell.env("GG_WALLPAPER") || "/usr/share/backgrounds/golden-gate/tide.png"
+    readonly property string wallpaper: data.wallpaper || Quickshell.env("GG_WALLPAPER") || "/usr/share/backgrounds/golden-gate/club-soda.jpg"
     // Shell glass bends live captures of the windows under it (DesktopBackdrop);
     // off ("glassWindows": false), it bends only the wallpaper.
     readonly property bool glassWindows: data.glassWindows ?? true

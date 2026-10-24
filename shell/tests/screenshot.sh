@@ -16,7 +16,7 @@ mkdir -p "$OUT"
 
 export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-$(mktemp -d)}"
 chmod 700 "$XDG_RUNTIME_DIR"
-WALL="${GG_WALLPAPER:-/usr/share/backgrounds/golden-gate/tide.png}"
+WALL="${GG_WALLPAPER:-/usr/share/backgrounds/golden-gate/club-soda.jpg}"
 export GG_WALLPAPER="$WALL"
 cat > "$XDG_RUNTIME_DIR/sway.conf" <<EOF
 # No bg: the shell draws the wallpaper (a swaybg would cover it).

@@ -10,6 +10,10 @@ that. Internal names (`org.goldengate.*` app IDs, `gg-*`
 commands, `~/.config/golden-gate`) are unchanged, so existing installs keep
 their settings.
 
+Club Soda's wallpaper is *Club Soda*, a photograph of colourful bubbles by
+Dariusz Kieltyka ([credits](themes/wallpapers/CREDITS.md)); Tide and Dusk are
+still in Settings ▸ Wallpaper.
+
 **Citron Intelligence** adds Gemini-powered questions, Writing Tools, image
 generation and photo editing. Open it with **Super+Shift+Space** or the menu
 bar's wand. Add your own Gemini key in **Settings → Citron Intelligence**.

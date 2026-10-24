@@ -13,7 +13,7 @@ import "../../lib/paths.js" as Paths
 
 Pane {
     id: pane
-    readonly property string current: sys.prefs.wallpaper || Quickshell.env("GG_WALLPAPER") || "/usr/share/backgrounds/golden-gate/tide.png"
+    readonly property string current: sys.prefs.wallpaper || Quickshell.env("GG_WALLPAPER") || "/usr/share/backgrounds/golden-gate/club-soda.jpg"
     readonly property string home: Quickshell.env("HOME") ?? ""
     readonly property string userWalls: (Quickshell.env("XDG_DATA_HOME") || home + "/.local/share") + "/backgrounds/golden-gate"
     readonly property var photoDirs: (Quickshell.env("GG_PHOTOS_DIRS") || home + "/Pictures").split(":").filter((d) => d)
