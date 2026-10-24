@@ -42,8 +42,8 @@ update bundles and a release channel, the async-icon crash fix, the lock-screen
 separation, systemd user units, Wi-Fi password off argv, AirDrop off by default plus a
 firewall, Prefs write errors, and security lints.
 **Depends on:** nothing.
-**Status:** T-1.1 to T-1.10 are built and tested in CI, except T-1.4's shared `AppIcon`
-component (its crash fix is in). See the "As built" notes in [07](07-IMPLEMENTATION-BACKLOG.md). The criteria below that need a real session (cold
+**Status:** T-1.1 to T-1.10 are built and tested in CI. See the "As built" notes in
+[07](07-IMPLEMENTATION-BACKLOG.md). The criteria below that need a real session (cold
 starts, killing the lock and the shell, `ss -lntup` after login) wait for the session
 harness (T-0.2).
 **Exit criteria:**

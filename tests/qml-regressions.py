@@ -143,6 +143,24 @@ for qml in sorted((root / "shell").rglob("*.qml")):
         near = lines[max(0, i - 10):i + 10]
         if any(icon_source.search(l) for l in near):
             errors.append(f"{qml.relative_to(root)}:{i + 1}: a theme icon must not load asynchronously")
+    # And every app or theme icon is an AppIcon (ui/AppIcon.qml), which loads
+    # theme icons on the GUI thread and files in the background, rather than
+    # an Image that has to remember to.
+    for i, line in enumerate(lines):
+        if not re.search(r"(^|[^\w.])Image\s*\{", line):
+            continue
+        depth, block = 0, []
+        for l in lines[i:]:
+            depth += l.count("{") - l.count("}")
+            block.append(l)
+            if depth <= 0:
+                break
+        # The Image's own source (a nested item's doesn't count), with the line
+        # after it for a source that goes on there.
+        src = [b + " " + (block[k + 1] if k + 1 < len(block) else "")
+               for k, b in enumerate(block) if re.match(r"\s*source:", b)][:1]
+        if src and icon_source.search(src[0]):
+            errors.append(f"{qml.relative_to(root)}:{i + 1}: draw an app or theme icon with AppIcon, not Image")
 
 if errors:
     print("\n".join(errors), file=sys.stderr)

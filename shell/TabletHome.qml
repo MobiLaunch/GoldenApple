@@ -409,17 +409,12 @@ PanelWindow {
                                         size: tablet.iconSize * 0.49
                                     }
                                 }
-                                Image {
+                                Shared.AppIcon {
                                     id: appIcon
                                     anchors.fill: parent
                                     visible: status === Image.Ready
                                     source: tablet.iconFor(appTile.modelData)
                                     sourceSize: Qt.size(tablet.iconSize * 2, tablet.iconSize * 2)
-                                    fillMode: Image.PreserveAspectFit
-                                    // Theme icons (image://icon) load on the GUI thread: Quickshell's icon
-                                    // provider crashed the shell when loading them in the background.
-                                    asynchronous: !String(source).startsWith("image://")
-                                    smooth: true
                                 }
                             }
                             // App captions sit directly over wallpaper, not in dark pills.

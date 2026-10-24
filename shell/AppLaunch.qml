@@ -20,6 +20,7 @@ import Quickshell.Hyprland
 import Quickshell.Wayland
 import QtQuick
 import "ui/theme"
+import "ui" as Shared
 import "ui/WindowGeometry.js" as WindowGeometry
 import "components"
 
@@ -288,7 +289,7 @@ PanelWindow {
         }
         // The icon: fills the card at first (so it starts as the Dock icon itself),
         // then settles in the middle, like an iOS launch screen.
-        Image {
+        Shared.AppIcon {
             readonly property real s: {
                 const start = Math.min(card.width, card.height)
                 const t = card.ease(0, 0.55, card.grow)
@@ -297,8 +298,7 @@ PanelWindow {
             width: s; height: s
             anchors.centerIn: parent
             source: launcher.entry ? Quickshell.iconPath(launcher.entry.icon, "application-x-executable") : ""
-            sourceSize: Qt.size(256, 256)
-            smooth: true; mipmap: true
+            sourceSize: Qt.size(256, 256)      // fixed: the icon grows as the card opens
         }
     }
 }

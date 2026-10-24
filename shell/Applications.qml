@@ -469,28 +469,21 @@ PanelWindow {
                                 spacing: parent.width * 0.06
                                 Repeater {
                                     model: cell.isFolder ? cell.modelData.apps.slice(0, 9) : []
-                                    delegate: Image {
+                                    delegate: Shared.AppIcon {
                                         required property var modelData
                                         width: apps.iconSize * 0.22; height: width
                                         source: apps.iconFor(modelData)
-                                        sourceSize: Qt.size(width * 2, height * 2)
-                                        smooth: true; mipmap: true
                                     }
                                 }
                             }
                         }
-                        Image {
+                        Shared.AppIcon {
                             id: icon
                             objectName: "launchpadIcon:" + cell.modelData.id
                             anchors { horizontalCenter: parent.horizontalCenter; top: parent.top; topMargin: 10 * apps.layoutScale }
                             width: apps.iconSize; height: apps.iconSize
                             opacity: cell.isFolder ? 0 : 1
                             source: cell.isFolder ? "" : apps.iconFor(cell.modelData)
-                            sourceSize: Qt.size(apps.iconSize * 2, apps.iconSize * 2)
-                            smooth: true; mipmap: true
-                            // Theme icons (image://icon) load on the GUI thread: Quickshell's icon
-                            // provider crashed the shell when loading them in the background.
-                            asynchronous: !String(source).startsWith("image://")
                             scale: area.pressed && !Theme.reduceMotion ? 0.92 : 1
                             Behavior on scale { enabled: !Theme.reduceMotion; NumberAnimation { duration: 90; easing.type: Easing.OutCubic } }
                             // No offscreen layer allocated on each press.
@@ -625,13 +618,11 @@ PanelWindow {
                         Keys.onSpacePressed: (event) => { if (!event.isAutoRepeat) apps.launch(modelData) }
                         width: folderPanel.cell
                         height: apps.iconSize * 0.8 + 52
-                        Image {
+                        Shared.AppIcon {
                             id: ficon
                             anchors { horizontalCenter: parent.horizontalCenter; top: parent.top; topMargin: 8 }
                             width: apps.iconSize * 0.8; height: width
                             source: apps.iconFor(fcell.modelData)
-                            sourceSize: Qt.size(width * 2, height * 2)
-                            smooth: true; mipmap: true
                             scale: farea.pressed && !Theme.reduceMotion ? 0.92 : 1
                             Behavior on scale { NumberAnimation { duration: 90; easing.type: Easing.OutCubic } }
                         }

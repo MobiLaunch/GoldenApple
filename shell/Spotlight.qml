@@ -209,7 +209,7 @@ PanelWindow {
                             spacing: 12
                             Item {
                                 Layout.preferredWidth: 30; Layout.preferredHeight: 30
-                                Image {
+                                UI.AppIcon {
                                     id: rowIcon
                                     anchors.fill: parent
                                     visible: row.modelData.kind === "app"

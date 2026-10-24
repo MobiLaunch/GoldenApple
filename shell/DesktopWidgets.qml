@@ -351,7 +351,7 @@ Scope {
                         readonly property bool chosen: gallery.filter === modelData.kind
                         width: side.width; height: 32; radius: 8
                         color: chosen ? Theme.selection : rowHover.hovered ? Theme.fill : "transparent"
-                        Image {
+                        Shared.AppIcon {
                             id: appIcon
                             x: 8; anchors.verticalCenter: parent.verticalCenter
                             width: 22; height: 22

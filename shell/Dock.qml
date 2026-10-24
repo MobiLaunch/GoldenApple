@@ -9,6 +9,7 @@ import QtQuick
 import QtQuick.Layouts
 import QtQuick.Effects
 import "ui/theme"
+import "ui" as Shared
 import "components"
 
 PanelWindow {
@@ -468,7 +469,7 @@ PanelWindow {
         // Calendar apps show today's date, drawn over a date-less icon.
         readonly property bool calendar: /calendar/i.test(modelData.icon ?? "") && calBlank.loaded
 
-        Image {
+        Shared.AppIcon {
             id: icon
             width: dock.baseSize; height: dock.baseSize
             x: 0
@@ -477,8 +478,6 @@ PanelWindow {
             y: tile.height - height + launchOffset - activationLift
             z: Math.round(width * 10)
             source: tile.calendar ? calBlank.source : dock.iconForApp(tile.modelData)
-            sourceSize: Qt.size(dock.baseSize * 2, dock.baseSize * 2)
-            smooth: true; mipmap: true
             // Pressed, the icon darkens and settles a few percent, without
             // fighting the Dock's size-based magnification wave.
             scale: !Prefs.reduceMotion && tipArea.pressed ? 0.955 : 1
@@ -762,7 +761,7 @@ PanelWindow {
                     width: dock.baseSize + (index < dock.places.length - 1 ? 6 : 0)
                     height: row.height
 
-                    Image {
+                    Shared.AppIcon {
                         id: placeIcon
                         width: dock.baseSize
                         height: dock.baseSize
@@ -774,8 +773,6 @@ PanelWindow {
                         source: place.modelData.action === "applications"
                             ? (Quickshell.iconPath("view-app-grid", true) || Quickshell.iconPath("start-here", true) || Qt.resolvedUrl("assets/symbols/apps@accent.svg"))
                             : Quickshell.iconPath(place.modelData.icon, "folder")
-                        sourceSize: Qt.size(dock.baseSize * 2, dock.baseSize * 2)
-                        smooth: true; mipmap: true
                         scale: !Prefs.reduceMotion && placeArea.pressed ? 0.955 : 1
                         Behavior on scale { enabled: !Prefs.reduceMotion; NumberAnimation { duration: 75; easing.type: Easing.OutCubic } }
                         readonly property bool gpu: GraphicsInfo.api !== GraphicsInfo.Software

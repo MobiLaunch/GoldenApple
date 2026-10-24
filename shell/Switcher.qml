@@ -10,6 +10,7 @@ import Quickshell.Hyprland
 import QtQuick
 import QtQuick.Layouts
 import "ui/theme"
+import "ui" as Shared
 import "components"
 
 PanelWindow {
@@ -124,7 +125,7 @@ PanelWindow {
                     ColumnLayout {
                         anchors.centerIn: parent
                         spacing: 6
-                        Image {
+                        Shared.AppIcon {
                             Layout.alignment: Qt.AlignHCenter
                             Layout.preferredWidth: 96; Layout.preferredHeight: 96
                             sourceSize: Qt.size(192, 192)

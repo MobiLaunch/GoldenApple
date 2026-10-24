@@ -353,7 +353,7 @@ Item {
             spacing: 3
             Row {
                 spacing: 5
-                Image {
+                Shared.AppIcon {
                     width: 16; height: 16
                     visible: status === Image.Ready
                     source: Quickshell.iconPath(DesktopEntries.byId("org.goldengate.Notes")?.icon ?? "", true) || ""

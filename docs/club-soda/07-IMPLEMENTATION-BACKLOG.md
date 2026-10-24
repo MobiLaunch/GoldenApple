@@ -148,12 +148,19 @@ same fields, more briefly, and should be expanded when their milestone starts.
 - **Done when:** the tests pass, the first signed release is published, and the README's
   update section is updated.
 
-### T-1.4: Theme-icon crash fix and `AppIcon` (CS2-004) · **P1** · S · **crash fix done; `AppIcon` to do**
-- **As built so far:** the crash fix. The theme-icon Images in `shell/Applications.qml`
-  and `shell/TabletHome.qml` load synchronously when their source is `image://`
-  (`asynchronous: !String(source).startsWith("image://")`), and `tests/qml-regressions.py`
-  rejects an asynchronous Image with an `iconPath`/`iconFor` source anywhere in `shell/`.
-  The shared `AppIcon` component and moving the other Images onto it are still to do.
+### T-1.4: Theme-icon crash fix and `AppIcon` (CS2-004) · **P1** · S · **done**
+- **As built:** `apps/lib/AppIcon.qml` (the shell's `ui/AppIcon.qml`) is an `Image` with
+  `asynchronous: !String(source).startsWith("image://")` (theme icons on the GUI thread,
+  files in the background), `sourceSize` at 2× its size, mipmaps, aspect kept and
+  `Accessible.ignored`. Being an Image, callers keep `status`, `scale`, `layer` and ids, and
+  callers pass the source (the shell's approved-artwork lookups stay where they are) rather
+  than an `icon`/`fallback` pair. Every app and theme icon in the shell uses it: the Dock
+  (apps and places), Launchpad (cells, folder previews, open folders), Tablet Home,
+  Mission Control (both), the launch card (its `sourceSize` fixed, as it grows), Spotlight,
+  the app switcher, the widget gallery and the Notes widget. `tests/qml-regressions.py`
+  now fails any `Image` in `shell/` whose source is an app or theme icon, as well as an
+  asynchronous one; on the old shell it finds all 13. The Dock and Launchpad render
+  pixel-identically in the preview. Still to do: the 20-cold-start session-harness check.
 - **Files:** new `apps/lib/AppIcon.qml`; `shell/Applications.qml:480-494`,
   `shell/TabletHome.qml:412-421`, `shell/Dock.qml`, `shell/MissionControl.qml:205-212`,
   `shell/AppLaunch.qml:299`, `shell/DesktopWidgets.qml:358`; `tests/qml-regressions.py`.

@@ -16,6 +16,7 @@ import Quickshell.Hyprland
 import QtQuick
 import QtQuick.Effects
 import "ui/theme"
+import "ui" as Shared
 import "components"
 import "missioncontrol/layout.js" as Layout
 
@@ -203,7 +204,7 @@ PanelWindow {
                                 radius: 3
                                 color: Theme.dark ? "#e62c2c2e" : "#f2f6f6f8"
                                 border { width: 0.5; color: "#33000000" }
-                                Image {
+                                Shared.AppIcon {
                                     anchors.centerIn: parent
                                     width: Math.min(18, parent.height * 0.6); height: width
                                     source: Quickshell.iconPath(DesktopEntries.byId(o.class)?.icon ?? o.class, "application-x-executable")
@@ -285,7 +286,7 @@ PanelWindow {
                 visible: !shot.hasContent
                 radius: 14
                 color: Theme.dark ? "#2c2c2e" : "#f6f6f8"
-                Image {
+                Shared.AppIcon {
                     anchors.centerIn: parent
                     width: Math.min(96, parent.width * 0.4, parent.height * 0.5); height: width
                     source: Quickshell.iconPath(DesktopEntries.byId(win.modelData.appId)?.icon ?? win.modelData.appId, "application-x-executable")
