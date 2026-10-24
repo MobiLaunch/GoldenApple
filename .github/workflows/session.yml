@@ -1,0 +1,67 @@
+name: Session
+
+# The real shell (qs -c golden-gate) in a clean Arch account under headless
+# Sway (tests/session/run.sh; T-0.2): cold starts that must not crash, every
+# surface in light and dark as screenshots, and the lock screen killed while
+# locked. The screenshots and logs are in the session artifact, and the
+# contact sheet in the job summary. The ISO's boot test runs Hyprland itself
+# in QEMU.
+on:
+  push:
+    paths:
+      - shell/**
+      - apps/lib/**
+      - compositor/hyprland/**
+      - distro/systemd/**
+      - scripts/install.sh
+      - tests/session/**
+      - .github/workflows/session.yml
+  workflow_dispatch:
+    inputs:
+      starts:
+        description: Cold starts
+        type: number
+        default: 10
+
+concurrency:
+  group: session-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  session:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: The shell in a clean Arch account, under headless Sway
+        env:
+          STARTS: ${{ inputs.starts || 10 }}
+        run: |
+          docker run --rm -v "$PWD:/repo" -v "$GITHUB_STEP_SUMMARY:/summary.md" -e STARTS \
+            -e GITHUB_STEP_SUMMARY=/summary.md -w /repo archlinux:latest bash -euo pipefail -c '
+            for try in 1 2 3; do   # mirrors drop connections now and then
+              pacman -Syu --noconfirm --needed quickshell hyprland sway grim qt6-declarative qt6-wayland qt6-svg \
+                qt6-shadertools qt6-5compat qt6-multimedia qt6-imageformats dbus dconf glib2 gsettings-desktop-schemas \
+                python python-pillow mesa inter-font ttf-jetbrains-mono adwaita-icon-theme hicolor-icon-theme \
+                libnotify upower pipewire wireplumber util-linux procps-ng librsvg imagemagick jq gtk3 >/dev/null && break
+              [ "$try" = 3 ] && exit 1
+              sleep $((try * 20))
+            done
+            pacman -Q quickshell sway hyprland qt6-declarative
+            fc-cache -f >/dev/null
+            setcap -r "$(command -v sway)" 2>/dev/null || true
+            chmod 666 /summary.md
+            echo "::group::Self-test: a crash and a broken configuration must be caught"
+            tests/session/run.sh /repo/out/selftest --self-test
+            echo "::endgroup::"
+            tests/session/run.sh /repo/out/session --starts "$STARTS"
+          '
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: session
+          path: out
+          retention-days: 14
