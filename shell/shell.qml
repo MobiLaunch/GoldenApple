@@ -195,8 +195,13 @@ ShellRoot {
     }
     Nearby {}
     Switcher {}
-    // Loaded separately so a Quickshell built without PAM still runs the shell.
-    LazyLoader { active: true; source: "LockScreen.qml" }
+    // The lock screen is a process of its own (lock-shell.qml,
+    // citronos-lock.service), so a crash here can't unlock the session; this still locks,
+    // through it (qs -c golden-gate ipc call lock lock).
+    IpcHandler {
+        target: "lock"
+        function lock(): void { Quickshell.execDetached(["gg-lock"]) }
+    }
     LazyLoader { active: Quickshell.env("GG_LOCK_PREVIEW") === "1"; source: "LockPreview.qml" }
 
     Variants {

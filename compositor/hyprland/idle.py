@@ -42,7 +42,7 @@ def conf(s: dict) -> str:
     lines = [
         "# Written by CitronOS Settings → Lock Screen (gg-idle); changes here are replaced.",
         "general {",
-        "    lock_cmd = qs -c golden-gate ipc call lock lock",
+        "    lock_cmd = gg-lock",
         "    before_sleep_cmd = loginctl lock-session",
         "    after_sleep_cmd = hyprctl dispatch dpms on",
         "}",

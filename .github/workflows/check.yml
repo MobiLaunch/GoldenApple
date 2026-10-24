@@ -565,6 +565,10 @@ jobs:
         run: python tests/lock-screen.py
         env:
           QT_QPA_PLATFORM: offscreen
+      - name: "The lock screen is its own process: restarted while locked, it locks again"
+        run: python tests/lock-process.py
+        env:
+          QT_QPA_PLATFORM: offscreen
       - name: The SDDM login window logs in
         run: python tests/sddm-theme.py
         env:

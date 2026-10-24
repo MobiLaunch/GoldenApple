@@ -1,5 +1,6 @@
 // Lock screen: ext-session-lock surface on every output, PAM authentication.
-// hypridle / the system menu lock through IPC:  qs -c golden-gate ipc call lock lock
+// It runs in a process of its own (lock-shell.qml, citronos-lock.service);
+// hypridle, ⌃⌘Q and the menus lock with gg-lock.
 // The right password plays the surface's unlock animation on every screen, and
 // the session is released when it ends, onto the desktop's same wallpaper.
 import Quickshell
@@ -25,6 +26,15 @@ Scope {
     IpcHandler {
         target: "lock"
         function lock(): void { session.locked = true }
+    }
+    // The session is locked while this file is there (gg-lock makes it first):
+    // a lock screen that starts then, after a crash, locks at once, and
+    // unlocking removes it.
+    readonly property string marker: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/citronos-locked"
+    Process {
+        running: true
+        command: ["test", "-e", root.marker]
+        onExited: (code) => { if (code === 0) session.locked = true }
     }
 
     // The account's full name, for under the picture.
@@ -56,6 +66,7 @@ Scope {
     Connections {
         target: session
         function onLockedChanged() {
+            Quickshell.execDetached(session.locked ? ["touch", root.marker] : ["rm", "-f", root.marker])
             if (session.locked) { root.touchId = false; if (Prefs.touchIdUnlock) fingers.running = true }
             else { root.touchId = false; touch.abort() }
         }

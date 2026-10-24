@@ -1,0 +1,17 @@
+# The lock screen, apart from the shell (shell/lock-shell.qml). It waits,
+# unlocked, until gg-lock asks; started while the session is locked, it locks
+# at once. Always restarted, with no limit: a lock screen that stops while
+# locked must come back.
+[Unit]
+Description=CitronOS lock screen
+PartOf=citronos-session.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=exec
+ExecStart=/usr/bin/env gg-lock serve
+Restart=always
+RestartSec=1
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=citronos-lock

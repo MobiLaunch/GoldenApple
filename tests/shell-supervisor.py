@@ -14,10 +14,12 @@ set aside as .old.
 import configparser
 import json
 import os
+import signal
 from pathlib import Path
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -89,6 +91,7 @@ def stubs(tmp: Path, systemd: bool):
         + ("exit 0\n" if systemd else "exit 1\n"))
     (tmp / "bin/qs").write_text("#!/bin/sh\necho shell ran\n")         # a shell that stops at once
     (tmp / "bin/logger").write_text("#!/bin/sh\n:\n")
+    (tmp / "bin/gg-lock").write_text("#!/bin/sh\nprintf 'lock %s\\n' \"$*\" >> " + str(calls) + "\nsleep 1\n")
     for f in (tmp / "bin").iterdir():
         f.chmod(0o755)
     return calls
@@ -119,14 +122,20 @@ class SessionStart(unittest.TestCase):
         if big_log:
             log.parent.mkdir(parents=True)
             log.write_bytes(b"\0" * 4_100_000)
-        subprocess.run(["timeout", str(seconds), "sh", str(START)],
-                       env=dict(os.environ, HOME=str(tmp / "home"), PATH=f"{tmp / 'bin'}:/usr/bin:/bin"))
+        # Its own process group: the lock screen's loop runs beside the shell's.
+        p = subprocess.Popen(["sh", str(START)], start_new_session=True,
+                             env=dict(os.environ, HOME=str(tmp / "home"), PATH=f"{tmp / 'bin'}:/usr/bin:/bin"))
+        time.sleep(seconds)
+        os.killpg(p.pid, signal.SIGKILL)
+        p.wait()
+        self.calls = (tmp / "calls").read_text().splitlines() if (tmp / "calls").exists() else []
         return log
 
     def test_without_systemd_on_a_new_account(self):
         log = self.fallback(3)
         self.assertTrue(log.exists(), "the shell started, its log made")
         self.assertGreaterEqual(log.read_text().count("shell ran"), 2, "and was started again after stopping")
+        self.assertIn("lock serve", self.calls, "and the lock screen, in a process of its own")
 
     def test_without_systemd_a_big_log_is_set_aside(self):
         log = self.fallback(1, big_log=True)

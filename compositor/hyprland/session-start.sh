@@ -22,6 +22,8 @@ if systemctl --user show-environment >/dev/null 2>&1 &&
 fi
 
 logger -t gg-session "no systemd user session; supervising the shell directly"
+# The lock screen too, in a process of its own (gg-lock).
+( while :; do gg-lock serve; sleep 1; done ) &
 log="$HOME/.local/state/golden-gate-shell.log"
 mkdir -p "${log%/*}"
 while :; do

@@ -114,6 +114,7 @@ install_extras() {
   # The desktop's services (the shell, AirDrop, the icon resolver) as systemd
   # user units, started by gg-session-start from hyprland.conf.
   install -m755 "$REPO/compositor/hyprland/session-start.sh" "$BIN/gg-session-start"
+  install -m755 "$REPO/compositor/hyprland/lock.sh" "$BIN/gg-lock"
   for unit in "$REPO"/distro/systemd/user/citronos-*; do
     install -Dm644 "$unit" "$R/usr/lib/systemd/user/${unit##*/}"
   done
@@ -421,6 +422,7 @@ fi
 chmod +x "$BIN/gg-settings" "$BIN/gg-software" "$BIN/gg-mac-open" "$BIN/gg-files" "$BIN/gg-archive" "$BIN/gg-lcode" "$BIN/gg-airdrop" "$BIN/gg-pref" "$BIN/gg-hyprglass-sync" "$BIN/gg-apply-preferences" "$BIN/gg-tile" "$BIN/gg-icon-resolver" "$BIN/gg-idle"
 # The session's services: gg-session-start (hyprland.conf) and their units.
 install -m755 "$REPO/compositor/hyprland/session-start.sh" "$BIN/gg-session-start"
+install -m755 "$REPO/compositor/hyprland/lock.sh" "$BIN/gg-lock"
 if [[ $MODE == system ]]; then UNITS="$ROOT/usr/lib/systemd/user"; else UNITS="$CONF/systemd/user"; fi
 for unit in "$REPO"/distro/systemd/user/citronos-*; do
   install -Dm644 "$unit" "$UNITS/${unit##*/}"

@@ -163,7 +163,23 @@ same fields, more briefly, and should be expanded when their milestone starts.
 - **Tests:** `qml-regressions.py` guard; T-0.2 with 20 cold starts.
 - **Done when:** 20 of 20 clean starts in the session harness.
 
-### T-1.5: Separate lock-screen process with restore (CS2-005) · **P1** · M
+### T-1.5: Separate lock-screen process with restore (CS2-005) · **P1** · M · **done**
+- **As built:** `shell/lock-shell.qml` (in the shell's own folder, so imports and the OTA
+  refresh of the shell carry it; `qs -p` on a file) runs `LockScreen` alone, as
+  `citronos-lock.service` (`gg-lock serve`, `Restart=always`, no start limit) under
+  `citronos-session.target`. The shell no longer holds the lock; its `lock` IPC forwards to
+  `gg-lock` (`compositor/hyprland/lock.sh`), which hypridle's `lock_cmd`, ⌃⌘Q and the
+  menus all reach. gg-lock writes `$XDG_RUNTIME_DIR/citronos-locked`, then asks the lock
+  process over IPC, or starts the unit, or the process itself without systemd. A lock
+  process that starts while the mark is there locks at once, and unlocking removes it. The
+  mark stands in for logind's `LockedHint`, which nothing sets today and a user service
+  can't easily address. hyprland.conf sets `misc:allow_session_lock_restore = true`, so a
+  crashed lock leaves the session locked until the new one takes over. Without a systemd
+  user manager, gg-session-start keeps a lock process running too.
+  `tests/lock-process.py` runs the real lock-shell.qml in the preview (idle without the
+  mark, locked at once with it, mark and clear on lock/unlock; it fails on the old
+  LockScreen) and gg-lock against stub qs/systemctl. The session-harness case (`kill -SEGV`
+  while locked, then type the password) is still to do.
 - **Files:** new `shell-lock/shell.qml` (imports `../shell/components/LockSurface.qml`
   through `ui/`); `shell/shell.qml:189` (remove the in-process LockScreen, keep the IPC
   name by forwarding); `compositor/hyprland/hypridle.conf` (`lock_cmd`);

@@ -7,4 +7,4 @@ Description=CitronOS desktop session
 BindsTo=graphical-session.target
 Wants=graphical-session-pre.target
 After=graphical-session-pre.target
-Wants=citronos-shell.service citronos-airdrop.service citronos-icon-resolver.service
+Wants=citronos-shell.service citronos-lock.service citronos-airdrop.service citronos-icon-resolver.service
