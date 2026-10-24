@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 340 178" fill="none">
+<defs><linearGradient id="ear" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#cfdbe5"/><stop offset=".55" stop-color="#8ba4ba"/><stop offset="1" stop-color="#536e89"/></linearGradient><linearGradient id="pad" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#4d6579"/><stop offset="1" stop-color="#9aaebe"/></linearGradient></defs>
+<path d="M88 85 C88 -15 252 -15 252 85" stroke="#8ea7bb" stroke-width="14" stroke-linecap="round"/>
+<path d="M93 67 C99 2 241 2 247 67" stroke="#dce5ed" stroke-width="5" stroke-linecap="round"/>
+<rect x="68" y="75" width="64" height="94" rx="27" fill="url(#ear)" stroke="#6c88a0" stroke-width="2"/>
+<rect x="208" y="75" width="64" height="94" rx="27" fill="url(#ear)" stroke="#6c88a0" stroke-width="2"/>
+<rect x="83" y="85" width="34" height="75" rx="17" fill="url(#pad)" stroke="#abc0cf"/>
+<rect x="223" y="85" width="34" height="75" rx="17" fill="url(#pad)" stroke="#abc0cf"/>
+<path d="M88 78 Q86 48 95 43" stroke="#afc1cf" stroke-width="9" stroke-linecap="round"/>
+<path d="M252 78 Q254 48 245 43" stroke="#afc1cf" stroke-width="9" stroke-linecap="round"/>
+</svg>

@@ -1,0 +1,46 @@
+name: Release
+
+# A tag vX.Y[.Z][-pre] makes a signed CitronOS release, the only thing
+# Software Update installs on the stable and beta channels. The signing key
+# is the repository secret CITRONOS_RELEASE_KEY (scripts/release-key.sh); its
+# public half is in apps/settings/release-keys/.
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Sign and build the release
+        env:
+          CITRONOS_RELEASE_KEY: ${{ secrets.CITRONOS_RELEASE_KEY }}
+        run: |
+          if [ -z "$CITRONOS_RELEASE_KEY" ]; then
+            echo "::error::No CITRONOS_RELEASE_KEY secret: run scripts/release-key.sh and add it."
+            exit 1
+          fi
+          version="${GITHUB_REF_NAME#v}"
+          channel=stable
+          case "$version" in *-*) channel=beta ;; esac
+          key="$RUNNER_TEMP/release-key.pem"
+          (umask 077; printf '%s\n' "$CITRONOS_RELEASE_KEY" > "$key")
+          scripts/make-release.sh "$version" "$key" "$RUNNER_TEMP/out" "$channel"
+          rm -f "$key"
+          echo "CHANNEL=$channel" >> "$GITHUB_ENV"
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          pre=""
+          [ "$CHANNEL" = beta ] && pre="--prerelease"
+          name="$(sed -n 's/.*property string release: "\(.*\)".*/\1/p' apps/lib/theme/Release.qml)"
+          gh release create "$GITHUB_REF_NAME" "$RUNNER_TEMP"/out/* \
+            --title "CitronOS ${GITHUB_REF_NAME#v} $name" --generate-notes $pre

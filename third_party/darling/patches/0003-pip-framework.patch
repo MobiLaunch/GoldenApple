@@ -1,0 +1,310 @@
+diff --git a/src/private-frameworks/CMakeLists.txt b/src/private-frameworks/CMakeLists.txt
+index 43c3002..93127f6 100644
+--- a/src/private-frameworks/CMakeLists.txt
++++ b/src/private-frameworks/CMakeLists.txt
+@@ -84,3 +84,9 @@ if (COMPONENT_gui_stubs)
+ 	add_subdirectory(SpotlightServices)
+ 	add_subdirectory(UIFoundation)
+ endif()
++
++# Golden Gate: implemented GUI compatibility frameworks.
++if (COMPONENT_gui_frameworks)
++	set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "gui_frameworks")
++	add_subdirectory(PIP)
++endif()
+diff --git a/src/private-frameworks/PIP/CMakeLists.txt b/src/private-frameworks/PIP/CMakeLists.txt
+new file mode 100644
+index 0000000..7d2cf3e
+--- /dev/null
++++ b/src/private-frameworks/PIP/CMakeLists.txt
+@@ -0,0 +1,12 @@
++project(PIP)
++
++remove_sdk_framework(PIP PRIVATE)
++add_definitions(-fobjc-arc -fblocks)
++include_directories(include)
++set(DYLIB_COMPAT_VERSION "1.0.0")
++set(DYLIB_CURRENT_VERSION "1.0.0")
++generate_sdk_framework(PIP VERSION A HEADER "include/PIP" PRIVATE)
++add_framework(PIP FAT PRIVATE CURRENT_VERSION VERSION A
++    SOURCES src/PIP.m
++    DEPENDENCIES system objc Foundation AppKit
++)
+diff --git a/src/private-frameworks/PIP/include/PIP/PIP.h b/src/private-frameworks/PIP/include/PIP/PIP.h
+new file mode 100644
+index 0000000..c1105de
+--- /dev/null
++++ b/src/private-frameworks/PIP/include/PIP/PIP.h
+@@ -0,0 +1,51 @@
++/* SPDX-License-Identifier: GPL-3.0-or-later
++ * Golden Gate's independent, limited PIP compatibility implementation.
++ * Interfaces are based on the selectors used by open-source IINA 1.5.0.
++ */
++#import <AppKit/AppKit.h>
++#include <stdbool.h>
++
++@class PIPViewController, PIPMutablePlaybackState;
++
++@protocol PIPViewControllerDelegate <NSObject>
++@optional
++- (void)pipWillClose:(PIPViewController *)pip;
++- (void)pipDidClose:(PIPViewController *)pip;
++- (void)pipActionPlay:(PIPViewController *)pip;
++- (void)pipActionPause:(PIPViewController *)pip;
++- (void)pipActionStop:(PIPViewController *)pip;
++- (void)pipAction:(PIPViewController *)pip skipInterval:(NSTimeInterval)interval;
++@end
++
++@interface PIPPlaybackState : NSObject <NSCopying> {
++@protected
++    NSTimeInterval _contentDuration, _elapsedTime;
++    NSInteger _contentType, _timeControlStatus;
++    double _playbackRate;
++}
++@property(nonatomic, readonly) NSTimeInterval contentDuration;
++@property(nonatomic, readonly) NSInteger contentType;
++@property(nonatomic, readonly) double playbackRate;
++@property(nonatomic, readonly) NSTimeInterval elapsedTime;
++@property(nonatomic, readonly) NSInteger timeControlStatus;
++@end
++
++@interface PIPMutablePlaybackState : PIPPlaybackState
++@property(nonatomic) NSTimeInterval contentDuration;
++@property(nonatomic) NSInteger contentType;
++- (void)setPlaybackRate:(double)rate elapsedTime:(NSTimeInterval)time timeControlStatus:(NSInteger)status;
++@end
++
++@interface PIPViewController : NSViewController
++@property(nonatomic, copy) NSString *name;
++@property(nonatomic, weak) id<PIPViewControllerDelegate> delegate;
++@property(nonatomic, weak) NSWindow *replacementWindow;
++@property(nonatomic) NSRect replacementRect;
++@property(nonatomic) bool playing;
++@property(nonatomic) NSSize aspectRatio;
++- (void)presentViewControllerAsPictureInPicture:(NSViewController *)controller;
++- (void)dismissViewController:(NSViewController *)controller;
++- (void)updatePlaybackStateUsingBlock:(void (^ __attribute__((noescape)))(PIPMutablePlaybackState *))block;
++- (void)viewDidLayout;
++- (void)viewDidDisappear;
++@end
+diff --git a/src/private-frameworks/PIP/src/PIP.m b/src/private-frameworks/PIP/src/PIP.m
+new file mode 100644
+index 0000000..a7976dd
+--- /dev/null
++++ b/src/private-frameworks/PIP/src/PIP.m
+@@ -0,0 +1,215 @@
++/* SPDX-License-Identifier: GPL-3.0-or-later
++ * Independent PIP compatibility code for Darling; no Apple implementation code.
++ */
++#import <PIP/PIP.h>
++#include <math.h>
++
++#if !__has_feature(objc_arc)
++#error PIP requires ARC for zeroing weak delegates and window references.
++#endif
++
++@implementation PIPPlaybackState
++@synthesize contentDuration = _contentDuration, contentType = _contentType;
++@synthesize playbackRate = _playbackRate, elapsedTime = _elapsedTime;
++@synthesize timeControlStatus = _timeControlStatus;
++- (id)copyWithZone:(NSZone *)zone {
++    PIPPlaybackState *copy = [[[self class] allocWithZone:zone] init];
++    copy->_contentDuration = _contentDuration;
++    copy->_contentType = _contentType;
++    copy->_playbackRate = _playbackRate;
++    copy->_elapsedTime = _elapsedTime;
++    copy->_timeControlStatus = _timeControlStatus;
++    return copy;
++}
++@end
++
++@implementation PIPMutablePlaybackState
++@dynamic contentDuration, contentType;
++- (void)setContentDuration:(NSTimeInterval)value {
++    if (!isfinite(value) || value < 0)
++        [NSException raise:NSInvalidArgumentException format:@"Invalid PIP duration"];
++    _contentDuration = value;
++}
++- (void)setContentType:(NSInteger)value { _contentType = value; }
++- (void)setPlaybackRate:(double)rate elapsedTime:(NSTimeInterval)time timeControlStatus:(NSInteger)status {
++    if (!isfinite(rate) || !isfinite(time) || time < 0)
++        [NSException raise:NSInvalidArgumentException format:@"Invalid PIP playback position"];
++    _playbackRate = rate;
++    _elapsedTime = time;
++    _timeControlStatus = status;
++}
++@end
++
++@interface PIPViewController () {
++    NSPanel *_panel;
++    NSButton *_playButton;
++    NSViewController *_presentedController;
++    __weak NSView *_originalSuperview;
++    NSRect _originalFrame;
++    NSUInteger _originalAutoresizingMask;
++    PIPMutablePlaybackState *_playbackState;
++    BOOL _closing, _updatingPlaybackState;
++}
++@end
++
++@implementation PIPViewController
++@synthesize name = _name, delegate = _delegate, replacementWindow = _replacementWindow;
++@synthesize replacementRect = _replacementRect, playing = _playing, aspectRatio = _aspectRatio;
++
++static void requireMainThread(void) {
++    if (![NSThread isMainThread])
++        [NSException raise:NSInternalInconsistencyException format:@"PIP UI requires the main thread"];
++}
++
++- (id)init { return [self initWithNibName:nil bundle:nil]; }
++- (id)initWithNibName:(NSString *)name bundle:(NSBundle *)bundle {
++    self = [super initWithNibName:name bundle:bundle];
++    if (self) {
++        _aspectRatio = NSMakeSize(16, 9);
++        _playbackState = [PIPMutablePlaybackState new];
++    }
++    return self;
++}
++- (void)loadView {
++    self.view = [[NSView alloc] initWithFrame:NSMakeRect(0, 0, 320, 212)];
++}
++// These PIP-local hooks allow the app's subclass to call super. General AppKit
++// lifecycle support remains a separate compatibility milestone.
++- (void)viewDidLayout {}
++- (void)viewDidDisappear {}
++- (void)_windowDidResize:(NSNotification *)notification { [self viewDidLayout]; }
++- (void)setAspectRatio:(NSSize)value {
++    requireMainThread();
++    if (!isfinite(value.width) || !isfinite(value.height) || value.width <= 0 || value.height <= 0)
++        [NSException raise:NSInvalidArgumentException format:@"PIP aspect ratio must be positive and finite"];
++    _aspectRatio = value;
++    // The panel includes a 32-point transport row below the video view.
++    if (_panel) [_panel setContentSize:NSMakeSize(320, fmax(90, fmin(640, 320 * value.height / value.width)) + 32)];
++}
++- (void)setPlaying:(bool)value {
++    requireMainThread();
++    _playing = value;
++    [_playButton setTitle:value ? @"Pause" : @"Play"];
++}
++- (void)setName:(NSString *)value {
++    requireMainThread();
++    _name = [value copy];
++    if (_panel) [_panel setTitle:_name ?: self.title ?: @"Picture in Picture"];
++}
++- (void)_togglePlayback:(id)sender {
++    id<PIPViewControllerDelegate> delegate = self.delegate;
++    if (self.playing) {
++        if ([delegate respondsToSelector:@selector(pipActionPause:)]) [delegate pipActionPause:self];
++    } else if ([delegate respondsToSelector:@selector(pipActionPlay:)]) [delegate pipActionPlay:self];
++    // The player supplies the new state; a click alone doesn't change playback.
++}
++- (void)updatePlaybackStateUsingBlock:(void (^ __attribute__((noescape)))(PIPMutablePlaybackState *))block {
++    requireMainThread();
++    if (!block) return;
++    if (_updatingPlaybackState)
++        [NSException raise:NSInternalInconsistencyException format:@"Nested PIP state update"];
++    _updatingPlaybackState = YES;
++    @try {
++        PIPMutablePlaybackState *candidate = [_playbackState copy];
++        block(candidate);
++        // Copy again so a caller retaining the block argument cannot mutate us.
++        _playbackState = [candidate copy];
++        self.playing = _playbackState.playbackRate != 0 && _playbackState.timeControlStatus == 2;
++    } @finally { _updatingPlaybackState = NO; }
++}
++- (void)presentViewControllerAsPictureInPicture:(NSViewController *)controller {
++    requireMainThread();
++    if (_closing || !controller || controller == self)
++        [NSException raise:NSInvalidArgumentException format:@"Invalid PIP presentation"];
++    if (_presentedController) {
++        if (_presentedController == controller) return;
++        [NSException raise:NSInternalInconsistencyException format:@"PIP already presents a controller"];
++    }
++    NSView *video = [controller view];
++    if (!video) [NSException raise:NSInvalidArgumentException format:@"PIP requires a view"];
++    if (video == self.view)
++        [NSException raise:NSInvalidArgumentException format:@"PIP cannot present its own container"];
++    CGFloat height = fmax(90, fmin(640, 320 * _aspectRatio.height / _aspectRatio.width));
++    NSPanel *panel = [[NSPanel alloc] initWithContentRect:NSMakeRect(100, 100, 320, height + 32)
++        styleMask:NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskResizable
++        backing:NSBackingStoreBuffered defer:NO];
++    [panel setReleasedWhenClosed:NO];
++    [panel setFloatingPanel:YES];
++    [panel setLevel:NSFloatingWindowLevel];
++    [panel setContentMinSize:NSMakeSize(160, 122)];
++    [panel setTitle:self.name ?: self.title ?: @"Picture in Picture"];
++    [panel setContentView:self.view];
++    _panel = panel;
++    _originalSuperview = video.superview;
++    _originalFrame = video.frame;
++    _originalAutoresizingMask = video.autoresizingMask;
++    _presentedController = controller;
++    [video removeFromSuperview];
++    [video setFrame:NSMakeRect(0, 32, 320, height)];
++    [video setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
++    [self.view addSubview:video];
++    _playButton = [[NSButton alloc] initWithFrame:NSMakeRect(8, 4, 80, 24)];
++    [_playButton setTitle:self.playing ? @"Pause" : @"Play"];
++    [_playButton setTarget:self];
++    [_playButton setAction:@selector(_togglePlayback:)];
++    [self.view addSubview:_playButton];
++    // Observe the window rather than occupying its delegate slot. An app may
++    // install its own window delegate without breaking our close handling.
++    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_windowWillClose:)
++        name:NSWindowWillCloseNotification object:panel];
++    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_windowDidResize:)
++        name:NSWindowDidResizeNotification object:panel];
++    [panel orderFront:nil];
++    [self viewDidLayout];
++}
++- (void)_restoreView {
++    NSView *video = [_presentedController view];
++    [video removeFromSuperview];
++    NSView *parent = _originalSuperview;
++    if (parent) {
++        [parent addSubview:video];
++        [video setFrame:_originalFrame];
++    } else if (self.replacementWindow) {
++        [[self.replacementWindow contentView] addSubview:video];
++        [video setFrame:self.replacementRect];
++    }
++    [video setAutoresizingMask:_originalAutoresizingMask];
++    [_playButton removeFromSuperview];
++    _playButton = nil;
++    _originalSuperview = nil;
++}
++- (void)_windowWillClose:(NSNotification *)notification {
++    if (notification.object != _panel || _closing || !_presentedController) return;
++    _closing = YES;
++    @try {
++        id<PIPViewControllerDelegate> delegate = self.delegate;
++        @try {
++            if ([delegate respondsToSelector:@selector(pipWillClose:)]) [delegate pipWillClose:self];
++        } @finally {
++            [self _restoreView];
++            [[NSNotificationCenter defaultCenter] removeObserver:self name:nil object:_panel];
++            [_panel orderOut:nil];
++            _presentedController = nil;
++            _panel = nil;
++        }
++        // Native AppKit delivers this lifecycle callback when orderOut hides
++        // the window. M1's Cocotron controller has no such hook or delivery;
++        // provide the PIP-local fallback only for that implementation.
++        if (![NSViewController instancesRespondToSelector:@selector(viewDidDisappear)])
++            [self viewDidDisappear];
++        if ([delegate respondsToSelector:@selector(pipDidClose:)]) [delegate pipDidClose:self];
++    } @finally { _closing = NO; }
++}
++- (void)dismissViewController:(NSViewController *)controller {
++    requireMainThread();
++    if (_closing || !_presentedController) return;
++    if (controller != _presentedController)
++        [NSException raise:NSInvalidArgumentException format:@"PIP dismissal must match its controller"];
++    [_panel close];
++}
++- (void)dealloc {
++    [[NSNotificationCenter defaultCenter] removeObserver:self];
++    [_panel orderOut:nil];
++    if (_presentedController) [self _restoreView];
++}
++@end

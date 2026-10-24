@@ -1,0 +1,144 @@
+{
+ "systemName": "CitronOS",
+ "mounts": {},
+ "usage": {
+  "size": 500000000000,
+  "used": 180000000000,
+  "free": 320000000000
+ },
+ "lsblk": {
+  "blockdevices": [
+   {
+    "name": "nvme0n1",
+    "path": "/dev/nvme0n1",
+    "type": "disk",
+    "size": 1000000000000,
+    "fstype": null,
+    "label": null,
+    "uuid": null,
+    "mountpoints": [
+     null
+    ],
+    "fssize": null,
+    "fsused": null,
+    "fsavail": null,
+    "rm": false,
+    "hotplug": false,
+    "ro": false,
+    "tran": "nvme",
+    "model": "Samsung SSD 990 PRO 1TB",
+    "partlabel": null,
+    "children": [
+     {
+      "name": "nvme0n1p1",
+      "path": "/dev/nvme0n1p1",
+      "type": "part",
+      "size": 1000000000,
+      "fstype": "vfat",
+      "label": null,
+      "uuid": null,
+      "mountpoints": [
+       "/boot"
+      ],
+      "fssize": null,
+      "fsused": null,
+      "fsavail": null,
+      "rm": false,
+      "hotplug": false,
+      "ro": false,
+      "tran": null,
+      "model": null,
+      "partlabel": "EFI system partition"
+     },
+     {
+      "name": "nvme0n1p2",
+      "path": "/dev/nvme0n1p2",
+      "type": "part",
+      "size": 500000000000,
+      "fstype": "btrfs",
+      "label": null,
+      "uuid": null,
+      "mountpoints": [
+       "/",
+       "/home"
+      ],
+      "fssize": 500000000000,
+      "fsused": 180000000000,
+      "fsavail": 320000000000,
+      "rm": false,
+      "hotplug": false,
+      "ro": false,
+      "tran": null,
+      "model": null,
+      "partlabel": null
+     },
+     {
+      "name": "nvme0n1p3",
+      "path": "/dev/nvme0n1p3",
+      "type": "part",
+      "size": 499000000000,
+      "fstype": "ntfs",
+      "label": "Windows",
+      "uuid": null,
+      "mountpoints": [
+       null
+      ],
+      "fssize": null,
+      "fsused": null,
+      "fsavail": null,
+      "rm": false,
+      "hotplug": false,
+      "ro": false,
+      "tran": null,
+      "model": null,
+      "partlabel": null
+     }
+    ]
+   },
+   {
+    "name": "sda",
+    "path": "/dev/sda",
+    "type": "disk",
+    "size": 2000000000000,
+    "fstype": null,
+    "label": null,
+    "uuid": null,
+    "mountpoints": [
+     null
+    ],
+    "fssize": null,
+    "fsused": null,
+    "fsavail": null,
+    "rm": true,
+    "hotplug": true,
+    "ro": false,
+    "tran": "usb",
+    "model": "SanDisk Extreme",
+    "partlabel": null,
+    "children": [
+     {
+      "name": "sda1",
+      "path": "/dev/sda1",
+      "type": "part",
+      "size": 2000000000000,
+      "fstype": "exfat",
+      "label": "BACKUP",
+      "uuid": null,
+      "mountpoints": [
+       "/run/media/you/BACKUP"
+      ],
+      "fssize": 2000000000000,
+      "fsused": 812000000000,
+      "fsavail": 1188000000000,
+      "rm": false,
+      "hotplug": false,
+      "ro": false,
+      "tran": null,
+      "model": null,
+      "partlabel": null
+     }
+    ]
+   }
+  ]
+ }
+}

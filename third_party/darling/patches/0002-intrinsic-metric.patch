@@ -1,0 +1,12 @@
+diff --git a/AppKit/NSLayoutConstraint.m b/AppKit/NSLayoutConstraint.m
+index aa79e67..18a35d2 100644
+--- a/AppKit/NSLayoutConstraint.m
++++ b/AppKit/NSLayoutConstraint.m
+@@ -19,5 +19,5 @@
+ 
+ #import <AppKit/NSLayoutConstraint.h>
+ 
+-const CGFloat NSViewNoInstrinsicMetric = 0xbff0000000000000;
+-const CGFloat NSViewNoIntrinsicMetric = 0xbff0000000000000;
++const CGFloat NSViewNoInstrinsicMetric = -1.0;
++const CGFloat NSViewNoIntrinsicMetric = -1.0;

@@ -1,0 +1,46 @@
+name: Citron voice visual preview
+
+on:
+  push:
+    branches:
+      - claude/linux-macos-golden-gate-ui-pckc7s
+    paths:
+      - shell/VoiceAssistant.qml
+      - apps/lib/intelligence/CitronBlob.qml
+      - apps/lib/intelligence/CitronGlassDot.qml
+      - apps/lib/Glass.qml
+      - tools/preview/preview.py
+      - .github/workflows/citron-visual-preview.yml
+  workflow_dispatch:
+
+jobs:
+  render-citron:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install headless Qt runtime
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libegl1 libopengl0 xvfb libx11-6 libxtst6 libpulse0 librsvg2-bin
+          python -m pip install PySide6==6.11.2
+      - name: Render actual Citron QML in three offline voice states
+        run: |
+          mkdir -p out/citron
+          for state in listening thinking speaking; do
+            python tools/preview/preview.py shell --dark \
+              --size 1440x900 --do citron.toggle \
+              --citron-state "$state" --wait 900 \
+              --require-object citronMorphingHaze \
+              -o "out/citron/citron-$state.png"
+          done
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: citron-voice-preview
+          path: out/citron/*.png
+          retention-days: 7

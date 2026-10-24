@@ -1,0 +1,349 @@
+name: Darling GUI compatibility
+
+on:
+  push:
+    paths:
+      - 'third_party/darling/**'
+      - 'tools/darling/**'
+      - 'tests/darling/**'
+      - 'tests/darling-patches.py'
+      - 'tests/darling-compatibility.py'
+      - 'tests/darling-runtime.py'
+      - 'tests/darling-build-modes.py'
+      - 'tests/darling-fsevents-build.py'
+      - 'tests/darling-dyld-link.py'
+      - 'tests/darling-gui-harness.py'
+      - 'tests/darling-pip-harness.py'
+      - 'tests/darling-textedit-harness.py'
+      - 'tests/darling-x11-close.py'
+      - 'tests/darling-sincos.py'
+      - 'tests/darling-window-levels.py'
+      - 'tests/darling-core-utis.py'
+      - '.github/workflows/darling-gui.yml'
+  pull_request:
+    paths:
+      - 'third_party/darling/**'
+      - 'tools/darling/**'
+      - 'tests/darling/**'
+      - 'tests/darling-patches.py'
+      - 'tests/darling-compatibility.py'
+      - 'tests/darling-runtime.py'
+      - 'tests/darling-build-modes.py'
+      - 'tests/darling-fsevents-build.py'
+      - 'tests/darling-dyld-link.py'
+      - 'tests/darling-gui-harness.py'
+      - 'tests/darling-pip-harness.py'
+      - 'tests/darling-textedit-harness.py'
+      - 'tests/darling-x11-close.py'
+      - 'tests/darling-sincos.py'
+      - 'tests/darling-window-levels.py'
+      - 'tests/darling-core-utis.py'
+      - '.github/workflows/darling-gui.yml'
+  workflow_dispatch:
+    inputs:
+      full_runtime:
+        description: 'Also build and stage the full patched x86_64 Darling runtime'
+        type: boolean
+        default: false
+      runtime_run:
+        description: 'Reuse a successful staged runtime artifact from this repository run (lock must match)'
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  # The corrected Objective-C profile must not wait behind an older job
+  # retrying the unavailable Swift asset server.
+  group: darling-gui-objc-baseline-${{ github.event_name }}-${{ github.ref }}
+  # Preserve an expensive runtime build when only the GUI harness is corrected.
+  cancel-in-progress: false
+
+jobs:
+  controller:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Objective-C test dependencies
+        run: sudo apt-get update && sudo apt-get install -y clang cmake make linux-libc-dev libgnustep-base-dev libblocksruntime-dev
+      - name: Fetch pinned source files and apply patches
+        run: |
+          git clone --no-checkout https://github.com/darlinghq/darling.git "$RUNNER_TEMP/darling"
+          ref=$(python3 -c 'import json; print(json.load(open("third_party/darling/source.lock.json"))["darling_commit"])')
+          git -C "$RUNNER_TEMP/darling" checkout --detach "$ref"
+          git -C "$RUNNER_TEMP/darling" submodule update --init src/external/cocotron src/external/objc4 \
+            src/external/libunwind src/external/dyld src/external/cctools-port
+          python3 - "$RUNNER_TEMP/darling" <<'PY'
+          import importlib.util, json, pathlib, sys
+          spec = importlib.util.spec_from_file_location('build', 'tools/darling/build.py')
+          build = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(build)
+          build.apply_patches(pathlib.Path(sys.argv[1]), json.loads((build.VENDOR / 'source.lock.json').read_text()))
+          PY
+      - name: Patch application and local-edit protection
+        run: python3 tests/darling-patches.py "$RUNNER_TEMP/darling"
+      - name: Objective-C runtime build mode consistency
+        env:
+          CC: clang
+          CXX: clang++
+        run: python3 tests/darling-build-modes.py "$RUNNER_TEMP/darling"
+      - name: Filesystem-events guest header discovery and ABI
+        env:
+          CC: clang
+        run: python3 tests/darling-fsevents-build.py "$RUNNER_TEMP/darling"
+      - name: Dynamic-loader unwind codegen with pinned linker
+        env:
+          CC: clang
+          CXX: clang++
+        run: python3 tests/darling-dyld-link.py "$RUNNER_TEMP/darling"
+      - name: Math wrapper code generation and numeric behavior
+        env:
+          CC: clang
+        run: python3 tests/darling-sincos.py "$RUNNER_TEMP/darling"
+      - name: Window level ABI regression
+        run: python3 tests/darling-window-levels.py "$RUNNER_TEMP/darling"
+      - name: Core type identifier fallback (M3)
+        env:
+          CC: clang
+        run: python3 tests/darling-core-utis.py "$RUNNER_TEMP/darling"
+      - name: Execute patched controller source
+        run: bash tests/darling/run-host.sh "$RUNNER_TEMP/darling"
+      - name: Compatibility evidence gates
+        run: python3 tests/darling-compatibility.py
+      - name: GUI harness failure diagnostics
+        run: |
+          python3 tests/darling-gui-harness.py
+          python3 tests/darling-pip-harness.py
+          python3 tests/darling-textedit-harness.py
+      - name: Runtime packaging rejection checks
+        run: python3 tests/darling-runtime.py
+      - name: Compile Python and validate shell scripts
+        run: |
+          python3 -m py_compile tools/darling/build.py tools/darling/compatibility.py tools/darling/test-textedit.py tests/darling-patches.py tests/darling-build-modes.py tests/darling-fsevents-build.py tests/darling-dyld-link.py tests/darling-sincos.py tests/darling-core-utis.py
+          bash -n tests/darling/run-host.sh tools/darling/build-fixture.sh tools/darling/build-pip-tests.sh tools/darling/build-textedit.sh
+
+  mac-fixture:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Intel Cocoa app
+        run: bash tools/darling/build-fixture.sh "$RUNNER_TEMP/ControllerLab.app"
+      - name: Verify binary architecture
+        run: lipo "$RUNNER_TEMP/ControllerLab.app/Contents/MacOS/ControllerLab" -verify_arch x86_64
+      - name: Package app preserving executable permissions
+        run: ditto -c -k --keepParent "$RUNNER_TEMP/ControllerLab.app" "$RUNNER_TEMP/ControllerLab.zip"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Darling-ControllerLab-Intel
+          path: ${{ runner.temp }}/ControllerLab.zip
+      - name: Verify window levels against native Apple frameworks
+        run: |
+          xcrun clang -DNATIVE_APPKIT tests/darling/window-levels.m -framework Cocoa -o "$RUNNER_TEMP/window-levels"
+          "$RUNNER_TEMP/window-levels"
+      - name: Build PIP-linked Intel fixture
+        run: bash tools/darling/build-pip-tests.sh "$RUNNER_TEMP/pip-tests" --build-only
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Darling-PIPLab-Intel
+          path: ${{ runner.temp }}/pip-tests/PIPLab.zip
+      - name: Build Darling's TextEdit as an Intel Mac app
+        run: bash tools/darling/build-textedit.sh "$RUNNER_TEMP/TextEdit.app"
+      - name: Verify TextEdit architecture and native launch
+        run: |
+          lipo "$RUNNER_TEMP/TextEdit.app/Contents/MacOS/TextEdit" -verify_arch x86_64
+          printf 'Native launch check\n' > "$RUNNER_TEMP/GoldenGateNote.txt"
+          "$RUNNER_TEMP/TextEdit.app/Contents/MacOS/TextEdit" -NSOpen "$RUNNER_TEMP/GoldenGateNote.txt" \
+            > "$RUNNER_TEMP/textedit-native.log" 2>&1 &
+          pid=$!
+          sleep 10
+          cat "$RUNNER_TEMP/textedit-native.log"
+          kill -0 "$pid" || { wait "$pid"; echo "TextEdit exited during native launch: $?"; exit 1; }
+          kill "$pid"
+      - name: Package TextEdit preserving executable permissions
+        run: ditto -c -k --keepParent "$RUNNER_TEMP/TextEdit.app" "$RUNNER_TEMP/TextEdit.zip"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Darling-TextEdit-Intel
+          path: ${{ runner.temp }}/TextEdit.zip
+
+  full-runtime:
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && (inputs.full_runtime || inputs.runtime_run != ''))
+    needs: [controller, mac-fixture]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    env:
+      # Xvfb has no accelerated DRI3 device. Exercise Mesa's software backend.
+      LIBGL_ALWAYS_SOFTWARE: '1'
+      GALLIUM_DRIVER: llvmpipe
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install full runtime build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build clang linux-libc-dev bison flex libfuse-dev libudev-dev \
+            pkg-config libcap2-bin git git-lfs libcairo2-dev libgl1-mesa-dev \
+            libglu1-mesa-dev libtiff5-dev libfreetype6-dev libxml2-dev libegl1-mesa-dev \
+            libfontconfig1-dev libbsd-dev libxrandr-dev libxcursor-dev libgif-dev \
+            libpulse-dev libavformat-dev libavcodec-dev libswresample-dev libdbus-1-dev \
+            libxkbfile-dev libssl-dev llvm-dev libelf-dev libcurl4-openssl-dev libedit-dev \
+            xvfb xauth xdotool x11-apps unzip mesa-utils gdb python3-xlib imagemagick tesseract-ocr
+      - name: Verify graceful close protocol on X11
+        run: xvfb-run -a python3 tests/darling-x11-close.py
+      - name: Find previous runtime artifact on this branch
+        id: previous
+        if: inputs.runtime_run == ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPOSITORY: ${{ github.repository }}
+          GH_BRANCH: ${{ github.ref_name }}
+        run: |
+          python3 - <<'PY'
+          import json, os, urllib.request
+          url = 'https://api.github.com/repos/' + os.environ['GH_REPOSITORY'] + '/actions/artifacts?per_page=100'
+          request = urllib.request.Request(url, headers={'Authorization': 'Bearer ' + os.environ['GH_TOKEN'], 'Accept': 'application/vnd.github+json'})
+          try:
+              with urllib.request.urlopen(request, timeout=30) as response:
+                  artifacts = json.load(response)['artifacts']
+              candidates = [a for a in artifacts if a['name'] == 'Darling-runtime-x86_64-experimental'
+                            and not a['expired'] and a.get('workflow_run', {}).get('head_branch') == os.environ['GH_BRANCH']]
+              if candidates:
+                  latest = max(candidates, key=lambda a: a['created_at'])
+                  with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+                      output.write('run=' + str(latest['workflow_run']['id']) + '\n')
+                  print('Found runtime candidate from run', latest['workflow_run']['id'])
+          except (OSError, ValueError, KeyError) as error:
+              print('Runtime discovery unavailable; building from source:', type(error).__name__)
+          PY
+      - name: Download previously staged runtime
+        id: download-runtime
+        if: inputs.runtime_run != '' || steps.previous.outputs.run != ''
+        continue-on-error: ${{ inputs.runtime_run == '' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: Darling-runtime-x86_64-experimental
+          path: ${{ runner.temp }}
+          run-id: ${{ inputs.runtime_run || steps.previous.outputs.run }}
+          github-token: ${{ github.token }}
+      - name: Verify previously staged runtime against current source lock
+        id: reuse
+        if: steps.download-runtime.outcome == 'success'
+        continue-on-error: ${{ inputs.runtime_run == '' }}
+        run: |
+          set -o pipefail
+          python3 tools/darling/runtime.py "$RUNNER_TEMP/darling-reuse-check" \
+            --archive "$RUNNER_TEMP/darling-runtime.tar.gz" \
+            2>&1 | tee "$RUNNER_TEMP/darling-reuse.log"
+      - name: Fetch pinned source and required baseline assets
+        if: inputs.runtime_run == '' && steps.reuse.outcome != 'success'
+        run: |
+          set -o pipefail
+          python3 tools/darling/build.py prepare --source "$RUNNER_TEMP/darling" \
+            2>&1 | tee "$RUNNER_TEMP/darling-source.log"
+      - name: Build and stage patched Darling
+        if: inputs.runtime_run == '' && steps.reuse.outcome != 'success'
+        run: |
+          set -o pipefail
+          python3 tools/darling/build.py stage --source "$RUNNER_TEMP/darling" \
+            --build "$RUNNER_TEMP/darling-build" --stage "$RUNNER_TEMP/darling-stage" \
+            --jobs 2 2>&1 | tee "$RUNNER_TEMP/darling-build.log"
+      - name: Archive staged runtime
+        if: inputs.runtime_run == '' && steps.reuse.outcome != 'success'
+        run: tar -C "$RUNNER_TEMP/darling-stage" -czf "$RUNNER_TEMP/darling-runtime.tar.gz" .
+      - uses: actions/upload-artifact@v4
+        if: inputs.runtime_run == '' && steps.reuse.outcome != 'success'
+        with:
+          name: Darling-runtime-x86_64-experimental
+          path: ${{ runner.temp }}/darling-runtime.tar.gz
+          if-no-files-found: error
+      - uses: actions/download-artifact@v4
+        with:
+          name: Darling-ControllerLab-Intel
+          path: ${{ runner.temp }}/darling-fixture
+      - name: Install verified runtime in disposable runner
+        id: install
+        run: |
+          set -o pipefail
+          {
+            python3 tools/darling/runtime.py "$RUNNER_TEMP/darling-runtime-check" \
+              --archive "$RUNNER_TEMP/darling-runtime.tar.gz" &&
+              sudo tar --no-same-owner --same-permissions -C / \
+                -xzf "$RUNNER_TEMP/darling-runtime.tar.gz" ./usr/local
+          } 2>&1 | tee "$RUNNER_TEMP/darling-install.log"
+      - name: Record software rendering environment
+        run: xvfb-run -a -s "-screen 0 1280x1024x24 -nolisten tcp -extension MIT-SHM" glxinfo -B > "$RUNNER_TEMP/darling-rendering.log" 2>&1
+      - name: Exercise the unchanged Mac app under Darling
+        run: |
+          unzip -q "$RUNNER_TEMP/darling-fixture/ControllerLab.zip" -d "$RUNNER_TEMP/darling-fixture"
+          xvfb-run -a -s "-screen 0 1280x1024x24 -nolisten tcp -extension MIT-SHM" python3 tools/darling/test-gui.py \
+            --app "$RUNNER_TEMP/darling-fixture/ControllerLab.app" \
+            --prefix "$RUNNER_TEMP/darling-gui-prefix" \
+            --output "$RUNNER_TEMP/darling-gui-results"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Darling-GUI-results
+          path: ${{ runner.temp }}/darling-gui-results
+      - uses: actions/download-artifact@v4
+        if: always() && steps.install.outcome == 'success'
+        with:
+          name: Darling-PIPLab-Intel
+          path: ${{ runner.temp }}/darling-pip-fixture
+      - name: Exercise installed PIP with unchanged Intel fixture
+        if: always() && steps.install.outcome == 'success'
+        timeout-minutes: 3
+        run: |
+          unzip -q "$RUNNER_TEMP/darling-pip-fixture/PIPLab.zip" -d "$RUNNER_TEMP/darling-pip-fixture"
+          xvfb-run -a -s "-screen 0 1280x1024x24 -nolisten tcp -extension MIT-SHM" python3 tools/darling/test-pip.py \
+            --app "$RUNNER_TEMP/darling-pip-fixture/PIPLab.app" \
+            --prefix "$RUNNER_TEMP/darling-pip-prefix" \
+            --output "$RUNNER_TEMP/darling-pip-results"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Darling-PIP-results
+          path: ${{ runner.temp }}/darling-pip-results
+      - uses: actions/download-artifact@v4
+        if: always() && steps.install.outcome == 'success'
+        with:
+          name: Darling-TextEdit-Intel
+          path: ${{ runner.temp }}/darling-textedit
+      - name: TextEdit document workflow (M3)
+        id: textedit
+        if: always() && steps.install.outcome == 'success'
+        timeout-minutes: 8
+        run: |
+          unzip -q "$RUNNER_TEMP/darling-textedit/TextEdit.zip" -d "$RUNNER_TEMP/darling-textedit"
+          xvfb-run -a -s "-screen 0 1280x1024x24 -nolisten tcp -extension MIT-SHM" python3 tools/darling/test-textedit.py \
+            --app "$RUNNER_TEMP/darling-textedit/TextEdit.app" \
+            --prefix "$RUNNER_TEMP/darling-textedit-prefix" \
+            --output "$RUNNER_TEMP/darling-textedit-results"
+      - name: TextEdit xtrace diagnostic (M3)
+        # Only after a failure: trace the same workflow's syscalls and Mach
+        # messages per thread so the job log shows where TextEdit stops.
+        if: always() && steps.textedit.outcome == 'failure'
+        continue-on-error: true
+        timeout-minutes: 8
+        run: |
+          xvfb-run -a -s "-screen 0 1280x1024x24 -nolisten tcp -extension MIT-SHM" python3 tools/darling/test-textedit.py \
+            --app "$RUNNER_TEMP/darling-textedit/TextEdit.app" \
+            --prefix "$RUNNER_TEMP/darling-textedit-xtrace-prefix" \
+            --output "$RUNNER_TEMP/darling-textedit-xtrace" --xtrace
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Darling-TextEdit-results
+          path: |
+            ${{ runner.temp }}/darling-textedit-results
+            ${{ runner.temp }}/darling-textedit-xtrace
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Darling-runtime-build-log
+          path: |
+            ${{ runner.temp }}/darling-source.log
+            ${{ runner.temp }}/darling-build.log
+            ${{ runner.temp }}/darling-rendering.log
+            ${{ runner.temp }}/darling-reuse.log
+            ${{ runner.temp }}/darling-install.log

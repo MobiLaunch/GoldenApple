@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Mail
+Comment=Read and send email
+Icon=internet-mail
+Exec=qs -n -p @APPS@/mail.qml
+StartupWMClass=org.goldengate.Mail
+Categories=Network;Email;
+Keywords=mail;email;imap;smtp;inbox;
+StartupNotify=false
