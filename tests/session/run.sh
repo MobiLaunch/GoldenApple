@@ -45,10 +45,15 @@ if [[ $EUID == 0 ]]; then
   rm -rf "$src"; cp -a "$REPO" "$src"; chown -R gg-session "$src"
   exec runuser -u gg-session -- "$src/tests/session/run.sh" "$OUT" "${args[@]}"
 fi
-[[ -n ${DBUS_SESSION_BUS_ADDRESS:-} ]] || exec dbus-run-session -- "$0" "$OUT" "${args[@]}"
-
-XDG_RUNTIME_DIR="$(mktemp -d)"; chmod 700 "$XDG_RUNTIME_DIR"; export XDG_RUNTIME_DIR
-export XDG_CONFIG_HOME="$HOME/.config" XDG_DATA_HOME="$HOME/.local/share" XDG_CACHE_HOME="$HOME/.cache"
+# The account's directories come before its session bus: dconf-service, which
+# the bus starts, tells GSettings readers about a change through
+# $XDG_RUNTIME_DIR/dconf, so it has to be the readers' runtime directory (or
+# every change reads back stale, and the shell never follows dark mode here).
+if [[ -z ${DBUS_SESSION_BUS_ADDRESS:-} ]]; then
+  XDG_RUNTIME_DIR="$(mktemp -d)"; chmod 700 "$XDG_RUNTIME_DIR"; export XDG_RUNTIME_DIR
+  export XDG_CONFIG_HOME="$HOME/.config" XDG_DATA_HOME="$HOME/.local/share" XDG_CACHE_HOME="$HOME/.cache"
+  exec dbus-run-session -- "$0" "$OUT" "${args[@]}"
+fi
 export LANG=C.UTF-8 LC_ALL=C.UTF-8 PATH="$HOME/.local/bin:$PATH"
 CRASHES="$XDG_CACHE_HOME/quickshell/crashes"
 FAILED=0
@@ -85,7 +90,18 @@ trap 'kill $SWAY 2>/dev/null || true; pkill -u "$(id -u)" -x qs 2>/dev/null || t
 for _ in $(seq 300); do compgen -G "$XDG_RUNTIME_DIR/sway-ipc.*.sock" >/dev/null && break; sleep 0.1; done
 compgen -G "$XDG_RUNTIME_DIR/sway-ipc.*.sock" >/dev/null || { echo "::error::Sway did not start"; tail -30 "$OUT/sway.log"; exit 1; }
 SWAYSOCK="$(compgen -G "$XDG_RUNTIME_DIR/sway-ipc.*.sock" | head -n1)"
-export SWAYSOCK WAYLAND_DISPLAY=wayland-1 QT_QPA_PLATFORM=wayland
+export SWAYSOCK WAYLAND_DISPLAY=wayland-1
+# The environment the session gives the shell: hyprland.conf's env lines (the
+# icon theme, the wallpaper, the Qt platform theme), as install.sh wrote them.
+while IFS=$'\t' read -r key value; do export "$key=$value"; done < <(python3 - "$XDG_CONFIG_HOME/hypr/hyprland.conf" <<'PY'
+import re, sys
+for line in open(sys.argv[1]):
+    m = re.match(r"\s*env\s*=\s*([A-Za-z_][A-Za-z0-9_]*)\s*,\s*([^#\n]*?)\s*(#.*)?$", line)
+    if m:
+        print(f"{m.group(1)}\t{m.group(2)}")
+PY
+)
+say "session environment: QS_ICON_THEME=${QS_ICON_THEME:-} QT_QPA_PLATFORM=${QT_QPA_PLATFORM:-} GG_WALLPAPER=${GG_WALLPAPER:-}"
 gsettings set org.gnome.desktop.interface color-scheme default 2>/dev/null || true
 
 # ---------------------------------------------------------------- checks
