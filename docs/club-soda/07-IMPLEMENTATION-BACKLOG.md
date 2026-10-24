@@ -148,7 +148,12 @@ same fields, more briefly, and should be expanded when their milestone starts.
 - **Done when:** the tests pass, the first signed release is published, and the README's
   update section is updated.
 
-### T-1.4: Theme-icon crash fix and `AppIcon` (CS2-004) · **P1** · S
+### T-1.4: Theme-icon crash fix and `AppIcon` (CS2-004) · **P1** · S · **crash fix done; `AppIcon` to do**
+- **As built so far:** the crash fix. The theme-icon Images in `shell/Applications.qml`
+  and `shell/TabletHome.qml` load synchronously when their source is `image://`
+  (`asynchronous: !String(source).startsWith("image://")`), and `tests/qml-regressions.py`
+  rejects an asynchronous Image with an `iconPath`/`iconFor` source anywhere in `shell/`.
+  The shared `AppIcon` component and moving the other Images onto it are still to do.
 - **Files:** new `apps/lib/AppIcon.qml`; `shell/Applications.qml:480-494`,
   `shell/TabletHome.qml:412-421`, `shell/Dock.qml`, `shell/MissionControl.qml:205-212`,
   `shell/AppLaunch.qml:299`, `shell/DesktopWidgets.qml:358`; `tests/qml-regressions.py`.

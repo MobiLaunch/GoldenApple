@@ -42,10 +42,14 @@ update bundles and a release channel, the async-icon crash fix, the lock-screen
 separation, systemd user units, Wi-Fi password off argv, AirDrop off by default plus a
 firewall, Prefs write errors, and security lints.
 **Depends on:** nothing.
+**Status:** T-1.1 to T-1.10 are built and tested in CI, except T-1.4's shared `AppIcon`
+component (its crash fix is in). See the "As built" notes in [07](07-IMPLEMENTATION-BACKLOG.md). The criteria below that need a real session (cold
+starts, killing the lock and the shell, `ss -lntup` after login) wait for the session
+harness (T-0.2).
 **Exit criteria:**
 - [x] `tests/security-lint.py` passes: no shell strings built from data, no passwordless
   action that runs downloaded code, no secrets on argv.
-- `pkexec update-helper set-source` asks for a password. An update bundle that isn't
+- [x] `pkexec update-helper set-source` asks for a password. An update bundle that isn't
   signed by the release key is refused.
 - 20 of 20 cold starts in the session harness with no Quickshell crash report.
 - Killing the lock process while locked gives a working lock screen within 3 s, 5 of 5
