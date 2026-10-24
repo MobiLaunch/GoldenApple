@@ -30,7 +30,10 @@ APP = QGuiApplication([])
 
 class Downloads(unittest.TestCase):
     def setUp(self):
-        self.tmp = tempfile.TemporaryDirectory()
+        # Chromium's profile writer runs on its own thread and can still be
+        # finishing a file as the window closes: a leftover in the temporary
+        # profile isn't a failure of the downloads under test.
+        self.tmp = tempfile.TemporaryDirectory(ignore_cleanup_errors=True)
         tmp = Path(self.tmp.name)
         self.backend = BrowserBackend(data_dir=tmp / "data", cache_dir=tmp / "cache", download_dir=tmp / "downloads")
         self.engine = QQmlApplicationEngine()
@@ -51,6 +54,7 @@ class Downloads(unittest.TestCase):
         self.engine.deleteLater()
         APP.processEvents()
         APP.sendPostedEvents(None, QEvent.DeferredDelete)
+        QTest.qWait(200)
         self.tmp.cleanup()
 
     def test_terminal_states_and_pause(self):
