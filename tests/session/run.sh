@@ -8,14 +8,17 @@
 # 2. Headless Sway (Hyprland needs a GPU render node, which CI hasn't got; the
 #    ISO's boot test runs Hyprland itself in QEMU). Hyprland-only parts of the
 #    shell (window lists, workspaces, the glass's window captures) show empty.
-# 3. N cold starts of `qs -c golden-gate`. A start fails if the shell died,
+# 3. N cold starts (20 by default) of `qs -c golden-gate`. A start fails if the shell died,
 #    left a crash report (~/.cache/quickshell/crashes), printed "pure virtual"
 #    (the theme-icon crash, CS2-004), or a QML error in CitronOS's own files.
 # 4. Every surface opened through `qs ipc`, in light and in dark, screenshotted
 #    into OUTDIR: the desktop, Control Center, Spotlight, Launchpad,
 #    Notification Center, Mission Control; then the lock screen, locked with
-#    gg-lock, and killed while locked (T-1.5: a new one should lock within 3 s).
-# 5. OUTDIR/summary.json, and tests/session/shots.py's contact sheet.
+#    gg-lock, and killed while locked 5 times (T-1.5: each time a new one
+#    should be locking within 3 s).
+# 5. AirDrop's service with receiving off (a new account's default): nothing
+#    listens on its port (T-1.8).
+# 6. OUTDIR/summary.json, and tests/session/shots.py's contact sheet.
 #
 # --self-test proves the crash detection works: a shell killed with SIGSEGV,
 # and a configuration that doesn't load, must both be caught. It exits 0 only
@@ -24,7 +27,7 @@ set -euo pipefail
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 OUT="$(mkdir -p "${1:?usage: run.sh OUTDIR [--starts N] [--self-test]}" && cd "$1" && pwd)"
 shift
-STARTS=10 SELF_TEST=0
+STARTS=20 SELF_TEST=0
 while [[ $# -gt 0 ]]; do
   case $1 in
     --starts) STARTS=$2; shift 2 ;;
@@ -197,29 +200,44 @@ LOCK_LOOP=$!
 sleep 4
 gg-lock; sleep 3
 shot dark-lock; shots+=(dark-lock)
-lock_pid=$(pgrep -u "$(id -u)" -f "qs -p .*lock-shell.qml" | head -n1 || true)
-restored=false
-if [[ -n $lock_pid ]]; then
-  kill -SEGV "$lock_pid" 2>/dev/null || true
+lock_pids() { pgrep -u "$(id -u)" -f "qs -p .*lock-shell.qml" || true; }
+restored=0
+[[ -n $(lock_pids) ]] || fail "the lock screen didn't start"
+for round in 1 2 3 4 5; do
+  old=$(lock_pids | head -n1)
+  [[ -n $old ]] || break
+  kill -SEGV "$old" 2>/dev/null || true
+  back=false
   for _ in $(seq 30); do
-    new=$(pgrep -u "$(id -u)" -f "qs -p .*lock-shell.qml" | grep -vx "$lock_pid" | head -n1 || true)
-    [[ -n $new && -e $XDG_RUNTIME_DIR/citronos-locked ]] && { restored=true; break; }
+    new=$(lock_pids | grep -vx "$old" | head -n1 || true)
+    [[ -n $new && -e $XDG_RUNTIME_DIR/citronos-locked ]] && { back=true; break; }
     sleep 0.1
   done
-  sleep 2; shot dark-lock-restored; shots+=(dark-lock-restored)
-else
-  fail "the lock screen didn't start"
-fi
-say "lock screen killed while locked: back within 3 s: $restored"
+  if $back; then restored=$((restored + 1)); else echo "kill $round: no lock screen within 3 s"; fi
+  sleep 2
+done
+shot dark-lock-restored; shots+=(dark-lock-restored)
+say "lock screen killed while locked: back within 3 s, $restored of 5"
+[[ $restored == 5 ]] || fail "the lock screen came back within 3 s only $restored of 5 times"
 kill "$LOCK_LOOP" 2>/dev/null || true
 stop "$SHELL_PID"
 
+# ---------------------------------------------------------------- 5. AirDrop off
+gg-airdrop --serve >"$OUT/airdrop.log" 2>&1 &
+AIRDROP=$!
+sleep 4
+listening=$(ss -Hlntup 2>/dev/null | grep -E ':53317\b' || true)
+if ! kill -0 "$AIRDROP" 2>/dev/null; then fail "AirDrop's service didn't stay up"; tail -20 "$OUT/airdrop.log"
+elif [[ -n $listening ]]; then fail "AirDrop listens on the network with receiving off: $listening"
+else say "AirDrop's service is up, and nothing listens on 53317"; fi
+stop "$AIRDROP"
+
 # ---------------------------------------------------------------- 5. summary
-python3 - "$OUT/summary.json" "$STARTS" "$crashed" "$restored" "${shots[@]}" <<'PY'
+python3 - "$OUT/summary.json" "$STARTS" "$crashed" "$restored" "${listening:-}" "${shots[@]}" <<'PY'
 import json, sys
-out, starts, crashed, restored, *shots = sys.argv[1:]
-json.dump({"coldStarts": int(starts), "crashed": int(crashed), "lockRestored": restored == "true",
-           "shots": shots}, open(out, "w"), indent=2)
+out, starts, crashed, restored, listening, *shots = sys.argv[1:]
+json.dump({"coldStarts": int(starts), "crashed": int(crashed), "lockRestored": int(restored), "lockKills": 5,
+           "airdropListening": bool(listening), "shots": shots}, open(out, "w"), indent=2)
 PY
 python3 "$REPO/tests/session/shots.py" "$OUT" || FAILED=$((FAILED + 1))
 say "cold starts: $((STARTS - crashed))/$STARTS clean; failures: $FAILED"

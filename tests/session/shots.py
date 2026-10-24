@@ -62,7 +62,8 @@ if (out / "light-desktop.png").exists() and (out / "dark-desktop.png").exists():
 lines = ["# Session harness", ""]
 if summary:
     lines += [f"- Cold starts: **{summary['coldStarts'] - summary['crashed']} of {summary['coldStarts']}** clean",
-              f"- Lock screen killed while locked, back within 3 s: **{'yes' if summary.get('lockRestored') else 'no'}**", ""]
+              f"- Lock screen killed while locked, back within 3 s: **{summary['lockRestored']} of {summary['lockKills']}**",
+              f"- AirDrop listening with receiving off: **{'yes' if summary['airdropListening'] else 'no'}**", ""]
 lines += ["| Theme | Surface | Changed from the desktop | Brightness |", "|---|---|---|---|"]
 lines += [f"| {t} | {n} | {'' if s is None else f'{s:.1%}'} | {b:.0f} |" for t, n, s, b in rows]
 if problems:
