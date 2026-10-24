@@ -18,4 +18,18 @@
     </defaults>
     <annotate key="org.freedesktop.policykit.exec.path">/usr/share/golden-gate/apps/settings/update-helper.py</annotate>
   </action>
+  <!-- Where updates come from decides what Software Update installs as root,
+       so changing it always asks for an administrator's password: no
+       "_keep", and no rule grants it. -->
+  <action id="org.goldengate.update.source">
+    <description>Change where software updates come from</description>
+    <message>Settings wants to change where CitronOS updates come from.</message>
+    <icon_name>system-software-update</icon_name>
+    <defaults>
+      <allow_any>auth_admin</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/share/golden-gate/apps/settings/update-source-helper.py</annotate>
+  </action>
 </policyconfig>

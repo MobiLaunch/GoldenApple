@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-"""Software Update installs CitronOS from GitHub.
+"""Software Update installs CitronOS from GitHub, on the development channel.
 
+(Signed releases, the default channel, are tests/golden-update-signed.py.)
 A stand-in GitHub API serves this checkout as the newest commit of a private
 repository; the update is installed into a staging root with the real
 scripts/install.sh. Checks that a token is needed and used, that the notes
@@ -101,7 +102,9 @@ USER = next((u for u in pwd.getpwall() if 1000 <= u.pw_uid < 60000 and not u.pw_
 class GoldenUpdate(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        # The system as installed from an older ISO.
+        # The system as installed from an older ISO, set to development builds.
+        (STAGE / "etc/golden-gate").mkdir(parents=True)
+        (STAGE / "etc/golden-gate/update.json").write_text(json.dumps({"channel": "dev"}))
         (STAGE / "usr/share/golden-gate").mkdir(parents=True)
         (STAGE / "usr/share/golden-gate/version.json").write_text(json.dumps(
             {"repo": "MobiLaunch/GoldenApple", "branch": BRANCH, "commit": OLD}))
@@ -124,29 +127,29 @@ class GoldenUpdate(unittest.TestCase):
         self.assertTrue(status["needsToken"])
 
     def test_1b_says_why_a_token_fails(self):
-        golden_update.set_source("MobiLaunch/GoldenApple", BRANCH, "github_pat_" + "X" * 30)
+        golden_update.set_source("MobiLaunch/GoldenApple", BRANCH, "github_pat_" + "X" * 30, channel="dev")
         status = golden_update.check()
         self.assertTrue(status["needsToken"])
         self.assertIn("didn't accept the access token", status["error"])
-        golden_update.set_source("MobiLaunch/GoldenApple", BRANCH, BLIND)
+        golden_update.set_source("MobiLaunch/GoldenApple", BRANCH, BLIND, channel="dev")
         status = golden_update.check()
         self.assertTrue(status["needsToken"])
         self.assertIn("can't see MobiLaunch/GoldenApple", status["error"])
         self.assertIn("Only select repositories", status["error"])
         # Pasted with a line break, quotes and a Bearer prefix: still the token.
-        golden_update.set_source("MobiLaunch/GoldenApple", "no-such-branch", f' "Bearer {TOKEN[:20]}\n{TOKEN[20:]}" ')
+        golden_update.set_source("MobiLaunch/GoldenApple", "no-such-branch", f' "Bearer {TOKEN[:20]}\n{TOKEN[20:]}" ', channel="dev")
         self.assertEqual(golden_update.source()["token"], TOKEN)
         status = golden_update.check()
         self.assertFalse(status["needsToken"])
         self.assertIn("no branch named", status["error"])
         with self.assertRaises(ValueError):
-            golden_update.set_source("MobiLaunch/GoldenApple", BRANCH, "my password")
+            golden_update.set_source("MobiLaunch/GoldenApple", BRANCH, "my password", channel="dev")
 
     @unittest.skipUnless(os.geteuid() == 0, "saving the update source needs root")
     def test_1c_save_asks_github_first(self):
         def save(token):
-            proc = subprocess.run([sys.executable, str(ROOT / "apps/settings/update-helper.py"), "set-source"],
-                                  input=json.dumps({"repo": "MobiLaunch/GoldenApple", "branch": BRANCH, "token": token}) + "\n",
+            proc = subprocess.run([sys.executable, str(ROOT / "apps/settings/update-source-helper.py"), "set-source"],
+                                  input=json.dumps({"repo": "MobiLaunch/GoldenApple", "channel": "dev", "branch": BRANCH, "token": token}) + "\n",
                                   capture_output=True, text=True, env=os.environ, timeout=60)
             return proc.returncode, [json.loads(l) for l in proc.stdout.splitlines() if l.startswith("{")]
         code, events = save("github_pat_" + "X" * 30)
@@ -162,16 +165,16 @@ class GoldenUpdate(unittest.TestCase):
         self.assertEqual(golden_update.source()["token"], TOKEN)
 
     def test_2_check_with_token(self):
-        golden_update.set_source("MobiLaunch/GoldenApple", BRANCH, TOKEN)
+        golden_update.set_source("MobiLaunch/GoldenApple", BRANCH, TOKEN, channel="dev")
         status = golden_update.check()
         self.assertTrue(status["available"], status)
         self.assertEqual(status["latest"], SHA)
         self.assertEqual(status["notes"], ["Second change", "First change"])
         self.assertEqual(status["ahead"], 2)
         with self.assertRaises(ValueError):
-            golden_update.set_source("not a repo", BRANCH, None)
+            golden_update.set_source("not a repo", BRANCH, None, channel="dev")
         with self.assertRaises(ValueError):
-            golden_update.set_source("a/b", "../etc", None)
+            golden_update.set_source("a/b", "../etc", None, channel="dev")
 
     def test_3_install(self):
         events = []
@@ -230,7 +233,7 @@ class FromUsb(unittest.TestCase):
             (shell / "old.qml").write_text("old")
             env = {k: v for k, v in os.environ.items() if not k.startswith("GG_UPDATE")}
             proc = subprocess.run([sys.executable, str(ROOT / "apps/settings/golden_update.py"), "install-local",
-                                   "--from", str(bundle), "--root", str(target)],
+                                   "--from", str(bundle), "--root", str(target), "--unsigned"],
                                   capture_output=True, text=True, env=env, timeout=900)
             self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
             version = json.loads((target / "usr/share/golden-gate/version.json").read_text())

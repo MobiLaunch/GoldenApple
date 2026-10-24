@@ -10,8 +10,11 @@ with progress shown in Settings and no terminal.
                  CitronOS
     apply-user   unprivileged: the user's own Flatpak apps
     source       unprivileged: where CitronOS updates come from
-    set-source   as root: save {"repo", "branch", "token"} read from stdin
-                 (token null keeps the saved one, "" removes it)
+
+Changing where updates come from is NOT here: an administrator may run this
+helper without a password (49-golden-gate-update.rules), and choosing the
+source decides what code runs as root. update-source-helper.py does it,
+under its own polkit action that always asks.
 
 Every line on stdout is one JSON event for Settings.
 """
@@ -267,41 +270,19 @@ def apply_user() -> int:
 def show_source() -> int:
     src = golden_update.source()
     now = golden_update.installed()
-    emit("source", repo=src["repo"], branch=src["branch"], hasToken=bool(src["token"]),
+    emit("source", repo=src["repo"], branch=src["branch"], channel=src["channel"], hasToken=bool(src["token"]),
          tokenReadable=os.access(golden_update.path("/etc/golden-gate/update-token"), os.R_OK)
          or not golden_update.path("/etc/golden-gate/update-token").exists(),
-         commit=now.get("commit", ""), date=now.get("date", ""), subject=now.get("subject", ""))
-    return 0
-
-
-def set_source() -> int:
-    if os.geteuid() != 0:
-        emit("error", message="Changing the update source needs administrator authorization.")
-        return 77
-    try:
-        data = json.loads(sys.stdin.readline() or "{}")
-        repo, branch = str(data.get("repo", "")).strip(), str(data.get("branch", "")).strip()
-        token = None if data.get("token") is None else golden_update.clean_token(str(data["token"]))
-        # Ask GitHub first, so a token it won't take is refused here, with the
-        # reason, instead of being saved and failing quietly later. Without a
-        # connection it's saved anyway.
-        problem = golden_update.verify_source(repo, branch, golden_update.source()["token"] if token is None else token)
-        if problem and problem[1]:
-            emit("error", message=problem[0])
-            return 1
-        golden_update.set_source(repo, branch, token)
-    except (ValueError, OSError) as exc:
-        emit("error", message=str(exc))
-        return 1
-    emit("done", message="Saved." if not problem else "Saved, but " + problem[0][0].lower() + problem[0][1:])
+         commit=now.get("commit", ""), version=now.get("version", ""), installedChannel=now.get("channel", ""),
+         date=now.get("date", ""), subject=now.get("subject", ""))
     return 0
 
 
 def main() -> int:
     commands = {"check": check, "apply": apply, "apply-user": apply_user,
-                "source": show_source, "set-source": set_source}
+                "source": show_source}
     if len(sys.argv) != 2 or sys.argv[1] not in commands:
-        print("usage: update-helper.py check|apply|apply-user|source|set-source", file=sys.stderr)
+        print("usage: update-helper.py check|apply|apply-user|source", file=sys.stderr)
         return 2
     return commands[sys.argv[1]]()
 

@@ -53,7 +53,7 @@ PanelWindow {
     function openDetailSettings() {
         const pane = ({wifi:"wifi", bluetooth:"bluetooth", sound:"sound", mirroring:"airplay", focus:"focus", display:"displays", airpods:"airpods"})[detail]
         if (!pane) return
-        open = false; run("gg-settings " + pane)
+        open = false; run(["gg-settings", pane])
     }
     // AirPlay Receiver: the gg-airplay user service (UxPlay, under
     // apps/mirroring/airplay.py) lets an iPhone, iPad or Mac mirror to this
@@ -104,9 +104,12 @@ PanelWindow {
     // Known networks connect at once; open ones join; a new secured network is
     // joined in Settings, which asks for its password (never on a command line).
     function joinNetwork(ssid) {
-        cc.run("sh -c 'nmcli -w 15 connection up id \"$1\" >/dev/null 2>&1 || nmcli -w 15 device wifi connect \"$1\" >/dev/null 2>&1 || gg-settings wifi' sh " + JSON.stringify(ssid))
+        // The name comes from the air: it is only ever $1 to this fixed script,
+        // never part of a command line a shell reads (an SSID can say $(…)).
+        cc.run(["sh", "-c", 'nmcli -w 15 connection up id "$1" >/dev/null 2>&1 || nmcli -w 15 device wifi connect "$1" >/dev/null 2>&1 || exec gg-settings wifi', "sh", String(ssid)])
     }
-    function run(cmd) { Hyprland.dispatch("exec " + cmd) }
+    // Commands are argument lists, so nothing in them is read by a shell.
+    function run(argv) { Quickshell.execDetached(argv) }
     function refresh() {
         airdropProbe.running = true
         wifiState.running = true
@@ -121,11 +124,11 @@ PanelWindow {
     }
     // Coalesce drag events; hardware follows at 25 Hz and the last chosen
     // value is saved once the pointer settles, including after dismissal.
-    Timer { id: brightnessApply; interval: 40; onTriggered: cc.run("brightnessctl -q set " + Math.round(cc.brightness * 100) + "%") }
+    Timer { id: brightnessApply; interval: 40; onTriggered: cc.run(["brightnessctl", "-q", "set", Math.round(cc.brightness * 100) + "%"]) }
     Timer { id: brightnessSave; interval: 240; onTriggered: Quickshell.execDetached(["gg-pref", "display.brightness", String(cc.brightness)]) }
     function setDarkMode() {
         Theme.dark = !Theme.dark
-        run("gsettings set org.gnome.desktop.interface color-scheme " + (Theme.dark ? "prefer-dark" : "default"))
+        run(["gsettings", "set", "org.gnome.desktop.interface", "color-scheme", Theme.dark ? "prefer-dark" : "default"])
         Quickshell.execDetached(["sh", "-c",
             "d=$HOME/.config/golden-gate; mkdir -p \"$d\"; printf '{ \"mode\": \"%s\" }\\n' \"$1\" > \"$d/appearance.json\"",
             "sh", Theme.dark ? "dark" : "light"])
@@ -133,7 +136,7 @@ PanelWindow {
     function setNightShift() {
         const enabled = !nightShift
         Quickshell.execDetached(["gg-pref", "display.nightShift", enabled ? "true" : "false"])
-        run(enabled ? "hyprsunset -t " + Prefs.displayWarmth : "pkill -x hyprsunset")
+        run(enabled ? ["hyprsunset", "-t", String(Prefs.displayWarmth)] : ["pkill", "-x", "hyprsunset"])
     }
 
     visible: open || closeTimer.running
@@ -249,7 +252,7 @@ PanelWindow {
         { id: "calculator", name: "Calculator", icon: "calculator", run: () => cc.launch("org.goldengate.Calculator") },
         { id: "timer", name: "Timer", icon: "timer", run: () => cc.launch("org.goldengate.Clock") },
         { id: "notes", name: "Quick Note", icon: "compose", run: () => cc.launch("org.goldengate.Notes") },
-        { id: "lock", name: "Lock Screen", icon: "lock", run: () => { cc.open = false; cc.run("loginctl lock-session") } }
+        { id: "lock", name: "Lock Screen", icon: "lock", run: () => { cc.open = false; cc.run(["loginctl", "lock-session"]) } }
     ]
     readonly property var extras: (Array.isArray(Prefs.data.controlCenter?.extras) ? Prefs.data.controlCenter.extras : ["screenshot"])
         .map((id) => extraCatalog.find((e) => e.id === id)).filter((e) => !!e)
@@ -262,7 +265,7 @@ PanelWindow {
         const ids = extras.map((e) => e.id)
         setExtras(ids.includes(id) ? ids.filter((x) => x !== id) : ids.concat([id]))
     }
-    function ipc(call) { cc.open = false; cc.run("qs -c golden-gate ipc call " + call) }
+    function ipc(call) { cc.open = false; cc.run(["qs", "-c", "golden-gate", "ipc", "call"].concat(call.split(" "))) }
     function launch(id) {
         cc.open = false
         const entry = DesktopEntries.byId(id)
@@ -1053,7 +1056,7 @@ PanelWindow {
                     symbol: "tv"
                     title: modelData.name
                     subtitle: modelData.model || "Google Cast"
-                    onClicked: { cc.open = false; cc.run("gnome-network-displays") }
+                    onClicked: { cc.open = false; cc.run(["gnome-network-displays"]) }
                 }
             }
             Text {
@@ -1068,7 +1071,7 @@ PanelWindow {
                 symbol: "mirror"
                 title: "Other Displays…"
                 subtitle: "Miracast TVs and adapters"
-                onClicked: { cc.open = false; cc.run("gnome-network-displays") }
+                onClicked: { cc.open = false; cc.run(["gnome-network-displays"]) }
             }
         }
 

@@ -490,7 +490,7 @@ ID=citronos
 ID_LIKE=arch
 VERSION="$version ($release)"
 VERSION_ID=$version
-VERSION_CODENAME=${release,,}
+VERSION_CODENAME=$(printf %s "${release,,}" | tr -c "a-z0-9\n" -)
 BUILD_ID=$(date --date="@${SOURCE_DATE_EPOCH:-$(date +%s)}" +%Y.%m.%d)
 ANSI_COLOR="38;2;255;204;0"
 HOME_URL="https://github.com/mobilaunch/goldenapple"

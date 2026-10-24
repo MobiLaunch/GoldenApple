@@ -1,11 +1,12 @@
-# CitronOS Sprite 3.5
+# CitronOS 4.0 Club Soda
 
 A Linux distribution with a Liquid Glass desktop: translucent glass materials,
 spring motion, a floating Control Center, an iPad-style Dock, Spotlight, desktop
 widgets and Finder-style Files, modelled closely on macOS's Liquid Glass design
-language and built entirely from original artwork. Sprite is the release's
-name and 3.5 its version (both kept in `apps/lib/theme/Release.qml`); it was
-called Golden Gate before. Internal names (`org.goldengate.*` app IDs, `gg-*`
+language and built entirely from original artwork. Club Soda is the release's
+name and 4.0 its version (both kept in `apps/lib/theme/Release.qml`); the
+release before it was Sprite 3.5, and the project was called Golden Gate before
+that. Internal names (`org.goldengate.*` app IDs, `gg-*`
 commands, `~/.config/golden-gate`) are unchanged, so existing installs keep
 their settings.
 
@@ -237,13 +238,26 @@ lighter effects (`compositor/hyprland/machine-conf.sh`). If the desktop can't
 start, the session drops to a shell that says why.
 
 **Updating an installed system.** Settings ▸ General ▸ Software Update's
-Update Now installs Arch updates and CitronOS's newest commit from GitHub
-together, no new ISO needed (`apps/settings/golden_update.py`). It follows the
-repository and branch the ISO was built from (recorded in
-`/usr/share/golden-gate/version.json`); Update Source changes them, and takes a
+Update Now installs Arch updates and the newest CitronOS release together, no
+new ISO needed (`apps/settings/golden_update.py`). CitronOS installs a release
+only if it is **signed** by a CitronOS release key the system already trusts
+(`apps/settings/release-keys/`), is the file that was signed, and is newer than
+what's installed; anything else is refused and nothing changes. Update Source
+chooses the channel: **Stable** (releases, the default), **Beta** (also
+pre-releases) or **Development** (every commit to a branch, unsigned: for
+testing CitronOS itself). Changing it always asks for an administrator's
+password, even though installing updates is one click. It also takes a
 read-only fine-grained token (Contents: read) for a private repository. Each
 account's shell is refreshed; a Hyprland, GTK or Ghostty file you edited is
 kept, with the new one beside it as `*.golden-gate-new`.
+
+**Making a release.** Once, run `scripts/release-key.sh`: it writes the public
+key into `apps/settings/release-keys/` (commit it) and the private key to a
+file of your own, which goes into the repository's Actions secrets as
+`CITRONOS_RELEASE_KEY`. Then push a tag such as `v4.0.1` (a version beginning
+with Release.qml's, 4.0; `v4.1.0-beta.1` makes a beta): the *Release* workflow
+builds the bundle with `scripts/make-release.sh`, signs its manifest and
+publishes them as a GitHub release.
 
 Each part (Arch packages, apps for everyone, CitronOS) reports its own result,
 and Software Update only says it's up to date when all of them installed; a
@@ -262,9 +276,15 @@ Without GitHub, from a USB stick, either way keeps accounts and files:
   and run `sudo gg-update-disk`. It finds the CitronOS installed on the
   computer, asks to confirm, and installs the ISO's own version onto it
   (the ISO carries its source as `/usr/share/golden-gate/source.tar.gz`).
+- **Install a signed release from a USB stick:** copy a release's three files
+  (`citronos-VERSION.tar.gz`, `.manifest.json`, `.manifest.json.sig`) to the
+  stick, then run
+  `sudo python3 /usr/share/golden-gate/apps/settings/golden_update.py install-local --from /run/media/$USER/*/citronos-VERSION.tar.gz`.
+  It's checked just as Software Update checks it.
 - **Carry an update bundle to the installed system:** make one with
   `scripts/make-update-bundle.sh golden-gate-update.tar.gz`, copy that one file
-  to any USB stick, then on the installed system:
+  to any USB stick, then on the installed system (this runs the bundle's own
+  installer, so use only a bundle you made):
 
   ```sh
   tar xzf /run/media/$USER/*/golden-gate-update.tar.gz

@@ -1,6 +1,9 @@
 // Software Update is one click for administrators at the computer: the
-// helper only refreshes and upgrades the installed packages (pacman -Syu)
-// and Flatpak apps. Everything else still asks for a password.
+// helper (update-helper.py) installs the system packages (pacman -Syu),
+// Flatpak apps, and CitronOS releases that are signed by the CitronOS
+// release key. It can't change where updates come from: that is
+// org.goldengate.update.source, which this rule doesn't grant, so it always
+// asks for a password. Everything else still asks too.
 polkit.addRule(function (action, subject) {
     if (action.id === "org.goldengate.update" && subject.local && subject.active
             && subject.isInGroup("wheel"))

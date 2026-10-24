@@ -1,11 +1,21 @@
 """CitronOS updates from GitHub, for Software Update.
 
 CitronOS itself (the shell, the apps, the themes) comes from its GitHub
-repository rather than from Arch packages. This module asks GitHub for the
-newest commit on the branch the system was built from, says what changed
-since the installed one, and installs it:
+repository rather than from Arch packages. Updates come from one of three
+channels (/etc/golden-gate/update.json "channel"):
 
-  1. download that exact commit's snapshot (GitHub's tarball of the commit)
+  stable  (the default) the newest GitHub release that isn't a pre-release
+  beta    the newest release, pre-releases included
+  dev     the newest commit of a branch, unsigned: for CitronOS's developers
+
+A release is installed only if it is signed by a CitronOS release key this
+system already trusts (release-keys/*.pem beside this file): its signed
+manifest names the bundle's SHA-256, its tag and its version, and a version
+older than the installed one is refused. Only an administrator, with their
+password, can switch to dev (update-source-helper.py). Then:
+
+  1. download the signed release bundle, or on dev that exact commit's
+     snapshot (GitHub's tarball of the commit)
   2. install any packages the new package list adds (official repos only)
   3. run its scripts/install.sh --system / , with the previous runtime kept
      aside and put back if the install fails
@@ -54,6 +64,7 @@ import subprocess
 import tarfile
 import tempfile
 import urllib.error
+import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
@@ -64,7 +75,13 @@ ROOT = Path(os.environ.get("GG_UPDATE_ROOT", "/"))
 DEFAULT_REPO = "MobiLaunch/GoldenApple"
 # Development happens here; main gets it when the work is merged.
 DEFAULT_BRANCH = "claude/linux-macos-golden-gate-ui-pckc7s"
+CHANNELS = ("stable", "beta", "dev")
 REPO_RE = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
+VERSION_RE = re.compile(r"^v?(\d{1,4})\.(\d{1,4})(?:\.(\d{1,4}))?(?:-([0-9A-Za-z.-]{1,40}))?$")
+# Public keys whose signature makes a release genuine. Tests (only with a
+# staging root) may point elsewhere; pkexec and sudo clear the environment.
+RELEASE_KEYS = Path(os.environ["GG_RELEASE_KEYS"]) if os.environ.get("GG_RELEASE_KEYS") and os.environ.get("GG_UPDATE_ROOT") \
+    else Path(__file__).resolve().parent / "release-keys"
 BRANCH_RE = re.compile(r"^(?!.*\.\.)[A-Za-z0-9_./-]{1,200}$")
 
 # Files every account gets from /etc/skel/.config that CitronOS keeps current.
@@ -164,9 +181,15 @@ def source() -> dict:
         cfg = json.loads(path("/etc/golden-gate/update.json").read_text())
     except (OSError, ValueError):
         pass
+    if not isinstance(cfg, dict):
+        cfg = {}
     built = installed()
     repo = cfg.get("repo") or built.get("repo") or DEFAULT_REPO
     branch = cfg.get("branch") or built.get("branch") or DEFAULT_BRANCH
+    # Signed releases unless an administrator chose otherwise. A file from
+    # before channels existed (it could be written without a password then)
+    # counts as stable.
+    channel = cfg.get("channel") if cfg.get("channel") in CHANNELS else "stable"
     token = ""
     try:
         token = path("/etc/golden-gate/update-token").read_text().strip()
@@ -174,20 +197,22 @@ def source() -> dict:
         pass
     return {"repo": repo if REPO_RE.match(repo) else DEFAULT_REPO,
             "branch": branch if BRANCH_RE.match(branch) else DEFAULT_BRANCH,
-            "token": token}
+            "channel": channel, "token": token}
 
 
-def set_source(repo: str, branch: str, token: str | None) -> None:
-    """As root: save the repository, branch and (when given) token."""
+def set_source(repo: str, branch: str, token: str | None, channel: str = "stable") -> None:
+    """As root: save the repository, branch, channel and (when given) token."""
     if not REPO_RE.match(repo):
         raise ValueError("The repository should look like owner/name.")
     if not BRANCH_RE.match(branch):
         raise ValueError("That isn't a valid branch name.")
+    if channel not in CHANNELS:
+        raise ValueError("Choose Stable, Beta or Development.")
     if token is not None:
         token = clean_token(token)
     folder = path("/etc/golden-gate")
     folder.mkdir(parents=True, exist_ok=True)
-    (folder / "update.json").write_text(json.dumps({"repo": repo, "branch": branch}, indent=2) + "\n")
+    (folder / "update.json").write_text(json.dumps({"repo": repo, "branch": branch, "channel": channel}, indent=2) + "\n")
     if token is not None:
         tok = folder / "update-token"
         if token:
@@ -276,13 +301,13 @@ def refusal(e: GitHubError, src: dict) -> tuple[str, bool]:
     return f"GitHub refused the request ({e.status}).", False
 
 
-def verify_source(repo: str, branch: str, token: str) -> tuple[str, bool] | None:
-    """None when GitHub serves `branch` of `repo` with this token; otherwise
-    refusal()'s reason, and whether the token is what has to change."""
+def verify_source(repo: str, branch: str, token: str, channel: str = "dev") -> tuple[str, bool] | None:
+    """None when GitHub serves `repo` (on dev, its `branch`) with this token;
+    otherwise refusal()'s reason, and whether the token is what has to change."""
     if not REPO_RE.match(repo) or not BRANCH_RE.match(branch):
         return None                     # set_source says what's wrong with them
     try:
-        api(f"/repos/{repo}/commits/{branch}", token)
+        api(f"/repos/{repo}/commits/{branch}" if channel == "dev" else f"/repos/{repo}", token)
     except GitHubError as e:
         message, token_problem = refusal(e, {"repo": repo, "branch": branch, "token": token})
         missing_branch = e.status == 404 and "no branch named" in message
@@ -290,18 +315,31 @@ def verify_source(repo: str, branch: str, token: str) -> tuple[str, bool] | None
     return None
 
 
+def version_key(text: str) -> tuple | None:
+    """A release's version as a sortable tuple, or None if it isn't one.
+    4.0 == 4.0.0; a pre-release (4.1.0-beta.2) sorts before its release."""
+    m = VERSION_RE.match(str(text or "").strip())
+    if not m:
+        return None
+    pre = m.group(4)
+    return (int(m.group(1)), int(m.group(2)), int(m.group(3) or 0), 0 if pre else 1, pre or "")
+
+
 def check() -> dict:
     """What Software Update shows for CitronOS."""
     src = source()
     now = installed()
-    out = {"repo": src["repo"], "branch": src["branch"], "current": now.get("commit", ""),
-           "currentDate": now.get("date", ""), "available": False, "notes": [], "ahead": 0,
-           "needsToken": False, "error": ""}
+    out = {"repo": src["repo"], "branch": src["branch"], "channel": src["channel"],
+           "signed": src["channel"] != "dev", "current": now.get("commit", ""),
+           "currentVersion": now.get("version", ""), "currentDate": now.get("date", ""),
+           "available": False, "notes": [], "ahead": 0, "needsToken": False, "error": "", "note": ""}
     token_file = path("/etc/golden-gate/update-token")
     if not src["token"] and token_file.exists():
         out["error"] = ("A token is saved, but this account can't read it. "
                         "Only administrators can check for CitronOS updates.")
         return out
+    if src["channel"] != "dev":
+        return _check_release(src, now, out)
     try:
         head = api(f"/repos/{src['repo']}/commits/{src['branch']}", src["token"])
     except GitHubError as e:
@@ -325,6 +363,141 @@ def check() -> dict:
     if not out["notes"]:
         out["notes"] = [out["latestSubject"]] if out.get("latestSubject") else []
     return out
+
+
+def _latest_release(src: dict) -> dict | None:
+    """The newest published release on the source's channel."""
+    for rel in api(f"/repos/{src['repo']}/releases?per_page=30", src["token"]) or []:
+        if not isinstance(rel, dict) or rel.get("draft") or version_key(rel.get("tag_name")) is None:
+            continue
+        if src["channel"] == "stable" and rel.get("prerelease"):
+            continue
+        return rel
+    return None
+
+
+def _check_release(src: dict, now: dict, out: dict) -> dict:
+    try:
+        rel = _latest_release(src)
+    except GitHubError as e:
+        out["error"], out["needsToken"] = refusal(e, src)
+        return out
+    if rel is None:
+        out["note"] = ("No CitronOS beta or release has been published yet." if src["channel"] == "beta"
+                       else "No CitronOS release has been published yet.")
+        return out
+    tag = str(rel["tag_name"])
+    body = [l.strip().lstrip("-*• ").strip() for l in str(rel.get("body") or "").splitlines()]
+    out.update(latest=tag, latestVersion=tag.lstrip("v"), latestDate=rel.get("published_at") or "",
+               latestSubject=str(rel.get("name") or "CitronOS " + tag.lstrip("v"))[:200],
+               notes=[l[:200] for l in body if l and not l.startswith("#")][:20])
+    mine = version_key(now.get("version", ""))
+    # An install without a version record predates signed releases: any
+    # release supersedes it.
+    out["available"] = mine is None or version_key(tag) > mine
+    return out
+
+
+class UpdateRefused(Exception):
+    """A release that isn't genuine, or isn't newer: never installed."""
+
+
+def verify_signature(data: bytes, signature: bytes) -> bool:
+    """True when one of this system's release keys signed `data` (Ed25519)."""
+    keys = sorted(RELEASE_KEYS.glob("*.pem")) if RELEASE_KEYS.is_dir() else []
+    if not keys:
+        raise UpdateRefused("This CitronOS has no release key, so it can't tell a genuine update from a fake one.")
+    with tempfile.TemporaryDirectory(prefix="gg-verify-") as d:
+        msg, sig = Path(d) / "manifest", Path(d) / "manifest.sig"
+        msg.write_bytes(data)
+        sig.write_bytes(signature)
+        for key in keys:
+            proc = _run(["openssl", "pkeyutl", "-verify", "-pubin", "-inkey", str(key), "-rawin",
+                         "-in", str(msg), "-sigfile", str(sig)])
+            if proc.returncode == 0 and "Signature Verified Successfully" in proc.stdout:
+                return True
+    return False
+
+
+def check_bundle(bundle: Path, manifest: bytes, signature: bytes, installed_version: str = "",
+                 tag: str = "", channel: str = "stable") -> dict:
+    """The manifest of a signed bundle, once everything about it checks out:
+    signed by a release key, for this very file (name and SHA-256), the
+    release it claims to be, on a channel this system takes, and newer than
+    what's installed. Raises UpdateRefused otherwise."""
+    if not verify_signature(manifest, signature):
+        raise UpdateRefused("This update isn't signed by CitronOS, so it wasn't installed.")
+    try:
+        info = json.loads(manifest.decode("utf-8"))
+    except ValueError:
+        raise UpdateRefused("The update's manifest is damaged.")
+    if not isinstance(info, dict) or info.get("format") != 1 or version_key(info.get("version")) is None:
+        raise UpdateRefused("The update's manifest isn't one this CitronOS understands.")
+    digest = hashlib.sha256()
+    with open(bundle, "rb") as f:
+        for block in iter(lambda: f.read(1 << 20), b""):
+            digest.update(block)
+    if info.get("file") != bundle.name or info.get("sha256") != digest.hexdigest():
+        raise UpdateRefused("The update's file isn't the one CitronOS signed: it may have been changed.")
+    if tag and info.get("tag") != tag:
+        raise UpdateRefused("The update is signed as a different release than the one offered.")
+    allowed = {"stable": ("stable",), "beta": ("stable", "beta")}.get(channel, ("stable", "beta", "dev"))
+    if info.get("channel") not in allowed:
+        raise UpdateRefused(f"The update is a {info.get('channel')} build; this computer takes {channel} updates.")
+    mine = version_key(installed_version)
+    if mine is not None and version_key(info["version"]) <= mine:
+        raise UpdateRefused(f"CitronOS {info['version']} isn't newer than the installed {installed_version}.")
+    return info
+
+
+class _NoAuthOnRedirect(urllib.request.HTTPRedirectHandler):
+    """GitHub serves release assets from another host: the token stays with GitHub."""
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        new = super().redirect_request(req, fp, code, msg, headers, newurl)
+        if new is not None and urllib.parse.urlsplit(newurl).netloc != urllib.parse.urlsplit(req.full_url).netloc:
+            new.remove_header("Authorization")
+        return new
+
+
+def _asset(src: dict, asset: dict, into: Path, limit: int) -> Path:
+    dest = into / Path(str(asset.get("name"))).name
+    headers = {"Accept": "application/octet-stream", "User-Agent": "golden-gate-update"}
+    if src["token"]:
+        headers["Authorization"] = f"Bearer {src['token']}"
+    url = asset.get("url") or f"{API}/repos/{src['repo']}/releases/assets/{asset.get('id')}"
+    try:
+        opener = urllib.request.build_opener(_NoAuthOnRedirect)
+        with opener.open(urllib.request.Request(url, headers=headers), timeout=120) as r, open(dest, "wb") as f:
+            size = 0
+            for block in iter(lambda: r.read(1 << 20), b""):
+                size += len(block)
+                if size > limit:
+                    raise GitHubError(0, f"{dest.name} is larger than a CitronOS update can be.")
+                f.write(block)
+    except urllib.error.HTTPError as e:
+        raise GitHubError(e.code, f"Couldn't download {dest.name} ({e.code}).")
+    except (urllib.error.URLError, OSError) as e:
+        raise GitHubError(0, f"Couldn't download {dest.name}: {getattr(e, 'reason', e)}")
+    return dest
+
+
+def download_release(src: dict, tag: str, into: Path) -> tuple[Path, dict]:
+    """The signed bundle of release `tag`, checked and unpacked; returns its
+    top folder and its manifest."""
+    rel = api(f"/repos/{src['repo']}/releases/tags/{urllib.parse.quote(tag, safe='')}", src["token"])
+    name = "citronos-" + tag.lstrip("v")
+    assets = {a.get("name"): a for a in rel.get("assets") or [] if isinstance(a, dict)}
+    missing = [n for n in (name + ".tar.gz", name + ".manifest.json", name + ".manifest.json.sig") if n not in assets]
+    if missing:
+        raise UpdateRefused(f"Release {tag} isn't a signed CitronOS release (it has no {missing[0]}).")
+    manifest = _asset(src, assets[name + ".manifest.json"], into, 1 << 16).read_bytes()
+    signature = _asset(src, assets[name + ".manifest.json.sig"], into, 1 << 12).read_bytes()
+    # The manifest's signature is checked before the large download.
+    if not verify_signature(manifest, signature):
+        raise UpdateRefused("This update isn't signed by CitronOS, so it wasn't installed.")
+    bundle = _asset(src, assets[name + ".tar.gz"], into, 2 << 30)
+    info = check_bundle(bundle, manifest, signature, installed().get("version", ""), tag, src["channel"])
+    return unpack(bundle, into / "src"), info
 
 
 # ------------------------------------------------------------------ install
@@ -639,15 +812,28 @@ def apply(emit: Emit) -> str:
         # failed; Software Update says so beside the result.
         if status["error"]:
             emit("notice", message="CitronOS wasn't checked: " + status["error"])
+        elif status.get("note"):
+            emit("notice", message=status["note"])
         return "unchanged"
     src = source()
     work = Path(tempfile.mkdtemp(prefix="gg-golden-update-", dir=path("/var/tmp") if path("/var/tmp").is_dir() else None))
     try:
         emit("progress", progress=0.86, message="Downloading CitronOS…", remaining=-1)
-        tree = download(src, status["latest"], work)
-        version = {"repo": src["repo"], "branch": src["branch"], "commit": status["latest"],
-                   "date": status.get("latestDate", ""), "subject": status.get("latestSubject", "")}
+        if src["channel"] == "dev":
+            tree = download(src, status["latest"], work)
+            version = {"repo": src["repo"], "branch": src["branch"], "channel": "dev", "commit": status["latest"],
+                       "date": status.get("latestDate", ""), "subject": status.get("latestSubject", "")}
+        else:
+            tree, info = download_release(src, status["latest"], work)
+            version = {"repo": src["repo"], "channel": src["channel"], "version": info["version"],
+                       "tag": info.get("tag", status["latest"]), "commit": str(info.get("commit", "")),
+                       "date": str(info.get("date", "")) or status.get("latestDate", ""),
+                       "subject": status.get("latestSubject", "")}
         return "updated" if install_tree(tree, version, emit, work) else "failed"
+    except UpdateRefused as e:
+        emit("error", message=str(e))
+        shutil.rmtree(work, ignore_errors=True)
+        return "failed"
     except (GitHubError, OSError, tarfile.TarError) as e:
         emit("error", message=f"CitronOS couldn't be downloaded: {e}")
         shutil.rmtree(work, ignore_errors=True)
@@ -959,9 +1145,11 @@ def _tree_version(tree: Path) -> dict:
     return {"repo": DEFAULT_REPO, "branch": DEFAULT_BRANCH, "commit": ""}
 
 
-def install_local(source: str | None = None, root: str | None = None) -> int:
+def install_local(source: str | None = None, root: str | None = None, unsigned: bool = False) -> int:
     """As root: install CitronOS from a tree or bundle, onto this system or
-    onto one mounted at `root`."""
+    onto one mounted at `root`. A bundle file must be a signed release (its
+    NAME.manifest.json and .sig beside it) unless `unsigned`: a checkout, or
+    the ISO's own source, which comes from the boot medium itself."""
     global ROOT
     if os.geteuid() != 0 and not root:
         print("Run this with sudo: it installs CitronOS for the whole system.")
@@ -984,15 +1172,31 @@ def install_local(source: str | None = None, root: str | None = None) -> int:
                 print("! No CitronOS source here: pass --from an update bundle or a checkout.")
                 return 2
         src = Path(source)
+        signed = None
+        if src.is_file() and not unsigned:
+            base = src.name[:-len(".tar.gz")] if src.name.endswith(".tar.gz") else src.stem
+            manifest, sig = src.with_name(base + ".manifest.json"), src.with_name(base + ".manifest.json.sig")
+            if not (manifest.is_file() and sig.is_file()):
+                print(f"! {src.name} isn't a signed CitronOS release: {manifest.name} and {sig.name} "
+                      "should be beside it. (A bundle you made yourself: add --unsigned.)")
+                return 2
+            mine = ""
+            try:
+                mine = json.loads(path("/usr/share/golden-gate/version.json").read_text()).get("version", "")
+            except (OSError, ValueError, AttributeError):
+                pass
+            signed = check_bundle(src, manifest.read_bytes(), sig.read_bytes(), mine, channel="dev")
         tree = unpack(src, work / "src") if src.is_file() else src
         if not (tree / "scripts/install.sh").exists():
             print(f"! {src} doesn't contain CitronOS.")
             return 2
         version = _tree_version(tree)
+        if signed:
+            version.update(version=signed["version"], tag=signed.get("tag", ""), channel=signed.get("channel", "stable"))
         where = f"onto {ROOT}" if ROOT != Path("/") else "on this computer"
         print(f"› Installing CitronOS {str(version.get('commit', ''))[:7] or '(unknown version)'} {where}…", flush=True)
         ok = install_tree(tree, version, _say, work)
-    except (GitHubError, tarfile.TarError, OSError) as e:
+    except (GitHubError, UpdateRefused, tarfile.TarError, OSError) as e:
         print(f"! {e}")
         ok = False
     finally:
@@ -1060,7 +1264,8 @@ def update_disk() -> int:
         if input(f"Update {dev} to CitronOS {new}? Accounts and files are kept. [y/N] ").strip().lower() not in ("y", "yes"):
             print("Nothing changed.")
             return 1
-        return install_local("/usr/share/golden-gate/source.tar.gz", mnt)
+        # The ISO's own source: as trusted as the medium this computer booted.
+        return install_local("/usr/share/golden-gate/source.tar.gz", mnt, unsigned=True)
     finally:
         for _, mnt, ours in found:
             if ours:
@@ -1089,6 +1294,8 @@ if __name__ == "__main__":
     local = sub.add_parser("install-local", help="install from a checkout or update bundle")
     local.add_argument("--from", dest="source", help="a checkout or golden-gate-update.tar.gz")
     local.add_argument("--root", help="a mounted CitronOS system to update instead of this one")
+    local.add_argument("--unsigned", action="store_true",
+                       help="install a bundle that isn't a signed release (one you made yourself)")
     sub.add_parser("update-disk", help="from the live ISO: update the CitronOS on this computer's disk")
     args = parser.parse_args()
-    raise SystemExit(install_local(args.source, args.root) if args.command == "install-local" else update_disk())
+    raise SystemExit(install_local(args.source, args.root, args.unsigned) if args.command == "install-local" else update_disk())

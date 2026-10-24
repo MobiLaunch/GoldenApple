@@ -42,7 +42,10 @@ Pane {
     property int userAppCount: 0        // the user's own Flatpak apps
     property bool installAfterCheck: false
     property var golden: ({})           // CitronOS's check: available, notes, needsToken…
-    property var source: ({})           // repo, branch, hasToken, commit, date, subject
+    property var source: ({})           // repo, branch, channel, hasToken, version, commit, date, subject
+    // Update Source's choice while it's being edited: stable | beta | dev.
+    readonly property var channels: ["stable", "beta", "dev"]
+    property int channelPick: Math.max(0, channels.indexOf(source.channel || "stable"))
     property bool editingSource: false
     property bool relogin: false        // CitronOS was updated: log out to finish
     property string notice: ""
@@ -156,7 +159,8 @@ Pane {
 
     function readSource() { sourceProcess.running = true }
     function saveSource(repo, branch, token) {
-        sourceSave.payload = JSON.stringify({ repo: repo.trim(), branch: branch.trim(), token: token ? token.trim() : null }) + "\n"
+        sourceSave.payload = JSON.stringify({ repo: repo.trim(), channel: channels[channelPick], branch: branch.trim(),
+                                              token: token ? token.trim() : null }) + "\n"
         sourceSave.running = true
     }
     Process {
@@ -164,12 +168,16 @@ Pane {
         command: ["python3", pane.helper, "source"]
         stdout: SplitParser { onRead: (line) => pane.consume(line) }
     }
-    // Saving needs an administrator, like installing: the same polkit action.
+    // Saving needs an administrator's password every time (its own polkit
+    // action, org.goldengate.update.source), even where installing updates
+    // is one click. Only the live USB, whose user has passwordless sudo,
+    // skips the prompt.
+    readonly property string sourceHelper: Qt.resolvedUrl("../update-source-helper.py").toString().replace("file://", "")
     Process {
         id: sourceSave
         property string payload: ""
-        command: ["sh", "-c", "if sudo -n true >/dev/null 2>&1; then exec sudo -n \"$1\" set-source; else exec pkexec \"$1\" set-source; fi",
-                  "sh", pane.helper]
+        command: ["sh", "-c", "if [ -d /run/archiso ] && sudo -n true >/dev/null 2>&1; then exec sudo -n \"$1\" set-source; else exec pkexec \"$1\" set-source; fi",
+                  "sh", pane.sourceHelper]
         stdinEnabled: true
         stdout: SplitParser {
             onRead: (line) => {
@@ -319,21 +327,29 @@ Pane {
     Group {
         title: "CitronOS"
         SetRow {
-            title: pane.source.commit ? "CitronOS " + pane.source.commit.slice(0, 7) : "CitronOS"
-            subtitle: pane.source.commit
-                ? (pane.source.subject || "") + (pane.source.date ? "  •  " + String(pane.source.date).slice(0, 10) : "")
-                : "Installed from an image without a version record; the next update adds one."
+            title: pane.source.version ? "CitronOS " + pane.source.version
+                : pane.source.commit ? "CitronOS " + pane.source.commit.slice(0, 7) : "CitronOS"
+            subtitle: [pane.source.channel === "dev" ? "Development builds" : pane.source.channel === "beta" ? "Betas and releases" : "Releases",
+                       pane.source.version ? "" : pane.source.commit ? (pane.source.subject || "")
+                           : "Installed from an image without a version record; the next update adds one.",
+                       pane.source.date ? String(pane.source.date).slice(0, 10) : ""].filter((s) => s).join("  •  ")
             Button {
                 text: pane.editingSource ? "Cancel" : "Update Source…"
-                onClicked: { pane.editingSource = !pane.editingSource; pane.sourceError = "" }
+                onClicked: {
+                    pane.editingSource = !pane.editingSource
+                    pane.sourceError = ""
+                    pane.channelPick = Math.max(0, pane.channels.indexOf(pane.source.channel || "stable"))
+                }
             }
         }
         SetRow {
             visible: !!pane.golden.available
-            title: "What's New"
-            subtitle: (pane.golden.ahead || (pane.golden.notes || []).length) + " change"
-                + ((pane.golden.ahead || (pane.golden.notes || []).length) === 1 ? "" : "s")
-                + " since this version, from " + (pane.golden.repo || "GitHub")
+            title: pane.golden.signed ? "What's New in CitronOS " + (pane.golden.latestVersion || "") : "What's New"
+            subtitle: pane.golden.signed
+                ? "A signed release" + (pane.golden.latestDate ? ", " + String(pane.golden.latestDate).slice(0, 10) : "")
+                : (pane.golden.ahead || (pane.golden.notes || []).length) + " change"
+                  + ((pane.golden.ahead || (pane.golden.notes || []).length) === 1 ? "" : "s")
+                  + " since this version, from " + (pane.golden.repo || "GitHub") + " (development builds aren't signed)"
         }
         Repeater {
             model: pane.golden.available ? (pane.golden.notes || []).slice(0, 8) : []
@@ -352,9 +368,22 @@ Pane {
             }
         }
         SetRow {
-            visible: !!pane.notice
+            visible: !!pane.notice || (!!pane.golden.note && !pane.golden.available)
             title: "Note"
-            subtitle: pane.notice
+            subtitle: pane.notice || pane.golden.note || ""
+        }
+        SetRow {
+            visible: pane.editingSource
+            title: "Channel"
+            subtitle: pane.channelPick === 2
+                ? "Every change to a branch, as it's made. Not signed: only for testing CitronOS."
+                : pane.channelPick === 1 ? "Signed releases, and betas before they're released."
+                : "Signed releases only."
+            Segmented {
+                options: ["Stable", "Beta", "Development"]
+                current: pane.channelPick
+                onPicked: (i) => pane.channelPick = i
+            }
         }
         SetRow {
             visible: pane.editingSource
@@ -363,7 +392,7 @@ Pane {
             TextField { id: repoField; onAccepted: saveButton.clicked(); width: 230; text: pane.source.repo || ""; placeholder: "MobiLaunch/GoldenApple" }
         }
         SetRow {
-            visible: pane.editingSource
+            visible: pane.editingSource && pane.channelPick === 2
             title: "Branch"
             TextField { id: branchField; onAccepted: saveButton.clicked(); width: 230; text: pane.source.branch || ""; placeholder: "main" }
         }
@@ -382,7 +411,7 @@ Pane {
                 id: saveButton
                 text: "Save"
                 prominent: true
-                enabled: !sourceSave.running && repoField.text.trim() !== "" && branchField.text.trim() !== ""
+                enabled: !sourceSave.running && repoField.text.trim() !== "" && (pane.channelPick !== 2 || branchField.text.trim() !== "")
                 onClicked: pane.saveSource(repoField.text, branchField.text, tokenField.text)
             }
         }

@@ -199,14 +199,11 @@ Wi-Fi prompt. That task may slip into M4.
 
 ---
 
-## Version decision needed before M7
+## Version: decided
 
-The repository is at **CitronOS Sprite 3.5**, and the brief calls the next release
-**CitronOS 2**. Pick one of these before release engineering starts (see CS2-038):
-
-- **Club Soda = CitronOS 4.0** (recommended). The version number keeps going up, and
-  "Club Soda" is the release name.
-- **"CitronOS 2"** as a product-generation name, with the version continuing as 4.0.
+Club Soda is **CitronOS 4.0** (`apps/lib/theme/Release.qml`: release "Club Soda",
+version "4.0"; `os-release` codename `club-soda`). Releases are tagged `v4.0.x`, and
+betas `v4.1.0-beta.n` once 4.1 begins (CS2-038).
 
 ## Tracks at a glance
 

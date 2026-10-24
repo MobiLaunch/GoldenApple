@@ -37,11 +37,15 @@ fi
 [[ -n $repo ]] || repo="MobiLaunch/GoldenApple"
 [[ -n $branch && $branch != HEAD ]] || branch="claude/linux-macos-golden-gate-ui-pckc7s"
 
+# A release (scripts/make-release.sh) also records its version and channel.
 python3 - "$work/golden-gate/golden-gate-version.json" "$repo" "$branch" "$commit" "$date" "$subject" <<'PY'
-import json, sys
+import json, os, sys
 out, repo, branch, commit, date, subject = sys.argv[1:7]
-json.dump({"repo": repo, "branch": branch, "commit": commit, "date": date, "subject": subject},
-          open(out, "w"), indent=2)
+record = {"repo": repo, "branch": branch, "commit": commit, "date": date, "subject": subject}
+if os.environ.get("GG_RELEASE_VERSION"):
+    record.update(version=os.environ["GG_RELEASE_VERSION"], tag="v" + os.environ["GG_RELEASE_VERSION"],
+                  channel=os.environ.get("GG_RELEASE_CHANNEL", "stable"))
+json.dump(record, open(out, "w"), indent=2)
 PY
 mkdir -p "$(dirname "$OUT")"
 [[ -z $VERSION_OUT ]] || { mkdir -p "$(dirname "$VERSION_OUT")"; cp "$work/golden-gate/golden-gate-version.json" "$VERSION_OUT"; }

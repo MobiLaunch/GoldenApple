@@ -59,7 +59,11 @@ same fields, more briefly, and should be expanded when their milestone starts.
 
 ## M1: Trust and stability
 
-### T-1.1: Remove shell-string injection from Control Center (CS2-002) · **P0** · S
+### T-1.1: Remove shell-string injection from Control Center (CS2-002) · **P0** · S · **done**
+- **As built:** every Control Center, menu bar and Move & Resize command is an argv
+  `execDetached`; a network's name is only `$1` to a fixed script.
+  `tests/control-center-join.py` runs the requested command against stub `nmcli` with
+  SSIDs containing `$()`, backticks, quotes and newlines (and fails on the old code).
 - **Files:** `shell/ControlCenter.qml` (lines 56, 104-128, 252, 265, 1056, 1071);
   `apps/lib/ZoomMenu.qml:26`; new `apps/settings/wifi-join.sh` or a function in a new
   `citronos` Python module.
@@ -79,7 +83,11 @@ same fields, more briefly, and should be expanded when their milestone starts.
   `/tmp/x` doesn't exist. Also add `tests/security-lint.py` (T-1.10).
 - **Done when:** both tests pass and `git grep 'dispatch("exec " +'` is empty.
 
-### T-1.2: Split the privileged update actions (CS2-001) · **P0** · S
+### T-1.2: Split the privileged update actions (CS2-001) · **P0** · S · **done**
+- **As built:** `set-source` moved to `apps/settings/update-source-helper.py` under the
+  new action `org.goldengate.update.source` (`auth_admin`, never kept, in no rule).
+  The passwordless helper can't change the source. `tests/update-privileges.py` checks
+  every rule-granted action's helper.
 - **Files:** `apps/settings/update-helper.py`, new `apps/settings/update-source-helper.py`;
   `distro/archiso/overlay/usr/share/polkit-1/actions/org.goldengate.update.policy` (add
   `org.goldengate.update.source`); `…/rules.d/49-golden-gate-update.rules`;
@@ -103,7 +111,21 @@ same fields, more briefly, and should be expanded when their milestone starts.
   - with `GG_UPDATE_ROOT` staging, check that `apply` refuses an unrecognised source.
 - **Done when:** the tests pass and the manual VM check prompts for a password.
 
-### T-1.3: Signed update bundles and a release channel (CS2-003) · **P0** · M
+### T-1.3: Signed update bundles and a release channel (CS2-003) · **P0** · M · **done**
+- **As built:** Ed25519 via `openssl` (no new dependency) rather than minisign. Channels
+  stable (default), beta and dev; an `update.json` from before channels counts as
+  stable. A release is three assets: `citronos-V.tar.gz`, `.manifest.json` (format,
+  version, tag, channel, file, SHA-256, commit) and `.manifest.json.sig`. The manifest
+  is verified before the bundle is downloaded. The bundle must match its SHA-256, the
+  tag must match, the channel must be allowed, and the version must be newer. The token
+  is dropped on redirects to GitHub's storage host. `scripts/release-key.sh`,
+  `scripts/make-release.sh` and `.github/workflows/release.yml` build and publish
+  releases. `install-local --from BUNDLE` wants a signed bundle unless `--unsigned`.
+  `tests/golden-update-signed.py`.
+- **Still to do (owner):** run `scripts/release-key.sh`, commit the public key, add
+  `CITRONOS_RELEASE_KEY` as an Actions secret, then tag `v4.0.0`. Until then, stable
+  machines report "No CitronOS release has been published yet" and install nothing
+  from GitHub.
 - **Files:** `apps/settings/golden_update.py` (`check`, `download`, `install_local`),
   `scripts/make-update-bundle.sh`, new `distro/release.pub`, `.github/workflows/release.yml`
   (new), `tests/golden-update.py`.

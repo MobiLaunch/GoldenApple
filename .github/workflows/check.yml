@@ -282,6 +282,10 @@ jobs:
         run: python tests/update-keyring.py
       - name: "Software Update: done only when every part installed; required packages, rollback, glass notice"
         run: python tests/update-outcomes.py
+      - name: "Software Update installs only signed, newer releases; the token stays with GitHub"
+        run: python tests/golden-update-signed.py
+      - name: "No passwordless path to root: changing the update source always asks"
+        run: python tests/update-privileges.py
       - name: Title bars with traffic lights for apps that leave theirs to the compositor
         run: python tests/titlebars.py
       - name: Window › Move & Resize tiles inside the usable area
@@ -534,6 +538,10 @@ jobs:
           QT_QPA_PLATFORM: offscreen
       - name: Control Center draws the macOS 26 grid
         run: python tests/control-center.py
+        env:
+          QT_QPA_PLATFORM: offscreen
+      - name: "Control Center joins Wi-Fi with the network's name as data, never as a command"
+        run: python tests/control-center-join.py
         env:
           QT_QPA_PLATFORM: offscreen
       - name: Desktop widgets draw, edit and add

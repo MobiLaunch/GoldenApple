@@ -6,8 +6,8 @@ import QtQuick
 
 QtObject {
     readonly property string name: "CitronOS"
-    readonly property string release: "Sprite"
-    readonly property string version: "3.5"
-    readonly property string fullName: name + " " + release            // CitronOS Sprite
-    readonly property string pretty: fullName + " " + version          // CitronOS Sprite 3.5
+    readonly property string release: "Club Soda"
+    readonly property string version: "4.0"
+    readonly property string fullName: name + " " + release            // CitronOS Club Soda
+    readonly property string pretty: fullName + " " + version          // CitronOS Club Soda 4.0
 }

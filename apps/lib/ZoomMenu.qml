@@ -21,9 +21,10 @@ Item {
     // For screenshots (tools/preview): open from the start.
     Component.onCompleted: if (Quickshell.env("GG_ZOOM_MENU_PREVIEW") === "1") open = true
 
+    // The rows' commands are fixed words, run as an argument list (no shell).
     function run(command) {
         open = false
-        Hyprland.dispatch("exec " + command)
+        Quickshell.execDetached(command.split(" "))
     }
 
     Glass {

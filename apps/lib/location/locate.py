@@ -32,7 +32,7 @@ import urllib.request
 
 BEACONDB = "https://api.beacondb.net/v1/geolocate"
 PHOTON = "https://photon.komoot.io/reverse"
-AGENT = "CitronOS/3.5 (location; https://github.com/MobiLaunch/GoldenApple)"
+AGENT = "CitronOS/4.0 (location; https://github.com/MobiLaunch/GoldenApple)"
 KEEP = 600
 
 

@@ -667,7 +667,7 @@ PanelWindow {
                 Hyprland.dispatch("movetoworkspacesilent " + ws + ",address:" + windowAddress(t))
         if (tileTarget) Hyprland.dispatch("focuswindow address:" + tileTarget)
     }
-    function tile(layout) { Hyprland.dispatch("exec gg-tile " + layout + (tileTarget ? " " + tileTarget : "")) }
+    function tile(layout) { Quickshell.execDetached(["gg-tile", layout].concat(tileTarget ? [tileTarget] : [])) }
     function minimize() { Hyprland.dispatch("movetoworkspacesilent special:minimized" + (tileTarget ? ",address:" + tileTarget : "")) }
     // Full screen and Zoom act on the focused window: focus it first.
     function fullscreen(mode) {
@@ -725,7 +725,7 @@ PanelWindow {
     // Settings → Menu Bar → Clock.
     readonly property string clockFormat: [Prefs.clockShowDay ? "ddd" : "", Prefs.clockShowDate ? "MMM d" : ""].filter((x) => x).join(" ")
         + "   " + (Prefs.clock24 ? "HH:mm" : "h:mm") + (Prefs.clockSeconds ? ":ss" : "") + (Prefs.clock24 ? "" : " AP")
-    function shell(call) { Hyprland.dispatch("exec qs -c golden-gate ipc call " + call) }
+    function shell(call) { Quickshell.execDetached(["qs", "-c", "golden-gate", "ipc", "call"].concat(call.split(" "))) }
     function files(path) { Quickshell.execDetached(["gg-files", path]) }
     function emptyTrash() { Trash.empty() }
     function menuItems(title) {

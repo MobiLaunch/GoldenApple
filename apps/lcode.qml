@@ -98,7 +98,7 @@ ShellRoot {
                 Quickshell.execDetached(["notify-send", "-a", "LCode", "-i", "org.goldengate.LCode", title, detail || ""])
             if (b.sound) {
                 const name = event.endsWith("Failed") ? "dialog-warning" : "complete"
-                Quickshell.execDetached(["sh", "-c", "canberra-gtk-play -i " + name + " 2>/dev/null || pw-play /usr/share/sounds/freedesktop/stereo/" + name + ".oga 2>/dev/null || paplay /usr/share/sounds/freedesktop/stereo/" + name + ".oga"])
+                Quickshell.execDetached(["sh", "-c", 'canberra-gtk-play -i "$1" 2>/dev/null || pw-play "/usr/share/sounds/freedesktop/stereo/$1.oga" 2>/dev/null || paplay "/usr/share/sounds/freedesktop/stereo/$1.oga"', "sh", name])
             }
             behaviorRequested(event, b)
             if (b.reveal) {
