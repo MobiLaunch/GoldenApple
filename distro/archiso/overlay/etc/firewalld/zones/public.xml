@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<zone>
+  <short>Public</short>
+  <description>CitronOS: networks shared with people you don't know (open Wi-Fi in cafés, hotels and airports, and WPA Enterprise networks). Nothing on this computer can be reached from them; it still gets replies to what it asks for, and mDNS answers to find printers and TVs. Every network is public unless it's wired or has a Wi-Fi password, or its connection names another zone.</description>
+  <service name="dhcpv6-client"/>
+  <service name="mdns"/>
+  <forward/>
+</zone>

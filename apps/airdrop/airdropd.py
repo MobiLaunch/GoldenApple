@@ -12,6 +12,11 @@ Linux as well as with other CitronOS computers:
              Decline, then each file streams into ~/Downloads
   sending    prepare-upload to the other device, then one upload per file
 
+Receiving is off until you turn it on: "Everyone for 10 Minutes" (which
+turns itself off again) or "Everyone". While it's off nothing listens on the
+network at all, neither the HTTPS port nor the discovery port; sending and
+finding devices with the sweep still work, as they only connect out.
+
 The service runs for the whole session (`airdropd.py serve`). The AirDrop app
 talks to it over a Unix socket in JSON lines, through `airdropd.py client`,
 which relays stdin/stdout and starts the service if it isn't running:
@@ -22,11 +27,12 @@ which relays stdin/stdout and starts the service if it isn't running:
   → {"cmd": "cancel", "to": FP}
   → {"cmd": "answer", "id": ID, "accept": true}
                                            ← {"event": "request", ...}
-  → {"cmd": "set", "discoverable": "everyone" | "off", "alias": "..."}
+  → {"cmd": "set", "discoverable": "off" | "everyone-10min" | "everyone", "alias": "..."}
 
 With no app open, an incoming request becomes a notification with Accept and
-Decline. Standard library only; the certificate comes from openssl(1), and
-without it the service falls back to plain HTTP, which LocalSend supports.
+Decline. Standard library only; the certificate comes from openssl(1).
+Everything goes over HTTPS: without a certificate this computer can't
+receive, and devices that offer only plain HTTP aren't used.
 """
 from __future__ import annotations
 
@@ -58,6 +64,9 @@ REQUEST_TIMEOUT = 90          # seconds to answer an incoming request
 # HTTPS a LocalSend device knows who is calling by the certificate's hash.
 CLIENT_CERT: tuple[str, str] | None = None
 PEER_TTL = 15 * 60            # a device stays listed this long after it was last heard
+# "Everyone for 10 Minutes" (shorter in tests).
+EVERYONE_FOR = float(os.environ.get("GG_AIRDROP_EVERYONE_SECONDS", "600"))
+CHOICES = ("off", "everyone-10min", "everyone")
 
 
 def runtime_dir() -> Path:
@@ -225,7 +234,9 @@ def client_ssl() -> ssl.SSLContext:
 async def http_call(peer: dict, method: str, path: str, payload=None, *, body_path: Path | None = None,
                     progress=None, timeout: float = 15.0):
     """One request to another device. Returns (status, json-or-None)."""
-    ctx = client_ssl() if peer.get("protocol", "https") == "https" else None
+    if peer.get("protocol", "https") != "https":
+        raise HttpError(400, "plain HTTP isn't used")
+    ctx = client_ssl()
     reader, writer = await asyncio.wait_for(
         asyncio.open_connection(peer["ip"], int(peer.get("port", PORT)), ssl=ctx), timeout=min(timeout, 6))
     try:
@@ -291,11 +302,14 @@ class AirDrop:
         self.requests: dict[str, dict] = {}       # incoming, waiting for an answer
         self.session: dict | None = None          # the incoming transfer in progress
         self.outgoing: dict[str, dict] = {}       # fingerprint → transfer to that device
-        self.protocol = "http"
+        self.protocol = "https"
         self.ssl_ctx: ssl.SSLContext | None = None
         self.fingerprint = self.settings.setdefault("fingerprint", secrets.token_hex(32))
         self.setup_tls()
         self.udp: socket.socket | None = None
+        self.server: asyncio.base_events.Server | None = None
+        self.expiry: asyncio.TimerHandle | None = None
+        self.now = time.time                      # replaced in tests
 
     # ----------------------------------------------------------- settings
     def load_settings(self) -> dict:
@@ -317,12 +331,76 @@ class AirDrop:
 
     @property
     def discoverable(self) -> str:
-        return self.settings.get("discoverable", "everyone")
+        """"everyone" while receiving is on (and, for 10 minutes, not run out); else "off"."""
+        if self.settings.get("discoverable") != "everyone":
+            return "off"
+        until = self.settings.get("until")
+        if isinstance(until, (int, float)) and self.now() >= until:
+            return "off"
+        return "everyone"
+
+    @property
+    def until(self) -> float | None:
+        until = self.settings.get("until")
+        return until if self.discoverable == "everyone" and isinstance(until, (int, float)) else None
+
+    def choose(self, choice: str):
+        if choice == "everyone-10min":
+            self.settings.update(discoverable="everyone", until=self.now() + EVERYONE_FOR)
+        elif choice == "everyone":
+            self.settings["discoverable"] = "everyone"
+            self.settings.pop("until", None)
+        else:
+            self.settings["discoverable"] = "off"
+            self.settings.pop("until", None)
+
+    async def apply(self):
+        """Listen while receiving is on, and only then; turn off when the 10 minutes are up."""
+        if self.expiry:
+            self.expiry.cancel()
+            self.expiry = None
+        if self.discoverable == "everyone" and self.ssl_ctx:
+            await self.listen()
+            if self.until:
+                loop = asyncio.get_running_loop()
+                self.expiry = loop.call_later(max(0, self.until - self.now()),
+                                              lambda: asyncio.ensure_future(self.expire()))
+        else:
+            self.unlisten()
+
+    async def expire(self):
+        self.choose("off")
+        self.save_settings()
+        await self.apply()
+        self.emit("state", **self.state())
+
+    async def listen(self):
+        if self.server:
+            return
+        self.server = await asyncio.start_server(self.handle_http, host=None, port=PORT, ssl=self.ssl_ctx,
+                                                 reuse_address=True)
+        self.start_udp()
+        self.multicast(self.info(announce=True))
+        print(f"AirDrop: {self.alias} receiving on port {PORT}", flush=True)
+
+    def unlisten(self):
+        # Transfers already under way finish; nothing new can connect.
+        if self.server:
+            self.server.close()
+            self.server = None
+            print("AirDrop: receiving off", flush=True)
+        if self.udp:
+            try:
+                asyncio.get_running_loop().remove_reader(self.udp.fileno())
+            except (RuntimeError, ValueError):
+                pass
+            self.udp.close()
+            self.udp = None
 
     def setup_tls(self):
         folder = data_dir()
         cert, key = folder / "cert.pem", folder / "key.pem"
-        if os.environ.get("GG_AIRDROP_HTTP") != "1" and shutil.which("openssl"):
+        if shutil.which("openssl"):
             if not (cert.exists() and key.exists()):
                 folder.mkdir(parents=True, exist_ok=True)
                 os.chmod(folder, 0o700)
@@ -343,7 +421,6 @@ class AirDrop:
                     CLIENT_CERT = (str(cert), str(key))
                 except (ssl.SSLError, OSError, ValueError):
                     self.ssl_ctx = None
-                    self.protocol = "http"
 
     def info(self, *, announce=None) -> dict:
         data = {"alias": self.alias, "version": VERSION, "deviceModel": "CitronOS",
@@ -375,8 +452,9 @@ class AirDrop:
         return sorted(out, key=lambda p: p["alias"].lower())
 
     def state(self):
-        return {"alias": self.alias, "discoverable": self.discoverable, "protocol": self.protocol,
-                "downloads": str(downloads_dir()), "peers": self.peer_list(),
+        return {"alias": self.alias, "discoverable": self.discoverable, "until": self.until,
+                "receiving": self.server is not None, "canReceive": self.ssl_ctx is not None,
+                "protocol": self.protocol, "downloads": str(downloads_dir()), "peers": self.peer_list(),
                 "requests": [self.public_request(r) for r in self.requests.values()]}
 
     def publish_peers(self):
@@ -384,15 +462,14 @@ class AirDrop:
 
     def add_peer(self, info: dict, ip: str):
         fp = str(info.get("fingerprint") or "")
-        if not fp or fp == self.fingerprint:
-            return
+        if not fp or fp == self.fingerprint or info.get("protocol") == "http":
+            return                                  # plain HTTP devices aren't used
         known = fp in self.peers
         self.peers[fp] = {"alias": str(info.get("alias") or "Device")[:80],
                           "deviceModel": str(info.get("deviceModel") or "")[:60],
                           "deviceType": str(info.get("deviceType") or "desktop"),
                           "ip": ip, "port": int(info.get("port") or PORT),
-                          "protocol": "http" if info.get("protocol") == "http" else "https",
-                          "seen": time.time()}
+                          "protocol": "https", "seen": time.time()}
         if not known:
             self.publish_peers()
 
@@ -423,12 +500,11 @@ class AirDrop:
         if not isinstance(msg, dict) or msg.get("fingerprint") == self.fingerprint:
             return
         self.add_peer(msg, ip)
-        if msg.get("announce") and self.discoverable != "off":
+        if msg.get("announce") and self.discoverable != "off" and msg.get("protocol") != "http":
             asyncio.ensure_future(self.answer_announce(msg, ip))
 
     async def answer_announce(self, msg, ip):
-        peer = {"ip": ip, "port": int(msg.get("port") or PORT),
-                "protocol": "http" if msg.get("protocol") == "http" else "https"}
+        peer = {"ip": ip, "port": int(msg.get("port") or PORT), "protocol": "https"}
         try:
             await http_call(peer, "POST", f"{API}/register", self.info(), timeout=4)
         except (OSError, asyncio.TimeoutError, ssl.SSLError, HttpError):
@@ -474,17 +550,15 @@ class AirDrop:
 
         async def probe(ip, port):
             async with sem:
-                for protocol in ("https", "http"):
-                    try:
-                        status, data = await http_call({"ip": ip, "port": port, "protocol": protocol},
-                                                       "POST", f"{API}/register", self.info(), timeout=1.5)
-                    except (OSError, asyncio.TimeoutError, ssl.SSLError, HttpError):
-                        continue
-                    if status == 200 and isinstance(data, dict):
-                        data.setdefault("port", port)
-                        data.setdefault("protocol", protocol)
-                        self.add_peer(data, ip)
+                try:
+                    status, data = await http_call({"ip": ip, "port": port, "protocol": "https"},
+                                                   "POST", f"{API}/register", self.info(), timeout=1.5)
+                except (OSError, asyncio.TimeoutError, ssl.SSLError, HttpError):
                     return
+                if status == 200 and isinstance(data, dict):
+                    data.setdefault("port", port)
+                    data["protocol"] = "https"
+                    self.add_peer(data, ip)
         await asyncio.gather(*(probe(ip, port) for ip, port in targets))
         self.publish_peers()
 
@@ -766,14 +840,16 @@ class AirDrop:
             if r and not r["answer"].done():
                 r["answer"].set_result(bool(msg.get("accept")))
         elif cmd == "set":
-            if msg.get("discoverable") in ("everyone", "off"):
-                self.settings["discoverable"] = msg["discoverable"]
+            if msg.get("discoverable") in CHOICES:
+                self.choose(msg["discoverable"])
             if isinstance(msg.get("alias"), str):
                 self.settings["alias"] = msg["alias"].strip()[:60]
             self.save_settings()
+            try:
+                await self.apply()
+            except OSError as e:
+                self.emit("error", message=f"AirDrop can't receive: {e.strerror or e}")
             self.emit("state", **self.state())
-            if self.discoverable != "off":
-                self.multicast(self.info(announce=True))
 
     async def serve(self):
         path = socket_path()
@@ -782,13 +858,12 @@ class AirDrop:
             path.unlink()
         control = await asyncio.start_unix_server(self.handle_client, path=str(path))
         os.chmod(path, 0o600)
-        server = await asyncio.start_server(self.handle_http, host=None, port=PORT, ssl=self.ssl_ctx,
-                                            reuse_address=True)
-        self.start_udp()
-        self.multicast(self.info(announce=True))
-        print(f"AirDrop: {self.alias} on port {PORT} ({self.protocol})", flush=True)
-        async with control, server:
-            await asyncio.gather(control.serve_forever(), server.serve_forever())
+        print(f"AirDrop: {self.alias} ready", flush=True)
+        if self.discoverable == "everyone" and not self.ssl_ctx:
+            print("AirDrop can't receive without openssl", file=sys.stderr, flush=True)
+        await self.apply()
+        async with control:
+            await control.serve_forever()
 
 
 async def notify(title, body, actions=(), wait=False, on_action=None):
@@ -864,7 +939,7 @@ def client():
 
 def set_discoverable(value: str) -> int:
     """Who can find this computer: through the service when it's running (so
-    it announces itself again at once), or straight into its settings."""
+    it starts or stops listening at once), or straight into its settings."""
     try:
         s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         s.connect(str(socket_path()))
@@ -878,7 +953,10 @@ def set_discoverable(value: str) -> int:
         data = json.loads(path.read_text())
     except (OSError, ValueError):
         data = {}
-    data["discoverable"] = value
+    data.pop("until", None)
+    data["discoverable"] = "off" if value == "off" else "everyone"
+    if value == "everyone-10min":
+        data["until"] = time.time() + EVERYONE_FOR
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(data, indent=2))
     return 0
@@ -912,7 +990,7 @@ def main(argv):
             return 1
     elif mode == "client":
         return client()
-    elif mode == "set" and len(argv) > 2 and argv[2] in ("everyone", "off"):
+    elif mode == "set" and len(argv) > 2 and argv[2] in CHOICES:
         return set_discoverable(argv[2])
     else:
         print(__doc__)

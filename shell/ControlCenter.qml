@@ -205,14 +205,20 @@ PanelWindow {
         }
     }
     PwObjectTracker { objects: cc.sinks }
-    // AirDrop's setting, from the file its service keeps.
-    property bool airdropOn: true
+    // AirDrop's setting, from the file its service keeps: off unless turned
+    // on, and "Everyone for 10 Minutes" only until then.
+    property bool airdropOn: false
+    property bool airdropTimed: false
     Process {
         id: airdropProbe
         command: ["sh", "-c", 'cat "${XDG_CONFIG_HOME:-$HOME/.config}/golden-gate/airdrop.json" 2>/dev/null']
         stdout: StdioCollector {
             onStreamFinished: {
-                try { cc.airdropOn = JSON.parse(text || "{}").discoverable !== "off" } catch (e) { cc.airdropOn = true }
+                let s = {}
+                try { s = JSON.parse(text || "{}") } catch (e) {}
+                const until = typeof s.until === "number" ? s.until : 0
+                cc.airdropOn = s.discoverable === "everyone" && (!until || until * 1000 > Date.now())
+                cc.airdropTimed = cc.airdropOn && until > 0
             }
         }
     }
@@ -655,8 +661,13 @@ PanelWindow {
                     objectName: "ccAirDrop"
                     toggleOnSpace: true
                     height: cc.unit - 12
-                    icon: "broadcast"; title: "AirDrop"; subtitle: cc.airdropOn ? "Everyone" : "Receiving Off"; on: cc.airdropOn
-                    toggleAction: () => { cc.airdropOn = !cc.airdropOn; Quickshell.execDetached(["gg-airdrop", "--set", cc.airdropOn ? "everyone" : "off"]) }
+                    icon: "broadcast"; title: "AirDrop"; subtitle: !cc.airdropOn ? "Receiving Off" : cc.airdropTimed ? "Everyone for 10 Minutes" : "Everyone"; on: cc.airdropOn
+                    // On from here is for 10 minutes, as on a Mac; "Everyone" is in AirDrop's window.
+                    toggleAction: () => {
+                        cc.airdropOn = !cc.airdropOn
+                        cc.airdropTimed = cc.airdropOn
+                        Quickshell.execDetached(["gg-airdrop", "--set", cc.airdropOn ? "everyone-10min" : "off"])
+                    }
                     onActivated: { cc.open = false; Quickshell.execDetached(["gg-airdrop"]) }
                 }
             }

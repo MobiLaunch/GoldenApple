@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<service>
+  <short>CitronOS AirPlay Receiver</short>
+  <description>Mirroring an iPhone, iPad or Mac to this computer (UxPlay, run with its fixed ports). Found with mDNS.</description>
+  <port protocol="tcp" port="7000"/>
+  <port protocol="tcp" port="7001"/>
+  <port protocol="tcp" port="7100"/>
+  <port protocol="udp" port="6000"/>
+  <port protocol="udp" port="6001"/>
+  <port protocol="udp" port="7011"/>
+</service>

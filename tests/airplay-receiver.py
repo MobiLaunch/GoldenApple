@@ -53,7 +53,7 @@ with tempfile.TemporaryDirectory() as t:
     check(cfg["requirePin"] and not cfg["fullScreen"], "a code is required by default; a window, not full screen")
 
     cmd = ap.command(cfg, "Jordan's Laptop")
-    check(cmd[:3] == [ap.UXPLAY, "-n", "Jordan's Laptop"] and "-nh" in cmd and "-nohold" in cmd
+    check(cmd[:3] == [ap.UXPLAY, "-n", "Jordan's Laptop"] and "-nh" in cmd and "-nohold" in cmd and "-p" in cmd
           and cmd[cmd.index("-pin") + 1] == cfg["pin"] and "-reg" in cmd and "-fs" not in cmd
           and cmd[cmd.index("-vs") + 1] == "waylandsink",
           f"UxPlay's command line: {cmd}")

@@ -58,6 +58,9 @@ pipewire-pulse
 libpulse
 wireplumber
 networkmanager
+# The firewall: networks are public (nothing reachable) unless wired or
+# password-protected (overlay/etc/firewalld, NetworkManager/dispatcher.d).
+firewalld
 bluez
 bluez-utils
 brightnessctl

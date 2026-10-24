@@ -39,7 +39,10 @@ ShellRoot {
 
             property var peers: []
             property var transfers: ({})        // fingerprint → { state, sent, total, message }
-            property string discoverable: "everyone"
+            property string discoverable: "off"
+            property var until: null            // "Everyone for 10 Minutes" ends then (seconds)
+            property bool canReceive: true      // false without a certificate (openssl)
+            property real now: Date.now() / 1000
             property string alias: ""
             property string downloads: ""
             property var request: null          // the incoming request on screen
@@ -72,6 +75,8 @@ ShellRoot {
                     if (name === "state") {
                         app.peers = data.peers || []
                         app.discoverable = data.discoverable
+                        app.until = data.until ?? null
+                        app.canReceive = data.canReceive !== false
                         app.alias = data.alias
                         app.downloads = data.downloads
                         if ((data.requests || []).length && !app.request) app.request = data.requests[0]
@@ -280,12 +285,21 @@ ShellRoot {
                     }
                     PopUpButton {
                         anchors.verticalCenter: parent.verticalCenter
-                        width: 120; height: 22
+                        width: 190; height: 22
                         menuParent: win.overlay
-                        options: ["No One", "Everyone"]
-                        current: app.discoverable === "off" ? 0 : 1
-                        onPicked: (i) => service.send({ cmd: "set", discoverable: i === 0 ? "off" : "everyone" })
+                        options: ["Receiving Off", "Everyone for 10 Minutes", "Everyone"]
+                        current: app.discoverable === "off" ? 0 : app.until ? 1 : 2
+                        onPicked: (i) => service.send({ cmd: "set", discoverable: ["off", "everyone-10min", "everyone"][i] })
                     }
+                }
+                Timer { running: !!app.until; repeat: true; interval: 1000; onTriggered: app.now = Date.now() / 1000 }
+                Text {
+                    visible: !!app.until || !app.canReceive
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    text: !app.canReceive ? "This computer can't receive: AirDrop needs openssl for a secure connection."
+                        : "Receiving turns off in " + Math.max(1, Math.ceil((app.until - app.now) / 60)) + " min."
+                    color: Theme.tertiaryLabel
+                    font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
                 }
                 Text {
                     visible: app.alias !== ""

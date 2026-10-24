@@ -212,7 +212,25 @@ same fields, more briefly, and should be expanded when their milestone starts.
   in argv.
 - **Done when:** the test passes, and a `ps` loop during a real join shows no password.
 
-### T-1.8: AirDrop off by default, and a firewall (CS2-017) · **P2** · S
+### T-1.8: AirDrop off by default, and a firewall (CS2-017) · **P2** · S · **done**
+- **As built:** receiving is off on a fresh settings file, and while it's off `airdropd`
+  holds no network socket at all (no HTTPS, no UDP discovery port). Sending and the /24
+  sweep still work, since they only connect out. The choices are Receiving Off,
+  Everyone for 10 Minutes (it stores an expiry time and turns itself off; Control Center's
+  toggle uses this, as on a Mac) and Everyone. Only HTTPS is used: without openssl the
+  computer can't receive, and plain-HTTP devices are neither listed nor called.
+  Firewall: `firewalld` is installed and enabled (ISO and installer); the default zone
+  `public` allows only DHCPv6 and mDNS; `home` adds `citronos-airdrop` (53317 tcp/udp) and
+  `citronos-airplay` (UxPlay, now run with `-p` for its fixed ports). Which networks are
+  private is decided by a NetworkManager dispatcher script (`50-citronos-zone`, root), not
+  `apply-preferences.sh` (the user session can't change zones): wired networks and Wi-Fi
+  with a password (WPA/WPA3 Personal) are `home`; open Wi-Fi, WPA Enterprise, this
+  computer's hotspot and everything else stay `public`; a zone the connection names
+  always wins, and only the running firewall changes. Choosing per network in Settings is
+  T-4.8. Tests: `tests/airdrop.py` (off by default with no listener, 10-minute expiry with
+  a short window and an injected clock, a sender with receiving off, plain HTTP never used;
+  it fails on the old daemon) and `tests/firewall-zones.py`. The `ss -lntup` check on a
+  real login is still to do.
 - **Files:** `apps/airdrop/airdropd.py:319-345` (default `"off"`, remove the HTTP
   fallback, add "everyone for 10 minutes" with an expiry); `apps/airdrop.qml` (UI for
   that); `distro/archiso/packages.x86_64` (+`firewalld`); new

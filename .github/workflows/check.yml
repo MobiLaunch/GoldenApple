@@ -274,8 +274,10 @@ jobs:
         run: python tests/native-app-backends.py
       - name: Citron Intelligence API contracts and file safety (no API key needed)
         run: python tests/intelligence.py
-      - name: Share files between two AirDrop services (LocalSend protocol)
+      - name: "AirDrop: off until turned on, nothing listens while off, 10 minutes expire, HTTPS only"
         run: python tests/airdrop.py
+      - name: "Firewall: public networks reach nothing; wired and password Wi-Fi reach AirDrop and AirPlay"
+        run: python tests/firewall-zones.py
       - name: Recognise nearby headphones and iPhones for the pairing card
         run: python tests/nearby.py
       - name: Install CitronOS from GitHub as a Software Update (staged root)

@@ -78,7 +78,9 @@ def computer_name() -> str:
 
 def command(cfg: dict, name: str) -> list[str]:
     STATE_DIR.mkdir(parents=True, exist_ok=True)
-    cmd = [UXPLAY, "-n", name, "-nh", "-vs", "waylandsink", "-nohold", "-d", "1",
+    # -p: UxPlay's fixed ports, which the firewall's home zone opens
+    # (citronos-airplay); otherwise they'd be random and always blocked.
+    cmd = [UXPLAY, "-n", name, "-nh", "-p", "-vs", "waylandsink", "-nohold", "-d", "1",
            "-reg", str(STATE_DIR / "airplay.register")]
     if cfg["requirePin"]:
         cmd += ["-pin", cfg["pin"]]

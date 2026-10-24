@@ -500,6 +500,7 @@ def install() -> int:
         for service in [
             "NetworkManager.service",
             "bluetooth.service",
+            "firewalld.service",             # public networks reach nothing
             "sddm.service",
             "keyd.service",
             "power-profiles-daemon.service",

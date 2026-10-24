@@ -2,8 +2,9 @@
 # Open AirDrop, optionally with files to share (Files ▸ Share ▸ AirDrop, or
 # `gg-airdrop FILE…`): they wait in the window until you pick a device.
 dir="$(dirname "$0")"
-# gg-airdrop --set everyone|off: who can find this computer (Control Center).
-if [ "${1:-}" = --set ]; then exec python3 "$dir/airdropd.py" set "${2:-everyone}"; fi
+# gg-airdrop --set off|everyone-10min|everyone: who can send to this computer
+# (Control Center). Receiving is off until it's turned on.
+if [ "${1:-}" = --set ]; then exec python3 "$dir/airdropd.py" set "${2:-everyone-10min}"; fi
 if [ "$#" -gt 0 ]; then
   f="${XDG_RUNTIME_DIR:-/tmp}/gg-airdrop-pending"
   : > "$f.tmp"
