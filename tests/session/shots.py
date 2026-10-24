@@ -31,6 +31,13 @@ def changed(a: Path, b: Path) -> float:
     return d.point(lambda v: 255 if v > 24 else 0).histogram()[255] / (size[0] * size[1])
 
 
+def brightness(p: Path) -> float:
+    """Mean lightness 0–255: dark mode should be well below light."""
+    im = Image.open(p).convert("L")
+    h = im.histogram()
+    return sum(i * n for i, n in enumerate(h)) / max(1, sum(h))
+
+
 problems, rows = [], []
 for theme in ("light", "dark"):
     desktop = out / f"{theme}-desktop.png"
@@ -40,10 +47,10 @@ for theme in ("light", "dark"):
     for shot in sorted(out.glob(f"{theme}-*.png")):
         name = shot.stem.split("-", 1)[1]
         if name == "desktop":
-            rows.append((theme, name, None))
+            rows.append((theme, name, None, brightness(shot)))
             continue
         share = changed(desktop, shot)
-        rows.append((theme, name, share))
+        rows.append((theme, name, share, brightness(shot)))
         # After the lock screen is killed, the compositor may show its own
         # placeholder until the new one takes over: that one isn't judged.
         if share < 0.005 and name != "lock-restored":
@@ -56,8 +63,8 @@ lines = ["# Session harness", ""]
 if summary:
     lines += [f"- Cold starts: **{summary['coldStarts'] - summary['crashed']} of {summary['coldStarts']}** clean",
               f"- Lock screen killed while locked, back within 3 s: **{'yes' if summary.get('lockRestored') else 'no'}**", ""]
-lines += ["| Theme | Surface | Changed from the desktop |", "|---|---|---|"]
-lines += [f"| {t} | {n} | {'' if s is None else f'{s:.1%}'} |" for t, n, s in rows]
+lines += ["| Theme | Surface | Changed from the desktop | Brightness |", "|---|---|---|---|"]
+lines += [f"| {t} | {n} | {'' if s is None else f'{s:.1%}'} | {b:.0f} |" for t, n, s, b in rows]
 if problems:
     lines += ["", "## Problems", ""] + [f"- {p}" for p in problems]
 text = "\n".join(lines) + "\n"

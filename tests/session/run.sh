@@ -158,8 +158,10 @@ SURFACES=(desktop:: controlcenter:controlcenter:toggle spotlight:spotlight:toggl
 shots=()
 start_shell "$OUT/surfaces.log"; sleep 6
 for theme in light dark; do
-  gsettings set org.gnome.desktop.interface color-scheme "$([[ $theme == dark ]] && echo prefer-dark || echo default)" 2>/dev/null || true
+  gsettings set org.gnome.desktop.interface color-scheme "$([[ $theme == dark ]] && echo prefer-dark || echo default)" || true
   sleep 2
+  # The shell answers a change of color-scheme by setting gtk-theme to match.
+  say "$theme: color-scheme $(gsettings get org.gnome.desktop.interface color-scheme 2>&1), gtk-theme $(gsettings get org.gnome.desktop.interface gtk-theme 2>&1)"
   for s in "${SURFACES[@]}"; do
     IFS=: read -r name target fn <<<"$s"
     [[ -n $target ]] && ipc "$target" "$fn"
@@ -169,6 +171,9 @@ for theme in light dark; do
   done
 done
 check surfaces "$SHELL_PID" "$OUT/surfaces.log" || fail "the shell crashed while its surfaces were opened"
+echo "::group::The shell's log while its surfaces were opened (last 60 lines)"
+tail -n 60 "$OUT/surfaces.log"
+echo "::endgroup::"
 
 # The lock screen, in a process of its own, kept running as citronos-lock.service would.
 ( while :; do gg-lock serve >>"$OUT/lock.log" 2>&1; sleep 1; done ) &
