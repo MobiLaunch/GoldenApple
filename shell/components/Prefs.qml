@@ -19,7 +19,10 @@ Singleton {
     readonly property string wallpaper: data.wallpaper || Quickshell.env("GG_WALLPAPER") || "/usr/share/backgrounds/golden-gate/club-soda.jpg"
     // Shell glass bends live captures of the windows under it (DesktopBackdrop);
     // off ("glassWindows": false), it bends only the wallpaper.
-    readonly property bool glassWindows: data.glassWindows ?? true
+    readonly property bool glassWindows: !safeMode && (data.glassWindows ?? true)
+    // Safe mode (citronos-shell-safe.service, after the shell stopped five
+    // times in a minute): no live window captures, desktop widgets or Citron.
+    readonly property bool safeMode: Quickshell.env("GG_SAFE") === "1"
     // Settings › Sound: the alert sound (CitronOS's own, ui/assets/sounds),
     // and the chime when power is connected.
     readonly property string alertSound: data.sound?.alert ?? "Crystal"

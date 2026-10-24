@@ -147,7 +147,10 @@ class ResolverTests(unittest.TestCase):
         self.assertIn("launchpad-icons.json", launch)
         self.assertIn("launchpad-icons.json", dock)
         self.assertIn('["gg-icon-resolver", "bootstrap" if action == "install" else "sync", app_id]', store)
-        self.assertIn("gg-icon-resolver watch", hypr)
+        # Watched for the whole session, as a user unit gg-session-start starts.
+        self.assertIn("exec-once = gg-session-start", hypr)
+        self.assertIn("ExecStart=/usr/bin/env gg-icon-resolver watch",
+                      (ROOT / "distro/systemd/user/citronos-icon-resolver.service").read_text())
         self.assertIn('["gg-icon-resolver", "sync", "gg-mac-" + token]',
                       (ROOT / "apps/software/macapps.py").read_text())
         self.assertIn('icon-resolver.py', install)

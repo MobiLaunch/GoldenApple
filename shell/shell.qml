@@ -10,8 +10,8 @@ import "components"
 
 ShellRoot {
     id: root
-    // The shell's own output goes to ~/.local/state/golden-gate-shell.log;
-    // the journal (and the ISO boot test, over the serial console) hears this.
+    // The shell's own output is in the journal (citronos-shell.service); the
+    // ISO boot test, over the serial console, hears this.
     Component.onCompleted: Quickshell.execDetached(["logger", "-t", "gg-shell", "desktop ready"])
     // One AppLaunch per screen; Spotlight picks the one on its own screen.
     property var launchers: []
@@ -167,7 +167,7 @@ ShellRoot {
     Spotlight { id: spotlightPanel; launchers: root.launchers }
     // Voice is an isolated component so missing Live/audio support can never
     // prevent the desktop from reaching the dock, menus or window switcher.
-    LazyLoader { active: true; source: "VoiceAssistant.qml" }
+    LazyLoader { active: !Prefs.safeMode; source: "VoiceAssistant.qml" }
     // First-party AirPods system layer. No separate app; the M10 D-Bus
     // daemon owns transport, and this card displays only trusted events.
     LazyLoader { active: true; source: "CitronPodsPopup.qml" }
@@ -186,6 +186,13 @@ ShellRoot {
     SessionDialog { id: sessionDialog }
     Osd {}
     DesktopWidgets { id: desktopWidgets }
+    // Safe mode says why, once the notification server (this shell) is up.
+    Timer {
+        running: Prefs.safeMode; interval: 3000
+        onTriggered: Quickshell.execDetached(["notify-send", "-a", "CitronOS", "-i", "dialog-warning",
+            "CitronOS started in safe mode",
+            "The desktop quit five times in a minute, so desktop widgets, Citron and windows in the glass are off. Log out and back in to start it normally."])
+    }
     Nearby {}
     Switcher {}
     // Loaded separately so a Quickshell built without PAM still runs the shell.

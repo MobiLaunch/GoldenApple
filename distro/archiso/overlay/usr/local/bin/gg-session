@@ -27,14 +27,11 @@ fi
 conf="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/golden-gate"
 sh "$conf/machine-conf.sh" && head -n 1 "$conf/machine.conf" | logger -t gg-session
 
-# Hyprland must own the Wayland display before Quickshell starts. Launching qs
-# before the compositor exists can create a restart loop and leave the live VT
-# looking like a black screen. Hyprland's exec-once no longer launches qs; this
-# supervisor waits for WAYLAND_DISPLAY to become usable inside the compositor
-# session via a small Hyprland startup helper.
+# Hyprland must own the Wayland display before Quickshell starts, so the shell
+# is started from inside it (gg-session-start, citronos-session.target), not
+# from here. Its output is in the journal: journalctl --user -u citronos-shell
+# (golden-gate-shell.log only without a systemd user session).
 mkdir -p "$HOME/.local/state"
-export GG_SHELL_CONFIG=golden-gate
-export GG_SHELL_LOG="$HOME/.local/state/golden-gate-shell.log"
 
 logger -t gg-session "starting Hyprland"
 started=$(date +%s)
@@ -43,6 +40,9 @@ if command -v start-hyprland >/dev/null; then start-hyprland; else Hyprland; fi
 status=$?
 ran=$(( $(date +%s) - started ))
 logger -t gg-session "Hyprland exited with status $status after ${ran}s"
+# The desktop's services go with it, and the next session's get its own display.
+systemctl --user stop citronos-session.target 2>/dev/null
+systemctl --user unset-environment WAYLAND_DISPLAY DISPLAY HYPRLAND_INSTANCE_SIGNATURE 2>/dev/null
 
 # A session that lasted a while ended on purpose (the user logged out).
 [ "$ran" -ge 20 ] && exit 0

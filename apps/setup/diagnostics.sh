@@ -122,7 +122,9 @@ PY
   echo
   echo "== CitronOS shell"
   pgrep -a qs 2>/dev/null || true
-  shelllog="$HOME/.local/state/golden-gate-shell.log"
+  systemctl --user --no-pager status 'citronos-*' 2>/dev/null | head -n 40
+  journalctl --user -u citronos-shell -u citronos-shell-safe -n 80 --no-pager -o short 2>/dev/null | cut -c1-240
+  shelllog="$HOME/.local/state/golden-gate-shell.log"      # without a systemd user session
   [ -f "$shelllog" ] && tail -n 80 "$shelllog" | cut -c1-240
   echo
   echo "== Desktop log (end)"

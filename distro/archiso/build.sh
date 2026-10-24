@@ -74,6 +74,7 @@ file_permissions+=(
   ["/usr/local/bin/gg-mac-open"]="0:0:755"
   ["/usr/local/bin/gg-lcode"]="0:0:755"
   ["/usr/local/bin/gg-airdrop"]="0:0:755"
+  ["/usr/local/bin/gg-session-start"]="0:0:755"
   ["/etc/NetworkManager/dispatcher.d/50-citronos-zone"]="0:0:755"
   ["/usr/local/bin/gg-update-disk"]="0:0:755"
   ["/usr/lib/golden-gate/account-helper.py"]="0:0:755"

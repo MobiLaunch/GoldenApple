@@ -111,6 +111,12 @@ install_extras() {
   printf '#!/bin/sh\nexec python3 /usr/lib/golden-gate/icon-resolver.py "$@"\n' > "$BIN/gg-icon-resolver"
   printf '#!/bin/sh\nexec python3 /usr/lib/golden-gate/idle.py "$@"\n' > "$BIN/gg-idle"
   cp "$REPO/distro/archiso/overlay/usr/local/bin/gg-session" "$BIN/gg-session"
+  # The desktop's services (the shell, AirDrop, the icon resolver) as systemd
+  # user units, started by gg-session-start from hyprland.conf.
+  install -m755 "$REPO/compositor/hyprland/session-start.sh" "$BIN/gg-session-start"
+  for unit in "$REPO"/distro/systemd/user/citronos-*; do
+    install -Dm644 "$unit" "$R/usr/lib/systemd/user/${unit##*/}"
+  done
   chmod 755 "$BIN/gg-diagnostics" "$BIN/gg-settings" "$BIN/gg-web" "$BIN/gg-install" "$BIN/gg-software" "$BIN/gg-files" "$BIN/gg-archive" "$BIN/gg-lcode" "$BIN/gg-airdrop" "$BIN/gg-pref" "$BIN/gg-hyprglass-sync" "$BIN/gg-apply-preferences" "$BIN/gg-tile" "$BIN/gg-icon-resolver" "$BIN/gg-idle" "$BIN/gg-mac-open" "$BIN/gg-session"
   mkdir -p "$R/usr/share/wayland-sessions"
   cat > "$R/usr/share/wayland-sessions/golden-gate.desktop" <<'EOF'
@@ -413,6 +419,15 @@ else
   printf '#!/bin/sh\nexec python3 "%s/idle.py" "$@"\n' "$RUNTIME" > "$BIN/gg-idle"
 fi
 chmod +x "$BIN/gg-settings" "$BIN/gg-software" "$BIN/gg-mac-open" "$BIN/gg-files" "$BIN/gg-archive" "$BIN/gg-lcode" "$BIN/gg-airdrop" "$BIN/gg-pref" "$BIN/gg-hyprglass-sync" "$BIN/gg-apply-preferences" "$BIN/gg-tile" "$BIN/gg-icon-resolver" "$BIN/gg-idle"
+# The session's services: gg-session-start (hyprland.conf) and their units.
+install -m755 "$REPO/compositor/hyprland/session-start.sh" "$BIN/gg-session-start"
+if [[ $MODE == system ]]; then UNITS="$ROOT/usr/lib/systemd/user"; else UNITS="$CONF/systemd/user"; fi
+for unit in "$REPO"/distro/systemd/user/citronos-*; do
+  install -Dm644 "$unit" "$UNITS/${unit##*/}"
+done
+if [[ $MODE == user ]] && command -v systemctl >/dev/null 2>&1; then
+  systemctl --user daemon-reload >/dev/null 2>&1 || :
+fi
 for f in "$REPO"/apps/desktop/*.desktop; do
   sed "s#@APPS@#$APPS_RUN#g" "$f" > "$DATA/applications/$(basename "$f")"
 done

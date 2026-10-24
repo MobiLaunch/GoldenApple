@@ -49,7 +49,8 @@ jobs:
           ! grep -q 'pointerTargetX' shell/Dock.qml
           grep -q 'iPad-style glass shelf' shell/Dock.qml
           grep -q 'DesktopWidgets { id: desktopWidgets' shell/shell.qml
-          grep -q 'golden-gate-shell.log' distro/archiso/overlay/usr/local/bin/gg-session
+          grep -q 'systemctl --user stop citronos-session.target' distro/archiso/overlay/usr/local/bin/gg-session
+          grep -q '^exec-once = gg-session-start$' compositor/hyprland/hyprland.conf
           ! grep -q 'qs -c' distro/archiso/overlay/usr/local/bin/gg-session
           grep -q 'qs -c golden-gate' compositor/hyprland/hyprland.conf
           grep -q 'gg-apply-preferences' compositor/hyprland/hyprland.conf

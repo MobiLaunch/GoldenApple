@@ -114,7 +114,7 @@ Scope {
         screen: root.screen
         // Tablet Home manages a separate layout on the same desktop layer.
         // Never paint or capture touch on top of its icon columns.
-        visible: !Prefs.tabletMode
+        visible: !Prefs.tabletMode && !Prefs.safeMode   // none in safe mode
         anchors { top: true; bottom: true; left: true; right: true }
         exclusionMode: ExclusionMode.Ignore
         WlrLayershell.layer: WlrLayer.Bottom
@@ -317,7 +317,7 @@ Scope {
         color: "transparent"
         implicitWidth: Math.min((root.screen?.width ?? 1440) - 48, 960)
         implicitHeight: 404
-        visible: !Prefs.tabletMode && (root.editing || sheet.opacity > 0)
+        visible: !Prefs.tabletMode && !Prefs.safeMode && (root.editing || sheet.opacity > 0)
         property string filter: ""
 
         Glass {

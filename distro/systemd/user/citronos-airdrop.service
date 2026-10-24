@@ -1,0 +1,15 @@
+# AirDrop's service. It holds no network socket until receiving is turned on
+# (apps/airdrop/airdropd.py). If AirDrop's window already started one, this
+# one steps aside (exit 0) and isn't restarted.
+[Unit]
+Description=CitronOS AirDrop
+PartOf=citronos-session.target
+
+[Service]
+Type=exec
+ExecStart=/usr/bin/env gg-airdrop --serve
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=citronos-airdrop

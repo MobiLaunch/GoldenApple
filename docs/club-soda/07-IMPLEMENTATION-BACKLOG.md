@@ -178,7 +178,25 @@ same fields, more briefly, and should be expanded when their milestone starts.
   surface within 3 s, type the password through `wtype`, and assert the session unlocks.
 - **Done when:** 5 of 5 runs pass.
 
-### T-1.6: systemd user units for the session (CS2-006) · **P1** · M
+### T-1.6: systemd user units for the session (CS2-006) · **P1** · M · **done**
+- **As built:** `distro/systemd/user/` has `citronos-session.target` (bound to
+  `graphical-session.target`) wanting `citronos-shell`, `citronos-airdrop` and
+  `citronos-icon-resolver`, plus `citronos-shell-safe`. The shell restarts after 1 s
+  (`Restart=always`, so a clean exit is restarted too); five starts in 60 s fail it into
+  `OnFailure=citronos-shell-safe.service`, which runs the same shell with `GG_SAFE=1` (no
+  desktop widgets, no Citron, no live window captures in the glass) and says so in a
+  notification. Output goes to the journal; the home-made log rotation is gone, except in
+  the fallback below. hyprland.conf's three loops became `exec-once = gg-session-start`
+  (`compositor/hyprland/session-start.sh`, a system-installed command rather than a file
+  in `~/.config/hypr`, so an update that refreshes hyprland.conf can't point at something
+  missing). It imports the session's display into the user manager, resets failed units
+  and restarts the target; without a systemd user manager it supervises the shell itself
+  as before. `gg-session` stops the target and unsets the display when Hyprland exits.
+  AirDrop's unit runs `gg-airdrop --serve` with `Restart=on-failure`, so "already running"
+  isn't restarted. Diagnostics read the journal. `tests/shell-supervisor.py` covers the
+  unit policy, the start order, the fallback (new account, big log), logout, and safe mode
+  in the preview (it fails on the old shell). The session-harness case (five kills to safe
+  mode) and checking the units on the ISO are still to do.
 - **Files:** new `distro/systemd/user/citronos-session.target`, `citronos-shell.service`,
   `citronos-shell-safe.service`, `citronos-airdrop.service`, `citronos-icon-resolver.service`;
   `compositor/hyprland/hyprland.conf:41-56` (replace the loops with

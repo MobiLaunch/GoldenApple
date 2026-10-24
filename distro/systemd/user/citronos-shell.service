@@ -1,0 +1,20 @@
+# The shell: menu bar, Dock, Control Center, notifications, Spotlight and the
+# lock screen. Restarted a second after it stops; if it stops five times in a
+# minute, safe mode takes over (citronos-shell-safe.service).
+#   journalctl --user -u citronos-shell     its output
+[Unit]
+Description=CitronOS shell
+PartOf=citronos-session.target
+After=graphical-session-pre.target
+StartLimitIntervalSec=60
+StartLimitBurst=5
+OnFailure=citronos-shell-safe.service
+
+[Service]
+Type=exec
+ExecStart=/usr/bin/env qs -c golden-gate
+Restart=always
+RestartSec=1
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=citronos-shell
