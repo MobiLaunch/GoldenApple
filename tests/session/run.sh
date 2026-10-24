@@ -87,7 +87,7 @@ output HEADLESS-1 resolution 1440x900 scale 1 bg #1b3f9e solid_color
 default_border none
 EOF
 export WLR_BACKENDS=headless WLR_RENDERER=pixman WLR_LIBINPUT_NO_DEVICES=1 LIBGL_ALWAYS_SOFTWARE=1
-sway -c "$XDG_RUNTIME_DIR/sway.conf" >"$OUT/sway.log" 2>&1 &
+sway -V -c "$XDG_RUNTIME_DIR/sway.conf" >"$OUT/sway.log" 2>&1 &
 SWAY=$!
 trap 'kill $SWAY 2>/dev/null || true; pkill -u "$(id -u)" -x qs 2>/dev/null || true; pkill -u "$(id -u)" -f "gg-lock serve" 2>/dev/null || true' EXIT
 for _ in $(seq 300); do compgen -G "$XDG_RUNTIME_DIR/sway-ipc.*.sock" >/dev/null && break; sleep 0.1; done
@@ -204,8 +204,10 @@ lock_pids() { pgrep -u "$(id -u)" -f "qs -p .*lock-shell.qml" || true; }
 restored=0
 [[ -n $(lock_pids) ]] || fail "the lock screen didn't start"
 for round in 1 2 3 4 5; do
+  echo "  round $round, before the kill: lock screens $(lock_pids | tr '\n' ' ')"
+  ps -u "$(id -u)" -o pid=,ppid=,etimes=,stat=,args= | grep -Ev "grep|ps -u" | sed "s/^/    /"
   old=$(lock_pids | head -n1)
-  [[ -n $old ]] || break
+  [[ -n $old ]] || { echo "  round $round: no lock screen to kill"; break; }
   kill -SEGV "$old" 2>/dev/null || true
   back=false
   for _ in $(seq 30); do
@@ -221,6 +223,13 @@ if [[ $restored != 5 ]]; then
   echo "::group::The lock screen's log (last 80 lines)"
   tail -n 80 "$OUT/lock.log" || true
   ls -la "$XDG_RUNTIME_DIR" || true
+  echo "--- crash reports"
+  for f in "$HOME"/.cache/quickshell/crashes/*/*; do
+    [[ -e $f ]] || continue; echo "## $f ($(stat -c %s "$f" || true) bytes)"
+    case $f in *.txt|*.log) head -c 4000 "$f"; echo ;; esac
+  done
+  echo "--- Sway on locking"
+  grep -iE "lock|abandon" "$OUT/sway.log" | tail -n 40 || true
   echo "::endgroup::"
 fi
 shot dark-lock-restored; shots+=(dark-lock-restored)
