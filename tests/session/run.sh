@@ -214,8 +214,15 @@ for round in 1 2 3 4 5; do
     sleep 0.1
   done
   if $back; then restored=$((restored + 1)); else echo "kill $round: no lock screen within 3 s"; fi
+  ps -u "$(id -u)" -o pid=,ppid=,stat=,args= | grep -E "qs|gg-lock" | grep -v grep | sed "s/^/  round $round: /"
   sleep 2
 done
+if [[ $restored != 5 ]]; then
+  echo "::group::The lock screen's log (last 80 lines)"
+  tail -n 80 "$OUT/lock.log" || true
+  ls -la "$XDG_RUNTIME_DIR" || true
+  echo "::endgroup::"
+fi
 shot dark-lock-restored; shots+=(dark-lock-restored)
 say "lock screen killed while locked: back within 3 s, $restored of 5"
 [[ $restored == 5 ]] || fail "the lock screen came back within 3 s only $restored of 5 times"
