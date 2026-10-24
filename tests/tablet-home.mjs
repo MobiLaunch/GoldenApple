@@ -16,7 +16,9 @@ test('tablet widgets start separately from desktop widgets', () => {
   const desktop = read('shell/components/Prefs.qml')
   assert.match(desktop, /readonly property var widgets: Array\.isArray\(data\.widgets\)/)
   assert.match(desktop, /readonly property var tabletWidgets: Array\.isArray\(data\.tablet\?\.widgets\)/)
-  assert.match(desktop, /gg-pref", "tablet\.widgets"/)
+  // Saved under their own key, through gg-pref (Prefs.write).
+  assert.match(desktop, /function setTabletWidgets\(list\) \{ write\("tablet\.widgets", list/)
+  assert.match(desktop, /command: \["gg-pref", key, JSON\.stringify\(value\)\]/)
   assert.match(read('shell/DesktopWidgets.qml'), /visible: !Prefs\.tabletMode/)
 })
 
