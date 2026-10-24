@@ -34,6 +34,7 @@ Item {
         const p = procComp.createObject(sys, { command: args, done: done ?? null })
         p.running = true
     }
+    // security-lint: allow its callers are linted instead, and pass literal scripts only
     function sh(script, done) { run(["sh", "-c", script], done) }
     // Like run(), with `input` written to the program's stdin: for secrets,
     // which must never be in argv (any account can read /proc/PID/cmdline).
@@ -265,7 +266,7 @@ Item {
     // it in input.json the first time it saves, so a later change, such as the
     // repeat rate, keeps the same layout and variant).
     Component.onCompleted: { refreshRegion(); readSetupKeyboard() }
-    function readSetupKeyboard() { sh('sed -n "s/^ *\\(kb_layout\\|kb_variant\\) *= *\\(.*\\)/\\1=\\2/p" "' + config + '/hypr/golden-gate/input.conf" 2>/dev/null', (out) => {
+    function readSetupKeyboard() { run(["sed", "-n", "s/^ *\\(kb_layout\\|kb_variant\\) *= *\\(.*\\)/\\1=\\2/p", config + "/hypr/golden-gate/input.conf"], (out) => {
         if (input.layout) return
         let i = input
         for (const line of out.split("\n")) {

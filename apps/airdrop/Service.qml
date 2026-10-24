@@ -23,6 +23,7 @@ Item {
     Process {
         id: proc
         running: true
+        // security-lint: allow a test hook; the command comes from the session's own environment
         command: Quickshell.env("GG_AIRDROP_CLIENT") ? ["sh", "-c", Quickshell.env("GG_AIRDROP_CLIENT")]
                                                      : ["python3", service.helper, "client"]
         stdinEnabled: true

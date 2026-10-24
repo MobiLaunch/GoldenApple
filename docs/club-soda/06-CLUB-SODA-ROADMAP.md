@@ -43,7 +43,7 @@ separation, systemd user units, Wi-Fi password off argv, AirDrop off by default 
 firewall, Prefs write errors, and security lints.
 **Depends on:** nothing.
 **Exit criteria:**
-- `tests/security-lint.py` passes: no shell strings built from data, no passwordless
+- [x] `tests/security-lint.py` passes: no shell strings built from data, no passwordless
   action that runs downloaded code, no secrets on argv.
 - `pkexec update-helper set-source` asks for a password. An update bundle that isn't
   signed by the release key is refused.

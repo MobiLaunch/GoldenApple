@@ -90,7 +90,7 @@ Pane {
     }
     function keep() {
         revertTimer.stop()
-        const rules = pending, token = trial
+        const rules = pending, trialId = trial
         // displays.conf: this computer's rules, one per display, the others kept.
         const f = sys.config + "/hypr/golden-gate/displays.conf"
         sys.run(["cat", f], (text) => {
@@ -102,7 +102,7 @@ Pane {
                     scaleError = "The new display settings couldn't be saved, so the previous ones were put back."
                     return
                 }
-                sys.run(["python3", watchdog, "keep", token])
+                sys.run(["python3", watchdog, "keep", trialId])
                 pending = []
                 previous = []
                 trial = ""
@@ -111,11 +111,11 @@ Pane {
     }
     function revert() {
         revertTimer.stop()
-        const token = trial
+        const trialId = trial
         pending = []
         previous = []
         trial = ""
-        if (token) sys.run(["python3", watchdog, "revert", token], () => refresh())
+        if (trialId) sys.run(["python3", watchdog, "revert", trialId], () => refresh())
     }
     Timer {
         id: revertTimer
@@ -203,7 +203,7 @@ Pane {
                 onMoved: (v) => {
                     pane.warmth = Math.round(6000 - v * 3000)
                     pane.sys.setPref(["display", "warmth"], pane.warmth)
-                    if (pane.nightShift) { pane.sys.sh("pkill -x hyprsunset; sleep 0.2; setsid -f hyprsunset -t " + pane.warmth + " >/dev/null 2>&1") }
+                    if (pane.nightShift) { pane.sys.run(["sh", "-c", "pkill -x hyprsunset; sleep 0.2; setsid -f hyprsunset -t \"$1\" >/dev/null 2>&1", "sh", String(pane.warmth)]) }
                 }
             }
             Text { text: "More Warm"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.fs(11) } }

@@ -243,7 +243,21 @@ same fields, more briefly, and should be expanded when their milestone starts.
   assert that both the rollback and the notification happen.
 - **Done when:** the test passes.
 
-### T-1.10: Security lints (CS2-001, CS2-002, CS2-016) · S
+### T-1.10: Security lints (CS2-001, CS2-002, CS2-016) · S · **done**
+- **As built:** `tests/security-lint.py`, in the `generated` CI job, with an empty
+  `tests/security-lint.baseline`. QML and JS go through a small lexer: an `sh -c`
+  script, a `Sys.sh()` script or a `dispatch("exec …")` must be literal strings (joined
+  with `+`, or a literal `readonly property string` of the same file); argv arrays may
+  not carry `password`, `--token`, a `password`/`token`/`secret` variable and the like.
+  Python is read with `ast`: no `shell=True`, `os.system`, `os.popen` or an `sh -c` script
+  built from data. polkit: every action granted `YES` by a rule (or `yes` by a policy)
+  must run a helper listed in the lint with its exact subcommands, read from the helper's
+  `commands` table, and that helper may not call `set_source`, `install_local` or anything
+  `unsigned`. A reviewed exception carries `security-lint: allow <why>` (two today: Settings'
+  `Sys.sh` definition, whose callers are checked, and AirDrop's test hook). The lint tests
+  itself on samples first, and catches the pre-T-1.1/T-1.7 code. Fixing what it found:
+  Bluetooth pairing (a device's address in a shell string), Settings' keyboard read, Night
+  Shift warmth, and the `os.system` calls in the preview and SDDM test.
 - **Files:** new `tests/security-lint.py`; `.github/workflows/check.yml` (`generated`
   job).
 - **Checks:**

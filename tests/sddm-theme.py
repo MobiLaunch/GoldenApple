@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from pathlib import Path
 import os
+import subprocess
 import re
 import shutil
 import sys
@@ -112,7 +113,7 @@ with tempfile.TemporaryDirectory() as tmp:
     wallpaper = ROOT / "tools/preview/cache/tide.png"
     if not wallpaper.exists():
         wallpaper = Path(tmp) / "tide.png"
-        os.system(f"rsvg-convert -w 1440 -h 900 '{ROOT}/prototype/assets/wallpapers/tide.svg' -o '{wallpaper}'")
+        subprocess.run(["rsvg-convert", "-w", "1440", "-h", "900", f"{ROOT}/prototype/assets/wallpapers/tide.svg", "-o", str(wallpaper)])
     ctx.setContextProperty("config", {"background": str(wallpaper)})
     view.setResizeMode(QQuickView.SizeRootObjectToView)
     view.resize(1440, 900)

@@ -20,6 +20,7 @@ import argparse
 import configparser
 import json
 import os
+import subprocess
 from pathlib import Path
 import re
 import shutil
@@ -534,9 +535,10 @@ def populate_home(home: Path) -> None:
     for name, look in zip(names, PHOTOS):
         svg = pics / f".{name}.svg"
         svg.write_text(PHOTO.format(**look))
-        os.system(f"rsvg-convert '{svg}' -o '{pics / (name + '.png')}'")
+        subprocess.run(["rsvg-convert", str(svg), "-o", str(pics / (name + ".png"))])
         svg.unlink()
-    os.system(f"rsvg-convert -w 1600 '{ROOT}/prototype/assets/wallpapers/dusk.svg' -o '{home / 'Desktop/Screenshot 2026-10-03 at 9.12.png'}'")
+    subprocess.run(["rsvg-convert", "-w", "1600", f"{ROOT}/prototype/assets/wallpapers/dusk.svg",
+                    "-o", str(home / "Desktop/Screenshot 2026-10-03 at 9.12.png")])
     # Hours apart, as in a real home, with the screenshot newest: Recents
     # sorts by when, and same-second files come in whatever order the disk lists them.
     import time
@@ -575,7 +577,7 @@ def main() -> int:
     wallpaper = HERE / "cache/tide.png"
     if not wallpaper.exists():
         wallpaper.parent.mkdir(parents=True, exist_ok=True)
-        os.system(f"rsvg-convert -w 2880 -h 1800 '{ROOT}/prototype/assets/wallpapers/tide.svg' -o '{wallpaper}'")
+        subprocess.run(["rsvg-convert", "-w", "2880", "-h", "1800", f"{ROOT}/prototype/assets/wallpapers/tide.svg", "-o", str(wallpaper)])
     home = HERE / "cache/home"
     (home / ".config/golden-gate").mkdir(parents=True, exist_ok=True)
     populate_home(home)

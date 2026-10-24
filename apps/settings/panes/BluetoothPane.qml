@@ -46,7 +46,7 @@ Pane {
     function pair(d) {
         error = ""
         busyMac = d.mac
-        sys.sh("bluetoothctl pair " + d.mac + " && bluetoothctl trust " + d.mac + " && bluetoothctl connect " + d.mac,
+        sys.run(["sh", "-c", 'bluetoothctl pair "$1" && bluetoothctl trust "$1" && bluetoothctl connect "$1"', "sh", d.mac],
                (o, code) => { busyMac = ""; if (code === 0) { nearby = nearby.filter(x => x.mac !== d.mac); refresh() } else error = "Couldn’t pair with “" + (d.name || d.mac) + "”. Make sure it is still in pairing mode." })
     }
     Component.onCompleted: refresh(true)
