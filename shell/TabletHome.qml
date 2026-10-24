@@ -416,7 +416,9 @@ PanelWindow {
                                     source: tablet.iconFor(appTile.modelData)
                                     sourceSize: Qt.size(tablet.iconSize * 2, tablet.iconSize * 2)
                                     fillMode: Image.PreserveAspectFit
-                                    asynchronous: true
+                                    // Theme icons (image://icon) load on the GUI thread: Quickshell's icon
+                                    // provider crashed the shell when loading them in the background.
+                                    asynchronous: !String(source).startsWith("image://")
                                     smooth: true
                                 }
                             }

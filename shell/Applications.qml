@@ -488,7 +488,9 @@ PanelWindow {
                             source: cell.isFolder ? "" : apps.iconFor(cell.modelData)
                             sourceSize: Qt.size(apps.iconSize * 2, apps.iconSize * 2)
                             smooth: true; mipmap: true
-                            asynchronous: true
+                            // Theme icons (image://icon) load on the GUI thread: Quickshell's icon
+                            // provider crashed the shell when loading them in the background.
+                            asynchronous: !String(source).startsWith("image://")
                             scale: area.pressed && !Theme.reduceMotion ? 0.92 : 1
                             Behavior on scale { enabled: !Theme.reduceMotion; NumberAnimation { duration: 90; easing.type: Easing.OutCubic } }
                             // No offscreen layer allocated on each press.
