@@ -218,6 +218,7 @@ Scope {
 
         // Choosing a part: drag to draw it; in the toolbar, drag inside to move
         // it and pull its handles to resize it.
+        // design-lint: allow drawing is by pointer; the toolbar's choices (entire screen, a window) are its accessible equivalent
         MouseArea {
             id: chooser
             anchors.fill: parent
@@ -394,6 +395,9 @@ Scope {
                     }
                     HoverHandler { id: optHover }
                     TapHandler { onTapped: optionsMenu.open = !optionsMenu.open }
+                    Accessible.role: Accessible.ButtonMenu
+                    Accessible.name: "Options"
+                    Accessible.onPressAction: optionsMenu.open = !optionsMenu.open
                 }
                 Shared.Button {
                     Layout.leftMargin: 6
@@ -493,6 +497,10 @@ Scope {
                 onActiveChanged: if (!active) { if (slide.x > 60) thumb.dismiss(); slide.x = 0 }
             }
             TapHandler { onTapped: { Quickshell.execDetached(["xdg-open", thumb.file]); thumb.dismiss() } }
+            Accessible.role: Accessible.Button
+            Accessible.name: "Screenshot"
+            Accessible.description: "Opens it"
+            Accessible.onPressAction: { Quickshell.execDetached(["xdg-open", thumb.file]); thumb.dismiss() }
             Item {
                 id: dragOut
                 Drag.active: dragOutArea.drag.active

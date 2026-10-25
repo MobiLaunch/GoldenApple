@@ -75,6 +75,7 @@ Glass {
                     lens: 6
                     Behavior on size { enabled: !Prefs.reduceMotion; Spring { spring: Theme.snappy } }
                 }
+                // design-lint: allow the slider itself (root) is the accessible control, with increase/decrease actions
                 MouseArea {
                     id: drag
                     anchors { fill: parent; margins: -8 }

@@ -634,6 +634,14 @@ PanelWindow {
                     dock.showEntryMenu(tile.modelData, tile, mouse.x, mouse.y)
                     return
                 }
+                open()
+            }
+            Accessible.role: Accessible.Button
+            Accessible.name: tile.modelData.name
+            Accessible.description: tile.wins.length ? "Open" : ""
+            Accessible.onPressAction: open()
+            // A click: bring it back, bring it forward, or open it.
+            function open() {
                 if (dock.applications?.open) dock.applications.dismiss()
                 const parked = dock.minimizedFor(tile.modelData)
                 if (parked) { dock.restore(parked); tile.pulseActivation() }
@@ -800,11 +808,17 @@ PanelWindow {
                         anchors.fill: parent
                         hoverEnabled: true
                         acceptedButtons: Qt.LeftButton | Qt.RightButton
+                        Accessible.role: Accessible.Button
+                        Accessible.name: place.modelData.name
+                        Accessible.onPressAction: open()
                         onClicked: mouse => {
                             if (mouse.button === Qt.RightButton) {
                                 dock.showPlaceMenu(place.modelData, place, mouse.x, mouse.y)
                                 return
                             }
+                            open()
+                        }
+                        function open() {
                             if (place.modelData.action === "applications")
                                 dock.openApplications()
                             else {

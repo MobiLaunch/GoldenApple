@@ -582,17 +582,18 @@ PanelWindow {
                         Text {
                             text: citron.aiServiceBusy ? "Cancel" : "Copy"
                             visible: citron.aiServiceBusy || citron.answer.length > 0
+                            Accessible.role: Accessible.Button
+                            Accessible.name: text
+                            Accessible.onPressAction: copyOrCancel()
                             color: "#b8d7ff"
                             font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
-                            MouseArea {
-                                anchors.fill: parent
-                                onClicked: {
-                    if (citron.aiServiceBusy) {
-                        aiService.cancel()
-                        citron.responseNote = "Request cancelled."
-                    } else Quickshell.clipboardText = citron.answer
-                }
+                            function copyOrCancel() {
+                                if (citron.aiServiceBusy) {
+                                    aiService.cancel()
+                                    citron.responseNote = "Request cancelled."
+                                } else Quickshell.clipboardText = citron.answer
                             }
+                            MouseArea { anchors.fill: parent; onClicked: parent.copyOrCancel() }
                         }
                     }
                     Flickable {
@@ -622,6 +623,9 @@ PanelWindow {
                     Text {
                         text: "Save image…"
                         visible: citron.imageResults.length > 0
+                        Accessible.role: Accessible.Button
+                        Accessible.name: "Save image"
+                        Accessible.onPressAction: { imageSave.defaultSuffix = citron.imageResults[0].split(".").pop(); imageSave.open() }
                         color: "#b8d7ff"
                         font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: Font.DemiBold }
                         MouseArea {
@@ -673,6 +677,9 @@ PanelWindow {
                     text: "Remove"; color: "#adcfff"
                     font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
                     MouseArea { anchors.fill: parent; onClicked: citron.selectedPhoto = "" }
+                    Accessible.role: Accessible.Button
+                    Accessible.name: "Remove photo"
+                    Accessible.onPressAction: citron.selectedPhoto = ""
                 }
             }
 

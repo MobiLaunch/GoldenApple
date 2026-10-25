@@ -309,6 +309,9 @@ PanelWindow {
                                 }
                                 onCanceled: { widgetTile.dragX = 0; widgetTile.dragY = 0 }
                                 onClicked: if (!tablet.editing && !moved) tablet.openWidget(widgetTile.modelData.kind)
+                                Accessible.role: Accessible.Button
+                                Accessible.name: `${widgetTile.modelData.kind} widget`
+                                Accessible.onPressAction: if (!tablet.editing) tablet.openWidget(widgetTile.modelData.kind)
                             }
                             Row {
                                 visible: tablet.editing

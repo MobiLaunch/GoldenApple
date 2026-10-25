@@ -129,7 +129,8 @@ PanelWindow {
         open = false
     }
 
-    MouseArea { anchors.fill: parent; onClicked: spot.open = false }
+    // Click away closes (Escape does too).
+    MouseArea { anchors.fill: parent; onClicked: spot.open = false; Accessible.ignored: true }
 
     ColumnLayout {
         objectName: "spotlightContent"
@@ -247,6 +248,10 @@ PanelWindow {
                             }
                         }
                         MouseArea { anchors.fill: parent; hoverEnabled: true; onEntered: spot.selected = row.index; onClicked: spot.launch(row.index) }
+                        Accessible.role: Accessible.ListItem
+                        Accessible.name: row.modelData.subtitle ? `${row.modelData.title}, ${row.modelData.subtitle}` : row.modelData.title
+                        Accessible.selected: row.current
+                        Accessible.onPressAction: spot.launch(row.index)
                     }
                 }
             }

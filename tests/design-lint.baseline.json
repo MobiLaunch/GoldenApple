@@ -643,23 +643,6 @@
   "apps/weather.qml": 1,
   "apps/weather/HourlyCard.qml": 1,
   "apps/weather/LocationCard.qml": 2,
-  "shell/Applications.qml": 3,
-  "shell/CitronPodsPopup.qml": 4,
-  "shell/ControlCenter.qml": 3,
-  "shell/DesktopWidgets.qml": 5,
-  "shell/Dock.qml": 2,
-  "shell/MenuBar.qml": 1,
-  "shell/MissionControl.qml": 3,
-  "shell/Nearby.qml": 1,
-  "shell/Notifications.qml": 7,
-  "shell/Screenshot.qml": 3,
-  "shell/Spotlight.qml": 2,
-  "shell/TabletHome.qml": 1,
-  "shell/VoiceAssistant.qml": 3,
-  "shell/Wallpaper.qml": 1,
-  "shell/components/GlassSlider.qml": 1,
-  "shell/components/LockSurface.qml": 3,
-  "shell/widgets/Face.qml": 2,
   "themes/sddm/golden-gate/Main.qml": 2
  }
 }

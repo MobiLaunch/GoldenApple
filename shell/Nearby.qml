@@ -148,6 +148,9 @@ PanelWindow {
             color: closeArea.containsMouse ? Theme.fill : Theme.dark ? "#26ffffff" : "#14000000"
             Shared.Symbol { anchors.centerIn: parent; name: "xmark"; size: 10; tone: "auto" }
             MouseArea { id: closeArea; anchors.fill: parent; hoverEnabled: true; onClicked: nearby.close() }
+            Accessible.role: Accessible.Button
+            Accessible.name: "Close"
+            Accessible.onPressAction: nearby.close()
         }
 
         Column {

@@ -303,6 +303,9 @@ Item {
                 color: face.red
                 Shared.Symbol { anchors.centerIn: parent; name: parent.parent.p?.isPlaying ? "pause" : "play"; tone: "white"; size: 13 }
                 TapHandler { onTapped: parent.parent.p?.togglePlaying() }
+                Accessible.role: Accessible.Button
+                Accessible.name: parent.p?.isPlaying ? "Pause" : "Play"
+                Accessible.onPressAction: parent.p?.togglePlaying()
             }
             Column {
                 anchors { left: face.medium ? cover.right : parent.left; leftMargin: 15; right: parent.right; rightMargin: 15
@@ -338,6 +341,9 @@ Item {
                         }
                         HoverHandler { id: hover }
                         TapHandler { onTapped: modelData[1]() }
+                        Accessible.role: Accessible.Button
+                        Accessible.name: index === 0 ? "Previous" : index === 2 ? "Next" : face.feeds?.player?.isPlaying ? "Pause" : "Play"
+                        Accessible.onPressAction: modelData[1]()
                     }
                 }
             }

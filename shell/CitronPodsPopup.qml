@@ -95,6 +95,9 @@ PanelWindow {
                     text: "×"; color: Theme.secondaryLabel
                     font { family: Theme.fontUi; pixelSize: Theme.fs(22) }
                     MouseArea { anchors.fill: parent; onClicked: pop.dismiss() }
+                    Accessible.role: Accessible.Button
+                    Accessible.name: "Close"
+                    Accessible.onPressAction: pop.dismiss()
                 }
             }
             Item {
@@ -197,6 +200,11 @@ PanelWindow {
                             anchors.fill: parent
                             onClicked: pods.setNoiseMode(noiseChip.index)
                         }
+                        Accessible.role: Accessible.RadioButton
+                        Accessible.name: noiseChip.modelData
+                        Accessible.checkable: true
+                        Accessible.checked: pods.state.noiseMode === noiseChip.index
+                        Accessible.onPressAction: pods.setNoiseMode(noiseChip.index)
                     }
                 }
             }
@@ -217,6 +225,9 @@ PanelWindow {
                         anchors.fill: parent
                         onClicked: { pop.dismiss(); Quickshell.execDetached(["gg-settings","airpods"]) }
                     }
+                    Accessible.role: Accessible.Button
+                    Accessible.name: "AirPods Settings"
+                    Accessible.onPressAction: { pop.dismiss(); Quickshell.execDetached(["gg-settings","airpods"]) }
                 }
                 Rectangle {
                     Layout.fillWidth: true
@@ -228,9 +239,14 @@ PanelWindow {
                         color: "white"
                         font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: Font.DemiBold }
                     }
+                    Accessible.role: Accessible.Button
+                    Accessible.name: pop.connected ? "Done" : "Connect"
+                    Accessible.onPressAction: connectArea.activate()
                     MouseArea {
+                        id: connectArea
                         anchors.fill: parent
-                        onClicked: {
+                        onClicked: activate()
+                        function activate() {
                             if (pop.connected) pop.dismiss()
                             else if (pop.active.address) pods.connectDevice(pop.active.address)
                             else { pop.dismiss(); Quickshell.execDetached(["gg-settings","bluetooth"]) }

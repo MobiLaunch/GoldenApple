@@ -427,6 +427,9 @@ PanelWindow {
             }
         }
         MouseArea { id: mrowArea; anchors.fill: parent; hoverEnabled: true; enabled: mrow.clickable; onClicked: mrow.clicked() }
+        Accessible.role: mrow.clickable ? Accessible.Button : Accessible.StaticText
+        Accessible.name: mrow.subtitle ? `${mrow.title}, ${mrow.subtitle}` : mrow.title
+        Accessible.onPressAction: if (mrow.clickable) mrow.clicked()
     }
     // True circular controls: the caption sits outside the glass hit target.
     component Circle: Item {
@@ -1170,6 +1173,11 @@ PanelWindow {
                             enabled: airpods.canControl
                             onClicked: airpods.setNoiseMode(noiseItem.index)
                         }
+                        Accessible.role: Accessible.RadioButton
+                        Accessible.name: noiseItem.modelData
+                        Accessible.checkable: true
+                        Accessible.checked: airpods.state.noiseMode === noiseItem.index
+                        Accessible.onPressAction: if (airpods.canControl) airpods.setNoiseMode(noiseItem.index)
                     }
                 }
             }
@@ -1236,11 +1244,17 @@ PanelWindow {
                     id: rowArea
                     anchors.fill: parent
                     hoverEnabled: true
-                    onClicked: {
+                    onClicked: activate()
+                    // Join the network, connect or disconnect the device, or use the output.
+                    function activate() {
                         if (cc.detail === "wifi") { if (!item.active) cc.joinNetwork(item.modelData.ssid) }
                         else if (cc.detail === "bluetooth") { if (item.active) item.modelData.disconnect(); else item.modelData.connect() }
                         else Pipewire.preferredDefaultAudioSink = item.modelData
                     }
+                    Accessible.role: Accessible.ListItem
+                    Accessible.name: cc.detail === "wifi" && item.modelData.secure ? `${item.label}, secured` : item.label
+                    Accessible.selected: item.active
+                    Accessible.onPressAction: activate()
                 }
             }
         }

@@ -150,6 +150,7 @@ Item {
             last = Qt.point(m.x, m.y)
         }
         onPressed: { root.wake(); field.input.forceActiveFocus() }
+        Accessible.ignored: true   // a key wakes it too, and the field has the focus
     }
 
     SystemClockProxy { id: clock }
@@ -366,6 +367,10 @@ Item {
                 }
                 Rectangle { anchors.fill: parent; radius: width / 2; color: "transparent"; border { width: 1; color: "#40ffffff" } }
                 MouseArea { anchors.fill: parent; onClicked: { root.wake(); field.input.forceActiveFocus() } }
+                Accessible.role: Accessible.Button
+                Accessible.name: root.userName
+                Accessible.description: "Shows the password field"
+                Accessible.onPressAction: { root.wake(); field.input.forceActiveFocus() }
             }
             Item { width: 1; height: 10 }
             Text {
@@ -439,6 +444,9 @@ Item {
                             Behavior on scale { Spring { spring: Theme.bouncy } }
                             Symbol { anchors.centerIn: parent; name: "arrow-up"; size: 13 }
                             MouseArea { anchors.fill: parent; enabled: parent.opacity > 0.5; onClicked: root.submit() }
+                            Accessible.role: Accessible.Button
+                            Accessible.name: "Unlock"
+                            Accessible.onPressAction: if (opacity > 0.5) root.submit()
                         }
                         Shape {
                             anchors.centerIn: parent

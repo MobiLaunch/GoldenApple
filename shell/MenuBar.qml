@@ -154,8 +154,13 @@ PanelWindow {
     component BarItem: Item {
         id: item
         property bool highlighted: false
+        // What assistive technology reads out (most items show only a symbol).
+        property string label
         default property alias content: row.data
         signal clicked()
+        Accessible.role: Accessible.Button
+        Accessible.name: label
+        Accessible.onPressAction: clicked()
         implicitWidth: row.implicitWidth + 18
         implicitHeight: 24
         // The menu bar has no hover state; an open or pressed item sits on a
@@ -219,12 +224,14 @@ PanelWindow {
         spacing: 1
         BarItem {
             id: logo
+            label: "System menu"
             highlighted: systemMenu.open
             onClicked: bar.openMenu("system")
             Symbol { name: "logo"; size: 18; tone: bar.darkLeft ? "dark" : "white" }
         }
         BarItem {
             id: appItem
+            label: bar.appName
             highlighted: appMenu.open
             onClicked: bar.openMenu("app")
             BarText {
@@ -238,6 +245,7 @@ PanelWindow {
             delegate: BarItem {
                 id: titleItem
                 required property string modelData
+                label: modelData
                 highlighted: modelData === "Window" ? windowMenu.open : barMenu.open && bar.openTitle === modelData
                 onClicked: bar.openMenu(modelData)
                 Component.onCompleted: if (modelData === "Window") bar.windowItem = titleItem
@@ -248,6 +256,7 @@ PanelWindow {
             id: overflowItem
             objectName: "menuBarOverflow"
             readonly property var hidden: bar.titles.slice(bar.titlesShown)
+            label: "More menus"
             visible: hidden.length > 0
             highlighted: barMenu.open && (bar.openTitle === "»" || hidden.includes(bar.openTitle)) || windowMenu.open && hidden.includes("Window")
             onClicked: bar.openMenu("»")
@@ -272,6 +281,7 @@ PanelWindow {
             // Recording the screen (⇧⌘5): stop, as on the Mac.
             BarItem {
                 visible: bar.screenshots?.recording ?? false
+                label: "Stop Recording"
                 onClicked: bar.screenshots.stopRecording()
                 Rectangle {
                     implicitWidth: 17; implicitHeight: 17; radius: 8.5
@@ -286,6 +296,7 @@ PanelWindow {
                 readonly property var player: Mpris.players.values.find((p) => p.isPlaying) ?? null
                 // The first to go on a narrow bar.
                 visible: Prefs.barNowPlaying && !!player && bar.width >= 1000
+                label: `Now Playing: ${player?.trackTitle ?? ""}`
                 onClicked: bar.controlCenter.toggle()
                 RowLayout {
                     spacing: 5
@@ -301,12 +312,14 @@ PanelWindow {
             // Focus: the moon while Do Not Disturb is on.
             BarItem {
                 visible: Prefs.barFocus && Prefs.focusDnd
+                label: "Focus"
                 onClicked: bar.controlCenter.toggle()
                 Symbol { name: "moon"; size: 15; tone: bar.darkRight ? "dark" : "white" }
             }
             BarItem {
                 id: batteryItem
                 visible: Prefs.barBattery && Battery.present
+                label: `Battery, ${Battery.percent}%${Battery.charging ? ", charging" : ""}`
                 highlighted: batteryMenu.open
                 // Its menu, as on the Mac: the charge and time left, the power
                 // source, and Battery settings.
@@ -343,6 +356,7 @@ PanelWindow {
             // Control Center list.
             BarItem {
                 visible: Prefs.barBluetooth && !!Bluetooth.defaultAdapter
+                label: (Bluetooth.defaultAdapter?.enabled ?? false) ? "Bluetooth, on" : "Bluetooth, off"
                 Symbol {
                     name: "bluetooth"; size: 15; tone: bar.darkRight ? "dark" : "white"
                     opacity: (Bluetooth.defaultAdapter?.enabled ?? false) ? 1 : 0.35
@@ -356,6 +370,7 @@ PanelWindow {
                 id: soundItem
                 readonly property var sink: Pipewire.defaultAudioSink
                 visible: Prefs.barSound && !!sink
+                label: (sink?.audio?.muted ?? false) ? "Sound, muted" : `Sound, ${Math.round((sink?.audio?.volume ?? 0) * 100)}%`
                 PwObjectTracker { objects: [soundItem.sink] }
                 Symbol {
                     name: (soundItem.sink?.audio?.muted ?? false) || (soundItem.sink?.audio?.volume ?? 1) === 0 ? "speaker" : "speaker-wave"
@@ -368,6 +383,7 @@ PanelWindow {
             }
             BarItem {
                 visible: Prefs.barWifi && bar.wifiState !== "none"
+                label: bar.wifiState === "connected" ? "Wi-Fi, connected" : "Wi-Fi, not connected"
                 Symbol {
                     name: "wifi"; size: 16; tone: bar.darkRight ? "dark" : "white"
                     opacity: bar.wifiState === "connected" ? 1 : 0.35
@@ -377,10 +393,10 @@ PanelWindow {
                     bar.controlCenter.showDetail("wifi")
                 }
             }
-            BarItem { visible: Prefs.barSpotlight; Symbol { name: "search"; size: 15; tone: bar.darkRight ? "dark" : "white" } onClicked: bar.spotlight.toggle() }
+            BarItem { visible: Prefs.barSpotlight; label: "Spotlight"; Symbol { name: "search"; size: 15; tone: bar.darkRight ? "dark" : "white" } onClicked: bar.spotlight.toggle() }
             BarItem {
                 visible: Prefs.barCitron
-                Accessible.name: "Citron Intelligence"
+                label: "Citron Intelligence"
                 // A tiny static counterpart to the system's prismatic orb.
                 // Never run expensive blur shaders in the always-visible menu bar.
                 Rectangle {
@@ -406,6 +422,7 @@ PanelWindow {
             // (blue). Each grows in and out; Control Center names the apps.
             BarItem {
                 visible: privacyRow.width > 0.5
+                label: "Privacy: in use"
                 onClicked: bar.controlCenter.toggle()
                 Row {
                     id: privacyRow
@@ -449,11 +466,13 @@ PanelWindow {
             }
             BarItem {
                 highlighted: bar.controlCenter.open
+                label: "Control Center"
                 onClicked: bar.controlCenter.toggle()
                 Symbol { name: "control-center"; size: 16; tone: bar.darkRight ? "dark" : "white" }
             }
             BarItem {
                 highlighted: bar.notifications?.centerOpen ?? false
+                label: `${Qt.formatDateTime(clock.date, bar.clockFormat)}, Notification Center`
                 onClicked: if (bar.notifications) bar.notifications.centerOpen = !bar.notifications.centerOpen
                 SystemClock { id: clock; precision: Prefs.clockSeconds ? SystemClock.Seconds : SystemClock.Minutes }
                 BarText { text: Qt.formatDateTime(clock.date, bar.clockFormat); dark: bar.darkRight }

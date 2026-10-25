@@ -331,10 +331,12 @@ PanelWindow {
         }
         // Dim enough that white labels read over the brightest wallpaper.
         Rectangle { anchors.fill: parent; color: "#24000000" }
+        // Click away closes (Escape does too).
         MouseArea {
             anchors.fill: parent
             onClicked: apps.dismiss()
             onWheel: (w) => apps.pageWheel(w)
+            Accessible.ignored: true
         }
     }
 
@@ -409,7 +411,7 @@ PanelWindow {
             width: pages.width
             height: pages.height
             // Clicks between the icons close Launchpad, like the backdrop.
-            MouseArea { anchors.fill: parent; onClicked: apps.dismiss(); onWheel: (w) => apps.pageWheel(w) }
+            MouseArea { anchors.fill: parent; onClicked: apps.dismiss(); onWheel: (w) => apps.pageWheel(w); Accessible.ignored: true }
             Grid {
                 anchors.horizontalCenter: parent.horizontalCenter
                 columns: apps.columns
@@ -549,6 +551,7 @@ PanelWindow {
         anchors.fill: parent
         visible: !!apps.folder
         onClicked: apps.folder = null
+        Accessible.ignored: true
     }
     Glass {
         id: folderPanel

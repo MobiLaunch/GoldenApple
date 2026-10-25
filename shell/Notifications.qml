@@ -236,6 +236,10 @@ Scope {
         hovered: hover.hovered
         HoverHandler { id: hover }
         TapHandler { id: tap; onTapped: if (card.live) root.open(card.n) }
+        Accessible.role: Accessible.Button
+        Accessible.name: card.stamp ? `${card.title}, ${card.bodyText}, ${card.stamp}` : `${card.title}, ${card.bodyText}`
+        Accessible.description: "Opens the notification"
+        Accessible.onPressAction: if (card.live) root.open(card.n)
 
         RowLayout {
             id: content
@@ -292,6 +296,9 @@ Scope {
                             color: actionTap.pressed ? Theme.selection : Theme.fill
                             Text { anchors.centerIn: parent; text: modelData.text; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: Font.Medium } }
                             TapHandler { id: actionTap; onTapped: if (card.live) modelData.invoke() }
+                            Accessible.role: Accessible.Button
+                            Accessible.name: modelData.text
+                            Accessible.onPressAction: if (card.live) modelData.invoke()
                         }
                     }
                 }
@@ -306,6 +313,10 @@ Scope {
             Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 0 : 130 } }
             Symbol { anchors.centerIn: parent; name: "xmark"; size: 10; tone: Theme.dark ? "white" : "dark" }
             TapHandler { onTapped: if (card.live) card.n.dismiss() }
+            Accessible.role: Accessible.Button
+            Accessible.name: "Close"
+            Accessible.description: card.title
+            Accessible.onPressAction: if (card.live) card.n.dismiss()
         }
     }
 
@@ -430,7 +441,8 @@ Scope {
         }
         property var expanded: ({})
 
-        MouseArea { anchors.fill: parent; onClicked: root.centerOpen = false }   // click away closes
+        // Click away closes (Escape does too, for the keyboard).
+        MouseArea { anchors.fill: parent; onClicked: root.centerOpen = false; Accessible.ignored: true }
         Item {
             id: panel
             width: 380
@@ -471,6 +483,9 @@ Scope {
                             pressed: clearTap.pressed
                             Text { id: clearAll; anchors.centerIn: parent; text: "Clear All"; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: Font.Medium } }
                             TapHandler { id: clearTap; onTapped: root.list.slice().forEach((n) => n.dismiss()) }
+                            Accessible.role: Accessible.Button
+                            Accessible.name: "Clear All"
+                            Accessible.onPressAction: root.list.slice().forEach((n) => n.dismiss())
                         }
                     }
 
@@ -518,15 +533,21 @@ Scope {
                                     role: "control"
                                     implicitWidth: lessText.implicitWidth + 20; implicitHeight: 22; radius: 11
                                     Text { id: lessText; anchors.centerIn: parent; text: group.open ? "Show Less" : (group.modelData.items.length - 1) + " more"; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.fs(11); weight: Font.Medium } }
-                                    TapHandler {
-                                        onTapped: { const e = Object.assign({}, center.expanded); e[group.modelData.app] = !group.open; center.expanded = e }
-                                    }
+                                    function toggle() { const e = Object.assign({}, center.expanded); e[group.modelData.app] = !group.open; center.expanded = e }
+                                    TapHandler { onTapped: parent.toggle() }
+                                    Accessible.role: Accessible.Button
+                                    Accessible.name: lessText.text
+                                    Accessible.description: group.modelData.app
+                                    Accessible.onPressAction: toggle()
                                 }
                                 Glass {
                                     role: "control"
                                     implicitWidth: 22; implicitHeight: 22; radius: 11
                                     Symbol { anchors.centerIn: parent; name: "xmark"; size: 9; tone: Theme.dark ? "white" : "dark" }
                                     TapHandler { onTapped: group.modelData.items.slice().forEach((n) => n.dismiss()) }
+                                    Accessible.role: Accessible.Button
+                                    Accessible.name: `Clear ${group.modelData.app}`
+                                    Accessible.onPressAction: group.modelData.items.slice().forEach((n) => n.dismiss())
                                 }
                             }
                             Repeater {

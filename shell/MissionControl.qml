@@ -137,7 +137,8 @@ PanelWindow {
             layer.effect: MultiEffect { blurEnabled: true; blur: 0.5; blurMax: 48 }
         }
         Rectangle { anchors.fill: parent; color: Theme.dark ? "#73000000" : "#59000000" }
-        MouseArea { anchors.fill: parent; onClicked: mc.dismiss() }
+        // Click away closes (Escape does too).
+        MouseArea { anchors.fill: parent; onClicked: mc.dismiss(); Accessible.ignored: true }
     }
 
     FocusScope {
@@ -214,6 +215,9 @@ PanelWindow {
                         }
                         HoverHandler { id: tileHover }
                         TapHandler { onTapped: mc.goTo(desk.modelData) }
+                        Accessible.role: Accessible.Button
+                        Accessible.name: "Desktop " + (desk.index + 1)
+                        Accessible.onPressAction: mc.goTo(desk.modelData)
                     }
                     Text {
                         anchors.horizontalCenter: parent.horizontalCenter
@@ -345,6 +349,9 @@ PanelWindow {
                     spaces.dropTarget = -1
                 }
                 onClicked: if (!moved) mc.focus(win.index)
+                Accessible.role: Accessible.Button
+                Accessible.name: win.modelData.title || (DesktopEntries.byId(win.modelData.appId)?.name ?? win.modelData.appId)
+                Accessible.onPressAction: mc.focus(win.index)
             }
         }
     }

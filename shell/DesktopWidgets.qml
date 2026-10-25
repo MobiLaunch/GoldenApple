@@ -127,10 +127,12 @@ Scope {
         mask: Region { item: root.editing ? everything : null; regions: root.editing ? [] : tiles.regions }
 
         Item { id: everything; anchors.fill: parent }
+        // While editing, a click away is Done (the Done button says so too).
         MouseArea {
             anchors.fill: parent
             enabled: root.editing
             onClicked: root.editing = false
+            Accessible.ignored: true
         }
 
         // Where a dragged widget will land.
@@ -213,6 +215,10 @@ Scope {
                     anchors.fill: parent
                     hoverEnabled: true
                     acceptedButtons: Qt.LeftButton | Qt.RightButton
+                    Accessible.role: Accessible.Button
+                    Accessible.name: `${root.info(tile.kind).name} widget`
+                    Accessible.description: root.info(tile.kind).app ? `Opens ${root.info(tile.kind).name}` : ""
+                    Accessible.onPressAction: if (!root.editing) root.open(tile.kind)
                     property point start
                     property bool moved: false
                     onPressed: (m) => {
@@ -266,6 +272,9 @@ Scope {
                     Behavior on opacity { NumberAnimation { duration: 140 } }
                     Rectangle { anchors.centerIn: parent; width: 10; height: 2; radius: 1; color: Theme.dark ? "white" : "#3c3c43" }
                     MouseArea { id: minus; anchors.fill: parent; anchors.margins: -4; onClicked: root.remove(tile.wid) }
+                    Accessible.role: Accessible.Button
+                    Accessible.name: `Remove ${root.info(tile.kind).name} widget`
+                    Accessible.onPressAction: root.remove(tile.wid)
                 }
             }
         }
@@ -378,6 +387,10 @@ Scope {
                         }
                         HoverHandler { id: rowHover }
                         TapHandler { onTapped: gallery.filter = parent.modelData.kind }
+                        Accessible.role: Accessible.ListItem
+                        Accessible.name: modelData.name
+                        Accessible.selected: chosen
+                        Accessible.onPressAction: gallery.filter = modelData.kind
                     }
                 }
             }
@@ -468,6 +481,9 @@ Scope {
                                         anchors.fill: parent
                                         hoverEnabled: true
                                         onClicked: root.add(offer.modelData.kind, offer.modelData.size)
+                                        Accessible.role: Accessible.Button
+                                        Accessible.name: `Add ${root.info(offer.modelData.kind).name} widget, ${offer.modelData.size}`
+                                        Accessible.onPressAction: root.add(offer.modelData.kind, offer.modelData.size)
                                     }
                                 }
                                 Text {

@@ -37,6 +37,10 @@ PanelWindow {
     MouseArea {
         anchors.fill: parent
         acceptedButtons: Qt.RightButton
+        // The desktop, whose action is its context menu (Change Wallpaper…).
+        Accessible.role: Accessible.Pane
+        Accessible.name: "Desktop"
+        Accessible.onPressAction: { wall.contextX = width / 2; wall.contextY = height / 2; desktopMenu.open = true }
         onClicked: mouse => {
             wall.contextX = mouse.x
             wall.contextY = mouse.y
