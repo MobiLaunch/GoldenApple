@@ -130,6 +130,7 @@ function material(name, m) {
   for (const [k, v] of Object.entries(t.radius)) if (k !== "appIcon") q.push(`    readonly property real radius${k[0].toUpperCase() + k.slice(1)}: ${Math.min(v, 9999)}`);
   for (const [k, v] of Object.entries(t.size)) q.push(`    readonly property real size${k[0].toUpperCase() + k.slice(1)}: ${v}`);
   for (const [k, v] of Object.entries(t.color.accent)) q.push(`    readonly property color accent${k[0].toUpperCase() + k.slice(1)}: "${v}"`);
+  for (const [k, v] of Object.entries(t.color.trafficLight)) q.push(`    readonly property color trafficLight${k[0].toUpperCase() + k.slice(1)}: "${v}"`);
   // The system accent (gsettings org.gnome.desktop.interface accent-color, set in
   // Settings › Appearance); the shell and the apps keep accentName in step with it.
   q.push(`    property string accentName: "blue"`);

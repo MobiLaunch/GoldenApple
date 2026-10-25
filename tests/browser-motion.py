@@ -15,6 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 qml = (ROOT / "apps/browser/Browser.qml").read_text()
 start = (ROOT / "apps/browser/StartPage.qml").read_text()
 button = (ROOT / "apps/browser/BrowserButton.qml").read_text()
+sheet = (ROOT / "apps/browser/BrowserSheet.qml").read_text()
 failures = []
 
 
@@ -38,8 +39,12 @@ check(not switched, f"these appear at once instead of growing in: {switched}")
 for ident in ("tabOverview", "searchPopover", "findBar", "downloadsPopover", "settingsSheet", "websitePermissionsSheet",
               "privacySheet", "profileSheet", "tabGroupsManager", "tabGroupSheet", "passwordsSheet", "permissionSheet"):
     b = block(ident)
-    check("readonly property bool reveal:" in b and "Behavior on opacity" in b and "Behavior on scale" in b,
-          f"{ident} grows in and fades")
+    own = "readonly property bool reveal:" in b and "Behavior on opacity" in b and "Behavior on scale" in b
+    # A BrowserSheet grows in and fades by itself, as its reveal turns on.
+    shared = b.startswith("\n    BrowserSheet {") and "\n        reveal: " in b
+    check(own or shared, f"{ident} grows in and fades")
+check("property bool reveal" in sheet and "visible: reveal || opacity > 0.01" in sheet
+      and "Behavior on opacity" in sheet and "Behavior on scale" in sheet, "BrowserSheet grows in, fades, and fades out")
 
 # Tabs.
 check(re.search(r"id: tabRow[\s\S]{0,200}add: Transition", qml), "a new tab grows in")
@@ -58,7 +63,7 @@ check("function bump()" in button and "bookmarkButton.bump()" in qml and "downlo
       "Favorite and Downloads hop when something happens")
 
 # Reduce Motion is honoured everywhere it moves.
-for name, text in (("Browser.qml", qml), ("StartPage.qml", start), ("BrowserButton.qml", button)):
+for name, text in (("Browser.qml", qml), ("StartPage.qml", start), ("BrowserButton.qml", button), ("BrowserSheet.qml", sheet)):
     springs = text.count("Spring {")
     check(text.count("reduceMotion") >= springs, f"{name}: Reduce Motion stills what moves")
 

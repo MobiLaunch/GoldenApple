@@ -75,6 +75,9 @@ Flickable {
                     text: "Add Favorite"
                     color: Theme.accent
                     font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize; weight: Font.Medium }
+                    Accessible.role: Accessible.Button
+                    Accessible.name: text
+                    Accessible.onPressAction: root.addFavoriteRequested()
                     TapHandler { onTapped: root.addFavoriteRequested() }
                 }
             }
@@ -135,6 +138,9 @@ Flickable {
                             id: favArea
                             anchors.fill: parent
                             hoverEnabled: true
+                            Accessible.role: Accessible.Link
+                            Accessible.name: modelData.title || root.domain(modelData.url)
+                            Accessible.onPressAction: root.openUrl(modelData.url)
                             onClicked: root.openUrl(modelData.url)
                         }
                     }
@@ -192,6 +198,9 @@ Flickable {
                     }
                 }
             }
+            Accessible.role: Accessible.Link
+            Accessible.name: card.record.title || root.domain(card.record.url)
+            Accessible.onPressAction: card.activated()
             MouseArea { anchors.fill: parent; hoverEnabled: true; onClicked: card.activated() }
         }
 
@@ -283,6 +292,9 @@ Flickable {
                     id: privacyArea
                     anchors.fill: parent
                     hoverEnabled: true
+                    Accessible.role: Accessible.Button
+                    Accessible.name: "Privacy Report"
+                    Accessible.onPressAction: root.privacyRequested()
                     cursorShape: Qt.PointingHandCursor
                     onClicked: root.privacyRequested()
                 }

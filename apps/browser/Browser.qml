@@ -5,6 +5,7 @@ import QtWebEngine
 import "../lib"
 import "../lib/WindowGeometry.js" as WindowGeometry
 import "../lib/theme"
+import "theme"
 
 Window {
     id: root
@@ -22,7 +23,7 @@ Window {
     minimumHeight: Math.min(480, _maxLaunchHeight)
     visible: true
     flags: Qt.Window | Qt.FramelessWindowHint
-    color: Theme.dark ? "#1d1d20" : "#f5f5f7"
+    color: WebColors.window
     title: (BrowserBackend.privateMode ? "Private Browsing" : (currentTitle || "Web")) + " — Web"
 
     property int currentIndex: 0
@@ -275,16 +276,16 @@ Window {
         z: 1000
         visible: opacity > 0
         opacity: BrowserBackend.keyringWaiting ? 1 : 0
-        Behavior on opacity { NumberAnimation { duration: 155 } }
+        Behavior on opacity { NumberAnimation { duration: Theme.motion.fade } }
         anchors { horizontalCenter: parent.horizontalCenter; top: parent.top; topMargin: 64 }
-        width: keyringText.implicitWidth + 28; height: 30; radius: 15
-        color: Theme.dark ? "#e62c2c2e" : "#f2ffffff"
-        border { width: 0.5; color: Theme.dark ? "#33ffffff" : "#26000000" }
+        width: keyringText.implicitWidth + 28; height: 30; radius: height / 2
+        color: WebColors.hud
+        border { width: 0.5; color: Theme.separator }
         Text {
             id: keyringText
             anchors.centerIn: parent
             text: "Waiting for the keyring… Unlock it if it asks."
-            color: Theme.dark ? "#ffffff" : "#1d1d1f"
+            color: Theme.label
             font.pixelSize: Theme.font.callout.pixelSize
         }
     }
@@ -643,8 +644,8 @@ Window {
 
     Rectangle {
         anchors.fill: parent
-        color: Theme.dark ? "#1d1d20" : "#f5f5f7"
-        border { width: 0.5; color: Theme.dark ? "#45000000" : "#22000000" }
+        color: WebColors.window
+        border { width: 0.5; color: WebColors.frame }
     }
 
     Rectangle {
@@ -653,13 +654,14 @@ Window {
         anchors { top: parent.top; left: parent.left; right: parent.right }
         height: 56
         color: BrowserBackend.privateMode
-            ? (Theme.dark ? "#e22d2737" : "#f1ece8f4")
-            : (Theme.dark ? "#e22b2b2f" : "#f0f1f1f3")
+            ? WebColors.toolbarPrivate
+            : WebColors.toolbar
         border { width: 0; color: "transparent" }
 
         MouseArea {
             anchors.fill: parent
             acceptedButtons: Qt.LeftButton
+            Accessible.ignored: true   // moving the window; the zoom button does what the double-click does
             onPressed: function(mouse) {
                 if (mouse.button === Qt.LeftButton) root.startSystemMove()
             }
@@ -675,22 +677,26 @@ Window {
                 spacing: 8
                 Repeater {
                     model: [
-                        ["#ff5f57", "Close"],
-                        ["#febc2e", "Minimize"],
-                        ["#28c840", "Zoom"]
+                        [Theme.trafficLightClose, "Close"],
+                        [Theme.trafficLightMinimize, "Minimize"],
+                        [Theme.trafficLightZoom, "Zoom"]
                     ]
                     delegate: Rectangle {
                         required property var modelData
-                        width: 13; height: 13; radius: 6.5
+                        width: 13; height: 13; radius: height / 2
                         color: modelData[0]
-                        border { width: 0.5; color: "#33000000" }
+                        border { width: 0.5; color: Theme.separator }
+                        function act() {
+                            if (modelData[1] === "Close") root.close()
+                            else if (modelData[1] === "Minimize") root.showMinimized()
+                            else root.visibility = root.visibility === Window.Maximized ? Window.Windowed : Window.Maximized
+                        }
+                        Accessible.role: Accessible.Button
+                        Accessible.name: modelData[1] + " window"
+                        Accessible.onPressAction: act()
                         MouseArea {
                             anchors.fill: parent
-                            onClicked: {
-                                if (modelData[1] === "Close") root.close()
-                                else if (modelData[1] === "Minimize") root.showMinimized()
-                                else root.visibility = root.visibility === Window.Maximized ? Window.Windowed : Window.Maximized
-                            }
+                            onClicked: parent.act()
                         }
                     }
                 }
@@ -732,8 +738,8 @@ Window {
                     width: Math.min(parent.width, addressField.input.activeFocus ? 720 : 640)
                     radius: height / 2      // Safari's Smart Search field is a capsule
                     color: BrowserBackend.privateMode
-                        ? (Theme.dark ? "#88443a52" : "#cfe9e2ef")
-                        : (Theme.dark ? "#b63b3b40" : "#eaffffff")
+                        ? WebColors.fieldPrivate
+                        : WebColors.field
                     border {
                         width: addressField.input.activeFocus ? 2 : 0.5
                         color: addressField.input.activeFocus ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.55) : Theme.separator
@@ -817,12 +823,12 @@ Window {
                         }
                         anchors { bottom: parent.bottom; left: parent.left; right: parent.right; leftMargin: 10; rightMargin: 10 }
                         height: 2
-                        radius: 1
+                        radius: height / 2
                         color: "transparent"
                         Rectangle {
                             id: progressFill
                             height: parent.height
-                            radius: 1
+                            radius: height / 2
                             color: Theme.accent
                             readonly property real goal: parent.width * (parent.loading ? Math.max(0.06, (root.currentView ? root.currentView.loadProgress : 0) / 100) : 1)
                             // Forward it glides; a new page starts it over at once.
@@ -830,7 +836,7 @@ Window {
                                 if (goal < width || Theme.reduceMotion) { glide.stop(); width = goal }
                                 else { glide.to = goal; glide.restart() }
                             }
-                            NumberAnimation { id: glide; target: progressFill; property: "width"; duration: 210; easing.type: Easing.OutCubic }
+                            NumberAnimation { id: glide; target: progressFill; property: "width"; duration: Theme.motion.tap.duration; easing.type: Easing.OutCubic }
                         }
                     }
                 }
@@ -857,8 +863,8 @@ Window {
                             visible: index !== root.currentIndex
                             width: visible ? 112 : 0
                             height: 32
-                            radius: 9
-                            color: compactArea.containsMouse ? (Theme.dark ? "#12ffffff" : "#0d000000") : "transparent"
+                            radius: Theme.radius.field
+                            color: compactArea.containsMouse ? Theme.fillHover : "transparent"
                             Row {
                                 anchors { fill: parent; leftMargin: 8; rightMargin: 8 }
                                 spacing: 6
@@ -882,6 +888,9 @@ Window {
                                 id: compactArea
                                 anchors.fill: parent
                                 hoverEnabled: true
+                                Accessible.role: Accessible.PageTab
+                                Accessible.name: title || "New Tab"
+                                Accessible.onPressAction: { root.currentIndex = index; root.syncAddress() }
                                 acceptedButtons: Qt.LeftButton | Qt.MiddleButton
                                 onClicked: function(mouse) {
                                     if (mouse.button === Qt.MiddleButton) root.closeTab(index)
@@ -943,7 +952,7 @@ Window {
         visible: !root.compactTabs
         anchors { top: toolbar.bottom; left: parent.left; right: parent.right }
         height: visible ? 39 : 0
-        color: Theme.dark ? "#f1242428" : "#f1ededf0"
+        color: WebColors.tabBar
 
         Flickable {
             id: tabScroller
@@ -962,8 +971,8 @@ Window {
                 y: 3
                 width: tab ? tab.width : 0
                 height: tabRow.height - 6 - 2
-                radius: 9
-                color: Theme.dark ? "#993b3b40" : "#deffffff"
+                radius: Theme.radius.field
+                color: WebColors.activeTab
                 border { width: 0.5; color: Theme.separator }
                 Behavior on x { enabled: !Theme.reduceMotion && !(activeTabHighlight.tab && activeTabHighlight.tab.dragging); Spring { spring: Theme.snappy } }
                 Behavior on width { enabled: !Theme.reduceMotion; Spring { spring: Theme.snappy } }
@@ -976,7 +985,7 @@ Window {
                 // A new tab grows in; the others slide to make room, and close up after one closes.
                 add: Transition {
                     enabled: !Theme.reduceMotion
-                    NumberAnimation { property: "opacity"; from: 0; to: 1; duration: 175; easing.type: Easing.OutCubic }
+                    NumberAnimation { property: "opacity"; from: 0; to: 1; duration: Theme.motion.fade; easing.type: Easing.OutCubic }
                     NumberAnimation { property: "scale"; from: 0.8; to: 1; duration: Theme.snappy.duration; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.snappy.curve }
                 }
                 move: Transition {
@@ -990,6 +999,10 @@ Window {
                     delegate: Item {
                         id: tab
                         required property int index
+                        Accessible.role: Accessible.PageTab
+                        Accessible.name: tab.title || "New Tab"
+                        Accessible.checked: tab.active
+                        Accessible.onPressAction: { root.currentIndex = tab.index; root.syncAddress() }
                         required property string title
                         required property string icon
                         required property bool loading
@@ -1006,14 +1019,14 @@ Window {
                         transform: Translate { x: tab.dragOffset }
                         // Picked up, a tab lifts a little.
                         scale: tabDrag.active && !Theme.reduceMotion ? 1.04 : 1
-                        Behavior on scale { NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
+                        Behavior on scale { NumberAnimation { duration: Theme.motion.menu; easing.type: Easing.OutCubic } }
 
                         // The open tab's background is activeTabHighlight; the others light up under the pointer.
                         Rectangle {
                             anchors { fill: parent; topMargin: 3; bottomMargin: 3 }
-                            radius: 9
+                            radius: Theme.radius.field
                             color: tab.active ? "transparent"
-                                : tabHover.hovered ? (Theme.dark ? "#10ffffff" : "#0d000000") : "transparent"
+                                : tabHover.hovered ? Theme.fillHover : "transparent"
                             Behavior on color { ColorAnimation { duration: Theme.reduceMotion ? 1 : 120 } }
                         }
 
@@ -1032,9 +1045,9 @@ Window {
                                 }
                                 Rectangle {
                                     anchors.fill: parent
-                                    radius: 5
+                                    radius: Theme.radius.control
                                     visible: !tab.icon && !tab.loading
-                                    color: Theme.dark ? "#18ffffff" : "#0d000000"
+                                    color: Theme.fillHover
                                     Text {
                                         anchors.centerIn: parent
                                         text: (tab.title || "N").charAt(0).toUpperCase()
@@ -1045,13 +1058,14 @@ Window {
                                 Rectangle {
                                     anchors.centerIn: parent
                                     width: 12; height: 12
-                                    radius: 6
+                                    radius: Theme.radius.control
                                     visible: tab.loading
                                     color: "transparent"
                                     border { width: 2; color: Theme.accent }
                                     RotationAnimation on rotation {
                                         running: tab.loading && !Theme.reduceMotion
                                         loops: Animation.Infinite
+                                        // design-lint: allow a spinner's turn, not a transition
                                         from: 0; to: 360; duration: 650
                                     }
                                 }
@@ -1144,8 +1158,8 @@ Window {
             visible: width > 0
             clip: true
             color: BrowserBackend.privateMode
-                ? (Theme.dark ? "#ee2b2732" : "#f5ece8f2")
-                : (Theme.dark ? "#f128282c" : "#f4ececf0")
+                ? WebColors.sidebarPrivate
+                : WebColors.sidebar
             border { width: 0; color: "transparent" }
             Behavior on width { NumberAnimation { duration: Theme.reduceMotion ? 1 : 175; easing.type: Easing.OutCubic } }
 
@@ -1186,9 +1200,9 @@ Window {
                         signal activated()
                         width: sideColumn.width
                         height: 34
-                        radius: 8
-                        color: selected ? (Theme.dark ? "#22ffffff" : "#14000000")
-                            : sideArea.containsMouse ? (Theme.dark ? "#12ffffff" : "#09000000") : "transparent"
+                        radius: Theme.radius.field
+                        color: selected ? Theme.selection
+                            : sideArea.containsMouse ? Theme.fillHover : "transparent"
                         Row {
                             anchors { fill: parent; leftMargin: 8; rightMargin: 8 }
                             spacing: 9
@@ -1209,6 +1223,10 @@ Window {
                                 font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize }
                             }
                         }
+                        Accessible.role: Accessible.Button
+                        Accessible.name: row.label
+                        Accessible.checked: row.selected
+                        Accessible.onPressAction: row.activated()
                         MouseArea { id: sideArea; anchors.fill: parent; hoverEnabled: true; onClicked: row.activated() }
                     }
 
@@ -1337,7 +1355,7 @@ Window {
                     // Switching tabs, the page fades in rather than cutting.
                     opacity: 1
                     onVisibleChanged: if (visible && !Theme.reduceMotion) pageIn.restart()
-                    NumberAnimation { id: pageIn; target: webTab; property: "opacity"; from: 0.35; to: 1; duration: 155; easing.type: Easing.OutCubic }
+                    NumberAnimation { id: pageIn; target: webTab; property: "opacity"; from: 0.35; to: 1; duration: Theme.motion.fade; easing.type: Easing.OutCubic }
                     function go(target) {
                         if (target === "about:blank") web.stop()
                         web.url = target
@@ -1351,7 +1369,7 @@ Window {
                         anchors.fill: parent
                         profile: root.profile
                         visible: webTab.visible && webTab.url !== "about:blank" && !root.readerOpen
-                        backgroundColor: Theme.dark ? "#1d1d20" : "#ffffff"
+                        backgroundColor: WebColors.page
                         settings.fullScreenSupportEnabled: true
                         settings.scrollAnimatorEnabled: true
                         // The current tab stays Active even while its Start Page covers
@@ -1477,7 +1495,7 @@ Window {
                 property var records: []
                 visible: mode !== ""
                 anchors.fill: parent
-                color: Theme.dark ? "#1d1d20" : "#f8f8fa"
+                color: WebColors.library
                 z: 10
 
                 function showCollection(key, title) {
@@ -1531,8 +1549,8 @@ Window {
                                 required property var modelData
                                 width: libraryColumn.width
                                 height: 60
-                                radius: 12
-                                color: libArea.containsMouse ? (Theme.dark ? "#12ffffff" : "#0b000000") : "transparent"
+                                radius: Theme.radius.card
+                                color: libArea.containsMouse ? Theme.fillHover : "transparent"
                                 border { width: 0.5; color: Theme.separator }
 
                                 Column {
@@ -1565,6 +1583,9 @@ Window {
                                     id: libArea
                                     anchors { left: parent.left; top: parent.top; bottom: parent.bottom; right: removeButton.left }
                                     hoverEnabled: true
+                                    Accessible.role: Accessible.Link
+                                    Accessible.name: modelData.title || modelData.url
+                                    Accessible.onPressAction: { libraryOverlay.mode = ""; root.activateUrl(modelData.url) }
                                     onClicked: {
                                         libraryOverlay.mode = ""
                                         root.activateUrl(modelData.url)
@@ -1597,7 +1618,7 @@ Window {
         Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 150; easing.type: Easing.OutCubic } }
         Behavior on scale { enabled: !Theme.reduceMotion; Spring { spring: Theme.popover } }
         anchors.fill: body
-        color: Theme.dark ? "#f31b1b20" : "#f5f2f3f6"
+        color: WebColors.overview
 
         Column {
             anchors { fill: parent; margins: 26 }
@@ -1651,8 +1672,8 @@ Window {
                             readonly property bool selected: index === root.currentIndex
                             width: (overviewGrid.width - overviewGrid.spacing * (overviewGrid.columns - 1)) / overviewGrid.columns
                             height: 142
-                            radius: 18
-                            color: Theme.dark ? "#ca303035" : "#ecffffff"
+                            radius: Theme.radius.panel
+                            color: WebColors.card
                             border {
                                 width: selected ? 2 : 0.5
                                 color: selected ? Theme.accent : Theme.separator
@@ -1681,8 +1702,8 @@ Window {
                             Rectangle {
                                 anchors { left: parent.left; right: parent.right; top: parent.top }
                                 height: 86
-                                radius: 18
-                                color: Theme.dark ? "#16ffffff" : "#09000000"
+                                radius: Theme.radius.panel
+                                color: Theme.fill
                                 Rectangle {
                                     anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
                                     height: 18
@@ -1698,9 +1719,9 @@ Window {
                                 }
                                 Rectangle {
                                     anchors.centerIn: parent
-                                    width: 34; height: 34; radius: 10
+                                    width: 34; height: 34; radius: width * 0.26
                                     visible: !overviewCard.icon && !overviewCard.loading
-                                    color: Theme.dark ? "#18ffffff" : "#10000000"
+                                    color: Theme.fillHover
                                     Text {
                                         anchors.centerIn: parent
                                         text: (overviewCard.title || "N").charAt(0).toUpperCase()
@@ -1710,13 +1731,14 @@ Window {
                                 }
                                 Rectangle {
                                     anchors.centerIn: parent
-                                    width: 22; height: 22; radius: 11
+                                    width: 22; height: 22; radius: height / 2
                                     visible: overviewCard.loading
                                     color: "transparent"
                                     border { width: 2; color: Theme.accent }
                                     RotationAnimation on rotation {
                                         running: overviewCard.loading && !Theme.reduceMotion
                                         loops: Animation.Infinite
+                                        // design-lint: allow a spinner's turn, not a transition
                                         from: 0; to: 360; duration: 650
                                     }
                                 }
@@ -1753,6 +1775,9 @@ Window {
                                 id: overviewArea
                                 anchors { left: parent.left; right: parent.right; top: parent.top; bottom: overviewCardClose.top }
                                 hoverEnabled: true
+                                Accessible.role: Accessible.PageTab
+                                Accessible.name: overviewCard.title || "New Tab"
+                                Accessible.onPressAction: { root.currentIndex = overviewCard.index; root.tabOverviewOpen = false; root.syncAddress() }
                                 onClicked: {
                                     root.currentIndex = overviewCard.index
                                     root.tabOverviewOpen = false
@@ -1787,8 +1812,8 @@ Window {
         }
         width: smartField.width
         height: Math.min(350, suggestionColumn.height + 12)
-        radius: 16
-        color: Theme.dark ? "#f3323237" : "#fcf7f7f9"
+        radius: Theme.radius.menu
+        color: WebColors.popover
         border { width: 0.5; color: Theme.separator }
 
         Column {
@@ -1801,8 +1826,8 @@ Window {
                     required property var modelData
                     width: suggestionColumn.width
                     height: 42
-                    radius: 10
-                    color: suggestionArea.containsMouse ? (Theme.dark ? "#16ffffff" : "#0d000000") : "transparent"
+                    radius: Theme.radius.field
+                    color: suggestionArea.containsMouse ? Theme.fillHover : "transparent"
                     Row {
                         anchors { fill: parent; leftMargin: 10; rightMargin: 10 }
                         spacing: 10
@@ -1838,6 +1863,9 @@ Window {
                         id: suggestionArea
                         anchors.fill: parent
                         hoverEnabled: true
+                        Accessible.role: Accessible.ListItem
+                        Accessible.name: modelData.title || modelData.url
+                        Accessible.onPressAction: { addressField.input.focus = false; root.activateUrl(modelData.url) }
                         onClicked: {
                             addressField.input.focus = false
                             root.activateUrl(modelData.url)
@@ -1869,9 +1897,9 @@ Window {
         y: { webArea.y; return webArea.mapToItem(root.contentItem, 0, 0).y + 12 }
         width: 360
         height: 44
-        radius: 14
-        tint: Theme.dark ? "#f034343a" : "#f2f8f8fa"
-        shadow: "#65000000"
+        radius: Theme.radius.menu
+        tint: WebColors.popover
+        shadow: WebColors.shadow
         Row {
             anchors { fill: parent; margins: 6 }
             spacing: 5
@@ -1919,8 +1947,8 @@ Window {
         y: toolbar.height + 5
         width: 360
         height: Math.min(420, Math.max(110, downloadsColumn.height + 18))
-        radius: 16
-        color: Theme.dark ? "#f3323237" : "#fcf7f7f9"
+        radius: Theme.radius.menu
+        color: WebColors.popover
         border { width: 0.5; color: Theme.separator }
 
         Column {
@@ -1941,6 +1969,9 @@ Window {
                     text: "Show in Files"
                     color: Theme.accent
                     font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize; weight: Font.Medium }
+                    Accessible.role: Accessible.Button
+                    Accessible.name: text
+                    Accessible.onPressAction: BrowserBackend.openDownloadsFolder()
                     TapHandler { onTapped: BrowserBackend.openDownloadsFolder() }
                 }
             }
@@ -1958,8 +1989,8 @@ Window {
                     required property var modelData
                     width: downloadsColumn.width
                     height: 64
-                    radius: 11
-                    color: Theme.dark ? "#0dffffff" : "#09000000"
+                    radius: Theme.radius.card
+                    color: Theme.fill
                     Row {
                         anchors { fill: parent; margins: 10 }
                         spacing: 10
@@ -2015,31 +2046,12 @@ Window {
         }
     }
 
-    Rectangle {
+    BrowserSheet {
         id: settingsSheet
         z: 60
-        // Grows in and fades, rather than appearing at once.
-        readonly property bool reveal: root.settingsOpen
-        visible: reveal || opacity > 0.01
-        opacity: reveal ? 1 : 0
-        scale: reveal || Theme.reduceMotion ? 1 : 0.94
-        transformOrigin: Item.Center
-        Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 150; easing.type: Easing.OutCubic } }
-        Behavior on scale { enabled: !Theme.reduceMotion; Spring { spring: Theme.popover } }
-        anchors.centerIn: parent
+        reveal: root.settingsOpen
         width: Math.min(560, root.width - 60)
         height: Math.min(560, root.height - 80)
-        radius: 22
-        color: Theme.dark ? "#fa2c2c30" : "#fdf8f8fa"
-        border { width: 0.5; color: Theme.separator }
-
-        Rectangle {
-            z: -1
-            anchors { fill: parent; margins: -18 }
-            radius: 30
-            color: "#40000000"
-            opacity: 0.28
-        }
 
         Column {
             anchors { fill: parent; margins: 22 }
@@ -2224,31 +2236,12 @@ Window {
         }
     }
 
-    Rectangle {
+    BrowserSheet {
         id: websitePermissionsSheet
         z: 67
-        // Grows in and fades, rather than appearing at once.
-        readonly property bool reveal: root.websitePermissionsOpen
-        visible: reveal || opacity > 0.01
-        opacity: reveal ? 1 : 0
-        scale: reveal || Theme.reduceMotion ? 1 : 0.94
-        transformOrigin: Item.Center
-        Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 150; easing.type: Easing.OutCubic } }
-        Behavior on scale { enabled: !Theme.reduceMotion; Spring { spring: Theme.popover } }
-        anchors.centerIn: parent
+        reveal: root.websitePermissionsOpen
         width: Math.min(570, root.width - 60)
         height: Math.min(520, root.height - 80)
-        radius: 22
-        color: Theme.dark ? "#fc303034" : "#fff8f8fa"
-        border { width: 0.5; color: Theme.separator }
-
-        Rectangle {
-            z: -1
-            anchors { fill: parent; margins: -14 }
-            radius: 30
-            color: "#40000000"
-            opacity: 0.24
-        }
 
         Column {
             anchors { fill: parent; margins: 22 }
@@ -2322,8 +2315,8 @@ Window {
                             required property var modelData
                             width: permissionList.width
                             height: 58
-                            radius: 11
-                            color: Theme.dark ? "#0dffffff" : "#08000000"
+                            radius: Theme.radius.card
+                            color: Theme.fill
                             border { width: 0.5; color: Theme.separator }
 
                             Column {
@@ -2361,31 +2354,12 @@ Window {
         }
     }
 
-    Rectangle {
+    BrowserSheet {
         id: privacySheet
         z: 67
-        // Grows in and fades, rather than appearing at once.
-        readonly property bool reveal: root.privacySheetOpen
-        visible: reveal || opacity > 0.01
-        opacity: reveal ? 1 : 0
-        scale: reveal || Theme.reduceMotion ? 1 : 0.94
-        transformOrigin: Item.Center
-        Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 150; easing.type: Easing.OutCubic } }
-        Behavior on scale { enabled: !Theme.reduceMotion; Spring { spring: Theme.popover } }
-        anchors.centerIn: parent
+        reveal: root.privacySheetOpen
         width: Math.min(500, root.width - 70)
         height: Math.min(480, Math.max(260, privacyContent.implicitHeight + 44))
-        radius: 22
-        color: Theme.dark ? "#fc303034" : "#fff8f8fa"
-        border { width: 0.5; color: Theme.separator }
-
-        Rectangle {
-            z: -1
-            anchors { fill: parent; margins: -14 }
-            radius: 30
-            color: "#40000000"
-            opacity: 0.24
-        }
 
         Column {
             id: privacyContent
@@ -2418,8 +2392,8 @@ Window {
             Row {
                 spacing: 14
                 Rectangle {
-                    width: 50; height: 50; radius: 15
-                    color: Theme.dark ? "#1dffffff" : "#120078ff"
+                    width: 50; height: 50; radius: width * 0.26
+                    color: Theme.dark ? Theme.fillHover : Qt.alpha(Theme.accent, 0.07)
                     Symbol { anchors.centerIn: parent; name: "shield"; tone: "accent"; size: 24 }
                 }
                 Column {
@@ -2464,8 +2438,8 @@ Window {
                     delegate: Rectangle {
                         required property var modelData
                         width: privacyContent.width
-                        height: 36; radius: 8
-                        color: Theme.dark ? "#0cffffff" : "#07000000"
+                        height: 36; radius: Theme.radius.field
+                        color: Theme.fill
                         Text {
                             x: 10; anchors.verticalCenter: parent.verticalCenter
                             width: parent.width - 70; elide: Text.ElideRight
@@ -2493,31 +2467,12 @@ Window {
         }
     }
 
-    Rectangle {
+    BrowserSheet {
         id: profileSheet
         z: 66
-        // Grows in and fades, rather than appearing at once.
-        readonly property bool reveal: root.profileSheetOpen
-        visible: reveal || opacity > 0.01
-        opacity: reveal ? 1 : 0
-        scale: reveal || Theme.reduceMotion ? 1 : 0.94
-        transformOrigin: Item.Center
-        Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 150; easing.type: Easing.OutCubic } }
-        Behavior on scale { enabled: !Theme.reduceMotion; Spring { spring: Theme.popover } }
-        anchors.centerIn: parent
+        reveal: root.profileSheetOpen
         width: 470
         height: Math.min(460, root.height - 90)
-        radius: 22
-        color: Theme.dark ? "#fc303034" : "#fff8f8fa"
-        border { width: 0.5; color: Theme.separator }
-
-        Rectangle {
-            z: -1
-            anchors { fill: parent; margins: -14 }
-            radius: 30
-            color: "#40000000"
-            opacity: 0.24
-        }
 
         Column {
             anchors { fill: parent; margins: 22 }
@@ -2555,22 +2510,22 @@ Window {
                         required property var modelData
                         width: parent ? parent.width : 400
                         height: 44
-                        radius: 10
+                        radius: Theme.radius.field
                         color: modelData === BrowserBackend.profileName
-                            ? (Theme.dark ? "#18ffffff" : "#0d000000") : "transparent"
+                            ? Theme.selection : "transparent"
 
                         Row {
                             anchors { fill: parent; leftMargin: 10; rightMargin: 8 }
                             spacing: 10
                             Rectangle {
                                 anchors.verticalCenter: parent.verticalCenter
-                                width: 28; height: 28; radius: 9
+                                width: 28; height: 28; radius: width * 0.26
                                 color: Theme.accent
                                 opacity: modelData === BrowserBackend.profileName ? 1 : 0.70
                                 Text {
                                     anchors.centerIn: parent
                                     text: String(modelData).charAt(0).toUpperCase()
-                                    color: "#ffffff"
+                                    color: Theme.selectedText
                                     font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize; weight: Font.DemiBold }
                                 }
                             }
@@ -2628,31 +2583,12 @@ Window {
         }
     }
 
-    Rectangle {
+    BrowserSheet {
         id: tabGroupsManager
         z: 65
-        // Grows in and fades, rather than appearing at once.
-        readonly property bool reveal: root.tabGroupsSheetOpen
-        visible: reveal || opacity > 0.01
-        opacity: reveal ? 1 : 0
-        scale: reveal || Theme.reduceMotion ? 1 : 0.94
-        transformOrigin: Item.Center
-        Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 150; easing.type: Easing.OutCubic } }
-        Behavior on scale { enabled: !Theme.reduceMotion; Spring { spring: Theme.popover } }
-        anchors.centerIn: parent
+        reveal: root.tabGroupsSheetOpen
         width: 500
         height: Math.min(480, root.height - 90)
-        radius: 22
-        color: Theme.dark ? "#fc303034" : "#fff8f8fa"
-        border { width: 0.5; color: Theme.separator }
-
-        Rectangle {
-            z: -1
-            anchors { fill: parent; margins: -14 }
-            radius: 30
-            color: "#40000000"
-            opacity: 0.24
-        }
 
         Column {
             anchors { fill: parent; margins: 22 }
@@ -2709,8 +2645,8 @@ Window {
                             required property var modelData
                             width: groupsManagerList.width
                             height: 56
-                            radius: 11
-                            color: Theme.dark ? "#0dffffff" : "#08000000"
+                            radius: Theme.radius.card
+                            color: Theme.fill
                             border { width: 0.5; color: Theme.separator }
 
                             Row {
@@ -2771,31 +2707,12 @@ Window {
         }
     }
 
-    Rectangle {
+    BrowserSheet {
         id: tabGroupSheet
         z: 65
-        // Grows in and fades, rather than appearing at once.
-        readonly property bool reveal: root.tabGroupEditorOpen
-        visible: reveal || opacity > 0.01
-        opacity: reveal ? 1 : 0
-        scale: reveal || Theme.reduceMotion ? 1 : 0.94
-        transformOrigin: Item.Center
-        Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 150; easing.type: Easing.OutCubic } }
-        Behavior on scale { enabled: !Theme.reduceMotion; Spring { spring: Theme.popover } }
-        anchors.centerIn: parent
+        reveal: root.tabGroupEditorOpen
         width: 430
         height: 206
-        radius: 20
-        color: Theme.dark ? "#fc303034" : "#fff7f7f9"
-        border { width: 0.5; color: Theme.separator }
-
-        Rectangle {
-            z: -1
-            anchors { fill: parent; margins: -14 }
-            radius: 28
-            color: "#40000000"
-            opacity: 0.22
-        }
 
         Column {
             anchors { fill: parent; margins: 22 }
@@ -2844,15 +2761,15 @@ Window {
         z: 69
         visible: opacity > 0
         opacity: root.passwordPrompt ? 1 : 0
-        Behavior on opacity { NumberAnimation { duration: 155 } }
+        Behavior on opacity { NumberAnimation { duration: Theme.motion.fade } }
         parent: webArea       // over the page, under the toolbar
         anchors { horizontalCenter: parent.horizontalCenter; top: parent.top; topMargin: 12 }
         width: Math.min(520, webArea.width - 32)
         height: bannerColumn.implicitHeight + 28
-        radius: 18
-        color: Theme.dark ? "#f2303034" : "#f7fbfbfd"
+        radius: Theme.radius.panel
+        color: WebColors.banner
         border { width: 0.5; color: Theme.separator }
-        Rectangle { z: -1; anchors { fill: parent; margins: -6 } radius: 22; color: "#40000000"; opacity: 0.07 }
+        Rectangle { z: -1; anchors { fill: parent; margins: -6 } radius: parent.radius + 4; color: WebColors.shadow; opacity: 0.07 }
         Column {
             id: bannerColumn
             anchors { left: parent.left; right: parent.right; top: parent.top; margins: 14 }
@@ -2861,7 +2778,7 @@ Window {
                 spacing: 12
                 width: parent.width
                 Rectangle {
-                    width: 34; height: 34; radius: 9
+                    width: 34; height: 34; radius: width * 0.26
                     color: Theme.accent
                     Symbol { anchors.centerIn: parent; name: "lock"; tone: "white"; size: 16 }
                 }
@@ -2907,24 +2824,12 @@ Window {
     }
 
     // Passwords: every login Web has saved in this profile.
-    Rectangle {
+    BrowserSheet {
         id: passwordsSheet
         z: 67
-        // Grows in and fades, rather than appearing at once.
-        readonly property bool reveal: root.passwordsOpen
-        visible: reveal || opacity > 0.01
-        opacity: reveal ? 1 : 0
-        scale: reveal || Theme.reduceMotion ? 1 : 0.94
-        transformOrigin: Item.Center
-        Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 150; easing.type: Easing.OutCubic } }
-        Behavior on scale { enabled: !Theme.reduceMotion; Spring { spring: Theme.popover } }
-        anchors.centerIn: parent
+        reveal: root.passwordsOpen
         width: Math.min(570, root.width - 60)
         height: Math.min(520, root.height - 80)
-        radius: 22
-        color: Theme.dark ? "#fc303034" : "#fff8f8fa"
-        border { width: 0.5; color: Theme.separator }
-        Rectangle { z: -1; anchors { fill: parent; margins: -14 } radius: 30; color: "#40000000"; opacity: 0.24 }
         Column {
             anchors { fill: parent; margins: 22 }
             spacing: 14
@@ -2975,8 +2880,8 @@ Window {
                             required property var modelData
                             width: loginList.width
                             height: 52
-                            radius: 11
-                            color: Theme.dark ? "#0dffffff" : "#08000000"
+                            radius: Theme.radius.card
+                            color: Theme.fill
                             border { width: 0.5; color: Theme.separator }
                             Column {
                                 anchors { left: parent.left; leftMargin: 14; right: loginActions.left; rightMargin: 10; verticalCenter: parent.verticalCenter }
@@ -3015,23 +2920,12 @@ Window {
         }
     }
 
-    Rectangle {
+    BrowserSheet {
         id: permissionSheet
         z: 70
-        // Grows in and fades, rather than appearing at once.
-        readonly property bool reveal: root.pendingPermission !== null
-        visible: reveal
-        opacity: reveal ? 1 : 0
-        scale: reveal || Theme.reduceMotion ? 1 : 0.94
-        transformOrigin: Item.Center
-        Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 1 : 150; easing.type: Easing.OutCubic } }
-        Behavior on scale { enabled: !Theme.reduceMotion; Spring { spring: Theme.popover } }
-        anchors.centerIn: parent
+        reveal: root.pendingPermission !== null
         width: 420
         height: 190
-        radius: 20
-        color: Theme.dark ? "#fc303034" : "#fff7f7f9"
-        border { width: 0.5; color: Theme.separator }
 
         Column {
             anchors { fill: parent; margins: 22 }
@@ -3080,8 +2974,8 @@ Window {
         anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: 30 }
         width: Math.min(root.width - 40, toastLabel.implicitWidth + 32)
         height: 34
-        radius: 17
-        color: Theme.dark ? "#ee35353a" : "#eef8f8fa"
+        radius: height / 2
+        color: WebColors.hud
         border { width: 0.5; color: Theme.separator }
         opacity: 0
         visible: opacity > 0

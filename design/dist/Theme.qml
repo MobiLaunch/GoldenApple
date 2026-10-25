@@ -44,6 +44,10 @@ QtObject {
     readonly property color accentYellow: "#ffd60a"
     readonly property color accentGreen: "#30d158"
     readonly property color accentGraphite: "#8e8e93"
+    readonly property color trafficLightClose: "#ff5f57"
+    readonly property color trafficLightMinimize: "#febc2e"
+    readonly property color trafficLightZoom: "#28c840"
+    readonly property color trafficLightInactive: "#d4d4d4"
     property string accentName: "blue"
     property string glassStyle: "clear"
     property bool reduceTransparency: false

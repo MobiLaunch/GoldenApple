@@ -453,6 +453,18 @@ same fields, more briefly, and should be expanded when their milestone starts.
     (`Glass { role: "menu" }`) instead of a near-opaque box with a drawn shadow, so the
     sidebar shows through them a little more, as through every menu. Durations are
     `Theme.motion`. All six pane shots, light and dark, are pixel-identical.
+  - **`Browser.qml`.** Web draws its own chrome, as Safari does, so the window, toolbar,
+    tab bar, Smart Search field, sidebar (each with its private-window tint) and the
+    panels over the page are Web's own palette, `apps/browser/theme/WebColors.qml`;
+    hovers, selections, list fills and labels are the system's. Its eight hand-built
+    panels (Settings, Passwords, Website Permissions, Privacy Report, Profiles, Tab Groups
+    and the group editor, a site's permission request) are one `BrowserSheet`, which
+    grows in, fades, and now always fades out. The traffic lights take the new
+    `Theme.trafficLight*` tokens, icon tiles the system's 0.26 corner ratio, and every
+    tap target in Web and its Start Page has a role, a name and an action. Shots of 12
+    states in light and dark (the real app, through a capture script run as a desktop
+    user) differ only by a shade in hovers and selections and a tighter sheet shadow;
+    `tests/native-browser.py` passes against real Chromium.
 
 ## M3: Desktop refinement
 
