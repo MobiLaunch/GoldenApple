@@ -244,8 +244,8 @@ same fields, more briefly, and should be expanded when their milestone starts.
 - **As built:** `distro/systemd/user/` has `citronos-session.target` (bound to
   `graphical-session.target`) wanting `citronos-shell`, `citronos-airdrop` and
   `citronos-icon-resolver`, plus `citronos-shell-safe`. The shell restarts after 1 s
-  (`Restart=always`, so a clean exit is restarted too); five starts in 60 s fail it into
-  `OnFailure=citronos-shell-safe.service`, which runs the same shell with `GG_SAFE=1` (no
+  (`Restart=always`, so a clean exit is restarted too; `RestartMode=direct`); the fifth stop
+  in 60 s (`StartLimitBurst=4`) fails it into `OnFailure=citronos-shell-safe.service`, which runs the same shell with `GG_SAFE=1` (no
   desktop widgets, no Citron, no live window captures in the glass) and says so in a
   notification. Output goes to the journal; the home-made log rotation is gone, except in
   the fallback below. hyprland.conf's three loops became `exec-once = gg-session-start`
@@ -257,8 +257,14 @@ same fields, more briefly, and should be expanded when their milestone starts.
   AirDrop's unit runs `gg-airdrop --serve` with `Restart=on-failure`, so "already running"
   isn't restarted. Diagnostics read the journal. `tests/shell-supervisor.py` covers the
   unit policy, the start order, the fallback (new account, big log), logout, and safe mode
-  in the preview (it fails on the old shell). The session-harness case (five kills to safe
-  mode) and checking the units on the ISO are still to do.
+  in the preview (it fails on the old shell).
+  **Found by the boot test's self-test** (`distro/archiso/selftest/`, the units for real on
+  the ISO): one crash started safe mode. With systemd's default `RestartMode=normal` a
+  service passes through "failed" on each death, and each pass fires `OnFailure=`.
+  `RestartMode=direct` (systemd 254+) restarts without it, so only giving up does. And
+  systemd refuses a start once there have been *more* than `StartLimitBurst`, so 5 took a
+  sixth stop; 4 makes the fifth the one that gives up. The same run found NetworkManager's
+  dispatcher disabled (T-1.8).
 - **Files:** new `distro/systemd/user/citronos-session.target`, `citronos-shell.service`,
   `citronos-shell-safe.service`, `citronos-airdrop.service`, `citronos-icon-resolver.service`;
   `compositor/hyprland/hyprland.conf:41-56` (replace the loops with
@@ -266,7 +272,8 @@ same fields, more briefly, and should be expanded when their milestone starts.
   `distro/archiso/overlay/usr/local/bin/gg-session` (import the environment); `shell/shell.qml`
   (honour `GG_SAFE=1`: no `DesktopBackdrop` windows, no widgets, no Citron).
 - **Changes:**
-  - `Restart=on-failure`, `RestartSec=1`, `StartLimitIntervalSec=60`, `StartLimitBurst=5`,
+  - `Restart=on-failure`, `RestartSec=1`, `StartLimitIntervalSec=60`, `StartLimitBurst=5`
+    (as built: `Restart=always`, `RestartMode=direct`, `StartLimitBurst=4`),
     `OnFailure=citronos-shell-safe.service`.
   - `StandardOutput=journal`.
   - Remove the home-made log rotation.
@@ -309,8 +316,12 @@ same fields, more briefly, and should be expanded when their milestone starts.
   always wins, and only the running firewall changes. Choosing per network in Settings is
   T-4.8. Tests: `tests/airdrop.py` (off by default with no listener, 10-minute expiry with
   a short window and an injected clock, a sender with receiving off, plain HTTP never used;
-  it fails on the old daemon) and `tests/firewall-zones.py`. The `ss -lntup` check on a
-  real login is still to do.
+  it fails on the old daemon) and `tests/firewall-zones.py`. The session harness (T-0.2)
+  and the boot test's self-test check that nothing listens on 53317 after login; the
+  self-test also checks the zones in the live session, and found the dispatcher script
+  never ran: NetworkManager runs them only with `NetworkManager-dispatcher.service`
+  enabled, which the ISO (its `dbus-org.freedesktop.nm-dispatcher.service` link) and the
+  installer now do.
 - **Files:** `apps/airdrop/airdropd.py:319-345` (default `"off"`, remove the HTTP
   fallback, add "everyone for 10 minutes" with an expiry); `apps/airdrop.qml` (UI for
   that); `distro/archiso/packages.x86_64` (+`firewalld`); new
@@ -386,6 +397,35 @@ same fields, more briefly, and should be expanded when their milestone starts.
 | T-2.9 | New shared components | — | `apps/lib/{SearchField,ListRow,FormRow,FormSection,Popover,Alert,ConfirmSheet,Toast,InlineBanner,Spinner,Tooltip,NavigationSplitView,Badge}.qml` | Each with accessibility, Reduce Motion and keyboard support | `tests/shared-ui.py` extended; each component has a preview-harness test |
 | T-2.10 | Migrate the six worst files | CS2-018 | `Browser.qml`, `settings.qml`, `maps.qml`, `VoiceAssistant.qml`, `calculator.qml`, `LockSurface.qml` | Literals → roles | Lint numbers drop; screenshots reviewed |
 | T-2.11 | Accessible annotations in the shell | CS2-013 | `shell/Dock.qml`, `Spotlight.qml`, `Notifications.qml`, `DesktopWidgets.qml`, `CitronPodsPopup.qml`, `apps/maps.qml`, `apps/calculator.qml` | `Accessible.role`, `name`, `onPressAction` | The design lint's accessibility rule passes for `shell/` |
+
+**As built (M2 so far):**
+- **T-2.8, design lint · done.** `tests/design-lint.py` counts, per QML file in `shell/`,
+  `apps/` and `themes/`: literal radii and durations (0 is fine), literal colours,
+  `Theme.fs(n)` sizes, and pointer handlers that act (a MouseArea or TapHandler with
+  `onClicked`, `onTapped` …) with no `Accessible.role` and `.name` on it or the item it sits
+  in. The literal rules skip `theme/` folders. `tests/design-lint.baseline.json` holds the
+  per-file counts: a file may not go over, and a count that went down must be lowered too
+  (`--update`, which refuses a higher total), so the numbers only shrink. Exceptions say
+  why: `// design-lint: allow <reason>`. In CI beside the security lint. First counts:
+  radius 524, duration 208, colour 1,593, `fs()` 837, accessible 242. (The audit's 426 radii
+  counted whole numbers only.)
+- **T-2.11, accessibility in the shell · done.** All 45 handlers the lint found in
+  `shell/` have a role, a name that says what they are or their state, and an
+  `onPressAction` doing what the click does (shared through a function where the click was
+  more than a line). The menu bar's `BarItem` takes a `label`. Click-away layers are
+  `Accessible.ignored`; GlassSlider's drag area and Screenshot's area drawing are reviewed
+  exceptions (the slider, and the toolbar's choices, are the accessible controls). `shell/`
+  is at 0, and the baseline keeps it there; 197 remain in `apps/`.
+- **T-2.7, role tokens · done (migration is T-2.10).** `design/tokens.json`'s `role`
+  section generates `Theme.font.caption2 … largeTitle` (a whole font, scaled by Text Size),
+  `Theme.radius.{control 6, field 8, card 12, menu 14, panel 18, window 22, capsule 999}`,
+  `Theme.motion.{tap, snappy, panel, sheet, window, bouncy, ambient}` (each with `ms`, its
+  duration or its Reduce Motion fade) plus the hover/fade/menu/minimize durations, and the
+  colour roles `fillHover`, `fillPressed`, `destructive`, `success`, `warning`,
+  `overlayScrim` and `shadow`. `fs()` gets CS2-043's interim fix: nothing under 10 px (it
+  was 12, so 8 to 12 all looked the same), titles of 25–40 px scale at half the rate,
+  display numerals over 40 stay; Text Size runs from 85 % to 150 %. `tests/text-size.py`
+  checks it all at 85, 100 and 150 %.
 
 ## M3: Desktop refinement
 
