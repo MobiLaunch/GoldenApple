@@ -32,7 +32,7 @@ into M1.
 - [ ] T-0.3: a performance baseline is recorded (start-up time, idle CPU and RSS, glass
   on and off) on at least a VM and one Intel laptop.
 
-## M1: Trust and stability · about 3 weeks · **start here**
+## M1: Trust and stability · about 3 weeks · **done**
 
 The highest-value first milestone: it closes the three P0 security problems and the main
 crash and stuck-session paths. Every task is small or medium, and none needs the larger
@@ -44,9 +44,12 @@ separation, systemd user units, Wi-Fi password off argv, AirDrop off by default 
 firewall, Prefs write errors, and security lints.
 **Depends on:** nothing.
 **Status:** T-1.1 to T-1.10 are built and tested in CI. See the "As built" notes in
-[07](07-IMPLEMENTATION-BACKLOG.md). The session harness (T-0.2) checks the cold starts,
-the lock kills and AirDrop's port. Safe mode after five shell kills needs a systemd user
-manager, and the firewall zone a real connection: both wait for the ISO.
+[07](07-IMPLEMENTATION-BACKLOG.md). **All exit criteria are met.** The session harness
+(T-0.2) checks the cold starts, the lock kills and AirDrop's port; the rest is checked on
+the ISO itself: its boot test boots with `gg.selftest`, and the live session checks its
+units, safe mode, the firewall zones and the lock screen under systemd and Hyprland
+(`distro/archiso/selftest/`). Its first run found two bugs, both fixed: one shell crash
+started safe mode, and networks never got their zone.
 **Exit criteria:**
 - [x] `tests/security-lint.py` passes: no shell strings built from data, no passwordless
   action that runs downloaded code, no secrets on argv.
@@ -55,10 +58,11 @@ manager, and the firewall zone a real connection: both wait for the ISO.
 - [x] 20 of 20 cold starts in the session harness with no Quickshell crash report.
 - [x] Killing the lock process while locked gives a working lock screen within 3 s, 5 of 5
   times (about 2 s each in CI).
-- [ ] `systemctl --user status citronos-shell` is active, and five kills in 60 s end in safe
-  mode.
-- [ ] `ss -lntup` shows no AirDrop listener after login on a "public" connection. (The
-  harness shows none with receiving off, a new account's default; the zone needs the ISO.)
+- [x] `systemctl --user status citronos-shell` is active, and five kills in 60 s end in safe
+  mode (the boot test's self-test, on the ISO).
+- [x] `ss -lntup` shows no AirDrop listener after login on a "public" connection. (Nothing
+  listens with receiving off, a new account's default, in the harness and on the ISO; and on
+  the ISO the public zone keeps AirDrop and AirPlay out, while the wired network is home.)
 
 ## M2: Platform foundations and design system · about 6 weeks
 
