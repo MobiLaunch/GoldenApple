@@ -429,6 +429,22 @@ same fields, more briefly, and should be expanded when their milestone starts.
   was 12, so 8 to 12 all looked the same), titles of 25–40 px scale at half the rate,
   display numerals over 40 stay; Text Size runs from 85 % to 150 %. `tests/text-size.py`
   checks it all at 85, 100 and 150 %.
+- **T-2.10, the worst files on roles · in progress.** Done so far:
+  - **Type.** The ramp is now macOS's (footnote 10, subheadline 11, callout 12, body 13,
+    title3 15, title2 17, title1 22, largeTitle 26), and `tools/migrate-fs.py` moved the 750
+    `Theme.fs(n)` calls on those sizes to `Theme.font.<role>.pixelSize`, in 139 QML files
+    (a3d2753's message says 160; 145 files changed in all). 87 calls on sizes off the ramp
+    (14, 16, 18, 20 …) wait for a decision on each.
+  - **`LockSurface.qml`.** White over the wallpaper is `Theme.vibrant.*`, radii are roles or
+    half the height, durations are `Theme.motion`, and the "no" shake is the shared
+    `apps/lib/Shake.qml`. What stays is the lock screen's own (the dusk tint, the platter,
+    the default picture), each a reviewed exception. Screenshots unchanged.
+  - **`calculator.qml` and `CalcKey.qml`.** The Mac's Calculator is graphite in Light Mode
+    too, so its palette is the app's own, in `apps/calculator/theme/CalcColors.qml`; the lint
+    treats an app's `theme/` folder as it does `apps/lib/theme`. Menus take the system
+    menu's radii (14, items 8), the pills half their height, and all nine handlers, the keys
+    and bits included, have a role, a name and `onPressAction`. Screenshots in every mode
+    are pixel-identical but for the unit buttons' corners (7 → 6).
 
 ## M3: Desktop refinement
 

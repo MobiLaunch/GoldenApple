@@ -11,8 +11,9 @@ Counts, per QML file in shell/, apps/ and themes/:
               onClicked, onPressed, onTapped and the like) where neither it nor
               the item it sits in has Accessible.role and Accessible.name
 
-The first four don't count in a theme/ folder, where the tokens are defined,
-and radius, duration and colour don't count in apps/lib/ either: the shared
+The first four don't count in a theme/ folder, where the tokens are defined
+(apps/lib/theme, or an app's own, such as apps/calculator/theme for a palette
+the Mac's app keeps apart from the system's), and radius, duration and colour don't count in apps/lib/ either: the shared
 components there are where the look is made (02-UI-UX-AUDIT §3, rule 1).
 tests/design-lint.baseline.json holds each file's counts. A file may not go
 over its count, and a count that has gone down must be lowered there too, so

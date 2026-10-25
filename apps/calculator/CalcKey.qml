@@ -3,6 +3,7 @@
 import QtQuick
 import QtQuick.Shapes
 import "../lib/theme"
+import "theme"
 
 Item {
     id: key
@@ -18,16 +19,16 @@ Item {
     width: wide ? 100 : 47; height: 47
     opacity: enabled ? 1 : 0.35
 
-    readonly property color base: kind === "operator" ? (selected ? "#ffffff" : "#ff9500")
-                                : lit ? "#c9cbcd" : kind === "function" ? "#717577" : "#464a4c"
-    readonly property color ink: (kind === "operator" && selected) ? "#ff9500" : lit ? "#1c1c1e" : "#ffffff"
+    readonly property color base: kind === "operator" ? (selected ? CalcColors.label : CalcColors.orange)
+                                : lit ? CalcColors.keyLit : kind === "function" ? CalcColors.keyFunction : CalcColors.keyDigit
+    readonly property color ink: (kind === "operator" && selected) ? CalcColors.orange : lit ? CalcColors.inkOnLit : CalcColors.label
 
     Rectangle {
         id: face
         anchors.fill: parent
         radius: height / 2
         color: key.base
-        Behavior on color { ColorAnimation { duration: 140 } }
+        Behavior on color { ColorAnimation { duration: Theme.motion.menu } }
         // Liquid Glass: a light rim along the top, a faint darker edge below.
         border { width: 0.5; color: Qt.rgba(1, 1, 1, 0.10) }
         Rectangle {
@@ -44,7 +45,7 @@ Item {
             id: flash
             anchors.fill: parent
             radius: height / 2
-            color: "#ffffff"
+            color: CalcColors.label
             opacity: 0
         }
     }
@@ -73,6 +74,11 @@ Item {
             PathSvg { path: "M7.5 2 L21 2 Q23 2 23 4 L23 14 Q23 16 21 16 L7.5 16 L1.5 9 Z M11.5 5.5 L18 12.5 M18 5.5 L11.5 12.5" }
         }
     }
+    Accessible.role: Accessible.Button
+    Accessible.name: key.deleteGlyph ? "Delete" : key.label
+    Accessible.checkable: key.kind === "operator" || key.lit
+    Accessible.checked: key.selected || key.lit
+    Accessible.onPressAction: if (key.enabled) { key.pressed(); flashAnim.restart() }
     TapHandler {
         enabled: key.enabled
         onTapped: { key.pressed(); flashAnim.restart() }

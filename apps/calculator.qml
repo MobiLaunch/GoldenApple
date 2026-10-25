@@ -10,6 +10,7 @@ import "lib"
 import "lib/theme"
 import "calculator"
 import "calculator/engine.js" as Engine
+import "calculator/theme"
 
 ShellRoot {
     AppWindow {
@@ -17,7 +18,7 @@ ShellRoot {
         title: "Calculator"
         forceDark: true
         resizable: false
-        background: "#24292d"
+        background: CalcColors.window
         sidebarWidth: calc.historyOpen ? 200 : 0
         // Basic: 4 columns of keys; Scientific adds 6; Programmer is 7 with its bits.
         readonly property int keysWide: calc.mode === "scientific" ? 10 : calc.mode === "programmer" ? 7 : 4
@@ -32,13 +33,13 @@ ShellRoot {
         toolbarRight: [
             ToolbarButton {
                 round: true; symbol: "sidebar"; tone: "white"
-                glassColor: "#191d20"; checked: calc.historyOpen
+                glassColor: CalcColors.chrome; checked: calc.historyOpen
                 onClicked: calc.historyOpen = !calc.historyOpen
             },
             Item { width: 29; height: 1 },
             ToolbarButton {
                 round: true; symbol: "calculator"; tone: "white"
-                glassColor: "#191d20"; checked: modeMenu.visible
+                glassColor: CalcColors.chrome; checked: modeMenu.visible
                 onClicked: modeMenu.visible = !modeMenu.visible
             }
         ]
@@ -58,15 +59,18 @@ ShellRoot {
                 delegate: Item {
                     required property var modelData
                     width: ListView.view.width; height: 46
-                    Rectangle { anchors.fill: parent; radius: 9; color: "#ffffff"; opacity: hover.hovered ? 0.08 : 0 }
+                    Rectangle { anchors.fill: parent; radius: Theme.radiusMenuItem; color: CalcColors.label; opacity: hover.hovered ? 0.08 : 0 }
                     Column {
                         anchors { right: parent.right; rightMargin: 10; verticalCenter: parent.verticalCenter }
                         width: parent.width - 20
                         Text { width: parent.width; horizontalAlignment: Text.AlignRight; elide: Text.ElideLeft; text: calc.sep(modelData.expr); color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize } }
-                        Text { width: parent.width; horizontalAlignment: Text.AlignRight; elide: Text.ElideLeft; text: calc.sep(modelData.result); color: "#ffffff"; font { family: Theme.fontUi; pixelSize: Theme.fs(16); weight: Font.Medium } }
+                        Text { width: parent.width; horizontalAlignment: Text.AlignRight; elide: Text.ElideLeft; text: calc.sep(modelData.result); color: CalcColors.label; font { family: Theme.fontUi; pixelSize: Theme.fs(16); weight: Font.Medium } }
                     }
                     HoverHandler { id: hover }
                     TapHandler { onTapped: calc.recall(modelData) }
+                    Accessible.role: Accessible.Button
+                    Accessible.name: modelData.expr + " = " + modelData.result
+                    Accessible.onPressAction: calc.recall(modelData)
                 }
             }
         ]
@@ -304,7 +308,7 @@ ShellRoot {
                         visible: calc.mode === "scientific" && calc.rad
                         anchors.verticalCenter: parent.verticalCenter
                         text: "Rad"
-                        color: "#9a9c9d"
+                        color: CalcColors.secondaryLabel
                         font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
                     }
                     Text {
@@ -312,7 +316,7 @@ ShellRoot {
                         horizontalAlignment: Text.AlignRight
                         verticalAlignment: Text.AlignVCenter
                         text: calc.mode === "programmer" ? Engine.pexpression(calc.ptokens, calc.pcurrent, calc.base) : calc.exprText
-                        color: "#9a9c9d"
+                        color: CalcColors.secondaryLabel
                         elide: Text.ElideLeft
                         font { family: Theme.fontUi; pixelSize: Theme.font.title2.pixelSize }
                     }
@@ -336,7 +340,7 @@ ShellRoot {
                         horizontalAlignment: Text.AlignRight
                         verticalAlignment: Text.AlignVCenter
                         text: calc.mode === "programmer" ? (calc.perror ? "Error" : Engine.toBase(calc.pvalue, calc.base)) : calc.bigText
-                        color: "#ffffff"
+                        color: CalcColors.label
                         fontSizeMode: Text.HorizontalFit
                         minimumPixelSize: 14
                         font { family: Theme.fontUi; pixelSize: 40; weight: Font.Light }
@@ -346,7 +350,7 @@ ShellRoot {
                 Item {
                     visible: calc.converting
                     width: parent.width; height: 52
-                    Rectangle { anchors { left: parent.left; right: parent.right; top: parent.top } height: 1; color: "#33ffffff" }
+                    Rectangle { anchors { left: parent.left; right: parent.right; top: parent.top } height: 1; color: CalcColors.hairline }
                     Row {
                         anchors { left: parent.left; verticalCenter: parent.verticalCenter }
                         spacing: 4
@@ -358,11 +362,14 @@ ShellRoot {
                             muted: true
                         }
                         Rectangle {
-                            width: 24; height: 24; radius: 12
+                            width: 24; height: 24; radius: height / 2
                             anchors.verticalCenter: parent.verticalCenter
-                            color: swapTap.containsMouse ? "#33ffffff" : "#1fffffff"
-                            Text { anchors.centerIn: parent; text: "⇅"; color: "#ffffff"; font.pixelSize: Theme.font.body.pixelSize }
+                            color: swapTap.containsMouse ? CalcColors.fillHover : CalcColors.fill
+                            Text { anchors.centerIn: parent; text: "⇅"; color: CalcColors.label; font.pixelSize: Theme.font.body.pixelSize }
                             MouseArea { id: swapTap; anchors.fill: parent; hoverEnabled: true; onClicked: calc.swapUnits() }
+                            Accessible.role: Accessible.Button
+                            Accessible.name: "Swap Units"
+                            Accessible.onPressAction: calc.swapUnits()
                         }
                         UnitButton {
                             id: toButton
@@ -380,7 +387,7 @@ ShellRoot {
                         fontSizeMode: Text.HorizontalFit
                         minimumPixelSize: 12
                         text: calc.sep(Engine.format(calc.converted, calc.digits))
-                        color: "#ffffff"
+                        color: CalcColors.label
                         font { family: Theme.fontUi; pixelSize: 26; weight: Font.Light }
                     }
                 }
@@ -397,10 +404,14 @@ ShellRoot {
                             model: [[8, "Octal"], [10, "Decimal"], [16, "Hex"], [2, "Binary"]]
                             Rectangle {
                                 required property var modelData
-                                width: 72; height: 22; radius: 11
-                                color: calc.base === modelData[0] ? "#ff9500" : "#33ffffff"
-                                Text { anchors.centerIn: parent; text: parent.modelData[1]; color: "#ffffff"; font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize; weight: Font.Medium } }
+                                width: 72; height: 22; radius: height / 2
+                                color: calc.base === modelData[0] ? CalcColors.orange : CalcColors.fillHover
+                                Text { anchors.centerIn: parent; text: parent.modelData[1]; color: CalcColors.label; font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize; weight: Font.Medium } }
                                 MouseArea { anchors.fill: parent; onClicked: calc.setBase(parent.modelData[0]) }
+                                Accessible.role: Accessible.RadioButton
+                                Accessible.name: modelData[1]
+                                Accessible.checked: calc.base === modelData[0]
+                                Accessible.onPressAction: calc.setBase(modelData[0])
                             }
                         }
                     }
@@ -411,18 +422,22 @@ ShellRoot {
                             readonly property int highBit: 63 - index * 16
                             anchors.horizontalCenter: parent.horizontalCenter
                             spacing: 0
-                            Text { width: 22; text: parent.highBit; color: "#6d7174"; font { family: "SF Mono"; pixelSize: Theme.font.footnote.pixelSize } anchors.verticalCenter: parent.verticalCenter }
+                            Text { width: 22; text: parent.highBit; color: CalcColors.tertiaryLabel; font { family: "SF Mono"; pixelSize: Theme.font.footnote.pixelSize } anchors.verticalCenter: parent.verticalCenter }
                             Repeater {
                                 model: 16
                                 Item {
                                     required property int index
                                     readonly property int n: parent.highBit - index
                                     width: (index % 4 === 3 ? 21 : 15); height: 14
+                                    Accessible.role: Accessible.CheckBox
+                                    Accessible.name: "Bit " + n
+                                    Accessible.checked: !!Engine.bit(calc.pvalue, n)
+                                    Accessible.onPressAction: calc.toggleBit(n)
                                     Text {
                                         x: 2
                                         anchors.verticalCenter: parent.verticalCenter
                                         text: Engine.bit(calc.pvalue, parent.n)
-                                        color: Engine.bit(calc.pvalue, parent.n) ? "#ffffff" : "#6d7174"
+                                        color: Engine.bit(calc.pvalue, parent.n) ? CalcColors.label : CalcColors.tertiaryLabel
                                         font { family: "SF Mono"; pixelSize: Theme.font.callout.pixelSize }
                                     }
                                     MouseArea { anchors.fill: parent; onClicked: calc.toggleBit(parent.n) }
@@ -559,6 +574,7 @@ ShellRoot {
             MouseArea {
                 anchors.fill: parent
                 visible: modeMenu.visible
+                Accessible.ignored: true   // the click-away; the menu's items are what it offers
                 onPressed: modeMenu.visible = false
             }
             Rectangle {
@@ -566,9 +582,9 @@ ShellRoot {
                 visible: false
                 anchors { right: parent.right; rightMargin: 8; top: parent.top; topMargin: -4 }
                 width: 196; height: menuCol.implicitHeight + 10
-                radius: 12
-                color: "#fa2c2f33"
-                border { width: 0.5; color: "#33ffffff" }
+                radius: Theme.radius.menu
+                color: CalcColors.menu
+                border { width: 0.5; color: CalcColors.hairline }
                 Column {
                     id: menuCol
                     anchors { fill: parent; margins: 5 }
@@ -589,28 +605,33 @@ ShellRoot {
                                 visible: modelData.t === "-"
                                 anchors.centerIn: parent
                                 width: parent.width - 20; height: 1
-                                color: "#26ffffff"
+                                color: CalcColors.separator
                             }
                             Rectangle {
                                 anchors.fill: parent
-                                radius: 7
+                                radius: Theme.radiusMenuItem
                                 visible: modelData.t !== "-" && !modelData.off && rowHover.hovered
                                 color: Theme.accent
                             }
                             Text {
                                 visible: modelData.t !== "-" && !!modelData.on
                                 x: 8; anchors.verticalCenter: parent.verticalCenter
-                                text: "✓"; color: "#ffffff"
+                                text: "✓"; color: CalcColors.label
                                 font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize; weight: Font.DemiBold }
                             }
                             Text {
                                 visible: modelData.t !== "-"
                                 x: 24; anchors.verticalCenter: parent.verticalCenter
                                 text: modelData.t
-                                color: modelData.off ? "#66ffffff" : "#ffffff"
+                                color: modelData.off ? CalcColors.disabledLabel : CalcColors.label
                                 font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize }
                             }
                             HoverHandler { id: rowHover }
+                            Accessible.role: modelData.t === "-" ? Accessible.Separator : Accessible.MenuItem
+                            Accessible.name: modelData.t
+                            Accessible.checkable: modelData.on !== undefined
+                            Accessible.checked: !!modelData.on
+                            Accessible.onPressAction: if (modelData.t !== "-" && !modelData.off) { modelData.act(); modeMenu.visible = false }
                             TapHandler {
                                 enabled: modelData.t !== "-" && !modelData.off
                                 onTapped: { modelData.act(); modeMenu.visible = false }
@@ -631,27 +652,31 @@ ShellRoot {
         property bool muted: false
         signal chosen(string unit)
         width: Math.min(ubText.implicitWidth + 22, 120)
-        height: 24; radius: 7
+        height: 24; radius: Theme.radius.control
         anchors.verticalCenter: parent ? parent.verticalCenter : undefined
-        color: ubTap.containsMouse || list.visible ? "#33ffffff" : muted ? "#14ffffff" : "#24ffffff"
+        Accessible.role: Accessible.ComboBox
+        Accessible.name: ub.unit
+        Accessible.onPressAction: toggle()
+        color: ubTap.containsMouse || list.visible ? CalcColors.fillHover : muted ? CalcColors.controlMuted : CalcColors.control
         Text {
             id: ubText
             anchors { left: parent.left; leftMargin: 8; right: parent.right; rightMargin: 14; verticalCenter: parent.verticalCenter }
             text: ub.unit
             elide: Text.ElideRight
-            color: ub.muted ? "#b0b3b5" : "#ffffff"
+            color: ub.muted ? CalcColors.mutedLabel : CalcColors.label
             font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize; weight: Font.Medium }
         }
-        Text { anchors { right: parent.right; rightMargin: 5; verticalCenter: parent.verticalCenter } text: "⌄"; color: "#9a9c9d"; font.pixelSize: Theme.font.footnote.pixelSize }
+        Text { anchors { right: parent.right; rightMargin: 5; verticalCenter: parent.verticalCenter } text: "⌄"; color: CalcColors.secondaryLabel; font.pixelSize: Theme.font.footnote.pixelSize }
         MouseArea {
             id: ubTap; anchors.fill: parent; hoverEnabled: true
-            onClicked: {
-                if (!list.visible && ub.popupParent) {
-                    const p = ub.mapToItem(ub.popupParent, 0, ub.height + 4)
-                    list.x = Math.min(p.x, ub.popupParent.width - list.width - 6); list.y = p.y
-                }
-                list.visible = !list.visible
+            onClicked: ub.toggle()
+        }
+        function toggle() {
+            if (!list.visible && ub.popupParent) {
+                const p = ub.mapToItem(ub.popupParent, 0, ub.height + 4)
+                list.x = Math.min(p.x, ub.popupParent.width - list.width - 6); list.y = p.y
             }
+            list.visible = !list.visible
         }
         // The choices, in a dark menu below.
         Rectangle {
@@ -660,9 +685,9 @@ ShellRoot {
             parent: ub.popupParent ?? ub
             z: 100
             width: 170; height: Math.min(260, col.implicitHeight + 10)
-            radius: 10
-            color: "#fa2c2f33"
-            border { width: 0.5; color: "#33ffffff" }
+            radius: Theme.radius.menu
+            color: CalcColors.menu
+            border { width: 0.5; color: CalcColors.hairline }
             Flickable {
                 anchors { fill: parent; margins: 5 }
                 contentHeight: col.implicitHeight
@@ -674,14 +699,18 @@ ShellRoot {
                         model: ub.units
                         Rectangle {
                             required property string modelData
-                            width: col.width; height: 22; radius: 6
+                            width: col.width; height: 22; radius: Theme.radiusMenuItem
                             color: rowTap.containsMouse ? Theme.accent : "transparent"
                             Text {
                                 x: 8; anchors.verticalCenter: parent.verticalCenter
                                 text: (parent.modelData === ub.unit ? "✓ " : "   ") + parent.modelData
-                                color: "#ffffff"
+                                color: CalcColors.label
                                 font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
                             }
+                            Accessible.role: Accessible.MenuItem
+                            Accessible.name: modelData
+                            Accessible.checked: modelData === ub.unit
+                            Accessible.onPressAction: { ub.chosen(modelData); list.visible = false }
                             MouseArea { id: rowTap; anchors.fill: parent; hoverEnabled: true; onClicked: { ub.chosen(parent.modelData); list.visible = false } }
                         }
                     }
