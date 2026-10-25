@@ -135,14 +135,18 @@ function material(name, m) {
   q.push(`    property string accentName: "blue"`);
   // Settings › Appearance › Liquid Glass and Accessibility (desktop.json).
   q.push(`    property string glassStyle: "clear"`, `    property bool reduceTransparency: false`, `    property bool reduceMotion: false`);
-  // Settings › Accessibility › Text Size (desktop.json textScale, 1–1.5).
-  // fs(n): a body or label size n, scaled; display numerals above 24 stay.
+  // Settings › Accessibility › Text Size (desktop.json textScale, 0.85–1.5).
+  // fs(n): a size n, scaled, never under 10 px (CS2-043: the old floor of 12
+  // made 8–12 look the same); titles (25–40) scale at half the rate, and
+  // display numerals over 40 (clocks, the calculator) stay. New code uses
+  // Theme.font.* instead (role.font below).
   // Settings › Appearance › Show scroll bars: Always (desktop.json scrollBars).
   q.push(`    property bool alwaysShowScrollbars: false`);
   // Settings › Appearance › Glass: 0 clear … 1 solid (desktop.json glassSolidity).
   q.push(`    property real glassSolidity: 0`);
   q.push(`    property real textScale: 1`,
-    `    function fs(n) { return n > 24 ? n : Math.round(Math.max(12, n) * Math.max(1, Math.min(1.5, textScale))) }`,
+    `    readonly property real textFactor: Math.max(0.85, Math.min(1.5, textScale))`,
+    `    function fs(n) { return n > 40 ? n : n > 24 ? Math.round(n * (1 + (textFactor - 1) / 2)) : Math.max(10, Math.round(n * textFactor)) }`,
     `    // Control heights follow the text: fh(26) for a 26 px control.`,
     `    function fh(n) { return Math.round(n * (1 + (Math.max(1, Math.min(1.5, textScale)) - 1) * 0.8)) }`);
   q.push(`    readonly property color accent: ({ blue: accentBlue, teal: accentBlue, purple: accentPurple, pink: accentPink, red: accentRed, orange: accentOrange, yellow: accentYellow, green: accentGreen, slate: accentGraphite })[accentName] ?? accentBlue`);
@@ -165,6 +169,34 @@ function material(name, m) {
       `        readonly property real reduced: ${m.reduced}`,
       "    }");
   }
+  // Roles (T-2.7): what new code uses, and what the design lint asks for.
+  //   font: Theme.font.body           a whole font, scaled by Text Size
+  //   radius: Theme.radius.card       one of seven corner radii
+  //   NumberAnimation { duration: Theme.motion.panel.ms; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.motion.panel.curve }
+  //                                   ms is the role's duration, or its fade with Reduce Motion on
+  const r = t.role, weights = { regular: 400, medium: 500, semibold: 600, bold: 700 };
+  q.push("", "    // Semantic roles: font, radius and motion (design/tokens.json role).", "    readonly property QtObject font: QtObject {");
+  for (const [k, f] of Object.entries(r.font)) {
+    const size = t.font.size[f.size], track = t.font.tracking[f.tracking];
+    const family = size >= 20 ? "fontDisplay" : "fontUi";
+    q.push(`        readonly property font ${k}: Qt.font({ family: ${family}, pixelSize: fs(${size}), weight: ${weights[f.weight]}, letterSpacing: ${round(track * size, 3)} })`);
+  }
+  q.push("    }", "    readonly property QtObject radius: QtObject {");
+  for (const [k, v] of Object.entries(r.radius)) q.push(`        readonly property real ${k}: ${v}`);
+  q.push("    }", "    readonly property QtObject motion: QtObject {");
+  for (const [k, m] of Object.entries(r.motion)) {
+    if (m.loop) {
+      q.push(`        readonly property QtObject ${k}: QtObject {`, `            readonly property int duration: ${m.loop}`,
+        `            readonly property int reduced: ${m.reduced}`, `            readonly property int ms: reduceMotion ? reduced : duration`, "        }");
+      continue;
+    }
+    const s2 = spring(m);
+    q.push(`        readonly property QtObject ${k}: QtObject {`, `            readonly property int duration: ${s2.duration}`,
+      `            readonly property int reduced: ${m.reduced}`, `            readonly property int ms: reduceMotion ? reduced : duration`,
+      `            readonly property var curve: [${qtBezierSpline({ ...s2, response: m.response }).join(", ")}]`, "        }");
+  }
+  for (const [k, v] of Object.entries(t.motion.duration)) q.push(`        readonly property int ${k}: ${v}`);
+  q.push("    }");
   q.push("", "    // Springs: use as NumberAnimation { duration: Theme.snappy.duration; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.snappy.curve }");
   for (const [k, s] of Object.entries(springs)) {
     q.push(`    readonly property QtObject ${k}: QtObject {`,

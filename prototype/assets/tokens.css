@@ -63,6 +63,13 @@
   --fill: rgba(0, 0, 0, 0.05);
   --selection: rgba(0, 0, 0, 0.07);
   --menu-highlight: rgba(0, 0, 0, 0.06);
+  --fill-hover: rgba(0, 0, 0, 0.07);
+  --fill-pressed: rgba(0, 0, 0, 0.12);
+  --destructive: #ff3b30;
+  --success: #28cd41;
+  --warning: #ff9500;
+  --overlay-scrim: rgba(0, 0, 0, 0.20);
+  --shadow: rgba(0, 0, 0, 0.18);
   --mat-glass-clear-filter: blur(24px) saturate(1.75) brightness(1.03);
   --mat-glass-clear-tint: rgba(255, 255, 255, 0.36);
   --mat-glass-clear-tint-dark: rgba(28, 28, 32, 0.34);
@@ -152,6 +159,13 @@
   --fill: rgba(255, 255, 255, 0.07);
   --selection: rgba(255, 255, 255, 0.10);
   --menu-highlight: rgba(255, 255, 255, 0.10);
+  --fill-hover: rgba(255, 255, 255, 0.10);
+  --fill-pressed: rgba(255, 255, 255, 0.16);
+  --destructive: #ff453a;
+  --success: #32d74b;
+  --warning: #ff9f0a;
+  --overlay-scrim: rgba(0, 0, 0, 0.40);
+  --shadow: rgba(0, 0, 0, 0.40);
   --mat-glass-clear-tint: rgba(28, 28, 32, 0.34);
   --mat-glass-regular-tint: rgba(32, 32, 36, 0.68);
   --mat-menu-tint: rgba(38, 38, 42, 0.78);

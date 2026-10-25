@@ -99,7 +99,7 @@ class SystemIntelligence(unittest.TestCase):
         self.assertIn("render_power = 2", motion)
         self.assertIn("offset = 0 9", motion)
         self.assertIn("--dim-opacity: 78%", gtk)
-        self.assertIn("Math.max(12, n)", qml)
+        self.assertIn("Math.max(10, Math.round(n * textFactor))", qml)   # the 10 px floor (text-size.py runs it)
         for role in ("glassClear", "glassRegular", "menu", "glassControl", "glassSidebar", "glassDock"):
             material = tokens["material"][role]
             self.assertLessEqual(material["shadowOpacity"], .20, role)

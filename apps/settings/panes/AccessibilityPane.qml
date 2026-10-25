@@ -42,13 +42,14 @@ Pane {
         SetRow {
             title: "Text size"
             subtitle: Math.round(pane.textScale * 100) + "%"
+            // 85% to 150%, in 5% steps.
             Slider {
-                width: 200; steps: 5
-                value: (pane.textScale - 1) / 0.5
+                width: 200; steps: 13
+                value: (pane.textScale - 0.85) / 0.65
                 // CitronOS's own apps and shell (Theme.textScale, from desktop.json)
                 // and GTK apps (GNOME's text-scaling-factor) both follow it.
                 onMoved: (v) => {
-                    pane.textScale = 1 + v * 0.5
+                    pane.textScale = Math.round((0.85 + v * 0.65) * 20) / 20
                     pane.sys.setPref(["textScale"], Math.round(pane.textScale * 100) / 100)
                     pane.sys.run(["gsettings", "set", "org.gnome.desktop.interface", "text-scaling-factor", pane.textScale.toFixed(2)])
                 }

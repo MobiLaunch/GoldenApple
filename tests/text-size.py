@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 """Text Size reaches CitronOS's own UI: Theme.textScale (desktop.json
-textScale, set by Settings › Accessibility) scales body and label text
-(Theme.fs; display numerals over 24 px stay) and the controls around it
-(Theme.fh), so at 150% a button's label still fits inside it. Every app,
-shell part and the setup assistant read the same value."""
+textScale, 85% to 150%, set by Settings › Accessibility) scales text
+(Theme.fs, and the Theme.font.* roles) and the controls around it
+(Theme.fh), so at 150% a button's label still fits inside it. Nothing goes
+under 10 px, so 11 and 12 stay apart (CS2-043); titles (25–40 px) scale at
+half the rate and display numerals over 40 stay. Every app, shell part and
+the setup assistant read the same value. Also the other role tokens
+(T-2.7): Theme.radius.* and Theme.motion.*, whose ms follows Reduce Motion."""
 import os
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 os.environ.setdefault("QT_QUICK_BACKEND", "software")
@@ -64,13 +67,61 @@ def _walk(item):
         yield from _walk(c)
 
 
+ROLES = """import QtQuick
+import "%s/theme"
+QtObject {
+    Component.onCompleted: { Theme.textScale = %s; Theme.reduceMotion = %s }
+    property var sizes: [Theme.fs(8), Theme.fs(9), Theme.fs(10), Theme.fs(11), Theme.fs(12), Theme.fs(13), Theme.fs(26), Theme.fs(56)]
+    property var roles: [Theme.font.caption2.pixelSize, Theme.font.body.pixelSize, Theme.font.headline.weight,
+                         Theme.font.largeTitle.pixelSize, Theme.font.largeTitle.family]
+    property var radii: [Theme.radius.control, Theme.radius.field, Theme.radius.card, Theme.radius.menu,
+                         Theme.radius.panel, Theme.radius.window, Theme.radius.capsule]
+    property var motion: [Theme.motion.panel.ms, Theme.motion.panel.duration, Theme.motion.bouncy.ms,
+                          Theme.motion.tap.curve.length, Theme.motion.fade]
+}
+"""
+
+
+def roles(scale, reduce=False):
+    from PySide6.QtQml import QQmlComponent, QQmlEngine
+    with tempfile.TemporaryDirectory() as t:
+        path = Path(t) / "R.qml"
+        path.write_text(ROLES % (LIB, scale, "true" if reduce else "false"))
+        engine = QQmlEngine()
+        comp = QQmlComponent(engine, QUrl.fromLocalFile(str(path)))
+        obj = comp.create()
+        assert obj, [e.toString() for e in comp.errors()]
+        QTest.qWait(10)
+        out = {k: [v for v in obj.property(k).toVariant()] if hasattr(obj.property(k), "toVariant") else list(obj.property(k))
+               for k in ("sizes", "roles", "radii", "motion")}
+        obj.setProperty("objectName", "done")
+        return out
+
+
 failures = []
+small, plain, large, still = roles(0.85), roles(1), roles(1.5), roles(1, reduce=True)
+# fs(8) … fs(56) at 85%, 100% and 150%.
+if plain["sizes"] != [10, 10, 10, 11, 12, 13, 26, 56]:
+    failures.append(f"100%: sizes under 10 come up to 10, the rest stay: {plain['sizes']}")
+if small["sizes"] != [10, 10, 10, 10, 10, 11, 24, 56]:
+    failures.append(f"85%: smaller, never under 10, display numerals stay: {small['sizes']}")
+if large["sizes"] != [12, 14, 15, 17, 18, 20, 33, 56]:
+    failures.append(f"150%: 1.5× up to 24, titles at half the rate, display numerals stay: {large['sizes']}")
+if plain["roles"][:4] != [11, 14, 600, 26] or large["roles"][1] != 21 or "Display" not in plain["roles"][4]:
+    failures.append(f"Theme.font roles: {plain['roles']} (150%: {large['roles']})")
+if plain["radii"] != [6, 8, 12, 14, 18, 22, 999]:
+    failures.append(f"Theme.radius roles: {plain['radii']}")
+panel_ms, panel_dur, bouncy_ms, curve_len, fade = plain["motion"]
+if panel_ms != panel_dur or panel_ms < 300 or curve_len < 8 or fade != 155:
+    failures.append(f"Theme.motion roles: {plain['motion']}")
+if still["motion"][0] != 140 or still["motion"][2] != 0:
+    failures.append(f"Reduce Motion: a panel fades in 140 ms and bouncy doesn't move: {still['motion']}")
 normal, big = measure(1), measure(1.5)
 if (normal["body"], normal["button"]) != (13, 26):
     failures.append(f"100% isn't unchanged: {normal}")
 if big["body"] != 20 or big["labelSize"] != 20:
     failures.append(f"150% text isn't 1.5×: {big}")
-if big["display"] != 56:
+if big["display"] != 56:   # over 40 px
     failures.append(f"display numerals should stay: {big}")
 if big["button"] < big["label"] + 6:
     failures.append(f"the button didn't grow around its label: {big}")

@@ -50,7 +50,8 @@ QtObject {
     property bool alwaysShowScrollbars: false
     property real glassSolidity: 0
     property real textScale: 1
-    function fs(n) { return n > 24 ? n : Math.round(Math.max(12, n) * Math.max(1, Math.min(1.5, textScale))) }
+    readonly property real textFactor: Math.max(0.85, Math.min(1.5, textScale))
+    function fs(n) { return n > 40 ? n : n > 24 ? Math.round(n * (1 + (textFactor - 1) / 2)) : Math.max(10, Math.round(n * textFactor)) }
     // Control heights follow the text: fh(26) for a 26 px control.
     function fh(n) { return Math.round(n * (1 + (Math.max(1, Math.min(1.5, textScale)) - 1) * 0.8)) }
     readonly property color accent: ({ blue: accentBlue, teal: accentBlue, purple: accentPurple, pink: accentPink, red: accentRed, orange: accentOrange, yellow: accentYellow, green: accentGreen, slate: accentGraphite })[accentName] ?? accentBlue
@@ -64,6 +65,13 @@ QtObject {
     readonly property color fill: dark ? "#12ffffff" : "#0d000000"
     readonly property color selection: dark ? "#1affffff" : "#12000000"
     readonly property color menuHighlight: dark ? "#1affffff" : "#0f000000"
+    readonly property color fillHover: dark ? "#1affffff" : "#12000000"
+    readonly property color fillPressed: dark ? "#29ffffff" : "#1f000000"
+    readonly property color destructive: dark ? "#ff453a" : "#ff3b30"
+    readonly property color success: dark ? "#32d74b" : "#28cd41"
+    readonly property color warning: dark ? "#ff9f0a" : "#ff9500"
+    readonly property color overlayScrim: dark ? "#66000000" : "#33000000"
+    readonly property color shadow: dark ? "#66000000" : "#2e000000"
     readonly property QtObject glassClear: QtObject {
         readonly property real blur: 24
         readonly property color tint: dark ? "#571c1c20" : "#5cffffff"
@@ -141,6 +149,76 @@ QtObject {
         readonly property real shadowOpacity: 0.19
         readonly property real tinted: 0.8
         readonly property real reduced: 0.94
+    }
+
+    // Semantic roles: font, radius and motion (design/tokens.json role).
+    readonly property QtObject font: QtObject {
+        readonly property font caption2: Qt.font({ family: fontUi, pixelSize: fs(11), weight: 400, letterSpacing: 0.11 })
+        readonly property font caption: Qt.font({ family: fontUi, pixelSize: fs(12), weight: 400, letterSpacing: 0.12 })
+        readonly property font footnote: Qt.font({ family: fontUi, pixelSize: fs(12), weight: 400, letterSpacing: 0.12 })
+        readonly property font body: Qt.font({ family: fontUi, pixelSize: fs(14), weight: 400, letterSpacing: -0.07 })
+        readonly property font callout: Qt.font({ family: fontUi, pixelSize: fs(15), weight: 400, letterSpacing: -0.075 })
+        readonly property font headline: Qt.font({ family: fontUi, pixelSize: fs(14), weight: 600, letterSpacing: -0.07 })
+        readonly property font title3: Qt.font({ family: fontUi, pixelSize: fs(16), weight: 600, letterSpacing: -0.288 })
+        readonly property font title2: Qt.font({ family: fontUi, pixelSize: fs(17), weight: 600, letterSpacing: -0.306 })
+        readonly property font title1: Qt.font({ family: fontDisplay, pixelSize: fs(22), weight: 700, letterSpacing: -0.396 })
+        readonly property font largeTitle: Qt.font({ family: fontDisplay, pixelSize: fs(26), weight: 700, letterSpacing: -0.468 })
+    }
+    readonly property QtObject radius: QtObject {
+        readonly property real control: 6
+        readonly property real field: 8
+        readonly property real card: 12
+        readonly property real menu: 14
+        readonly property real panel: 18
+        readonly property real window: 22
+        readonly property real capsule: 999
+    }
+    readonly property QtObject motion: QtObject {
+        readonly property QtObject tap: QtObject {
+            readonly property int duration: 251
+            readonly property int reduced: 60
+            readonly property int ms: reduceMotion ? reduced : duration
+            readonly property var curve: [0.012, 0, 0.0239, 0.0162, 0.0359, 0.0413, 0.0602, 0.0922, 0.0845, 0.1776, 0.1088, 0.2636, 0.1419, 0.3807, 0.1751, 0.499, 0.2082, 0.594, 0.2487, 0.7104, 0.2893, 0.7946, 0.3299, 0.8523, 0.3771, 0.9195, 0.4242, 0.9532, 0.4714, 0.9732, 0.5246, 0.9957, 0.5779, 1.0011, 0.6311, 1.0036, 0.6899, 1.0063, 0.7488, 1.0048, 0.8076, 1.0038, 0.8718, 1.0026, 0.9359, 1, 1, 1]
+        }
+        readonly property QtObject snappy: QtObject {
+            readonly property int duration: 387
+            readonly property int reduced: 100
+            readonly property int ms: reduceMotion ? reduced : duration
+            readonly property var curve: [0.012, 0, 0.0239, 0.016, 0.0359, 0.0405, 0.0602, 0.0903, 0.0845, 0.1738, 0.1088, 0.2578, 0.1419, 0.3722, 0.1751, 0.4878, 0.2082, 0.5812, 0.2487, 0.6955, 0.2893, 0.7793, 0.3299, 0.8376, 0.3771, 0.9054, 0.4242, 0.9411, 0.4714, 0.9629, 0.5246, 0.9876, 0.5779, 0.9952, 0.6311, 0.9993, 0.6899, 1.0037, 0.7488, 1.0032, 0.8076, 1.0028, 0.8718, 1.0023, 0.9359, 1, 1, 1]
+        }
+        readonly property QtObject panel: QtObject {
+            readonly property int duration: 521
+            readonly property int reduced: 140
+            readonly property int ms: reduceMotion ? reduced : duration
+            readonly property var curve: [0.012, 0, 0.0239, 0.0157, 0.0359, 0.0403, 0.0602, 0.0903, 0.0845, 0.1753, 0.1088, 0.262, 0.1419, 0.3801, 0.1751, 0.5014, 0.2082, 0.5994, 0.2487, 0.7194, 0.2893, 0.807, 0.3299, 0.8663, 0.3771, 0.9352, 0.4242, 0.9686, 0.4714, 0.9871, 0.5246, 1.008, 0.5779, 1.0108, 0.6311, 1.0111, 0.6899, 1.0114, 0.7488, 1.008, 0.8076, 1.0058, 0.8718, 1.0034, 0.9359, 1, 1, 1]
+        }
+        readonly property QtObject sheet: QtObject {
+            readonly property int duration: 559
+            readonly property int reduced: 160
+            readonly property int ms: reduceMotion ? reduced : duration
+            readonly property var curve: [0.012, 0, 0.0239, 0.0148, 0.0359, 0.0377, 0.0602, 0.0841, 0.0845, 0.1623, 0.1088, 0.2417, 0.1419, 0.3499, 0.1751, 0.4608, 0.2082, 0.5521, 0.2487, 0.6638, 0.2893, 0.7484, 0.3299, 0.8091, 0.3771, 0.8796, 0.4242, 0.9197, 0.4714, 0.9455, 0.5246, 0.9745, 0.5779, 0.9859, 0.6311, 0.9925, 0.6899, 0.9997, 0.7488, 1.0008, 0.8076, 1.0013, 0.8718, 1.0019, 0.9359, 1, 1, 1]
+        }
+        readonly property QtObject window: QtObject {
+            readonly property int duration: 666
+            readonly property int reduced: 180
+            readonly property int ms: reduceMotion ? reduced : duration
+            readonly property var curve: [0.012, 0, 0.0239, 0.0161, 0.0359, 0.0411, 0.0602, 0.0918, 0.0845, 0.1775, 0.1088, 0.2641, 0.1419, 0.3822, 0.1751, 0.5022, 0.2082, 0.5988, 0.2487, 0.717, 0.2893, 0.8026, 0.3299, 0.8608, 0.3771, 0.9285, 0.4242, 0.9617, 0.4714, 0.9806, 0.5246, 1.002, 0.5779, 1.006, 0.6311, 1.0073, 0.6899, 1.0088, 0.7488, 1.0063, 0.8076, 1.0047, 0.8718, 1.003, 0.9359, 1, 1, 1]
+        }
+        readonly property QtObject bouncy: QtObject {
+            readonly property int duration: 898
+            readonly property int reduced: 0
+            readonly property int ms: reduceMotion ? reduced : duration
+            readonly property var curve: [0.012, 0.0001, 0.0239, 0.0224, 0.0359, 0.0579, 0.0602, 0.13, 0.0845, 0.2535, 0.1088, 0.3757, 0.1419, 0.5422, 0.1751, 0.7042, 0.2082, 0.8188, 0.2487, 0.9591, 0.2893, 1.0327, 0.3299, 1.0631, 0.3771, 1.0985, 0.4242, 1.0822, 0.4714, 1.0635, 0.5246, 1.0425, 0.5779, 1.0186, 0.6311, 1.0068, 0.6899, 0.9939, 0.7488, 0.9923, 0.8076, 0.9933, 0.8718, 0.9943, 0.9359, 1, 1, 1]
+        }
+        readonly property QtObject ambient: QtObject {
+            readonly property int duration: 4000
+            readonly property int reduced: 0
+            readonly property int ms: reduceMotion ? reduced : duration
+        }
+        readonly property int hover: 105
+        readonly property int fade: 155
+        readonly property int menu: 140
+        readonly property int minimize: 450
     }
 
     // Springs: use as NumberAnimation { duration: Theme.snappy.duration; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.snappy.curve }
