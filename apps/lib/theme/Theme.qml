@@ -164,6 +164,16 @@ QtObject {
         readonly property font title1: Qt.font({ family: fontDisplay, pixelSize: fs(22), weight: 700, letterSpacing: -0.396 })
         readonly property font largeTitle: Qt.font({ family: fontDisplay, pixelSize: fs(26), weight: 700, letterSpacing: -0.468 })
     }
+    readonly property QtObject vibrant: QtObject {
+        readonly property color label: "#ebffffff"
+        readonly property color secondaryLabel: "#d9ffffff"
+        readonly property color tertiaryLabel: "#b3ffffff"
+        readonly property color quaternaryLabel: "#80ffffff"
+        readonly property color fill: "#4dffffff"
+        readonly property color separator: "#40ffffff"
+        readonly property color shadow: "#59001433"
+        readonly property color shadowSoft: "#26001433"
+    }
     readonly property QtObject radius: QtObject {
         readonly property real control: 6
         readonly property real field: 8

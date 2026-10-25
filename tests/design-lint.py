@@ -11,7 +11,9 @@ Counts, per QML file in shell/, apps/ and themes/:
               onClicked, onPressed, onTapped and the like) where neither it nor
               the item it sits in has Accessible.role and Accessible.name
 
-The first four don't count in a theme/ folder, where the tokens are defined.
+The first four don't count in a theme/ folder, where the tokens are defined,
+and radius, duration and colour don't count in apps/lib/ either: the shared
+components there are where the look is made (02-UI-UX-AUDIT §3, rule 1).
 tests/design-lint.baseline.json holds each file's counts. A file may not go
 over its count, and a count that has gone down must be lowered there too, so
 the baseline only shrinks:
@@ -128,11 +130,14 @@ def check(rel, text):
             allowed.update((n, n + 1))
     tokens = lex(text)
     themed = "theme" in Path(rel).parts
+    shared = rel.startswith("apps/lib/")
     found = []
     for i, (kind, value, line) in enumerate(tokens):
         if themed:
             break
         nxt = tokens[i + 1] if i + 1 < len(tokens) else ("", "", 0)
+        if shared and not (kind == "name" and value == "fs"):
+            continue
         if value in ("radius", "duration") and kind == "name" and nxt[1] == ":" and i + 2 < len(tokens):
             num = tokens[i + 2]
             after = tokens[i + 3] if i + 3 < len(tokens) else ("punct", "}", num[2] + 1)
@@ -199,6 +204,8 @@ def self_test():
             problems.append(f"{src!r}: expected {sorted(want)}, found {got}")
     if check("apps/lib/theme/Theme.qml", 'QtObject { readonly property int r: 10; property color c: "#fff" }'):
         problems.append("theme/ files define the tokens: no literal rules there")
+    if sorted(r for r, _ in check("apps/lib/Button.qml", 'Rectangle { radius: 6; color: "#fff"; Text { font.pixelSize: Theme.fs(13) } }')) != ["fs"]:
+        problems.append("apps/lib/ makes the look (radius, duration, colour), but fs() still counts there")
     return problems
 
 

@@ -12,6 +12,7 @@ import QtQuick
 import QtQuick.Effects
 import QtQuick.Shapes
 import "../ui/theme"
+import "../ui" as Shared
 
 Item {
     id: root
@@ -54,7 +55,6 @@ Item {
         field.text = ""
         failures++
         shake.restart()
-        flash.restart()
         field.input.forceActiveFocus()
     }
     // A finger that didn't match: the field shakes and says so, keeping
@@ -62,7 +62,6 @@ Item {
     function fingerFailed() {
         wake()
         shake.restart()
-        flash.restart()
         notice = "Try Again"
         noticeTimer.restart()
     }
@@ -112,7 +111,7 @@ Item {
             blur: root.awake ? 0.62 : 0
             saturation: root.awake ? 0.12 : 0
             Behavior on blur { NumberAnimation { duration: root.still ? 0 : 520; easing.type: Easing.OutCubic } }
-            Behavior on saturation { NumberAnimation { duration: 450 } }
+            Behavior on saturation { NumberAnimation { duration: Theme.motion.panel.ms } }
         }
     }
     // What the glass on the lock screen bends: its wallpaper.
@@ -125,18 +124,22 @@ Item {
         Component.onCompleted: Backdrops.add(root, backdrop, backdropTexture)
         Component.onDestruction: Backdrops.remove(backdropTexture)
     }
-    Rectangle {   // darker behind the date and clock, so white numerals read over a pale sky
+    // The lock screen's one tint of its own: a deep blue dusk, darker behind
+    // the date and clock (so white numerals read over a pale sky) and behind
+    // the user, and over all of it while awake.
+    readonly property color dusk: "#000a28"   // design-lint: allow the lock screen's dusk, used at several strengths below
+    Rectangle {
         anchors.fill: parent
         gradient: Gradient {
-            GradientStop { position: 0.0; color: "#47000a28" }
-            GradientStop { position: 0.34; color: "#14000a28" }
-            GradientStop { position: 0.6; color: "#00000a28" }
-            GradientStop { position: 1.0; color: "#4d000a28" }
+            GradientStop { position: 0.0; color: Qt.alpha(root.dusk, 0.28) }
+            GradientStop { position: 0.34; color: Qt.alpha(root.dusk, 0.08) }
+            GradientStop { position: 0.6; color: Qt.alpha(root.dusk, 0) }
+            GradientStop { position: 1.0; color: Qt.alpha(root.dusk, 0.3) }
         }
     }
     Rectangle {
         anchors.fill: parent
-        color: "#000a1a"
+        color: root.dusk
         opacity: root.awake ? 0.22 : 0
         Behavior on opacity { NumberAnimation { duration: root.still ? 0 : 420; easing.type: Easing.OutCubic } }
     }
@@ -172,12 +175,12 @@ Item {
             Behavior on scale { NumberAnimation { duration: root.still ? 0 : Theme.smooth.duration; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.smooth.curve } }
             spacing: -Math.round(time.size * 0.1)
             layer.enabled: root.gpu
-            layer.effect: MultiEffect { shadowEnabled: true; shadowColor: "#59001433"; shadowBlur: 0.7; shadowVerticalOffset: 2 }
+            layer.effect: MultiEffect { shadowEnabled: true; shadowColor: Theme.vibrant.shadow; shadowBlur: 0.7; shadowVerticalOffset: 2 }
 
             Text {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: Qt.formatDate(clock.now, "dddd, MMMM d")
-                color: "#f0ffffff"
+                color: Theme.vibrant.label
                 font { family: Theme.fontDisplay; pixelSize: Math.max(18, Math.round(root.height * 0.026)); weight: Font.DemiBold }
             }
             Text {
@@ -188,7 +191,7 @@ Item {
                 anchors.horizontalCenter: parent.horizontalCenter
                 // "h" is 24-hour unless an AM/PM marker is present; the lock clock shows 1:34, not 13:34.
                 text: Qt.formatTime(clock.now, "h:mm AP").replace(/\s*[AP]M$/i, "")
-                color: "#ebffffff"
+                color: Theme.vibrant.label
                 font {
                     family: Theme.fontDisplay
                     pixelSize: time.size
@@ -206,12 +209,12 @@ Item {
             horizontalAlignment: Text.AlignHCenter
             text: root.message
             textFormat: Text.PlainText; wrapMode: Text.Wrap; maximumLineCount: 3; elide: Text.ElideRight
-            color: "#e6ffffff"
+            color: Theme.vibrant.label
             opacity: root.awake ? 0 : 1
             Behavior on opacity { NumberAnimation { duration: root.still ? 0 : 200 } }
             font { family: Theme.fontUi; pixelSize: Math.max(14, Math.round(root.height * 0.018)); weight: Font.Medium }
             layer.enabled: root.gpu
-            layer.effect: MultiEffect { shadowEnabled: true; shadowColor: "#59001433"; shadowBlur: 0.6; shadowVerticalOffset: 1 }
+            layer.effect: MultiEffect { shadowEnabled: true; shadowColor: Theme.vibrant.shadow; shadowBlur: 0.6; shadowVerticalOffset: 1 }
         }
 
         // ------------------------------------------------------------ status
@@ -228,12 +231,12 @@ Item {
             Item {   // the battery, drawn
                 width: 27; height: 13
                 anchors.verticalCenter: parent.verticalCenter
-                Rectangle { width: 24; height: 13; radius: 4; color: "transparent"; border { width: 1.2; color: "#b3ffffff" } }
-                Rectangle { x: 25; y: 4.5; width: 1.6; height: 4; radius: 0.8; color: "#b3ffffff" }
+                Rectangle { width: 24; height: 13; radius: 4; color: "transparent"; border { width: 1.2; color: Theme.vibrant.tertiaryLabel } }   // design-lint: allow the battery glyph's own shape
+                Rectangle { x: 25; y: 4.5; width: 1.6; height: 4; radius: width / 2; color: Theme.vibrant.tertiaryLabel }
                 Rectangle {
-                    x: 2.2; y: 2.2; height: 8.6; radius: 2
+                    x: 2.2; y: 2.2; height: 8.6; radius: 2   // design-lint: allow the battery glyph's own shape
                     width: Math.max(2, 19.6 * root.battery)
-                    color: root.charging ? "#30d158" : root.battery <= 0.2 ? "#ff453a" : "white"
+                    color: root.charging ? Theme.accentGreen : root.battery <= 0.2 ? Theme.accentRed : "white"
                 }
             }
         }
@@ -245,7 +248,7 @@ Item {
             visible: root.tabletMode && !root.awake && !root.login && !!root.player
             anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: Math.round(root.height * 0.12) }
             width: Math.min(520, root.width - 48)
-            height: 164; radius: 28; role: "regular"
+            height: 164; radius: 28; role: "regular"   // design-lint: allow the Now Playing platter, as round as the system lock screen's
             Item {
                 anchors { fill: parent; margins: 18 }
                 Image {
@@ -257,21 +260,21 @@ Item {
                     visible: status === Image.Ready
                 }
                 Rectangle {
-                    width: 56; height: 56; radius: 12
+                    width: 56; height: 56; radius: Theme.radius.card
                     visible: !cover.visible
-                    color: "#445e8095"
+                    color: Theme.vibrant.fill
                     Symbol { anchors.centerIn: parent; name: "music"; size: 27; tone: "white" }
                 }
                 Text {
                     x: 70; y: 3; width: parent.width - 76
                     text: root.player?.trackTitle || "Not Playing"
-                    elide: Text.ElideRight; color: "#ffffff"
+                    elide: Text.ElideRight; color: "white"
                     font { family: Theme.fontUi; pixelSize: Theme.fs(16); weight: Font.DemiBold }
                 }
                 Text {
                     x: 70; y: 29; width: parent.width - 76
                     text: root.player?.trackArtist || root.player?.identity || "Music"
-                    elide: Text.ElideRight; color: "#d8ffffff"
+                    elide: Text.ElideRight; color: Theme.vibrant.secondaryLabel
                     font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
                 }
                 Row {
@@ -332,7 +335,9 @@ Item {
                     anchors.fill: parent
                     radius: width / 2
                     gradient: Gradient {
+                        // design-lint: allow the default account picture's grey
                         GradientStop { position: 0; color: "#a5aab5" }
+                        // design-lint: allow (the same picture)
                         GradientStop { position: 1; color: "#7c818c" }
                     }
                     // (Without a GPU a path can't be filled with the picture, so the
@@ -366,7 +371,7 @@ Item {
                         PathAngleArc { centerX: 36; centerY: 36; radiusX: 36; radiusY: 36; startAngle: 0; sweepAngle: 360 }
                     }
                 }
-                Rectangle { anchors.fill: parent; radius: width / 2; color: "transparent"; border { width: 1; color: "#40ffffff" } }
+                Rectangle { anchors.fill: parent; radius: width / 2; color: "transparent"; border { width: 1; color: Theme.vibrant.separator } }
                 MouseArea { anchors.fill: parent; onClicked: { root.wake(); field.input.forceActiveFocus() } }
                 Accessible.role: Accessible.Button
                 Accessible.name: root.userName
@@ -379,7 +384,7 @@ Item {
                 text: root.userName
                 color: "white"
                 font { family: Theme.fontUi; pixelSize: Theme.fs(15); weight: Font.DemiBold }
-                style: Text.Raised; styleColor: "#26001433"
+                style: Text.Raised; styleColor: Theme.vibrant.shadowSoft
             }
             Item { width: 1; height: 12 }
 
@@ -393,10 +398,11 @@ Item {
                     id: capsule
                     width: parent.width; height: parent.height
                     x: slot.shakeX
-                    radius: 17
+                    radius: height / 2
                     role: "clear"
                     // The same smoky glass in light and dark: it sits on the
                     // wallpaper, not a window, and carries white text either way.
+                    // design-lint: allow the field's own smoky glass
                     tint: Qt.tint("#701c2333", Qt.rgba(1, 0.23, 0.19, 0.45 * slot.flash))
                     opacity: root.awake ? 1 : 0
                     scale: root.awake ? 1 : 0.86
@@ -411,7 +417,7 @@ Item {
                         password: true
                         placeholder: root.busy ? "" : root.touchId ? "Touch ID or Enter Password" : "Enter Password"
                         foreground: "white"
-                        placeholderColor: "#bfffffff"
+                        placeholderColor: Theme.vibrant.tertiaryLabel
                         color: "transparent"
                         border.width: 0
                         enabled: !root.busy
@@ -437,11 +443,11 @@ Item {
                         width: 26; height: 26
                         Rectangle {
                             anchors.fill: parent
-                            radius: 13
-                            color: "#4dffffff"
+                            radius: width / 2
+                            color: Theme.vibrant.fill
                             opacity: field.text && !root.busy ? 1 : 0
                             scale: field.text && !root.busy ? 1 : 0.6
-                            Behavior on opacity { NumberAnimation { duration: 130 } }
+                            Behavior on opacity { NumberAnimation { duration: Theme.motion.menu } }
                             Behavior on scale { Spring { spring: Theme.bouncy } }
                             Symbol { anchors.centerIn: parent; name: "arrow-up"; size: 13 }
                             MouseArea { anchors.fill: parent; enabled: parent.opacity > 0.5; onClicked: root.submit() }
@@ -458,7 +464,7 @@ Item {
                                 strokeColor: "white"; strokeWidth: 2; fillColor: "transparent"; capStyle: ShapePath.RoundCap
                                 PathAngleArc { centerX: 8; centerY: 8; radiusX: 6.5; radiusY: 6.5; startAngle: 0; sweepAngle: 280 }
                             }
-                            RotationAnimation on rotation { from: 0; to: 360; duration: 695; loops: Animation.Infinite; running: root.busy }
+                            RotationAnimation on rotation { from: 0; to: 360; duration: 695; loops: Animation.Infinite; running: root.busy }   // design-lint: allow a spinner's turn, not a transition
                         }
                     }
                 }
@@ -471,9 +477,9 @@ Item {
                 text: root.notice ? root.notice
                     : root.failures >= 3 && root.hint ? root.hint
                     : root.awake ? "" : (root.login ? "" : root.touchId ? "Touch ID or press any key to unlock" : "Press any key or click to unlock")
-                color: "#d9ffffff"
+                color: Theme.vibrant.secondaryLabel
                 opacity: text ? 1 : 0
-                Behavior on opacity { NumberAnimation { duration: 175 } }
+                Behavior on opacity { NumberAnimation { duration: Theme.motion.fade } }
                 font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: Font.Medium }
             }
         }
@@ -484,7 +490,7 @@ Item {
         objectName: "tabletLockHomeIndicator"
         visible: root.tabletMode && !root.awake && !root.login
         width: Math.min(140, root.width * 0.22)
-        height: 5; radius: 3; color: "#e9ffffff"
+        height: 5; radius: height / 2; color: Theme.vibrant.label
         anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: 14 }
     }
 
@@ -493,7 +499,7 @@ Item {
     // and the user rises, each a beat after the other.
     ParallelAnimation {
         id: arrive
-        NumberAnimation { target: backdrop; property: "zoom"; from: root.still ? 1 : 1.06; to: 1; duration: 785; easing.type: Easing.OutCubic }
+        NumberAnimation { target: backdrop; property: "zoom"; from: root.still ? 1 : 1.06; to: 1; duration: root.still ? 0 : Theme.motion.window.duration; easing.type: Easing.OutCubic }
         SequentialAnimation {
             PropertyAction { targets: [when, who]; property: "opacity"; value: 0 }
             PauseAnimation { duration: root.still ? 0 : 80 }
@@ -523,18 +529,5 @@ Item {
         ScriptAction { script: root.unlocked() }
     }
     // The "no" shake, dying away, and a red flush through the glass.
-    SequentialAnimation {
-        id: shake
-        NumberAnimation { target: slot; property: "shakeX"; to: -16; duration: 45; easing.type: Easing.OutSine }
-        NumberAnimation { target: slot; property: "shakeX"; to: 14; duration: 70; easing.type: Easing.InOutSine }
-        NumberAnimation { target: slot; property: "shakeX"; to: -11; duration: 70; easing.type: Easing.InOutSine }
-        NumberAnimation { target: slot; property: "shakeX"; to: 8; duration: 70; easing.type: Easing.InOutSine }
-        NumberAnimation { target: slot; property: "shakeX"; to: -4; duration: 70; easing.type: Easing.InOutSine }
-        NumberAnimation { target: slot; property: "shakeX"; to: 0; duration: 80; easing.type: Easing.OutSine }
-    }
-    SequentialAnimation {
-        id: flash
-        NumberAnimation { target: slot; property: "flash"; to: 1; duration: 90 }
-        NumberAnimation { target: slot; property: "flash"; to: 0; duration: 610; easing.type: Easing.OutCubic }
-    }
+    Shared.Shake { id: shake; target: slot; property: "shakeX"; flashProperty: "flash" }
 }

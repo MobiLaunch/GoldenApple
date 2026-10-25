@@ -181,6 +181,8 @@ function material(name, m) {
     const family = size >= 20 ? "fontDisplay" : "fontUi";
     q.push(`        readonly property font ${k}: Qt.font({ family: ${family}, pixelSize: fs(${size}), weight: ${weights[f.weight]}, letterSpacing: ${round(track * size, 3)} })`);
   }
+  q.push("    }", "    readonly property QtObject vibrant: QtObject {");
+  for (const [k, v] of Object.entries(r.vibrant)) if (!k.startsWith("_")) q.push(`        readonly property color ${k}: "${v}"`);
   q.push("    }", "    readonly property QtObject radius: QtObject {");
   for (const [k, v] of Object.entries(r.radius)) q.push(`        readonly property real ${k}: ${v}`);
   q.push("    }", "    readonly property QtObject motion: QtObject {");
