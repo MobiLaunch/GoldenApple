@@ -257,6 +257,13 @@ printf '#!/bin/sh\nexec sudo python3 /usr/share/golden-gate/apps/settings/golden
   > "$AIR/usr/local/bin/gg-update-disk"
 chmod 755 "$AIR/usr/local/bin/gg-update-disk"
 
+# The boot test's checks inside the live session (distro/archiso/selftest):
+# they run only with gg.selftest on the kernel command line.
+install -Dm755 "$REPO/distro/archiso/selftest/selftest.sh" "$AIR/usr/lib/golden-gate/selftest.sh"
+install -Dm644 "$REPO/distro/archiso/selftest/citronos-selftest.service" "$AIR/usr/lib/systemd/user/citronos-selftest.service"
+mkdir -p "$AIR/etc/systemd/user/citronos-session.target.wants"
+ln -sf /usr/lib/systemd/user/citronos-selftest.service "$AIR/etc/systemd/user/citronos-session.target.wants/citronos-selftest.service"
+
 # The same for every program install.sh put in the image: mkarchiso makes each
 # file 644 unless file_permissions names it, and the list above, kept by hand,
 # had fallen behind (gg-icon-resolver, gg-archive, gg-tablet-keyboard and

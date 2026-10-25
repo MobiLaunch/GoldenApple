@@ -17,6 +17,11 @@
 # with the journal forwarded to it: gg-session, Hyprland's log on failure, and
 # Quickshell all land in OUTDIR/serial.log. OUTDIR/screen.png is the screen once
 # the session has started (or failed). Exits 0 only if the session started.
+#
+# The std run also boots with gg.selftest: after the screenshot, the live
+# session checks what needs it for real (distro/archiso/selftest/selftest.sh:
+# systemd's units and safe mode, the firewall zones, the lock screen killed
+# while locked), and any "gg-selftest: FAIL" line fails the run.
 # Needs: qemu-system-x86, xorriso, socat, ImageMagick (and xvfb for virgl without a display).
 set -euo pipefail
 
@@ -41,6 +46,8 @@ cmdline="$(grep -rhoE 'archisobasedir=[^ ]+ archisosearchuuid=[^ ]+' "$work/sysl
 cmdline+=" console=tty0 console=ttyS0,115200 systemd.journald.forward_to_console=1 gg.nosetup"   # the desktop, not Setup Assistant
 # The std run also shows the boot screen (Plymouth) and captures it as boot-screen.png.
 [[ $VARIANT == std ]] && cmdline+=" splash vt.global_cursor_default=0"
+SELFTEST="${SELFTEST:-$([[ $VARIANT == std ]] && echo 1 || echo 0)}"
+[[ $SELFTEST == 1 ]] && cmdline+=" gg.selftest"
 say "kernel parameters: $cmdline"
 
 # ---------------------------------------------------------------- QEMU
@@ -96,6 +103,14 @@ if kill -0 "$qemu" 2>/dev/null; then
   sleep "$SETTLE"
   monitor "screendump $OUT/screen.ppm" && sleep 2
   [[ -f $OUT/screen.ppm ]] && convert "$OUT/screen.ppm" "$OUT/screen.png" && rm "$OUT/screen.ppm"
+  if [[ $SELFTEST == 1 && $result == started ]]; then
+    say "waiting for the live session's self-test"
+    for ((s = 0; s < ${SELFTEST_TIMEOUT:-420}; s += 5)); do
+      grep -aq 'gg-selftest: done' "$OUT/serial.log" 2>/dev/null && break
+      kill -0 "$qemu" 2>/dev/null || break
+      sleep 5
+    done
+  fi
   monitor quit || true
 fi
 wait "$qemu" 2>/dev/null || true
@@ -111,11 +126,24 @@ fi
 # The supervisor is intentionally able to recover the shell, but needing that
 # recovery during a clean boot is itself a regression. A configuration can log
 # "Configuration Loaded" once and then crash a moment later, leaving an empty
-# desktop while this test would otherwise report success.
-if grep -aq 'gg-shell.*Quickshell exited' "$OUT/serial.log" 2>/dev/null; then
+# desktop while this test would otherwise report success. Only up to the
+# self-test, which kills the shell on purpose.
+boot_log() { sed '/gg-selftest: start/q' "$OUT/serial.log" 2>/dev/null; }
+restarted='gg-shell.*Quickshell exited|citronos-shell.service: (Main process exited|Failed)'
+if boot_log | grep -aqE "$restarted"; then
   say "Quickshell restarted during the boot-test settle window:"
-  grep -a 'gg-shell.*Quickshell exited' "$OUT/serial.log" | tail -n 20
+  boot_log | grep -aE "$restarted" | tail -n 20
   result=shell-restarted
+fi
+
+if [[ $SELFTEST == 1 && $result == started ]]; then
+  say "the live session's self-test"
+  grep -aoE 'gg-selftest: .*' "$OUT/serial.log" | sed 's/\x1b\[[0-9;]*m//g' || true
+  if ! grep -aq 'gg-selftest: done' "$OUT/serial.log"; then
+    say "the self-test didn't finish"; result=selftest-unfinished
+  elif grep -aq 'gg-selftest: FAIL' "$OUT/serial.log"; then
+    result=selftest-failed
+  fi
 fi
 
 # A session that starts with config errors (shown as a red banner) still fails.

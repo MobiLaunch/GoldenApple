@@ -1,0 +1,14 @@
+# The live session's self-test (selftest.sh), for the boot test only: it runs
+# when the kernel command line has gg.selftest, and does nothing otherwise.
+[Unit]
+Description=CitronOS self-test (boot test)
+ConditionKernelCommandLine=gg.selftest
+PartOf=citronos-session.target
+After=citronos-shell.service citronos-lock.service
+
+[Service]
+Type=exec
+ExecStart=/usr/lib/golden-gate/selftest.sh
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=gg-selftest

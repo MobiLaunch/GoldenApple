@@ -133,10 +133,16 @@ assert os.access(root / "apps" / "settings" / "update-helper.py", os.X_OK), "upd
 block = re.search(r"\{\n  echo 'file_permissions\+=\('\n  \(cd \"\$AIR\".*?\n\} >> \"\$PROFILE/profiledef.sh\"\n", build_sh, re.S)
 assert block, "build.sh must give back the executable bit to what install.sh installed"
 with tempfile.TemporaryDirectory() as t:
-    air, profile = Path(t) / "airootfs", Path(t) / "profile"
+    air, profile, shim = Path(t) / "airootfs", Path(t) / "profile", Path(t) / "bin"
     profile.mkdir()
+    # A node that does nothing: install.sh would otherwise rebuild the icons
+    # into this checkout (icons/build.mjs writes its output into the tree).
+    shim.mkdir()
+    (shim / "node").write_text("#!/bin/sh\nexit 0\n")
+    (shim / "node").chmod(0o755)
     subprocess.run(["bash", str(root / "scripts" / "install.sh"), "--system", str(air)], check=True,
-                   capture_output=True, env={**os.environ, "GG_SKIP_BUILD": "1"})
+                   capture_output=True, env={**os.environ, "GG_SKIP_BUILD": "1",
+                                             "PATH": f"{shim}:{os.environ['PATH']}"})
     subprocess.run(["bash", "-euo", "pipefail", "-c", block.group(0)], check=True,
                    env={**os.environ, "AIR": str(air), "PROFILE": str(profile)})
     listed = dict(re.findall(r'\["(/[^"]+)"\]="0:0:(\d+)"', (profile / "profiledef.sh").read_text()))
@@ -146,3 +152,13 @@ with tempfile.TemporaryDirectory() as t:
     missing = [str(p.relative_to(air)) for p in programs if listed.get("/" + str(p.relative_to(air))) != "755"]
     assert not missing, f"not executable on the image: {missing}"
 print("installer: CitronOS's programs stay executable on the image")
+
+# The live session's self-test ships in the image but runs only for the boot
+# test: its unit needs gg.selftest on the kernel command line, which only the
+# boot test's std run adds.
+unit = (root / "distro" / "archiso" / "selftest" / "citronos-selftest.service").read_text(encoding="utf-8")
+assert "ConditionKernelCommandLine=gg.selftest" in unit, "the self-test must not run on a normal boot"
+assert 'cmdline+=" gg.selftest"' in (root / "distro" / "archiso" / "boot-test.sh").read_text(encoding="utf-8")
+assert "citronos-session.target.wants/citronos-selftest.service" in build_sh
+assert os.access(root / "distro" / "archiso" / "selftest" / "selftest.sh", os.X_OK)
+print("installer: the live session's self-test runs only for the boot test")
