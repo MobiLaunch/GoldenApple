@@ -61,7 +61,7 @@ lock = (ROOT / "shell/LockScreen.qml").read_text()
 check(re.search(r"PamResult\.Success\)[^\n]*root\.surfaces\.forEach\(\(s\) => s\.unlock\(\)\)", lock) is not None,
       "the right password plays the unlock animation")
 check("onUnlocked: clearMarker.running = true" in lock
-      and re.search(r"id: clearMarker\n[^}]*onExited: \{ root\.signedIn = true; session\.locked = false \}", lock) is not None,
+      and re.search(r"id: clearMarker\n[^}]*onExited: \{ root\.holdLock = false; session\.locked = false \}", lock) is not None,
       "the session is released when the animation ends (lock-process.py runs it)")
 surface = (ROOT / "shell/components/LockSurface.qml").read_text()
 check("field.forceActiveFocus()" not in surface, "focus goes to the password's text, not the field around it")

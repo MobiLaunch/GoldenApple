@@ -123,10 +123,12 @@ class LockScreenProcess(unittest.TestCase):
             self.assertEqual(execs(s, "rm", "run") + execs(s, "rm"), [], "a refusal isn't a sign-in")
             self.assertTrue((Path(r) / "citronos-locked").exists())
 
-    def test_a_lock_ended_after_signing_in_stays_unlocked(self):
+    def test_asked_to_lock_it_holds_the_lock_until_signed_in(self):
         with tempfile.TemporaryDirectory() as r:
             s = run_lock_screen(Path(r), "lock.lock", "test.refuse")
-            self.assertEqual(s["locked"], [False], "no mark (gg-lock makes it, not the lock screen): no asking again")
+            self.assertEqual(s["locked"], [True], "the compositor ended the lock: it asks again")
+            s = run_lock_screen(Path(r), "lock.lock", "test.signin", "test.refuse")
+            self.assertEqual(s["locked"], [False], "after signing in it lets go")
 
 
 STUB = '''#!/bin/sh

@@ -25,7 +25,7 @@ Scope {
 
     IpcHandler {
         target: "lock"
-        function lock(): void { session.locked = true }
+        function lock(): void { root.holdLock = true }
         // Whether the compositor has confirmed the lock (the session harness asks).
         function isLocked(): bool { return session.secure }
     }
@@ -34,24 +34,31 @@ Scope {
     // unlocking removes it.
     readonly property string marker: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/citronos-locked"
     Process {
-        id: markerCheck
         running: true
         command: ["test", "-e", root.marker]
-        onExited: (code) => { if (code === 0) session.locked = true }
+        onExited: (code) => { if (code === 0) root.holdLock = true }
     }
-    // Only signing in ends the locked session. The compositor can end or
-    // refuse a lock too: a lock screen started straight after a crash may ask
-    // while the compositor still counts the dead one's lock (the fork writing
-    // its core dump keeps its connection open), and is refused. Quickshell
-    // reports that as an unlock; while the marker is there, ask again. Signing
-    // in removes the marker first, then unlocks, so nothing asking again can
-    // lock the session straight after.
-    property bool signedIn: false
-    Timer { id: relock; interval: 300; onTriggered: if (!session.locked) markerCheck.running = true }
+    // Whether this lock screen should be holding the lock: from being asked
+    // (or finding the marker) until someone signs in. Only signing in ends
+    // it. The compositor can end or refuse a lock too: a lock screen started
+    // straight after a crash may ask while the compositor still counts the
+    // dead one's lock (the fork writing its core dump keeps its connection
+    // open), and is refused. Quickshell then drops the lock without telling
+    // (no lockedChanged), so this checks, and asks again while it should hold
+    // it. Signing in removes the marker first, then lets go, so nothing can
+    // lock the session again straight after.
+    property bool holdLock: false
+    onHoldLockChanged: if (holdLock) session.locked = true
+    Timer {
+        interval: 300
+        repeat: true
+        running: root.holdLock
+        onTriggered: if (!session.locked) session.locked = true
+    }
     Process {
         id: clearMarker
         command: ["rm", "-f", root.marker]
-        onExited: { root.signedIn = true; session.locked = false }
+        onExited: { root.holdLock = false; session.locked = false }
     }
 
     // The account's full name, for under the picture.
@@ -88,8 +95,6 @@ Scope {
                 root.touchId = false; if (Prefs.touchIdUnlock) fingers.running = true
             } else {
                 root.touchId = false; touch.abort()
-                if (root.signedIn) root.signedIn = false
-                else relock.restart()
             }
         }
     }
