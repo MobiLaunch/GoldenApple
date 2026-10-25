@@ -263,17 +263,22 @@ shot dark-lock-restored; shots+=(dark-lock-restored)
 # password keeps it locked; the account's own unlocks it and clears the marker.
 signed_in=0
 if [[ -n ${GG_TEST_PASSWORD:-} && $(lock_state) == true ]]; then
-  type() { wtype "$@" || fail "wtype couldn't type on the lock screen"; }
-  type -M shift -m shift; sleep 1             # wakes it: the field appears
+  # wtype sends its own keymap each time, and the first key after it is lost
+  # (the field got 27 of 28 characters, and a Return sent alone never came):
+  # each entry goes in one call, after a Shift that may be lost harmlessly.
+  type() { wtype -d 15 -k Shift_L "$@" || fail "wtype couldn't type on the lock screen"; }
+  type; sleep 1                               # wakes it: the field appears
   lock_status() { timeout 2 qs -p "$LOCK_QML" ipc call lock status 2>/dev/null || true; }
-  type "not-$GG_TEST_PASSWORD"; echo "  typed a wrong one: $(lock_status)"; type -k Return; sleep 5
+  type "not-$GG_TEST_PASSWORD" -k Return; sleep 5
   echo "  after Return: $(lock_status)"
-  if [[ $(lock_state) == true && -e $XDG_RUNTIME_DIR/citronos-locked ]]; then
-    say "a wrong password: still locked"
-  else
+  if [[ $(lock_state) != true || ! -e $XDG_RUNTIME_DIR/citronos-locked ]]; then
     fail "a wrong password unlocked the screen"
+  elif [[ $(lock_status) != *'"failures":1'* ]]; then
+    fail "the wrong password wasn't checked and refused (the lock screen: $(lock_status))"
+  else
+    say "a wrong password: checked, refused, still locked"
   fi
-  type "$GG_TEST_PASSWORD"; echo "  typed the right one: $(lock_status)"; type -k Return
+  type "$GG_TEST_PASSWORD" -k Return
   for _ in $(seq 40); do [[ $(lock_state) == false ]] && break; sleep 0.25; done
   sleep 1
   if [[ $(lock_state) == false && ! -e $XDG_RUNTIME_DIR/citronos-locked ]]; then
