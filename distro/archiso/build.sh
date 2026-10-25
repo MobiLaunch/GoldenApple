@@ -129,7 +129,9 @@ build_blueferry() {
 }
 
 # Builds AUR packages into distro/localrepo/ as an unprivileged user (makepkg
-# refuses to run as root). AUR-only dependencies of these packages are not resolved.
+# refuses to run as root), in packages.extra's order. Each one built is also
+# installed here, so a package listed after it can depend on it: an AUR-only
+# dependency goes before what needs it (python-pathvalidate before piper-tts).
 build_aur() {
   say "building from the AUR: $*"
   pacman -S --needed --noconfirm base-devel git sudo >/dev/null
@@ -158,6 +160,7 @@ build_aur() {
     for f in "$src/$pkg"/*.pkg.tar.zst; do
       [[ -e $f && $f != *-debug-* ]] || continue
       cp "$f" "$REPO/distro/localrepo/"
+      pacman -U --noconfirm --needed --asdeps "$f" >/dev/null
       built=1
     done
     ((built)) || { echo "makepkg produced no package for $pkg"; exit 1; }

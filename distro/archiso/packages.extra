@@ -9,5 +9,7 @@ blueferry-backend
 # Screen Mirroring: AirPlay Receiver, and mirroring to Miracast/Chromecast TVs.
 uxplay
 gnome-network-displays
-# Citron's spoken replies: Piper, text to speech on this computer (AUR).
+# Citron's spoken replies: Piper, text to speech on this computer (AUR), and
+# its one AUR-only dependency, built first.
+python-pathvalidate
 piper-tts
