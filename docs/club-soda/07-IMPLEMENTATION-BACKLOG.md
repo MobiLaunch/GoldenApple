@@ -224,8 +224,11 @@ same fields, more briefly, and should be expanded when their milestone starts.
   the mark as if someone had signed in. Now the lock screen holds the lock from being asked
   (IPC or the mark) until someone signs in, and checks every 300 ms that it still has it,
   asking again if not. Signing in removes the mark first, then lets go. The harness kills
-  it 5 times while locked: each time a lock screen holds the lock again in about 2 s.
-  Typing the password in the harness is still to do.
+  it 5 times while locked: each time a lock screen holds the lock again in about 2 s. Then
+  it signs in, typed with a virtual keyboard (wtype): a wrong password must be checked and
+  refused, and the account's own must unlock it and clear the mark (`lock.status`, IPC,
+  reports the sign-in's state, never the password). A PAM error, not only a wrong
+  password, now lets the person try again; before, it left the field disabled.
 - **Files:** new `shell-lock/shell.qml` (imports `../shell/components/LockSurface.qml`
   through `ui/`); `shell/shell.qml:189` (remove the in-process LockScreen, keep the IPC
   name by forwarding); `compositor/hyprland/hypridle.conf` (`lock_cmd`);
