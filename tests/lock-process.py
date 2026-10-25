@@ -27,22 +27,35 @@ import json, sys
 sys.path.insert(0, sys.argv.pop(1))
 out = sys.argv.pop(1)
 import preview as P
-from PySide6.QtCore import QObject
+from PySide6.QtCore import QMetaObject, QObject
 from PySide6.QtGui import QGuiApplication
+from PySide6.QtTest import QTest
 ran = []
 log = P.Preview.log
 def logged(self, text):
     ran.append(text)
     log(self, text)
 P.Preview.log = P.Slot(str)(logged)
+run = P.Preview.run
+def recorded(self, cmd):
+    ran.append("run " + json.dumps([str(c) for c in (cmd.toVariant() if hasattr(cmd, "toVariant") else cmd)]))
+    return run(self, cmd)
+P.Preview.run = P.Slot("QVariant", result="QVariantMap")(recorded)
 ipc = P.Preview.ipc
+def objects(name):
+    return [o for w in QGuiApplication.topLevelWindows() for o in w.findChildren(QObject)
+            if o.metaObject().className().split("_QML")[0] == name]
 def step(self, target, function, args):
     if target == "test":
-        locks = [o for w in QGuiApplication.topLevelWindows() for o in w.findChildren(QObject)
-                 if o.metaObject().className() == "WlSessionLock"]
-        if function == "unlock":
+        locks = objects("WlSessionLock")
+        if function == "refuse":      # the compositor ends the lock: Quickshell reports an unlock
             for l in locks:
                 l.setProperty("locked", False)
+            QTest.qWait(900)
+        if function == "signin":      # the password was right: the lock surface says unlocked
+            for s in objects("LockSurface"):
+                QMetaObject.invokeMethod(s, "unlocked")
+            QTest.qWait(900)
         open(out, "w").write(json.dumps({"ran": ran, "locked": [bool(l.property("locked")) for l in locks]}))
         return True
     return ipc(self, target, function, args)
@@ -68,8 +81,9 @@ def run_lock_screen(runtime: Path, *steps: str) -> dict:
         return json.loads(out.read_text())
 
 
-def execs(state, program):
-    return [json.loads(l[5:]) for l in state["ran"] if l.startswith("exec ") and json.loads(l[5:])[0] == program]
+def execs(state, program, kind="exec"):
+    n = len(kind) + 1
+    return [json.loads(l[n:]) for l in state["ran"] if l.startswith(kind + " ") and json.loads(l[n:])[0] == program]
 
 
 class LockScreenProcess(unittest.TestCase):
@@ -85,11 +99,34 @@ class LockScreenProcess(unittest.TestCase):
             s = run_lock_screen(Path(r), "test.state")
             self.assertEqual(s["locked"], [True], "a lock screen restarted while locked locks again")
 
-    def test_lock_marks_and_unlock_clears(self):
+    def test_lock_marks(self):
         with tempfile.TemporaryDirectory() as r:
-            s = run_lock_screen(Path(r), "lock.lock", "test.unlock")
+            s = run_lock_screen(Path(r), "lock.lock", "test.state")
+            self.assertEqual(s["locked"], [True])
             self.assertEqual(execs(s, "touch"), [["touch", f"{r}/citronos-locked"]])
-            self.assertEqual(execs(s, "rm"), [["rm", "-f", f"{r}/citronos-locked"]])
+
+    def test_signing_in_clears_the_mark_then_unlocks(self):
+        with tempfile.TemporaryDirectory() as r:
+            (Path(r) / "citronos-locked").touch()
+            s = run_lock_screen(Path(r), "test.signin")
+            self.assertEqual(s["locked"], [False])
+            self.assertEqual(execs(s, "rm", "run"), [["rm", "-f", f"{r}/citronos-locked"]])
+            self.assertEqual(execs(s, "rm"), [])
+
+    def test_a_refused_lock_asks_again(self):
+        # Started straight after a crash, while the compositor still counts the
+        # dead lock screen's lock: refused, it asks again, and keeps the mark.
+        with tempfile.TemporaryDirectory() as r:
+            (Path(r) / "citronos-locked").touch()
+            s = run_lock_screen(Path(r), "test.refuse")
+            self.assertEqual(s["locked"], [True], "asked again while the mark is there")
+            self.assertEqual(execs(s, "rm", "run") + execs(s, "rm"), [], "a refusal isn't a sign-in")
+            self.assertTrue((Path(r) / "citronos-locked").exists())
+
+    def test_a_lock_ended_after_signing_in_stays_unlocked(self):
+        with tempfile.TemporaryDirectory() as r:
+            s = run_lock_screen(Path(r), "lock.lock", "test.refuse")
+            self.assertEqual(s["locked"], [False], "no mark (gg-lock makes it, not the lock screen): no asking again")
 
 
 STUB = '''#!/bin/sh

@@ -34,9 +34,24 @@ Scope {
     // unlocking removes it.
     readonly property string marker: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/citronos-locked"
     Process {
+        id: markerCheck
         running: true
         command: ["test", "-e", root.marker]
         onExited: (code) => { if (code === 0) session.locked = true }
+    }
+    // Only signing in ends the locked session. The compositor can end or
+    // refuse a lock too: a lock screen started straight after a crash may ask
+    // while the compositor still counts the dead one's lock (the fork writing
+    // its core dump keeps its connection open), and is refused. Quickshell
+    // reports that as an unlock; while the marker is there, ask again. Signing
+    // in removes the marker first, then unlocks, so nothing asking again can
+    // lock the session straight after.
+    property bool signedIn: false
+    Timer { id: relock; interval: 300; onTriggered: if (!session.locked) markerCheck.running = true }
+    Process {
+        id: clearMarker
+        command: ["rm", "-f", root.marker]
+        onExited: { root.signedIn = true; session.locked = false }
     }
 
     // The account's full name, for under the picture.
@@ -68,9 +83,14 @@ Scope {
     Connections {
         target: session
         function onLockedChanged() {
-            Quickshell.execDetached(session.locked ? ["touch", root.marker] : ["rm", "-f", root.marker])
-            if (session.locked) { root.touchId = false; if (Prefs.touchIdUnlock) fingers.running = true }
-            else { root.touchId = false; touch.abort() }
+            if (session.locked) {
+                Quickshell.execDetached(["touch", root.marker])
+                root.touchId = false; if (Prefs.touchIdUnlock) fingers.running = true
+            } else {
+                root.touchId = false; touch.abort()
+                if (root.signedIn) root.signedIn = false
+                else relock.restart()
+            }
         }
     }
     onTouchIdChanged: if (touchId && session.locked && !touch.active) touch.start()
@@ -112,7 +132,7 @@ Scope {
                 charging: Battery.charging
                 Component.onCompleted: { root.surfaces = root.surfaces.concat([surface]); reset() }
                 Component.onDestruction: root.surfaces = root.surfaces.filter((s) => s !== surface)
-                onUnlocked: session.locked = false
+                onUnlocked: clearMarker.running = true
                 // Store the password before starting PAM: it may ask for it at once. An empty
                 // password is a valid answer (the live session's user has none).
                 onSubmitted: (password) => {
