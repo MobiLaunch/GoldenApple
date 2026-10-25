@@ -275,7 +275,15 @@ if [[ -n ${GG_TEST_PASSWORD:-} && $(lock_state) == true ]]; then
     signed_in=1; say "signed in on the lock screen: unlocked, and the marker is gone"
   else
     fail "signing in didn't unlock (lock screen: '$(lock_state)', marker $([[ -e $XDG_RUNTIME_DIR/citronos-locked ]] && echo still there || echo gone))"
+    echo "::group::Why signing in didn't work"
+    # Does the account's password check out without the lock screen? (PAM's
+    # helper, as the lock screen's PAM uses it; the password isn't printed.)
+    printf '%s' "$GG_TEST_PASSWORD" | unix_chkpwd gg-session nullok; echo "unix_chkpwd: exit $?"
+    ls -l "$(command -v unix_chkpwd)" 2>&1 || true
+    faillock --user gg-session 2>&1 | tail -n 5 || true
+    grep -hv '^#' /etc/pam.d/login /etc/pam.d/system-login /etc/pam.d/system-auth 2>/dev/null | grep -v '^$' | sed 's/^/  pam: /'
     tail -n 20 "$OUT/lock.log" || true
+    echo "::endgroup::"
   fi
   sleep 2; shot dark-unlocked; shots+=(dark-unlocked)
 else
