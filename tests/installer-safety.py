@@ -3,6 +3,7 @@
 from pathlib import Path
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -126,4 +127,22 @@ build_sh = (root / "distro" / "archiso" / "build.sh").read_text(encoding="utf-8"
 assert "find apps -type f -perm -u+x" in build_sh and '["/usr/share/golden-gate/%s"]="0:0:755"' in build_sh, \
     "build.sh must restore the executable bit on CitronOS's programs"
 assert os.access(root / "apps" / "settings" / "update-helper.py", os.X_OK), "update-helper.py must be executable"
+# And every program install.sh puts in the image (the hand-kept list once
+# missed gg-icon-resolver, gg-archive and others): install into a scratch root,
+# run build.sh's own block on it, and read back the permissions it gives.
+block = re.search(r"\{\n  echo 'file_permissions\+=\('\n  \(cd \"\$AIR\".*?\n\} >> \"\$PROFILE/profiledef.sh\"\n", build_sh, re.S)
+assert block, "build.sh must give back the executable bit to what install.sh installed"
+with tempfile.TemporaryDirectory() as t:
+    air, profile = Path(t) / "airootfs", Path(t) / "profile"
+    profile.mkdir()
+    subprocess.run(["bash", str(root / "scripts" / "install.sh"), "--system", str(air)], check=True,
+                   capture_output=True, env={**os.environ, "GG_SKIP_BUILD": "1"})
+    subprocess.run(["bash", "-euo", "pipefail", "-c", block.group(0)], check=True,
+                   env={**os.environ, "AIR": str(air), "PROFILE": str(profile)})
+    listed = dict(re.findall(r'\["(/[^"]+)"\]="0:0:(\d+)"', (profile / "profiledef.sh").read_text()))
+    programs = [p for d in ("usr/local/bin", "usr/lib/golden-gate", "usr/share/golden-gate")
+                for p in (air / d).rglob("*") if p.is_file() and os.access(p, os.X_OK)]
+    assert programs and air / "usr/local/bin/gg-icon-resolver" in programs, programs[:5]
+    missing = [str(p.relative_to(air)) for p in programs if listed.get("/" + str(p.relative_to(air))) != "755"]
+    assert not missing, f"not executable on the image: {missing}"
 print("installer: CitronOS's programs stay executable on the image")

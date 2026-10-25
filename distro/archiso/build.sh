@@ -257,6 +257,17 @@ printf '#!/bin/sh\nexec sudo python3 /usr/share/golden-gate/apps/settings/golden
   > "$AIR/usr/local/bin/gg-update-disk"
 chmod 755 "$AIR/usr/local/bin/gg-update-disk"
 
+# The same for every program install.sh put in the image: mkarchiso makes each
+# file 644 unless file_permissions names it, and the list above, kept by hand,
+# had fallen behind (gg-icon-resolver, gg-archive, gg-tablet-keyboard and
+# CitronPods' commands weren't executable on the ISO).
+{
+  echo 'file_permissions+=('
+  (cd "$AIR" && find usr/local/bin usr/lib/golden-gate usr/share/golden-gate -type f -perm -u+x | sort) |
+    while read -r f; do printf '  ["/%s"]="0:0:755"\n' "$f"; done
+  echo ')'
+} >> "$PROFILE/profiledef.sh"
+
 # Optional locally supplied Apple typography/symbol assets. These directories are
 # ignored by git so proprietary files are never committed or redistributed by
 # CitronOS. A local ISO build may overlay files the builder is licensed to use.
