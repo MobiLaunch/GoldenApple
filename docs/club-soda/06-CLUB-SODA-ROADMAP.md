@@ -20,14 +20,15 @@ indicative only.
 
 ---
 
-## M0: Audit and baseline (this document set) · done except T-0.2 and T-0.3
+## M0: Audit and baseline (this document set) · done except T-0.3
 
 **Scope:** inventory, findings, architecture and roadmap (docs 01–08). T-0.1 recorded the
-test baseline. T-0.2 (session harness) and T-0.3 (performance baseline) carry over into M1.
+test baseline. T-0.2 built the session harness. T-0.3 (performance baseline) carries over
+into M1.
 **Exit criteria:**
 - [x] Every major subsystem is inspected or explicitly marked "not testable here".
 - [x] Test baseline recorded: 125 pass, 10 environmental, 0 real failures.
-- [ ] T-0.2: a real-session harness runs in CI and captures every shell surface.
+- [x] T-0.2: a real-session harness runs in CI and captures every shell surface.
 - [ ] T-0.3: a performance baseline is recorded (start-up time, idle CPU and RSS, glass
   on and off) on at least a VM and one Intel laptop.
 
@@ -43,20 +44,21 @@ separation, systemd user units, Wi-Fi password off argv, AirDrop off by default 
 firewall, Prefs write errors, and security lints.
 **Depends on:** nothing.
 **Status:** T-1.1 to T-1.10 are built and tested in CI. See the "As built" notes in
-[07](07-IMPLEMENTATION-BACKLOG.md). The criteria below that need a real session (cold
-starts, killing the lock and the shell, `ss -lntup` after login) wait for the session
-harness (T-0.2).
+[07](07-IMPLEMENTATION-BACKLOG.md). The session harness (T-0.2) checks the cold starts,
+the lock kills and AirDrop's port. Safe mode after five shell kills needs a systemd user
+manager, and the firewall zone a real connection: both wait for the ISO.
 **Exit criteria:**
 - [x] `tests/security-lint.py` passes: no shell strings built from data, no passwordless
   action that runs downloaded code, no secrets on argv.
 - [x] `pkexec update-helper set-source` asks for a password. An update bundle that isn't
   signed by the release key is refused.
-- 20 of 20 cold starts in the session harness with no Quickshell crash report.
-- Killing the lock process while locked gives a working lock screen within 3 s, 5 of 5
-  times.
-- `systemctl --user status citronos-shell` is active, and five kills in 60 s end in safe
+- [x] 20 of 20 cold starts in the session harness with no Quickshell crash report.
+- [x] Killing the lock process while locked gives a working lock screen within 3 s, 5 of 5
+  times (about 2 s each in CI).
+- [ ] `systemctl --user status citronos-shell` is active, and five kills in 60 s end in safe
   mode.
-- `ss -lntup` shows no AirDrop listener after login on a "public" connection.
+- [ ] `ss -lntup` shows no AirDrop listener after login on a "public" connection. (The
+  harness shows none with receiving off, a new account's default; the zone needs the ISO.)
 
 ## M2: Platform foundations and design system · about 6 weeks
 

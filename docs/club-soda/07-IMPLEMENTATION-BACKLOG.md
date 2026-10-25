@@ -25,7 +25,32 @@ same fields, more briefly, and should be expanded when their milestone starts.
   generated symbols not built), 0 real failures. See
   [03 → Test baseline](03-BACKEND-AUDIT.md#test-baseline).
 
-### T-0.2: Real-session harness
+### T-0.2: Real-session harness · **done**
+- **As built:** `tests/session/run.sh` makes a clean account in an Arch container, installs
+  CitronOS into it with `scripts/install.sh`, checks `Hyprland --verify-config` accepts the
+  hyprland.conf it wrote, and runs the real shell (`qs -c golden-gate`) under headless Sway
+  (pixman), with hyprland.conf's `env =` lines and a session bus started after
+  `XDG_RUNTIME_DIR` (dconf tells readers about changes there). Hyprland itself needs a GPU
+  render node; the ISO's boot test runs it in QEMU. In order:
+  - `--self-test`: a shell killed with SIGSEGV and a configuration that doesn't load must
+    both be caught (the job runs this first);
+  - 20 cold starts. A start fails if the shell died, left a Quickshell crash report,
+    printed "pure virtual" or a QML error in CitronOS's files;
+  - the desktop, Control Center, Spotlight, Launchpad, Notification Center and Mission
+    Control, opened over IPC and screenshotted in light and in dark;
+  - the lock screen as its own process (a loop standing in for `citronos-lock.service`),
+    locked with gg-lock, then killed with SIGSEGV 5 times. Each must hold the lock again
+    within 3 s, asked over IPC (`lock.isLocked`, the compositor's confirmation);
+  - `gg-airdrop --serve` running with a new account's default (receiving off): nothing may
+    listen on 53317 (`ss`).
+
+  `tests/session/shots.py` fails a surface whose screenshot matches the desktop (it didn't
+  open) and dark that looks like light, and writes a contact sheet to the job summary.
+  `.github/workflows/session.yml` runs on changes to the shell, compositor, units and
+  installer, and uploads the screenshots and logs. Its first runs found two bugs in the
+  harness (light and dark identical: the bus started before `XDG_RUNTIME_DIR`; missing
+  icons: the session's env) and one in CitronOS: a lock screen refused after a crash
+  (T-1.5).
 - **Scope:** a CI job that boots headless Hyprland (or Sway with Quickshell, as before) and
   runs the real shell.
 - **Files:** new `tests/session/run.sh` and `tests/session/shots.py`; new
@@ -190,8 +215,17 @@ same fields, more briefly, and should be expanded when their milestone starts.
   user manager, gg-session-start keeps a lock process running too.
   `tests/lock-process.py` runs the real lock-shell.qml in the preview (idle without the
   mark, locked at once with it, mark and clear on lock/unlock; it fails on the old
-  LockScreen) and gg-lock against stub qs/systemctl. The session-harness case (`kill -SEGV`
-  while locked, then type the password) is still to do.
+  LockScreen) and gg-lock against stub qs/systemctl.
+  **Found by the session harness (T-0.2):** a lock screen restarted straight after a crash
+  could be refused. Quickshell's crash handler forks to write the core dump, and the fork
+  keeps the dead lock screen's Wayland connection open for about half a second, so the
+  compositor still counts its lock ("Cannot lock an already locked session"). Quickshell
+  reports the refusal as an unlock, without `lockedChanged`, and the old LockScreen removed
+  the mark as if someone had signed in. Now the lock screen holds the lock from being asked
+  (IPC or the mark) until someone signs in, and checks every 300 ms that it still has it,
+  asking again if not. Signing in removes the mark first, then lets go. The harness kills
+  it 5 times while locked: each time a lock screen holds the lock again in about 2 s.
+  Typing the password in the harness is still to do.
 - **Files:** new `shell-lock/shell.qml` (imports `../shell/components/LockSurface.qml`
   through `ui/`); `shell/shell.qml:189` (remove the in-process LockScreen, keep the IPC
   name by forwarding); `compositor/hyprland/hypridle.conf` (`lock_cmd`);

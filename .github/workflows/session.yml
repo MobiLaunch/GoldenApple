@@ -3,9 +3,9 @@ name: Session
 # The real shell (qs -c golden-gate) in a clean Arch account under headless
 # Sway (tests/session/run.sh; T-0.2): 20 cold starts that must not crash,
 # every surface in light and dark as screenshots, the lock screen killed while
-# locked 5 times, and no AirDrop listener with receiving off. The screenshots and logs are in the session artifact, and the
-# contact sheet in the job summary. The ISO's boot test runs Hyprland itself
-# in QEMU.
+# locked 5 times, and no AirDrop listener with receiving off. The screenshots
+# and logs are in the session artifact, and the contact sheet in the job
+# summary. The ISO's boot test runs Hyprland itself in QEMU.
 on:
   push:
     paths:
