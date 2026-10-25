@@ -441,10 +441,11 @@ same fields, more briefly, and should be expanded when their milestone starts.
     the default picture), each a reviewed exception. Screenshots unchanged.
   - **`calculator.qml` and `CalcKey.qml`.** The Mac's Calculator is graphite in Light Mode
     too, so its palette is the app's own, in `apps/calculator/theme/CalcColors.qml`; the lint
-    treats an app's `theme/` folder as it does `apps/lib/theme`. Menus take the system
-    menu's radii (14, items 8), the pills half their height, and all nine handlers, the keys
-    and bits included, have a role, a name and `onPressAction`. Screenshots in every mode
-    are pixel-identical but for the unit buttons' corners (7 → 6).
+    treats an app's `theme/` folder as it does `apps/lib/theme`. Its two hand-drawn menus
+    (the mode menu, the unit lists) are now the system's `PopupMenu`, the pills take half
+    their height, and every handler, the keys and bits included, has a role, a name and
+    `onPressAction`. Screenshots in every mode are pixel-identical but for the unit
+    buttons' corners (7 → 6); the menus look like every other menu, dark as the window.
 
 ## M3: Desktop refinement
 

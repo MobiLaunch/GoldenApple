@@ -38,9 +38,10 @@ ShellRoot {
             },
             Item { width: 29; height: 1 },
             ToolbarButton {
+                id: modeButton
                 round: true; symbol: "calculator"; tone: "white"
-                glassColor: CalcColors.chrome; checked: modeMenu.visible
-                onClicked: modeMenu.visible = !modeMenu.visible
+                glassColor: CalcColors.chrome; checked: calcMenu.visible && calcMenu.returnFocus === modeButton
+                onClicked: calc.openModeMenu()
             }
         ]
 
@@ -59,7 +60,7 @@ ShellRoot {
                 delegate: Item {
                     required property var modelData
                     width: ListView.view.width; height: 46
-                    Rectangle { anchors.fill: parent; radius: Theme.radiusMenuItem; color: CalcColors.label; opacity: hover.hovered ? 0.08 : 0 }
+                    Rectangle { anchors.fill: parent; radius: Theme.radius.field; color: CalcColors.label; opacity: hover.hovered ? 0.08 : 0 }
                     Column {
                         anchors { right: parent.right; rightMargin: 10; verticalCenter: parent.verticalCenter }
                         width: parent.width - 20
@@ -328,7 +329,7 @@ ShellRoot {
                         id: fromButton
                         visible: calc.converting
                         anchors { left: parent.left; verticalCenter: parent.verticalCenter }
-                        popupParent: calc
+                        menu: calcMenu
                         units: Engine.units(calc.category)
                         unit: calc.fromUnit
                         onChosen: (u) => calc.fromUnit = u
@@ -355,7 +356,7 @@ ShellRoot {
                         anchors { left: parent.left; verticalCenter: parent.verticalCenter }
                         spacing: 4
                         UnitButton {
-                            popupParent: calc
+                            menu: calcMenu
                             units: Engine.categories()
                             unit: calc.category
                             onChosen: (c) => calc.setCategory(c)
@@ -373,7 +374,7 @@ ShellRoot {
                         }
                         UnitButton {
                             id: toButton
-                            popupParent: calc
+                            menu: calcMenu
                             units: Engine.units(calc.category)
                             unit: calc.toUnit
                             onChosen: (u) => calc.toUnit = u
@@ -570,75 +571,19 @@ ShellRoot {
                 }
             }
 
-            // The mode menu under the calculator button (View menu on the Mac).
-            MouseArea {
-                anchors.fill: parent
-                visible: modeMenu.visible
-                Accessible.ignored: true   // the click-away; the menu's items are what it offers
-                onPressed: modeMenu.visible = false
-            }
-            Rectangle {
-                id: modeMenu
-                visible: false
-                anchors { right: parent.right; rightMargin: 8; top: parent.top; topMargin: -4 }
-                width: 196; height: menuCol.implicitHeight + 10
-                radius: Theme.radius.menu
-                color: CalcColors.menu
-                border { width: 0.5; color: CalcColors.hairline }
-                Column {
-                    id: menuCol
-                    anchors { fill: parent; margins: 5 }
-                    Repeater {
-                        model: [
-                            { t: "Basic", on: calc.mode === "basic", act: () => calc.mode = "basic" },
-                            { t: "Scientific", on: calc.mode === "scientific", act: () => calc.mode = "scientific" },
-                            { t: "Programmer", on: calc.mode === "programmer", act: () => calc.mode = "programmer" },
-                            { t: "-" },
-                            { t: "Convert", on: calc.convert, off: calc.mode === "programmer", act: () => calc.convert = !calc.convert },
-                            { t: "Thousands Separators", on: calc.separators, act: () => calc.separators = !calc.separators },
-                        ]
-                        delegate: Item {
-                            required property var modelData
-                            width: menuCol.width
-                            height: modelData.t === "-" ? 11 : 24
-                            Rectangle {
-                                visible: modelData.t === "-"
-                                anchors.centerIn: parent
-                                width: parent.width - 20; height: 1
-                                color: CalcColors.separator
-                            }
-                            Rectangle {
-                                anchors.fill: parent
-                                radius: Theme.radiusMenuItem
-                                visible: modelData.t !== "-" && !modelData.off && rowHover.hovered
-                                color: Theme.accent
-                            }
-                            Text {
-                                visible: modelData.t !== "-" && !!modelData.on
-                                x: 8; anchors.verticalCenter: parent.verticalCenter
-                                text: "✓"; color: CalcColors.label
-                                font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize; weight: Font.DemiBold }
-                            }
-                            Text {
-                                visible: modelData.t !== "-"
-                                x: 24; anchors.verticalCenter: parent.verticalCenter
-                                text: modelData.t
-                                color: modelData.off ? CalcColors.disabledLabel : CalcColors.label
-                                font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize }
-                            }
-                            HoverHandler { id: rowHover }
-                            Accessible.role: modelData.t === "-" ? Accessible.Separator : Accessible.MenuItem
-                            Accessible.name: modelData.t
-                            Accessible.checkable: modelData.on !== undefined
-                            Accessible.checked: !!modelData.on
-                            Accessible.onPressAction: if (modelData.t !== "-" && !modelData.off) { modelData.act(); modeMenu.visible = false }
-                            TapHandler {
-                                enabled: modelData.t !== "-" && !modelData.off
-                                onTapped: { modelData.act(); modeMenu.visible = false }
-                            }
-                        }
-                    }
-                }
+            // The mode menu under the calculator button (View menu on the Mac),
+            // and the unit buttons' menus: the system's menu.
+            PopupMenu { id: calcMenu; parent: win.overlay }
+            function openModeMenu() {
+                if (calcMenu.visible) { calcMenu.close(); return }
+                calcMenu.popup(modeButton, modeButton.width - calcMenu.menuWidth, modeButton.height + 6, [
+                    { text: "Basic", checked: calc.mode === "basic", action: () => calc.mode = "basic" },
+                    { text: "Scientific", checked: calc.mode === "scientific", action: () => calc.mode = "scientific" },
+                    { text: "Programmer", checked: calc.mode === "programmer", action: () => calc.mode = "programmer" },
+                    "-",
+                    { text: "Convert", checked: calc.convert, enabled: calc.mode !== "programmer", action: () => calc.convert = !calc.convert },
+                    { text: "Thousands Separators", checked: calc.separators, action: () => calc.separators = !calc.separators },
+                ])
             }
         }
     }
@@ -646,18 +591,19 @@ ShellRoot {
     // A unit (or category) with a menu of the others: tap to choose.
     component UnitButton: Rectangle {
         id: ub
-        property Item popupParent: null       // where the menu opens, above the keys
+        property Item menu: null              // the window's PopupMenu
         property var units: []
         property string unit: ""
         property bool muted: false
         signal chosen(string unit)
+        readonly property bool open: !!menu && menu.visible && menu.returnFocus === ub
         width: Math.min(ubText.implicitWidth + 22, 120)
         height: 24; radius: Theme.radius.control
         anchors.verticalCenter: parent ? parent.verticalCenter : undefined
         Accessible.role: Accessible.ComboBox
         Accessible.name: ub.unit
         Accessible.onPressAction: toggle()
-        color: ubTap.containsMouse || list.visible ? CalcColors.fillHover : muted ? CalcColors.controlMuted : CalcColors.control
+        color: ubTap.containsMouse || ub.open ? CalcColors.fillHover : muted ? CalcColors.controlMuted : CalcColors.control
         Text {
             id: ubText
             anchors { left: parent.left; leftMargin: 8; right: parent.right; rightMargin: 14; verticalCenter: parent.verticalCenter }
@@ -672,50 +618,10 @@ ShellRoot {
             onClicked: ub.toggle()
         }
         function toggle() {
-            if (!list.visible && ub.popupParent) {
-                const p = ub.mapToItem(ub.popupParent, 0, ub.height + 4)
-                list.x = Math.min(p.x, ub.popupParent.width - list.width - 6); list.y = p.y
-            }
-            list.visible = !list.visible
-        }
-        // The choices, in a dark menu below.
-        Rectangle {
-            id: list
-            visible: false
-            parent: ub.popupParent ?? ub
-            z: 100
-            width: 170; height: Math.min(260, col.implicitHeight + 10)
-            radius: Theme.radius.menu
-            color: CalcColors.menu
-            border { width: 0.5; color: CalcColors.hairline }
-            Flickable {
-                anchors { fill: parent; margins: 5 }
-                contentHeight: col.implicitHeight
-                clip: true
-                Column {
-                    id: col
-                    width: parent.width
-                    Repeater {
-                        model: ub.units
-                        Rectangle {
-                            required property string modelData
-                            width: col.width; height: 22; radius: Theme.radiusMenuItem
-                            color: rowTap.containsMouse ? Theme.accent : "transparent"
-                            Text {
-                                x: 8; anchors.verticalCenter: parent.verticalCenter
-                                text: (parent.modelData === ub.unit ? "✓ " : "   ") + parent.modelData
-                                color: CalcColors.label
-                                font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
-                            }
-                            Accessible.role: Accessible.MenuItem
-                            Accessible.name: modelData
-                            Accessible.checked: modelData === ub.unit
-                            Accessible.onPressAction: { ub.chosen(modelData); list.visible = false }
-                            MouseArea { id: rowTap; anchors.fill: parent; hoverEnabled: true; onClicked: { ub.chosen(parent.modelData); list.visible = false } }
-                        }
-                    }
-                }
-            }
+            if (!ub.menu) return
+            if (ub.open) { ub.menu.close(); return }
+            ub.menu.popup(ub, 0, ub.height + 4, ub.units.map((u) => ({ text: u, checked: u === ub.unit, action: () => ub.chosen(u) })),
+                          ub.units.indexOf(ub.unit))
         }
     }
 }
