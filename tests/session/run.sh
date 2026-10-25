@@ -260,14 +260,15 @@ shot dark-lock-restored; shots+=(dark-lock-restored)
 # password keeps it locked; the account's own unlocks it and clears the marker.
 signed_in=0
 if [[ -n ${GG_TEST_PASSWORD:-} && $(lock_state) == true ]]; then
-  wtype -k shift; sleep 1                     # wakes it: the field appears
-  wtype "not-$GG_TEST_PASSWORD"; wtype -k Return; sleep 5
+  type() { wtype "$@" || fail "wtype couldn't type on the lock screen"; }
+  type -M shift -m shift; sleep 1             # wakes it: the field appears
+  type "not-$GG_TEST_PASSWORD"; type -k Return; sleep 5
   if [[ $(lock_state) == true && -e $XDG_RUNTIME_DIR/citronos-locked ]]; then
     say "a wrong password: still locked"
   else
     fail "a wrong password unlocked the screen"
   fi
-  wtype "$GG_TEST_PASSWORD"; wtype -k Return
+  type "$GG_TEST_PASSWORD"; type -k Return
   for _ in $(seq 40); do [[ $(lock_state) == false ]] && break; sleep 0.25; done
   sleep 1
   if [[ $(lock_state) == false && ! -e $XDG_RUNTIME_DIR/citronos-locked ]]; then
