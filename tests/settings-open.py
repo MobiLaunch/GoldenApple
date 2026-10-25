@@ -13,7 +13,7 @@ import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
 src = (ROOT / "apps/settings.qml").read_text()
-ids = [p for p, _ in re.findall(r'\[\d, "([a-z]+)", "[^"]+", "[^"]+", "#[0-9a-f]{6}", "([A-Za-z]+)"', src)]
+ids = [p for p, _ in re.findall(r'\[\d, "([a-z]+)", "[^"]+", "[^"]+", PaneTints\.[a-z]+, "([A-Za-z]+)"', src)]
 ids += re.findall(r'^\s+([a-z]+): \{ title:', src, re.M)
 
 with tempfile.TemporaryDirectory() as t:

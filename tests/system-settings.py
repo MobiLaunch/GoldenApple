@@ -58,7 +58,7 @@ class LockScreen(unittest.TestCase):
 class Panes(unittest.TestCase):
     def setUp(self):
         src = (ROOT / "apps/settings.qml").read_text()
-        self.panes = re.findall(r'\[\d, "([a-z]+)", "[^"]+", "[^"]+", "#[0-9a-f]{6}", "([A-Za-z]+)"', src)
+        self.panes = re.findall(r'\[\d, "([a-z]+)", "[^"]+", "[^"]+", PaneTints\.[a-z]+, "([A-Za-z]+)"', src)
         self.subpages = re.findall(r'^\s+([a-z]+): \{ title:', src, re.M)
 
     def test_every_pane_has_a_file(self):

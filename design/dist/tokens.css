@@ -71,6 +71,8 @@
   --warning: #ff9500;
   --overlay-scrim: rgba(0, 0, 0, 0.20);
   --shadow: rgba(0, 0, 0, 0.18);
+  --unemphasized-selection: rgba(0, 0, 0, 0.08);
+  --selected-text: #ffffff;
   --mat-glass-clear-filter: blur(24px) saturate(1.75) brightness(1.03);
   --mat-glass-clear-tint: rgba(255, 255, 255, 0.36);
   --mat-glass-clear-tint-dark: rgba(28, 28, 32, 0.34);
@@ -167,6 +169,8 @@
   --warning: #ff9f0a;
   --overlay-scrim: rgba(0, 0, 0, 0.40);
   --shadow: rgba(0, 0, 0, 0.40);
+  --unemphasized-selection: rgba(255, 255, 255, 0.15);
+  --selected-text: #ffffff;
   --mat-glass-clear-tint: rgba(28, 28, 32, 0.34);
   --mat-glass-regular-tint: rgba(32, 32, 36, 0.68);
   --mat-menu-tint: rgba(38, 38, 42, 0.78);

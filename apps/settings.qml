@@ -17,6 +17,7 @@ import QtQuick
 import "lib"
 import "lib/theme"
 import "settings"
+import "settings/theme"
 
 ShellRoot {
     AppWindow {
@@ -87,7 +88,7 @@ ShellRoot {
                     if (top < contentY) contentY = Math.max(0, top - 8)
                     else if (top + row.height > contentY + height) contentY = Math.min(contentHeight - height, top + row.height - height + 8)
                 }
-                Behavior on contentY { enabled: !Theme.reduceMotion; NumberAnimation { duration: 190; easing.type: Easing.OutCubic } }
+                Behavior on contentY { enabled: !Theme.reduceMotion; NumberAnimation { duration: Theme.motion.tap.duration; easing.type: Easing.OutCubic } }
                 contentHeight: nav.height + 12
                 clip: true
                 boundsBehavior: Flickable.StopAtBounds
@@ -111,10 +112,10 @@ ShellRoot {
                         text: "Finish Setting Up"
                         badge: String((sys.region.deferred ?? []).length)
                         selected: app.current === "finishsetup"
-                        selectedFill: win.active ? Theme.accent : (Theme.dark ? "#26ffffff" : "#14000000")
-                        selectedTextColor: win.active ? "#ffffff" : Theme.label
+                        selectedFill: win.active ? Theme.accent : Theme.unemphasizedSelection
+                        selectedTextColor: win.active ? Theme.selectedText : Theme.label
                         leadingSize: 22
-                        leading: Component { PaneIcon { symbol: "gear"; tint: "#ff9f0a"; size: 22 } }
+                        leading: Component { PaneIcon { symbol: "gear"; tint: PaneTints.orange; size: 22 } }
                         onClicked: app.open("finishsetup")
                     }
                     Repeater {
@@ -133,8 +134,8 @@ ShellRoot {
                                     height: 30
                                     text: modelData.title
                                     selected: currentPane
-                                    selectedFill: win.active ? Theme.accent : (Theme.dark ? "#26ffffff" : "#14000000")
-                                    selectedTextColor: win.active ? "#ffffff" : Theme.label
+                                    selectedFill: win.active ? Theme.accent : Theme.unemphasizedSelection
+                                    selectedTextColor: win.active ? Theme.selectedText : Theme.label
                                     leadingSize: 22
                                     leading: Component {
                                         PaneIcon {
@@ -163,43 +164,43 @@ ShellRoot {
 
             readonly property var panes: [
                 // group, id, title, symbol, colour, file, words to search by
-                [1, "wifi", "Wi-Fi", "wifi", "#0a84ff", "WifiPane", "wireless network internet join"],
-                [1, "bluetooth", "Bluetooth", "bluetooth", "#0a84ff", "BluetoothPane", "devices headphones keyboard mouse pair"],
-                [1, "airpods", "AirPods", "headphones", "#0a84ff", "CitronPodsPane", "CitronPods AirPods battery case noise cancellation anc transparency adaptive conversation awareness ear detection"],
-                [1, "network", "Network", "globe", "#0a84ff", "NetworkPane", "ethernet ip address vpn"],
-                [1, "battery", "Battery", "power", "#34c759", "BatteryPane", "energy power charge low power mode"],
-                [2, "general", "General", "gear", "#8e8e93", "GeneralPane", "about software update storage date time language region"],
-                [2, "intelligence", "Citron Intelligence", "wand", "#9564e8", "IntelligencePane", "ai assistant gemini api key writing tools images photos"],
-                [2, "accessibility", "Accessibility", "person", "#0a84ff", "AccessibilityPane", "reduce motion transparency text size"],
-                [2, "appearance", "Appearance", "contrast", "#1d1d1f", "AppearancePane", "dark mode light auto accent colour color liquid glass scroll bars"],
-                [2, "controlcenter", "Control Center", "control-center", "#8e8e93", "ControlCenterPane", "menu bar items battery percentage bluetooth sound focus now playing"],
-                [2, "dock", "Desktop & Dock", "apps", "#487bd9", "DockPane", "dock size pin reorder recents show dock snapping windows edges resize attraction"],
-                [2, "menubar", "Menu Bar", "panel-bottom", "#1d1d1f", "MenuBarPane", "menu bar background clock date seconds 24 hour"],
-                [2, "displays", "Displays", "sun-max", "#0a84ff", "DisplaysPane", "resolution scale brightness night shift monitor"],
-                [2, "spotlight", "Spotlight", "search", "#8e8e93", "SpotlightPane", "search results categories files web calculator"],
-                [2, "wallpaper", "Wallpaper", "wallpaper", "#30b0c7", "WallpaperPane", "background desktop picture"],
-                [3, "notifications", "Notifications", "bell", "#ff3b30", "NotificationsPane", "alerts banners badges sounds previews apps"],
-                [3, "focus", "Focus", "moon", "#5e5ce6", "FocusPane", "do not disturb notifications duration schedule allowed apps alarms"],
-                [3, "sound", "Sound", "speaker-wave", "#ff2d55", "SoundPane", "volume output input speakers microphone mute"],
-                [4, "lockscreen", "Lock Screen", "lock", "#1d1d1f", "LockScreenPane", "screen saver display off sleep require password lock message idle"],
-                [4, "touchid", "Touch ID & Password", "touchid", "#ff375f", "TouchIdPane", "fingerprint finger reader biometric unlock sudo fprintd"],
-                [4, "privacy", "Privacy & Security", "shield", "#0a84ff", "PrivacyPane", "location analytics crash diagnostics"],
-                [4, "users", "Users & Groups", "people", "#0a84ff", "UsersPane", "account password admin"],
-                [5, "keyboard", "Keyboard", "keyboard", "#8e8e93", "KeyboardPane", "key repeat layout input source"],
-                [5, "trackpad", "Trackpad & Mouse", "rectangle-fill", "#8e8e93", "TrackpadPane", "tracking speed natural scrolling tap to click two finger click scroll drag typing sensitivity"],
+                [1, "wifi", "Wi-Fi", "wifi", PaneTints.blue, "WifiPane", "wireless network internet join"],
+                [1, "bluetooth", "Bluetooth", "bluetooth", PaneTints.blue, "BluetoothPane", "devices headphones keyboard mouse pair"],
+                [1, "airpods", "AirPods", "headphones", PaneTints.blue, "CitronPodsPane", "CitronPods AirPods battery case noise cancellation anc transparency adaptive conversation awareness ear detection"],
+                [1, "network", "Network", "globe", PaneTints.blue, "NetworkPane", "ethernet ip address vpn"],
+                [1, "battery", "Battery", "power", PaneTints.green, "BatteryPane", "energy power charge low power mode"],
+                [2, "general", "General", "gear", PaneTints.gray, "GeneralPane", "about software update storage date time language region"],
+                [2, "intelligence", "Citron Intelligence", "wand", PaneTints.purple, "IntelligencePane", "ai assistant gemini api key writing tools images photos"],
+                [2, "accessibility", "Accessibility", "person", PaneTints.blue, "AccessibilityPane", "reduce motion transparency text size"],
+                [2, "appearance", "Appearance", "contrast", PaneTints.graphite, "AppearancePane", "dark mode light auto accent colour color liquid glass scroll bars"],
+                [2, "controlcenter", "Control Center", "control-center", PaneTints.gray, "ControlCenterPane", "menu bar items battery percentage bluetooth sound focus now playing"],
+                [2, "dock", "Desktop & Dock", "apps", PaneTints.slate, "DockPane", "dock size pin reorder recents show dock snapping windows edges resize attraction"],
+                [2, "menubar", "Menu Bar", "panel-bottom", PaneTints.graphite, "MenuBarPane", "menu bar background clock date seconds 24 hour"],
+                [2, "displays", "Displays", "sun-max", PaneTints.blue, "DisplaysPane", "resolution scale brightness night shift monitor"],
+                [2, "spotlight", "Spotlight", "search", PaneTints.gray, "SpotlightPane", "search results categories files web calculator"],
+                [2, "wallpaper", "Wallpaper", "wallpaper", PaneTints.teal, "WallpaperPane", "background desktop picture"],
+                [3, "notifications", "Notifications", "bell", PaneTints.red, "NotificationsPane", "alerts banners badges sounds previews apps"],
+                [3, "focus", "Focus", "moon", PaneTints.indigo, "FocusPane", "do not disturb notifications duration schedule allowed apps alarms"],
+                [3, "sound", "Sound", "speaker-wave", PaneTints.pink, "SoundPane", "volume output input speakers microphone mute"],
+                [4, "lockscreen", "Lock Screen", "lock", PaneTints.graphite, "LockScreenPane", "screen saver display off sleep require password lock message idle"],
+                [4, "touchid", "Touch ID & Password", "touchid", PaneTints.rose, "TouchIdPane", "fingerprint finger reader biometric unlock sudo fprintd"],
+                [4, "privacy", "Privacy & Security", "shield", PaneTints.blue, "PrivacyPane", "location analytics crash diagnostics"],
+                [4, "users", "Users & Groups", "people", PaneTints.blue, "UsersPane", "account password admin"],
+                [5, "keyboard", "Keyboard", "keyboard", PaneTints.gray, "KeyboardPane", "key repeat layout input source"],
+                [5, "trackpad", "Trackpad & Mouse", "rectangle-fill", PaneTints.gray, "TrackpadPane", "tracking speed natural scrolling tap to click two finger click scroll drag typing sensitivity"],
             ].map((p) => ({ group: p[0], id: p[1], title: p[2], symbol: p[3], tint: p[4], file: p[5], words: p[6] }))
             // Sub-pages of General: [id, title, file]
             readonly property var subpages: ({
-                about: { title: "About", file: "AboutPane", parent: "general", symbol: "info", tint: "#8e8e93", words: "system version hardware memory graphics kernel computer" },
-                update: { title: "Software Update", file: "UpdatePane", parent: "general", symbol: "arrow-clockwise", tint: "#8e8e93", words: "update upgrade packages arch software current" },
-                storage: { title: "Storage", file: "StoragePane", parent: "general", symbol: "drive", tint: "#8e8e93", words: "disk drive space capacity available used" },
-                datetime: { title: "Date & Time", file: "DateTimePane", parent: "general", symbol: "clock", tint: "#0a84ff", words: "date time timezone clock automatic ntp 24 hour" },
-                finishsetup: { title: "Finish Setting Up", file: "FinishSetupPane", symbol: "gear", tint: "#ff9f0a", words: "setup deferred time zone formats location finish later" },
-                dockapps: { title: "Add to Dock", file: "DockAppsPane", parent: "dock", symbol: "apps", tint: "#487bd9", words: "applications install launcher add dock pin reorder" },
-                defaultapps: { title: "Default Applications", file: "DefaultAppsPane", parent: "general", symbol: "apps", tint: "#497bd9", words: "default browser email pictures text documents zip archive handlers xdg mime" },
-                loginitems: { title: "Login Items", file: "LoginItemsPane", parent: "general", symbol: "apps", tint: "#858890", words: "startup automatic login launch applications start sign in" },
-                airplay: { title: "AirPlay Receiver", file: "AirPlayPane", parent: "general", symbol: "airplay", tint: "#0a84ff", words: "airplay receiver screen mirroring iphone ipad mac mirror code pin uxplay" },
-                language: { title: "Language & Region", file: "LanguagePane", parent: "general", symbol: "globe", tint: "#0a84ff", words: "language locale region measurement format" },
+                about: { title: "About", file: "AboutPane", parent: "general", symbol: "info", tint: PaneTints.gray, words: "system version hardware memory graphics kernel computer" },
+                update: { title: "Software Update", file: "UpdatePane", parent: "general", symbol: "arrow-clockwise", tint: PaneTints.gray, words: "update upgrade packages arch software current" },
+                storage: { title: "Storage", file: "StoragePane", parent: "general", symbol: "drive", tint: PaneTints.gray, words: "disk drive space capacity available used" },
+                datetime: { title: "Date & Time", file: "DateTimePane", parent: "general", symbol: "clock", tint: PaneTints.blue, words: "date time timezone clock automatic ntp 24 hour" },
+                finishsetup: { title: "Finish Setting Up", file: "FinishSetupPane", symbol: "gear", tint: PaneTints.orange, words: "setup deferred time zone formats location finish later" },
+                dockapps: { title: "Add to Dock", file: "DockAppsPane", parent: "dock", symbol: "apps", tint: PaneTints.slate, words: "applications install launcher add dock pin reorder" },
+                defaultapps: { title: "Default Applications", file: "DefaultAppsPane", parent: "general", symbol: "apps", tint: PaneTints.slate, words: "default browser email pictures text documents zip archive handlers xdg mime" },
+                loginitems: { title: "Login Items", file: "LoginItemsPane", parent: "general", symbol: "apps", tint: PaneTints.steel, words: "startup automatic login launch applications start sign in" },
+                airplay: { title: "AirPlay Receiver", file: "AirPlayPane", parent: "general", symbol: "airplay", tint: PaneTints.blue, words: "airplay receiver screen mirroring iphone ipad mac mirror code pin uxplay" },
+                language: { title: "Language & Region", file: "LanguagePane", parent: "general", symbol: "globe", tint: PaneTints.blue, words: "language locale region measurement format" },
             })
             readonly property var groups: [1, 2, 3, 4, 5].map((g) => panes.filter((p) => p.group === g))
             function paneOf(id) { return subpages[id]?.parent ?? id }
@@ -305,13 +306,13 @@ ShellRoot {
                 id: swap
                 property bool forward: true
                 ParallelAnimation {
-                    NumberAnimation { target: loader; property: "opacity"; to: 0; duration: 90 }
-                    NumberAnimation { target: loader; property: "x"; to: swap.forward ? -24 : 24; duration: 90; easing.type: Easing.InQuad }
+                    NumberAnimation { target: loader; property: "opacity"; to: 0; duration: Theme.motion.hover }
+                    NumberAnimation { target: loader; property: "x"; to: swap.forward ? -24 : 24; duration: Theme.motion.hover; easing.type: Easing.InQuad }
                 }
                 ScriptAction { script: { loader.load(); loader.x = swap.forward ? 24 : -24 } }
                 ParallelAnimation {
-                    NumberAnimation { target: loader; property: "opacity"; to: 1; duration: 155 }
-                    NumberAnimation { target: loader; property: "x"; to: 0; duration: 225; easing.type: Easing.OutCubic }
+                    NumberAnimation { target: loader; property: "opacity"; to: 1; duration: Theme.motion.fade }
+                    NumberAnimation { target: loader; property: "x"; to: 0; duration: Theme.motion.tap.duration; easing.type: Easing.OutCubic }
                 }
             }
             // Scroll edge under the toolbar.
@@ -319,7 +320,7 @@ ShellRoot {
                 width: parent.width; height: 14
                 readonly property var flick: loader.item
                 opacity: flick && flick.contentY > flick.originY - flick.topMargin + 2 ? 1 : 0
-                Behavior on opacity { NumberAnimation { duration: 130 } }
+                Behavior on opacity { NumberAnimation { duration: Theme.motion.menu } }
                 gradient: Gradient {
                     GradientStop { position: 0; color: win.background }
                     GradientStop { position: 0.6; color: Qt.rgba(win.background.r, win.background.g, win.background.b, 0.8) }
@@ -336,22 +337,23 @@ ShellRoot {
             anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: 18 }
             width: Math.min(560, parent.width - 40)
             height: writeErrorText.implicitHeight + 24
-            radius: 16
+            radius: Theme.radius.panel
             z: 50
             Text {
                 id: writeErrorText
                 anchors { left: parent.left; right: dismissWriteError.left; margins: 14; verticalCenter: parent.verticalCenter }
                 text: sys.writeError
                 wrapMode: Text.WordWrap
-                color: "#ff453a"
+                color: Theme.destructive
                 font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
             }
             Button { id: dismissWriteError; text: "OK"; anchors { right: parent.right; rightMargin: 12; verticalCenter: parent.verticalCenter } onClicked: sys.writeError = "" }
         }
 
         // Search suggestions, under the field.
-        Rectangle {
+        Glass {
             id: suggestions
+            role: "menu"
             objectName: "settingsSuggestions"
             parent: win.overlay
             readonly property bool expanded: app.matches.length > 0 && search.input.activeFocus
@@ -361,18 +363,15 @@ ShellRoot {
             scale: expanded || Theme.reduceMotion ? 1 : 0.984
             transformOrigin: Item.TopLeft
             Behavior on opacity {
-                NumberAnimation { duration: Theme.reduceMotion ? 0 : (suggestions.expanded ? 145 : 100); easing.type: Easing.OutCubic }
+                NumberAnimation { duration: Theme.reduceMotion ? 0 : (suggestions.expanded ? Theme.motion.fade : Theme.motion.hover); easing.type: Easing.OutCubic }
             }
             Behavior on scale {
                 enabled: !Theme.reduceMotion
-                NumberAnimation { duration: 160; easing.type: Easing.OutCubic }
+                NumberAnimation { duration: Theme.motion.menu; easing.type: Easing.OutCubic }
             }
             x: 8 + 6; y: win.toolbarHeight + 32
             width: 228; height: sugCol.height + 34
-            radius: 12
-            color: Theme.dark ? "#f5323236" : "#faf6f6f8"
-            border { width: 0.5; color: Theme.dark ? "#33ffffff" : "#26000000" }
-            Rectangle { z: -1; anchors { fill: parent; topMargin: 4; bottomMargin: -8 } radius: parent.radius + 2; color: "#1f000000" }
+            radius: Theme.radius.menu
             Text {
                 x: 12; y: 8
                 text: "Suggestions"
@@ -391,24 +390,27 @@ ShellRoot {
                         width: sugCol.width; height: 30
                         Rectangle {
                             anchors.fill: parent
-                            radius: 7
+                            radius: Theme.radius.field
                             color: Theme.accent
                             opacity: sh.hovered || parent.selected ? 1 : 0
                             Behavior on opacity {
-                                NumberAnimation { duration: Theme.reduceMotion ? 0 : 90; easing.type: Easing.OutCubic }
+                                NumberAnimation { duration: Theme.reduceMotion ? 0 : Theme.motion.hover; easing.type: Easing.OutCubic }
                             }
                         }
                         PaneIcon { x: 6; anchors.verticalCenter: parent.verticalCenter; symbol: modelData.symbol; tint: modelData.tint }
                         Text {
                             x: 36; anchors.verticalCenter: parent.verticalCenter
                             text: modelData.title
-                            color: sh.hovered || parent.selected ? "#ffffff" : Theme.label
+                            color: sh.hovered || parent.selected ? Theme.selectedText : Theme.label
                             Behavior on color {
-                                ColorAnimation { duration: Theme.reduceMotion ? 0 : 90 }
+                                ColorAnimation { duration: Theme.reduceMotion ? 0 : Theme.motion.hover }
                             }
                             font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize }
                         }
                         HoverHandler { id: sh }
+                        Accessible.role: Accessible.MenuItem
+                        Accessible.name: modelData.title
+                        Accessible.onPressAction: { app.selectedMatch = index; app.acceptMatch() }
                         TapHandler { onTapped: { app.selectedMatch = index; app.acceptMatch() } }
                     }
                 }

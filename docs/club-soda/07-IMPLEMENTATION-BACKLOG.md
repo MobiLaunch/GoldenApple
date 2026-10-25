@@ -446,6 +446,13 @@ same fields, more briefly, and should be expanded when their milestone starts.
     their height, and every handler, the keys and bits included, has a role, a name and
     `onPressAction`. Screenshots in every mode are pixel-identical but for the unit
     buttons' corners (7 → 6); the menus look like every other menu, dark as the window.
+  - **`settings.qml`.** Two colour roles join the tokens: `unemphasizedSelection` (a
+    selected row in an inactive window) and `selectedText` (on the accent). The pane
+    icons' tile colours are Settings' own, the same in both appearances, in
+    `apps/settings/theme/PaneTints.qml`. The search suggestions are menu glass
+    (`Glass { role: "menu" }`) instead of a near-opaque box with a drawn shadow, so the
+    sidebar shows through them a little more, as through every menu. Durations are
+    `Theme.motion`. All six pane shots, light and dark, are pixel-identical.
 
 ## M3: Desktop refinement
 

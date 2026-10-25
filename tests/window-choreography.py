@@ -273,7 +273,7 @@ require("apps/settings.qml", [
     "readonly property bool expanded: app.matches.length > 0 && search.input.activeFocus",
     "enabled: expanded",
     "scale: expanded || Theme.reduceMotion ? 1 : 0.984",
-    "NumberAnimation { duration: Theme.reduceMotion ? 0 : (suggestions.expanded ? 145 : 100);",
+    "NumberAnimation { duration: Theme.reduceMotion ? 0 : (suggestions.expanded ? Theme.motion.fade : Theme.motion.hover);",
 ])
 require("apps/passwords/helper.py", [
     "def code_remaining(at: float, period: int) -> int:",

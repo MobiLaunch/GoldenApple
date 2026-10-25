@@ -73,6 +73,8 @@ QtObject {
     readonly property color warning: dark ? "#ff9f0a" : "#ff9500"
     readonly property color overlayScrim: dark ? "#66000000" : "#33000000"
     readonly property color shadow: dark ? "#66000000" : "#2e000000"
+    readonly property color unemphasizedSelection: dark ? "#26ffffff" : "#14000000"
+    readonly property color selectedText: dark ? "#ffffff" : "#ffffff"
     readonly property QtObject glassClear: QtObject {
         readonly property real blur: 24
         readonly property color tint: dark ? "#571c1c20" : "#5cffffff"
