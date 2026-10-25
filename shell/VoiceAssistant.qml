@@ -14,6 +14,7 @@ import "ui/intelligence" as AI
 import "ui/theme"
 import "components"
 import "ui" as Shared
+import "ui/intelligence/palette"
 
 PanelWindow {
     id: citron
@@ -457,7 +458,7 @@ PanelWindow {
                 scale: 0.92 + 0.08 * citron.shown
                 Behavior on scale {
                     enabled: !Theme.reduceMotion
-                    NumberAnimation { duration: 280; easing.type: Easing.OutCubic }
+                    NumberAnimation { duration: Theme.motion.tap.duration; easing.type: Easing.OutCubic }
                 }
                 }
             }
@@ -470,7 +471,7 @@ PanelWindow {
                     : citron.phase === "speaking" ? "Speaking…"
                     : citron.phase === "thinking" ? "Thinking…"
                     : "Listening…"
-                color: "#e7ebff"
+                color: Theme.vibrant.label
                 font { family: Theme.fontUi; pixelSize: Theme.fs(16); weight: Font.DemiBold }
             }
             Text {
@@ -483,7 +484,7 @@ PanelWindow {
                 text: citron.errorText || citron.citronSaid ||
                     (citron.youSaid ? "“" + citron.youSaid + "”" : "")
                 visible: text.length > 0
-                color: citron.phase === "error" ? "#ffe3e1" : "#d7dbf3"
+                color: citron.phase === "error" ? CitronColors.error : Theme.vibrant.secondaryLabel
                 font { family: Theme.fontUi; pixelSize: Theme.fs(14) }
             }
         }
@@ -507,7 +508,7 @@ PanelWindow {
                 outputLevel: citron.outputLevel
                 running: citron.visible && !citron.voiceMode
                 scale: 0.90 + 0.10 * citron.shown
-                Behavior on scale { enabled: !Theme.reduceMotion; NumberAnimation { duration: 270; easing.type: Easing.OutBack } }
+                Behavior on scale { enabled: !Theme.reduceMotion; NumberAnimation { duration: Theme.motion.tap.duration; easing.type: Easing.OutBack } }
             }
 
             Column {
@@ -522,10 +523,10 @@ PanelWindow {
                          citron.phase === "connecting" ? "Connecting voice…" :
                          citron.micMuted ? "Microphone muted" : citron.phase === "speaking" ? "Speaking…" : "Listening…")
                         : citron.aiServiceBusy ? "Thinking…" : citron.toolTitle
-                    color: "#f9fafc"
+                    color: Theme.vibrant.label
                     font { family: Theme.fontDisplay; pixelSize: Theme.font.title2.pixelSize; weight: Font.DemiBold }
                     layer.enabled: GraphicsInfo.api !== GraphicsInfo.Software
-                    layer.effect: MultiEffect { shadowEnabled: true; shadowColor: "#88000000"; shadowBlur: 0.9; shadowVerticalOffset: 2 }
+                    layer.effect: MultiEffect { shadowEnabled: true; shadowColor: Theme.vibrant.shadow; shadowBlur: 0.9; shadowVerticalOffset: 2 }
                 }
                 Text {
                     width: parent.width - 24
@@ -536,10 +537,10 @@ PanelWindow {
                     wrapMode: Text.WordWrap
                     text: citron.errorText || citron.citronSaid || (citron.youSaid ? "“" + citron.youSaid + "”" : "")
                     visible: !!text
-                    color: citron.phase === "error" ? "#ffd0ce" : "#e9edf6"
+                    color: citron.phase === "error" ? CitronColors.error : Theme.vibrant.secondaryLabel
                     font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize }
                     layer.enabled: GraphicsInfo.api !== GraphicsInfo.Software
-                    layer.effect: MultiEffect { shadowEnabled: true; shadowColor: "#99000000"; shadowBlur: 0.9; shadowVerticalOffset: 2 }
+                    layer.effect: MultiEffect { shadowEnabled: true; shadowColor: Theme.vibrant.shadow; shadowBlur: 0.9; shadowVerticalOffset: 2 }
                 }
             }
 
@@ -551,13 +552,13 @@ PanelWindow {
                 height: citron.responseOpen ? Math.min(citron.height < 810 ? 164 : 235, Math.max(92, answerContent.implicitHeight + 28)) : 0
                 opacity: citron.responseOpen ? 1 : 0
                 visible: height > 1
-                Behavior on height { enabled: !Theme.reduceMotion; NumberAnimation { duration: 210; easing.type: Easing.OutCubic } }
-                Behavior on opacity { enabled: !Theme.reduceMotion; NumberAnimation { duration: 180 } }
+                Behavior on height { enabled: !Theme.reduceMotion; NumberAnimation { duration: Theme.motion.tap.duration; easing.type: Easing.OutCubic } }
+                Behavior on opacity { enabled: !Theme.reduceMotion; NumberAnimation { duration: Theme.motion.fade } }
                 Shared.Glass {
                     anchors.fill: parent
-                    role: "menu"; radius: 22
-                    tint: "#e9171b26"
-                    shadow: "#44000000"
+                    role: "menu"; radius: Theme.radius.window
+                    tint: CitronColors.answer
+                    shadow: CitronColors.answerShadow
                 }
                 Flickable {
                     id: answerScroll
@@ -575,7 +576,7 @@ PanelWindow {
                         spacing: 10
                         Text {
                             width: parent.width - 86
-                            color: "#f5f7fc"
+                            color: Theme.vibrant.label
                             text: citron.aiServiceBusy ? "Working on it…" : citron.imageResults.length ? "Your result" : "Response"
                             font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize; weight: Font.DemiBold }
                         }
@@ -585,7 +586,7 @@ PanelWindow {
                             Accessible.role: Accessible.Button
                             Accessible.name: text
                             Accessible.onPressAction: copyOrCancel()
-                            color: "#b8d7ff"
+                            color: CitronColors.link
                             font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
                             function copyOrCancel() {
                                 if (citron.aiServiceBusy) {
@@ -608,7 +609,7 @@ PanelWindow {
                             wrapMode: Text.WordWrap
                             textFormat: Text.PlainText
                             text: citron.responseNote || citron.answer || (citron.aiServiceBusy ? "Processing your request…" : "")
-                            color: "#eef2f8"
+                            color: Theme.vibrant.label
                             font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize }
                             lineHeight: 1.22
                         }
@@ -626,7 +627,7 @@ PanelWindow {
                         Accessible.role: Accessible.Button
                         Accessible.name: "Save image"
                         Accessible.onPressAction: { imageSave.defaultSuffix = citron.imageResults[0].split(".").pop(); imageSave.open() }
-                        color: "#b8d7ff"
+                        color: CitronColors.link
                         font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize; weight: Font.DemiBold }
                         MouseArea {
                             anchors.fill: parent
@@ -646,21 +647,21 @@ PanelWindow {
                 width: parent.width
                 height: citron.tool === "writing" ? (citron.height < 810 ? 77 : 94) : citron.selectedPhoto ? 38 : 0
                 visible: height > 0
-                radius: 17
-                color: "#dc121620"
-                border { color: "#35ffffff"; width: 1 }
+                radius: Theme.radius.panel
+                color: CitronColors.field
+                border { color: CitronColors.fieldBorder; width: 1 }
                 TextEdit {
                     id: writingSource
                     visible: citron.tool === "writing"
                     anchors { fill: parent; margins: 14 }
-                    color: "#ffffff"; selectionColor: "#637ca8"
+                    color: Theme.vibrant.label; selectionColor: CitronColors.selection
                     wrapMode: TextEdit.Wrap
                     font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize }
                     clip: true
                     Text {
                         visible: !writingSource.text && writingSource.visible
                         text: "Paste the text you want to refine…"
-                        color: "#c8d1df"
+                        color: Theme.vibrant.tertiaryLabel
                         font: writingSource.font
                     }
                 }
@@ -669,12 +670,12 @@ PanelWindow {
                     anchors { left: parent.left; leftMargin: 15; verticalCenter: parent.verticalCenter }
                     width: parent.width - 75; elide: Text.ElideMiddle
                     text: citron.selectedPhoto.split("/").pop()
-                    color: "#edf1f9"; font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
+                    color: Theme.vibrant.label; font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
                 }
                 Text {
                     visible: citron.tool !== "writing"
                     anchors { right: parent.right; rightMargin: 14; verticalCenter: parent.verticalCenter }
-                    text: "Remove"; color: "#adcfff"
+                    text: "Remove"; color: CitronColors.link
                     font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize }
                     MouseArea { anchors.fill: parent; onClicked: citron.selectedPhoto = "" }
                     Accessible.role: Accessible.Button
@@ -691,18 +692,18 @@ PanelWindow {
                     id: chip
                     property string label
                     property string kind
-                    radius: 17
+                    radius: height / 2
                     height: 30
                     width: labelText.implicitWidth + 24
-                    color: citron.tool === kind ? "#db34415a" : "#b71a1d27"
-                    border { color: citron.tool === kind ? "#7f9fbb" : "#37c2cbd9"; width: 1 }
+                    color: citron.tool === kind ? CitronColors.chipOn : CitronColors.chip
+                    border { color: citron.tool === kind ? CitronColors.chipOnBorder : CitronColors.chipBorder; width: 1 }
                     scale: tap.pressed && !Theme.reduceMotion ? 0.94 : 1
-                    Behavior on scale { NumberAnimation { duration: 130; easing.type: Easing.OutBack } }
+                    Behavior on scale { NumberAnimation { duration: Theme.motion.hover; easing.type: Easing.OutBack } }
                     Text {
                         id: labelText
                         anchors.centerIn: parent
                         text: chip.label
-                        color: "#f4f6fa"
+                        color: Theme.vibrant.label
                         font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize; weight: Font.Medium }
                     }
                     MouseArea { id: tap; anchors.fill: parent; onClicked: citron.chooseTool(chip.kind) }
@@ -721,18 +722,18 @@ PanelWindow {
                 height: citron.height < 810 ? 52 : 58
                 Shared.Glass {
                     anchors.fill: parent; role: "regular"; radius: height / 2
-                    tint: "#e81c202a"; shadow: "#5c000000"
+                    tint: CitronColors.composer; shadow: CitronColors.composerShadow
                 }
                 component SmallButton: Rectangle {
                     id: btn
                     property string symbol
                     property string description
-                    property color shade: "#2affffff"
+                    property color shade: CitronColors.button
                     signal clicked()
-                    width: 38; height: 38; radius: 19
+                    width: 38; height: 38; radius: height / 2
                     color: shade
                     scale: mouse.pressed && !Theme.reduceMotion ? 0.93 : 1
-                    Behavior on scale { NumberAnimation { duration: 125; easing.type: Easing.OutBack } }
+                    Behavior on scale { NumberAnimation { duration: Theme.motion.hover; easing.type: Easing.OutBack } }
                     Shared.Symbol { anchors.centerIn: parent; name: btn.symbol; size: 17; tone: "white" }
                     MouseArea { id: mouse; anchors.fill: parent; onClicked: btn.clicked() }
                     Accessible.role: Accessible.Button
@@ -744,7 +745,7 @@ PanelWindow {
                     symbol: citron.voiceMode && citron.phase === "error" ? "arrow-clockwise" : "mic"
                     description: !citron.voiceMode ? "Start voice conversation"
                         : citron.phase === "error" ? "Retry voice connection" : citron.micMuted ? "Unmute" : "Mute"
-                    shade: citron.voiceMode && !citron.micMuted ? "#b01b4576" : "#30ffffff"
+                    shade: citron.voiceMode && !citron.micMuted ? CitronColors.live : CitronColors.button
                     onClicked: citron.toggleMic()
                 }
                 SmallButton {
@@ -761,8 +762,8 @@ PanelWindow {
                     height: 29
                     verticalAlignment: TextInput.AlignVCenter
                     clip: true
-                    color: "#ffffff"
-                    selectionColor: "#5a79a9"
+                    color: Theme.vibrant.label
+                    selectionColor: CitronColors.selection
                     font { family: Theme.fontUi; pixelSize: Theme.fs(14) }
                     enabled: !citron.aiServiceBusy && !citron.voiceMode
                     focus: citron.open && !citron.voiceMode
@@ -773,7 +774,7 @@ PanelWindow {
                         text: citron.tool === "writing" ? "How should I rewrite it?" :
                               citron.tool === "image" ? "Describe an image…" :
                               citron.tool === "edit" ? "Describe the photo edit…" : "Ask anything…"
-                        color: "#cbd1dc"
+                        color: Theme.vibrant.tertiaryLabel
                         font: textEntry.font
                     }
                 }
@@ -781,7 +782,7 @@ PanelWindow {
                     id: send
                     anchors { right: close.left; rightMargin: 7; verticalCenter: parent.verticalCenter }
                     symbol: "arrow-up"; description: "Send request"
-                    shade: textEntry.text.trim() ? "#15579a" : "#38ffffff"
+                    shade: textEntry.text.trim() ? CitronColors.send : CitronColors.button
                     onClicked: citron.sendText()
                 }
                 SmallButton {
@@ -794,10 +795,10 @@ PanelWindow {
             Text {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: "⌘⇧Space to talk · Esc to dismiss"
-                color: "#dce3ee"
+                color: Theme.vibrant.secondaryLabel
                 font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize }
                 layer.enabled: GraphicsInfo.api !== GraphicsInfo.Software
-                layer.effect: MultiEffect { shadowEnabled: true; shadowColor: "#88000000"; shadowBlur: 0.9; shadowVerticalOffset: 2 }
+                layer.effect: MultiEffect { shadowEnabled: true; shadowColor: Theme.vibrant.shadow; shadowBlur: 0.9; shadowVerticalOffset: 2 }
             }
         }
     }
