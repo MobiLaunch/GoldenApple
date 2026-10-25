@@ -185,7 +185,7 @@ PanelWindow {
     component BarText: Text {
         property bool dark: false
         color: dark ? "#d6000000" : "#ffffff"
-        font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.Medium }
+        font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize; weight: Font.Medium }
         // Soft legibility shadow on the GPU renderer (shader effects need it).
         layer.enabled: GraphicsInfo.api !== GraphicsInfo.Software
         layer.effect: MultiEffect { shadowEnabled: true; shadowColor: "#74000000"; shadowBlur: 0.88; shadowVerticalOffset: 0 }
@@ -196,8 +196,8 @@ PanelWindow {
     // shortened with an ellipsis past what fits, and menus that don't fit
     // move into »: a menu of their titles, each opening its own menu beside
     // it (by pointer, or Down/Right/Return).
-    FontMetrics { id: titleMetrics; font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.Medium } }
-    FontMetrics { id: appMetrics; font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.Bold } }
+    FontMetrics { id: titleMetrics; font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize; weight: Font.Medium } }
+    FontMetrics { id: appMetrics; font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize; weight: Font.Bold } }
     // On a very narrow screen the status items give way too, keeping the
     // logo, the app's name (at least 40 px) and » on the bar.
     readonly property real statusRoom: Math.max(0, Math.min(statusRow.implicitWidth, bar.width - 26 - 24 - 40 - 56))

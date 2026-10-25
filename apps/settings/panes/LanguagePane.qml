@@ -121,7 +121,7 @@ Pane {
                 objectName: "regionMeasurement"
                 text: Qt.locale(pane.formats || Qt.locale().name).measurementSystem === Locale.MetricSystem ? "Metric" : "US"
                 color: Theme.secondaryLabel
-                font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
+                font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize }
             }
         }
         SetRow {
@@ -130,7 +130,7 @@ Pane {
                 objectName: "regionDate"
                 text: new Date(2026, 0, 31).toLocaleDateString(Qt.locale(pane.formats || Qt.locale().name), Locale.ShortFormat)
                 color: Theme.secondaryLabel
-                font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
+                font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize }
             }
         }
     }

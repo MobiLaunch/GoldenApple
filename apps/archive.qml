@@ -161,14 +161,14 @@ ShellRoot {
                         Text {
                             text: utility.sourcePath ? utility.sourcePath.split("/").pop() : "Archive Utility"
                             color: Theme.label
-                            font { family: Theme.fontDisplay; pixelSize: Theme.fs(22); weight: Font.DemiBold }
+                            font { family: Theme.fontDisplay; pixelSize: Theme.font.title1.pixelSize; weight: Font.DemiBold }
                             elide: Text.ElideMiddle
                             Layout.fillWidth: true
                         }
                         Text {
                             text: utility.sourcePath ? utility.sourcePath : "Open ZIP and TAR archives, or compress files into a ZIP."
                             color: Theme.secondaryLabel
-                            font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                            font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
                             elide: Text.ElideMiddle
                             Layout.fillWidth: true
                         }
@@ -188,7 +188,7 @@ ShellRoot {
                                 ? (utility.status || "Reading archive…")
                                 : utility.status || "Archives are extracted into their own folder, never over existing files."
                             color: utility.error ? Theme.accentRed : Theme.secondaryLabel
-                            font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                            font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
                             elide: Text.ElideRight
                             wrapMode: Text.NoWrap
                         }
@@ -220,8 +220,8 @@ ShellRoot {
                             color: Theme.dark ? "#22262f" : "#f5f6f8"
                             RowLayout {
                                 anchors { fill: parent; leftMargin: 18; rightMargin: 18 }
-                                Text { Layout.fillWidth: true; text: "NAME"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.fs(10); weight: Font.Bold } }
-                                Text { text: "SIZE"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.fs(10); weight: Font.Bold } }
+                                Text { Layout.fillWidth: true; text: "NAME"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.font.footnote.pixelSize; weight: Font.Bold } }
+                                Text { text: "SIZE"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.font.footnote.pixelSize; weight: Font.Bold } }
                             }
                         }
                         ListView {
@@ -246,12 +246,12 @@ ShellRoot {
                                         text: modelData.name
                                         color: Theme.label
                                         elide: Text.ElideMiddle
-                                        font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                                        font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
                                     }
                                     Text {
                                         text: modelData.folder ? "Folder" : utility.sizeText(modelData.size)
                                         color: Theme.secondaryLabel
-                                        font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+                                        font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize }
                                     }
                                 }
                             }
@@ -262,7 +262,7 @@ ShellRoot {
                             Layout.topMargin: -135
                             text: utility.busy ? "Reading files…" : utility.sourcePath ? "No files to display." : "Choose an archive to see its contents."
                             color: Theme.secondaryLabel
-                            font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
+                            font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize }
                         }
                     }
                 }
@@ -273,7 +273,7 @@ ShellRoot {
                         text: utility.truncated ? "Showing the first 5,000 items" : utility.totalCount
                             ? utility.totalCount + " items" : "ZIP · TAR · GZIP · BZIP2 · XZ"
                         color: Theme.secondaryLabel
-                        font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+                        font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize }
                         Layout.fillWidth: true
                     }
                     Button {

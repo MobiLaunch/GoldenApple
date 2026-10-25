@@ -45,14 +45,14 @@ Pane {
         SetRow {
             title: "Size"
             subtitle: "Changes the size of icons and the glass shelf."
-            Text { text: "Small"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.fs(11) } }
+            Text { text: "Small"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize } }
             Slider {
                 objectName: "dockSizeSlider"
                 width: 155
                 value: ((pane.dock.size ?? 54) - 36) / 44
                 onMoved: (v) => pane.setDock("size", Math.round(36 + 44 * v))
             }
-            Text { text: "Large"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.fs(11) } }
+            Text { text: "Large"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize } }
         }
         SetRow {
             title: "Animate opening applications"
@@ -106,7 +106,7 @@ Pane {
         SetRow {
             title: "Snap distance"
             subtitle: "The distance at which window edges attract one another."
-            Text { text: "Near"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.fs(11) } }
+            Text { text: "Near"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize } }
             Slider {
                 width: 134
                 enabled: pane.windows.snapEnabled ?? true
@@ -114,12 +114,12 @@ Pane {
                 value: ((pane.windows.windowGap ?? 12) - 4) / 32
                 onMoved: (v) => pane.setWindow("windowGap", Math.round(4 + 32 * v))
             }
-            Text { text: (pane.windows.windowGap ?? 12) + " px"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.fs(11) } }
+            Text { text: (pane.windows.windowGap ?? 12) + " px"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize } }
         }
         SetRow {
             title: "Screen edge attraction"
             subtitle: "How close a window must come to the edge of the display."
-            Text { text: "Near"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.fs(11) } }
+            Text { text: "Near"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize } }
             Slider {
                 width: 134
                 enabled: pane.windows.snapEnabled ?? true
@@ -127,7 +127,7 @@ Pane {
                 value: ((pane.windows.monitorGap ?? 12) - 4) / 32
                 onMoved: (v) => pane.setWindow("monitorGap", Math.round(4 + 32 * v))
             }
-            Text { text: (pane.windows.monitorGap ?? 12) + " px"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.fs(11) } }
+            Text { text: (pane.windows.monitorGap ?? 12) + " px"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize } }
         }
         SetRow {
             title: "Keep spacing between snapped windows"
@@ -145,7 +145,7 @@ Pane {
         SetRow {
             title: "Resize handle size"
             subtitle: "Invisible grab area around the window border."
-            Text { text: "Small"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.fs(11) } }
+            Text { text: "Small"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize } }
             Slider {
                 width: 128
                 enabled: pane.windows.resizeOnBorder ?? true
@@ -153,7 +153,7 @@ Pane {
                 value: ((pane.windows.grabArea ?? 12) - 4) / 24
                 onMoved: (v) => pane.setWindow("grabArea", Math.round(4 + v * 24))
             }
-            Text { text: (pane.windows.grabArea ?? 12) + " px"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.fs(11) } }
+            Text { text: (pane.windows.grabArea ?? 12) + " px"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize } }
         }
     }
     Group {

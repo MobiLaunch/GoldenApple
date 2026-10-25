@@ -71,9 +71,9 @@ Item {
             Row {
                 spacing: 9
                 Shared.Symbol { name: "wand"; tone: "accent"; size: 24 }
-                Text { text: "Writing Tools"; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.fs(22); weight: Font.Bold } }
+                Text { text: "Writing Tools"; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.font.title1.pixelSize; weight: Font.Bold } }
             }
-            Text { text: "Citron Intelligence · Google Gemini"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.fs(12) } }
+            Text { text: "Citron Intelligence · Google Gemini"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize } }
             EditorBox { id: source; width: parent.width; height: Math.max(65, (card.height - 374) * 0.42); readOnly: true }
             Shared.PopUpButton {
                 id: tools; width: 200; menuParent: sheet
@@ -103,7 +103,7 @@ Item {
                 width: parent.width; height: 34; wrapMode: Text.Wrap; elide: Text.ElideRight
                 text: service.error || sheet.message || "Only the text shown above is sent to Google when you choose Send."
                 color: service.error ? "#ff453a" : Theme.secondaryLabel
-                font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
             }
             Row {
                 spacing: 8

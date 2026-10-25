@@ -129,7 +129,7 @@ ShellRoot {
                     leftPadding: 10; topPadding: 18; bottomPadding: 6
                     text: "Favorites"
                     color: Theme.secondaryLabel
-                    font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: Font.DemiBold }
+                    font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize; weight: Font.DemiBold }
                 }
                 Repeater {
                     model: app.favorites
@@ -145,7 +145,7 @@ ShellRoot {
                     leftPadding: 10; topPadding: 18; bottomPadding: 6
                     text: "Recents"
                     color: Theme.secondaryLabel
-                    font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: Font.DemiBold }
+                    font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize; weight: Font.DemiBold }
                 }
                 Repeater {
                     model: app.recents
@@ -480,7 +480,7 @@ ShellRoot {
                             Column {
                                 x: 52; anchors.verticalCenter: parent.verticalCenter; width: parent.width - 60
                                 Text { width: parent.width; elide: Text.ElideRight; text: modelData.name; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.fs(14); weight: Font.DemiBold } }
-                                Text { width: parent.width; elide: Text.ElideRight; text: modelData.address; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.fs(12) } }
+                                Text { width: parent.width; elide: Text.ElideRight; text: modelData.address; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize } }
                             }
                             HoverHandler { id: rh }
                             TapHandler { onTapped: app.showPlace(modelData) }
@@ -490,7 +490,7 @@ ShellRoot {
                             x: 10; y: 8; width: parent.width - 20; wrapMode: Text.Wrap
                             text: app.searching ? "Searching…" : "No Results"
                             color: Theme.secondaryLabel
-                            font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
+                            font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize }
                         }
                     }
                     // Find Nearby: Maps' categories, around what's on the map.
@@ -498,7 +498,7 @@ ShellRoot {
                         visible: app.mode === "search" && !searchField.text && !app.nearbyName && !app.results.length && !app.searching
                         x: 18; y: 66; width: parent.width - 36
                         spacing: 10
-                        Text { text: "Find Nearby"; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.fs(15); weight: Font.Bold } }
+                        Text { text: "Find Nearby"; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.font.title3.pixelSize; weight: Font.Bold } }
                         Grid {
                             columns: 4
                             columnSpacing: 6; rowSpacing: 12
@@ -516,7 +516,7 @@ ShellRoot {
                                         MouseArea { anchors.fill: parent; onClicked: app.nearby(modelData) }
                                     }
                                     Text { width: parent.width; horizontalAlignment: Text.AlignHCenter; text: modelData.name; elide: Text.ElideRight
-                                           color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.fs(11) } }
+                                           color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize } }
                                 }
                             }
                         }
@@ -525,7 +525,7 @@ ShellRoot {
                             topPadding: 6
                             text: "Search for a place or address, or long-press the map to drop a pin."
                             color: Theme.secondaryLabel
-                            font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                            font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
                         }
                     }
                     // Place card
@@ -534,7 +534,7 @@ ShellRoot {
                         x: 20; y: 70; width: parent.width - 40
                         spacing: 6
                         Text { width: parent.width; wrapMode: Text.Wrap; text: app.place?.name ?? ""; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.fs(24); weight: Font.Bold } }
-                        Text { width: parent.width; wrapMode: Text.Wrap; text: app.place?.address ?? ""; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.fs(13) } }
+                        Text { width: parent.width; wrapMode: Text.Wrap; text: app.place?.address ?? ""; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize } }
                         Item { width: 1; height: 8 }
                         Rectangle {
                             width: parent.width; height: 44; radius: 12
@@ -542,7 +542,7 @@ ShellRoot {
                             Row {
                                 anchors.centerIn: parent; spacing: 8
                                 Symbol { anchors.verticalCenter: parent.verticalCenter; name: "arrow-up"; tone: "white"; size: 15 }
-                                Text { text: "Directions"; color: "#ffffff"; font { family: Theme.fontUi; pixelSize: Theme.fs(15); weight: Font.DemiBold } }
+                                Text { text: "Directions"; color: "#ffffff"; font { family: Theme.fontUi; pixelSize: Theme.font.title3.pixelSize; weight: Font.DemiBold } }
                             }
                             MouseArea { anchors.fill: parent; onClicked: app.startDirections(app.place) }
                         }
@@ -567,7 +567,7 @@ ShellRoot {
                                         Symbol { anchors.centerIn: parent; name: modelData.s; size: 16; tone: modelData.lit ? "white" : "accent" }
                                         MouseArea { anchors.fill: parent; onClicked: modelData.a() }
                                     }
-                                    Text { anchors.horizontalCenter: parent.horizontalCenter; text: modelData.t; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.fs(11) } }
+                                    Text { anchors.horizontalCenter: parent.horizontalCenter; text: modelData.t; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize } }
                                 }
                             }
                         }
@@ -583,14 +583,14 @@ ShellRoot {
                                     delegate: Column {
                                         required property var modelData
                                         width: detailCol.width
-                                        Text { text: modelData[0]; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.fs(11); weight: Font.DemiBold } }
-                                        Text { width: parent.width; wrapMode: Text.Wrap; text: modelData[1]; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.fs(13) } }
+                                        Text { text: modelData[0]; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize; weight: Font.DemiBold } }
+                                        Text { width: parent.width; wrapMode: Text.Wrap; text: modelData[1]; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize } }
                                     }
                                 }
                                 Text {
                                     text: "Open in OpenStreetMap ↗"
                                     color: Theme.accent
-                                    font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.Medium }
+                                    font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize; weight: Font.Medium }
                                     TapHandler { onTapped: Qt.openUrlExternally(Api.shareUrl(app.place)) }
                                 }
                             }
@@ -606,7 +606,7 @@ ShellRoot {
                         x: 20; y: 18
                         text: "Directions"
                         color: Theme.label
-                        font { family: Theme.fontUi; pixelSize: Theme.fs(22); weight: Font.Bold }
+                        font { family: Theme.fontUi; pixelSize: Theme.font.title1.pixelSize; weight: Font.Bold }
                     }
                     ToolbarButton {
                         x: parent.width - width - 14; y: 12
@@ -706,7 +706,7 @@ ShellRoot {
                             Column {
                                 x: 12; anchors.verticalCenter: parent.verticalCenter; width: parent.width - 24
                                 Text { width: parent.width; elide: Text.ElideRight; text: modelData.name; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.fs(14); weight: Font.DemiBold } }
-                                Text { width: parent.width; elide: Text.ElideRight; text: modelData.address; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.fs(12) } }
+                                Text { width: parent.width; elide: Text.ElideRight; text: modelData.address; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize } }
                             }
                             HoverHandler { id: sh }
                             TapHandler { onTapped: app.choose(modelData) }
@@ -726,7 +726,7 @@ ShellRoot {
                                 visible: app.routing || app.routeFailed
                                 text: app.routing ? "Finding routes…" : "Directions aren't available."
                                 color: Theme.secondaryLabel
-                                font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
+                                font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize }
                             }
                             Repeater {
                                 model: app.routes
@@ -750,14 +750,14 @@ ShellRoot {
                                             text: Api.eta(card.modelData.duration, app.h12) + " · " + Api.distance(card.modelData.distance, app.imperial)
                                                   + (card.index === 0 && app.routes.length > 1 ? " · Fastest route" : "")
                                             color: card.chosen ? "#e6ffffff" : Theme.secondaryLabel
-                                            font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
+                                            font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize }
                                         }
                                     }
                                     Rectangle {
                                         anchors { right: parent.right; rightMargin: 16; top: parent.top; topMargin: 32 }
                                         width: 20; height: 20; radius: 10
                                         color: card.chosen ? "#ffffff" : "#8e8e93"
-                                        Text { anchors.centerIn: parent; text: "i"; color: card.chosen ? "#0a84ff" : "#ffffff"; font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.Bold; italic: false } }
+                                        Text { anchors.centerIn: parent; text: "i"; color: card.chosen ? "#0a84ff" : "#ffffff"; font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize; weight: Font.Bold; italic: false } }
                                         MouseArea { anchors { fill: parent; margins: -6 } onClicked: { app.routeIndex = card.index; app.stepsOpen = !app.stepsOpen } }
                                     }
                                     Column {
@@ -773,8 +773,8 @@ ShellRoot {
                                                 Symbol { x: 4; anchors.verticalCenter: parent.verticalCenter; name: Api.turnSymbol(modelData); tone: "white"; size: 16 }
                                                 Column {
                                                     x: 32; anchors.verticalCenter: parent.verticalCenter; width: parent.width - 36
-                                                    Text { id: stepText; width: parent.width; wrapMode: Text.Wrap; text: Api.instruction(modelData); color: "#ffffff"; font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.Medium } }
-                                                    Text { visible: modelData.distance > 0; text: Api.distance(modelData.distance, app.imperial); color: "#ccffffff"; font { family: Theme.fontUi; pixelSize: Theme.fs(11) } }
+                                                    Text { id: stepText; width: parent.width; wrapMode: Text.Wrap; text: Api.instruction(modelData); color: "#ffffff"; font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize; weight: Font.Medium } }
+                                                    Text { visible: modelData.distance > 0; text: Api.distance(modelData.distance, app.imperial); color: "#ccffffff"; font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize } }
                                                 }
                                                 Rectangle { anchors.bottom: parent.bottom; x: 32; width: parent.width - 32; height: 0.5; color: "#40ffffff" }
                                             }
@@ -836,7 +836,7 @@ ShellRoot {
                 width: toastText.implicitWidth + 32; height: 34; radius: 17
                 color: Theme.dark ? "#e62c2c2e" : "#f2ffffff"
                 border { width: 0.5; color: Theme.dark ? "#26ffffff" : "#26000000" }
-                Text { id: toastText; anchors.centerIn: parent; text: app.toast; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.Medium } }
+                Text { id: toastText; anchors.centerIn: parent; text: app.toast; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize; weight: Font.Medium } }
             }
 
             Keys.onPressed: (e) => {
@@ -866,10 +866,10 @@ ShellRoot {
                 id: keyContent
                 width: parent.width
                 spacing: 12
-                Text { text: "CARTO Basemaps Key"; color: Theme.label; font { pixelSize: Theme.fs(17); weight: Font.DemiBold } }
+                Text { text: "CARTO Basemaps Key"; color: Theme.label; font { pixelSize: Theme.font.title2.pixelSize; weight: Font.DemiBold } }
                 Text {
                     width: parent.width; wrapMode: Text.WordWrap
-                    color: Theme.secondaryLabel; font.pixelSize: Theme.fs(13)
+                    color: Theme.secondaryLabel; font.pixelSize: Theme.font.body.pixelSize
                     text: app.cartoKey
                         ? "A key is saved. Standard, Muted and the Hybrid labels use it. Paste a new one to replace it."
                         : "Without a key, CARTO marks its map tiles \"API key required\". Paste the key from CARTO's email. It is kept in your keyring and sent only to CARTO."
@@ -886,7 +886,7 @@ ShellRoot {
                     width: parent.width; wrapMode: Text.WordWrap
                     visible: !!app.keyStatus
                     text: app.keyStatus
-                    color: Theme.secondaryLabel; font.pixelSize: Theme.fs(12)
+                    color: Theme.secondaryLabel; font.pixelSize: Theme.font.callout.pixelSize
                 }
                 Row {
                     spacing: 8

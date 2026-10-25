@@ -53,7 +53,7 @@ ShellRoot {
                     anchors.verticalCenter: parent.verticalCenter
                     text: win.tabletCompact && app.showMobileCategories ? "Settings" : (app.page?.title ?? "")
                     color: Theme.label
-                    font { family: Theme.fontUi; pixelSize: Theme.fs(15); weight: Font.Bold }
+                    font { family: Theme.fontUi; pixelSize: Theme.font.title3.pixelSize; weight: Font.Bold }
                 }
             }
         ]
@@ -344,7 +344,7 @@ ShellRoot {
                 text: sys.writeError
                 wrapMode: Text.WordWrap
                 color: "#ff453a"
-                font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
             }
             Button { id: dismissWriteError; text: "OK"; anchors { right: parent.right; rightMargin: 12; verticalCenter: parent.verticalCenter } onClicked: sys.writeError = "" }
         }
@@ -377,7 +377,7 @@ ShellRoot {
                 x: 12; y: 8
                 text: "Suggestions"
                 color: Theme.tertiaryLabel
-                font { family: Theme.fontUi; pixelSize: Theme.fs(11); weight: Font.DemiBold }
+                font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize; weight: Font.DemiBold }
             }
             Column {
                 id: sugCol
@@ -406,7 +406,7 @@ ShellRoot {
                             Behavior on color {
                                 ColorAnimation { duration: Theme.reduceMotion ? 0 : 90 }
                             }
-                            font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
+                            font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize }
                         }
                         HoverHandler { id: sh }
                         TapHandler { onTapped: { app.selectedMatch = index; app.acceptMatch() } }

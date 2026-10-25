@@ -223,7 +223,7 @@ PanelWindow {
                         anchors.horizontalCenter: parent.horizontalCenter
                         text: "Desktop " + (desk.index + 1)
                         color: "#ffffff"
-                        font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: desk.current ? Font.DemiBold : Font.Medium }
+                        font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize; weight: desk.current ? Font.DemiBold : Font.Medium }
                     }
                 }
             }
@@ -321,7 +321,7 @@ PanelWindow {
                     elide: Text.ElideRight
                     text: win.modelData.title || (DesktopEntries.byId(win.modelData.appId)?.name ?? win.modelData.appId)
                     color: "#ffffff"
-                    font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: Font.Medium }
+                    font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize; weight: Font.Medium }
                 }
             }
 
@@ -363,6 +363,6 @@ PanelWindow {
         opacity: mc.progress
         text: mc.appOnly ? "No windows" : "No windows on this desktop"
         color: "#d9ffffff"
-        font { family: Theme.fontUi; pixelSize: Theme.fs(15); weight: Font.Medium }
+        font { family: Theme.fontUi; pixelSize: Theme.font.title3.pixelSize; weight: Font.Medium }
     }
 }

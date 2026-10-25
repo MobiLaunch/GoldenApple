@@ -44,12 +44,12 @@ ShellRoot {
                     Text {
                         text: app.viewing >= 0 ? app.dayText(app.shown[app.viewing]) : app.sectionTitle
                         color: Theme.label
-                        font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.Bold }
+                        font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize; weight: Font.Bold }
                     }
                     Text {
                         text: app.viewing >= 0 ? app.timeText(app.shown[app.viewing]) : app.countText
                         color: Theme.secondaryLabel
-                        font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+                        font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize }
                     }
                 }
             },
@@ -377,7 +377,7 @@ ShellRoot {
                             text: Math.floor(tile.modelData.seconds / 60) + ":" + String(tile.modelData.seconds % 60).padStart(2, "0")
                             color: "#ffffff"
                             style: Text.Raised; styleColor: "#66000000"
-                            font { family: Theme.fontUi; pixelSize: Theme.fs(11); weight: Font.DemiBold }
+                            font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize; weight: Font.DemiBold }
                         }
                         Symbol {
                             visible: app.isFavorite(tile.modelData.path)
@@ -408,7 +408,7 @@ ShellRoot {
                     visible: grid.count === 0 && !scanner.running
                     text: app.section === "favorites" ? "No Favorites" : app.items.length ? "No Results" : "No Photos"
                     color: Theme.tertiaryLabel
-                    font { family: Theme.fontUi; pixelSize: Theme.fs(17); weight: Font.DemiBold }
+                    font { family: Theme.fontUi; pixelSize: Theme.font.title2.pixelSize; weight: Font.DemiBold }
                 }
             }
             Scroller { flickable: grid }
@@ -454,7 +454,7 @@ ShellRoot {
                     anchors.centerIn: parent
                     text: app.notice
                     color: Theme.label
-                    font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: Font.DemiBold }
+                    font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize; weight: Font.DemiBold }
                 }
             }
         }

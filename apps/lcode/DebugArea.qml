@@ -62,7 +62,7 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
                 text: debug.app.appRunning ? "Console — " + debug.app.schemeName + " on " + debug.app.destinationName : "Console"
                 color: Theme.secondaryLabel
-                font { family: Theme.fontUi; pixelSize: Theme.fs(11); weight: Font.DemiBold }
+                font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize; weight: Font.DemiBold }
             }
         }
         ToolbarButton {
@@ -93,7 +93,7 @@ Item {
             wrapMode: TextEdit.WrapAnywhere
             text: debug.app.consoleText
             color: Theme.label
-            font { family: "monospace"; pixelSize: Theme.fs(12) }
+            font { family: "monospace"; pixelSize: Theme.font.callout.pixelSize }
             onTextChanged: if (scroller.follow) Qt.callLater(() => scroller.contentY = Math.max(0, scroller.contentHeight - scroller.height))
         }
     }

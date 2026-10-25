@@ -32,12 +32,12 @@ ShellRoot {
                 Text {
                     text: "Disk Utility"
                     color: Theme.label
-                    font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.Bold }
+                    font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize; weight: Font.Bold }
                 }
                 Text {
                     text: du.subject ? du.subject.name : ""
                     color: Theme.secondaryLabel
-                    font { family: Theme.fontUi; pixelSize: Theme.fs(10) }
+                    font { family: Theme.fontUi; pixelSize: Theme.font.footnote.pixelSize }
                 }
             },
             Row {
@@ -66,7 +66,7 @@ ShellRoot {
                         anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom }
                         text: action.label
                         color: Theme.secondaryLabel
-                        font { family: Theme.fontUi; pixelSize: Theme.fs(10) }
+                        font { family: Theme.fontUi; pixelSize: Theme.font.footnote.pixelSize }
                     }
                 }
                 Action {
@@ -318,7 +318,7 @@ ShellRoot {
                             Text {
                                 text: du.subject ? du.kindOf(du.volume, du.disk) : ""
                                 color: Theme.secondaryLabel
-                                font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                                font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
                             }
                         }
                     }
@@ -350,8 +350,8 @@ ShellRoot {
                                 property string amount
                                 spacing: 6
                                 Rectangle { anchors.verticalCenter: parent.verticalCenter; width: 10; height: 10; radius: 3; color: parent.swatch }
-                                Text { text: parent.title; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: Font.Medium } }
-                                Text { text: parent.amount; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.fs(12) } }
+                                Text { text: parent.title; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize; weight: Font.Medium } }
+                                Text { text: parent.amount; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize } }
                             }
                             Legend { swatch: Theme.accent; title: "Used"; amount: du.volume ? du.formatSize(du.volume.used) : "" }
                             Legend { swatch: Theme.dark ? "#40ffffff" : "#26000000"; title: "Free"; amount: du.volume ? du.formatSize(du.volume.free) : "" }
@@ -397,7 +397,7 @@ ShellRoot {
                                         anchors.verticalCenter: parent.verticalCenter
                                         text: modelData[0] + ":"
                                         color: Theme.secondaryLabel
-                                        font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                                        font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
                                     }
                                     Text {
                                         width: parent.width * 0.58
@@ -405,7 +405,7 @@ ShellRoot {
                                         text: modelData[1]
                                         elide: Text.ElideMiddle
                                         color: Theme.label
-                                        font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                                        font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
                                     }
                                 }
                             }
@@ -430,7 +430,7 @@ ShellRoot {
                             color: Theme.label
                             wrapMode: Text.Wrap
                             width: Math.min(560, pane.width - 160)
-                            font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                            font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
                         }
                     }
 
@@ -460,7 +460,7 @@ ShellRoot {
                             wrapMode: Text.Wrap
                             text: "See which folders at the top of this volume take the most room. Folders you can't open aren't counted."
                             color: Theme.secondaryLabel
-                            font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                            font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
                         }
                         Repeater {
                             model: du.largest ? du.largest.items : []
@@ -481,7 +481,7 @@ ShellRoot {
                                     text: big.modelData.name
                                     elide: Text.ElideRight
                                     color: Theme.label
-                                    font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                                    font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
                                 }
                                 Rectangle {
                                     x: parent.width * 0.42
@@ -494,7 +494,7 @@ ShellRoot {
                                     anchors { right: parent.right; rightMargin: 10; verticalCenter: parent.verticalCenter }
                                     text: du.formatSize(big.modelData.size)
                                     color: Theme.secondaryLabel
-                                    font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                                    font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
                                 }
                                 MouseArea {
                                     id: bigArea
@@ -548,7 +548,7 @@ ShellRoot {
                         wrapMode: Text.Wrap
                         text: "Erase “" + (du.subject ? du.subject.name : "") + "”?"
                         color: Theme.label
-                        font { family: Theme.fontUi; pixelSize: Theme.fs(15); weight: Font.Bold }
+                        font { family: Theme.fontUi; pixelSize: Theme.font.title3.pixelSize; weight: Font.Bold }
                     }
                     Text {
                         width: parent.width
@@ -556,16 +556,16 @@ ShellRoot {
                         text: du.volume ? "Erasing deletes everything on this volume. Enter a name, choose a format, and click Erase."
                               : "Erasing deletes everything on this disk and makes it one volume. Enter a name, choose a format, and click Erase."
                         color: Theme.secondaryLabel
-                        font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                        font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
                     }
                     Grid {
                         columns: 2
                         columnSpacing: 10
                         rowSpacing: 10
                         verticalItemAlignment: Grid.AlignVCenter
-                        Text { text: "Name:"; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.fs(12) } }
+                        Text { text: "Name:"; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize } }
                         TextField { id: eraseName; objectName: "duEraseName"; width: 260; placeholder: "Untitled" }
-                        Text { text: "Format:"; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.fs(12) } }
+                        Text { text: "Format:"; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize } }
                         PopUpButton {
                             id: eraseFormat
                             objectName: "duEraseFormat"
@@ -579,7 +579,7 @@ ShellRoot {
                         wrapMode: Text.Wrap
                         text: du.formatNotes[eraseFormat.current] ?? ""
                         color: Theme.secondaryLabel
-                        font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+                        font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize }
                     }
                     Row {
                         anchors.right: parent.right
@@ -634,7 +634,7 @@ ShellRoot {
                             ? "First Aid checks a volume that isn't in use. It will be unmounted while it's checked."
                             : "First Aid checks the volume for errors. Repair fixes what it finds."
                         color: Theme.secondaryLabel
-                        font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                        font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
                     }
                     Row {
                         anchors.horizontalCenter: parent.horizontalCenter

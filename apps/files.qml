@@ -54,13 +54,13 @@ ShellRoot {
                         width: parent.width; elide: Text.ElideRight
                         text: files.title
                         color: Theme.label
-                        font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.Bold }
+                        font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize; weight: Font.Bold }
                     }
                     Text {
                         width: parent.width; elide: Text.ElideRight
                         text: files.selectedPaths.length ? files.selectedPaths.length + " selected" : files.entries.length + (files.entries.length === 1 ? " item" : " items")
                         color: Theme.secondaryLabel
-                        font { family: Theme.fontUi; pixelSize: Theme.fs(10) }
+                        font { family: Theme.fontUi; pixelSize: Theme.font.footnote.pixelSize }
                     }
                 }
             },
@@ -179,7 +179,7 @@ ShellRoot {
                 Text {
                     width: parent.width - 12; x: 8
                     text: "Favorites"; color: Theme.secondaryLabel
-                    font { family: Theme.fontUi; pixelSize: Theme.fs(11); weight: Font.DemiBold }
+                    font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize; weight: Font.DemiBold }
                 }
                 Item { width: 1; height: 6 }
 
@@ -218,7 +218,7 @@ ShellRoot {
                     visible: files.volumes.length > 0
                     text: "Locations"
                     color: Theme.secondaryLabel
-                    font { family: Theme.fontUi; pixelSize: Theme.fs(11); weight: Font.DemiBold }
+                    font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize; weight: Font.DemiBold }
                 }
                 Item { width: 1; height: 4; visible: files.volumes.length > 0 }
                 Repeater {
@@ -1412,7 +1412,7 @@ ShellRoot {
                             elide: Text.ElideRight
                             text: modelData.name
                             color: Theme.label
-                            font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: cell.selected ? Font.DemiBold : Font.Normal }
+                            font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize; weight: cell.selected ? Font.DemiBold : Font.Normal }
                         }
                         Text {
                             visible: !!cell.modelData.detail
@@ -1421,7 +1421,7 @@ ShellRoot {
                             elide: Text.ElideRight
                             text: cell.modelData.detail ?? ""
                             color: Theme.secondaryLabel
-                            font { family: Theme.fontUi; pixelSize: Theme.fs(10) }
+                            font { family: Theme.fontUi; pixelSize: Theme.font.footnote.pixelSize }
                         }
                     }
 
@@ -1505,7 +1505,7 @@ ShellRoot {
                         text: row.modelData.name
                         elide: Text.ElideRight
                         color: Theme.label
-                        font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: row.selected ? Font.DemiBold : Font.Normal }
+                        font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize; weight: row.selected ? Font.DemiBold : Font.Normal }
                     }
 
                     Text {
@@ -1517,7 +1517,7 @@ ShellRoot {
                             ? row.modelData.origin.replace(/\/[^/]+$/, "").replace(files.home, "~")
                             : new Date(row.modelData.modified * 1000).toLocaleDateString(Qt.locale(), Locale.ShortFormat)
                         color: Theme.secondaryLabel
-                        font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+                        font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize }
                     }
 
                     Text {
@@ -1528,7 +1528,7 @@ ShellRoot {
                         horizontalAlignment: Text.AlignRight
                         text: row.modelData.folder ? "Folder" : files.formatSize(row.modelData.size)
                         color: Theme.secondaryLabel
-                        font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+                        font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize }
                     }
 
                     HoverHandler { id: rowHover }
@@ -1588,7 +1588,7 @@ ShellRoot {
                         elide: Text.ElideRight
                         text: parent.label + (files.sortKey === parent.key ? files.descending ? " ↓" : " ↑" : "")
                         color: files.sortKey === parent.key ? Theme.label : Theme.secondaryLabel
-                        font.pixelSize: Theme.fs(11)
+                        font.pixelSize: Theme.font.subheadline.pixelSize
                     }
                     MouseArea {
                         id: sortArea
@@ -1619,7 +1619,7 @@ ShellRoot {
                         width: parent.width; elide: Text.ElideMiddle
                         text: files.transferResult ? (files.transferResult.cancelled ? "Transfer Cancelled" : files.transferResult.ok ? "Transfer Complete" : "Transfer Finished with Errors")
                             : files.cancelRequested ? "Cancelling…" : files.conflict ? "Waiting for a name-conflict choice…" : files.transferState.event === "preparing" ? "Preparing transfer…" : "Transferring “" + (files.transferState.name ?? "items") + "”…"
-                        color: Theme.label; font { pixelSize: Theme.fs(13); weight: Font.DemiBold }
+                        color: Theme.label; font { pixelSize: Theme.font.body.pixelSize; weight: Font.DemiBold }
                     }
                     ProgressBar {
                         width: parent.width; visible: !files.transferResult
@@ -1632,13 +1632,13 @@ ShellRoot {
                         text: files.transferResult ? (files.transferResult.completed?.length ?? 0) + " completed · " + (files.transferResult.skipped?.length ?? 0) + " skipped · " + (files.transferResult.errors?.length ?? 0) + " failed"
                             : (files.transferState.completed ?? 0) + " of " + (files.transferState.total ?? files.transferRequest.paths?.length ?? 0) + " items completed"
                                 + ((files.transferState.totalBytes ?? 0) > 0 ? " · " + files.formatSize(files.transferState.bytes ?? 0) + " copied" : "")
-                        color: Theme.secondaryLabel; font.pixelSize: Theme.fs(11)
+                        color: Theme.secondaryLabel; font.pixelSize: Theme.font.subheadline.pixelSize
                     }
                     Text {
                         visible: !!files.transferResult?.errors?.length
                         width: parent.width; wrapMode: Text.WordWrap; maximumLineCount: 3; elide: Text.ElideRight
                         text: files.transferResult?.errors?.[0]?.error ?? ""
-                        color: Theme.dark ? "#ff453a" : "#d70015"; font.pixelSize: Theme.fs(12)
+                        color: Theme.dark ? "#ff453a" : "#d70015"; font.pixelSize: Theme.font.callout.pixelSize
                     }
                     Row {
                         spacing: 8
@@ -1672,7 +1672,7 @@ ShellRoot {
                         id: conflictColumn
                         x: 20; y: 20; width: parent.width - 40; spacing: 14
                         Text { width: parent.width; wrapMode: Text.WordWrap; text: "“" + (files.conflict?.name ?? "") + "” already exists"; color: Theme.label; font { pixelSize: Theme.fs(16); weight: Font.DemiBold } }
-                        Text { width: parent.width; wrapMode: Text.WordWrap; text: "Keep both items with different names, skip this item, or cancel the remaining transfer. Completed items will be kept."; color: Theme.secondaryLabel; font.pixelSize: Theme.fs(13) }
+                        Text { width: parent.width; wrapMode: Text.WordWrap; text: "Keep both items with different names, skip this item, or cancel the remaining transfer. Completed items will be kept."; color: Theme.secondaryLabel; font.pixelSize: Theme.font.body.pixelSize }
                         Checkbox { id: conflictAll; width: parent.width; text: "Use this choice for all name conflicts"; KeyNavigation.tab: cancelConflict; KeyNavigation.backtab: keepBoth }
                         Row {
                             spacing: 8
@@ -1714,7 +1714,7 @@ ShellRoot {
                     id: infoContent
                     width: parent.width
                     spacing: 12
-                    Text { width: parent.width; wrapMode: Text.WordWrap; maximumLineCount: 2; elide: Text.ElideMiddle; text: (files.info.name ?? "") + " Info"; color: Theme.label; font { pixelSize: Theme.fs(17); weight: Font.DemiBold } }
+                    Text { width: parent.width; wrapMode: Text.WordWrap; maximumLineCount: 2; elide: Text.ElideMiddle; text: (files.info.name ?? "") + " Info"; color: Theme.label; font { pixelSize: Theme.font.title2.pixelSize; weight: Font.DemiBold } }
                     Flickable {
                         id: infoScroll
                         activeFocusOnTab: true
@@ -1728,7 +1728,7 @@ ShellRoot {
                         }
                         width: parent.width; height: Math.min(infoText.implicitHeight, Math.max(70, infoDialog.parent.height - 240))
                         contentHeight: infoText.height; clip: true; boundsBehavior: Flickable.StopAtBounds
-                        Text { id: infoText; width: infoScroll.width - 12; wrapMode: Text.WrapAnywhere; text: "Kind: " + (files.info.mime ?? "") + "\nSize: " + (files.info.folder ? "Folder (contents not counted)" : files.formatSize(files.info.size ?? 0)) + "\nWhere: " + (files.info.location ?? "") + "\nModified: " + new Date((files.info.modified ?? 0) * 1000).toLocaleString() + "\nPermissions: " + (files.info.permissions ?? "") + (files.info.link ? "\nLink target: " + files.info.link : ""); color: Theme.label; font.pixelSize: Theme.fs(13) }
+                        Text { id: infoText; width: infoScroll.width - 12; wrapMode: Text.WrapAnywhere; text: "Kind: " + (files.info.mime ?? "") + "\nSize: " + (files.info.folder ? "Folder (contents not counted)" : files.formatSize(files.info.size ?? 0)) + "\nWhere: " + (files.info.location ?? "") + "\nModified: " + new Date((files.info.modified ?? 0) * 1000).toLocaleString() + "\nPermissions: " + (files.info.permissions ?? "") + (files.info.link ? "\nLink target: " + files.info.link : ""); color: Theme.label; font.pixelSize: Theme.font.body.pixelSize }
                         Scroller { parent: infoScroll; flickable: infoScroll }
                     }
                     Row {
@@ -1765,7 +1765,7 @@ ShellRoot {
                     // fold into "…", whose menu opens any of them. A very long
                     // name is shortened in the middle, as in Finder: this
                     // folder's to half the bar, any other's to 160 px.
-                    FontMetrics { id: crumbMetrics; font { family: Theme.fontUi; pixelSize: Theme.fs(11) } }
+                    FontMetrics { id: crumbMetrics; font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize } }
                     function nameLimit(i) { return i === files.crumbs.length - 1 ? Math.max(80, width / 2) : Math.min(160, Math.max(60, width / 4)) }
                     function nameWidth(c, i) { return Math.min(crumbMetrics.advanceWidth(c.name), nameLimit(i)) }
                     function crumbWidth(c, i) { return nameWidth(c, i) + 12 + 4 + 10 + 1 + (i > 0 ? 12 : 0) }
@@ -1844,7 +1844,7 @@ ShellRoot {
                                             width: crumb.folded ? implicitWidth : Math.min(implicitWidth, crumbBox.nameLimit(crumb.index))
                                             elide: Text.ElideMiddle
                                             color: !crumb.folded && crumb.index === files.crumbs.length - 1 ? Theme.label : Theme.secondaryLabel
-                                            font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+                                            font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize }
                                         }
                                     }
                                     MouseArea {
@@ -1875,7 +1875,7 @@ ShellRoot {
                     text: files.notice || (files.busy && !transferProc.running ? "Working…" : (files.selectedPaths.length ? files.selectedPaths.length + " of " : "") + files.entries.length + (files.entries.length === 1 ? " item" : " items")
                         + (files.free >= 0 ? ", " + files.formatSize(files.free) + " available" : ""))
                     color: files.notice ? Theme.label : Theme.secondaryLabel
-                    font { family: Theme.fontUi; pixelSize: Theme.fs(11); weight: files.notice ? Font.Medium : Font.Normal }
+                    font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize; weight: files.notice ? Font.Medium : Font.Normal }
                 }
             }
 
@@ -1916,7 +1916,7 @@ ShellRoot {
                     elide: Text.ElideRight
                     width: Math.max(0, parent.width - 24)
                     horizontalAlignment: Text.AlignHCenter
-                    font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: Font.Medium }
+                    font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize; weight: Font.Medium }
                 }
             }
 
@@ -1944,14 +1944,14 @@ ShellRoot {
                         wrapMode: Text.WordWrap
                         text: "Are you sure you want to permanently erase the items in the Trash?"
                         color: Theme.label
-                        font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.Bold }
+                        font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize; weight: Font.Bold }
                     }
                     Text {
                         width: parent.width
                         horizontalAlignment: Text.AlignHCenter
                         text: "You can’t undo this action."
                         color: Theme.secondaryLabel
-                        font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+                        font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize }
                     }
                     Item { width: 1; height: 4 }
                     Row {
@@ -2009,7 +2009,7 @@ ShellRoot {
                     Text {
                         text: files.dialogMode === "rename" ? "Rename" : "New Folder"
                         color: Theme.label
-                        font { family: Theme.fontUi; pixelSize: Theme.fs(17); weight: Font.DemiBold }
+                        font { family: Theme.fontUi; pixelSize: Theme.font.title2.pixelSize; weight: Font.DemiBold }
                     }
 
                     TextField {

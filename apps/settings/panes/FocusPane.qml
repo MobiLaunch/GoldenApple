@@ -162,7 +162,7 @@ Pane {
             Text {
                 x: 14; width: parent.width - 28
                 text: "Start days"; color: Theme.secondaryLabel
-                font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
             }
             Flow {
                 x: 14; width: parent.width - 28; spacing: 10
@@ -209,7 +209,7 @@ Pane {
                     : pane.schedule.end < pane.schedule.start ? "Ends the following morning, including after the last selected start day."
                     : "Focus turns on and off automatically on the selected days."
                 color: Theme.secondaryLabel
-                font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
             }
         }
     }

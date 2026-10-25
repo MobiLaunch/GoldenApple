@@ -378,7 +378,7 @@ ShellRoot {
                                 text: modelData.path + "  •  " + (modelData.size / 1000000000).toFixed(1) + " GB"
                                 color: Theme.secondaryLabel
                                 font.family: Theme.fontUi
-                                font.pixelSize: Theme.fs(12)
+                                font.pixelSize: Theme.font.callout.pixelSize
                             }
                         }
 
@@ -401,7 +401,7 @@ ShellRoot {
                     Text {
                         text: "Account name"
                         color: Theme.label
-                        font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: Font.Medium }
+                        font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize; weight: Font.Medium }
                     }
                     TextField {
                         width: parent.width
@@ -413,7 +413,7 @@ ShellRoot {
                     Text {
                         text: "Password"
                         color: Theme.label
-                        font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: Font.Medium }
+                        font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize; weight: Font.Medium }
                     }
                     TextField {
                         width: parent.width
@@ -426,7 +426,7 @@ ShellRoot {
                     Text {
                         text: "Verify password"
                         color: Theme.label
-                        font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: Font.Medium }
+                        font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize; weight: Font.Medium }
                     }
                     TextField {
                         width: parent.width
@@ -441,7 +441,7 @@ ShellRoot {
                         visible: stage.passwordConfirm.length > 0 && stage.password !== stage.passwordConfirm
                         text: "Passwords do not match."
                         color: "#ff453a"
-                        font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+                        font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize }
                     }
                 }
 
@@ -469,12 +469,12 @@ ShellRoot {
                             Text {
                                 text: stage.selectedPath()
                                 color: Theme.secondaryLabel
-                                font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                                font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
                             }
                             Text {
                                 text: "Administrator: " + stage.username
                                 color: Theme.secondaryLabel
-                                font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                                font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
                             }
                         }
                     }
@@ -505,7 +505,7 @@ ShellRoot {
                         text: Math.round(stage.progress * 100) + "%"
                         horizontalAlignment: Text.AlignHCenter
                         color: Theme.label
-                        font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.DemiBold }
+                        font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize; weight: Font.DemiBold }
                     }
 
                     Text {
@@ -515,7 +515,7 @@ ShellRoot {
                         horizontalAlignment: Text.AlignHCenter
                         wrapMode: Text.WordWrap
                         color: Theme.secondaryLabel
-                        font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                        font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
                     }
 
                     Text {
@@ -524,7 +524,7 @@ ShellRoot {
                         horizontalAlignment: Text.AlignHCenter
                         wrapMode: Text.WordWrap
                         color: Theme.secondaryLabel
-                        font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                        font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
                     }
                 }
 
@@ -551,14 +551,14 @@ ShellRoot {
                                 text: "Stopped while: " + stage.failedStage
                                 color: Theme.label
                                 wrapMode: Text.WordWrap
-                                font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.DemiBold }
+                                font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize; weight: Font.DemiBold }
                             }
                             Text {
                                 width: parent.width
                                 text: stage.error
                                 color: Theme.secondaryLabel
                                 wrapMode: Text.WordWrap
-                                font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                                font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
                             }
                             Text {
                                 width: parent.width
@@ -566,7 +566,7 @@ ShellRoot {
                                 text: "The full log is in " + stage.log + " until you restart."
                                 color: Theme.tertiaryLabel
                                 wrapMode: Text.WordWrap
-                                font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+                                font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize }
                             }
                         }
                     }
@@ -576,7 +576,7 @@ ShellRoot {
                         color: Theme.secondaryLabel
                         horizontalAlignment: Text.AlignHCenter
                         wrapMode: Text.WordWrap
-                        font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                        font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
                     }
                 }
 
@@ -592,7 +592,7 @@ ShellRoot {
                         wrapMode: Text.WordWrap
                         text: "Restart the computer and remove the live USB when the firmware screen appears."
                         color: Theme.secondaryLabel
-                        font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
+                        font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize }
                     }
                 }
 
@@ -604,7 +604,7 @@ ShellRoot {
                     color: Theme.secondaryLabel
                     horizontalAlignment: Text.AlignHCenter
                     wrapMode: Text.WordWrap
-                    font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: Font.Medium }
+                    font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize; weight: Font.Medium }
                 }
 
                 Text {
@@ -614,7 +614,7 @@ ShellRoot {
                     color: "#ff453a"
                     horizontalAlignment: Text.AlignHCenter
                     wrapMode: Text.WordWrap
-                    font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                    font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
                 }
             }
 

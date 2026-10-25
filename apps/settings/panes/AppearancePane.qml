@@ -66,7 +66,7 @@ Pane {
             y: 62
             text: th.label
             color: th.chosen ? Theme.label : Theme.secondaryLabel
-            font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: th.chosen ? Font.Bold : Font.Normal }
+            font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize; weight: th.chosen ? Font.Bold : Font.Normal }
         }
     }
 
@@ -110,7 +110,7 @@ Pane {
                         anchors.horizontalCenter: parent.horizontalCenter; y: 62
                         text: modelData.t
                         color: parent.chosen ? Theme.label : Theme.secondaryLabel
-                        font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: parent.chosen ? Font.Bold : Font.Normal }
+                        font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize; weight: parent.chosen ? Font.Bold : Font.Normal }
                     }
                 }
             }
@@ -135,14 +135,14 @@ Pane {
         SetRow {
             title: "Transparency"
             subtitle: "Sidebars, the Dock, menus and panels, from clear glass to solid. What's in a window is always solid."
-            Text { text: "Clear"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.fs(11) } }
+            Text { text: "Clear"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize } }
             Slider {
                 objectName: "glassSolidity"
                 width: 180
                 value: pane.sys.prefs.glassSolidity ?? 0
                 onMoved: (v) => pane.sys.setPref(["glassSolidity"], Math.round(v * 100) / 100)
             }
-            Text { text: "Solid"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.fs(11) } }
+            Text { text: "Solid"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize } }
         }
     }
     Group {
@@ -181,7 +181,7 @@ Pane {
                         anchors.horizontalCenter: parent.horizontalCenter; y: 28
                         text: modelData[2]
                         color: Theme.secondaryLabel
-                        font { family: Theme.fontUi; pixelSize: Theme.fs(10) }
+                        font { family: Theme.fontUi; pixelSize: Theme.font.footnote.pixelSize }
                     }
                 }
             }

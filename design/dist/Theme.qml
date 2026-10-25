@@ -7,13 +7,14 @@ QtObject {
 
     readonly property string fontUi: "Golden Gate UI"
     readonly property string fontDisplay: "Golden Gate Display"
-    readonly property real textCaption2: 11
-    readonly property real textCaption: 12
-    readonly property real textFootnote: 12
-    readonly property real textBody: 14
-    readonly property real textCallout: 15
-    readonly property real textHeadline: 14
-    readonly property real textTitle3: 16
+    readonly property real textCaption2: 10
+    readonly property real textCaption: 10
+    readonly property real textFootnote: 10
+    readonly property real textSubheadline: 11
+    readonly property real textCallout: 12
+    readonly property real textBody: 13
+    readonly property real textHeadline: 13
+    readonly property real textTitle3: 15
     readonly property real textTitle2: 17
     readonly property real textTitle1: 22
     readonly property real textLargeTitle: 26
@@ -153,13 +154,14 @@ QtObject {
 
     // Semantic roles: font, radius and motion (design/tokens.json role).
     readonly property QtObject font: QtObject {
-        readonly property font caption2: Qt.font({ family: fontUi, pixelSize: fs(11), weight: 400, letterSpacing: 0.11 })
-        readonly property font caption: Qt.font({ family: fontUi, pixelSize: fs(12), weight: 400, letterSpacing: 0.12 })
-        readonly property font footnote: Qt.font({ family: fontUi, pixelSize: fs(12), weight: 400, letterSpacing: 0.12 })
-        readonly property font body: Qt.font({ family: fontUi, pixelSize: fs(14), weight: 400, letterSpacing: -0.07 })
-        readonly property font callout: Qt.font({ family: fontUi, pixelSize: fs(15), weight: 400, letterSpacing: -0.075 })
-        readonly property font headline: Qt.font({ family: fontUi, pixelSize: fs(14), weight: 600, letterSpacing: -0.07 })
-        readonly property font title3: Qt.font({ family: fontUi, pixelSize: fs(16), weight: 600, letterSpacing: -0.288 })
+        readonly property font caption2: Qt.font({ family: fontUi, pixelSize: fs(10), weight: 400, letterSpacing: 0.1 })
+        readonly property font caption: Qt.font({ family: fontUi, pixelSize: fs(10), weight: 400, letterSpacing: 0.1 })
+        readonly property font footnote: Qt.font({ family: fontUi, pixelSize: fs(10), weight: 400, letterSpacing: 0.1 })
+        readonly property font subheadline: Qt.font({ family: fontUi, pixelSize: fs(11), weight: 400, letterSpacing: 0.11 })
+        readonly property font body: Qt.font({ family: fontUi, pixelSize: fs(13), weight: 400, letterSpacing: -0.065 })
+        readonly property font callout: Qt.font({ family: fontUi, pixelSize: fs(12), weight: 400, letterSpacing: -0.06 })
+        readonly property font headline: Qt.font({ family: fontUi, pixelSize: fs(13), weight: 600, letterSpacing: -0.065 })
+        readonly property font title3: Qt.font({ family: fontUi, pixelSize: fs(15), weight: 600, letterSpacing: -0.27 })
         readonly property font title2: Qt.font({ family: fontUi, pixelSize: fs(17), weight: 600, letterSpacing: -0.306 })
         readonly property font title1: Qt.font({ family: fontDisplay, pixelSize: fs(22), weight: 700, letterSpacing: -0.396 })
         readonly property font largeTitle: Qt.font({ family: fontDisplay, pixelSize: fs(26), weight: 700, letterSpacing: -0.468 })

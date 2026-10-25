@@ -118,7 +118,7 @@ Pane {
             width: parent.width; horizontalAlignment: Text.AlignHCenter; elide: Text.ElideRight
             text: tile.label
             color: tile.chosen ? Theme.label : Theme.secondaryLabel
-            font { family: Theme.fontUi; pixelSize: Theme.fs(11); weight: tile.chosen ? Font.DemiBold : Font.Normal }
+            font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize; weight: tile.chosen ? Font.DemiBold : Font.Normal }
         }
         HoverHandler { id: hover; cursorShape: Qt.PointingHandCursor }
         TapHandler { id: tap; onTapped: pane.choose(tile.path) }
@@ -147,7 +147,7 @@ Pane {
         width: parent.width
         text: pane.error
         color: Theme.dark ? "#ff453a" : "#ff3b30"
-        font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+        font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
     }
 
     // Choose…: the computer's folders, starting in Pictures.
@@ -175,7 +175,7 @@ Pane {
             text: pane.folder.replace(pane.home, "~")
             elide: Text.ElideMiddle
             color: Theme.secondaryLabel
-            font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+            font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize }
         }
         Tiles {
             Repeater {
@@ -194,7 +194,7 @@ Pane {
                         width: parent.width; horizontalAlignment: Text.AlignHCenter; elide: Text.ElideRight
                         text: dir.modelData.split("/").pop()
                         color: Theme.secondaryLabel
-                        font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+                        font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize }
                     }
                     HoverHandler { id: dirHover; cursorShape: Qt.PointingHandCursor }
                     TapHandler { onTapped: pane.browse(dir.modelData) }
@@ -211,7 +211,7 @@ Pane {
             verticalAlignment: Text.AlignVCenter
             text: "No pictures or folders here."
             color: Theme.secondaryLabel
-            font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+            font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
         }
     }
 

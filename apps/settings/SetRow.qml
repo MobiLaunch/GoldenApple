@@ -69,14 +69,14 @@ Item {
             width: parent.width; elide: Text.ElideRight
             text: row.title
             color: Theme.label
-            font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
+            font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize }
         }
         Text {
             visible: !!row.subtitle
             width: parent.width; wrapMode: Text.WordWrap
             text: row.subtitle
             color: Theme.secondaryLabel
-            font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+            font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize }
         }
     }
     Row {

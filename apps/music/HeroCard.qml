@@ -19,7 +19,7 @@ Item {
     Text {
         text: hero.kicker.toUpperCase()
         color: Theme.secondaryLabel
-        font { family: Theme.fontUi; pixelSize: Theme.fs(10); weight: Font.DemiBold; letterSpacing: 0.2 }
+        font { family: Theme.fontUi; pixelSize: Theme.font.footnote.pixelSize; weight: Font.DemiBold; letterSpacing: 0.2 }
     }
     Text {
         y: 13; width: parent.width; elide: Text.ElideRight
@@ -76,7 +76,7 @@ Item {
             text: hero.album ? hero.album.tracks.length + (hero.album.tracks.length === 1 ? " song" : " songs")
                   + (hero.album.year ? " · " + hero.album.year : "") : ""
             color: hero.lightTone ? "#cc000000" : "#e6ffffff"
-            font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: Font.Medium }
+            font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize; weight: Font.Medium }
         }
         Rectangle {
             anchors { left: parent.left; top: parent.top; margins: 14 }

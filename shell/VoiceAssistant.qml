@@ -523,7 +523,7 @@ PanelWindow {
                          citron.micMuted ? "Microphone muted" : citron.phase === "speaking" ? "Speaking…" : "Listening…")
                         : citron.aiServiceBusy ? "Thinking…" : citron.toolTitle
                     color: "#f9fafc"
-                    font { family: Theme.fontDisplay; pixelSize: Theme.fs(17); weight: Font.DemiBold }
+                    font { family: Theme.fontDisplay; pixelSize: Theme.font.title2.pixelSize; weight: Font.DemiBold }
                     layer.enabled: GraphicsInfo.api !== GraphicsInfo.Software
                     layer.effect: MultiEffect { shadowEnabled: true; shadowColor: "#88000000"; shadowBlur: 0.9; shadowVerticalOffset: 2 }
                 }
@@ -537,7 +537,7 @@ PanelWindow {
                     text: citron.errorText || citron.citronSaid || (citron.youSaid ? "“" + citron.youSaid + "”" : "")
                     visible: !!text
                     color: citron.phase === "error" ? "#ffd0ce" : "#e9edf6"
-                    font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
+                    font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize }
                     layer.enabled: GraphicsInfo.api !== GraphicsInfo.Software
                     layer.effect: MultiEffect { shadowEnabled: true; shadowColor: "#99000000"; shadowBlur: 0.9; shadowVerticalOffset: 2 }
                 }
@@ -577,7 +577,7 @@ PanelWindow {
                             width: parent.width - 86
                             color: "#f5f7fc"
                             text: citron.aiServiceBusy ? "Working on it…" : citron.imageResults.length ? "Your result" : "Response"
-                            font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: Font.DemiBold }
+                            font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize; weight: Font.DemiBold }
                         }
                         Text {
                             text: citron.aiServiceBusy ? "Cancel" : "Copy"
@@ -586,7 +586,7 @@ PanelWindow {
                             Accessible.name: text
                             Accessible.onPressAction: copyOrCancel()
                             color: "#b8d7ff"
-                            font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                            font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
                             function copyOrCancel() {
                                 if (citron.aiServiceBusy) {
                                     aiService.cancel()
@@ -609,7 +609,7 @@ PanelWindow {
                             textFormat: Text.PlainText
                             text: citron.responseNote || citron.answer || (citron.aiServiceBusy ? "Processing your request…" : "")
                             color: "#eef2f8"
-                            font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
+                            font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize }
                             lineHeight: 1.22
                         }
                     }
@@ -627,7 +627,7 @@ PanelWindow {
                         Accessible.name: "Save image"
                         Accessible.onPressAction: { imageSave.defaultSuffix = citron.imageResults[0].split(".").pop(); imageSave.open() }
                         color: "#b8d7ff"
-                        font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: Font.DemiBold }
+                        font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize; weight: Font.DemiBold }
                         MouseArea {
                             anchors.fill: parent
                             onClicked: {
@@ -655,7 +655,7 @@ PanelWindow {
                     anchors { fill: parent; margins: 14 }
                     color: "#ffffff"; selectionColor: "#637ca8"
                     wrapMode: TextEdit.Wrap
-                    font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
+                    font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize }
                     clip: true
                     Text {
                         visible: !writingSource.text && writingSource.visible
@@ -669,13 +669,13 @@ PanelWindow {
                     anchors { left: parent.left; leftMargin: 15; verticalCenter: parent.verticalCenter }
                     width: parent.width - 75; elide: Text.ElideMiddle
                     text: citron.selectedPhoto.split("/").pop()
-                    color: "#edf1f9"; font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                    color: "#edf1f9"; font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
                 }
                 Text {
                     visible: citron.tool !== "writing"
                     anchors { right: parent.right; rightMargin: 14; verticalCenter: parent.verticalCenter }
                     text: "Remove"; color: "#adcfff"
-                    font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+                    font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize }
                     MouseArea { anchors.fill: parent; onClicked: citron.selectedPhoto = "" }
                     Accessible.role: Accessible.Button
                     Accessible.name: "Remove photo"
@@ -703,7 +703,7 @@ PanelWindow {
                         anchors.centerIn: parent
                         text: chip.label
                         color: "#f4f6fa"
-                        font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: Font.Medium }
+                        font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize; weight: Font.Medium }
                     }
                     MouseArea { id: tap; anchors.fill: parent; onClicked: citron.chooseTool(chip.kind) }
                     Accessible.role: Accessible.Button
@@ -795,7 +795,7 @@ PanelWindow {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: "⌘⇧Space to talk · Esc to dismiss"
                 color: "#dce3ee"
-                font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+                font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize }
                 layer.enabled: GraphicsInfo.api !== GraphicsInfo.Software
                 layer.effect: MultiEffect { shadowEnabled: true; shadowColor: "#88000000"; shadowBlur: 0.9; shadowVerticalOffset: 2 }
             }

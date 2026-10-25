@@ -285,7 +285,7 @@ Window {
             anchors.centerIn: parent
             text: "Waiting for the keyring… Unlock it if it asks."
             color: Theme.dark ? "#ffffff" : "#1d1d1f"
-            font.pixelSize: Theme.fs(12)
+            font.pixelSize: Theme.font.callout.pixelSize
         }
     }
 
@@ -875,7 +875,7 @@ Window {
                                     text: title || "New Tab"
                                     elide: Text.ElideRight
                                     color: Theme.label
-                                    font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                                    font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
                                 }
                             }
                             MouseArea {
@@ -1039,7 +1039,7 @@ Window {
                                         anchors.centerIn: parent
                                         text: (tab.title || "N").charAt(0).toUpperCase()
                                         color: Theme.secondaryLabel
-                                        font { family: Theme.fontUi; pixelSize: Theme.fs(10); weight: Font.DemiBold }
+                                        font { family: Theme.fontUi; pixelSize: Theme.font.footnote.pixelSize; weight: Font.DemiBold }
                                     }
                                 }
                                 Rectangle {
@@ -1063,7 +1063,7 @@ Window {
                                 text: tab.title || "New Tab"
                                 color: Theme.label
                                 elide: Text.ElideRight
-                                font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: tab.active ? Font.Medium : Font.Normal }
+                                font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize; weight: tab.active ? Font.Medium : Font.Normal }
                             }
 
                             BrowserButton {
@@ -1168,12 +1168,12 @@ Window {
                         Text {
                             text: BrowserBackend.privateMode ? "Private Browsing" : "Web"
                             color: Theme.label
-                            font { family: Theme.fontDisplay; pixelSize: Theme.fs(22); weight: Font.DemiBold; letterSpacing: -0.3 }
+                            font { family: Theme.fontDisplay; pixelSize: Theme.font.title1.pixelSize; weight: Font.DemiBold; letterSpacing: -0.3 }
                         }
                         Text {
                             text: BrowserBackend.profileName
                             color: Theme.secondaryLabel
-                            font { family: Theme.fontUi; pixelSize: Theme.fs(11); weight: Font.Medium }
+                            font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize; weight: Font.Medium }
                         }
                     }
 
@@ -1199,14 +1199,14 @@ Window {
                                 text: row.label
                                 color: Theme.label
                                 elide: Text.ElideRight
-                                font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: row.selected ? Font.Medium : Font.Normal }
+                                font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize; weight: row.selected ? Font.Medium : Font.Normal }
                             }
                             Text {
                                 anchors.verticalCenter: parent.verticalCenter
                                 text: row.detail
                                 visible: !!row.detail
                                 color: Theme.tertiaryLabel
-                                font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+                                font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize }
                             }
                         }
                         MouseArea { id: sideArea; anchors.fill: parent; hoverEnabled: true; onClicked: row.activated() }
@@ -1253,7 +1253,7 @@ Window {
                         leftPadding: 8
                         topPadding: 18
                         bottomPadding: 4
-                        font { family: Theme.fontUi; pixelSize: Theme.fs(10); weight: Font.DemiBold; letterSpacing: 0.8 }
+                        font { family: Theme.fontUi; pixelSize: Theme.font.footnote.pixelSize; weight: Font.DemiBold; letterSpacing: 0.8 }
                     }
 
                     Repeater {
@@ -1285,7 +1285,7 @@ Window {
                         leftPadding: 8
                         topPadding: 18
                         bottomPadding: 4
-                        font { family: Theme.fontUi; pixelSize: Theme.fs(10); weight: Font.DemiBold; letterSpacing: 0.8 }
+                        font { family: Theme.fontUi; pixelSize: Theme.font.footnote.pixelSize; weight: Font.DemiBold; letterSpacing: 0.8 }
                     }
 
                     Repeater {
@@ -1521,7 +1521,7 @@ Window {
                             visible: libraryOverlay.records.length === 0
                             text: "Nothing here yet."
                             color: Theme.secondaryLabel
-                            font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
+                            font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize }
                         }
 
                         Repeater {
@@ -1541,13 +1541,13 @@ Window {
                                         width: parent.width
                                         text: modelData.title || BrowserBackend.displayAddress(modelData.url)
                                         color: Theme.label; elide: Text.ElideRight
-                                        font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.Medium }
+                                        font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize; weight: Font.Medium }
                                     }
                                     Text {
                                         width: parent.width
                                         text: BrowserBackend.displayAddress(modelData.url)
                                         color: Theme.secondaryLabel; elide: Text.ElideRight
-                                        font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+                                        font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize }
                                     }
                                 }
                                 BrowserButton {
@@ -1616,7 +1616,7 @@ Window {
                     Text {
                         text: tabsModel.count + (tabsModel.count === 1 ? " open tab" : " open tabs")
                         color: Theme.secondaryLabel
-                        font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                        font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
                     }
                 }
                 BrowserButton {
@@ -1705,7 +1705,7 @@ Window {
                                         anchors.centerIn: parent
                                         text: (overviewCard.title || "N").charAt(0).toUpperCase()
                                         color: Theme.secondaryLabel
-                                        font { family: Theme.fontUi; pixelSize: Theme.fs(15); weight: Font.DemiBold }
+                                        font { family: Theme.fontUi; pixelSize: Theme.font.title3.pixelSize; weight: Font.DemiBold }
                                     }
                                 }
                                 Rectangle {
@@ -1730,14 +1730,14 @@ Window {
                                     text: overviewCard.title || "Start Page"
                                     color: Theme.label
                                     elide: Text.ElideRight
-                                    font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: Font.Medium }
+                                    font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize; weight: Font.Medium }
                                 }
                                 Text {
                                     width: parent.width
                                     text: overviewCard.url === "about:blank" ? "Start Page" : BrowserBackend.displayAddress(overviewCard.url)
                                     color: Theme.secondaryLabel
                                     elide: Text.ElideRight
-                                    font { family: Theme.fontUi; pixelSize: Theme.fs(10) }
+                                    font { family: Theme.fontUi; pixelSize: Theme.font.footnote.pixelSize }
                                 }
                             }
 
@@ -1823,14 +1823,14 @@ Window {
                                 text: modelData.title
                                 color: Theme.label
                                 elide: Text.ElideRight
-                                font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.Medium }
+                                font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize; weight: Font.Medium }
                             }
                             Text {
                                 width: parent.width
                                 text: modelData.subtitle
                                 color: Theme.secondaryLabel
                                 elide: Text.ElideRight
-                                font { family: Theme.fontUi; pixelSize: Theme.fs(10) }
+                                font { family: Theme.fontUi; pixelSize: Theme.font.footnote.pixelSize }
                             }
                         }
                     }
@@ -1890,7 +1890,7 @@ Window {
                 horizontalAlignment: Text.AlignHCenter
                 text: root.findQuery ? (root.findMatches ? root.findActive + " of " + root.findMatches : "0 of 0") : ""
                 color: Theme.secondaryLabel
-                font { family: Theme.fontUi; pixelSize: Theme.fs(10) }
+                font { family: Theme.fontUi; pixelSize: Theme.font.footnote.pixelSize }
             }
             BrowserButton { width: 26; height: 26; symbol: "chevron-left"; tooltip: "Previous Match"; enabled: root.findMatches > 0; onClicked: root.performFind(true) }
             BrowserButton { width: 26; height: 26; symbol: "chevron-right"; tooltip: "Next Match"; enabled: root.findMatches > 0; onClicked: root.performFind(false) }
@@ -1940,7 +1940,7 @@ Window {
                     id: openDownloads
                     text: "Show in Files"
                     color: Theme.accent
-                    font { family: Theme.fontUi; pixelSize: Theme.fs(11); weight: Font.Medium }
+                    font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize; weight: Font.Medium }
                     TapHandler { onTapped: BrowserBackend.openDownloadsFolder() }
                 }
             }
@@ -1949,7 +1949,7 @@ Window {
                 visible: root.downloads.length === 0
                 text: "No downloads yet."
                 color: Theme.secondaryLabel
-                font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
             }
 
             Repeater {
@@ -1972,7 +1972,7 @@ Window {
                                 width: parent.width
                                 text: modelData.downloadFileName || modelData.suggestedFileName
                                 color: Theme.label; elide: Text.ElideMiddle
-                                font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: Font.Medium }
+                                font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize; weight: Font.Medium }
                             }
                             ProgressBar {
                                 width: parent.width
@@ -1985,7 +1985,7 @@ Window {
                                 text: root.downloadLabel(modelData)
                                 elide: Text.ElideRight
                                 color: Theme.secondaryLabel
-                                font { family: Theme.fontUi; pixelSize: Theme.fs(10) }
+                                font { family: Theme.fontUi; pixelSize: Theme.font.footnote.pixelSize }
                             }
                         }
                         BrowserButton {
@@ -2069,7 +2069,7 @@ Window {
                     anchors.verticalCenter: parent.verticalCenter
                     text: "Profile"
                     color: Theme.label
-                    font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.Medium }
+                    font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize; weight: Font.Medium }
                 }
                 Text {
                     anchors.verticalCenter: parent.verticalCenter
@@ -2077,7 +2077,7 @@ Window {
                     text: BrowserBackend.profileName
                     color: Theme.secondaryLabel
                     elide: Text.ElideRight
-                    font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
+                    font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize }
                 }
                 Button {
                     text: "Manage…"
@@ -2092,7 +2092,7 @@ Window {
                     anchors.verticalCenter: parent.verticalCenter
                     text: "Tab Layout"
                     color: Theme.label
-                    font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.Medium }
+                    font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize; weight: Font.Medium }
                 }
                 Segmented {
                     options: ["Separate", "Compact"]
@@ -2108,14 +2108,14 @@ Window {
                     anchors.verticalCenter: parent.verticalCenter
                     text: "Tab Groups"
                     color: Theme.label
-                    font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.Medium }
+                    font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize; weight: Font.Medium }
                 }
                 Text {
                     anchors.verticalCenter: parent.verticalCenter
                     width: 170
                     text: root.tabGroups.length + (root.tabGroups.length === 1 ? " group" : " groups")
                     color: Theme.secondaryLabel
-                    font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                    font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
                 }
                 Button {
                     text: "Manage…"
@@ -2131,7 +2131,7 @@ Window {
                     anchors.verticalCenter: parent.verticalCenter
                     text: "Restore previous session"
                     color: Theme.label
-                    font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.Medium }
+                    font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize; weight: Font.Medium }
                 }
                 Switch {
                     checked: root.browserSettings.restoreSession !== false
@@ -2146,7 +2146,7 @@ Window {
                     anchors.verticalCenter: parent.verticalCenter
                     text: "Favorites when searching"
                     color: Theme.label
-                    font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.Medium }
+                    font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize; weight: Font.Medium }
                 }
                 Switch {
                     checked: root.browserSettings.showFavoritesOnFocus !== false
@@ -2161,7 +2161,7 @@ Window {
                     anchors.verticalCenter: parent.verticalCenter
                     text: "Privacy Protection"
                     color: Theme.label
-                    font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.Medium }
+                    font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize; weight: Font.Medium }
                 }
                 Switch {
                     checked: root.browserSettings.privacyProtection !== false
@@ -2176,7 +2176,7 @@ Window {
                     anchors.verticalCenter: parent.verticalCenter
                     text: "Search Engine"
                     color: Theme.label
-                    font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.Medium }
+                    font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize; weight: Font.Medium }
                 }
                 Segmented {
                     readonly property var keys: ["duckduckgo", "brave", "bing", "google"]
@@ -2195,14 +2195,14 @@ Window {
                     anchors.verticalCenter: parent.verticalCenter
                     text: "Website Permissions"
                     color: Theme.label
-                    font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.Medium }
+                    font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize; weight: Font.Medium }
                 }
                 Text {
                     anchors.verticalCenter: parent.verticalCenter
                     width: 170
                     text: BrowserBackend.privateMode ? "This window only" : "Stored per website"
                     color: Theme.secondaryLabel
-                    font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                    font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
                 }
                 Button {
                     text: "Manage…"
@@ -2219,7 +2219,7 @@ Window {
                     ? "Private windows keep history, cookies and permissions in memory for this window only."
                     : "Website permissions are stored per origin by Qt WebEngine. Use the prompt shown by Web when a site requests access."
                 color: Theme.secondaryLabel
-                font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
             }
         }
     }
@@ -2267,7 +2267,7 @@ Window {
                         visible: !!root.permissionOriginFilter
                         text: BrowserBackend.displayAddress(root.permissionOriginFilter)
                         color: Theme.secondaryLabel
-                        font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+                        font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize }
                     }
                 }
                 BrowserButton {
@@ -2284,7 +2284,7 @@ Window {
                     ? "Permission decisions in Private Browsing last only for this private profile."
                     : "Web remembers supported permission decisions per website. Forgetting one makes the site ask again."
                 color: Theme.secondaryLabel
-                font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
             }
 
             Flickable {
@@ -2313,7 +2313,7 @@ Window {
                             : "No stored website permission decisions."
                         color: Theme.secondaryLabel
                         horizontalAlignment: Text.AlignHCenter
-                        font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                        font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
                     }
 
                     Repeater {
@@ -2334,14 +2334,14 @@ Window {
                                     text: BrowserBackend.displayAddress(modelData.origin.toString())
                                     color: Theme.label
                                     elide: Text.ElideRight
-                                    font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.Medium }
+                                    font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize; weight: Font.Medium }
                                 }
                                 Text {
                                     width: parent.width
                                     text: root.permissionLabel(modelData.permissionType) + " · " + root.permissionStateLabel(modelData.state)
                                     color: Theme.secondaryLabel
                                     elide: Text.ElideRight
-                                    font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+                                    font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize }
                                 }
                             }
 
@@ -2412,7 +2412,7 @@ Window {
                 text: root.currentUrl === "about:blank" ? "Start Page" : BrowserBackend.displayAddress(root.currentUrl)
                 color: Theme.secondaryLabel
                 elide: Text.ElideRight
-                font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
             }
 
             Row {
@@ -2432,7 +2432,7 @@ Window {
                                + (root.sitePrivacyReport.blocked === 1 ? "" : "s") + " blocked")
                             : "Privacy Protection is off"
                         color: Theme.label
-                        font { family: Theme.fontUi; pixelSize: Theme.fs(15); weight: Font.DemiBold }
+                        font { family: Theme.fontUi; pixelSize: Theme.font.title3.pixelSize; weight: Font.DemiBold }
                     }
                     Text {
                         width: privacyContent.width - 64
@@ -2441,7 +2441,7 @@ Window {
                             ? "This system's PySide6 doesn't match its Qt, so Web can't filter requests. It comes back after the next update."
                             : "Known third-party tracker domains are blocked before Chromium sends the request."
                         color: Theme.secondaryLabel
-                        font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+                        font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize }
                     }
                 }
             }
@@ -2453,7 +2453,7 @@ Window {
                 text: "No known tracker domains have been blocked for this site in this session."
                 width: parent.width; wrapMode: Text.WordWrap
                 color: Theme.secondaryLabel
-                font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
             }
 
             Column {
@@ -2471,13 +2471,13 @@ Window {
                             width: parent.width - 70; elide: Text.ElideRight
                             text: modelData.domain
                             color: Theme.label
-                            font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                            font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
                         }
                         Text {
                             anchors { right: parent.right; rightMargin: 10; verticalCenter: parent.verticalCenter }
                             text: String(modelData.count)
                             color: Theme.secondaryLabel
-                            font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+                            font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize }
                         }
                     }
                 }
@@ -2488,7 +2488,7 @@ Window {
                 wrapMode: Text.WordWrap
                 text: "CitronOS Privacy Protection uses a conservative built-in tracker list. It is not Safari Intelligent Tracking Prevention."
                 color: Theme.tertiaryLabel
-                font { family: Theme.fontUi; pixelSize: Theme.fs(10) }
+                font { family: Theme.fontUi; pixelSize: Theme.font.footnote.pixelSize }
             }
         }
     }
@@ -2543,7 +2543,7 @@ Window {
                 wrapMode: Text.WordWrap
                 text: "Each profile keeps its own cookies, website data, history, Favorites, Reading List, Tab Groups, and restored tabs."
                 color: Theme.secondaryLabel
-                font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
             }
 
             Column {
@@ -2571,7 +2571,7 @@ Window {
                                     anchors.centerIn: parent
                                     text: String(modelData).charAt(0).toUpperCase()
                                     color: "#ffffff"
-                                    font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.DemiBold }
+                                    font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize; weight: Font.DemiBold }
                                 }
                             }
                             Text {
@@ -2580,7 +2580,7 @@ Window {
                                 text: modelData
                                 color: Theme.label
                                 elide: Text.ElideRight
-                                font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.Medium }
+                                font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize; weight: Font.Medium }
                             }
                             Button {
                                 anchors.verticalCenter: parent.verticalCenter
@@ -2593,7 +2593,7 @@ Window {
                                 visible: modelData === BrowserBackend.profileName
                                 text: "Current"
                                 color: Theme.secondaryLabel
-                                font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+                                font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize }
                             }
                         }
                     }
@@ -2605,7 +2605,7 @@ Window {
             Text {
                 text: "New Profile"
                 color: Theme.label
-                font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.DemiBold }
+                font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize; weight: Font.DemiBold }
             }
             Row {
                 width: parent.width
@@ -2670,7 +2670,7 @@ Window {
                     Text {
                         text: "Saved groups keep a reusable set of pages together."
                         color: Theme.secondaryLabel
-                        font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+                        font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize }
                     }
                 }
                 BrowserButton {
@@ -2699,7 +2699,7 @@ Window {
                         text: "No saved Tab Groups yet."
                         color: Theme.secondaryLabel
                         horizontalAlignment: Text.AlignHCenter
-                        font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                        font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
                     }
 
                     Repeater {
@@ -2725,12 +2725,12 @@ Window {
                                         text: modelData.name
                                         color: Theme.label
                                         elide: Text.ElideRight
-                                        font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.Medium }
+                                        font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize; weight: Font.Medium }
                                     }
                                     Text {
                                         text: String(modelData.tabs?.length ?? 0) + " tabs"
                                         color: Theme.secondaryLabel
-                                        font { family: Theme.fontUi; pixelSize: Theme.fs(10) }
+                                        font { family: Theme.fontUi; pixelSize: Theme.font.footnote.pixelSize }
                                     }
                                 }
                                 Button {
@@ -2811,7 +2811,7 @@ Window {
                 wrapMode: Text.WordWrap
                 text: "Save the tabs in this window as a named group you can return to from the sidebar."
                 color: Theme.secondaryLabel
-                font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
             }
             TextField {
                 id: tabGroupField
@@ -2875,7 +2875,7 @@ Window {
                             : ""
                         color: Theme.label
                         elide: Text.ElideRight
-                        font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.DemiBold }
+                        font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize; weight: Font.DemiBold }
                     }
                     Text {
                         width: parent.width
@@ -2884,7 +2884,7 @@ Window {
                             : "Saved in your keyring and filled in next time."
                         color: Theme.secondaryLabel
                         elide: Text.ElideRight
-                        font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+                        font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize }
                     }
                 }
             }
@@ -2948,7 +2948,7 @@ Window {
                 text: "Web saves passwords in your keyring when you sign in to a website and fills them in when you come back. "
                     + (BrowserBackend.privateMode ? "Private Browsing fills saved passwords but doesn't save new ones." : "")
                 color: Theme.secondaryLabel
-                font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
             }
             Flickable {
                 width: parent.width
@@ -2967,7 +2967,7 @@ Window {
                         text: "No saved passwords."
                         color: Theme.secondaryLabel
                         horizontalAlignment: Text.AlignHCenter
-                        font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                        font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
                     }
                     Repeater {
                         model: root.savedLogins
@@ -2985,14 +2985,14 @@ Window {
                                     text: BrowserBackend.displayAddress(modelData.origin)
                                     color: Theme.label
                                     elide: Text.ElideRight
-                                    font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.DemiBold }
+                                    font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize; weight: Font.DemiBold }
                                 }
                                 Text {
                                     width: parent.width
                                     text: modelData.username || "No username"
                                     color: Theme.secondaryLabel
                                     elide: Text.ElideRight
-                                    font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+                                    font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize }
                                 }
                             }
                             Row {
@@ -3049,7 +3049,7 @@ Window {
                     ? BrowserBackend.displayAddress(root.pendingPermission.origin.toString()) + " is requesting access to a protected browser feature."
                     : ""
                 color: Theme.secondaryLabel
-                font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
             }
             Item { width: 1; height: 8 }
             Row {
@@ -3091,7 +3091,7 @@ Window {
             id: toastLabel
             anchors.centerIn: parent
             color: Theme.label
-            font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: Font.Medium }
+            font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize; weight: Font.Medium }
         }
         Timer {
             id: toastTimer

@@ -67,7 +67,7 @@ ShellRoot {
                     anchors.verticalCenter: parent.verticalCenter
                     text: app.composing ? "New Message" : app.current ? app.current.name : ""
                     color: Theme.label
-                    font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.DemiBold }
+                    font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize; weight: Font.DemiBold }
                 }
                 TapHandler { onTapped: app.showContactCard() }
             },
@@ -136,7 +136,7 @@ ShellRoot {
                                     text: modelData.name
                                     elide: Text.ElideRight
                                     color: Theme.label
-                                    font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+                                    font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize }
                                 }
                                 TapHandler {
                                     acceptedButtons: Qt.LeftButton | Qt.RightButton
@@ -161,7 +161,7 @@ ShellRoot {
                                 anchors.verticalCenter: parent.verticalCenter
                                 text: app.recipientName ? app.recipientName : "New Message"
                                 color: "#ffffff"
-                                font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.DemiBold }
+                                font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize; weight: Font.DemiBold }
                             }
                         }
                     }
@@ -186,7 +186,7 @@ ShellRoot {
                         wrapMode: Text.WordWrap
                         text: search.text ? "No Results" : app.loaded ? "No Conversations" : ""
                         color: Theme.secondaryLabel
-                        font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
+                        font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize }
                     }
                 }
             }
@@ -571,7 +571,7 @@ ShellRoot {
                             : app.phoneState === "starting" ? "Starting…"
                             : "Connecting to your iPhone… Keep it nearby with Bluetooth on."
                         color: Theme.secondaryLabel
-                        font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+                        font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize }
                     }
                     Button {
                         visible: app.phoneState === "locked"
@@ -606,7 +606,7 @@ ShellRoot {
                     anchors { left: parent.left; leftMargin: 18; verticalCenter: parent.verticalCenter }
                     text: "To:"
                     color: Theme.secondaryLabel
-                    font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
+                    font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize }
                 }
                 TextField {
                     id: to
@@ -685,8 +685,8 @@ ShellRoot {
                                 Avatar { size: 28; name: modelData.name; photoPath: modelData.photo_path || ""; anchors.verticalCenter: parent.verticalCenter }
                                 Column {
                                     anchors.verticalCenter: parent.verticalCenter
-                                    Text { text: modelData.name; color: pick.hovered ? "#ffffff" : Theme.label; font { family: Theme.fontUi; pixelSize: Theme.fs(13) } }
-                                    Text { text: modelData.address; color: pick.hovered ? "#d9ffffff" : Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.fs(11) } }
+                                    Text { text: modelData.name; color: pick.hovered ? "#ffffff" : Theme.label; font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize } }
+                                    Text { text: modelData.address; color: pick.hovered ? "#d9ffffff" : Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize } }
                                 }
                             }
                             HoverHandler { id: pick }
@@ -701,7 +701,7 @@ ShellRoot {
                 anchors.centerIn: parent
                 text: app.threads.length ? "" : "Messages you send and receive on your iPhone appear here."
                 color: Theme.secondaryLabel
-                font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
+                font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize }
             }
 
             // ---------------------------------------------------- composer
@@ -720,7 +720,7 @@ ShellRoot {
                     wrapMode: Text.WordWrap
                     text: "Reply to this group from your iPhone. Your iPhone doesn't say who's in it."
                     color: Theme.secondaryLabel
-                    font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+                    font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize }
                 }
                 Glass {
                     id: draftBox
@@ -790,13 +790,13 @@ ShellRoot {
                             text: app.mediaInfo.name || app.mediaPath.split("/").pop()
                             elide: Text.ElideMiddle
                             color: Theme.label
-                            font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: Font.DemiBold }
+                            font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize; weight: Font.DemiBold }
                         }
                         Text {
                             text: !app.mediaReady ? "Media relay not configured — tap Setup" :
                                 app.mediaInfo.type === "video" ? "Video attachment" : "Photo attachment"
                             color: Theme.secondaryLabel
-                            font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+                            font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize }
                         }
                     }
                     Button {
@@ -882,7 +882,7 @@ ShellRoot {
                             wrapMode: Text.WordWrap
                             text: "Paste an invitation made on an Apple device. The host must admit you."
                             color: Theme.secondaryLabel
-                            font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                            font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
                         }
                         TextField {
                             id: faceTimeInput
@@ -932,12 +932,12 @@ ShellRoot {
                             wrapMode: Text.WordWrap
                             text: "BlueFerry cannot send photo or video attachments. To enable them, connect a BlueBubbles server on a Mac you control. Your photo/video is uploaded to that Mac."
                             color: Theme.secondaryLabel
-                            font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                            font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
                         }
                         Text {
                             text: "Server URL (HTTPS)"
                             color: Theme.secondaryLabel
-                            font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+                            font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize }
                         }
                         TextField {
                             id: mediaServer
@@ -947,7 +947,7 @@ ShellRoot {
                         Text {
                             text: "Server Password"
                             color: Theme.secondaryLabel
-                            font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+                            font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize }
                         }
                         TextField {
                             id: mediaPassword
@@ -986,7 +986,7 @@ ShellRoot {
                     wrapMode: Text.WordWrap
                     text: app.error
                     color: Theme.label
-                    font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                    font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
                 }
                 Timer { running: parent.visible; interval: 6000; onTriggered: app.error = "" }
             }

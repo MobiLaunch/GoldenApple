@@ -87,14 +87,14 @@ Column {
         width: parent.width; wrapMode: Text.Wrap
         text: "Use Google Gemini to work with words and images. Only requests you send and photos you choose leave this computer. Your key is stored in the system keyring; requests appear in the temporary desktop overlay and are cleared when you dismiss it."
         color: Theme.secondaryLabel
-        font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
+        font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize }
     }
     Row {
         spacing: 12
         Switch { checked: panel.enabledSetting; enabled: !panel.busy && panel.serviceAvailable; onToggled: (value) => panel.enabledSetting = value }
         Text { text: "Enable Citron Intelligence"; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.fs(14); weight: Font.DemiBold } }
     }
-    Text { text: "Gemini API key"; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: Font.DemiBold } }
+    Text { text: "Gemini API key"; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize; weight: Font.DemiBold } }
     TextField {
         id: apiKey
         width: parent.width; height: 34; password: true
@@ -105,9 +105,9 @@ Column {
         visible: panel.environmentKey
         width: parent.width; wrapMode: Text.Wrap
         text: "GEMINI_API_KEY is set for this session and takes precedence over the saved key."
-        color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+        color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
     }
-    Text { text: "Text and questions model"; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: Font.DemiBold } }
+    Text { text: "Text and questions model"; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize; weight: Font.DemiBold } }
     TextField { id: textModel; width: parent.width; height: 32; enabled: !panel.busy && panel.serviceAvailable; placeholder: "Gemini text model ID" }
     PopUpButton {
         visible: panel.models.length > 0
@@ -115,7 +115,7 @@ Column {
         options: panel.models.filter(m => !m.includes("image") && !m.includes("tts") && !m.includes("audio") && !m.includes("live"))
         onPicked: (i) => textModel.text = options[i]
     }
-    Text { text: "Image generation and editing model"; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: Font.DemiBold } }
+    Text { text: "Image generation and editing model"; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize; weight: Font.DemiBold } }
     TextField { id: imageModel; width: parent.width; height: 32; enabled: !panel.busy && panel.serviceAvailable; placeholder: "Gemini image model ID" }
     PopUpButton {
         visible: panel.models.length > 0
@@ -127,16 +127,16 @@ Column {
         width: parent.width
         text: "Voice conversations"
         color: Theme.label
-        font { family: Theme.fontUi; pixelSize: Theme.fs(15); weight: Font.DemiBold }
+        font { family: Theme.fontUi; pixelSize: Theme.font.title3.pixelSize; weight: Font.DemiBold }
     }
     Text {
         width: parent.width
         wrapMode: Text.Wrap
         text: "Press ⇧⌘Space to start a voice conversation immediately, or use Ask Citron for typing. The microphone streams only while voice mode is open and unmuted; no recordings are saved. Choose Type to switch back to text."
         color: Theme.secondaryLabel
-        font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+        font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
     }
-    Text { text: "Live voice model"; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.fs(12) } }
+    Text { text: "Live voice model"; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize } }
     TextField {
         id: voiceModel
         width: parent.width; height: 32
@@ -149,7 +149,7 @@ Column {
         options: panel.voiceModels
         onPicked: (i) => voiceModel.text = options[i]
     }
-    Text { text: "Spoken voice"; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.fs(12) } }
+    Text { text: "Spoken voice"; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize } }
     PopUpButton {
         id: voiceChooser
         width: Math.min(240, parent.width)
@@ -157,7 +157,7 @@ Column {
         enabled: !panel.busy && panel.serviceAvailable
         options: ["Aoede", "Puck", "Kore", "Charon", "Fenrir"]
     }
-    Text { text: "Language"; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.fs(12) } }
+    Text { text: "Language"; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize } }
     PopUpButton {
         id: languageChooser
         objectName: "citronLanguage"
@@ -174,7 +174,7 @@ Column {
         wrapMode: Text.Wrap
         text: "Citron speaks this language and keeps to it, unless you ask it to switch."
         color: Theme.secondaryLabel
-        font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+        font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
     }
     Flow {
         width: parent.width; spacing: 8
@@ -192,13 +192,13 @@ Column {
         width: parent.width; wrapMode: Text.Wrap
         text: panel.serviceError || (panel.busy ? "Working…" : panel.transportError || panel.status)
         color: panel.serviceError || panel.transportError ? "#ff453a" : Theme.secondaryLabel
-        font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+        font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
         Accessible.role: Accessible.StaticText
     }
     Text {
         width: parent.width; wrapMode: Text.Wrap
         text: "Gemini requires internet access. API usage may be billed by Google, and Google's data terms apply. Model availability depends on your project."
-        color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+        color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
     }
     Button { text: "Get a Gemini API Key"; onClicked: Qt.openUrlExternally("https://aistudio.google.com/apikey") }
 }

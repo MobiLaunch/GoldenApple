@@ -136,7 +136,7 @@ Item {
             anchors { left: parent.left; bottom: line.top; bottomMargin: 2 }
             text: scaleBar.bar.label
             color: scaleBar.dark ? "#ffffff" : "#3a3a3c"
-            font { family: Theme.fontUi; pixelSize: Theme.fs(10); weight: Font.DemiBold }
+            font { family: Theme.fontUi; pixelSize: Theme.font.footnote.pixelSize; weight: Font.DemiBold }
             style: Text.Outline; styleColor: scaleBar.dark ? "#80000000" : "#b3ffffff"
         }
         Rectangle {
@@ -196,7 +196,7 @@ Item {
         anchors { right: parent.right; bottom: parent.bottom; margins: 6 }
         text: map.styleDef.credit
         color: map.style === "dark" || map.style === "satellite" || map.style === "hybrid" ? "#b3ffffff" : "#8c000000"
-        font { family: Theme.fontUi; pixelSize: Theme.fs(9) }
+        font { family: Theme.fontUi; pixelSize: Theme.font.footnote.pixelSize }
     }
 }
 

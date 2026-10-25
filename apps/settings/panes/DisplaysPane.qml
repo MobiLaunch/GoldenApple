@@ -140,7 +140,7 @@ Pane {
         wrapMode: Text.WordWrap
         text: pane.scaleError
         color: "#ff453a"
-        font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+        font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
     }
 
     Repeater {
@@ -148,7 +148,7 @@ Pane {
         delegate: Group {
             required property var modelData
             title: modelData.description || modelData.name
-            SetRow { title: "Resolution"; Text { text: modelData.width + " × " + modelData.height + " at " + Math.round(modelData.refreshRate) + " Hz"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.fs(13) } } }
+            SetRow { title: "Resolution"; Text { text: modelData.width + " × " + modelData.height + " at " + Math.round(modelData.refreshRate) + " Hz"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize } } }
             SetRow {
                 title: "Scale"
                 subtitle: "Looks like " + Math.round(modelData.width / modelData.scale) + " × " + Math.round(modelData.height / modelData.scale)
@@ -196,7 +196,7 @@ Pane {
         }
         SetRow {
             title: "Color temperature"
-            Text { text: "Less Warm"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.fs(11) } }
+            Text { text: "Less Warm"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize } }
             Slider {
                 width: 180
                 value: (6000 - pane.warmth) / 3000
@@ -206,7 +206,7 @@ Pane {
                     if (pane.nightShift) { pane.sys.run(["sh", "-c", "pkill -x hyprsunset; sleep 0.2; setsid -f hyprsunset -t \"$1\" >/dev/null 2>&1", "sh", String(pane.warmth)]) }
                 }
             }
-            Text { text: "More Warm"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.fs(11) } }
+            Text { text: "More Warm"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize } }
         }
     }
 }

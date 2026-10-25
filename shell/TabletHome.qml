@@ -134,7 +134,7 @@ PanelWindow {
             anchors.centerIn: parent
             text: pill.label
             color: "#ffffff"
-            font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.DemiBold }
+            font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize; weight: Font.DemiBold }
         }
         MouseArea { id: press; anchors.fill: parent; onClicked: pill.tapped() }
         Accessible.role: Accessible.Button
@@ -220,13 +220,13 @@ PanelWindow {
                         width: parent.width - 60
                         text: "WIDGETS"
                         color: "#f1f4fa"
-                        font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: Font.Bold; letterSpacing: 1.2 }
+                        font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize; weight: Font.Bold; letterSpacing: 1.2 }
                     }
                     Text {
                         visible: tablet.editing
                         text: "Move · Resize · Remove"
                         color: "#dce7f7"
-                        font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+                        font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize }
                     }
                 }
                 Flow {
@@ -369,7 +369,7 @@ PanelWindow {
                     visible: tablet.editing
                     text: "APPS"
                     color: "#f1f4fa"
-                    font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: Font.Bold; letterSpacing: 1.2 }
+                    font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize; weight: Font.Bold; letterSpacing: 1.2 }
                 }
                 Grid {
                     id: appGrid
@@ -430,7 +430,7 @@ PanelWindow {
                                 color: "#ffffff"
                                 style: Text.Outline
                                 styleColor: "#660b1b29"
-                                font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: Font.Medium }
+                                font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize; weight: Font.Medium }
                                 horizontalAlignment: Text.AlignHCenter
                                 verticalAlignment: Text.AlignVCenter
                             }

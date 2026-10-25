@@ -106,7 +106,7 @@ ShellRoot {
                     x: 12; width: parent.width - 24; height: 25
                     verticalAlignment: Text.AlignBottom
                     text: "FAVORITES"; color: Theme.secondaryLabel
-                    font { family: Theme.fontUi; pixelSize: Theme.fs(11); weight: Font.DemiBold; letterSpacing: 0.7 }
+                    font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize; weight: Font.DemiBold; letterSpacing: 0.7 }
                 }
                 SidebarRow {
                     width: parent.width; text: "Inbox"; symbol: "download"
@@ -128,7 +128,7 @@ ShellRoot {
                     x: 12; width: parent.width - 24; height: 24
                     verticalAlignment: Text.AlignBottom
                     text: "SMART MAILBOXES"; color: Theme.secondaryLabel
-                    font { family: Theme.fontUi; pixelSize: Theme.fs(11); weight: Font.DemiBold; letterSpacing: 0.7 }
+                    font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize; weight: Font.DemiBold; letterSpacing: 0.7 }
                 }
                 Repeater {
                     model: [
@@ -148,7 +148,7 @@ ShellRoot {
                     x: 12; width: parent.width - 24; height: 24
                     verticalAlignment: Text.AlignBottom
                     text: "CATEGORIES"; color: Theme.secondaryLabel
-                    font { family: Theme.fontUi; pixelSize: Theme.fs(11); weight: Font.DemiBold; letterSpacing: 0.7 }
+                    font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize; weight: Font.DemiBold; letterSpacing: 0.7 }
                 }
                 Repeater {
                     model: [
@@ -173,7 +173,7 @@ ShellRoot {
                     x: 12; width: parent.width - 24; height: 24
                     verticalAlignment: Text.AlignBottom
                     text: "ACCOUNTS"; color: Theme.secondaryLabel
-                    font { family: Theme.fontUi; pixelSize: Theme.fs(11); weight: Font.DemiBold; letterSpacing: 0.7 }
+                    font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize; weight: Font.DemiBold; letterSpacing: 0.7 }
                 }
                 SidebarRow {
                     width: parent.width
@@ -719,7 +719,7 @@ ShellRoot {
                     wrapMode: Text.WordWrap
                     text: "Connect an IMAP/SMTP account. Your password is stored in the system keyring, not in Mail's settings file."
                     color: Theme.secondaryLabel
-                    font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                    font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
                 }
 
                 TextField {
@@ -802,7 +802,7 @@ ShellRoot {
                     wrapMode: Text.WordWrap
                     text: mail.passwordHint
                     color: Theme.secondaryLabel
-                    font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+                    font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize }
                 }
                 // Why Connect didn't work (it was never shown, so a failed
                 // Connect looked like nothing happening).
@@ -814,7 +814,7 @@ ShellRoot {
                     horizontalAlignment: Text.AlignHCenter
                     text: mail.error
                     color: Theme.dark ? "#ff453a" : "#d70015"
-                    font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                    font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
                 }
 
                 Row {
@@ -872,7 +872,7 @@ ShellRoot {
                                 text: mail.loading ? "Checking for new mail…" :
                                       mail.filteredMessages.length + (mail.filteredMessages.length === 1 ? " message" : " messages")
                                 color: Theme.secondaryLabel
-                                font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                                font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
                             }
                         }
                         ToolbarPill {
@@ -924,7 +924,7 @@ ShellRoot {
                                     anchors.centerIn: parent
                                     text: mail.initials(messageEntry.modelData.from)
                                     color: Theme.dark ? "#f4f7ff" : "#263445"
-                                    font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: Font.DemiBold }
+                                    font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize; weight: Font.DemiBold }
                                 }
                             }
                             Column {
@@ -939,14 +939,14 @@ ShellRoot {
                                         text: mail.senderName(messageEntry.modelData.from)
                                         color: Theme.label
                                         elide: Text.ElideRight
-                                        font { family: Theme.fontUi; pixelSize: Theme.fs(13);
+                                        font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize;
                                                weight: messageEntry.modelData.unread ? Font.Bold : Font.DemiBold }
                                     }
                                     Text {
                                         id: dateLabel
                                         text: mail.conciseDate(messageEntry.modelData.date)
                                         color: Theme.secondaryLabel
-                                        font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+                                        font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize }
                                     }
                                 }
                                 Text {
@@ -954,7 +954,7 @@ ShellRoot {
                                     text: messageEntry.modelData.subject || "(No Subject)"
                                     elide: Text.ElideRight
                                     color: Theme.label
-                                    font { family: Theme.fontUi; pixelSize: Theme.fs(12);
+                                    font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize;
                                            weight: messageEntry.modelData.unread ? Font.DemiBold : Font.Normal }
                                 }
                                 Text {
@@ -963,14 +963,14 @@ ShellRoot {
                                           messageEntry.modelData.category.slice(1) : mail.account
                                     elide: Text.ElideRight
                                     color: Theme.secondaryLabel
-                                    font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+                                    font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize }
                                 }
                             }
                             Text {
                                 anchors { right: parent.right; rightMargin: 13; bottom: parent.bottom; bottomMargin: 11 }
                                 text: messageEntry.modelData.flagged ? "★" : "☆"
                                 color: messageEntry.modelData.flagged ? "#ffab33" : Theme.secondaryLabel
-                                font { family: Theme.fontUi; pixelSize: Theme.fs(17) }
+                                font { family: Theme.fontUi; pixelSize: Theme.font.title2.pixelSize }
                                 MouseArea {
                                     anchors.fill: parent
                                     onClicked: mail.toggleFlag(messageEntry.modelData.uid,
@@ -1082,7 +1082,7 @@ ShellRoot {
                             wrapMode: Text.WordWrap
                             horizontalAlignment: Text.AlignHCenter
                             color: Theme.secondaryLabel
-                            font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
+                            font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize }
                         }
                         Button {
                             anchors.horizontalCenter: parent.horizontalCenter
@@ -1124,7 +1124,7 @@ ShellRoot {
                                         anchors.centerIn: parent
                                         text: mail.initials(mail.selectedMessage.from)
                                         color: Theme.label
-                                        font { family: Theme.fontUi; pixelSize: Theme.fs(15); weight: Font.DemiBold }
+                                        font { family: Theme.fontUi; pixelSize: Theme.font.title3.pixelSize; weight: Font.DemiBold }
                                     }
                                 }
                                 Column {
@@ -1142,14 +1142,14 @@ ShellRoot {
                                         text: "To: " + (mail.selectedMessage.to || mail.account)
                                         color: Theme.secondaryLabel
                                         elide: Text.ElideRight
-                                        font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                                        font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
                                     }
                                     Text {
                                         width: parent.width
                                         text: mail.selectedMessage.date || ""
                                         color: Theme.secondaryLabel
                                         elide: Text.ElideRight
-                                        font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+                                        font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize }
                                     }
                                 }
                             }
@@ -1187,7 +1187,7 @@ ShellRoot {
                                 Text {
                                     anchors.verticalCenter: parent.verticalCenter
                                     text: "Category"; color: Theme.secondaryLabel
-                                    font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                                    font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
                                 }
                                 PopUpButton {
                                     menuParent: win.overlay
@@ -1246,7 +1246,7 @@ ShellRoot {
                         Column {
                             anchors { fill: parent; margins: 15 }
                             spacing: 6
-                            Text { text: mail.composeTo || "No recipient"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.fs(12) } }
+                            Text { text: mail.composeTo || "No recipient"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize } }
                             Text {
                                 width: parent.width
                                 text: mail.composeSubject || "(No Subject)"
@@ -1257,7 +1257,7 @@ ShellRoot {
                                 width: parent.width
                                 text: mail.composeBody.replace(/\s+/g, " ").slice(0, 105)
                                 elide: Text.ElideRight; color: Theme.secondaryLabel
-                                font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                                font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
                             }
                         }
                         TapHandler { onTapped: mail.composing = true }
@@ -1280,7 +1280,7 @@ ShellRoot {
                     Text {
                         text: "New Message"
                         color: Theme.label
-                        font { family: Theme.fontDisplay; pixelSize: Theme.fs(22); weight: Font.DemiBold }
+                        font { family: Theme.fontDisplay; pixelSize: Theme.font.title1.pixelSize; weight: Font.DemiBold }
                     }
                     Rectangle { width: parent.width; height: 1; color: Theme.separator }
                     Row {
@@ -1289,7 +1289,7 @@ ShellRoot {
                             anchors.verticalCenter: parent.verticalCenter
                             width: 62
                             text: "To:"; color: Theme.secondaryLabel
-                            font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
+                            font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize }
                         }
                         TextField {
                             id: composeToField
@@ -1308,7 +1308,7 @@ ShellRoot {
                             anchors.verticalCenter: parent.verticalCenter
                             width: 62
                             text: "Subject:"; color: Theme.secondaryLabel
-                            font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
+                            font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize }
                         }
                         TextField {
                             id: composeSubjectField
@@ -1378,7 +1378,7 @@ ShellRoot {
                     wrapMode: Text.WordWrap
                     text: mail.error
                     color: Theme.dark ? "#ff9188" : "#a51c17"
-                    font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                    font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
                 }
             }
         }

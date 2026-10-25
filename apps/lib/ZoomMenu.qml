@@ -51,7 +51,7 @@ Item {
             leftPadding: 6
             topPadding: 2; bottomPadding: 5
             color: Theme.secondaryLabel
-            font { family: Theme.fontUi; pixelSize: Theme.fs(11); weight: Font.DemiBold }
+            font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize; weight: Font.DemiBold }
         }
         component Tile: Rectangle {
             id: tile
@@ -83,7 +83,7 @@ Item {
                 x: 6; anchors.verticalCenter: parent.verticalCenter
                 text: item.text
                 color: rowHover.hovered ? "#ffffff" : Theme.label
-                font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
+                font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize }
             }
             HoverHandler { id: rowHover }
             TapHandler { onTapped: menu.run(item.command) }

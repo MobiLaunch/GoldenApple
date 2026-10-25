@@ -34,13 +34,13 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
             text: view.app.schemeName
             color: Theme.label
-            font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.DemiBold }
+            font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize; weight: Font.DemiBold }
         }
         Text {
             anchors.verticalCenter: parent.verticalCenter
             text: "|"
             color: Theme.tertiaryLabel
-            font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
+            font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize }
         }
     }
 
@@ -51,7 +51,7 @@ Item {
         text: view.app.status
         elide: Text.ElideRight
         color: Theme.secondaryLabel
-        font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
+        font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize }
     }
 
     Row {
@@ -78,7 +78,7 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
                     text: modelData.count
                     color: Theme.label
-                    font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: Font.DemiBold }
+                    font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize; weight: Font.DemiBold }
                 }
                 TapHandler { onTapped: view.issuesClicked() }
             }

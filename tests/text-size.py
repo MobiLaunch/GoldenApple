@@ -107,7 +107,7 @@ if small["sizes"] != [10, 10, 10, 10, 10, 11, 24, 56]:
     failures.append(f"85%: smaller, never under 10, display numerals stay: {small['sizes']}")
 if large["sizes"] != [12, 14, 15, 17, 18, 20, 33, 56]:
     failures.append(f"150%: 1.5× up to 24, titles at half the rate, display numerals stay: {large['sizes']}")
-if plain["roles"][:4] != [11, 14, 600, 26] or large["roles"][1] != 21 or "Display" not in plain["roles"][4]:
+if plain["roles"][:4] != [10, 13, 600, 26] or large["roles"][1] != 20 or "Display" not in plain["roles"][4]:
     failures.append(f"Theme.font roles: {plain['roles']} (150%: {large['roles']})")
 if plain["radii"] != [6, 8, 12, 14, 18, 22, 999]:
     failures.append(f"Theme.radius roles: {plain['radii']}")

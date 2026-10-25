@@ -198,7 +198,7 @@ PanelWindow {
                         x: 12; y: 6
                         text: row.modelData.section
                         color: Theme.secondaryLabel
-                        font { family: Theme.fontUi; pixelSize: Theme.fs(11); weight: Font.DemiBold }
+                        font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize; weight: Font.DemiBold }
                     }
                     Rectangle {
                         anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
@@ -244,7 +244,7 @@ PanelWindow {
                                 text: row.modelData.subtitle
                                 elide: Text.ElideMiddle
                                 color: row.current ? "#ccffffff" : Theme.secondaryLabel
-                                font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                                font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
                             }
                         }
                         MouseArea { anchors.fill: parent; hoverEnabled: true; onEntered: spot.selected = row.index; onClicked: spot.launch(row.index) }

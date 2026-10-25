@@ -56,7 +56,7 @@ TextEdit {
     selectedTextColor: Theme.label
     font {
         family: Theme.fontUi
-        pixelSize: Theme.textBody
+        pixelSize: Theme.font.body.pixelSize
     }
 
     Accessible.role: Accessible.EditableText

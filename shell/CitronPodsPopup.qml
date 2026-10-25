@@ -89,11 +89,11 @@ PanelWindow {
                     Layout.fillWidth: true
                     text: "AirPods"
                     color: Theme.secondaryLabel
-                    font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: Font.DemiBold }
+                    font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize; weight: Font.DemiBold }
                 }
                 Text {
                     text: "×"; color: Theme.secondaryLabel
-                    font { family: Theme.fontUi; pixelSize: Theme.fs(22) }
+                    font { family: Theme.fontUi; pixelSize: Theme.font.title1.pixelSize }
                     MouseArea { anchors.fill: parent; onClicked: pop.dismiss() }
                     Accessible.role: Accessible.Button
                     Accessible.name: "Close"
@@ -139,7 +139,7 @@ PanelWindow {
                 text: pods.state.busy ? "Connecting…" : !pods.online ? "CitronPods service unavailable"
                     : pop.connected ? "Connected" : pop.active.paired ? "Not connected" : "Pair in Bluetooth Settings"
                 color: Theme.secondaryLabel
-                font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
             }
             RowLayout {
                 Layout.fillWidth: true
@@ -162,14 +162,14 @@ PanelWindow {
                                 anchors.horizontalCenter: parent.horizontalCenter
                                 text: modelData.label
                                 color: Theme.secondaryLabel
-                                font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+                                font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize }
                             }
                             Text {
                                 anchors.horizontalCenter: parent.horizontalCenter
                                 text: typeof modelData.value === "number" && modelData.value >= 0 &&
                                       modelData.value <= 100 ? modelData.value + "%" : "—"
                                 color: Theme.label
-                                font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.DemiBold }
+                                font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize; weight: Font.DemiBold }
                             }
                         }
                     }
@@ -194,7 +194,7 @@ PanelWindow {
                             anchors.centerIn: parent
                             text: noiseChip.modelData
                             color: pods.state.noiseMode === noiseChip.index ? "#ffffff" : Theme.label
-                            font { family: Theme.fontUi; pixelSize: Theme.fs(11); weight: Font.Medium }
+                            font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize; weight: Font.Medium }
                         }
                         MouseArea {
                             anchors.fill: parent
@@ -219,7 +219,7 @@ PanelWindow {
                         anchors.centerIn: parent
                         text: "Settings"
                         color: Theme.label
-                        font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: Font.Medium }
+                        font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize; weight: Font.Medium }
                     }
                     MouseArea {
                         anchors.fill: parent
@@ -237,7 +237,7 @@ PanelWindow {
                         anchors.centerIn: parent
                         text: pop.connected ? "Done" : "Connect"
                         color: "white"
-                        font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: Font.DemiBold }
+                        font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize; weight: Font.DemiBold }
                     }
                     Accessible.role: Accessible.Button
                     Accessible.name: pop.connected ? "Done" : "Connect"

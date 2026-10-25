@@ -117,7 +117,7 @@ Rectangle {
         Accessible.name: tf.placeholder
         clip: true
         echoMode: tf.password ? TextInput.Password : TextInput.Normal
-        font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: tf.fontWeight }
+        font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize; weight: tf.fontWeight }
         onAccepted: tf.accepted()
         Keys.onEscapePressed: (event) => {
             if (tf.search && input.text.length > 0 && !tf.password) {

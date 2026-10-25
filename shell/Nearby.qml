@@ -239,7 +239,7 @@ PanelWindow {
                     : nearby.device.kind === "phone" ? "Send and receive your messages on this computer."
                     : nearby.device.paired ? nearby.device.name : "Not Connected"
                 color: nearby.phase === "failed" ? "#ff453a" : Theme.secondaryLabel
-                font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
             }
         }
 

@@ -324,7 +324,7 @@ Item {
                 ? total + (total === 1 ? " result in " : " results in ") + nav.findResults.length + (nav.findResults.length === 1 ? " file" : " files")
                 : ""
             color: Theme.secondaryLabel
-            font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+            font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize }
         }
         ListView {
             id: findList
@@ -367,7 +367,7 @@ Item {
                     textFormat: Text.StyledText
                     elide: Text.ElideRight
                     color: Theme.label
-                    font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                    font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
                     text: {
                         if (hit.modelData.header) return ""
                         const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
@@ -442,7 +442,7 @@ Item {
                     text: issue.modelData.header ? "" : issue.modelData.message + (issue.modelData.line ? "  —  line " + issue.modelData.line : "")
                     wrapMode: Text.WordWrap
                     color: Theme.label
-                    font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                    font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
                 }
                 HoverHandler { id: issueHover }
                 TapHandler {

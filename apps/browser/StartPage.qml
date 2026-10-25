@@ -54,7 +54,7 @@ Flickable {
                     ? "Pages in this window aren't added to CitronOS Web history."
                     : "Start where you left off, or head somewhere new."
                 color: Theme.secondaryLabel
-                font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
+                font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize }
             }
         }
 
@@ -66,7 +66,7 @@ Flickable {
                 Text {
                     text: "Favorites"
                     color: Theme.label
-                    font { family: Theme.fontUi; pixelSize: Theme.fs(17); weight: Font.DemiBold }
+                    font { family: Theme.fontUi; pixelSize: Theme.font.title2.pixelSize; weight: Font.DemiBold }
                 }
                 Item { width: Math.max(0, parent.width - parent.children[0].width - addFavorite.width); height: 1 }
                 Text {
@@ -74,7 +74,7 @@ Flickable {
                     visible: !root.data.private
                     text: "Add Favorite"
                     color: Theme.accent
-                    font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: Font.Medium }
+                    font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize; weight: Font.Medium }
                     TapHandler { onTapped: root.addFavoriteRequested() }
                 }
             }
@@ -129,7 +129,7 @@ Flickable {
                             elide: Text.ElideRight
                             text: modelData.title || root.domain(modelData.url)
                             color: Theme.label
-                            font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                            font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
                         }
                         MouseArea {
                             id: favArea
@@ -146,7 +146,7 @@ Flickable {
                         anchors.verticalCenter: parent.verticalCenter
                         text: "Favorites you save appear here."
                         color: Theme.secondaryLabel
-                        font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
+                        font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize }
                     }
                 }
             }
@@ -172,7 +172,7 @@ Flickable {
                         anchors.centerIn: parent
                         text: (card.record.title || root.domain(card.record.url)).charAt(0).toUpperCase()
                         color: Theme.secondaryLabel
-                        font { family: Theme.fontUi; pixelSize: Theme.fs(15); weight: Font.DemiBold }
+                        font { family: Theme.fontUi; pixelSize: Theme.font.title3.pixelSize; weight: Font.DemiBold }
                     }
                 }
                 Column {
@@ -182,13 +182,13 @@ Flickable {
                         width: parent.width
                         text: card.record.title || root.domain(card.record.url)
                         color: Theme.label; elide: Text.ElideRight
-                        font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.Medium }
+                        font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize; weight: Font.Medium }
                     }
                     Text {
                         width: parent.width
                         text: root.domain(card.record.url)
                         color: Theme.secondaryLabel; elide: Text.ElideRight
-                        font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+                        font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize }
                     }
                 }
             }
@@ -258,7 +258,7 @@ Flickable {
                         Text {
                             text: "Privacy Report"
                             color: Theme.label
-                            font { family: Theme.fontUi; pixelSize: Theme.fs(15); weight: Font.DemiBold }
+                            font { family: Theme.fontUi; pixelSize: Theme.font.title3.pixelSize; weight: Font.DemiBold }
                         }
                         Text {
                             width: parent.width
@@ -273,7 +273,7 @@ Flickable {
                                        + (root.data.privacy.blocked === 1 ? "" : "s")
                                        + " blocked from loading.")
                             color: Theme.secondaryLabel
-                            font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                            font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
                         }
                     }
                 }

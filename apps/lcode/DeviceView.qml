@@ -177,7 +177,7 @@ Item {
                                 elide: Text.ElideRight
                                 text: icon.modelData
                                 color: "#ffffff"
-                                font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                                font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
                             }
                             Rectangle {
                                 anchors.horizontalCenter: parent.horizontalCenter

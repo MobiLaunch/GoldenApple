@@ -128,7 +128,7 @@ Glass {
     property bool blink: false
 
     // Measure the widest row so the menu fits its longest label and shortcut.
-    TextMetrics { id: metrics; font { family: Theme.fontUi; pixelSize: Theme.fs(13) } }
+    TextMetrics { id: metrics; font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize } }
     function measure() {
         let w = 0
         for (const it of items) {
@@ -180,7 +180,7 @@ Glass {
                         x: 10; anchors { bottom: parent.bottom; bottomMargin: 4 }
                         text: row.kind === "header" ? row.modelData.header : ""
                         color: Theme.secondaryLabel
-                        font { family: Theme.fontUi; pixelSize: Theme.fs(11); weight: Font.DemiBold }
+                        font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize; weight: Font.DemiBold }
                     }
                     Rectangle {
                         anchors.fill: parent
@@ -214,7 +214,7 @@ Glass {
                         text: row.kind === "item" ? (row.modelData.text ?? row.modelData.label ?? "") : ""
                         color: row.lit ? "#ffffff" : !row.on ? Theme.tertiaryLabel
                             : row.modelData.destructive ? Theme.accentRed : Theme.label
-                        font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
+                        font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize }
                     }
                     Text {
                         id: shortcut
@@ -222,7 +222,7 @@ Glass {
                         anchors { right: parent.right; rightMargin: 10; verticalCenter: parent.verticalCenter }
                         text: visible ? row.modelData.shortcut : ""
                         color: row.lit ? "#d9ffffff" : row.on ? Theme.secondaryLabel : Theme.tertiaryLabel
-                        font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
+                        font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize }
                     }
                     Symbol {
                         id: chevron

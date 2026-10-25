@@ -57,7 +57,7 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
             text: b.text
             color: b.lit ? "#ffffff" : b.destructive ? b.red : Theme.label
-            font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: b.prominent ? Font.DemiBold : Font.Medium }
+            font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize; weight: b.prominent ? Font.DemiBold : Font.Medium }
         }
     }
     MouseArea { id: ma; anchors.fill: parent; hoverEnabled: true; enabled: b.enabled; onClicked: { b.forceActiveFocus(); b.clicked() } }

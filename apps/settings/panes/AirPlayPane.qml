@@ -87,7 +87,7 @@ Pane {
                     anchors.verticalCenter: parent.verticalCenter
                     text: String(pane.cfg.pin ?? "").split("").join(" ")
                     color: Theme.label
-                    font { family: Theme.fontUi; pixelSize: Theme.fs(15); weight: Font.DemiBold }
+                    font { family: Theme.fontUi; pixelSize: Theme.font.title3.pixelSize; weight: Font.DemiBold }
                 }
                 // A new code, and devices that used the old one have to type it.
                 Button {
@@ -120,6 +120,6 @@ Pane {
         wrapMode: Text.WordWrap
         text: "To mirror this computer to a TV, open Control Center › Screen Mirroring."
         color: Theme.secondaryLabel
-        font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+        font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize }
     }
 }

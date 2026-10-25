@@ -46,7 +46,7 @@ Item {
         width: parent.width - 36; elide: Text.ElideRight
         text: pop.options[pop.current] ?? ""
         color: Theme.label
-        font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
+        font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize }
     }
     Symbol {
         anchors { right: parent.right; rightMargin: 7; verticalCenter: parent.verticalCenter }

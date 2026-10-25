@@ -80,7 +80,7 @@ PanelWindow {
             Text {
                 text: osd.kind === "volume" ? (osd.muted ? "Sound (Muted)" : "Sound") : "Display"
                 color: Theme.label
-                font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: Font.DemiBold }
+                font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize; weight: Font.DemiBold }
             }
             RowLayout {
                 Layout.fillWidth: true

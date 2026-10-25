@@ -437,7 +437,7 @@ ShellRoot {
                     x: 16; y: 14
                     text: "Playing Next"
                     color: Theme.label
-                    font { family: Theme.fontUi; pixelSize: Theme.fs(15); weight: Font.Bold }
+                    font { family: Theme.fontUi; pixelSize: Theme.font.title3.pixelSize; weight: Font.Bold }
                 }
                 ListView {
                     x: 8; y: 44; width: parent.width - 16; height: parent.height - 52
@@ -451,8 +451,8 @@ ShellRoot {
                         Artwork { x: 6; anchors.verticalCenter: parent.verticalCenter; width: 32; height: 32; radius: 4; maskColor: queuePanel.color; source: modelData.t.art }
                         Column {
                             x: 46; anchors.verticalCenter: parent.verticalCenter; width: parent.width - 150
-                            Text { width: parent.width; elide: Text.ElideRight; text: modelData.t.title; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.fs(13) } }
-                            Text { width: parent.width; elide: Text.ElideRight; text: modelData.t.artist; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.fs(12) } }
+                            Text { width: parent.width; elide: Text.ElideRight; text: modelData.t.title; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize } }
+                            Text { width: parent.width; elide: Text.ElideRight; text: modelData.t.artist; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize } }
                         }
                         Row {
                             anchors { right: parent.right; rightMargin: 4; verticalCenter: parent.verticalCenter }
@@ -483,7 +483,7 @@ ShellRoot {
                         anchors.horizontalCenter: parent.horizontalCenter; y: 20
                         text: "Nothing Playing Next"
                         color: Theme.secondaryLabel
-                        font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
+                        font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize }
                     }
                 }
             }
@@ -500,7 +500,7 @@ ShellRoot {
                     id: noticeText
                     anchors { left: parent.left; right: parent.right; top: parent.top; margins: 10 }
                     text: playbackNotice.message; wrapMode: Text.Wrap
-                    color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                    color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
                     Accessible.role: Accessible.StaticText
                 }
                 Row {
@@ -559,7 +559,7 @@ ShellRoot {
                         text: musicLib.playlistError || "Playlists are saved to your Music/Playlists folder."
                         color: musicLib.playlistError ? "#ff453a" : Theme.secondaryLabel
                         wrapMode: Text.WordWrap
-                        font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+                        font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize }
                     }
                     Row {
                         anchors.right: parent.right
@@ -600,7 +600,7 @@ ShellRoot {
                         text: app.pendingTrack?.title || ""
                         elide: Text.ElideRight
                         color: Theme.secondaryLabel
-                        font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                        font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
                     }
                     Text {
                         width: parent.width
@@ -608,7 +608,7 @@ ShellRoot {
                         text: musicLib.playlistError
                         wrapMode: Text.WordWrap
                         color: "#ff453a"
-                        font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+                        font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize }
                     }
                     Flickable {
                         width: parent.width
@@ -636,7 +636,7 @@ ShellRoot {
                                 text: "No playlists yet. Create one to organize your music."
                                 wrapMode: Text.WordWrap
                                 color: Theme.secondaryLabel
-                                font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                                font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
                             }
                         }
                     }
@@ -706,7 +706,7 @@ ShellRoot {
                         text: "Move songs up or down, or remove them. Audio files are never deleted."
                         wrapMode: Text.WordWrap
                         color: Theme.secondaryLabel
-                        font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+                        font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize }
                     }
                     Text {
                         width: parent.width
@@ -714,7 +714,7 @@ ShellRoot {
                         text: musicLib.playlistError
                         wrapMode: Text.WordWrap
                         color: "#ff453a"
-                        font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+                        font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize }
                     }
                     ListView {
                         id: playlistEditorList
@@ -739,7 +739,7 @@ ShellRoot {
                                     (playlistEntry.modelData.track?.title || playlistEntry.modelData.path.split("/").pop() + " (Missing)")
                                 elide: Text.ElideRight
                                 color: Theme.label
-                                font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                                font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
                             }
                             Row {
                                 anchors { right: parent.right; rightMargin: 6; verticalCenter: parent.verticalCenter }
@@ -799,7 +799,7 @@ ShellRoot {
                         wrapMode: Text.WordWrap
                         text: "Restore a playlist without changing any music files. If its name is already in use, Music restores it with a new name."
                         color: Theme.secondaryLabel
-                        font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                        font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
                     }
                     Text {
                         width: parent.width
@@ -807,7 +807,7 @@ ShellRoot {
                         text: musicLib.playlistError
                         wrapMode: Text.WordWrap
                         color: "#ff453a"
-                        font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+                        font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize }
                     }
                     Flickable {
                         id: deletedScroller
@@ -825,13 +825,13 @@ ShellRoot {
                                 visible: !musicLib.deletedBusy && musicLib.deletedPlaylists.length === 0
                                 text: "There are no deleted playlists."
                                 color: Theme.secondaryLabel
-                                font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                                font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
                             }
                             Text {
                                 visible: musicLib.deletedBusy
                                 text: "Checking for deleted playlists…"
                                 color: Theme.secondaryLabel
-                                font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                                font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
                             }
                             Repeater {
                                 model: musicLib.deletedPlaylists
@@ -851,14 +851,14 @@ ShellRoot {
                                             text: deletedRow.modelData.name
                                             elide: Text.ElideRight
                                             color: Theme.label
-                                            font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: Font.DemiBold }
+                                            font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize; weight: Font.DemiBold }
                                         }
                                         Text {
                                             width: parent.width
                                             text: "Deleted " + Qt.formatDateTime(new Date(deletedRow.modelData.deletedAt), "MMM d, yyyy h:mm AP")
                                             elide: Text.ElideRight
                                             color: Theme.secondaryLabel
-                                            font { family: Theme.fontUi; pixelSize: Theme.fs(10) }
+                                            font { family: Theme.fontUi; pixelSize: Theme.font.footnote.pixelSize }
                                         }
                                     }
                                     Button {
@@ -913,7 +913,7 @@ ShellRoot {
                         text: "The playlist moves into Playlists/.Deleted so it can be recovered. Your songs stay on disk."
                         wrapMode: Text.WordWrap
                         color: Theme.secondaryLabel
-                        font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                        font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
                     }
                     Row {
                         anchors.right: parent.right
@@ -949,7 +949,7 @@ ShellRoot {
                     text: musicLib.playlistError
                     color: Theme.label
                     wrapMode: Text.WordWrap
-                    font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                    font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
                 }
                 Button {
                     id: noticeDismiss

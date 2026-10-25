@@ -592,7 +592,7 @@ PanelWindow {
             x: Math.max(8 - tile.groundX, Math.min((parent.width - width) / 2, dock.width - 8 - tile.groundX - width))
             width: Math.min(dock.width - 16, tipText.implicitWidth + 24); height: 26; radius: 13
             role: "menu"
-            Text { id: tipText; anchors.centerIn: parent; width: Math.min(implicitWidth, parent.width - 24); elide: Text.ElideRight; textFormat: Text.PlainText; text: tile.lifted && dock.removing ? "Remove" : tile.modelData.name; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.Medium } }
+            Text { id: tipText; anchors.centerIn: parent; width: Math.min(implicitWidth, parent.width - 24); elide: Text.ElideRight; textFormat: Text.PlainText; text: tile.lifted && dock.removing ? "Remove" : tile.modelData.name; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize; weight: Font.Medium } }
         }
         MouseArea {
             id: tipArea
@@ -801,7 +801,7 @@ PanelWindow {
                         x: Math.max(8 - (shelf.x + row.x + place.x), Math.min((placeIcon.width - width) / 2, dock.width - 8 - (shelf.x + row.x + place.x) - width))
                         width: Math.min(dock.width - 16, placeText.implicitWidth + 24); height: 26; radius: 13
                         role: "menu"
-                        Text { id: placeText; anchors.centerIn: parent; width: Math.min(implicitWidth, parent.width - 24); elide: Text.ElideRight; textFormat: Text.PlainText; text: place.modelData.name; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.Medium } }
+                        Text { id: placeText; anchors.centerIn: parent; width: Math.min(implicitWidth, parent.width - 24); elide: Text.ElideRight; textFormat: Text.PlainText; text: place.modelData.name; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize; weight: Font.Medium } }
                     }
                     MouseArea {
                         id: placeArea

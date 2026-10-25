@@ -267,12 +267,12 @@ Scope {
                         text: card.title
                         textFormat: Text.PlainText; elide: Text.ElideRight
                         color: Theme.label
-                        font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.DemiBold }
+                        font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize; weight: Font.DemiBold }
                     }
                     Text {
                         text: card.stamp
                         color: Theme.secondaryLabel
-                        font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                        font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
                     }
                 }
                 Text {
@@ -281,7 +281,7 @@ Scope {
                     text: card.bodyText
                     textFormat: Text.PlainText; wrapMode: Text.Wrap; maximumLineCount: 4; elide: Text.ElideRight
                     color: Theme.label
-                    font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
+                    font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize }
                 }
                 RowLayout {
                     visible: card.actionList.length > 0
@@ -294,7 +294,7 @@ Scope {
                             Layout.fillWidth: true
                             implicitHeight: 26; radius: 13
                             color: actionTap.pressed ? Theme.selection : Theme.fill
-                            Text { anchors.centerIn: parent; text: modelData.text; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: Font.Medium } }
+                            Text { anchors.centerIn: parent; text: modelData.text; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize; weight: Font.Medium } }
                             TapHandler { id: actionTap; onTapped: if (card.live) modelData.invoke() }
                             Accessible.role: Accessible.Button
                             Accessible.name: modelData.text
@@ -475,13 +475,13 @@ Scope {
                             text: "Notifications"
                             color: "#ffffff"
                             style: Text.Raised; styleColor: "#80000000"
-                            font { family: Theme.fontUi; pixelSize: Theme.fs(15); weight: Font.Bold }
+                            font { family: Theme.fontUi; pixelSize: Theme.font.title3.pixelSize; weight: Font.Bold }
                         }
                         Glass {
                             role: "control"
                             implicitWidth: clearAll.implicitWidth + 22; implicitHeight: 24; radius: 12
                             pressed: clearTap.pressed
-                            Text { id: clearAll; anchors.centerIn: parent; text: "Clear All"; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: Font.Medium } }
+                            Text { id: clearAll; anchors.centerIn: parent; text: "Clear All"; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize; weight: Font.Medium } }
                             TapHandler { id: clearTap; onTapped: root.list.slice().forEach((n) => n.dismiss()) }
                             Accessible.role: Accessible.Button
                             Accessible.name: "Clear All"
@@ -527,12 +527,12 @@ Scope {
                                     text: group.modelData.app
                                     color: "#ffffff"
                                     style: Text.Raised; styleColor: "#40000000"
-                                    font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.DemiBold }
+                                    font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize; weight: Font.DemiBold }
                                 }
                                 Glass {
                                     role: "control"
                                     implicitWidth: lessText.implicitWidth + 20; implicitHeight: 22; radius: 11
-                                    Text { id: lessText; anchors.centerIn: parent; text: group.open ? "Show Less" : (group.modelData.items.length - 1) + " more"; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.fs(11); weight: Font.Medium } }
+                                    Text { id: lessText; anchors.centerIn: parent; text: group.open ? "Show Less" : (group.modelData.items.length - 1) + " more"; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize; weight: Font.Medium } }
                                     function toggle() { const e = Object.assign({}, center.expanded); e[group.modelData.app] = !group.open; center.expanded = e }
                                     TapHandler { onTapped: parent.toggle() }
                                     Accessible.role: Accessible.Button
@@ -596,7 +596,7 @@ Scope {
                             anchors.centerIn: parent
                             text: "No Notifications"
                             color: Theme.secondaryLabel
-                            font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.Medium }
+                            font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize; weight: Font.Medium }
                         }
                     }
                 }

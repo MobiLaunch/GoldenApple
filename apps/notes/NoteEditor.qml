@@ -189,7 +189,7 @@ Item {
             anchors { fill: parent; margins: 10 }
             text: ed.notice; wrapMode: Text.Wrap
             color: Theme.label
-            font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+            font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
         }
     }
     Rectangle {
@@ -203,7 +203,7 @@ Item {
             anchors { fill: parent; margins: 10 }
             text: ed.saveError; wrapMode: Text.Wrap
             color: Theme.label
-            font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+            font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
         }
     }
     Timer { id: saveTimer; interval: 700; onTriggered: ed.save() }
@@ -275,7 +275,7 @@ Item {
                 visible: !!ed.path
                 text: ed.mtime ? new Date(ed.mtime * 1000).toLocaleString(Qt.locale(), "d MMMM yyyy 'at' " + Qt.locale().timeFormat(Locale.ShortFormat)) : ""
                 color: Theme.secondaryLabel
-                font { family: Theme.fontUi; pixelSize: Theme.fs(11); weight: Font.Medium }
+                font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize; weight: Font.Medium }
             }
             Shared.TextArea {
                 id: edit

@@ -540,7 +540,7 @@ PanelWindow {
             anchors.horizontalCenter: parent.horizontalCenter
             text: search.text.trim() ? "Try another search." : "Run gg-diagnostics and check the CitronOS shell section."
             color: Qt.rgba(1, 1, 1, 0.7)
-            font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
+            font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize }
         }
     }
 
@@ -637,7 +637,7 @@ PanelWindow {
                             elide: Text.ElideRight
                             color: "#ffffff"
                             style: Text.Raised; styleColor: "#8c000000"
-                            font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: Font.Medium }
+                            font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize; weight: Font.Medium }
                         }
                         Shared.FocusRing {
                             anchors { fill: ficon; margins: 3 }

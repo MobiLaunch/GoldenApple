@@ -463,7 +463,7 @@ AppWindow {
                 text: confirm.message
                 visible: !!confirm.message
                 color: Theme.secondaryLabel
-                font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
             }
             Row {
                 anchors.horizontalCenter: parent.horizontalCenter

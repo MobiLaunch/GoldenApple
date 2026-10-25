@@ -30,7 +30,7 @@ Rectangle {
             anchors.verticalCenter: parent.verticalCenter
             text: card.title.toUpperCase()
             color: "#99ffffff"
-            font { family: Theme.fontUi; pixelSize: Theme.fs(11); weight: Font.DemiBold; letterSpacing: 0.2 }
+            font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize; weight: Font.DemiBold; letterSpacing: 0.2 }
         }
     }
     Item {

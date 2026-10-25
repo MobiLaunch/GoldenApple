@@ -43,7 +43,7 @@ Item {
             horizontalAlignment: Text.AlignHCenter
             text: item.separator
             color: Theme.secondaryLabel
-            font { family: Theme.fontUi; pixelSize: Theme.fs(11); weight: Font.Medium }
+            font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize; weight: Font.Medium }
         }
         Text {
             visible: item.group && !item.mine && item.firstInRun && !!item.message.sender
@@ -51,7 +51,7 @@ Item {
             bottomPadding: 2
             text: item.message.sender || ""
             color: Theme.secondaryLabel
-            font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+            font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize }
         }
         Item {
             width: parent.width
@@ -116,7 +116,7 @@ Item {
                                     text: mediaEntry.modelData.name || mediaEntry.modelData.filename || "Media attachment"
                                     elide: Text.ElideMiddle
                                     color: item.mine ? "#ffffff" : Theme.label
-                                    font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                                    font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
                                 }
                             }
                             TapHandler {
@@ -153,7 +153,7 @@ Item {
             horizontalAlignment: Text.AlignRight
             text: item.footnote
             color: Theme.secondaryLabel
-            font { family: Theme.fontUi; pixelSize: Theme.fs(11); weight: Font.Medium }
+            font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize; weight: Font.Medium }
         }
     }
 }

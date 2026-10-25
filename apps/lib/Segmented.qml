@@ -76,7 +76,7 @@ Item {
                     scale: !Theme.reduceMotion && segArea.pressed ? 0.96 : 1
                     Behavior on opacity { NumberAnimation { duration: Theme.reduceMotion ? 0 : 80 } }
                     Behavior on scale { enabled: !Theme.reduceMotion; NumberAnimation { duration: 90; easing.type: Easing.OutCubic } }
-                    font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: index === seg.current ? Font.DemiBold : Font.Normal }
+                    font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize; weight: index === seg.current ? Font.DemiBold : Font.Normal }
                 }
                 MouseArea { id: segArea; anchors.fill: parent; hoverEnabled: true; onClicked: { seg.forceActiveFocus(); seg.pick(index) } }
             }

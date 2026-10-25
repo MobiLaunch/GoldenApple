@@ -74,7 +74,7 @@ Item {
         wrapMode: Text.Wrap
         text: page.note
         color: "#ff9f0a"
-        font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+        font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
     }
     Rectangle {
         x: 24
@@ -116,7 +116,7 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
                     text: cmdRow.modelData.title || ""
                     color: Theme.label
-                    font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: cmdRow.customized ? Font.DemiBold : Font.Normal }
+                    font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize; weight: cmdRow.customized ? Font.DemiBold : Font.Normal }
                 }
                 Row {
                     visible: !cmdRow.isHeader
@@ -142,7 +142,7 @@ Item {
                             anchors.centerIn: parent
                             text: chip.active ? "Type a shortcut…" : cmdRow.keys.length ? cmdRow.keys.map(Commands.display).join("  ") : "—"
                             color: chip.active ? Theme.accent : cmdRow.keys.length ? Theme.label : Theme.tertiaryLabel
-                            font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                            font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
                         }
                         HoverHandler { id: chipHover }
                         TapHandler { onTapped: page.record(cmdRow.modelData.id) }

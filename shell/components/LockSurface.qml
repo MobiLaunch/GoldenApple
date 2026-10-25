@@ -226,7 +226,7 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
                 text: Math.round(root.battery * 100) + "%"
                 color: "white"
-                font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.Medium }
+                font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize; weight: Font.Medium }
             }
             Item {   // the battery, drawn
                 width: 27; height: 13
@@ -275,7 +275,7 @@ Item {
                     x: 70; y: 29; width: parent.width - 76
                     text: root.player?.trackArtist || root.player?.identity || "Music"
                     elide: Text.ElideRight; color: Theme.vibrant.secondaryLabel
-                    font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                    font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
                 }
                 Row {
                     anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom }
@@ -383,7 +383,7 @@ Item {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: root.userName
                 color: "white"
-                font { family: Theme.fontUi; pixelSize: Theme.fs(15); weight: Font.DemiBold }
+                font { family: Theme.fontUi; pixelSize: Theme.font.title3.pixelSize; weight: Font.DemiBold }
                 style: Text.Raised; styleColor: Theme.vibrant.shadowSoft
             }
             Item { width: 1; height: 12 }
@@ -422,7 +422,7 @@ Item {
                         border.width: 0
                         enabled: !root.busy
                         input.passwordCharacter: "●"
-                        input.font.pixelSize: Theme.fs(13)
+                        input.font.pixelSize: Theme.font.body.pixelSize
                         input.font.letterSpacing: field.text ? 2 : 0     // the dots, not the placeholder
                         input.focus: true
                         input.onTextChanged: if (field.text) root.wake()
@@ -480,7 +480,7 @@ Item {
                 color: Theme.vibrant.secondaryLabel
                 opacity: text ? 1 : 0
                 Behavior on opacity { NumberAnimation { duration: Theme.motion.fade } }
-                font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: Font.Medium }
+                font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize; weight: Font.Medium }
             }
         }
     }

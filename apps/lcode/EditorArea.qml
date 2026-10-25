@@ -355,7 +355,7 @@ Item {
                     text: tab.title
                     elide: Text.ElideMiddle
                     color: tab.selected ? Theme.label : Theme.secondaryLabel
-                    font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: tab.selected ? Font.DemiBold : Font.Normal; italic: tab.kind === "log" }
+                    font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize; weight: tab.selected ? Font.DemiBold : Font.Normal; italic: tab.kind === "log" }
                 }
                 // Edited dot, which turns into the close button on hover.
                 Item {
@@ -517,7 +517,7 @@ Item {
                 width: 74
                 text: area.currentEditor && findField.text ? area.currentEditor.countMatches(findField.text, matchCase.checked) + " matches" : ""
                 color: Theme.secondaryLabel
-                font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+                font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize }
             }
             ToolbarButton { id: matchCase; anchors.verticalCenter: parent.verticalCenter; text: "Aa"; onClicked: checked = !checked }
             ToolbarPill {

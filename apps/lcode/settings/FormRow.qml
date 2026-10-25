@@ -21,7 +21,7 @@ Item {
         verticalAlignment: Text.AlignVCenter
         text: row.label ? row.label + ":" : ""
         color: Theme.label
-        font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
+        font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize }
     }
     Item {
         id: slot
@@ -38,6 +38,6 @@ Item {
         wrapMode: Text.Wrap
         text: row.detail
         color: Theme.secondaryLabel
-        font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+        font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize }
     }
 }

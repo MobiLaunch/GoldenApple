@@ -17,14 +17,14 @@ Pane {
         SetRow {
             title: "Tracking speed"
             subtitle: "How quickly the pointer moves as you move your finger or mouse."
-            Text { text: "Slow"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.fs(11) } }
+            Text { text: "Slow"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize } }
             Slider {
                 objectName: "pointerSpeed"
                 width: 160; steps: 8
                 value: ((pane.i.sensitivity ?? 0) + 1) / 2
                 onMoved: (v) => pane.sys.setInput("sensitivity", Math.round((v * 2 - 1) * 100) / 100)
             }
-            Text { text: "Fast"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.fs(11) } }
+            Text { text: "Fast"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize } }
         }
         SetRow {
             title: "Tap to click"
@@ -52,14 +52,14 @@ Pane {
         SetRow {
             title: "Scroll speed"
             subtitle: "Adjust the distance scrolled per gesture."
-            Text { text: "Slow"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.fs(11) } }
+            Text { text: "Slow"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize } }
             Slider {
                 objectName: "trackpadScrollFactor"
                 width: 164; steps: 10
                 value: ((pane.i.scrollFactor ?? 0.6) - 0.3) / 2.7
                 onMoved: (v) => pane.sys.setInput("scrollFactor", Math.round((0.3 + 2.7 * v) * 100) / 100)
             }
-            Text { text: "Fast"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.fs(11) } }
+            Text { text: "Fast"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize } }
         }
     }
     Group {

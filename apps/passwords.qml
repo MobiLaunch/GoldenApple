@@ -31,7 +31,7 @@ ShellRoot {
                 anchors.verticalCenter: parent.verticalCenter
                 text: app.sectionTitle
                 color: Theme.label
-                font { family: Theme.fontUi; pixelSize: Theme.fs(15); weight: Font.Bold }
+                font { family: Theme.fontUi; pixelSize: Theme.font.title3.pixelSize; weight: Font.Bold }
             },
             Row {
                 visible: !app.locked
@@ -360,7 +360,7 @@ ShellRoot {
                     width: parent.width; horizontalAlignment: Text.AlignHCenter; wrapMode: Text.WordWrap
                     text: app.touchId ? "Touch ID or enter your password to unlock." : "Enter your password to unlock."
                     color: Theme.secondaryLabel
-                    font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                    font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
                 }
                 TextField {
                     id: unlockField
@@ -376,7 +376,7 @@ ShellRoot {
                     width: parent.width; horizontalAlignment: Text.AlignHCenter
                     text: app.unlockError
                     color: Theme.dark ? "#ff453a" : "#d70015"
-                    font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                    font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
                 }
                 Button {
                     anchors.horizontalCenter: parent.horizontalCenter
@@ -436,7 +436,7 @@ ShellRoot {
                                     width: parent.width; elide: Text.ElideRight
                                     text: row.modelData.title
                                     color: Theme.label
-                                    font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.DemiBold }
+                                    font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize; weight: Font.DemiBold }
                                 }
                                 Text {
                                     width: parent.width; elide: Text.ElideRight
@@ -446,7 +446,7 @@ ShellRoot {
                                         : app.section === "codes" && app.codes[row.modelData.id] ? app.codes[row.modelData.id].code.replace(/(\d{3})(\d+)/, "$1 $2")
                                         : row.modelData.username
                                     color: app.section === "security" ? "#ff9f0a" : Theme.secondaryLabel
-                                    font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+                                    font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize }
                                 }
                             }
                             HoverHandler { id: rowHover }
@@ -515,7 +515,7 @@ ShellRoot {
                                         text: detail.it.kind === "deleted" ? "Deleted · " + detail.it.daysLeft + " days until it's gone"
                                             : detail.it.modified ? "Last modified " + String(detail.it.modified).slice(0, 10) : ""
                                         color: Theme.secondaryLabel
-                                        font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+                                        font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize }
                                     }
                                 }
                             }
@@ -532,7 +532,7 @@ ShellRoot {
                                     text: detail.it.reused ? "This password is used on more than one website. If one of them is breached, the others are at risk. Change it to a strong, unique password."
                                         : "This password is easy to guess. Change it to a strong password."
                                     color: Theme.label
-                                    font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                                    font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
                                 }
                             }
 
@@ -559,14 +559,14 @@ ShellRoot {
                                         Text {
                                             x: 14; width: 110; anchors.verticalCenter: parent.verticalCenter
                                             text: field.label; color: Theme.secondaryLabel
-                                            font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                                            font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
                                         }
                                         Text {
                                             x: 130; width: parent.width - 130 - 90; anchors.verticalCenter: parent.verticalCenter
                                             elide: Text.ElideRight
                                             text: field.shownValue
                                             color: Theme.label
-                                            font { family: field.secretValue && app.reveal ? "SF Mono" : Theme.fontUi; pixelSize: Theme.fs(13) }
+                                            font { family: field.secretValue && app.reveal ? "SF Mono" : Theme.fontUi; pixelSize: Theme.font.body.pixelSize }
                                         }
                                         Row {
                                             anchors { right: parent.right; rightMargin: 10; verticalCenter: parent.verticalCenter }
@@ -613,7 +613,7 @@ ShellRoot {
                                     property string label
                                     default property alias content: holder.data
                                     width: parent.width; spacing: 4
-                                    Text { text: parent.label; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.fs(11) } }
+                                    Text { text: parent.label; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize } }
                                     Item { id: holder; width: parent.width; height: childrenRect.height }
                                 }
                                 Labeled {
@@ -669,7 +669,7 @@ ShellRoot {
                                 width: parent.width; wrapMode: Text.WordWrap
                                 text: app.error
                                 color: Theme.dark ? "#ff453a" : "#d70015"
-                                font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                                font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
                             }
 
                             Row {
@@ -732,7 +732,7 @@ ShellRoot {
                     anchors.centerIn: parent
                     text: app.toast
                     color: Theme.label
-                    font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: Font.DemiBold }
+                    font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize; weight: Font.DemiBold }
                 }
             }
         }

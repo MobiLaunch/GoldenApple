@@ -148,7 +148,7 @@ Pane {
                         width: parent.width; horizontalAlignment: Text.AlignHCenter; wrapMode: Text.WordWrap
                         text: pane.fingerName(finger.modelData)
                         color: Theme.label
-                        font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+                        font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize }
                     }
                     HoverHandler { id: fingerHover }
                 }
@@ -168,7 +168,7 @@ Pane {
                     anchors { horizontalCenter: parent.horizontalCenter; top: addDisc.bottom; topMargin: 8 }
                     text: "Add Fingerprint"
                     color: Theme.accent
-                    font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+                    font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize }
                 }
                 HoverHandler { id: addHover; cursorShape: Qt.PointingHandCursor }
                 TapHandler { onTapped: pane.add() }
@@ -204,7 +204,7 @@ Pane {
                 anchors { horizontalCenter: parent.horizontalCenter; top: ring.bottom; topMargin: 14 }
                 text: pane.prompt
                 color: Theme.label
-                font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.Medium }
+                font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize; weight: Font.Medium }
             }
             Button {
                 anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: 10 }
@@ -220,7 +220,7 @@ Pane {
         wrapMode: Text.WordWrap
         text: pane.error
         color: Theme.dark ? "#ff453a" : "#ff3b30"
-        font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+        font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
     }
 
     Group {

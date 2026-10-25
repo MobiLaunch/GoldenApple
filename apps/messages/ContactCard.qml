@@ -64,7 +64,7 @@ Item {
                 Layout.alignment: Qt.AlignHCenter
                 text: card.contact?.is_group ? "Group Conversation" : card.address.includes("@") ? "Email" : "Mobile"
                 color: Theme.secondaryLabel
-                font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
             }
             RowLayout {
                 Layout.fillWidth: true
@@ -79,7 +79,7 @@ Item {
                 color: Theme.separator
                 Layout.topMargin: 5
             }
-            Text { text: card.contact?.is_group ? "Participants" : "Contact Information"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.fs(11); weight: Font.Medium } }
+            Text { text: card.contact?.is_group ? "Participants" : "Contact Information"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize; weight: Font.Medium } }
             Flickable {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
@@ -106,7 +106,7 @@ Item {
                                     text: String(modelData)
                                     elide: Text.ElideMiddle
                                     color: Theme.label
-                                    font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                                    font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
                                 }
                             }
                             ToolbarButton {
@@ -123,7 +123,7 @@ Item {
                 horizontalAlignment: Text.AlignHCenter
                 text: "Contact details synchronized from your iPhone."
                 color: Theme.tertiaryLabel
-                font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+                font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize }
             }
         }
     }

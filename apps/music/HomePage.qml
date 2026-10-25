@@ -37,21 +37,21 @@ Flickable {
             Text {
                 text: page.lib.scanning ? "Looking for music…" : "Your library is empty"
                 color: Theme.label
-                font { family: Theme.fontUi; pixelSize: Theme.fs(17); weight: Font.DemiBold }
+                font { family: Theme.fontUi; pixelSize: Theme.font.title2.pixelSize; weight: Font.DemiBold }
             }
             Text {
                 width: 420; wrapMode: Text.WordWrap
                 text: "Put songs in your Music folder (" + page.lib.musicDir.replace(Quickshell.env("HOME"), "~")
                       + ") and they'll appear here. Or listen to Radio."
                 color: Theme.secondaryLabel
-                font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
+                font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize }
             }
             Rectangle {
                 width: openLabel.width + 28; height: 28; radius: 14
                 color: openArea.pressed ? Qt.darker("#fa2d48", 1.15) : "#fa2d48"
                 scale: openArea.pressed ? 0.95 : 1
                 Behavior on scale { Spring { spring: Theme.snappy } }
-                Text { id: openLabel; anchors.centerIn: parent; text: "Open Music Folder"; color: "#ffffff"; font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: Font.Medium } }
+                Text { id: openLabel; anchors.centerIn: parent; text: "Open Music Folder"; color: "#ffffff"; font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize; weight: Font.Medium } }
                 MouseArea { id: openArea; anchors.fill: parent; onClicked: Quickshell.execDetached(["sh", "-c", "mkdir -p \"$1\" && xdg-open \"$1\"", "sh", page.lib.musicDir]) }
             }
         }

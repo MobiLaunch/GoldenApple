@@ -78,7 +78,7 @@ Rectangle {
                     x: 12; y: 12
                     text: row.modelData.title || ""
                     color: Theme.secondaryLabel
-                    font { family: Theme.fontUi; pixelSize: Theme.fs(11); weight: Font.DemiBold }
+                    font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize; weight: Font.DemiBold }
                 }
                 ToolbarButton {
                     id: addButton
@@ -101,7 +101,7 @@ Rectangle {
                 wrapMode: Text.Wrap
                 text: row.modelData.title || ""
                 color: Theme.tertiaryLabel
-                font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+                font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize }
             }
 
             SidebarRow {
@@ -152,7 +152,7 @@ Rectangle {
                 anchors { right: parent.right; rightMargin: 14; verticalCenter: parent.verticalCenter }
                 text: row.modelData.detail || ""
                 color: Theme.tertiaryLabel
-                font { family: Theme.fontUi; pixelSize: Theme.fs(10) }
+                font { family: Theme.fontUi; pixelSize: Theme.font.footnote.pixelSize }
             }
             TapHandler {
                 acceptedButtons: Qt.RightButton

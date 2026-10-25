@@ -48,7 +48,7 @@ Item {
             wrapMode: Text.WordWrap
             text: root.text
             color: Theme.secondaryLabel
-            font { family: Theme.fontUi; pixelSize: Theme.fs(13) }
+            font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize }
         }
         Item { width: 1; height: 6; visible: root.actionText !== "" }
         Button {

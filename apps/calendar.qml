@@ -49,7 +49,7 @@ ShellRoot {
                     anchors.verticalCenter: parent.verticalCenter
                     text: cal.rangeLabel
                     color: Theme.label
-                    font { family: Theme.fontUi; pixelSize: Theme.fs(15); weight: Font.Bold }
+                    font { family: Theme.fontUi; pixelSize: Theme.font.title3.pixelSize; weight: Font.Bold }
                 }
             },
             Row {
@@ -103,7 +103,7 @@ ShellRoot {
                 x: 8
                 text: "Selected Day"
                 color: Theme.secondaryLabel
-                font { family: Theme.fontUi; pixelSize: Theme.fs(11); weight: Font.DemiBold }
+                font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize; weight: Font.DemiBold }
             },
             Flickable {
                 y: 26
@@ -130,7 +130,7 @@ ShellRoot {
                     x: 8
                     text: Qt.formatDate(cal.selectedDate, "MMMM d, yyyy")
                     color: Theme.secondaryLabel
-                    font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                    font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
                 }
 
                 Item { width: 1; height: 6 }
@@ -165,14 +165,14 @@ ShellRoot {
                                 text: modelData.title
                                 elide: Text.ElideRight
                                 color: Theme.label
-                                font { family: Theme.fontUi; pixelSize: Theme.fs(12); weight: Font.DemiBold }
+                                font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize; weight: Font.DemiBold }
                             }
                             Text {
                                 width: parent.width
                                 text: (modelData.time || "All day") + (modelData.remote ? " · CalDAV · Read-only" : "") + (modelData.repeat && modelData.repeat !== "never" ? " · " + Recurrence.summary(modelData) : "")
                                 elide: Text.ElideRight
                                 color: Theme.secondaryLabel
-                                font { family: Theme.fontUi; pixelSize: Theme.fs(10) }
+                                font { family: Theme.fontUi; pixelSize: Theme.font.footnote.pixelSize }
                             }
                         }
 
@@ -808,7 +808,7 @@ ShellRoot {
                             verticalAlignment: Text.AlignVCenter
                             text: modelData
                             color: Theme.secondaryLabel
-                            font { family: Theme.fontUi; pixelSize: Theme.fs(11); weight: Font.DemiBold }
+                            font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize; weight: Font.DemiBold }
                         }
                     }
                 }
@@ -869,7 +869,7 @@ ShellRoot {
                                     color: dayCell.today ? "#ffffff" : Theme.label
                                     font {
                                         family: Theme.fontUi
-                                        pixelSize: Theme.fs(13)
+                                        pixelSize: Theme.font.body.pixelSize
                                         weight: dayCell.today || dayCell.selected ? Font.DemiBold : Font.Normal
                                     }
                                 }
@@ -897,7 +897,7 @@ ShellRoot {
                                     anchors { right: parent.right; rightMargin: 8; bottom: parent.bottom; bottomMargin: 6 }
                                     text: "+" + (dayCell.count - 3)
                                     color: Theme.secondaryLabel
-                                    font { family: Theme.fontUi; pixelSize: Theme.fs(9) }
+                                    font { family: Theme.fontUi; pixelSize: Theme.font.footnote.pixelSize }
                                 }
                             }
 
@@ -984,7 +984,7 @@ ShellRoot {
                                     text: "No events"
                                     horizontalAlignment: Text.AlignHCenter
                                     color: Theme.tertiaryLabel
-                                    font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                                    font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
                                 }
                                 Repeater {
                                     model: agendaDay.dayEvents
@@ -1017,7 +1017,7 @@ ShellRoot {
                                                     (eventTile.modelData.remote ? " · CalDAV" : "")
                                                 elide: Text.ElideRight
                                                 color: Theme.secondaryLabel
-                                                font { family: Theme.fontUi; pixelSize: Theme.fs(10) }
+                                                font { family: Theme.fontUi; pixelSize: Theme.font.footnote.pixelSize }
                                             }
                                         }
                                         MouseArea {
@@ -1060,7 +1060,7 @@ ShellRoot {
                     horizontalAlignment: restoreButton.visible ? Text.AlignLeft : Text.AlignHCenter
                     wrapMode: Text.WordWrap
                     color: "#ff453a"
-                    font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                    font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
                 }
             }
 
@@ -1124,7 +1124,7 @@ ShellRoot {
                             anchors.verticalCenter: parent.verticalCenter
                             text: "Reminder"
                             color: Theme.secondaryLabel
-                            font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                            font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
                         }
                         PopUpButton {
                             menuParent: win.overlay
@@ -1142,7 +1142,7 @@ ShellRoot {
                             anchors.verticalCenter: parent.verticalCenter
                             text: "Repeat"
                             color: Theme.secondaryLabel
-                            font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                            font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
                         }
                         PopUpButton {
                             id: repeatPicker
@@ -1171,7 +1171,7 @@ ShellRoot {
                         text: "Editing changes every occurrence of this series."
                         wrapMode: Text.WordWrap
                         color: Theme.secondaryLabel
-                        font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+                        font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize }
                     }
 
                     Text {
@@ -1182,7 +1182,7 @@ ShellRoot {
                         maximumLineCount: 2
                         elide: Text.ElideRight
                         color: "#ff453a"
-                        font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+                        font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize }
                     }
 
                     Row {
@@ -1222,7 +1222,7 @@ ShellRoot {
                         width: parent.width; wrapMode: Text.WordWrap
                         text: "Read-only synchronization. Remote events cannot be edited here. Use your calendar's HTTPS collection URL."
                         color: Theme.secondaryLabel
-                        font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                        font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
                     }
                     TextField {
                         width: parent.width
@@ -1255,14 +1255,14 @@ ShellRoot {
                         text: cal.calDavUsername + " · " + cal.calDavUrl
                         wrapMode: Text.WrapAnywhere
                         color: Theme.secondaryLabel
-                        font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                        font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
                     }
                     Text {
                         width: parent.width
                         visible: cal.calDavConfigured
                         text: cal.calDavLastSync ? "Last imported: " + cal.calDavLastSync : "Not synchronized yet"
                         color: Theme.secondaryLabel
-                        font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+                        font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize }
                     }
                     Row {
                         width: parent.width
@@ -1277,7 +1277,7 @@ ShellRoot {
                             anchors.verticalCenter: parent.verticalCenter
                             text: "Every 15 minutes"
                             color: Theme.secondaryLabel
-                            font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+                            font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize }
                         }
                     }
                     Text {
@@ -1285,7 +1285,7 @@ ShellRoot {
                         visible: !!cal.calDavMessage
                         text: cal.calDavMessage
                         color: Theme.secondaryLabel
-                        font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                        font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
                     }
                     Row {
                         anchors.right: parent.right
@@ -1335,7 +1335,7 @@ ShellRoot {
                         text: "Restore a date to the original repeating event. Other dates are untouched."
                         wrapMode: Text.WordWrap
                         color: Theme.secondaryLabel
-                        font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                        font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
                     }
                     Flickable {
                         id: exceptionList
@@ -1364,7 +1364,7 @@ ShellRoot {
                                         text: exRow.modelData + (exRow.change ? " → " + exRow.change.date : " · Skipped")
                                         elide: Text.ElideRight
                                         color: Theme.label
-                                        font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                                        font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
                                     }
                                     Button {
                                         anchors { right: parent.right; rightMargin: 8; verticalCenter: parent.verticalCenter }
@@ -1382,7 +1382,7 @@ ShellRoot {
                         text: cal.exceptionsMessage
                         wrapMode: Text.WordWrap
                         color: Theme.secondaryLabel
-                        font { family: Theme.fontUi; pixelSize: Theme.fs(11) }
+                        font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize }
                     }
                     Button {
                         text: "Close"
@@ -1416,7 +1416,7 @@ ShellRoot {
                         wrapMode: Text.WordWrap
                         text: "Change only this date, update the series, or restore a previously changed date?"
                         color: Theme.secondaryLabel
-                        font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                        font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
                     }
                     Button {
                         visible: Object.keys(cal.pendingSeries.exceptions || {}).length > 0
@@ -1474,7 +1474,7 @@ ShellRoot {
                             (cal.deleteIsSeries ? "You can skip only this date or delete the entire series." : "This event will be removed.") +
                             " This cannot be undone."
                         color: Theme.secondaryLabel
-                        font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                        font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
                     }
                     Row {
                         anchors.right: parent.right

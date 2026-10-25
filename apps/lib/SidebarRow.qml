@@ -79,7 +79,7 @@ Item {
         text: row.text
         elide: Text.ElideRight
         color: row.selected ? row.selectedTextColor : Theme.label
-        font { family: Theme.fontUi; pixelSize: Theme.fs(13); weight: row.selected ? Font.DemiBold : Font.Normal }
+        font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize; weight: row.selected ? Font.DemiBold : Font.Normal }
     }
 
     Rectangle {
@@ -94,7 +94,7 @@ Item {
             anchors.centerIn: parent
             text: row.badge
             color: "#ffffff"
-            font { family: Theme.fontUi; pixelSize: Theme.fs(10); weight: Font.DemiBold }
+            font { family: Theme.fontUi; pixelSize: Theme.font.footnote.pixelSize; weight: Font.DemiBold }
         }
     }
 

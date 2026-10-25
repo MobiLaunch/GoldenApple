@@ -47,12 +47,12 @@ Page {
             Text {
                 text: page.identity.name || "No Name Set"
                 color: Theme.label
-                font { family: Theme.fontUi; pixelSize: Theme.fs(15); weight: Font.DemiBold }
+                font { family: Theme.fontUi; pixelSize: Theme.font.title3.pixelSize; weight: Font.DemiBold }
             }
             Text {
                 text: page.gitInstalled ? (page.identity.email || "Set your name and email to commit") : "Git isn't installed: sudo pacman -S git"
                 color: page.gitInstalled ? Theme.secondaryLabel : "#ff453a"
-                font { family: Theme.fontUi; pixelSize: Theme.fs(12) }
+                font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
             }
         }
     }
