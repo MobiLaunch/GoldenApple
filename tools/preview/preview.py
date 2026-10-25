@@ -194,8 +194,16 @@ FIXTURES: list[tuple[str, str, object]] = [
      "Fingerprints for user jordan on Goodix MOC Fingerprint Sensor (press):\n - #0: right-index-finger\n", 0),
     (r"touchid-helper\.py status", json.dumps({"admin": False, "reader": True}), 0),
     (r"intelligence/helper\.py", json.dumps({"ok": True, "config": {"enabled": False,
-        "textModel": "gemini-3.8-flash", "imageModel": "gemini-3.1-flash-image"},
-        "hasKey": False, "environmentKey": False, "warning": ""}), 0),
+        "textModel": "aion-labs/aion-3.5-mini", "speechModel": "fast", "voiceLanguage": "auto",
+        "voice": "en_US-amy-medium", "speak": True},
+        "hasKey": False, "environmentKey": False, "warning": "", "provider": "Aion Labs",
+        "languages": [{"code": "en-US", "name": "English (US)", "voices": [{"id": "en_US-amy-medium", "name": "Amy"},
+                                                                         {"id": "en_US-joe-medium", "name": "Joe"}]}],
+        "systemLanguage": "English (US)",
+        "speechModels": [{"id": "fast", "name": "Fast", "size": 59707625}, {"id": "accurate", "name": "Accurate", "size": 190085487}],
+        "voiceDownload": 122913801,
+        "models": [{"id": "aion-labs/aion-3.5-mini", "name": "AionLabs: Aion 3.5 Mini"},
+                   {"id": "aion-labs/aion-3.5", "name": "AionLabs: Aion 3.5"}]}), 0),
     # The App Store's Flathub catalog (a sample, offline; its Mac catalog comes
     # from fixtures/casks.json through GG_MAC_CATALOG_URL).
     (r"software/helper\.py (catalog|refresh)", (HERE / "fixtures/flathub.json").read_text(), 0),
@@ -791,7 +799,7 @@ def main() -> int:
         elif s.startswith("@citron-state:"):
             state = s.partition(":")[2]
             # Simulated levels and captions on the ACTUAL Citron QML scene.
-            # Quickshell's preview Process never starts mic or Gemini.
+            # Quickshell's preview Process never starts the mic or Aion.
             stage = find_surface_object("citronSystemOverlay")
             citron = None
             if stage is not None:

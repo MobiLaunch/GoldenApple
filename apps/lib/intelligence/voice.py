@@ -1,15 +1,19 @@
 #!/usr/bin/env python3
-"""Ephemeral Citron voice session: PipeWire PCM <-> Gemini Live WebSocket.
+"""Ephemeral Citron voice session, heard and spoken on this computer.
 
-The API key stays in the user's keyring and never crosses QML, argv or stdout.
-stdin / stdout are newline-delimited JSON *controls and status only*, never
-recorded audio or API keys. Microphone capture begins only when summoned and
-stops on mute/close. No voice history or recordings are persisted.
+PipeWire microphone → speech gate → whisper-cpp (speech to text) → Aion Labs
+(the reply, streamed) → Piper (text to speech) → PipeWire speaker. Only the
+words go to Aion Labs; the voice itself never leaves the computer. Each
+finished utterance is written to a private file in the runtime directory for
+whisper-cpp to read and deleted at once; nothing is kept. stdin / stdout are
+newline-delimited JSON controls and status only, never audio or API keys.
+Microphone capture begins only when summoned and stops on mute/close. The
+Whisper model and the Piper voice are fetched on first use and checked
+against voices.json.
 """
 from __future__ import annotations
 
 import asyncio
-import base64
 from array import array
 from collections import deque
 import ctypes
@@ -19,26 +23,34 @@ import os
 import re
 import signal
 import shutil
+import tempfile
+import threading
 import time
 import sys
+import wave
 from pathlib import Path
-from urllib.parse import quote
 
-from helper import LANGUAGES, IntelligenceError, api_key, config, voice_language
+from helper import (CATALOG, LANGUAGES, IntelligenceError, api_key, config, fetch, needed, speech_file,
+                    stream_chat, voice_files, voice_language)
 
 INPUT_RATE = 16000
-OUTPUT_RATE = 24000
 CHUNK_BYTES = 3200  # 100 ms; signed 16-bit little-endian mono
-HOST = "generativelanguage.googleapis.com"
-PATH = "/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent"
-MAX_MESSAGE = 24 * 1024 * 1024
+MAX_UTTERANCE = INPUT_RATE * 2 * 30   # 30 s of speech, then it's transcribed anyway
+MIN_UTTERANCE = INPUT_RATE * 2 * 35 // 100   # under 350 ms is a cough, not a request
 PR_SET_PDEATHSIG = 1
+WHISPER = ("whisper-cli", "whisper-cpp")
+PIPER = ("piper", "piper-tts")
+# What Whisper writes for sound that isn't words, and the lines it imagines
+# from silence at the end of a clip.
+NOT_WORDS = re.compile(r"\[[^\]]*\]|\([^)]*\)|♪+|\*[^*]*\*")
+PHANTOMS = {"thank you.", "thanks for watching!", "thank you for watching.", "you", "bye.", "."}
+SENTENCE = re.compile(r"(.+?[.!?…。！？])(\s+|$)", re.S)
 
 
 def die_with_parent() -> None:
-    # Runs in each pw-record / pw-play child before exec: if this helper is
-    # killed outright (SIGKILL, or the shell reloading), the kernel stops the
-    # child too, so the microphone is never left recording on its own.
+    # Runs in each child (pw-record, pw-play, whisper-cpp, piper) before exec:
+    # if this helper is killed outright (SIGKILL, or the shell reloading), the
+    # kernel stops the child too, so the microphone is never left recording.
     try:
         ctypes.CDLL(None, use_errno=True).prctl(PR_SET_PDEATHSIG, signal.SIGTERM)
     except (OSError, AttributeError):
@@ -54,51 +66,40 @@ def instructions(language: str) -> str:
     name = LANGUAGES.get(language, "English")
     return (
         "You are Citron, the helpful voice assistant built into CitronOS. "
-        "Have a fluid, conversational, brief and warm dialogue. "
-        "Listen carefully, accept interruptions and follow-up questions. "
-        f"Always speak in {name} ({language}). Never change language because of "
-        "background noise, music, an accent, a name or a word from another language, "
-        "or audio you couldn't make out. Switch only when the person clearly asks you "
-        "to speak another language, and keep to it until they ask again. "
-        "Answer only clear speech addressed to you; if what you hear is noise, music, "
-        "other people talking to each other, or your own voice, say nothing. "
-        "Do not claim to access apps, the desktop or personal files, or "
-        "to execute actions you cannot actually perform."
+        "This is a spoken conversation: answer in a sentence or three, warmly and plainly, "
+        "with no lists, headings, emoji or markdown, since every word is read aloud. "
+        f"Always answer in {name}, whatever language a word or name is in; switch only when "
+        "the person clearly asks you to speak another language. "
+        "What the person said reached you through speech recognition and may have small "
+        "mistakes: answer what they most likely meant. "
+        "Do not claim to access apps, the desktop or personal files, or to execute actions "
+        "you cannot actually perform."
     )
 
 
-def setup_message(model: str, voice: str, language: str = "en-US", language_code: bool = True) -> dict:
-    speech = {"voiceConfig": {"prebuiltVoiceConfig": {"voiceName": voice}}}
-    if language_code:
-        speech["languageCode"] = language
-    return {
-        "setup": {
-            "model": "models/" + model,
-            "generationConfig": {
-                "responseModalities": ["AUDIO"],
-                "speechConfig": speech,
-            },
-            # Keep background-noise rejection at speech onset, but don't
-            # hold an entire spoken request after the client gate has ended.
-            # Google's suggested silence window is 500–800 ms; audioStreamEnd
-            # explicitly flushes the last gated PCM on every completed turn.
-            "realtimeInputConfig": {"automaticActivityDetection": {
-                "startOfSpeechSensitivity": "START_SENSITIVITY_LOW",
-                "endOfSpeechSensitivity": "END_SENSITIVITY_HIGH",
-                "prefixPaddingMs": 200,
-                "silenceDurationMs": 500,
-            }},
-            "inputAudioTranscription": {},
-            "outputAudioTranscription": {},
-            "systemInstruction": {"parts": [{"text": instructions(language)}]},
-        }
-    }
+def tool(names) -> str:
+    return next((p for p in (shutil.which(n) for n in names) if p), "")
+
+
+def clean(heard: str) -> str:
+    """What Whisper heard, without its notes on sounds that aren't words."""
+    words = " ".join(NOT_WORDS.sub(" ", heard).split())
+    return "" if words.lower() in PHANTOMS else words
+
+
+def sentences(buffer: str) -> tuple[list[str], str]:
+    """Whole sentences ready to be spoken, and what's left over."""
+    done, rest = [], buffer
+    while (m := SENTENCE.match(rest)) and len(m.group(1).strip()) > 1:
+        done.append(m.group(1).strip())
+        rest = rest[m.end():]
+    return done, rest
 
 
 class SpeechGate:
     """Decides, 100 ms at a time, whether the microphone hears someone talking.
 
-    Only speech is sent to Gemini: silence, steady sound (a fan, hum, hiss, a
+    Only speech is transcribed: silence, steady sound (a fan, hum, hiss, a
     held note) and lone clicks never leave the computer, so they can't start a
     reply. Speech is louder than the room's noise floor (learned as it goes),
     carries its energy in the voice band (not a low hum, not flat hiss), and
@@ -220,22 +221,18 @@ WORD = re.compile(r"\w+", re.UNICODE)
 
 
 def echoes(heard: str, said: str) -> bool:
-    """Whether what the microphone heard is Citron's own recent words: most of
-    at least four heard words appear, in order, among what it just said."""
+    """Whether what the microphone heard is Citron's own recent words: nearly
+    all of at least five heard words appear, in order, among what it just said.
+    (Whisper hears Citron's voice almost word for word; a person asking a
+    follow-up with some of the answer's words, "what's the capital of Spain?",
+    isn't an echo.)"""
     h = [w.lower() for w in WORD.findall(heard)]
     s = [w.lower() for w in WORD.findall(said)]
-    if len(h) < 4 or not s:
+    if len(h) < 5 or not s:
         return False
     pairs = set(zip(s, s[1:]))
     matched = sum(1 for pair in zip(h, h[1:]) if pair in pairs)
-    return matched / (len(h) - 1) >= 0.6
-
-
-def audio_packet(chunk: bytes) -> dict:
-    return {"realtimeInput": {"audio": {
-        "data": base64.b64encode(chunk).decode("ascii"),
-        "mimeType": "audio/pcm;rate=16000",
-    }}}
+    return matched / (len(h) - 1) >= 0.8
 
 
 def pcm_level(chunk: bytes) -> float:
@@ -254,18 +251,26 @@ def alive(pid: int) -> bool:
         cmdline = Path(f"/proc/{pid}/cmdline").read_bytes()
     except OSError:
         return False
-    return b"live.py" in cmdline
+    return b"voice.py" in cmdline
 
 
 class VoiceSession:
-    def __init__(self, model: str, voice: str, key: str, language: str = "en-US"):
-        self.model, self.voice, self.key = model, voice, key
-        self.language = language if language in LANGUAGES else "en-US"
+    def __init__(self, cfg: dict, key: str):
+        self.cfg, self.key = cfg, key
+        self.language = voice_language(cfg["voiceLanguage"])
+        self.whisper_language = CATALOG["languages"][self.language]["whisper"]
+        self.whisper = tool(WHISPER)
+        self.piper = tool(PIPER) if cfg["speak"] else ""
+        _, self.speech_model = speech_file(cfg)
+        voice, files = voice_files(cfg)
+        self.voice_rate = int(voice["rate"])
+        self.voice_model = next(p for f, p in files if f["path"].endswith(".onnx"))
+        self.voice_config = next(p for f, p in files if f["path"].endswith(".onnx.json"))
+        # The conversation so far, for Aion: a few turns, in memory only.
+        self.history = deque(maxlen=16)
         self.gate = SpeechGate()
-        # What Citron said lately and what Gemini heard this turn, to catch it
-        # hearing itself through the speakers.
+        # What Citron said lately, to catch it hearing itself through the speakers.
         self.said = deque(maxlen=6)
-        self.heard = ""
         self.echo_tail = 0.35
         self.muted = False
         self.running = True
@@ -273,36 +278,35 @@ class VoiceSession:
         self.mic_allowed.set()
         self.mic_proc = None
         self.out_proc = None
-        # Unbounded: the reply arrives faster than it plays, and the WebSocket
-        # must keep being read meanwhile. Blocking the reader on a full queue
-        # stalled keepalive pongs (Gemini dropped the call during long replies)
-        # and held back "interrupted", so barge-in only took effect once the
-        # backlog had played. A reply is at most a few MB of PCM.
         self.play_queue = asyncio.Queue()
         self.play_lock = asyncio.Lock()
         self.last_status = ""
-        self.ws = None
         self.audio_epoch = 0
         self.turn_has_audio = False
         self.speaker_active = False
         # If PipeWire/WebRTC AEC is unavailable, protect speaker users with
-        # half-duplex capture. Never send our own playback back to Gemini.
+        # half-duplex capture: the microphone rests while Citron talks.
         self.half_duplex = True
         self.echo_module = None
         self.mic_target = ""
         self.play_target = ""
         self.mic_stopped = asyncio.Event()
         self.mic_stopped.set()
-        # Monotonic timing only; never record or log spoken words, samples,
-        # account identifiers or API keys. Stage timing is useful when
-        # separating local silence/VAD from Gemini network/model latency.
-        self.utterance_started_at = 0.0
+        self.utterance = bytearray()
+        self.turn_task = None
         self.utterance_ended_at = 0.0
+        # Where an utterance waits for whisper-cpp: private, in memory where
+        # the runtime directory is (tmpfs), emptied after each one.
+        base = os.environ.get("XDG_RUNTIME_DIR")
+        self.private = Path(tempfile.mkdtemp(prefix="citron-voice-", dir=base if base and os.path.isdir(base) else None))
 
     def status(self, mode: str) -> None:
         if mode != self.last_status:
             self.last_status = mode
             emit("status", mode=mode)
+
+    def idle(self) -> None:
+        self.status("muted" if self.muted else "listening")
 
     async def process(self, cmd: str, *options, stdin=None, stdout=None):
         return await asyncio.create_subprocess_exec(
@@ -400,7 +404,7 @@ class VoiceSession:
         target = ["--target", self.play_target] if self.play_target else []
         self.out_proc = await self.process(
             "pw-play", "--raw", "--format", "s16",
-            "--rate", str(OUTPUT_RATE), "--channels", "1", *target, "-",
+            "--rate", str(self.voice_rate), "--channels", "1", *target, "-",
             stdin=asyncio.subprocess.PIPE,
         )
         await asyncio.sleep(0)
@@ -408,8 +412,8 @@ class VoiceSession:
             raise RuntimeError("Audio playback couldn't start. Check the PipeWire service.")
 
     async def reset_audio(self) -> None:
-        # A genuine interruption discards only the superseded response.
-        # The epoch also prevents an already-dequeued stale chunk replaying.
+        # An interruption discards only the superseded reply. The epoch also
+        # stops an already-dequeued stale chunk from playing.
         self.audio_epoch += 1
         async with self.play_lock:
             while not self.play_queue.empty():
@@ -420,9 +424,28 @@ class VoiceSession:
         self.turn_has_audio = False
         self.speaker_active = False
         self.utterance_ended_at = 0.0
-        self.utterance_started_at = 0.0
         if not self.muted:
             self.mic_allowed.set()
+
+    async def interrupt(self) -> None:
+        """The person spoke over Citron, or started again: drop the reply."""
+        task, self.turn_task = self.turn_task, None
+        if task and not task.done():
+            task.cancel()
+            await asyncio.gather(task, return_exceptions=True)
+        emit("output_level", value=0)
+        await self.reset_audio()
+
+    def start_turn(self, pcm: bytes = b"", typed: str = "") -> None:
+        previous = self.turn_task
+
+        async def run():
+            if previous and not previous.done():
+                previous.cancel()
+                await asyncio.gather(previous, return_exceptions=True)
+                await self.reset_audio()
+            await self.turn(pcm, typed)
+        self.turn_task = asyncio.create_task(run())
 
     async def listen(self) -> None:
         while self.running:
@@ -443,38 +466,187 @@ class VoiceSession:
                     try:
                         chunk = await self.mic_proc.stdout.readexactly(CHUNK_BYTES)
                     except asyncio.IncompleteReadError:
-                        # Pausing capture for playback or user mute closes the
-                        # subprocess intentionally, not a hardware failure.
+                        # Pausing capture for playback or a mute closes the
+                        # recorder on purpose; anything else is the hardware.
                         if self.muted or not self.running or not self.mic_allowed.is_set():
                             break
                         raise RuntimeError("Microphone disconnected. Check input permissions and PipeWire.")
                     if self.muted or not self.running or not self.mic_allowed.is_set():
                         break
                     was_open = self.gate.open
-                    send, ended = self.gate.feed(chunk, talking_over=self.speaker_active)
+                    keep, ended = self.gate.feed(chunk, talking_over=self.speaker_active)
                     if self.gate.open and not was_open:
-                        self.utterance_started_at = time.monotonic()
-                        self.utterance_ended_at = 0.0
+                        if self.speaker_active and not self.half_duplex:
+                            await self.interrupt()      # talking over Citron stops it
                         self.status("listening")
-                    for piece in send:
-                        await self.ws.send(json.dumps(audio_packet(piece)))
+                    for piece in keep:
+                        if len(self.utterance) < MAX_UTTERANCE:
+                            self.utterance += piece
+                    if self.gate.open and len(self.utterance) >= MAX_UTTERANCE:
+                        ended = True
+                        self.gate.reset()
                     if ended:
-                        # Prompt response immediately: Gemini's Live API
-                        # explicitly flushes cached PCM on audioStreamEnd.
-                        await self.ws.send(json.dumps({"realtimeInput": {"audioStreamEnd": True}}))
-                        self.utterance_ended_at = time.monotonic()
-                        self.status("thinking")
+                        pcm, self.utterance = bytes(self.utterance), bytearray()
+                        if len(pcm) >= MIN_UTTERANCE:
+                            self.utterance_ended_at = time.monotonic()
+                            self.start_turn(pcm=pcm)
                     emit("level", value=pcm_level(chunk) if self.gate.open else 0)
             finally:
                 await self.stop_proc(self.mic_proc)
                 self.mic_proc = None
                 self.gate.reset()
+                self.utterance = bytearray()
                 self.mic_stopped.set()
+
+    async def transcribe(self, pcm: bytes) -> str:
+        """What was said, by whisper-cpp on this computer, in Citron's language."""
+        clip = self.private / "utterance.wav"
+        try:
+            fd = os.open(clip, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+            with os.fdopen(fd, "wb") as raw, wave.open(raw, "wb") as out:
+                out.setnchannels(1)
+                out.setsampwidth(2)
+                out.setframerate(INPUT_RATE)
+                out.writeframes(pcm)
+            proc = await self.process(
+                self.whisper, "-m", str(self.speech_model), "-f", str(clip),
+                "-l", self.whisper_language, "-nt", "-np", "-t", str(min(8, max(2, os.cpu_count() or 4))),
+                stdout=asyncio.subprocess.PIPE,
+            )
+            try:
+                out, _ = await asyncio.wait_for(proc.communicate(), timeout=60)
+            except asyncio.TimeoutError:
+                await self.stop_proc(proc)
+                raise RuntimeError("Speech recognition took too long. Try the Fast model in Settings.")
+            if proc.returncode:
+                raise RuntimeError("Speech recognition failed. Reinstall whisper-cpp with Software Update.")
+            return clean(out.decode("utf-8", errors="replace"))
+        finally:
+            clip.unlink(missing_ok=True)
+
+    async def start_piper(self):
+        return await self.process(
+            self.piper, "-m", str(self.voice_model), "-c", str(self.voice_config), "--output_raw",
+            stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE,
+        )
+
+    def queue_audio(self, data: bytes) -> None:
+        if self.half_duplex and not self.speaker_active:
+            # The microphone closes before Citron speaks; the listen() task
+            # reaps the recorder (mic_stopped) while this keeps going.
+            self.mic_allowed.clear()
+            if self.mic_proc is not None and self.mic_proc.returncode is None:
+                try:
+                    self.mic_proc.terminate()
+                except ProcessLookupError:
+                    pass
+            emit("level", value=0)
+        if not self.speaker_active and self.utterance_ended_at:
+            emit("timing", stage="first_audio", ms=round((time.monotonic() - self.utterance_ended_at) * 1000))
+            self.utterance_ended_at = 0.0
+        self.speaker_active = True
+        self.turn_has_audio = True
+        # Normalized amplitude only, for the orb; no audio crosses to the UI.
+        emit("output_level", value=pcm_level(data))
+        self.play_queue.put_nowait((self.audio_epoch, data))
+        self.status("speaking")
+
+    async def speak_out(self, piper) -> None:
+        """Piper's speech, into the player as it comes."""
+        while True:
+            data = await piper.stdout.read(4800)
+            if not data:
+                break
+            self.queue_audio(data)
+
+    async def turn(self, pcm: bytes, typed: str = "") -> None:
+        self.status("thinking")
+        # Piper loads its voice while the words are worked out.
+        piper = await self.start_piper() if self.piper else None
+        speaking = asyncio.create_task(self.speak_out(piper)) if piper else None
+        try:
+            heard = typed or await self.transcribe(pcm)
+            if not heard:
+                return
+            if not typed and echoes(heard, " ".join(self.said)):
+                await self.heard_itself()
+                return
+            if not typed:
+                emit("transcript", role="user", text=heard[:1200])
+            reply = await self.reply(heard, piper)
+            if reply:
+                self.history.append({"role": "user", "content": heard})
+                self.history.append({"role": "assistant", "content": reply})
+                self.said.append(reply[-400:])
+            if piper:
+                piper.stdin.close()
+                await speaking
+                speaking = None
+            if self.turn_has_audio:
+                self.play_queue.put_nowait((self.audio_epoch, None))
+                self.turn_has_audio = False
+        finally:
+            if speaking and not speaking.done():
+                speaking.cancel()
+                await asyncio.gather(speaking, return_exceptions=True)
+            await self.stop_proc(piper)
+            if not self.speaker_active:
+                self.idle()
+
+    async def reply(self, heard: str, piper) -> str:
+        """Aion's answer, streamed: shown as it grows, each sentence spoken
+        as soon as it's whole."""
+        loop = asyncio.get_running_loop()
+        pieces: asyncio.Queue = asyncio.Queue()
+        stop = threading.Event()
+        messages = [{"role": "system", "content": instructions(self.language)}, *self.history,
+                    {"role": "user", "content": heard}]
+
+        def produce():
+            try:
+                for piece in stream_chat(self.cfg["textModel"], messages, self.key):
+                    if stop.is_set():
+                        break
+                    loop.call_soon_threadsafe(pieces.put_nowait, piece)
+                loop.call_soon_threadsafe(pieces.put_nowait, None)
+            except IntelligenceError as exc:
+                loop.call_soon_threadsafe(pieces.put_nowait, exc)
+            except Exception:
+                loop.call_soon_threadsafe(pieces.put_nowait, IntelligenceError("Aion Labs' reply was cut off. Try again.", "network"))
+
+        worker = threading.Thread(target=produce, daemon=True)
+        worker.start()
+        text, pending = "", ""
+        try:
+            while True:
+                piece = await pieces.get()
+                if piece is None:
+                    break
+                if isinstance(piece, IntelligenceError):
+                    if piece.code in ("http_401", "http_403", "missing_key", "invalid_key"):
+                        raise piece
+                    emit("notice", text=str(piece))
+                    return ""
+                text += piece
+                emit("transcript", role="assistant", text=text.strip()[-1500:])
+                if piper:
+                    pending += piece
+                    ready, pending = sentences(pending)
+                    for line in ready:
+                        piper.stdin.write((" ".join(line.split()) + "\n").encode("utf-8"))
+                    if ready:
+                        await piper.stdin.drain()
+            if piper and pending.strip():
+                piper.stdin.write((" ".join(pending.split()) + "\n").encode("utf-8"))
+                await piper.stdin.drain()
+            return text.strip()
+        finally:
+            stop.set()
 
     async def playback(self) -> None:
         # A None item marks the end of a turn. Closing pw-play's stdin and
-        # waiting for exit ensures the speaker, not just Python's queue, has
-        # finished before a half-duplex microphone is enabled again.
+        # waiting for it ensures the speaker, not just this queue, has
+        # finished before a half-duplex microphone opens again.
         while self.running:
             epoch, chunk = await self.play_queue.get()
             try:
@@ -487,12 +659,12 @@ class VoiceSession:
                         if self.out_proc is not None:
                             try:
                                 self.out_proc.stdin.close()
-                                await asyncio.wait_for(self.out_proc.wait(), timeout=30)
+                                await asyncio.wait_for(self.out_proc.wait(), timeout=60)
                             except asyncio.TimeoutError:
                                 await self.stop_proc(self.out_proc)
                             finally:
                                 self.out_proc = None
-                    # Allow the room's acoustic echo/reverb to decay.
+                    # Let the room's echo die away.
                     if self.half_duplex:
                         await asyncio.sleep(self.echo_tail)
                     if epoch == self.audio_epoch:
@@ -500,15 +672,13 @@ class VoiceSession:
                         emit("output_level", value=0)
                         if self.half_duplex and not self.muted:
                             self.mic_allowed.set()
-                        self.status("muted" if self.muted else "listening")
+                        self.idle()
                     continue
                 async with self.play_lock:
                     if epoch != self.audio_epoch:
                         continue
                     if self.half_duplex:
-                        # Playback never starts until the listen() task has
-                        # actually closed PipeWire's mic, preventing echo.
-                        # Waiting here does NOT block the WS reader.
+                        # Playback waits until the microphone is really closed.
                         await self.mic_stopped.wait()
                     if epoch != self.audio_epoch:
                         continue
@@ -521,88 +691,14 @@ class VoiceSession:
             finally:
                 self.play_queue.task_done()
 
-    async def receive(self) -> None:
-        async for raw in self.ws:
-            msg = json.loads(raw)
-            if "goAway" in msg:
-                emit("notice", text="This voice session is ending. Reopen Citron to keep talking.")
-            if "setupComplete" in msg:
-                self.status("listening")
-            sc = msg.get("serverContent") or {}
-            if sc.get("interrupted"):
-                emit("output_level", value=0)
-                await self.reset_audio()
-                self.status("muted" if self.muted else "listening")
-            if sc.get("inputTranscription", {}).get("text"):
-                piece = sc["inputTranscription"]["text"]
-                self.heard = (self.heard + " " + piece)[-600:]
-                if echoes(self.heard, " ".join(self.said)):
-                    await self.heard_itself()
-                else:
-                    emit("transcript", role="user", text=piece[:1200])
-            if sc.get("outputTranscription", {}).get("text"):
-                said = sc["outputTranscription"]["text"]
-                self.said.append(said[-400:])
-                emit("transcript", role="assistant", text=said[:1200])
-            for part in (sc.get("modelTurn") or {}).get("parts", []):
-                inline = part.get("inlineData") or {}
-                if not inline.get("data") or "audio" not in inline.get("mimeType", "audio/pcm"):
-                    continue
-                try:
-                    data = base64.b64decode(inline["data"], validate=True)
-                except (ValueError, TypeError):
-                    continue
-                if self.half_duplex and not self.speaker_active:
-                    # Close mic BEFORE playback. Killing its PipeWire process
-                    # may take up to 600 ms: let the microphone's listen()
-                    # task do that asynchronously instead of blocking the
-                    # WebSocket receive loop and queuing the first audio.
-                    self.mic_allowed.clear()
-                    # Interrupt any blocked readexactly() immediately. Its
-                    # listen() task owns the awaited reap + mic_stopped event.
-                    # Do NOT await the process here on the receive loop.
-                    if self.mic_proc is not None and self.mic_proc.returncode is None:
-                        try:
-                            self.mic_proc.terminate()
-                        except ProcessLookupError:
-                            pass
-                    emit("level", value=0)
-                if not self.speaker_active and self.utterance_ended_at:
-                    emit("timing", stage="first_audio",
-                         ms=round((time.monotonic() - self.utterance_ended_at) * 1000))
-                    self.utterance_ended_at = 0.0
-                self.speaker_active = True
-                self.turn_has_audio = True
-                # Visual response uses normalized amplitude only. No raw audio
-                # crosses the helper/UI boundary and nothing is recorded.
-                emit("output_level", value=pcm_level(data))
-                # Every chunk is kept (none dropped), without ever pausing the reader.
-                self.play_queue.put_nowait((self.audio_epoch, data))
-                self.status("speaking")
-            if sc.get("turnComplete"):
-                self.heard = ""
-                if self.turn_has_audio:
-                    self.play_queue.put_nowait((self.audio_epoch, None))
-                    self.turn_has_audio = False
-                elif not self.speaker_active:
-                    self.status("muted" if self.muted else "listening")
-        if self.running:
-            raise RuntimeError("Gemini closed the Live connection. Open voice mode again.")
-
     async def heard_itself(self) -> None:
-        """Gemini is hearing Citron's own voice (speakers into the microphone,
-        an echo canceller that lets it through). Left alone it answers itself,
-        round and round. From now on the microphone rests while Citron talks,
-        and a little longer after, for the room's echo to die away."""
-        self.heard = ""
+        """Citron heard its own voice (speakers into the microphone, an echo
+        canceller that let it through). From now on the microphone rests while
+        Citron talks, and a little longer after, for the echo to die away."""
         if self.half_duplex and self.echo_tail >= 0.8:
             return
         self.half_duplex = True
         self.echo_tail = 0.8
-        if self.speaker_active:
-            self.mic_allowed.clear()
-            await self.stop_proc(self.mic_proc)
-            emit("level", value=0)
         emit("notice", text="Citron heard itself through the speakers, so it will listen once it has finished talking. Headphones let you interrupt it.")
 
     async def controls(self) -> None:
@@ -614,7 +710,6 @@ class VoiceSession:
             data = await stream.readline()
             if not data:
                 self.running = False
-                await self.ws.close()
                 return
             try:
                 msg = json.loads(data)
@@ -623,15 +718,12 @@ class VoiceSession:
             action = msg.get("action")
             if action == "stop":
                 self.running = False
-                await self.ws.close()
                 return
             if action == "mute":
                 self.muted = bool(msg.get("enabled", False))
                 if self.muted:
                     self.mic_allowed.clear()
                     await self.stop_proc(self.mic_proc)
-                    if self.ws:
-                        await self.ws.send(json.dumps({"realtimeInput": {"audioStreamEnd": True}}))
                     emit("level", value=0)
                     self.status("muted")
                 else:
@@ -641,68 +733,81 @@ class VoiceSession:
             if action == "text" and isinstance(msg.get("text"), str):
                 txt = msg["text"].strip()[:3000]
                 if txt:
-                    await self.ws.send(json.dumps({"realtimeInput": {"text": txt}}))
                     emit("transcript", role="user", text=txt)
+                    self.start_turn(typed=txt)
+
+    async def prepare(self) -> None:
+        """Fetch the voice files on first use, with progress for the overlay."""
+        missing = needed(self.cfg)
+        if not missing:
+            return
+        total = sum(e["size"] for _, e, _ in missing)
+        done = 0
+        last = -1
+        self.status("downloading")
+
+        def progress(n):
+            nonlocal done, last
+            done += n
+            step = int(done * 100 / total)
+            if step != last:
+                last = step
+                emit("download", done=done, total=total)
+        loop = asyncio.get_running_loop()
+        for url, entry, path in missing:
+            await loop.run_in_executor(None, fetch, url, entry, path, progress)
 
     async def shutdown(self):
         self.running = False
         self.mic_allowed.set()
-        if self.ws:
-            await self.ws.close()
 
     async def run(self) -> None:
-        from websockets.asyncio.client import connect
-
         # Quickshell stops the helper on Close. Intercept TERM so mic/speaker
         # subprocesses are torn down rather than left capturing audio.
         loop = asyncio.get_running_loop()
         for sig in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP):
             loop.add_signal_handler(sig, lambda: asyncio.create_task(self.shutdown()))
         self.status("connecting")
-        uri = "wss://" + HOST + PATH + "?key=" + quote(self.key, safe="")
         try:
-            # A model that speaks natively picks its language from the
-            # instructions and may refuse a languageCode: then ask again without.
-            for language_code in (True, False):
-                ws = await connect(uri, max_size=MAX_MESSAGE, open_timeout=12, ping_interval=15)
-                try:
-                    await ws.send(json.dumps(setup_message(self.model, self.voice, self.language, language_code)))
-                    raw = await asyncio.wait_for(ws.recv(), timeout=20)
-                    if "setupComplete" in json.loads(raw):
-                        break
-                except asyncio.TimeoutError:
-                    await ws.close()
-                    raise
-                except Exception:
-                    pass
-                await ws.close()
-                if not language_code:
-                    raise RuntimeError("Gemini rejected voice setup. Verify the voice model and API access.")
-            async with ws:
-                self.ws = ws
-                await self.setup_echo_cancel()
-                self.status("listening")
-                tasks = [
-                    asyncio.create_task(self.controls()),
-                    asyncio.create_task(self.listen()),
-                    asyncio.create_task(self.playback()),
-                    asyncio.create_task(self.receive()),
-                ]
-                done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
-                for t in pending:
-                    t.cancel()
-                await asyncio.gather(*pending, return_exceptions=True)
-                for t in done:
-                    if not t.cancelled() and t.exception():
-                        raise t.exception()
+            await self.prepare()
+            self.status("connecting")
+            await self.setup_echo_cancel()
+            self.status("listening")
+            tasks = [
+                asyncio.create_task(self.controls()),
+                asyncio.create_task(self.listen()),
+                asyncio.create_task(self.playback()),
+                asyncio.create_task(self.until_stopped()),
+            ]
+            done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
+            for t in pending:
+                t.cancel()
+            await asyncio.gather(*pending, return_exceptions=True)
+            for t in done:
+                if not t.cancelled() and t.exception():
+                    raise t.exception()
+            if self.turn_task and self.turn_task.done() and not self.turn_task.cancelled() and self.turn_task.exception():
+                raise self.turn_task.exception()
         finally:
             self.running = False
             self.mic_allowed.set()
+            if self.turn_task and not self.turn_task.done():
+                self.turn_task.cancel()
+                await asyncio.gather(self.turn_task, return_exceptions=True)
             await self.stop_proc(self.mic_proc)
             await self.stop_proc(self.out_proc)
             await self.remove_echo_cancel()
+            shutil.rmtree(self.private, ignore_errors=True)
             self.key = ""
-            self.ws = None
+
+    async def until_stopped(self) -> None:
+        # Ends the session when asked to stop, or when a turn fails for good
+        # (the key was refused): its error is raised by run().
+        while self.running:
+            task = self.turn_task
+            if task and task.done() and not task.cancelled() and task.exception():
+                return
+            await asyncio.sleep(0.2)
 
 
 async def main() -> int:
@@ -712,23 +817,21 @@ async def main() -> int:
             raise IntelligenceError("Enable Citron Intelligence in Settings first.", "disabled")
         if not shutil.which("pw-record") or not shutil.which("pw-play"):
             raise RuntimeError("PipeWire audio tools are missing (pw-record / pw-play).")
-        key = api_key()
-        voice = VoiceSession(cfg["voiceModel"], cfg["voiceName"], key, voice_language(cfg.get("voiceLanguage", "auto")))
+        if not tool(WHISPER):
+            raise RuntimeError("Voice needs speech recognition (whisper-cpp). Install it with Software Update.")
+        if cfg["speak"] and not tool(PIPER):
+            raise RuntimeError("Spoken replies need Piper (piper-tts). Install it with Software Update, or turn off Speak Replies in Settings.")
+        voice = VoiceSession(cfg, api_key())
         await voice.run()
         emit("status", mode="stopped")
         return 0
-    except ImportError:
-        emit("error", text="Live voice support needs python-websockets. Install it with Software Update.")
     except IntelligenceError as e:
         emit("error", text=str(e))
     except Exception as e:
-        # Never print WebSocket URI, server request headers or an API key.
+        # Never print request headers or an API key.
         kind = type(e).__name__
-        msg = str(e)
-        if kind in ("RuntimeError",):
-            text = msg[:180]
-        else:
-            text = "Couldn't connect or stream audio (" + kind + "). Verify your network, Gemini Live access and audio devices."
+        text = str(e)[:180] if kind == "RuntimeError" else \
+            "Voice couldn't start (" + kind + "). Check your microphone, speakers and network."
         emit("error", text=text)
     return 1
 

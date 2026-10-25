@@ -87,7 +87,8 @@ curl
 qt6-webengine
 pyside6
 python
-python-websockets
+# Citron's voice: speech to text on this computer (Aion Labs gets only the words).
+whisper-cpp
 python-dbus-next
 ghostty
 sudo

@@ -10,7 +10,7 @@ entry, launchable desktop file, or chat sidebar is installed.
 - **⌘⇧Space** toggles the overlay. This does **not** enable the mic.
 - **Menu Bar → Citron / Ask Citron** brings up the Ask mode.
 - **Settings → Citron Intelligence** is the only configuration UI, containing
-  the existing Gemini keyring, models, language and voice preferences.
+  the Aion Labs key, model, language, voice and speech preferences.
 - A contextual **Writing Tools** action may run
   `gg-intelligence --writing`. The existing clipboard text fills the local
   editor, but is not uploaded until the user explicitly submits a request.
@@ -38,21 +38,22 @@ its idle drift and bounces stop.
 
 The overlay progresses through:
 
-1. **Summoned/idle**: dark orb, short prompt, Ask/Write/Create/Edit Photo
-   chips and translucent capsule; all other controls stay hidden.
-2. **Listening**: mic button explicitly starts Gemini Live, showing
-   status and a real transcript; tap again to mute.
-3. **Thinking**: colored band drifts slowly while the existing Gemini
-   request executes; Cancel stops the request.
+1. **Summoned/idle**: dark orb, short prompt, Ask/Write chips and
+   translucent capsule; all other controls stay hidden.
+2. **Listening**: mic button explicitly starts the voice session (speech
+   recognised on this computer), showing status and a real transcript; tap
+   again to mute. The first session shows its voice files downloading.
+3. **Thinking**: colored band drifts slowly while the Aion Labs request
+   executes; Cancel stops the request.
 4. **Response**: scrollable glass result unfolds below the orb. Copy
-   text, preview an image or save the generated image directly.
+   the text.
 5. **Dismissal**: Escape or Close removes the overlay and clears the
-   conversation, writing draft, chosen image and temporary generated previews.
+   conversation and the writing draft.
 
 The prompt and result components shrink for laptops below 810px high;
 content is scrollable, not clipped off-screen.
 
-The Gemini helper and live-audio helper remain in the shared library and
+The Aion Labs helper and voice helper remain in the shared library and
 start on demand. Credentials stay in the system keyring and requests are
 written to helper stdin, never included in a shell command-line argument.
 A voice session has no background microphone unless explicitly opened

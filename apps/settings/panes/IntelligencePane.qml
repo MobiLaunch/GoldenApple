@@ -5,13 +5,14 @@ import Quickshell.Io
 import "../../lib/theme"
 import "../../lib" as Shared
 import ".."
+import "../theme"
 
 Pane {
     id: pane
     headerSymbol: "wand"
-    headerTint: "#9564e8"
+    headerTint: PaneTints.purple
     headerTitle: "Citron Intelligence"
-    headerText: "Writing, ideas and images — with Google Gemini."
+    headerText: "Writing, ideas and conversation — with Aion Labs."
 
     Process { id: appLaunch; command: ["qs", "-c", "golden-gate", "ipc", "call", "citron", "ask"] }
     property string panelError: ""
@@ -58,7 +59,7 @@ Pane {
         Text {
             width: parent.width
             wrapMode: Text.Wrap
-            color: "#ff453a"
+            color: Theme.destructive
             text: "Citron Intelligence settings couldn't load. The QML diagnostic is shown below."
         }
         Text {

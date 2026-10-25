@@ -57,14 +57,15 @@ class SystemIntelligence(unittest.TestCase):
         self.assertIn('import "ui/intelligence" as AI', qml)
         self.assertIn("AI.Service {", qml)
         self.assertIn('command: ["python3", citron.helper]', qml)
-        for action in ("ask", "writing", "image", "edit", "voice", "photo"):
+        for action in ("ask", "writing", "voice"):
             self.assertIn(f"function {action}(", qml, action)
-        self.assertIn("selectedPhoto = \"\"", qml)
+        self.assertNotIn("selectedPhoto", qml)
         self.assertIn("history = []", qml)
-        self.assertIn('action:"discard"', qml)
+        self.assertNotIn('action:"discard"', qml)
         self.assertNotIn('exec qs -n -p "$here/intelligence.qml"', opener)
         self.assertIn('ipc call citron "$mode"', opener)
-        self.assertIn('ipc call citron photo "$photo"', opener)
+        self.assertNotIn("ipc call citron photo", opener)
+        self.assertIn("creating and editing images isn't available", opener)
         self.assertIn('["qs", "-c", "golden-gate", "ipc", "call", "citron", "ask"]', menu)
         self.assertIn('text: "Summon Citron"', prefs)
         self.assertIn("gg-settings intelligence", opener)
@@ -162,7 +163,7 @@ class AmbientCitronRegression(unittest.TestCase):
 
     def test_speaking_haze_uses_output_level_not_microphone_echo(self):
         qml = (ROOT / "shell/VoiceAssistant.qml").read_text()
-        live = (ROOT / "apps/lib/intelligence/live.py").read_text()
+        live = (ROOT / "apps/lib/intelligence/voice.py").read_text()
         self.assertIn('msg.event === "output_level"', qml)
         self.assertIn('emit("output_level", value=pcm_level(data))', live)
         self.assertIn('emit("output_level", value=0)', live)

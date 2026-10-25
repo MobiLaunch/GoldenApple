@@ -176,7 +176,7 @@ var PANES = [
     ["network", "Network", "ethernet vpn proxy ip dns"],
     ["battery", "Battery", "power energy charging low power"],
     ["general", "General", "system"],
-    ["intelligence", "Citron Intelligence", "ai assistant gemini siri writing tools"],
+    ["intelligence", "Citron Intelligence", "ai assistant aion labs siri writing tools voice"],
     ["about", "About", "version computer name hardware memory serial"],
     ["update", "Software Update", "updates upgrade golden gate packages"],
     ["storage", "Storage", "disk space"],

@@ -537,6 +537,13 @@ same fields, more briefly, and should be expanded when their milestone starts.
 | T-6.5 | Peripheral framework + CitronPods package | CS2-029 | `citronos-pods-engine` package; accessory model in bluetoothd | AirPods battery on a fresh install with no ZIP or compiler |
 | T-6.6 | Clipboard history | — | `wl-paste --watch` store; ⇧⌘V picker; password-manager hint respected | Copies from a password manager never appear |
 
+- **Ahead of T-6.1: Citron moved from Gemini to Aion Labs (by the owner's choice).** Text
+  goes to Aion's OpenAI-compatible API; voice is a local pipeline (`voice.py`: the speech
+  gate, whisper-cpp, Aion streamed, Piper), so only words leave the computer. Image
+  creation and photo editing are gone with Gemini. T-6.1's provider interface would now
+  start from Aion (OpenAI-compatible) rather than port Gemini. See
+  [CITRON-INTELLIGENCE.md](../CITRON-INTELLIGENCE.md).
+
 ## M7: Release engineering and hardening
 
 | ID | Task | Findings | Key changes | Done when |

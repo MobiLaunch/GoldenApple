@@ -14,9 +14,10 @@ Club Soda's wallpaper is *Club Soda*, a photograph of colourful bubbles by
 Dariusz Kieltyka ([credits](themes/wallpapers/CREDITS.md)); Tide and Dusk are
 still in Settings ▸ Wallpaper.
 
-**Citron Intelligence** adds Gemini-powered questions, Writing Tools, image
-generation and photo editing. Open it with **Super+Shift+Space** or the menu
-bar's wand. Add your own Gemini key in **Settings → Citron Intelligence**.
+**Citron Intelligence** adds questions, Writing Tools and voice conversation,
+using Aion Labs' models; voice is heard and spoken on the computer, so only the
+words leave it. Open it with **Super+Shift+Space** or the menu bar's wand. Add
+your Aion Labs key in **Settings → Citron Intelligence**.
 In supported editors, right-click → **Writing Tools…** or press
 **Ctrl+Shift+W** to review and replace a selection. [Setup, privacy and limits](docs/CITRON-INTELLIGENCE.md).
 

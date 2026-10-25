@@ -170,7 +170,7 @@ ShellRoot {
                 [1, "network", "Network", "globe", PaneTints.blue, "NetworkPane", "ethernet ip address vpn"],
                 [1, "battery", "Battery", "power", PaneTints.green, "BatteryPane", "energy power charge low power mode"],
                 [2, "general", "General", "gear", PaneTints.gray, "GeneralPane", "about software update storage date time language region"],
-                [2, "intelligence", "Citron Intelligence", "wand", PaneTints.purple, "IntelligencePane", "ai assistant gemini api key writing tools images photos"],
+                [2, "intelligence", "Citron Intelligence", "wand", PaneTints.purple, "IntelligencePane", "ai assistant aion labs api key writing tools voice speech conversation"],
                 [2, "accessibility", "Accessibility", "person", PaneTints.blue, "AccessibilityPane", "reduce motion transparency text size"],
                 [2, "appearance", "Appearance", "contrast", PaneTints.graphite, "AppearancePane", "dark mode light auto accent colour color liquid glass scroll bars"],
                 [2, "controlcenter", "Control Center", "control-center", PaneTints.gray, "ControlCenterPane", "menu bar items battery percentage bluetooth sound focus now playing"],

@@ -73,7 +73,7 @@ Item {
                 Shared.Symbol { name: "wand"; tone: "accent"; size: 24 }
                 Text { text: "Writing Tools"; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.font.title1.pixelSize; weight: Font.Bold } }
             }
-            Text { text: "Citron Intelligence · Google Gemini"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize } }
+            Text { text: "Citron Intelligence · Aion Labs"; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize } }
             EditorBox { id: source; width: parent.width; height: Math.max(65, (card.height - 374) * 0.42); readOnly: true }
             Shared.PopUpButton {
                 id: tools; width: 200; menuParent: sheet
@@ -89,7 +89,7 @@ Item {
             Row {
                 spacing: 8
                 Shared.Button {
-                    text: service.busy ? "Working…" : "Send to Gemini"; prominent: true
+                    text: service.busy ? "Working…" : "Send to Aion Labs"; prominent: true
                     enabled: !service.busy && source.text.trim().length > 0 && (tools.current !== 8 || instruction.text.trim().length > 0)
                     onClicked: {
                         result.text = ""; sheet.message = ""; sheet.truncated = false

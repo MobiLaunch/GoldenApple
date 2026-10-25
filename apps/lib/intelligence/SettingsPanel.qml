@@ -11,12 +11,25 @@ Column {
     property bool hasKey: false
     property bool environmentKey: false
     property string status: "Loading settings…"
+    // Aion Labs' text models ({ id, name }), listed without a key.
     property var models: []
-    property var voiceModels: []
-    // Citron's spoken languages ({ code, name }), from the helper; "auto" first.
+    property string modelSetting: "aion-labs/aion-3.5-mini"
+    // Citron's languages ({ code, name, voices: [{ id, name }] }), from the helper.
     property var languages: []
     property string systemLanguage: "English (US)"
+    property string systemCode: "en-US"
     property string languageSetting: "auto"
+    property string voiceSetting: ""
+    property bool speakSetting: true
+    property var speechModels: []
+    property string speechSetting: "fast"
+    property real voiceDownload: 0      // bytes still to fetch for voice
+    readonly property var voices: {
+        const code = languageSetting === "auto" ? systemCode : languageSetting
+        const lang = languages.find((l) => l.code === code)
+        return lang ? lang.voices : []
+    }
+    function megabytes(bytes) { return Math.max(1, Math.round(bytes / 1000000)) + " MB" }
     spacing: 14
     // The settings UI must remain usable even if the process adapter fails to
     // compile/load. Loading Service as a QML file isolates that failure.
@@ -55,27 +68,28 @@ Column {
             if (!result.ok) { panel.status = result.error; return }
             if (result.config) {
                 panel.enabledSetting = result.config.enabled
-                textModel.text = result.config.textModel
-                imageModel.text = result.config.imageModel
-                voiceModel.text = result.config.voiceModel || "gemini-3.8-live"
-                const voiceIndex = voiceChooser.options.indexOf(result.config.voiceName || "Aoede")
-                voiceChooser.current = voiceIndex >= 0 ? voiceIndex : 0
+                panel.modelSetting = result.config.textModel
+                panel.speechSetting = result.config.speechModel || "fast"
                 panel.languageSetting = result.config.voiceLanguage || "auto"
+                panel.voiceSetting = result.config.voice || ""
+                panel.speakSetting = result.config.speak !== false
             }
             if (result.languages) {
                 panel.languages = result.languages
                 panel.systemLanguage = result.systemLanguage || panel.systemLanguage
+                const sys = result.languages.find((l) => l.name === panel.systemLanguage)
+                panel.systemCode = sys ? sys.code : "en-US"
             }
+            if (result.speechModels) panel.speechModels = result.speechModels
+            if (result.voiceDownload !== undefined) panel.voiceDownload = result.voiceDownload
             if (action === "status") {
                 panel.hasKey = result.hasKey
                 panel.environmentKey = result.environmentKey
-                panel.status = result.warning || (result.hasKey ? "API key is available." : "Add a Gemini API key to get started.")
+                panel.status = result.warning || (result.hasKey ? "API key is available." : "Add your Aion Labs API key to get started.")
+                // Aion lists its models without a key: fill the picker now.
+                Qt.callLater(() => panel.send({ action: "models" }))
             } else if (action === "models") {
                 panel.models = result.models || []
-                panel.voiceModels = result.voiceModels || []
-                panel.status = panel.models.length || panel.voiceModels.length
-                    ? "Models refreshed. Choose supported text, image and Live voice models."
-                    : "No compatible models were available for this key."
             } else {
                 panel.status = action === "forget" ? "Saved key removed. Citron Intelligence is off." : "Settings saved."
                 panel.hasKey = action !== "forget" && (panel.hasKey || apiKey.text.length > 0)
@@ -85,43 +99,41 @@ Column {
     }
     Text {
         width: parent.width; wrapMode: Text.Wrap
-        text: "Use Google Gemini to work with words and images. Only requests you send and photos you choose leave this computer. Your key is stored in the system keyring; requests appear in the temporary desktop overlay and are cleared when you dismiss it."
+        text: "Citron works with words, using Aion Labs' models. Only what you ask, or what you say once it's turned into text on this computer, goes to Aion Labs; your voice itself never leaves the computer. Your key is stored in the system keyring; requests appear in the temporary desktop overlay and are cleared when you dismiss it."
         color: Theme.secondaryLabel
         font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize }
     }
     Row {
         spacing: 12
         Switch { checked: panel.enabledSetting; enabled: !panel.busy && panel.serviceAvailable; onToggled: (value) => panel.enabledSetting = value }
-        Text { text: "Enable Citron Intelligence"; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.fs(14); weight: Font.DemiBold } }
+        Text { text: "Enable Citron Intelligence"; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.font.headline.pixelSize; weight: Font.DemiBold } }
     }
-    Text { text: "Gemini API key"; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize; weight: Font.DemiBold } }
+    Text { text: "Aion Labs API key"; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize; weight: Font.DemiBold } }
     TextField {
         id: apiKey
+        objectName: "citronApiKey"
         width: parent.width; height: 34; password: true
         enabled: !panel.busy && panel.serviceAvailable
-        placeholder: panel.hasKey ? "Key saved — leave blank to keep it" : "Paste your Gemini API key"
+        placeholder: panel.hasKey ? "Key saved — leave blank to keep it" : "Paste your Aion Labs API key"
     }
     Text {
         visible: panel.environmentKey
         width: parent.width; wrapMode: Text.Wrap
-        text: "GEMINI_API_KEY is set for this session and takes precedence over the saved key."
+        text: "AION_API_KEY is set for this session and takes precedence over the saved key."
         color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
     }
-    Text { text: "Text and questions model"; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize; weight: Font.DemiBold } }
-    TextField { id: textModel; width: parent.width; height: 32; enabled: !panel.busy && panel.serviceAvailable; placeholder: "Gemini text model ID" }
+    Text { text: "Model"; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize; weight: Font.DemiBold } }
     PopUpButton {
-        visible: panel.models.length > 0
-        width: parent.width; menuParent: panel.menuParent
-        options: panel.models.filter(m => !m.includes("image") && !m.includes("tts") && !m.includes("audio") && !m.includes("live"))
-        onPicked: (i) => textModel.text = options[i]
-    }
-    Text { text: "Image generation and editing model"; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize; weight: Font.DemiBold } }
-    TextField { id: imageModel; width: parent.width; height: 32; enabled: !panel.busy && panel.serviceAvailable; placeholder: "Gemini image model ID" }
-    PopUpButton {
-        visible: panel.models.length > 0
-        width: parent.width; menuParent: panel.menuParent
-        options: panel.models.filter(m => m.includes("image"))
-        onPicked: (i) => imageModel.text = options[i]
+        id: modelChooser
+        objectName: "citronModel"
+        width: Math.min(320, parent.width); menuParent: panel.menuParent
+        enabled: !panel.busy && panel.serviceAvailable
+        // The saved model stays on the list even before Aion's has loaded.
+        readonly property var ids: panel.models.some((m) => m.id === panel.modelSetting)
+            ? panel.models.map((m) => m.id) : [panel.modelSetting].concat(panel.models.map((m) => m.id))
+        options: ids.map((id) => { const m = panel.models.find((x) => x.id === id); return m ? m.name.replace(/^AionLabs: /, "") : id })
+        current: Math.max(0, ids.indexOf(panel.modelSetting))
+        onPicked: (i) => panel.modelSetting = ids[i]
     }
     Text {
         width: parent.width
@@ -132,30 +144,21 @@ Column {
     Text {
         width: parent.width
         wrapMode: Text.Wrap
-        text: "Press ⇧⌘Space to start a voice conversation immediately, or use Ask Citron for typing. The microphone streams only while voice mode is open and unmuted; no recordings are saved. Choose Type to switch back to text."
+        text: "Press ⇧⌘Space to start a voice conversation, or use Ask Citron for typing. Speech is recognised on this computer and only the words go to Aion Labs; no recordings are kept. The microphone listens only while voice mode is open and unmuted."
         color: Theme.secondaryLabel
         font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
     }
-    Text { text: "Live voice model"; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize } }
-    TextField {
-        id: voiceModel
-        width: parent.width; height: 32
-        enabled: !panel.busy && panel.serviceAvailable
-        placeholder: "gemini-3.8-live"
-    }
+    Text { text: "Speech recognition"; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize } }
     PopUpButton {
-        visible: panel.voiceModels.length > 0
-        width: parent.width; menuParent: panel.menuParent
-        options: panel.voiceModels
-        onPicked: (i) => voiceModel.text = options[i]
-    }
-    Text { text: "Spoken voice"; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize } }
-    PopUpButton {
-        id: voiceChooser
-        width: Math.min(240, parent.width)
+        id: speechChooser
+        objectName: "citronSpeechModel"
+        width: Math.min(280, parent.width)
         menuParent: panel.menuParent
         enabled: !panel.busy && panel.serviceAvailable
-        options: ["Aoede", "Puck", "Kore", "Charon", "Fenrir"]
+        readonly property var ids: panel.speechModels.map((m) => m.id)
+        options: panel.speechModels.map((m) => m.name + " (" + panel.megabytes(m.size) + ")")
+        current: Math.max(0, ids.indexOf(panel.speechSetting))
+        onPicked: (i) => panel.speechSetting = ids[i]
     }
     Text { text: "Language"; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize } }
     PopUpButton {
@@ -167,38 +170,60 @@ Column {
         readonly property var codes: ["auto"].concat(panel.languages.map((l) => l.code))
         options: ["Automatic (" + panel.systemLanguage + ")"].concat(panel.languages.map((l) => l.name))
         current: Math.max(0, codes.indexOf(panel.languageSetting))
-        onPicked: (i) => panel.languageSetting = codes[i]
+        onPicked: (i) => { panel.languageSetting = codes[i]; panel.voiceSetting = "" }
     }
     Text {
         width: parent.width
         wrapMode: Text.Wrap
-        text: "Citron speaks this language and keeps to it, unless you ask it to switch."
+        text: "Citron listens for this language and answers in it, unless you ask it to switch."
         color: Theme.secondaryLabel
         font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
+    }
+    Row {
+        spacing: 12
+        Switch { objectName: "citronSpeak"; checked: panel.speakSetting; enabled: !panel.busy && panel.serviceAvailable; onToggled: (value) => panel.speakSetting = value }
+        Text { text: "Speak replies"; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize } }
+    }
+    Text { visible: panel.speakSetting; text: "Voice"; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize } }
+    PopUpButton {
+        id: voiceChooser
+        objectName: "citronVoice"
+        visible: panel.speakSetting
+        width: Math.min(240, parent.width)
+        menuParent: panel.menuParent
+        enabled: !panel.busy && panel.serviceAvailable && panel.voices.length > 1
+        options: panel.voices.map((v) => v.name)
+        current: Math.max(0, panel.voices.findIndex((v) => v.id === panel.voiceSetting))
+        onPicked: (i) => panel.voiceSetting = panel.voices[i].id
+    }
+    Text {
+        visible: panel.voiceDownload > 0
+        width: parent.width; wrapMode: Text.Wrap
+        text: "The first voice conversation downloads Citron's voice files (" + panel.megabytes(panel.voiceDownload) + "). After that, voice works without downloading anything."
+        color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
     }
     Flow {
         width: parent.width; spacing: 8
         Button {
             text: "Save Settings"; prominent: true; enabled: !panel.busy && panel.serviceAvailable
             onClicked: panel.send({ action: "configure", enabled: panel.enabledSetting, apiKey: apiKey.text,
-                                      textModel: textModel.text.trim(), imageModel: imageModel.text.trim(),
-                                      voiceModel: voiceModel.text.trim(), voiceName: voiceChooser.options[voiceChooser.current],
-                                      voiceLanguage: panel.languageSetting })
+                                      textModel: panel.modelSetting, speechModel: panel.speechSetting,
+                                      voiceLanguage: panel.languageSetting, voice: panel.voiceSetting,
+                                      speak: panel.speakSetting })
         }
-        Button { text: "Refresh Models"; enabled: !panel.busy && panel.serviceAvailable && panel.hasKey; onClicked: panel.send({ action: "models" }) }
         Button { text: "Remove Saved Key"; enabled: !panel.busy && panel.serviceAvailable && panel.hasKey; onClicked: { panel.enabledSetting = false; panel.send({ action: "forget" }) } }
     }
     Text {
         width: parent.width; wrapMode: Text.Wrap
         text: panel.serviceError || (panel.busy ? "Working…" : panel.transportError || panel.status)
-        color: panel.serviceError || panel.transportError ? "#ff453a" : Theme.secondaryLabel
+        color: panel.serviceError || panel.transportError ? Theme.destructive : Theme.secondaryLabel
         font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
         Accessible.role: Accessible.StaticText
     }
     Text {
         width: parent.width; wrapMode: Text.Wrap
-        text: "Gemini requires internet access. API usage may be billed by Google, and Google's data terms apply. Model availability depends on your project."
+        text: "Aion Labs needs internet access; its terms apply to what you send, and usage beyond its free allowance may be billed. Aion's models are tuned for conversation and storytelling."
         color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
     }
-    Button { text: "Get a Gemini API Key"; onClicked: Qt.openUrlExternally("https://aistudio.google.com/apikey") }
+    Button { text: "Get an Aion Labs API Key"; onClicked: Qt.openUrlExternally("https://www.aionlabs.ai/") }
 }

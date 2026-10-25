@@ -1,7 +1,8 @@
 // Citron Live: summoned by ⇧⌘Space or Citron Intelligence → Talk.
 // When summoned, Citron begins listening with an ambient morphing haze.
 // Voice never renders text fields, tool chips, mic toggles or send controls.
-// Explicit writing/image commands keep their existing editor controls. The Python helper owns ephemeral mic/speaker streams;
+// Writing Tools keep their editor controls. Text goes to Aion Labs; voice is
+// heard and spoken on this computer (voice.py). The Python helper owns ephemeral mic/speaker streams;
 // the QML side only receives level/status/transcription, not raw audio or
 // API credentials.
 import Quickshell
@@ -9,7 +10,6 @@ import Quickshell.Io
 import Quickshell.Wayland
 import QtQuick
 import QtQuick.Effects
-import QtQuick.Dialogs
 import "ui/intelligence" as AI
 import "ui/theme"
 import "components"
@@ -24,9 +24,7 @@ PanelWindow {
     property string phase: "idle"
     property bool voiceMode: false
     property string tool: "ask"
-    property string selectedPhoto: ""
     property string answer: ""
-    property var imageResults: []
     property var history: []
     property string pendingPrompt: ""
     property string pendingTool: ""
@@ -34,18 +32,19 @@ PanelWindow {
     property string responseNote: ""
     property bool responseOpen: false
     readonly property bool aiServiceBusy: aiService.busy
-    property string toolTitle: tool === "writing" ? "Writing Tools" : tool === "image" ? "Create an Image" : tool === "edit" ? "Edit a Photo" : "Ask Citron"
+    property string toolTitle: tool === "writing" ? "Writing Tools" : "Ask Citron"
     property string errorText: ""
     property string youSaid: ""
     property string citronSaid: ""
     property real soundLevel: 0
     property real outputLevel: 0
+    property real downloaded: 0        // the voice files, fetched on first use (0–1)
     readonly property string helper: decodeURIComponent(
-        Qt.resolvedUrl("ui/intelligence/live.py").toString().replace("file://", ""))
+        Qt.resolvedUrl("ui/intelligence/voice.py").toString().replace("file://", ""))
     // What the orb does: it listens, thinks while connecting, speaks.
     readonly property string orbMode: aiService.busy ? "thinking" : !voiceMode ? "idle"
         : phase === "error" ? "error" : micMuted ? "muted"
-        : (phase === "connecting" || phase === "thinking") ? "thinking"
+        : (phase === "connecting" || phase === "thinking" || phase === "downloading") ? "thinking"
         : phase === "speaking" ? "speaking" : "listening"
 
     function present() {
@@ -77,8 +76,6 @@ PanelWindow {
         voiceProc.running = false
         outputLevel = 0
         aiService.cancel()
-        if (imageResults.length) cleanup.send({action:"discard", images:imageResults})
-        imageResults = []
         history = []
         pendingPrompt = ""
         pendingTool = ""
@@ -88,7 +85,6 @@ PanelWindow {
         answer = ""
         responseNote = ""
         responseOpen = false
-        selectedPhoto = ""
         tool = "ask"
         writingSource.text = ""
         voiceMode = false
@@ -102,7 +98,7 @@ PanelWindow {
         textEntry.text = ""
     }
     // The global shortcut is voice-first, as a Siri invocation should be.
-    // IPC 'ask' and the writing/image tools remain explicitly text-first.
+    // IPC 'ask' and Writing Tools remain explicitly text-first.
     function toggle() {
         if (open) dismiss()
         else { present(); startVoice() }
@@ -129,10 +125,16 @@ PanelWindow {
             stage.forceActiveFocus()
             return
         }
-        // Editing and image creation remain explicit separate tool routes.
-        if (["writing", "image", "edit"].includes(kind)) {
+        // Writing Tools are their own route. Aion Labs' models work with
+        // text, so asking for an image explains that, in the text editor.
+        if (kind === "writing") {
             if (voiceMode) stopVoice()
             tool = kind
+        } else if (kind === "image" || kind === "edit") {
+            if (voiceMode) stopVoice()
+            tool = "ask"
+            responseNote = "Citron works with text: creating and editing images isn't available."
+            responseOpen = true
         }
         if (tool === "writing" && !writingSource.text)
             writingSource.text = Quickshell.clipboardText || ""
@@ -140,8 +142,8 @@ PanelWindow {
     }
     function startVoice() {
         if (voiceMode) return
-        // A microphone request always starts a conversation, never an
-        // image-generation/write command left selected from the previous tool.
+        // A microphone request always starts a conversation, never a
+        // writing command left selected from the previous tool.
         tool = "ask"
         voiceMode = true
         outputLevel = 0
@@ -156,7 +158,7 @@ PanelWindow {
         Qt.callLater(() => { if (citron.open && citron.voiceMode) stage.forceActiveFocus() })
     }
     function chooseTool(kind) {
-        if (aiService.busy || !["ask", "writing", "image", "edit"].includes(kind)) return
+        if (aiService.busy || !["ask", "writing"].includes(kind)) return
         if (voiceMode) stopVoice()
         tool = kind
         responseOpen = false
@@ -172,21 +174,14 @@ PanelWindow {
             responseNote = "Paste or type the text you want to rewrite."
             return
         }
-        if (task === "edit" && !selectedPhoto) {
-            responseNote = "Choose a photo first."
-            return
-        }
-        if (imageResults.length) cleanup.send({action:"discard", images:imageResults})
-        imageResults = []
         answer = ""
         const request = { task: task, prompt: q }
         if (task === "ask") {
             request.history = history.slice(-16)
-            if (selectedPhoto) request.imagePath = selectedPhoto
         } else if (task === "writing") {
             request.text = writingSource.text
             request.mode = "rewrite"
-        } else if (task === "edit") request.imagePath = selectedPhoto
+        }
         responseNote = ""
         responseOpen = true
         pendingPrompt = q
@@ -259,6 +254,10 @@ PanelWindow {
                 everReady = true
                 voiceWatchdog.stop()
             }
+        } else if (msg.event === "download") {
+            // Each step of the first-use download shows the session is alive.
+            downloaded = Math.max(0, Math.min(1, (Number(msg.done) || 0) / Math.max(1, Number(msg.total) || 1)))
+            voiceWatchdog.restart()
         } else if (msg.event === "level") {
             soundLevel = micMuted ? 0 : Math.max(0, Math.min(1, Number(msg.value) || 0))
         } else if (msg.event === "output_level") {
@@ -308,19 +307,11 @@ PanelWindow {
         function show(kind: string): void { citron.show(kind) }
         function ask(): void { citron.show("ask") }
         function writing(): void { citron.show("writing") }
-        function image(): void { citron.show("image") }
-        function edit(): void { citron.show("edit") }
         function voice(): void { citron.show("ask") }
-        function photo(path: string): void {
-            if (!path || !path.startsWith("/") || path.includes("\\0")) return
-            citron.show("edit")
-            citron.selectedPhoto = path
-        }
     }
 
-    // Reuses the existing keyring-backed Gemini service. Requests are sent on
-    // stdin, never through a background HTTP server or a separate app window.
-    AI.Service { id: cleanup }
+    // The keyring-backed Aion Labs service. Requests are sent on stdin,
+    // never through a background HTTP server or a separate app window.
     AI.Service {
         id: aiService
         onCompleted: (action, result) => {
@@ -332,13 +323,8 @@ PanelWindow {
                 citron.pendingTool = ""
                 return
             }
-            if (action === "export") {
-                citron.responseNote = "Saved: " + result.savedPath
-                return
-            }
             if (action !== "generate") return
             citron.answer = result.text || ""
-            citron.imageResults = result.images || []
             citron.responseOpen = true
             citron.responseNote = result.truncated ? "The answer may be incomplete." : ""
             // Preserve the prompt actually sent and any new draft typed in
@@ -346,29 +332,12 @@ PanelWindow {
             if (citron.pendingTool === "ask" && citron.pendingPrompt && citron.answer.trim()) {
                 citron.history = citron.history.concat([
                     { role: "user", text: citron.pendingPrompt },
-                    { role: "model", text: citron.answer }
+                    { role: "assistant", text: citron.answer }
                 ]).slice(-20)
             }
             if (textEntry.text.trim() === citron.pendingPrompt) textEntry.text = ""
             citron.pendingPrompt = ""
             citron.pendingTool = ""
-        }
-    }
-    FileDialog {
-        id: photoPicker
-        title: "Choose a photo"
-        fileMode: FileDialog.OpenFile
-        nameFilters: ["Images (*.png *.jpg *.jpeg *.webp *.heic)"]
-        onAccepted: citron.selectedPhoto = decodeURIComponent(String(selectedFile).replace(/^file:\/\//, ""))
-    }
-    FileDialog {
-        id: imageSave
-        title: "Save Generated Image"
-        fileMode: FileDialog.SaveFile
-        onAccepted: {
-            if (!citron.imageResults.length) return
-            aiService.send({action:"export", source: citron.imageResults[0],
-                destination: decodeURIComponent(String(selectedFile).replace(/^file:\/\//, ""))})
         }
     }
     Process {
@@ -406,7 +375,7 @@ PanelWindow {
         onTriggered: {
             if (citron.open && citron.voiceMode && !citron.everReady) {
                 citron.phase = "error"
-                citron.errorText = "Voice connection timed out. Check your Live model and network, then Retry."
+                citron.errorText = "Voice took too long to start. Check your network and microphone, then Retry."
                 voiceProc.running = false
             }
         }
@@ -466,6 +435,7 @@ PanelWindow {
                 width: parent.width
                 horizontalAlignment: Text.AlignHCenter
                 text: citron.phase === "error" ? "Connection interrupted"
+                    : citron.phase === "downloading" ? "Getting Citron's voice ready… " + Math.round(citron.downloaded * 100) + "%"
                     : citron.phase === "connecting" ? "Connecting…"
                     : citron.micMuted ? "Microphone muted"
                     : citron.phase === "speaking" ? "Speaking…"
@@ -489,7 +459,7 @@ PanelWindow {
             }
         }
 
-        // Editor chrome exists only for explicitly selected writing/image tools.
+        // Editor chrome exists only for Writing Tools.
         Column {
             id: content
             visible: !citron.voiceMode
@@ -520,6 +490,7 @@ PanelWindow {
                     horizontalAlignment: Text.AlignHCenter
                     text: citron.voiceMode ?
                         (citron.phase === "error" ? "Microphone unavailable" :
+                         citron.phase === "downloading" ? "Getting Citron's voice ready… " + Math.round(citron.downloaded * 100) + "%" :
                          citron.phase === "connecting" ? "Connecting voice…" :
                          citron.micMuted ? "Microphone muted" : citron.phase === "speaking" ? "Speaking…" : "Listening…")
                         : citron.aiServiceBusy ? "Thinking…" : citron.toolTitle
@@ -577,7 +548,7 @@ PanelWindow {
                         Text {
                             width: parent.width - 86
                             color: Theme.vibrant.label
-                            text: citron.aiServiceBusy ? "Working on it…" : citron.imageResults.length ? "Your result" : "Response"
+                            text: citron.aiServiceBusy ? "Working on it…" : "Response"
                             font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize; weight: Font.DemiBold }
                         }
                         Text {
@@ -614,38 +585,15 @@ PanelWindow {
                             lineHeight: 1.22
                         }
                     }
-                    Image {
-                        visible: citron.imageResults.length > 0
-                        source: visible ? "file://" + citron.imageResults[0] : ""
-                        width: parent.width; height: visible ? 124 : 0
-                        fillMode: Image.PreserveAspectFit; asynchronous: true
-                        sourceSize: Qt.size(width * 2, 248)
-                    }
-                    Text {
-                        text: "Save image…"
-                        visible: citron.imageResults.length > 0
-                        Accessible.role: Accessible.Button
-                        Accessible.name: "Save image"
-                        Accessible.onPressAction: { imageSave.defaultSuffix = citron.imageResults[0].split(".").pop(); imageSave.open() }
-                        color: CitronColors.link
-                        font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize; weight: Font.DemiBold }
-                        MouseArea {
-                            anchors.fill: parent
-                            onClicked: {
-                                imageSave.defaultSuffix = citron.imageResults[0].split(".").pop()
-                                imageSave.open()
-                            }
-                        }
-                    }
                     }
                 }
             }
 
-            // Writing and photo tools appear contextually, not as pages.
+            // Writing Tools appear contextually, not as pages.
             Rectangle {
                 id: contextArea
                 width: parent.width
-                height: citron.tool === "writing" ? (citron.height < 810 ? 77 : 94) : citron.selectedPhoto ? 38 : 0
+                height: citron.tool === "writing" ? (citron.height < 810 ? 77 : 94) : 0
                 visible: height > 0
                 radius: Theme.radius.panel
                 color: CitronColors.field
@@ -664,23 +612,6 @@ PanelWindow {
                         color: Theme.vibrant.tertiaryLabel
                         font: writingSource.font
                     }
-                }
-                Text {
-                    visible: citron.tool !== "writing"
-                    anchors { left: parent.left; leftMargin: 15; verticalCenter: parent.verticalCenter }
-                    width: parent.width - 75; elide: Text.ElideMiddle
-                    text: citron.selectedPhoto.split("/").pop()
-                    color: Theme.vibrant.label; font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
-                }
-                Text {
-                    visible: citron.tool !== "writing"
-                    anchors { right: parent.right; rightMargin: 14; verticalCenter: parent.verticalCenter }
-                    text: "Remove"; color: CitronColors.link
-                    font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize }
-                    MouseArea { anchors.fill: parent; onClicked: citron.selectedPhoto = "" }
-                    Accessible.role: Accessible.Button
-                    Accessible.name: "Remove photo"
-                    Accessible.onPressAction: citron.selectedPhoto = ""
                 }
             }
 
@@ -712,8 +643,6 @@ PanelWindow {
                 }
                 ToolChip { label: citron.voiceMode ? "Type" : "Ask"; kind: "ask" }
                 ToolChip { label: "Write"; kind: "writing" }
-                ToolChip { label: "Create"; kind: "image" }
-                ToolChip { label: "Edit Photo"; kind: "edit" }
             }
 
             Item {
@@ -748,17 +677,10 @@ PanelWindow {
                     shade: citron.voiceMode && !citron.micMuted ? CitronColors.live : CitronColors.button
                     onClicked: citron.toggleMic()
                 }
-                SmallButton {
-                    id: photoButton
-                    anchors { left: micButton.right; leftMargin: 5; verticalCenter: parent.verticalCenter }
-                    symbol: "plus"
-                    description: "Attach image"
-                    onClicked: photoPicker.open()
-                }
                 TextInput {
                     id: textEntry
                     objectName: "citronSystemPrompt"
-                    anchors { left: photoButton.right; leftMargin: 12; right: send.right; rightMargin: 46; verticalCenter: parent.verticalCenter }
+                    anchors { left: micButton.right; leftMargin: 12; right: send.right; rightMargin: 46; verticalCenter: parent.verticalCenter }
                     height: 29
                     verticalAlignment: TextInput.AlignVCenter
                     clip: true
@@ -771,9 +693,7 @@ PanelWindow {
                     Keys.onEscapePressed: citron.dismiss()
                     Text {
                         visible: !textEntry.text
-                        text: citron.tool === "writing" ? "How should I rewrite it?" :
-                              citron.tool === "image" ? "Describe an image…" :
-                              citron.tool === "edit" ? "Describe the photo edit…" : "Ask anything…"
+                        text: citron.tool === "writing" ? "How should I rewrite it?" : "Ask anything…"
                         color: Theme.vibrant.tertiaryLabel
                         font: textEntry.font
                     }

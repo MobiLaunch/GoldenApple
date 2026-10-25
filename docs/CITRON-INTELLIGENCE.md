@@ -1,163 +1,154 @@
 # Citron Intelligence
 
-A native CitronOS assistant using Google Gemini, built on the same QML controls
-and Liquid Glass materials as the rest of the desktop. It implements the core
-writing, question-answering and image workflows requested for CitronOS. It is an
-independent implementation, with no Apple services or Apple Intelligence backend.
+A native CitronOS assistant for words, built on the same QML controls and Liquid
+Glass materials as the rest of the desktop. Text goes to **Aion Labs**
+(`api.aionlabs.ai`, OpenAI-compatible); voice is heard and spoken **on this
+computer** (whisper-cpp and Piper), so only the words of a voice conversation
+leave it. It is an independent implementation, with no Apple services or Apple
+Intelligence backend.
 
 ## Setup
 
 1. Install this revision using the normal CitronOS install/update path. The
-   system, user and ISO installs all include `gg-intelligence`, its desktop entry
-   and the shared helper. Existing Python 3, Quickshell and libsecret packages
-   are sufficient; no Gemini SDK or extra daemon is required.
-2. Open **Settings → Citron Intelligence**. Get an API key from
-   [Google AI Studio](https://aistudio.google.com/apikey), paste it into the masked
-   field, enable the feature and choose **Save Settings**. The login keyring must
-   be available and unlocked.
-3. Use **Refresh Models** to list models available to your key. Select a text
-   model and an image model, then save again. You can also enter exact model IDs.
-4. Open **Citron Intelligence** from Applications, the menu bar wand, or
-   **Super+Shift+Space**. Requests use your own Google project and its quota.
+   system, user and ISO installs include `gg-intelligence`, its desktop entry, the
+   shared helper, `whisper-cpp` (speech to text) and `piper-tts` (text to speech).
+2. Open **Settings → Citron Intelligence**. Paste your Aion Labs API key (from
+   the [Aion Labs dashboard](https://www.aionlabs.ai/)) into the masked field,
+   enable the feature and choose **Save Settings**. The login keyring must be
+   available and unlocked.
+3. Pick a **Model**. The list is Aion's own (`GET /v1/models`, which needs no
+   key), loaded when the pane opens; the default is `aion-labs/aion-3.5-mini`.
+4. Open Citron from Applications, the menu bar wand, or **Super+Shift+Space**
+   (voice). Requests use your own Aion Labs account and its allowance.
 
-Defaults, checked against Google's model documentation on 2026-10-05, are
-`gemini-3.8-flash` for text/vision and `gemini-3.1-flash-image` for image output.
-Availability is project-dependent and model IDs can change. A 404 tells the user
-to refresh/select a model; the app does not silently retry another billed model.
+Aion's models are text-only and tuned for conversation and storytelling (their
+descriptions say so); they think before answering, and Citron keeps that
+reasoning out of what it shows and says (`reasoning_split`, and any `<think>`
+text a model puts inline is removed).
 
 ## Tools
 
 | Tool | Behavior |
 | --- | --- |
-| Ask Anything | A chat: type below and press Return (Shift+Return for a new line), attach a photo, start over with the compose button. The latest 10 complete exchanges are sent as context. |
-| Talk to Citron | ⇧⌘Space or Ask Citron invokes a morphing cyan/violet/pink haze and immediately starts listening. Only a brief status and speech captions appear; there is no text field, tool bar, or mic button. Esc or the global shortcut dismisses and stops capture. |
+| Ask Anything | A chat: type below and press Return. The latest exchanges are sent as context. |
+| Talk to Citron | ⇧⌘Space or Ask Citron opens the morphing haze and starts listening at once. Only a brief status and speech captions appear. Esc or the shortcut dismisses and stops capture. |
 | Writing Tools | Proofread, rewrite, friendly, professional, concise, summary, key points, table and custom instructions (including translation). |
-| Create Image | Native Gemini image generation. Preview outputs and save selected images as copies. |
-| Edit Photo | Choose a photo and describe a change, such as removing a background object or changing lighting. Toggle between original and result. |
 | In-app writing | Right-click → Writing Tools or Ctrl+Shift+W in shared multiline editors; dedicated actions in TextEdit, Notes' formatting menu and Mail's composer. |
-| Photos | The wand and “Edit with Citron Intelligence…” send the selected photo to the editor window. Opening the window alone does not upload it. |
+
+Creating and editing images went with Gemini: Aion Labs' models work with text.
+`gg-intelligence --image` and `--photo` say so and exit; Photos no longer offers
+"Edit with Citron".
 
 Writing Tools shows the exact selected text (the entire document when nothing is
-selected). Choose **Send to Gemini**, review the response, then **Replace** or
-**Copy**. Replacement is one undoable plain-text operation. It refuses to replace
-text if the document or document identity changed after opening the sheet.
-Notes' Markdown formatting outside the replaced selection is preserved.
-In arbitrary third-party apps, copy text into the standalone Writing Tools page;
-this version does not inject input or read other applications' selections.
+selected). Choose **Send to Aion Labs**, review the response, then **Replace** or
+**Copy**. Replacement is one undoable plain-text operation, refused if the
+document changed after the sheet opened.
 
 ```sh
 gg-intelligence
+gg-intelligence --voice
 gg-intelligence --writing
-gg-intelligence --image
-gg-intelligence --photo '/home/you/Pictures/Photo.jpg'
 gg-intelligence --settings
 ```
 
-## Data and credentials
-
-- The feature starts disabled. Requests contain only the prompt, text/history
-  shown in the conversation and image explicitly attached. No background screen,
-  clipboard, file-library, email or notification scanning takes place.
-- Keys live in Secret Service under `service=citron-intelligence, account=gemini`.
-  Config contains only enablement and model names. The key and request bodies
-  travel to the helper over stdin, never command-line arguments.
-- Developers may provide `GEMINI_API_KEY` in the launching environment; this
-  overrides the saved key and is identified in Settings. Removing the saved key
-  also disables requests, but does not unset an environment variable.
-- HTTPS requests go to Google's fixed Gemini endpoint, with `x-goog-api-key` in
-  the header. Redirects are refused, and provider error bodies are not reflected
-  into the UI. No automatic retries or local command execution are enabled.
-- Text conversations remain in memory; the app does not persist them. Generated
-  previews use private files under `$XDG_CACHE_HOME/golden-gate/intelligence`
-  (default `~/.cache/golden-gate/intelligence`). Superseded previews are discarded;
-  abandoned previews older than one day are removed when settings/status loads.
-- **Save Copy** never overwrites an existing file. Originals are never modified.
-  An existing name produces an error even if the file picker offered overwrite.
-- The login keyring follows the OS's security: a passwordless live-USB keyring
-  is not encrypted. The client does not provide Apple's on-device processing or
-  Private Cloud Compute guarantees. Google's data terms and API billing apply.
-
 ## Talking to Citron
 
-**Language.** Citron speaks one language: **Settings → Citron Intelligence →
-Language**, by default the system's (`LANG`, else English). The session asks
-Gemini Live for that language and tells Citron never to change it because of
-noise, music, an accent, a foreign name or audio it couldn't make out; it
-switches only when you ask it to, and keeps to the new one until you ask again.
-A model that refuses an explicit `languageCode` is set up again without it, with
-the instruction still in place.
+```
+microphone ─► speech gate ─► whisper-cpp ─► Aion Labs ─► Piper ─► speaker
+ (PipeWire)    (voice.py)     (on device)    (the words)   (on device)  (PipeWire)
+```
 
-**Shortcut behavior.** ⇧⌘Space opens the live microphone with an explicit user gesture. The Ask and Writing Tools commands remain text-first; while in voice mode the Type chip stops capture and keeps the overlay open.\n\n**Only speech is sent.** `live.py`'s `SpeechGate` listens to the microphone
-100 ms at a time and sends Gemini only what sounds like someone talking: louder
-than the room's noise floor (which it learns as it goes), with its energy in the
-voice band, and rising and falling with syllables. Silence, a fan, mains hum,
-hiss, a held note and lone clicks never leave the computer, so they can't start
-a reply; a sound that switches on and then stays steady is let through for at
-most about a second before it counts as part of the room. The 400 ms before
-speech is sent with it, so the first syllable isn't lost, and `audioStreamEnd`
-marks the end of it. While Citron is talking, interrupting it takes a voice
-near the microphone, louder than what's left of Citron's own voice after echo
-cancelling. Gemini's own detection is set to be slow to decide speech has
-started (`START_SENSITIVITY_LOW`) and patient before deciding it has ended.
+- **Only speech is transcribed.** `voice.py`'s `SpeechGate` listens 100 ms at a
+  time and keeps only what sounds like someone talking: louder than the room's
+  learned noise floor, with its energy in the voice band, rising and falling with
+  syllables. Silence, a fan, hum, hiss, a held note and clicks never become a
+  request. The 400 ms before speech is kept with it, so the first syllable isn't
+  lost; 600 ms of quiet ends an utterance (30 s at most).
+- **Speech to text, on this computer.** Each utterance is written to a private,
+  owner-only file in the runtime directory (`$XDG_RUNTIME_DIR`, memory), read by
+  `whisper-cli` in Citron's language, and deleted at once. Whisper's notes on
+  non-speech (`[BLANK_AUDIO]`, "(music)") and the lines it imagines from silence
+  are dropped.
+- **The reply, streamed.** The words go to Aion with a few previous turns and an
+  instruction to answer briefly, plainly and in Citron's language. The caption
+  grows as the answer arrives.
+- **Spoken as it comes.** A Piper process starts the moment you stop talking, so
+  its voice loads while Whisper and Aion work; each sentence is spoken as soon as
+  it's whole. In testing, first audio came about 2.3 s after speech ended on CPU.
+  **Speak Replies** off shows the answer without speaking it.
+- **Interrupting.** With PipeWire's WebRTC echo canceller (loaded for the session
+  and removed after), talking over Citron stops it. Without one, the microphone
+  rests while Citron talks ("speaker-safe mode").
+- **Hearing itself.** If Whisper hears what Citron just said almost word for
+  word, it isn't answered: from then on the microphone rests while Citron talks,
+  and Citron says why. Headphones let you interrupt it.
+- **Language.** Settings → Citron Intelligence → Language (default: the system's,
+  else English). Whisper listens for it and Aion is told to answer in it unless
+  you ask to switch. 22 languages, each with a Piper voice (two for some).
 
-**Hearing itself.** If what Gemini transcribes from the microphone is what
-Citron has just said (speakers into the microphone, an echo canceller letting it
-through), it isn't shown as yours or answered round and round: for the rest of
-the session the microphone rests while Citron talks, and a little longer after,
-and Citron says why. Headphones let you interrupt it.
+### Voice files
+
+The first voice conversation downloads a Whisper model (**Fast**, base, 60 MB, or
+**Accurate**, small, 190 MB) and the chosen language's Piper voice (about 60 MB)
+to `~/.local/share/golden-gate/citron/`, with progress in the overlay. Each file
+is checked against the size and SHA-256 in `apps/lib/intelligence/voices.json`
+and refused otherwise; partial downloads are discarded. Settings shows how much
+is still to fetch. After that, voice needs nothing but the network for Aion.
+
+## Data and credentials
+
+- The feature starts disabled. Requests contain only the prompt, the text/history
+  shown in the conversation, or the words of what you said. No background screen,
+  clipboard, file-library, email or notification scanning takes place.
+- Keys live in Secret Service under `service=citron-intelligence, account=aion`.
+  Config contains only enablement, the model, voice and language. The key and
+  request bodies reach the helper over stdin, never command-line arguments, and
+  never cross into QML. **Remove Saved Key** also clears a key saved for Gemini
+  before this version.
+- Developers may set `AION_API_KEY` in the launching environment; it overrides
+  the saved key and Settings says so.
+- HTTPS goes to Aion's fixed endpoint with `Authorization: Bearer` in the header.
+  Redirects are refused and provider error bodies are never shown.
+- Conversations stay in memory and are cleared on dismissal. No recordings are
+  kept; the session's private folder is removed when it ends.
+- A passwordless live-USB keyring is not encrypted. Aion Labs' terms apply to
+  what you send; usage beyond its free allowance may be billed.
 
 ## Limits and errors
 
-Image input supports PNG, JPEG and WebP, up to 10 MB; convert HEIC/RAW first.
-Edits are prompt-based, without a brush/mask selection tool. Text input is limited
-to 60,000 characters; accumulated chat context to 120,000. Empty, blocked,
-malformed and truncated results are distinguished. Truncated Writing Tools
-results cannot replace source text directly.
-
-The helper has a 120-second network timeout, and the UI stops a request after
-150 seconds. Cancel terminates the local worker and discards a late response;
-it cannot recall data already received by Google or undo incurred API usage.
-Offline, invalid-key, unavailable-model and quota errors leave input intact.
-
-This release has no live web grounding, background personal
-index, autonomous OS actions, notification summaries or cross-device continuity.
-Answers cannot claim to have inspected files or performed actions outside the
-explicit request. Image generation requires a compatible model and entitlement.
+Text input is limited to 60,000 characters; chat context to 120,000. Empty,
+filtered and truncated results are distinguished. The helper has a 120-second
+network timeout (Aion's edge returns 524 for longer non-streamed requests), and
+the UI stops a request after 150 seconds. Invalid-key, unavailable-model,
+usage-limit (429) and network errors leave input intact; in voice, a refused key
+ends the session, other failures are said and listening goes on.
 
 ## Architecture and verification
 
-`apps/lib/intelligence` holds the shared transport, writing sheet, settings panel
-and Python REST helper. The installer's canonical UI layout retains their
-relative paths. `apps/intelligence.qml` provides the standalone application;
-the shared `TextArea` lazily creates Writing Tools only when requested.
-
-Run without an API key:
+`apps/lib/intelligence` holds the shared transport (`Service.qml`), writing sheet,
+settings panel, the REST helper (`helper.py`), the voice session (`voice.py`) and
+the voice catalogue (`voices.json`). Run without an API key:
 
 ```sh
-python3 tests/intelligence.py
-python3 tests/intelligence-ui.py  # PySide6 6.11.2, offscreen Qt
-python3 tests/intelligence-live.py  # voice: language, speech gate, echo
-python3 tests/native-app-backends.py
-python3 tests/qml-load.py
+python3 tests/intelligence.py              # Aion contract, privacy, voice-file checksums
+python3 tests/intelligence-live.py         # voice: gate, echo, turn pipeline, barge-in
+python3 tests/intelligence-ui.py           # PySide6, offscreen Qt
+python3 tests/intelligence-shell-visuals.py
 ```
 
-The backend tests mock HTTP/keyring calls. Qt tests use the preview process
-adapter but real Qt text selection, replacement and undo. Live Gemini calls,
-Secret Service unlock UX and real Hyprland rendering still need a device test
-with the user's API key; no key was supplied during implementation.
+The pipeline was also run end to end with the real `whisper-cli` and Piper, a
+fake microphone playing a spoken question, and a local stand-in for Aion's SSE
+stream: the question was transcribed exactly, answered across three turns with
+history, and spoken. A live Aion call needs the user's key, which wasn't used in
+testing (only an invalid key, to check the 401 path).
 
-References: [Gemini models](https://ai.google.dev/gemini-api/docs/models),
-[generateContent](https://ai.google.dev/api/generate-content),
-[native image generation/editing](https://ai.google.dev/gemini-api/docs/image-generation),
-[Qt TextSelection](https://doc.qt.io/qt-6/qml-qtquick-textselection.html).
+References: [Aion Labs API](https://www.aionlabs.ai/docs/api-reference/),
+[whisper.cpp](https://github.com/ggml-org/whisper.cpp),
+[Piper](https://github.com/OHF-Voice/piper1-gpl).
 
 ## Ambient voice identity
 
-Citron's normal invocation is voice-first. The new `apps/lib/intelligence/CitronBlob.qml`
-paints soft, morphing color fields rather than a black lens or outlined capsule.
-Movement responds to normalized microphone loudness while listening and speaker
-loudness while speaking; no PCM is shared with QML and nothing is recorded.
-Reduce Motion freezes the animation without hiding captions or status.
-The microphone starts only on explicit invocation and stops on dismissal.
-Separate Writing Tools, image generation and photo-editing entry points keep
-their editing controls without showing them during a voice conversation.
+Citron's normal invocation is voice-first. `apps/lib/intelligence/CitronBlob.qml`
+paints soft, morphing colour fields; movement follows normalized microphone
+loudness while listening and speaker loudness while speaking. No PCM is shared
+with QML. Reduce Motion freezes the animation without hiding captions or status.

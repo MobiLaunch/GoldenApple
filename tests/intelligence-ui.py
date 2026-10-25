@@ -165,7 +165,9 @@ Item { width: 1000; height: 780; Loader { source: "../apps/textedit.qml" } }''')
         self.assertIn('request.mode = "rewrite"', qml)
         self.assertIn('aiService.send(request)', qml)
         self.assertIn('citron.responseOpen = true', qml)
-        self.assertIn('imageSave.open()', qml)
+        # Aion Labs works with text: no image tools, and asking for one says so.
+        self.assertNotIn('imageSave', qml)
+        self.assertIn("creating and editing images isn't available", qml)
 
 if __name__ == "__main__":
     unittest.main()
