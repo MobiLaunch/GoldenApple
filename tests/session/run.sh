@@ -194,46 +194,64 @@ echo "::group::The shell's log while its surfaces were opened (last 60 lines)"
 tail -n 60 "$OUT/surfaces.log"
 echo "::endgroup::"
 
-# The lock screen, in a process of its own, kept running as citronos-lock.service would.
-( while :; do gg-lock serve >>"$OUT/lock.log" 2>&1; sleep 1; done ) &
+# The lock screen in a process of its own, restarted a second after it stops
+# as citronos-lock.service is (Restart=always, RestartSec=1). `|| true`: under
+# set -e the loop would end at the first crash.
+( while :; do gg-lock serve >>"$OUT/lock.log" 2>&1 || true; sleep 1; done ) &
 LOCK_LOOP=$!
-sleep 4
-gg-lock; sleep 3
+LOCK_QML="$XDG_CONFIG_HOME/quickshell/golden-gate/lock-shell.qml"
+# "true" once the compositor has confirmed a lock screen's lock, "false" while
+# one runs unlocked, nothing while none answers.
+lock_state() { timeout 2 qs -p "$LOCK_QML" ipc call lock isLocked 2>/dev/null | tr -d '[:space:]' || true; }
+# The lock screen the loop runs. Quickshell relaunches a crashed instance in
+# place, under the same pid, when it has run 10 s; the fork that writes its
+# core dump has the same command line, but isn't the loop's child.
+lock_pid() { pgrep -u "$(id -u)" -P "$LOCK_LOOP" -f "qs -p .*lock-shell.qml" | head -n1 || true; }
+ms() { echo $(( $(date +%s%N) / 1000000 )); }
+for _ in $(seq 50); do [[ $(lock_state) == false ]] && break; sleep 0.2; done
+[[ $(lock_state) == false ]] || fail "the lock screen didn't start"
+gg-lock
+for _ in $(seq 25); do [[ $(lock_state) == true ]] && break; sleep 0.2; done
+[[ $(lock_state) == true ]] || fail "gg-lock didn't lock the screen"
+sleep 1
 shot dark-lock; shots+=(dark-lock)
-lock_pids() { pgrep -u "$(id -u)" -f "qs -p .*lock-shell.qml" || true; }
-restored=0
-[[ -n $(lock_pids) ]] || fail "the lock screen didn't start"
+restored=0 times=()
 for round in 1 2 3 4 5; do
-  echo "  round $round, before the kill: lock screens $(lock_pids | tr '\n' ' ')"
-  ps -u "$(id -u)" -o pid=,ppid=,etimes=,stat=,args= | grep -Ev "grep|ps -u" | sed "s/^/    /"
-  old=$(lock_pids | head -n1)
-  [[ -n $old ]] || { echo "  round $round: no lock screen to kill"; break; }
+  old=$(lock_pid)
+  [[ -n $old ]] || { echo "  kill $round: no lock screen to kill"; break; }
+  t0=$(ms)
   kill -SEGV "$old" 2>/dev/null || true
+  sleep 0.2   # gone, or relaunching, before asking
   back=false
-  for _ in $(seq 30); do
-    new=$(lock_pids | grep -vx "$old" | head -n1 || true)
-    [[ -n $new && -e $XDG_RUNTIME_DIR/citronos-locked ]] && { back=true; break; }
+  while (( $(ms) - t0 < 3000 )); do
+    [[ $(lock_state) == true ]] && { back=true; break; }
     sleep 0.1
   done
-  if $back; then restored=$((restored + 1)); else echo "kill $round: no lock screen within 3 s"; fi
-  ps -u "$(id -u)" -o pid=,ppid=,stat=,args= | grep -E "qs|gg-lock" | grep -v grep | sed "s/^/  round $round: /"
-  sleep 2
+  took=$(( $(ms) - t0 ))
+  if $back; then
+    restored=$((restored + 1)); times+=("$took")
+    echo "  kill $round (pid $old): locked again after ${took} ms"
+  else
+    echo "  kill $round (pid $old): no lock screen holding the lock within 3 s"
+    ps -u "$(id -u)" -o pid=,ppid=,etimes=,stat=,args= | grep -E "qs|quickshell|gg-lock" | grep -v grep | sed "s/^/    /" || true
+  fi
+  # Give each new lock screen a moment, as a person would take to notice.
+  for _ in $(seq 20); do [[ $(lock_state) == true ]] && break; sleep 0.25; done
+  sleep 1
 done
 if [[ $restored != 5 ]]; then
   echo "::group::The lock screen's log (last 80 lines)"
   tail -n 80 "$OUT/lock.log" || true
-  ls -la "$XDG_RUNTIME_DIR" || true
   echo "--- crash reports"
-  for f in "$HOME"/.cache/quickshell/crashes/*/*; do
-    [[ -e $f ]] || continue; echo "## $f ($(stat -c %s "$f" || true) bytes)"
-    case $f in *.txt|*.log) head -c 4000 "$f"; echo ;; esac
+  for f in "$HOME"/.cache/quickshell/crashes/*/report.txt; do
+    [[ -e $f ]] || continue; echo "## $f"; sed -n '/Instance Information/,/Log Tail/p' "$f"
   done
   echo "--- Sway on locking"
   grep -iE "lock|abandon" "$OUT/sway.log" | tail -n 40 || true
   echo "::endgroup::"
 fi
 shot dark-lock-restored; shots+=(dark-lock-restored)
-say "lock screen killed while locked: back within 3 s, $restored of 5"
+say "lock screen killed while locked: back within 3 s, $restored of 5 (${times[*]:-} ms)"
 [[ $restored == 5 ]] || fail "the lock screen came back within 3 s only $restored of 5 times"
 kill "$LOCK_LOOP" 2>/dev/null || true
 stop "$SHELL_PID"

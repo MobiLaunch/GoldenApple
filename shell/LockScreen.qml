@@ -26,6 +26,8 @@ Scope {
     IpcHandler {
         target: "lock"
         function lock(): void { session.locked = true }
+        // Whether the compositor has confirmed the lock (the session harness asks).
+        function isLocked(): bool { return session.secure }
     }
     // The session is locked while this file is there (gg-lock makes it first):
     // a lock screen that starts then, after a crash, locks at once, and
