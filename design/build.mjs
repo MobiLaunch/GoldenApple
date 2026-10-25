@@ -184,6 +184,10 @@ function material(name, m) {
   }
   q.push("    }", "    readonly property QtObject vibrant: QtObject {");
   for (const [k, v] of Object.entries(r.vibrant)) if (!k.startsWith("_")) q.push(`        readonly property color ${k}: "${v}"`);
+  // Apple's system colours (blue, red, yellow …) in each appearance's tone, for
+  // what is that colour whatever the accent: a route, a destination pin, a star.
+  q.push("    }", "    readonly property QtObject system: QtObject {");
+  for (const k of Object.keys(t.color.system.light)) q.push(`        readonly property color ${k}: dark ? "${t.color.system.dark[k]}" : "${t.color.system.light[k]}"`);
   q.push("    }", "    readonly property QtObject radius: QtObject {");
   for (const [k, v] of Object.entries(r.radius)) q.push(`        readonly property real ${k}: ${v}`);
   q.push("    }", "    readonly property QtObject motion: QtObject {");

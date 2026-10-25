@@ -18,6 +18,7 @@ import "lib"
 import "lib/theme"
 import "maps"
 import "maps/api.js" as Api
+import "maps/theme"
 
 ShellRoot {
     AppWindow {
@@ -62,7 +63,7 @@ ShellRoot {
                     view: map
                     visible: app.mode === "directions" && !!app.from
                     lat: app.from?.lat ?? 0; lon: app.from?.lon ?? 0
-                    dot: true; color: "#0a84ff"
+                    dot: true; color: Theme.system.blue
                     label: app.from?.name ?? ""
                 }
                 Pin {
@@ -70,7 +71,7 @@ ShellRoot {
                     readonly property var pl: app.mode === "directions" ? app.to : app.place
                     visible: !!pl
                     lat: pl?.lat ?? 0; lon: pl?.lon ?? 0
-                    color: pl ? Api.category(pl)[0] : "#ff3b30"
+                    color: pl ? Api.category(pl)[0] : Theme.system.red
                     symbol: pl ? Api.category(pl)[1] : "pin"
                     label: pl?.name ?? ""
                 }
@@ -97,18 +98,18 @@ ShellRoot {
                     id: navItem
                     property string symbol
                     property string text
-                    property color tint: "#8e8e93"
+                    property color tint: Theme.system.slate
                     property bool selected: false
                     signal clicked()
                     width: parent.width; height: 40
                     Rectangle {
-                        anchors.fill: parent; radius: 10
-                        color: Theme.dark ? "#ffffff" : "#000000"
-                        opacity: navItem.selected ? (Theme.dark ? 0.12 : 0.07) : nh.hovered ? 0.04 : 0
+                        anchors.fill: parent; radius: Theme.radius.field
+                        color: navItem.selected ? Theme.selection : Theme.fillHover
+                        opacity: navItem.selected || nh.hovered ? 1 : 0
                     }
                     Rectangle {
                         x: 8; anchors.verticalCenter: parent.verticalCenter
-                        width: 26; height: 26; radius: 7
+                        width: 26; height: 26; radius: width * 0.26
                         color: navItem.tint
                         Symbol { anchors.centerIn: parent; name: navItem.symbol; tone: "white"; size: 14 }
                     }
@@ -120,10 +121,14 @@ ShellRoot {
                         font { family: Theme.fontUi; pixelSize: Theme.fs(14) }
                     }
                     HoverHandler { id: nh }
+                    Accessible.role: Accessible.Button
+                    Accessible.name: navItem.text
+                    Accessible.checked: navItem.selected
+                    Accessible.onPressAction: navItem.clicked()
                     TapHandler { onTapped: navItem.clicked() }
                 }
-                NavItem { symbol: "search"; text: "Search"; tint: "#8e8e93"; selected: app.mode === "search" || app.mode === "place"; onClicked: app.startSearch() }
-                NavItem { symbol: "arrow-up"; text: "Directions"; tint: "#0a84ff"; selected: app.mode === "directions"; onClicked: app.startDirections(null) }
+                NavItem { symbol: "search"; text: "Search"; tint: Theme.system.slate; selected: app.mode === "search" || app.mode === "place"; onClicked: app.startSearch() }
+                NavItem { symbol: "arrow-up"; text: "Directions"; tint: Theme.system.blue; selected: app.mode === "directions"; onClicked: app.startDirections(null) }
                 Text {
                     visible: app.favorites.length > 0
                     leftPadding: 10; topPadding: 18; bottomPadding: 6
@@ -135,7 +140,7 @@ ShellRoot {
                     model: app.favorites
                     delegate: NavItem {
                         required property var modelData
-                        symbol: "star"; tint: "#ffcc00"
+                        symbol: "star"; tint: Theme.system.yellow
                         text: modelData.name
                         onClicked: app.showPlace(modelData)
                     }
@@ -427,10 +432,10 @@ ShellRoot {
                 // Below the toolbar row, which is for dragging the window.
                 x: 8; y: win.toolbarHeight
                 width: app.panelWidth; height: parent.height - y - 8
-                radius: 18
-                color: Theme.dark ? "#eb28282b" : "#f0f6f6f8"
-                border { width: 0.5; color: Theme.dark ? "#26ffffff" : "#1f000000" }
-                Rectangle { z: -1; anchors { fill: parent; topMargin: 4; bottomMargin: -6; leftMargin: -1; rightMargin: -1 } radius: parent.radius + 1; color: "#1a000000" }
+                radius: Theme.radius.panel
+                color: MapsColors.panel
+                border { width: 0.5; color: Theme.separator }
+                Rectangle { z: -1; anchors { fill: parent; topMargin: 4; bottomMargin: -6; leftMargin: -1; rightMargin: -1 } radius: parent.radius + 1; color: MapsColors.panelShadow }
                 MouseArea { anchors.fill: parent; acceptedButtons: Qt.AllButtons; onWheel: (w) => w.accepted = true }   // the map stays put under the panel
 
                 // Search / place
@@ -470,10 +475,10 @@ ShellRoot {
                         delegate: Item {
                             required property var modelData
                             width: ListView.view.width; height: 56
-                            Rectangle { anchors.fill: parent; radius: 10; color: Theme.dark ? "#ffffff" : "#000000"; opacity: rh.hovered ? 0.05 : 0 }
+                            Rectangle { anchors.fill: parent; radius: Theme.radius.field; color: Theme.fillHover; opacity: rh.hovered ? 1 : 0 }
                             Rectangle {
                                 x: 10; anchors.verticalCenter: parent.verticalCenter
-                                width: 32; height: 32; radius: 16
+                                width: 32; height: 32; radius: height / 2
                                 color: Api.category(modelData)[0]
                                 Symbol { anchors.centerIn: parent; name: Api.category(modelData)[1]; tone: "white"; size: 15 }
                             }
@@ -483,6 +488,9 @@ ShellRoot {
                                 Text { width: parent.width; elide: Text.ElideRight; text: modelData.address; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize } }
                             }
                             HoverHandler { id: rh }
+                            Accessible.role: Accessible.ListItem
+                            Accessible.name: modelData.name
+                            Accessible.onPressAction: app.showPlace(modelData)
                             TapHandler { onTapped: app.showPlace(modelData) }
                         }
                         Text {
@@ -510,9 +518,12 @@ ShellRoot {
                                     spacing: 5
                                     Rectangle {
                                         anchors.horizontalCenter: parent.horizontalCenter
-                                        width: 44; height: 44; radius: 22
+                                        width: 44; height: 44; radius: height / 2
                                         color: modelData.tint
                                         Symbol { anchors.centerIn: parent; name: modelData.symbol; tone: "white"; size: 18 }
+                                        Accessible.role: Accessible.Button
+                                        Accessible.name: modelData.name
+                                        Accessible.onPressAction: app.nearby(modelData)
                                         MouseArea { anchors.fill: parent; onClicked: app.nearby(modelData) }
                                     }
                                     Text { width: parent.width; horizontalAlignment: Text.AlignHCenter; text: modelData.name; elide: Text.ElideRight
@@ -537,13 +548,16 @@ ShellRoot {
                         Text { width: parent.width; wrapMode: Text.Wrap; text: app.place?.address ?? ""; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize } }
                         Item { width: 1; height: 8 }
                         Rectangle {
-                            width: parent.width; height: 44; radius: 12
-                            color: "#0a84ff"
+                            width: parent.width; height: 44; radius: Theme.radius.card
+                            color: Theme.accent
                             Row {
                                 anchors.centerIn: parent; spacing: 8
                                 Symbol { anchors.verticalCenter: parent.verticalCenter; name: "arrow-up"; tone: "white"; size: 15 }
-                                Text { text: "Directions"; color: "#ffffff"; font { family: Theme.fontUi; pixelSize: Theme.font.title3.pixelSize; weight: Font.DemiBold } }
+                                Text { text: "Directions"; color: Theme.selectedText; font { family: Theme.fontUi; pixelSize: Theme.font.title3.pixelSize; weight: Font.DemiBold } }
                             }
+                            Accessible.role: Accessible.Button
+                            Accessible.name: "Directions"
+                            Accessible.onPressAction: app.startDirections(app.place)
                             MouseArea { anchors.fill: parent; onClicked: app.startDirections(app.place) }
                         }
                         // Favorite, Share, Copy Coordinates: round buttons under Directions.
@@ -562,9 +576,12 @@ ShellRoot {
                                     spacing: 4
                                     Rectangle {
                                         anchors.horizontalCenter: parent.horizontalCenter
-                                        width: 40; height: 40; radius: 20
-                                        color: modelData.lit ? "#ffcc00" : (Theme.dark ? "#1fffffff" : "#e5e5ea")
+                                        width: 40; height: 40; radius: height / 2
+                                        color: modelData.lit ? Theme.system.yellow : MapsColors.control
                                         Symbol { anchors.centerIn: parent; name: modelData.s; size: 16; tone: modelData.lit ? "white" : "accent" }
+                                        Accessible.role: Accessible.Button
+                                        Accessible.name: modelData.t
+                                        Accessible.onPressAction: modelData.a()
                                         MouseArea { anchors.fill: parent; onClicked: modelData.a() }
                                     }
                                     Text { anchors.horizontalCenter: parent.horizontalCenter; text: modelData.t; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize } }
@@ -573,8 +590,8 @@ ShellRoot {
                         }
                         Item { width: 1; height: 10 }
                         Rectangle {
-                            width: parent.width; height: detailCol.height + 24; radius: 12
-                            color: Theme.dark ? "#14ffffff" : "#ffffff"
+                            width: parent.width; height: detailCol.height + 24; radius: Theme.radius.card
+                            color: MapsColors.card
                             Column {
                                 id: detailCol
                                 x: 14; y: 12; width: parent.width - 28; spacing: 10
@@ -591,6 +608,9 @@ ShellRoot {
                                     text: "Open in OpenStreetMap ↗"
                                     color: Theme.accent
                                     font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize; weight: Font.Medium }
+                                    Accessible.role: Accessible.Link
+                                    Accessible.name: "Open in OpenStreetMap"
+                                    Accessible.onPressAction: Qt.openUrlExternally(Api.shareUrl(app.place))
                                     TapHandler { onTapped: Qt.openUrlExternally(Api.shareUrl(app.place)) }
                                 }
                             }
@@ -618,12 +638,16 @@ ShellRoot {
                         x: 14; y: 60; width: parent.width - 28
                         spacing: 8
                         Repeater {
-                            model: [{ m: "car", s: "car" }, { m: "foot", s: "person" }, { m: "bike", s: "wind" }]
+                            model: [{ m: "car", s: "car", t: "Drive" }, { m: "foot", s: "person", t: "Walk" }, { m: "bike", s: "wind", t: "Cycle" }]
                             delegate: Rectangle {
                                 required property var modelData
-                                width: (parent.width - 16) / 3; height: 34; radius: 10
-                                color: app.travel === modelData.m ? "#0a84ff" : (Theme.dark ? "#1fffffff" : "#e5e5ea")
+                                width: (parent.width - 16) / 3; height: 34; radius: Theme.radius.field
+                                color: app.travel === modelData.m ? Theme.accent : MapsColors.control
                                 Symbol { anchors.centerIn: parent; name: modelData.s; tone: app.travel === modelData.m ? "white" : "gray"; size: 16 }
+                                Accessible.role: Accessible.RadioButton
+                                Accessible.name: modelData.t
+                                Accessible.checked: app.travel === modelData.m
+                                Accessible.onPressAction: { app.travel = modelData.m; if (app.from && app.to) app.route() }
                                 MouseArea { anchors.fill: parent; onClicked: { app.travel = modelData.m; if (app.from && app.to) app.route() } }
                             }
                         }
@@ -631,8 +655,8 @@ ShellRoot {
                     // From / to
                     Rectangle {
                         id: ends
-                        x: 14; y: 106; width: parent.width - 28; height: 96; radius: 14
-                        color: Theme.dark ? "#14ffffff" : "#ffffff"
+                        x: 14; y: 106; width: parent.width - 28; height: 96; radius: Theme.radius.card
+                        color: MapsColors.card
                         component EndField: Item {
                             id: endField
                             property string which
@@ -646,9 +670,9 @@ ShellRoot {
                                 anchors.verticalCenter: parent.verticalCenter
                                 width: 18
                                 height: 18
-                                radius: 9
+                                radius: height / 2
                                 color: endField.dotColor
-                                Rectangle { anchors.centerIn: parent; width: 6; height: 6; radius: 3; color: "#ffffff" }
+                                Rectangle { anchors.centerIn: parent; width: 6; height: 6; radius: height / 2; color: Theme.selectedText }
                             }
 
                             TextField {
@@ -683,8 +707,8 @@ ShellRoot {
                                 }
                             }
                         }
-                        EndField { id: fromEnd; which: "from"; dotColor: "#0a84ff" }
-                        EndField { id: toEnd; y: 48; which: "to"; dotColor: "#ff3b30" }
+                        EndField { id: fromEnd; which: "from"; dotColor: Theme.system.blue }
+                        EndField { id: toEnd; y: 48; which: "to"; dotColor: Theme.system.red }
                         Rectangle { x: 42; y: 48; width: parent.width - 56; height: 0.5; color: Theme.separator }
                         ToolbarButton {
                             anchors { right: parent.right; rightMargin: 10; verticalCenter: parent.verticalCenter }
@@ -702,13 +726,16 @@ ShellRoot {
                         delegate: Item {
                             required property var modelData
                             width: ListView.view.width; height: 50
-                            Rectangle { anchors.fill: parent; radius: 10; color: Theme.dark ? "#ffffff" : "#000000"; opacity: sh.hovered ? 0.05 : 0 }
+                            Rectangle { anchors.fill: parent; radius: Theme.radius.field; color: Theme.fillHover; opacity: sh.hovered ? 1 : 0 }
                             Column {
                                 x: 12; anchors.verticalCenter: parent.verticalCenter; width: parent.width - 24
                                 Text { width: parent.width; elide: Text.ElideRight; text: modelData.name; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.fs(14); weight: Font.DemiBold } }
                                 Text { width: parent.width; elide: Text.ElideRight; text: modelData.address; color: Theme.secondaryLabel; font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize } }
                             }
                             HoverHandler { id: sh }
+                            Accessible.role: Accessible.ListItem
+                            Accessible.name: modelData.name
+                            Accessible.onPressAction: app.choose(modelData)
                             TapHandler { onTapped: app.choose(modelData) }
                         }
                     }
@@ -737,27 +764,30 @@ ShellRoot {
                                     readonly property bool chosen: index === app.routeIndex
                                     width: routeCol.width
                                     height: 84 + (chosen && app.stepsOpen ? steps.height + 10 : 0)
-                                    radius: 14
-                                    color: chosen ? "#0a84ff" : (Theme.dark ? "#14ffffff" : "#ffffff")
+                                    radius: Theme.radius.card
+                                    color: chosen ? Theme.accent : MapsColors.card
                                     Column {
                                         x: 18; y: 18
                                         Text {
                                             text: Api.duration(card.modelData.duration)
-                                            color: card.chosen ? "#ffffff" : Theme.label
+                                            color: card.chosen ? Theme.selectedText : Theme.label
                                             font { family: Theme.fontUi; pixelSize: Theme.fs(19); weight: Font.Bold }
                                         }
                                         Text {
                                             text: Api.eta(card.modelData.duration, app.h12) + " · " + Api.distance(card.modelData.distance, app.imperial)
                                                   + (card.index === 0 && app.routes.length > 1 ? " · Fastest route" : "")
-                                            color: card.chosen ? "#e6ffffff" : Theme.secondaryLabel
+                                            color: card.chosen ? Qt.alpha(Theme.selectedText, 0.9) : Theme.secondaryLabel
                                             font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize }
                                         }
                                     }
                                     Rectangle {
                                         anchors { right: parent.right; rightMargin: 16; top: parent.top; topMargin: 32 }
-                                        width: 20; height: 20; radius: 10
-                                        color: card.chosen ? "#ffffff" : "#8e8e93"
-                                        Text { anchors.centerIn: parent; text: "i"; color: card.chosen ? "#0a84ff" : "#ffffff"; font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize; weight: Font.Bold; italic: false } }
+                                        width: 20; height: 20; radius: height / 2
+                                        color: card.chosen ? Theme.selectedText : Theme.system.slate
+                                        Text { anchors.centerIn: parent; text: "i"; color: card.chosen ? Theme.accent : Theme.selectedText; font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize; weight: Font.Bold; italic: false } }
+                                        Accessible.role: Accessible.Button
+                                        Accessible.name: "Route Details"
+                                        Accessible.onPressAction: { app.routeIndex = card.index; app.stepsOpen = !app.stepsOpen }
                                         MouseArea { anchors { fill: parent; margins: -6 } onClicked: { app.routeIndex = card.index; app.stepsOpen = !app.stepsOpen } }
                                     }
                                     Column {
@@ -773,13 +803,17 @@ ShellRoot {
                                                 Symbol { x: 4; anchors.verticalCenter: parent.verticalCenter; name: Api.turnSymbol(modelData); tone: "white"; size: 16 }
                                                 Column {
                                                     x: 32; anchors.verticalCenter: parent.verticalCenter; width: parent.width - 36
-                                                    Text { id: stepText; width: parent.width; wrapMode: Text.Wrap; text: Api.instruction(modelData); color: "#ffffff"; font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize; weight: Font.Medium } }
-                                                    Text { visible: modelData.distance > 0; text: Api.distance(modelData.distance, app.imperial); color: "#ccffffff"; font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize } }
+                                                    Text { id: stepText; width: parent.width; wrapMode: Text.Wrap; text: Api.instruction(modelData); color: Theme.selectedText; font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize; weight: Font.Medium } }
+                                                    Text { visible: modelData.distance > 0; text: Api.distance(modelData.distance, app.imperial); color: Qt.alpha(Theme.selectedText, 0.8); font { family: Theme.fontUi; pixelSize: Theme.font.subheadline.pixelSize } }
                                                 }
-                                                Rectangle { anchors.bottom: parent.bottom; x: 32; width: parent.width - 32; height: 0.5; color: "#40ffffff" }
+                                                Rectangle { anchors.bottom: parent.bottom; x: 32; width: parent.width - 32; height: 0.5; color: Qt.alpha(Theme.selectedText, 0.25) }
                                             }
                                         }
                                     }
+                                    Accessible.role: Accessible.RadioButton
+                                    Accessible.name: Api.duration(card.modelData.duration) + ", " + Api.distance(card.modelData.distance, app.imperial)
+                                    Accessible.checked: card.chosen
+                                    Accessible.onPressAction: { if (app.routeIndex !== card.index) app.stepsOpen = false; app.routeIndex = card.index }
                                     TapHandler { onTapped: { if (app.routeIndex !== card.index) app.stepsOpen = false; app.routeIndex = card.index } }
                                 }
                             }
@@ -792,11 +826,15 @@ ShellRoot {
             component GlassButton: Rectangle {
                 id: gb
                 property string symbol
+                property string label
                 signal clicked()
-                width: 38; height: 38; radius: 10
-                color: Theme.dark ? "#e62c2c2e" : "#f2ffffff"
-                border { width: 0.5; color: Theme.dark ? "#26ffffff" : "#26000000" }
+                width: 38; height: 38; radius: Theme.radius.field
+                color: MapsColors.hud
+                border { width: 0.5; color: Theme.separator }
                 Symbol { anchors.centerIn: parent; name: gb.symbol; size: 16 }
+                Accessible.role: Accessible.Button
+                Accessible.name: gb.label
+                Accessible.onPressAction: gb.clicked()
                 MouseArea { anchors.fill: parent; onClicked: gb.clicked() }
             }
             Column {
@@ -804,13 +842,13 @@ ShellRoot {
                 spacing: 8
                 GlassButton {
                     objectName: "mapsLocate"
-                    symbol: "location"
+                    symbol: "location"; label: "Show My Location"
                     opacity: app.locating ? 0.6 : 1
                     onClicked: app.locateMe(true)
                 }
                 GlassButton {
                     id: styleBtn
-                    symbol: "layers"
+                    symbol: "layers"; label: "Map Style"
                     onClicked: menu.popup(styleBtn, -180, height + 6, Object.keys(Api.STYLES).filter((k) => k !== "dark").map((k) => ({
                         text: Api.STYLES[k].name, checked: app.mapStyle === k, action: () => { app.mapStyle = k; app.save() } }))
                         .concat(["-", { text: "CARTO Key…", action: () => { app.keyStatus = ""; keySheet.open() } }]))
@@ -819,8 +857,8 @@ ShellRoot {
             Column {
                 anchors { right: parent.right; rightMargin: 14; bottom: parent.bottom; bottomMargin: 26 }
                 spacing: 0
-                GlassButton { symbol: "plus"; radius: 10; onClicked: map.flyTo(map.lat, map.lon, Math.min(19, Math.round(map.zoom) + 1)) }
-                GlassButton { symbol: "minus"; radius: 10; onClicked: map.flyTo(map.lat, map.lon, Math.max(2, Math.round(map.zoom) - 1)) }
+                GlassButton { symbol: "plus"; label: "Zoom In"; onClicked: map.flyTo(map.lat, map.lon, Math.min(19, Math.round(map.zoom) + 1)) }
+                GlassButton { symbol: "minus"; label: "Zoom Out"; onClicked: map.flyTo(map.lat, map.lon, Math.max(2, Math.round(map.zoom) - 1)) }
             }
 
             // "Link copied", "Location Services are off": a capsule at the bottom, briefly.
@@ -832,10 +870,10 @@ ShellRoot {
                 anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: 26 }
                 visible: opacity > 0
                 opacity: app.toast ? 1 : 0
-                Behavior on opacity { NumberAnimation { duration: 175 } }
-                width: toastText.implicitWidth + 32; height: 34; radius: 17
-                color: Theme.dark ? "#e62c2c2e" : "#f2ffffff"
-                border { width: 0.5; color: Theme.dark ? "#26ffffff" : "#26000000" }
+                Behavior on opacity { NumberAnimation { duration: Theme.motion.fade } }
+                width: toastText.implicitWidth + 32; height: 34; radius: height / 2
+                color: MapsColors.hud
+                border { width: 0.5; color: Theme.separator }
                 Text { id: toastText; anchors.centerIn: parent; text: app.toast; color: Theme.label; font { family: Theme.fontUi; pixelSize: Theme.font.body.pixelSize; weight: Font.Medium } }
             }
 

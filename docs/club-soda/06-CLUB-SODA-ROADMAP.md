@@ -86,9 +86,9 @@ Two tracks in parallel.
 **Depends on:** M1 (lints, session harness).
 **Status:** started with the design track: the design lint (T-2.8), role tokens (T-2.7)
 and the shell's accessibility annotations (T-2.11) are built, and the migration (T-2.10)
-has done the type ramp, the lock screen, Calculator, Settings and Web; see
-[07](07-IMPLEMENTATION-BACKLOG.md). Lint numbers now: radius 423, duration 133, colour
-1,145, `fs()` 87; pointer handlers without annotations 173 (0 in `shell/`).
+has done the type ramp, the lock screen, Calculator, Settings, Web and Maps; see
+[07](07-IMPLEMENTATION-BACKLOG.md). Lint numbers now: radius 403, duration 132, colour
+1,093, `fs()` 87; pointer handlers without annotations 162 (0 in `shell/`).
 **Exit criteria:**
 - `pacman -Qkk citronos-*` is clean on an ISO install, and `install.sh` is used only for
   development.

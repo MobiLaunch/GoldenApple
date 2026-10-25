@@ -465,6 +465,17 @@ same fields, more briefly, and should be expanded when their milestone starts.
     states in light and dark (the real app, through a capture script run as a desktop
     user) differ only by a shade in hovers and selections and a tighter sheet shadow;
     `tests/native-browser.py` passes against real Chromium.
+  - **`maps.qml`.** `Theme.system.*` joins the tokens: Apple's system colours in each
+    appearance's tone (blue `#007aff` in Light, `#0a84ff` in Dark …), for what is that
+    colour whatever the accent. The start of a route is system blue, the destination
+    system red, favourites system yellow; the Directions button, the chosen travel mode
+    and the chosen route follow the accent, as buttons do. What Maps lays over the map
+    (the panel, the round controls, the toast) is `apps/maps/theme/MapsColors.qml`;
+    hovers and selections are the system's, and every control has a role, a name and an
+    action (the map buttons now say what they do). Screenshots of search, Find Nearby,
+    a place and directions, light and dark, differ in hairlines (now `Theme.separator`),
+    Light Mode's blue and a few corners. The map's own drawing (pins, routes, tiles in
+    `apps/maps/`) keeps its palette; it is outside the six files.
 
 ## M3: Desktop refinement
 

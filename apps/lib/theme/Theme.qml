@@ -182,6 +182,17 @@ QtObject {
         readonly property color shadow: "#59001433"
         readonly property color shadowSoft: "#26001433"
     }
+    readonly property QtObject system: QtObject {
+        readonly property color blue: dark ? "#0a84ff" : "#007aff"
+        readonly property color teal: dark ? "#40c8e0" : "#30b0c7"
+        readonly property color green: dark ? "#32d74b" : "#28cd41"
+        readonly property color yellow: dark ? "#ffd60a" : "#ffcc00"
+        readonly property color orange: dark ? "#ff9f0a" : "#ff9500"
+        readonly property color red: dark ? "#ff453a" : "#ff3b30"
+        readonly property color pink: dark ? "#ff375f" : "#ff2d55"
+        readonly property color purple: dark ? "#bf5af2" : "#af52de"
+        readonly property color slate: dark ? "#98989d" : "#8e8e93"
+    }
     readonly property QtObject radius: QtObject {
         readonly property real control: 6
         readonly property real field: 8
