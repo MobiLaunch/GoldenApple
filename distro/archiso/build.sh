@@ -235,6 +235,10 @@ rm -f "$WANTS/systemd-networkd.service" "$AIR/etc/systemd/system/network-online.
 ln -sf /usr/lib/systemd/system/NetworkManager.service "$WANTS/NetworkManager.service"
 ln -sf /usr/lib/systemd/system/bluetooth.service "$WANTS/bluetooth.service"
 ln -sf /usr/lib/systemd/system/firewalld.service "$WANTS/firewalld.service"
+# NetworkManager runs dispatcher scripts (50-citronos-zone, which puts each
+# network in the home or public zone) only with its dispatcher enabled; the
+# boot test's self-test found the wired network left in public without it.
+ln -sf /usr/lib/systemd/system/NetworkManager-dispatcher.service "$AIR/etc/systemd/system/dbus-org.freedesktop.nm-dispatcher.service"
 ln -sf /usr/lib/systemd/system/avahi-daemon.service "$WANTS/avahi-daemon.service"   # AirPlay Receiver discovery
 ln -sf /usr/lib/systemd/system/keyd.service "$WANTS/keyd.service"
 ln -sf /usr/lib/systemd/system/power-profiles-daemon.service "$WANTS/power-profiles-daemon.service"

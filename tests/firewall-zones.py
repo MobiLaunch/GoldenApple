@@ -118,6 +118,9 @@ class Image(unittest.TestCase):
         self.assertIn('firewalld.service "$WANTS/firewalld.service"', build)
         self.assertIn('["/etc/NetworkManager/dispatcher.d/50-citronos-zone"]="0:0:755"', build)
         self.assertIn('"firewalld.service"', (ROOT / "apps/installer/helper.py").read_text())
+        # The zone script runs only with NetworkManager's dispatcher enabled.
+        self.assertIn('NetworkManager-dispatcher.service "$AIR/etc/systemd/system/dbus-org.freedesktop.nm-dispatcher.service"', build)
+        self.assertIn('"NetworkManager-dispatcher.service"', (ROOT / "apps/installer/helper.py").read_text())
         self.assertTrue(os.access(DISPATCHER, os.X_OK))
 
 

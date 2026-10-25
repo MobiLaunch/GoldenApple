@@ -40,11 +40,14 @@ class Units(unittest.TestCase):
         shell = unit("citronos-shell.service")
         self.assertEqual(shell["Unit"]["PartOf"], "citronos-session.target")
         self.assertEqual(shell["Unit"]["StartLimitIntervalSec"], "60")
-        self.assertEqual(shell["Unit"]["StartLimitBurst"], "5")
+        self.assertEqual(shell["Unit"]["StartLimitBurst"], "4", "four restarts; the fifth stop gives up")
         self.assertEqual(shell["Unit"]["OnFailure"], "citronos-shell-safe.service")
         self.assertEqual(shell["Service"]["ExecStart"], "/usr/bin/env qs -c golden-gate")
         self.assertEqual(shell["Service"]["Restart"], "always")
         self.assertEqual(shell["Service"]["RestartSec"], "1")
+        # Each restart skips "failed", so OnFailure= fires only on giving up,
+        # not on the first crash (the boot test's self-test checks it for real).
+        self.assertEqual(shell["Service"]["RestartMode"], "direct")
         self.assertEqual(shell["Service"]["StandardOutput"], "journal")
 
     def test_safe_mode_is_the_same_shell_with_less(self):

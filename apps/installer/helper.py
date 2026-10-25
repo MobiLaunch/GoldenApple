@@ -499,6 +499,7 @@ def install() -> int:
         stage(0.89, "Enabling services", "Network, Bluetooth, login and power management…")
         for service in [
             "NetworkManager.service",
+            "NetworkManager-dispatcher.service",  # runs 50-citronos-zone (home or public)
             "bluetooth.service",
             "firewalld.service",             # public networks reach nothing
             "sddm.service",
