@@ -15,7 +15,8 @@
 #    into OUTDIR: the desktop, Control Center, Spotlight, Launchpad,
 #    Notification Center, Mission Control; then the lock screen, locked with
 #    gg-lock, and killed while locked 5 times (T-1.5: each time a new one
-#    should be locking within 3 s).
+#    should be holding the lock within 3 s); then signed in on, typed with a
+#    virtual keyboard (wtype): a wrong password first, then the account's.
 # 5. AirDrop's service with receiving off (a new account's default): nothing
 #    listens on its port (T-1.8).
 # 6. OUTDIR/summary.json, and tests/session/shots.py's contact sheet.
@@ -42,6 +43,9 @@ fail() { echo "::error::$*"; FAILED=$((FAILED + 1)); }
 args=(--starts "$STARTS"); [[ $SELF_TEST == 1 ]] && args+=(--self-test)
 if [[ $EUID == 0 ]]; then
   id gg-session >/dev/null 2>&1 || useradd -m gg-session
+  # A password for signing in on the lock screen, new each run (never printed).
+  GG_TEST_PASSWORD="$(openssl rand -hex 12)"; export GG_TEST_PASSWORD
+  echo "gg-session:$GG_TEST_PASSWORD" | chpasswd
   chown -R gg-session "$OUT"
   # Its own copy of the tree, so nothing install.sh writes lands in the checkout.
   src=/home/gg-session/src
@@ -251,6 +255,31 @@ if [[ $restored != 5 ]]; then
   echo "::endgroup::"
 fi
 shot dark-lock-restored; shots+=(dark-lock-restored)
+
+# Signing in, typed on the lock screen with a virtual keyboard: a wrong
+# password keeps it locked; the account's own unlocks it and clears the marker.
+signed_in=0
+if [[ -n ${GG_TEST_PASSWORD:-} && $(lock_state) == true ]]; then
+  wtype -k shift; sleep 1                     # wakes it: the field appears
+  wtype "not-$GG_TEST_PASSWORD"; wtype -k Return; sleep 5
+  if [[ $(lock_state) == true && -e $XDG_RUNTIME_DIR/citronos-locked ]]; then
+    say "a wrong password: still locked"
+  else
+    fail "a wrong password unlocked the screen"
+  fi
+  wtype "$GG_TEST_PASSWORD"; wtype -k Return
+  for _ in $(seq 40); do [[ $(lock_state) == false ]] && break; sleep 0.25; done
+  sleep 1
+  if [[ $(lock_state) == false && ! -e $XDG_RUNTIME_DIR/citronos-locked ]]; then
+    signed_in=1; say "signed in on the lock screen: unlocked, and the marker is gone"
+  else
+    fail "signing in didn't unlock (lock screen: '$(lock_state)', marker $([[ -e $XDG_RUNTIME_DIR/citronos-locked ]] && echo still there || echo gone))"
+    tail -n 20 "$OUT/lock.log" || true
+  fi
+  sleep 2; shot dark-unlocked; shots+=(dark-unlocked)
+else
+  fail "no lock screen holding the lock to sign in on"
+fi
 say "lock screen killed while locked: back within 3 s, $restored of 5 (${times[*]:-} ms)"
 [[ $restored == 5 ]] || fail "the lock screen came back within 3 s only $restored of 5 times"
 kill "$LOCK_LOOP" 2>/dev/null || true
@@ -267,10 +296,10 @@ else say "AirDrop's service is up, and nothing listens on 53317"; fi
 stop "$AIRDROP"
 
 # ---------------------------------------------------------------- 5. summary
-python3 - "$OUT/summary.json" "$STARTS" "$crashed" "$restored" "${listening:-}" "${shots[@]}" <<'PY'
+python3 - "$OUT/summary.json" "$STARTS" "$crashed" "$restored" "$signed_in" "${listening:-}" "${shots[@]}" <<'PY'
 import json, sys
-out, starts, crashed, restored, listening, *shots = sys.argv[1:]
-json.dump({"coldStarts": int(starts), "crashed": int(crashed), "lockRestored": int(restored), "lockKills": 5,
+out, starts, crashed, restored, signed_in, listening, *shots = sys.argv[1:]
+json.dump({"coldStarts": int(starts), "crashed": int(crashed), "lockRestored": int(restored), "lockKills": 5, "signedIn": bool(int(signed_in)),
            "airdropListening": bool(listening), "shots": shots}, open(out, "w"), indent=2)
 PY
 python3 "$REPO/tests/session/shots.py" "$OUT" || FAILED=$((FAILED + 1))

@@ -51,6 +51,12 @@ for theme in ("light", "dark"):
             continue
         share = changed(desktop, shot)
         rows.append((theme, name, share, brightness(shot)))
+        if name == "unlocked":
+            # Signed in: the lock screen has gone, so it's judged against that.
+            lock = out / f"{theme}-lock.png"
+            if lock.exists() and changed(lock, shot) < 0.005:
+                problems.append(f"{theme} unlocked: still the lock screen after signing in")
+            continue
         # After the lock screen is killed, the compositor may show its own
         # placeholder until the new one takes over: that one isn't judged.
         if share < 0.005 and name != "lock-restored":
@@ -63,6 +69,7 @@ lines = ["# Session harness", ""]
 if summary:
     lines += [f"- Cold starts: **{summary['coldStarts'] - summary['crashed']} of {summary['coldStarts']}** clean",
               f"- Lock screen killed while locked, back within 3 s: **{summary['lockRestored']} of {summary['lockKills']}**",
+              f"- Signed in on the lock screen (a wrong password refused first): **{'yes' if summary.get('signedIn') else 'no'}**",
               f"- AirDrop listening with receiving off: **{'yes' if summary['airdropListening'] else 'no'}**", ""]
 lines += ["| Theme | Surface | Changed from the desktop | Brightness |", "|---|---|---|---|"]
 lines += [f"| {t} | {n} | {'' if s is None else f'{s:.1%}'} | {b:.0f} |" for t, n, s, b in rows]
