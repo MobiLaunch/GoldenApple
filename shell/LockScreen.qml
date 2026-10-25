@@ -28,7 +28,15 @@ Scope {
         function lock(): void { root.holdLock = true }
         // Whether the compositor has confirmed the lock (the session harness asks).
         function isLocked(): bool { return session.secure }
+        // What the sign-in is doing, for the session harness: no password, only its length.
+        function status(): string {
+            const s = root.surfaces[0]
+            return JSON.stringify({ locked: session.secure, pamActive: pam.active, lastPam: root.lastPam,
+                                    busy: s?.busy ?? null, awake: s?.awake ?? null, failures: s?.failures ?? null,
+                                    typed: s ? s.typedLength : null })
+        }
     }
+    property string lastPam: ""
     // The session is locked while this file is there (gg-lock makes it first):
     // a lock screen that starts then, after a crash, locks at once, and
     // unlocking removes it.
@@ -72,9 +80,14 @@ Scope {
         id: pam
         config: "login"
         onCompleted: (result) => {
+            root.lastPam = "completed " + result + (result === PamResult.Success ? " (success)" : "")
             if (result === PamResult.Success) { touch.abort(); root.surfaces.forEach((s) => s.unlock()) }
             else root.surfaces.forEach((s) => s.fail());
         }
+        onPamMessage: root.lastPam = (messageIsError ? "error: " : "message: ") + message
+        // PAM couldn't run the check at all: let the person try again, rather
+        // than leave the field disabled as if it were still checking.
+        onError: (e) => { root.lastPam = "error " + e; root.surfaces.forEach((s) => s.fail()) }
     }
 
     // Touch ID: while locked, a finger on the reader unlocks too, beside the

@@ -32,6 +32,7 @@ Item {
     property bool charging: false
     property bool awake: login
     property int failures: 0
+    readonly property int typedLength: field.text.length
     readonly property bool gpu: GraphicsInfo.api !== GraphicsInfo.Software
     readonly property bool still: Theme.reduceMotion
     signal submitted(string password)

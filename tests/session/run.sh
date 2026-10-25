@@ -265,13 +265,15 @@ signed_in=0
 if [[ -n ${GG_TEST_PASSWORD:-} && $(lock_state) == true ]]; then
   type() { wtype "$@" || fail "wtype couldn't type on the lock screen"; }
   type -M shift -m shift; sleep 1             # wakes it: the field appears
-  type "not-$GG_TEST_PASSWORD"; type -k Return; sleep 5
+  lock_status() { timeout 2 qs -p "$LOCK_QML" ipc call lock status 2>/dev/null || true; }
+  type "not-$GG_TEST_PASSWORD"; echo "  typed a wrong one: $(lock_status)"; type -k Return; sleep 5
+  echo "  after Return: $(lock_status)"
   if [[ $(lock_state) == true && -e $XDG_RUNTIME_DIR/citronos-locked ]]; then
     say "a wrong password: still locked"
   else
     fail "a wrong password unlocked the screen"
   fi
-  type "$GG_TEST_PASSWORD"; type -k Return
+  type "$GG_TEST_PASSWORD"; echo "  typed the right one: $(lock_status)"; type -k Return
   for _ in $(seq 40); do [[ $(lock_state) == false ]] && break; sleep 0.25; done
   sleep 1
   if [[ $(lock_state) == false && ! -e $XDG_RUNTIME_DIR/citronos-locked ]]; then
@@ -283,7 +285,9 @@ if [[ -n ${GG_TEST_PASSWORD:-} && $(lock_state) == true ]]; then
     # Does the account's password check out without the lock screen? (PAM's
     # helper, as the lock screen's PAM uses it; the password isn't printed.)
     # 7 is PAM_AUTH_ERR.
-    printf '%s' "$GG_TEST_PASSWORD" | unix_chkpwd gg-session nullok; echo "unix_chkpwd: exit $?"
+    echo "  the lock screen: $(lock_status)"
+    # (unix_chkpwd reads NUL-terminated passwords, as PAM gives them.)
+    printf '%s\0' "$GG_TEST_PASSWORD" | unix_chkpwd gg-session nullok; echo "unix_chkpwd: exit $?"
     ls -l "$(command -v unix_chkpwd)"; getcap "$(command -v unix_chkpwd)"
     id; grep -c '^gg-session:\$' /etc/shadow 2>/dev/null; sudo -n true 2>/dev/null; echo "shadow readable here: $([[ -r /etc/shadow ]] && echo yes || echo no)"
     faillock --user gg-session 2>&1 | tail -n 5
