@@ -46,6 +46,9 @@ if [[ $EUID == 0 ]]; then
   # A password for signing in on the lock screen, new each run (never printed).
   GG_TEST_PASSWORD="$(openssl rand -hex 12)"; export GG_TEST_PASSWORD
   echo "gg-session:$GG_TEST_PASSWORD" | chpasswd
+  # The lock screen checks it through PAM's unix_chkpwd, which needs its setuid
+  # bit to read /etc/shadow (an image or a copy can lose it).
+  echo "unix_chkpwd: $(stat -c '%A %U' "$(command -v unix_chkpwd)" 2>&1)"
   chown -R gg-session "$OUT"
   # Its own copy of the tree, so nothing install.sh writes lands in the checkout.
   src=/home/gg-session/src
@@ -276,13 +279,17 @@ if [[ -n ${GG_TEST_PASSWORD:-} && $(lock_state) == true ]]; then
   else
     fail "signing in didn't unlock (lock screen: '$(lock_state)', marker $([[ -e $XDG_RUNTIME_DIR/citronos-locked ]] && echo still there || echo gone))"
     echo "::group::Why signing in didn't work"
+    set +e
     # Does the account's password check out without the lock screen? (PAM's
     # helper, as the lock screen's PAM uses it; the password isn't printed.)
+    # 7 is PAM_AUTH_ERR.
     printf '%s' "$GG_TEST_PASSWORD" | unix_chkpwd gg-session nullok; echo "unix_chkpwd: exit $?"
-    ls -l "$(command -v unix_chkpwd)" 2>&1 || true
-    faillock --user gg-session 2>&1 | tail -n 5 || true
+    ls -l "$(command -v unix_chkpwd)"; getcap "$(command -v unix_chkpwd)"
+    id; grep -c '^gg-session:\$' /etc/shadow 2>/dev/null; sudo -n true 2>/dev/null; echo "shadow readable here: $([[ -r /etc/shadow ]] && echo yes || echo no)"
+    faillock --user gg-session 2>&1 | tail -n 5
     grep -hv '^#' /etc/pam.d/login /etc/pam.d/system-login /etc/pam.d/system-auth 2>/dev/null | grep -v '^$' | sed 's/^/  pam: /'
-    tail -n 20 "$OUT/lock.log" || true
+    tail -n 20 "$OUT/lock.log"
+    set -e
     echo "::endgroup::"
   fi
   sleep 2; shot dark-unlocked; shots+=(dark-unlocked)
