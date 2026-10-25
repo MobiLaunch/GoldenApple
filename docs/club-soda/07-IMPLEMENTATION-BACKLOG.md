@@ -429,7 +429,7 @@ same fields, more briefly, and should be expanded when their milestone starts.
   was 12, so 8 to 12 all looked the same), titles of 25–40 px scale at half the rate,
   display numerals over 40 stay; Text Size runs from 85 % to 150 %. `tests/text-size.py`
   checks it all at 85, 100 and 150 %.
-- **T-2.10, the worst files on roles · in progress.** Done so far:
+- **T-2.10, the worst files on roles · done.** What each file became:
   - **Type.** The ramp is now macOS's (footnote 10, subheadline 11, callout 12, body 13,
     title3 15, title2 17, title1 22, largeTitle 26), and `tools/migrate-fs.py` moved the 750
     `Theme.fs(n)` calls on those sizes to `Theme.font.<role>.pixelSize`, in 139 QML files
@@ -476,6 +476,17 @@ same fields, more briefly, and should be expanded when their milestone starts.
     a place and directions, light and dark, differ in hairlines (now `Theme.separator`),
     Light Mode's blue and a few corners. The map's own drawing (pins, routes, tiles in
     `apps/maps/`) keeps its palette; it is outside the six files.
+  - **`VoiceAssistant.qml` (Citron).** Its text is the system's vibrant labels (white
+    over dark glass, which `Theme.vibrant` was made for), its text shadows
+    `Theme.vibrant.shadow`. Its own look, the smoky indigo glass, chips, round buttons,
+    the deep blue of a live microphone and a ready Send, the pale link and error tints,
+    is `apps/lib/intelligence/palette/CitronColors.qml` (named `palette`, not `theme`:
+    `tests/shared-ui.py` keeps one Theme module per process). The composer's round
+    buttons share one fill. Shots of Ask, Write, Create and the voice states: the labels
+    a touch more translucent, nothing else.
+  - **The six files are done:** colour, radius, duration and accessible are 0 in each,
+    but for the lock screen's reviewed exceptions. What is left of `fs()` (87 calls on
+    sizes off the ramp) waits on a decision per size.
 
 ## M3: Desktop refinement
 
