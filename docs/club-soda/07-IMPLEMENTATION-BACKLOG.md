@@ -402,6 +402,16 @@ same fields, more briefly, and should be expanded when their milestone starts.
 | T-2.11 | Accessible annotations in the shell | CS2-013 | `shell/Dock.qml`, `Spotlight.qml`, `Notifications.qml`, `DesktopWidgets.qml`, `CitronPodsPopup.qml`, `apps/maps.qml`, `apps/calculator.qml` | `Accessible.role`, `name`, `onPressAction` | The design lint's accessibility rule passes for `shell/` |
 
 **As built (M2 so far):**
+- **T-2.5, `citronos-settingsd` · in progress: the typed store.** `citronos.settings` with
+  `settings-schema.json`: every `desktop.json` key with a type (bool, number with a range,
+  string with its choices, list, object, map) and a default. `gg-pref`, which every writer
+  already goes through, now uses it: a value that doesn't fit is refused with the reason;
+  writers take turns under the lock; the copy before each change is `desktop.json.bak`; a
+  damaged file is put back from it (the damaged one kept aside) with a notification, and at
+  login (`gg-pref --check` in `apply-preferences.sh`) before anything reads it. That is
+  CS2-023's check: damage `desktop.json`, rearrange the Dock, restart, and the arrangement is
+  kept and the user told. `tests/settings-store.py` (13, in CI) checks it, and that every key
+  Settings and the shell write is in the schema. Next: the D-Bus service and its QML bridge.
 - **T-2.4, the `citronos` Python package · done.** `apps/lib/python/citronos/` (installed
   with the shared UI, `/usr/share/golden-gate/ui/python`): `files` (atomic write that also
   syncs the folder and never leaves its temporary file; new files 0600, replaced ones keep

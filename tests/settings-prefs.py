@@ -65,11 +65,11 @@ class Files(unittest.TestCase):
 
     def test_gg_pref_changes_at_once_all_stay(self):
         env = {**os.environ, "XDG_CONFIG_HOME": str(self.dir)}
-        keys = [f"dock.k{i}" for i in range(16)]
+        keys = [f"menuBar.items.k{i}" for i in range(16)]
         with ThreadPoolExecutor(16) as pool:
-            list(pool.map(lambda k: subprocess.run([sys.executable, str(PREF), k, "1"], env=env, check=True), keys))
+            list(pool.map(lambda k: subprocess.run([sys.executable, str(PREF), k, "true"], env=env, check=True), keys))
         saved = json.loads((self.dir / "golden-gate/desktop.json").read_text())
-        self.assertEqual(sorted(saved["dock"]), sorted(k.split(".")[1] for k in keys))
+        self.assertEqual(sorted(saved["menuBar"]["items"]), sorted(k.split(".")[2] for k in keys))
 
     def test_gg_pref_leaves_a_damaged_file(self):
         env = {**os.environ, "XDG_CONFIG_HOME": str(self.dir)}

@@ -1,82 +1,65 @@
 #!/usr/bin/env python3
-"""Atomically update one nested CitronOS desktop preference."""
+"""gg-pref: change one CitronOS desktop preference, checked and saved at once.
+
+    gg-pref dotted.key JSON_VALUE     e.g. gg-pref dock.size 64
+    gg-pref --check                   at login: put a damaged desktop.json back
+
+Keys and their types are citronos/settings-schema.json's; a value that
+doesn't fit is refused with the reason. Writers take turns under a lock, the
+file is replaced whole, and the copy before each change is kept as
+desktop.json.bak. A damaged desktop.json is put back from it, with a
+notification saying so; with no good copy it's left as it is and the change
+refused (exit 1, the reason on stderr).
+"""
 from __future__ import annotations
-import fcntl
+
 import json
-import os
-import pathlib
+from pathlib import Path
+import shutil
+import subprocess
 import sys
-import tempfile
-import time
 
-if len(sys.argv) != 3:
-    raise SystemExit("usage: gg-pref dotted.path JSON_VALUE")
-
-key, raw = sys.argv[1], sys.argv[2]
-try:
-    value = json.loads(raw)
-except json.JSONDecodeError:
-    value = raw
-
-config = pathlib.Path(os.environ.get("XDG_CONFIG_HOME", pathlib.Path.home() / ".config"))
-directory = config / "golden-gate"
-path = directory / "desktop.json"
-directory.mkdir(parents=True, exist_ok=True)
-# One writer at a time: read, change and replace under the lock, so two
-# changes made together (Settings, Control Center, the shell) both stay.
-lock = open(directory / ".desktop.json.lock", "a")
-fcntl.flock(lock, fcntl.LOCK_EX)
-
-def damaged(why: str, raw: bytes | None):
-    """Refuse, and keep a copy of the damaged file for repair (one per content)."""
-    kept = ""
-    if raw is not None:
-        copies = sorted(directory.glob("desktop.json.damaged-*"))
-        same = next((c for c in copies if c.read_bytes() == raw), None)
-        if same is None:
-            same = directory / f"desktop.json.damaged-{time.strftime('%Y%m%d-%H%M%S')}"
-            same.write_bytes(raw)
-        kept = f"; a copy is in {same.name}"
-    raise SystemExit(f"desktop.json can't be used ({why}); it was left as it is{kept}")
+# The citronos package: beside the apps in the repository and a per-user
+# install, with the shared UI in a system install.
+HERE = Path(__file__).resolve()
+for candidate in (HERE.parents[1] / "lib/python", HERE.parents[1] / "apps/lib/python",
+                  Path("/usr/share/golden-gate/ui/python")):
+    if (candidate / "citronos").is_dir():
+        sys.path.insert(0, str(candidate))
+        break
+from citronos import settings  # noqa: E402
 
 
-# A damaged file is left as it is and the change refused: starting again
-# from {} would throw away every other preference on a guess.
-raw = None
-try:
-    raw = path.read_bytes()
-    data = json.loads(raw.decode("utf-8"))
-except FileNotFoundError:
-    data = {}
-except OSError as exc:
-    damaged(exc.strerror or str(exc), None)
-except ValueError as exc:
-    damaged(str(exc), raw)
-if not isinstance(data, dict):
-    damaged("it isn't a set of preferences", raw)
+def tell(notice: str) -> None:
+    if notice and shutil.which("notify-send"):
+        subprocess.run(["notify-send", "-a", "CitronOS", "-i", "dialog-information",
+                        "Preferences restored", notice], timeout=5, check=False)
 
-node = data
-parts = [p for p in key.split(".") if p]
-if not parts:
-    raise SystemExit("empty preference path")
-for part in parts[:-1]:
-    child = node.get(part)
-    if not isinstance(child, dict):
-        child = {}
-        node[part] = child
-    node = child
-node[parts[-1]] = value
 
-fd, tmp = tempfile.mkstemp(prefix=".desktop.", suffix=".json", dir=directory)
-try:
-    with os.fdopen(fd, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=1)
-        f.write("\n")
-        f.flush()
-        os.fsync(f.fileno())
-    os.replace(tmp, path)
-finally:
+def main(argv: list[str]) -> int:
+    store = settings.Store("desktop")
     try:
-        os.unlink(tmp)
-    except FileNotFoundError:
-        pass
+        if argv == ["--check"]:
+            tell(store.check_file())
+            return 0
+        if len(argv) != 2:
+            print("usage: gg-pref dotted.key JSON_VALUE | gg-pref --check", file=sys.stderr)
+            return 2
+        key, raw = argv
+        try:
+            value = json.loads(raw)
+        except json.JSONDecodeError:
+            value = raw           # a bare word: a string
+        store.set(key, value)
+        tell(store.notice)
+        return 0
+    except settings.SettingsError as exc:
+        print(f"desktop.json: {exc}", file=sys.stderr)
+        return 1
+    except OSError as exc:
+        print(f"desktop.json can't be saved ({exc.strerror or exc}).", file=sys.stderr)
+        return 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv[1:]))

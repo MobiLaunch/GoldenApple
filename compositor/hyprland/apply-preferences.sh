@@ -4,6 +4,10 @@ set -u
 
 CONFIG="${XDG_CONFIG_HOME:-$HOME/.config}/golden-gate/desktop.json"
 
+# A damaged desktop.json is put back from its last good copy before anything
+# reads it (and the user told); with none, it's left for them to see.
+command -v gg-pref >/dev/null 2>&1 && gg-pref --check >/dev/null 2>&1 || true
+
 command -v gg-hyprglass-sync >/dev/null 2>&1 && gg-hyprglass-sync >/dev/null 2>&1 || true
 
 # Flatpak apps (the App Store's) can't see ~/.config, so GTK ones drew GNOME's
