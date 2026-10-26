@@ -24,7 +24,9 @@ import json
 import os
 import pathlib
 import sys
-import tempfile
+
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "lib/python"))
+from citronos import files  # noqa: E402
 
 TRASH = "Recently Deleted"
 
@@ -55,13 +57,7 @@ def load_origins(root: pathlib.Path) -> dict:
 
 
 def save_origins(root: pathlib.Path, origins: dict) -> None:
-    target = origins_file(root)
-    fd, tmp = tempfile.mkstemp(dir=target.parent, prefix=".origins.", suffix=".tmp")
-    with os.fdopen(fd, "w", encoding="utf-8") as f:
-        json.dump(origins, f, ensure_ascii=False, indent=1)
-        f.flush()
-        os.fsync(f.fileno())
-    os.replace(tmp, target)
+    files.atomic_json(origins_file(root), origins)
 
 
 def claim(src: pathlib.Path, folder: pathlib.Path, name: str = "") -> pathlib.Path:

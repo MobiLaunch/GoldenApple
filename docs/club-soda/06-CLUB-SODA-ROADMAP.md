@@ -84,7 +84,8 @@ Two tracks in parallel.
 - Accessible annotations on all shell surfaces.
 
 **Depends on:** M1 (lints, session harness).
-**Status:** started with the design track: the design lint (T-2.8), role tokens (T-2.7)
+**Status:** the platform track has begun with the `citronos` Python package (T-2.4).
+The design track: the design lint (T-2.8), role tokens (T-2.7)
 and the shell's accessibility annotations (T-2.11) are built, and the migration (T-2.10)
 has moved the type ramp and all six of the worst files (the lock screen, Calculator,
 Settings, Web, Maps and Citron) onto roles; see [07](07-IMPLEMENTATION-BACKLOG.md). Lint

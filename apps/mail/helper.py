@@ -14,11 +14,13 @@ import re
 import smtplib
 import socket
 import ssl
-import subprocess
 import sys
 import tempfile
 from email.message import EmailMessage
 from html.parser import HTMLParser
+
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "lib/python"))
+from citronos import secrets  # noqa: E402
 
 CONFIG = pathlib.Path(os.environ.get("XDG_CONFIG_HOME", pathlib.Path.home() / ".config")) / "golden-gate/mail.json"
 DRAFT = pathlib.Path(os.environ.get("XDG_STATE_HOME", pathlib.Path.home() / ".local/state")) / "golden-gate/mail-draft.json"
@@ -209,37 +211,18 @@ KEYRING_WAIT = 30
 
 def secret_lookup(account: str) -> str:
     try:
-        p = subprocess.run(
-            ["secret-tool", "lookup", "service", "golden-gate-mail", "account", account],
-            text=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            timeout=KEYRING_WAIT,
-        )
-    except subprocess.TimeoutExpired:
-        raise RuntimeError("The keyring didn't answer. It may be waiting to be unlocked.") from None
-    return p.stdout.rstrip("\n") if p.returncode == 0 else ""
+        return secrets.lookup(timeout=KEYRING_WAIT, service="golden-gate-mail", account=account)
+    except secrets.SecretError as exc:
+        raise RuntimeError(str(exc)) from None
 
 
 def secret_store(account: str, password: str) -> None:
     try:
-        p = subprocess.run(
-            [
-                "secret-tool", "store",
-                "--label=CitronOS Mail",
-                "service", "golden-gate-mail",
-                "account", account,
-            ],
-            input=password,
-            text=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            timeout=KEYRING_WAIT,
-        )
-    except subprocess.TimeoutExpired:
-        raise RuntimeError("The keyring didn't answer, so the password wasn't saved. It may be waiting to be unlocked.") from None
-    if p.returncode != 0:
-        raise RuntimeError(p.stderr.strip() or "The password could not be saved to the keyring.")
+        secrets.store("CitronOS Mail", password, timeout=KEYRING_WAIT, service="golden-gate-mail", account=account)
+    except secrets.SecretError as exc:
+        if exc.code == "timeout":
+            raise RuntimeError("The keyring didn't answer, so the password wasn't saved. It may be waiting to be unlocked.") from None
+        raise RuntimeError("The password could not be saved to the keyring. " + str(exc)) from None
 
 
 def configured() -> tuple[dict[str, object], str]:

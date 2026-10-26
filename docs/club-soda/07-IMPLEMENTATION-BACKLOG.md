@@ -402,6 +402,20 @@ same fields, more briefly, and should be expanded when their milestone starts.
 | T-2.11 | Accessible annotations in the shell | CS2-013 | `shell/Dock.qml`, `Spotlight.qml`, `Notifications.qml`, `DesktopWidgets.qml`, `CitronPodsPopup.qml`, `apps/maps.qml`, `apps/calculator.qml` | `Accessible.role`, `name`, `onPressAction` | The design lint's accessibility rule passes for `shell/` |
 
 **As built (M2 so far):**
+- **T-2.4, the `citronos` Python package · done.** `apps/lib/python/citronos/` (installed
+  with the shared UI, `/usr/share/golden-gate/ui/python`): `files` (atomic write that also
+  syncs the folder and never leaves its temporary file; new files 0600, replaced ones keep
+  their mode; JSON; `locked()`; `keep_aside()` for a damaged store; backups), `jsonl`
+  (append-only logs, one synced write under a lock, a torn last line skipped and never glued
+  to the next), `proc` (no shell, a timeout, `die_with_parent` so a child never outlives its
+  helper), `secrets` (the keyring with "missing", "timeout" and "failed" errors; secrets on
+  stdin only) and `paths` (XDG folders). Calendar, Notes' trash and Files' view preferences
+  write through it (Notes' trash used to leave a temporary file behind on a failed write), and
+  Mail's keyring calls go through `secrets`. `tests/citronos-python.py` (18 tests, in CI)
+  checks each module, including a real child dying with its parent and a fake `secret-tool`
+  that records its arguments (a secret is never one). Deviation: `secrets` drives
+  `secret-tool` rather than speaking D-Bus itself, because secret-tool shows the keyring's
+  unlock prompt, which a helper can't; a D-Bus backend can sit behind the same calls.
 - **T-2.8, design lint · done.** `tests/design-lint.py` counts, per QML file in `shell/`,
   `apps/` and `themes/`: literal radii and durations (0 is fine), literal colours,
   `Theme.fs(n)` sizes, and pointer handlers that act (a MouseArea or TapHandler with

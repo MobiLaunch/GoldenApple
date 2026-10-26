@@ -20,16 +20,15 @@ Every change reads, edits and writes the store under one lock, so two windows
 adding at once both keep their events. A date is a real calendar date; a time
 is a 24-hour HH:MM in the computer's time zone, or empty for all day."""
 from __future__ import annotations
-import contextlib
 import datetime
-import fcntl
 import json
 import os
 import pathlib
-import shutil
 import sys
-import tempfile
 import uuid
+
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "lib/python"))
+from citronos import files  # noqa: E402
 
 ROOT = pathlib.Path(os.environ.get("XDG_DATA_HOME", pathlib.Path.home() / ".local/share")) / "golden-gate/calendar"
 PATH = ROOT / "events.json"
@@ -153,56 +152,23 @@ def load() -> list:
 
 def save(events: list) -> None:
     ROOT.mkdir(parents=True, exist_ok=True)
-    if PATH.exists():
-        shutil.copy2(PATH, BACKUP)
+    files.copy_backup(PATH, BACKUP)
     install((json.dumps(events, indent=1) + "\n").encode("utf-8"))
 
 
 def install(raw: bytes) -> None:
     """events.json becomes raw, all at once."""
-    fd, name = tempfile.mkstemp(prefix=".events.", suffix=".json", dir=ROOT)
-    try:
-        with os.fdopen(fd, "wb") as f:
-            f.write(raw)
-            f.flush()
-            os.fsync(f.fileno())
-        os.replace(name, PATH)
-    finally:
-        try:
-            os.unlink(name)
-        except FileNotFoundError:
-            pass
+    files.atomic_write(PATH, raw)
 
 
-@contextlib.contextmanager
 def locked():
-    ROOT.mkdir(parents=True, exist_ok=True)
-    with open(LOCK, "a") as lock:
-        fcntl.flock(lock, fcntl.LOCK_EX)
-        try:
-            yield
-        finally:
-            fcntl.flock(lock, fcntl.LOCK_UN)
+    return files.locked(LOCK)
 
 
 def keep_broken() -> pathlib.Path | None:
     """A copy of the damaged store under a name of its own (two restores in
     the same second each keep theirs), left beside it."""
-    if not PATH.exists():
-        return None
-    stamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-    n = 1
-    while True:
-        kept = ROOT / (f"events.broken-{stamp}.json" if n == 1 else f"events.broken-{stamp}-{n}.json")
-        n += 1
-        try:
-            with open(kept, "xb") as out:
-                out.write(PATH.read_bytes())
-                out.flush()
-                os.fsync(out.fileno())
-            return kept
-        except FileExistsError:
-            continue
+    return files.keep_aside(PATH, "broken")
 
 
 def emit(ok: bool, **data: object) -> int:

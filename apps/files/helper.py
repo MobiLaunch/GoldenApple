@@ -16,6 +16,9 @@ from datetime import datetime
 from urllib.parse import quote, unquote, urlparse
 import xml.etree.ElementTree as ET
 
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "lib/python"))
+from citronos.files import atomic_json  # noqa: E402
+
 
 def result(ok: bool = True, **payload: object) -> int:
     print(json.dumps({"ok": ok, **payload}, separators=(",", ":")))
@@ -535,14 +538,7 @@ def preferences(save: bool = False) -> int:
         if not isinstance(data, dict) or not isinstance(data.get("folders", {}), dict):
             raise ValueError("Files' preferences aren't valid.")
         data["folders"] = dict(list(data.get("folders", {}).items())[-500:])
-        file.parent.mkdir(parents=True, exist_ok=True)
-        fd, temp = tempfile.mkstemp(prefix=".files-", dir=file.parent)
-        try:
-            with os.fdopen(fd, "w") as f:
-                json.dump(data, f); f.flush(); os.fsync(f.fileno())
-            os.replace(temp, file)
-        finally:
-            pathlib.Path(temp).unlink(missing_ok=True)
+        atomic_json(file, data, indent=None)
         return result(True)
     except (OSError, ValueError, TypeError) as exc:
         return result(False, error="Files couldn't restore or save its view preferences: " + str(exc))
