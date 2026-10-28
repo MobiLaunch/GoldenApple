@@ -2,8 +2,11 @@
 # unlocked, until gg-lock asks; started while the session is locked, it locks
 # at once. Always restarted, with no limit: a lock screen that stops while
 # locked must come back, and soon (200 ms; the compositor keeps the session
-# locked meanwhile). One that keeps failing is retried less often, up to
-# every 5 s, so it can't spin.
+# locked meanwhile), every time. No RestartSteps: systemd lengthens the delay
+# with each automatic restart and never shortens it again while the session
+# lasts, so the fifth crash in a session waited seconds (the ISO's boot test:
+# back after 1.4, 1.6, 1.8, 2.4 s, then not within 3 s). One that keeps
+# failing restarts about twice a second, each start taking longer than that.
 [Unit]
 Description=CitronOS lock screen
 PartOf=citronos-session.target
@@ -14,8 +17,9 @@ Type=exec
 ExecStart=/usr/bin/env gg-lock serve
 Restart=always
 RestartSec=200ms
-RestartSteps=5
-RestartMaxDelaySec=5s
+# No core dump of it (nor Quickshell's crash report, gg-lock): one would keep
+# a password being typed, and writing it holds the dead one's lock for 2 s.
+LimitCORE=0
 StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=citronos-lock

@@ -53,18 +53,24 @@ down as follows:
 - its configuration had loaded by about 1.5 s;
 - it held the lock again by 2.9–3.2 s.
 
-The delay is now 200 ms (`citronos-lock.service`), with systemd backing off to every 5 s
-for a lock screen that keeps failing, so it can't spin. The compositor keeps the session
-locked throughout. In run 36 (`9316376`) the process was up after 0.41-0.47 s, its
-configuration loaded by 0.66-0.75 s, and the lock held again by 1.9-2.6 s: 5 of 5 within
-the 3 s goal, with about 0.4 s to spare. Run 37, on another runner, took 2.8-3.1 s with the
-process up and loaded just as soon: the time went between its configuration loading and the
-compositor taking its lock. Quickshell's crash handler forks a reporter, which writes a dump
-of the crashed process and keeps its compositor connection, and so its lock, open until
-it's done; the new lock screen's lock is refused meanwhile, and asked for again every
-300 ms. `gg-lock` now turns the crash handler off for the lock screen
-(`QS_DISABLE_CRASH_HANDLER=1`), which also keeps a password being typed out of any dump. The
-harness checks that the five killed lock screens leave no dump.
+The delay is now 200 ms (`citronos-lock.service`), every time; the compositor keeps the
+session locked throughout. (Briefly it also had systemd's `RestartSteps` backoff, up to 5 s
+for one that keeps failing: systemd never shortens the delay again while the session
+lasts, and the ISO's boot test, killing it five times, saw it back after 1.4, 1.6, 1.8 and
+2.4 s, then not within 3 s. It's gone.) In run 36 (`9316376`) the process was up after
+0.41-0.47 s, its configuration loaded by 0.66-0.75 s, and the lock held again by 1.9-2.6 s.
+Run 37, on another runner, took 2.8-3.1 s, the process up and loaded just as soon: the time
+went to the dead lock screen's dump. Quickshell's crash handler forks a reporter that writes
+one and keeps the compositor connection, and so the lock, open until it's done, which the
+new lock screen waits out (asking every 300 ms). With the handler off (run 38, `1d3aafa`)
+the kernel's core dump did the same: the old process lingered while 600 MB were written,
+and the new one was up only after 2.2 s, then locked 0.25 s later.
+
+So the lock screen dumps nothing: `gg-lock` sets `QS_DISABLE_CRASH_HANDLER=1` and
+`ulimit -c 0`, and its unit `LimitCORE=0`. That also keeps a password being typed out of any
+dump. In the session harness in Docker here: the process up after 0.39-0.42 s, its
+configuration loaded by 0.56-0.65 s, and the lock held again by **0.67-0.77 s**, 5 of 5,
+leaving no dump (the harness checks).
 
 ## The laptop run (manual)
 

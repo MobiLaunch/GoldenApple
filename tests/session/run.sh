@@ -276,10 +276,11 @@ if [[ $restored != 5 ]]; then
   echo "::endgroup::"
 fi
 shot dark-lock-restored; shots+=(dark-lock-restored)
-# gg-lock turns Quickshell's crash handler off for the lock screen: a crashed
-# one leaves no dump of its memory (a password being typed), and no reporter
-# holds its lock open after it.
-lock_dumps=$(find "$CRASHES" -mindepth 1 -maxdepth 1 -newer "$OUT/.lock-kills-start" 2>/dev/null | wc -l)
+# gg-lock turns Quickshell's crash handler and core dumps off for the lock
+# screen: a crashed one leaves no dump of its memory (a password being typed),
+# and nothing holds its lock open after it while one is written.
+# (The crash reports' folder is made by the first report: none, no folder.)
+lock_dumps=$( { find "$CRASHES" -mindepth 1 -maxdepth 1 -newer "$OUT/.lock-kills-start" 2>/dev/null || true; } | wc -l)
 say "the killed lock screens left no crash dump ($lock_dumps)"
 [[ $lock_dumps == 0 ]] || fail "the killed lock screens left $lock_dumps crash dumps"
 

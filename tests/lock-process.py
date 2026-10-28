@@ -200,16 +200,20 @@ class Wiring(unittest.TestCase):
         c.read(ROOT / "distro/systemd/user/citronos-lock.service")
         self.assertEqual(c["Service"]["ExecStart"], "/usr/bin/env gg-lock serve")
         self.assertEqual(c["Service"]["Restart"], "always")
-        self.assertEqual((c["Service"]["RestartSec"], c["Service"]["RestartMaxDelaySec"]), ("200ms", "5s"),
-                         "back within a moment, and a lock screen that keeps failing backs off")
+        self.assertEqual(c["Service"]["RestartSec"], "200ms", "back within a moment")
+        self.assertNotIn("RestartSteps", c["Service"], "every time: systemd's steps never come back down in a session")
         self.assertEqual(c["Unit"]["StartLimitIntervalSec"], "0", "no start limit: it must come back while locked")
         self.assertEqual(c["Unit"]["PartOf"], "citronos-session.target")
         self.assertIn("citronos-lock.service", (ROOT / "distro/systemd/user/citronos-session.target").read_text())
 
     def test_no_crash_handler(self):
-        """A crashed lock screen leaves no dump (a password being typed is in
-        its memory), and nothing holds its lock open after it."""
-        self.assertIn("export QS_DISABLE_CRASH_HANDLER=1\n", (ROOT / "compositor/hyprland/lock.sh").read_text())
+        """A crashed lock screen leaves no dump, Quickshell's or the kernel's (a
+        password being typed is in its memory), and nothing holds its lock open
+        after it while one is written."""
+        lock = (ROOT / "compositor/hyprland/lock.sh").read_text()
+        self.assertIn("export QS_DISABLE_CRASH_HANDLER=1\n", lock)
+        self.assertIn("ulimit -c 0\n", lock)
+        self.assertIn("LimitCORE=0\n", (ROOT / "distro/systemd/user/citronos-lock.service").read_text())
 
     def test_hyprland_keeps_the_session_locked_for_it(self):
         self.assertIn("allow_session_lock_restore = true", (ROOT / "compositor/hyprland/hyprland.conf").read_text())
