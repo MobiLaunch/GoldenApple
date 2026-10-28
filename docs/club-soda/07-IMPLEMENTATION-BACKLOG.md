@@ -411,7 +411,25 @@ same fields, more briefly, and should be expanded when their milestone starts.
   login (`gg-pref --check` in `apply-preferences.sh`) before anything reads it. That is
   CS2-023's check: damage `desktop.json`, rearrange the Dock, restart, and the arrangement is
   kept and the user told. `tests/settings-store.py` (13, in CI) checks it, and that every key
-  Settings and the shell write is in the schema. Next: the D-Bus service and its QML bridge.
+  Settings and the shell write is in the schema.
+
+  **The service and the bridge.** `services/settingsd/settingsd.py` is
+  `org.citronos.Settings1` (`/org/citronos/Settings1`, values as JSON text): `Get`, `GetAll`,
+  `Set` (checked against the schema; a refusal is a D-Bus error with the reason), and the
+  signals `Changed(domain, key, value)` and `Restored(domain, message)`. It writes through
+  the same store and lock as gg-pref, so neither loses the other's change, and it watches the
+  folder (inotify), so a change made by gg-pref or an editor is sent as `Changed` too, key by
+  key. Its own change is signalled before the reply. D-Bus activation starts it
+  (`distro/dbus/org.citronos.Settings1.service`, the user unit `citronos-settingsd.service`).
+  `apps/lib/dbus-bridge.py` is the plan's generic bridge: one object, JSON lines on
+  stdin/stdout, arguments typed from introspection, and a service that stops is started
+  again. **Measured** (the plan's condition for keeping it in Python): a `Set` through the
+  bridge takes 4.3 ms median, 5.4 ms p90, against gg-pref's 43 ms, so no Qt plugin is
+  needed. `tests/settingsd.py` (12, in CI) runs both on a private bus: activation, two
+  clients hearing each other, refusals, outside edits, a damaged file put back and said,
+  30 simultaneous writers through the service and gg-pref with nothing lost, a killed
+  service coming back, and the timing. Next: `Prefs.qml` and `Sys.qml` onto it, with
+  gg-pref as the fallback.
 - **T-2.4, the `citronos` Python package · done.** `apps/lib/python/citronos/` (installed
   with the shared UI, `/usr/share/golden-gate/ui/python`): `files` (atomic write that also
   syncs the folder and never leaves its temporary file; new files 0600, replaced ones keep

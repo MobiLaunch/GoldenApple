@@ -281,6 +281,8 @@ jobs:
         run: python tests/citronos-python.py
       - name: Typed preferences survive a damaged desktop.json (settings store, gg-pref)
         run: python tests/settings-store.py
+      - name: "Preferences on D-Bus: citronos-settingsd and the QML bridge (private bus, activation, latency)"
+        run: python tests/settingsd.py
       - name: "AirDrop: off until turned on, nothing listens while off, 10 minutes expire, HTTPS only"
         run: python tests/airdrop.py
       - name: "Firewall: public networks reach nothing; wired and password Wi-Fi reach AirDrop and AirPlay"

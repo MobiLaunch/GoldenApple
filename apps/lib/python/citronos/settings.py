@@ -105,6 +105,16 @@ class Store:
             raise ValueError("it isn't a set of preferences")
         return value
 
+    def peek(self) -> dict:
+        """The preferences as saved, repairing nothing (a watcher's read):
+        SettingsError("damaged") if they can't be read."""
+        try:
+            return self._parse(self.file.read_bytes())
+        except FileNotFoundError:
+            return {}
+        except (OSError, ValueError, UnicodeError) as exc:
+            raise SettingsError(f"{self.file.name} can't be read ({exc}).", "damaged") from None
+
     def load(self) -> dict:
         """The preferences as saved, after putting back a damaged file from
         its last good copy (call under the lock to change them)."""
