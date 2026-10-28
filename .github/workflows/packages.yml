@@ -1,0 +1,50 @@
+name: Packages
+
+# CitronOS's own packages (T-2.1, packaging/citronos/PKGBUILD), built with
+# makepkg in a clean Arch container and installed there (packaging/check.sh):
+# pacman -Qkk must be clean, and a new account must get the system's shell
+# (/etc/xdg/quickshell/golden-gate) with no copy of its own. The packages are
+# the job's artifact. Signing them and the [citronos] repository come next.
+on:
+  push:
+    paths:
+      - shell/**
+      - apps/**
+      - services/**
+      - compositor/hyprland/**
+      - distro/systemd/**
+      - distro/dbus/**
+      - distro/archiso/overlay/**
+      - themes/**
+      - icons/**
+      - design/**
+      - Makefile
+      - scripts/stage.sh
+      - packaging/**
+      - .github/workflows/packages.yml
+  workflow_dispatch:
+
+concurrency:
+  group: packages-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  packages:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # pkgver counts the commits
+      - name: Build the packages and install them on a clean Arch system
+        run: docker run --rm -v "$PWD:/repo" -w /repo archlinux:latest packaging/check.sh /repo/out/packages
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: packages
+          path: out/packages
+          retention-days: 14
+          if-no-files-found: warn

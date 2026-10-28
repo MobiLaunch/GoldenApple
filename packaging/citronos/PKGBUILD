@@ -1,0 +1,71 @@
+# CitronOS's own packages (T-2.1), split from one build of this repository.
+# Each installs one part of scripts/stage.sh (`make install-PART`).
+#
+#   cd packaging/citronos && makepkg -s        # from a checkout; nothing downloaded
+#
+# CI builds them in a clean Arch container (.github/workflows/packages.yml) and
+# checks that `pacman -Qkk citronos-*` is clean and that a new account runs the
+# shell from /etc/xdg with no copy of its own.
+
+pkgbase=citronos
+pkgname=(citronos-runtime citronos-shell citronos-hyprland-config citronos-theme citronos)
+pkgver=4.0
+pkgrel=1
+pkgdesc="CitronOS desktop"
+arch=(any)
+url="https://github.com/mobilaunch/goldenapple"
+license=(custom)
+makedepends=(git nodejs librsvg)
+source=()
+
+# The repository this PKGBUILD is in.
+_repo() { realpath "$startdir/../.."; }
+
+pkgver() {
+  local version
+  version=$(sed -n 's/.*property string version: "\(.*\)".*/\1/p' "$(_repo)/apps/lib/theme/Release.qml")
+  printf '%s.r%s.g%s' "$version" "$(git -C "$(_repo)" rev-list --count HEAD)" "$(git -C "$(_repo)" rev-parse --short=7 HEAD)"
+}
+
+build() {
+  # A copy, so building never changes the checkout.
+  rm -rf "$srcdir/citronos"
+  git -C "$(_repo)" ls-files -z | (cd "$(_repo)" && tar --null -T - -cf -) | (mkdir -p "$srcdir/citronos" && tar -xf - -C "$srcdir/citronos")
+  make -C "$srcdir/citronos" build
+}
+
+package_citronos-runtime() {
+  pkgdesc="CitronOS's apps, shared UI, session services and gg-* commands"
+  depends=(quickshell python python-dbus-next qt6-declarative qt6-svg qt6-wayland qt6-imageformats
+           qt6-multimedia pyside6 glib2 libnotify polkit sudo)
+  backup=(etc/sudoers.d/20-golden-wheel etc/pam.d/gg-touchid)
+  make -C "$srcdir/citronos" install-runtime DESTDIR="$pkgdir"
+}
+
+package_citronos-shell() {
+  pkgdesc="CitronOS's shell: menu bar, Dock, Control Center, notifications, lock screen"
+  depends=("citronos-runtime=$pkgver-$pkgrel" quickshell)
+  make -C "$srcdir/citronos" install-shell DESTDIR="$pkgdir"
+}
+
+package_citronos-hyprland-config() {
+  pkgdesc="CitronOS's Hyprland settings, sourced from each account's hyprland.conf"
+  depends=(hyprland hypridle)
+  make -C "$srcdir/citronos" install-hyprland-config DESTDIR="$pkgdir"
+}
+
+package_citronos-theme() {
+  pkgdesc="CitronOS's icons, wallpapers, GTK look, fonts, login screen and boot splash"
+  depends=(inter-font ttf-jetbrains-mono adwaita-icon-theme gsettings-desktop-schemas)
+  optdepends=('sddm: the login screen' 'weston: the login screen on Wayland' 'plymouth: the boot splash'
+              'keyd: the ⌘ key layer' 'ghostty: Terminal')
+  backup=(etc/keyd/default.conf etc/keyd/app.conf etc/sddm.conf.d/golden-gate.conf etc/xdg/mimeapps.list)
+  make -C "$srcdir/citronos" install-theme DESTDIR="$pkgdir"
+}
+
+package_citronos() {
+  pkgdesc="CitronOS: the desktop, its settings and its look"
+  depends=("citronos-runtime=$pkgver-$pkgrel" "citronos-shell=$pkgver-$pkgrel"
+           "citronos-hyprland-config=$pkgver-$pkgrel" "citronos-theme=$pkgver-$pkgrel"
+           hyprland xdg-desktop-portal-hyprland pipewire wireplumber networkmanager bluez upower)
+}

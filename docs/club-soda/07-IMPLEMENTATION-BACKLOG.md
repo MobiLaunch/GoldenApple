@@ -402,15 +402,36 @@ same fields, more briefly, and should be expanded when their milestone starts.
 | T-2.11 | Accessible annotations in the shell | CS2-013 | `shell/Dock.qml`, `Spotlight.qml`, `Notifications.qml`, `DesktopWidgets.qml`, `CitronPodsPopup.qml`, `apps/maps.qml`, `apps/calculator.qml` | `Accessible.role`, `name`, `onPressAction` | The design lint's accessibility rule passes for `shell/` |
 
 **As built (M2 so far):**
+- **T-2.1, PKGBUILDs and a signed repository · in progress (part 1 of 3).** `make install
+  DESTDIR=` (`scripts/stage.sh`, one part per package) lays CitronOS out as packaged:
+  `citronos-runtime` (the apps and shared UI in `/usr/share/golden-gate`, helpers in
+  `/usr/lib/golden-gate`, the `gg-*` commands in `/usr/bin`, units, D-Bus services, PAM,
+  polkit, pacman hooks in `/usr/share/libalpm/hooks`), `citronos-shell` (the shell in
+  `/etc/xdg/quickshell/golden-gate`, which Quickshell searches after `~/.config`),
+  `citronos-hyprland-config` (`/usr/share/golden-gate/hypr`, and a new account's
+  `hyprland.conf` is one `source` line) and `citronos-theme`, with the `citronos` meta
+  package. `packaging/citronos/PKGBUILD` builds them; the Packages workflow
+  (`packaging/check.sh`) installs them on a clean Arch system, where `pacman -Qkk` is clean
+  and a new account runs the system's shell with no copy of its own. `gg-lock` finds the
+  lock screen as Quickshell finds the shell; `gg-session` makes the per-account Hyprland
+  files a packaged config sources. `tests/packaging.py` (in Check) stages each part: no file
+  in two packages, nothing in `/usr/local` or a home folder, and every command, service,
+  unit and desktop entry runs something installed. Next: the ISO and Software Update
+  install these packages instead of `install.sh --system`, moving existing accounts off
+  their copies of the shell (part 2); signing them and the `[citronos]` repository, with
+  `citronos-keyring` (part 3).
 - **T-0.3, performance baseline · CI done; the laptop run is manual.**
   `tests/session/perf.py`, in every Session run: time to "desktop ready", resident memory,
-  idle CPU with a window behind the Dock (glass windows on and off), the shell's idle
-  frames per second, for the shell, its bridges and the services. CI's baseline is in
-  `perf-baseline.json` and `perf-baseline.md`: 752 ms to ready, 673 MB, about 16 % of a core
-  idle whether glass windows are on or off (so not the window captures; the frame count
-  tells whether it keeps drawing), the services 54 MB and 0.3 %. A run more than 25 % worse
-  warns. On the way: the lock screen no longer starts a D-Bus bridge (it reads its
-  preferences from the file, `GG_PREFS_READONLY`), and the Session harness installs
+  idle CPU with a window behind the Dock (glass windows on and off) and the shell's busiest
+  threads, for the shell, its bridges and the services. CI's baseline is in
+  `perf-baseline.json` and `perf-baseline.md`: 751 ms to ready, 663 MB, 1.6 % of a core idle,
+  the services 54 MB and 0.3 %. A run more than 25 % worse warns. Idle was 16 % until the
+  threads showed the shell redrawing: the Clock widget's hands sprang to each new place,
+  drawing the widget layer nine times a second; they now step (`tests/idle-frames.py` keeps
+  the shell at about one frame a second at rest). On the way: the lock screen no longer
+  starts a D-Bus bridge (it reads its preferences from the file, `GG_PREFS_READONLY`),
+  comes back 200 ms after it stops, without Quickshell's crash handler (no dump of a
+  password being typed, nothing holding its lock open), and the Session harness installs
   `python-dbus-next` as the ISO does, so it runs settingsd and notifyd for real.
 - **T-2.9, new shared components · done.** `apps/lib/` gains `Alert`, `ConfirmSheet`,
   `Popover`, `SearchField`, `ListRow`, `FormRow`, `FormSection`, `InlineBanner`, `Toast`,

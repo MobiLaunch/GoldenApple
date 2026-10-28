@@ -5,7 +5,16 @@
 # screen that crashes comes straight back locked: the marker below says the
 # session is locked, and a lock screen that starts while it's there locks at
 # once. The lock screen removes it when the session is unlocked.
-lock="${XDG_CONFIG_HOME:-$HOME/.config}/quickshell/golden-gate/lock-shell.qml"
+# The lock screen beside the shell, found as `qs -c golden-gate` finds the
+# shell: an account's own copy first, then the system's (/etc/xdg, from the
+# citronos-shell package).
+own="${XDG_CONFIG_HOME:-$HOME/.config}"
+lock="$own/quickshell/golden-gate/lock-shell.qml"
+IFS=:
+for dir in $own ${XDG_CONFIG_DIRS:-/etc/xdg}; do
+  if [ -e "$dir/quickshell/golden-gate/lock-shell.qml" ]; then lock="$dir/quickshell/golden-gate/lock-shell.qml"; break; fi
+done
+unset IFS
 marker="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/citronos-locked"
 # The lock screen only reads preferences (the wallpaper, Touch ID, its
 # message): from the file, watched, with no D-Bus bridge to start beside it

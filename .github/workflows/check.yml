@@ -463,6 +463,8 @@ jobs:
         run: python tests/idle-frames.py
         env:
           QT_QPA_PLATFORM: offscreen
+      - name: "Packages: each part staged once, the shell in /etc/xdg, every command's file there"
+        run: python tests/packaging.py
       - name: "Disks: read, named, the running system never changed, changes through udisks"
         run: python tests/disks.py
       - name: "Files shows the disks: Locations, Computer, the path bar, hidden files"

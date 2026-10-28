@@ -23,9 +23,19 @@ if [ "${GG_RENDERER:-auto}" = auto ] && grep -qs '^DRIVER=vmwgfx$' /sys/class/dr
   logger -t gg-session "vmwgfx (VirtualBox/VMware): using software rendering"
 fi
 
-# Screen scale and effects for this machine (virtual screen, no GPU).
+# What Settings and Setup Assistant write, which hyprland.conf sources: made
+# empty when missing (Hyprland won't start over a missing source), as for a
+# new account on a packaged system, whose ~/.config/hypr has only the stub.
 conf="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/golden-gate"
-sh "$conf/machine-conf.sh" && head -n 1 "$conf/machine.conf" | logger -t gg-session
+mkdir -p "$conf"
+for f in input accessibility displays windows; do
+  [ -e "$conf/$f.conf" ] || echo "# Written by Settings." > "$conf/$f.conf"
+done
+# Screen scale and effects for this machine (virtual screen, no GPU), by the
+# account's own script or the system's (citronos-hyprland-config).
+machine="$conf/machine-conf.sh"
+[ -e "$machine" ] || machine=/usr/share/golden-gate/hypr/machine-conf.sh
+sh "$machine" "$conf/machine.conf" && head -n 1 "$conf/machine.conf" | logger -t gg-session
 
 # Hyprland must own the Wayland display before Quickshell starts, so the shell
 # is started from inside it (gg-session-start, citronos-session.target), not

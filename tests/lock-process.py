@@ -141,14 +141,17 @@ esac
 
 
 class GgLock(unittest.TestCase):
-    def run_gg_lock(self, *args, qs_ipc=0, systemctl=0):
+    def run_gg_lock(self, *args, qs_ipc=0, systemctl=0, prepare=None, extra=None):
         t = Path(tempfile.mkdtemp())
+        if prepare:
+            prepare(t)
         (t / "bin").mkdir()
         for name in ("qs", "systemctl", "nohup"):
             (t / "bin" / name).write_text(STUB if name != "nohup" else '#!/bin/sh\nexec "$@"\n')
             (t / "bin" / name).chmod(0o755)
         env = {"PATH": f"{t / 'bin'}:/usr/bin:/bin", "HOME": str(t), "XDG_RUNTIME_DIR": str(t),
                "CALLS": str(t / "calls"), "QS_IPC": str(qs_ipc), "SYSTEMCTL": str(systemctl)}
+        env.update({k: v.format(t=t) for k, v in (extra or {}).items()})
         subprocess.run(["sh", str(GG_LOCK), *args], env=env, timeout=10, check=True)
         subprocess.run(["sleep", "0.2"])
         calls = (t / "calls").read_text().splitlines() if (t / "calls").exists() else []
@@ -172,6 +175,22 @@ class GgLock(unittest.TestCase):
         t, calls = self.run_gg_lock("serve")
         self.assertEqual(calls, [f"qs -p {t}/.config/quickshell/golden-gate/lock-shell.qml"])
         self.assertFalse((t / "citronos-locked").exists(), "serving doesn't lock")
+
+    def test_the_systems_lock_screen(self):
+        """Packaged, the shell is in /etc/xdg (citronos-shell): found as Quickshell
+        finds `-c golden-gate`, after an account's own copy."""
+        def system_copy(t):
+            (t / "xdg/quickshell/golden-gate").mkdir(parents=True)
+            (t / "xdg/quickshell/golden-gate/lock-shell.qml").write_text("")
+        t, calls = self.run_gg_lock("serve", prepare=system_copy, extra={"XDG_CONFIG_DIRS": "{t}/none:{t}/xdg"})
+        self.assertEqual(calls, [f"qs -p {t}/xdg/quickshell/golden-gate/lock-shell.qml"])
+
+        def both(t):
+            system_copy(t)
+            (t / ".config/quickshell/golden-gate").mkdir(parents=True)
+            (t / ".config/quickshell/golden-gate/lock-shell.qml").write_text("")
+        t, calls = self.run_gg_lock("serve", prepare=both, extra={"XDG_CONFIG_DIRS": "{t}/xdg"})
+        self.assertEqual(calls, [f"qs -p {t}/.config/quickshell/golden-gate/lock-shell.qml"], "the account's own first")
 
 
 class Wiring(unittest.TestCase):

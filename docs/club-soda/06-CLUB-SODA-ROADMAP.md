@@ -86,7 +86,9 @@ Two tracks in parallel.
 - Accessible annotations on all shell surfaces.
 
 **Depends on:** M1 (lints, session harness).
-**Status:** the platform track has begun with the `citronos` Python package (T-2.4).
+**Status:** the platform track has the `citronos` Python package (T-2.4), `citronos-settingsd`
+(T-2.5) and `citronos-notifyd` (T-2.6); the packages (T-2.1) are built and installed in CI,
+with the ISO's switch to them and the signed repository to come.
 The design track: the design lint (T-2.8), role tokens (T-2.7)
 and the shell's accessibility annotations (T-2.11) are built, and the migration (T-2.10)
 has moved the type ramp and all six of the worst files (the lock screen, Calculator,
