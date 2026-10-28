@@ -332,7 +332,8 @@ if HAVE_QT:
     class Stand(preview.Preview):
         """The preview's system, with gg-pref run for real (the fallback)."""
         def __init__(self, env):
-            super().__init__({k: env[k] for k in ("XDG_CONFIG_HOME",)} | {"HOME": env.get("HOME", "/tmp")},
+            super().__init__({k: env[k] for k in ("XDG_CONFIG_HOME", "GG_PREFS_READONLY") if k in env}
+                             | {"HOME": env.get("HOME", "/tmp")},
                              str(ROOT / "shell"), "'default'")
             self.full_env = env
             self.ran = []
@@ -451,6 +452,18 @@ class QmlClients(unittest.TestCase):
             QTest.qWait(2)
         self.assertEqual(set(seen), {59}, "an earlier change's signal never flicks it back")
         self.assertEqual(self.js("shell.data.dock.size"), 59)
+
+    def test_the_lock_screen_reads_the_file_only(self):
+        """gg-lock sets GG_PREFS_READONLY: no bridge beside the lock screen,
+        which reads the file (watched, by Quickshell's FileView; the preview's
+        stand-in reads it once)."""
+        self.bus.gg_pref("lockScreen.message", '"Back soon"')
+        self.load({**self.bus.env, "GG_PREFS_READONLY": "1"})
+        self.wait("shell.data.lockScreen && shell.data.lockScreen.message === 'Back soon'")
+        QTest.qWait(500)
+        self.assertEqual(self.spawner.live, [], "no bridge was started")
+        self.assertFalse(self.js("shell.viaService"))
+        self.assertIn("export GG_PREFS_READONLY=1", (ROOT / "compositor/hyprland/lock.sh").read_text())
 
     def test_without_the_service_gg_pref_saves_it(self):
         env = {**self.bus.env, "DBUS_SESSION_BUS_ADDRESS": "unix:path=/nonexistent/bus"}

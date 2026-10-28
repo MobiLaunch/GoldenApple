@@ -46,7 +46,7 @@ jobs:
               pacman -Syu --noconfirm --needed quickshell hyprland sway grim qt6-declarative qt6-wayland qt6-svg \
                 qt6-shadertools qt6-5compat qt6-multimedia qt6-imageformats dbus dconf glib2 gsettings-desktop-schemas \
                 python python-pillow mesa inter-font ttf-jetbrains-mono adwaita-icon-theme hicolor-icon-theme \
-                libnotify upower pipewire wireplumber util-linux procps-ng iproute2 openssl librsvg imagemagick jq gtk3 wtype >/dev/null && break
+                libnotify python-dbus-next upower pipewire wireplumber util-linux procps-ng iproute2 openssl librsvg imagemagick jq gtk3 wtype >/dev/null && break
               [ "$try" = 3 ] && exit 1
               sleep $((try * 20))
             done

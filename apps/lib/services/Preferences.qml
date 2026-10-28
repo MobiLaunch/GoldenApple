@@ -8,7 +8,8 @@
 // Changed signals keep `data` current, key by key, and a value that doesn't
 // fit the schema is refused with the reason. Without it (before it starts,
 // or if it can't), the file is read and watched and gg-pref writes, with the
-// same schema and lock, so nothing is lost either way.
+// same schema and lock, so nothing is lost either way. GG_PREFS_READONLY=1 (the
+// lock screen's process) reads the file only, and starts no bridge.
 import Quickshell
 import Quickshell.Io
 import QtQuick
@@ -19,6 +20,7 @@ QtObject {
     property string domain: "desktop"
     property var data: ({})
     readonly property bool viaService: store.settingsd.ready
+    readonly property bool useService: Quickshell.env("GG_PREFS_READONLY") !== "1"
     readonly property string file: (Quickshell.env("XDG_CONFIG_HOME") || Quickshell.env("HOME") + "/.config") + "/golden-gate/" + domain + ".json"
     signal restored(string message)          // a damaged file was put back from its last good copy
 
@@ -26,6 +28,7 @@ QtObject {
         service: "org.citronos.Settings1"
         path: "/org/citronos/Settings1"
         signalNames: ["Changed", "Restored"]
+        active: store.useService
         onReadyChanged: {
             if (ready) call("GetAll", [store.domain], (ok, result) => { if (ok) store.data = store.withShown(JSON.parse(result[0])) })
             else store.desktopFile.reload()

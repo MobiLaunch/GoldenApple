@@ -7,6 +7,10 @@
 # once. The lock screen removes it when the session is unlocked.
 lock="${XDG_CONFIG_HOME:-$HOME/.config}/quickshell/golden-gate/lock-shell.qml"
 marker="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/citronos-locked"
+# The lock screen only reads preferences (the wallpaper, Touch ID, its
+# message): from the file, watched, with no D-Bus bridge to start beside it
+# each time it starts (apps/lib/services/Preferences.qml).
+export GG_PREFS_READONLY=1
 
 if [ "${1:-}" = serve ]; then exec qs -p "$lock"; fi
 
