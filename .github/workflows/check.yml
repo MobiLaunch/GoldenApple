@@ -283,6 +283,8 @@ jobs:
         run: python tests/settings-store.py
       - name: "Preferences on D-Bus: citronos-settingsd, the bridge and its QML clients (private bus, activation, latency)"
         run: python tests/settingsd.py
+      - name: "Notifications on D-Bus: citronos-notifyd, history, Focus rules, LauncherEntry badges"
+        run: python tests/notifyd.py
       - name: "AirDrop: off until turned on, nothing listens while off, 10 minutes expire, HTTPS only"
         run: python tests/airdrop.py
       - name: "Firewall: public networks reach nothing; wired and password Wi-Fi reach AirDrop and AirPlay"

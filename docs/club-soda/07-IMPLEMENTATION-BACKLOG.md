@@ -402,6 +402,24 @@ same fields, more briefly, and should be expanded when their milestone starts.
 | T-2.11 | Accessible annotations in the shell | CS2-013 | `shell/Dock.qml`, `Spotlight.qml`, `Notifications.qml`, `DesktopWidgets.qml`, `CitronPodsPopup.qml`, `apps/maps.qml`, `apps/calculator.qml` | `Accessible.role`, `name`, `onPressAction` | The design lint's accessibility rule passes for `shell/` |
 
 **As built (M2 so far):**
+- **T-2.6, `citronos-notifyd` + LauncherEntry · in progress: the service.**
+  `services/notifyd/notifyd.py` owns `org.freedesktop.Notifications` (spec 1.2: actions,
+  body, static icons, persistence) and serves the shell as `org.citronos.Notifications1`
+  (`List`, `Dismiss`, `DismissApp`, `Invoke`, `Badges`; `Added`, `Removed`,
+  `BadgesChanged`). The history is SQLite (`~/.local/state/golden-gate/notifications.db`,
+  0600, the newest 300; transient ones aren't kept), so it outlives the shell and the
+  service itself. It applies each app's Settings choice (an app that isn't allowed is
+  dropped but still listed in `notifiers.json`, so Settings can allow it again) and Focus
+  decides as each one arrives (`quiet`: no banner, no sound). Focus's rules are a Python port
+  of `FocusPolicy.js` (`citronos.focus`); a contract test runs 100+ cases, a DST change
+  among them, through both, so they can't drift apart. An `image-data` hint becomes a
+  private PNG, removed with its notification. Badges and progress come from
+  `com.canonical.Unity.LauncherEntry`, which Electron, Qt and GTK apps already broadcast,
+  and go when the app leaves the bus. Started with the session (`citronos-notifyd.service`,
+  before the shell) and activatable under both names. `tests/notifyd.py` (13, in CI): a
+  real app on a private bus sending, replacing, closing and hearing its actions; history
+  across a killed service; Settings' allow and Focus; images; the limit; LauncherEntry
+  badges coming and going. Next: the shell as its client, and Mail's badge through it.
 - **T-2.5, `citronos-settingsd` · done.** `citronos.settings` with
   `settings-schema.json`: every `desktop.json` key with a type (bool, number with a range,
   string with its choices, list, object, map) and a default. `gg-pref`, which every writer

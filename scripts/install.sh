@@ -38,6 +38,7 @@ install_extras() {
   install -Dm644 "$REPO/apps/setup/save-preferences.py" "$R/usr/lib/golden-gate/save-preferences.py"
   install -Dm755 "$REPO/apps/setup/pref-helper.py" "$R/usr/lib/golden-gate/pref-helper.py"
   install -Dm755 "$REPO/services/settingsd/settingsd.py" "$R/usr/lib/golden-gate/settingsd.py"
+  install -Dm755 "$REPO/services/notifyd/notifyd.py" "$R/usr/lib/golden-gate/notifyd.py"
   install -Dm755 "$REPO/compositor/hyprland/hyprglass-sync.sh" "$R/usr/lib/golden-gate/hyprglass-sync.sh"
   install -Dm755 "$REPO/compositor/hyprland/apply-preferences.sh" "$R/usr/lib/golden-gate/apply-preferences.sh"
   install -Dm755 "$REPO/compositor/hyprland/tile.py" "$R/usr/lib/golden-gate/tile.py"
@@ -107,9 +108,11 @@ install_extras() {
   chmod 755 "$BIN/gg-disk-utility"
   printf '#!/bin/sh\nexec python3 /usr/lib/golden-gate/pref-helper.py "$@"\n' > "$BIN/gg-pref"
   printf '#!/bin/sh\nexec python3 /usr/lib/golden-gate/settingsd.py "$@"\n' > "$BIN/gg-settingsd"
-  # Preferences on the session bus (citronos-settingsd), started on first use.
-  sed 's#@BIN@#/usr/local/bin#' "$REPO/distro/dbus/org.citronos.Settings1.service" \
-    | install -Dm644 /dev/stdin "$R/usr/share/dbus-1/services/org.citronos.Settings1.service"
+  printf '#!/bin/sh\nexec python3 /usr/lib/golden-gate/notifyd.py "$@"\n' > "$BIN/gg-notifyd"
+  # The session's services on the bus (citronos-settingsd, citronos-notifyd), started on first use.
+  for f in "$REPO"/distro/dbus/*.service; do
+    sed 's#@BIN@#/usr/local/bin#' "$f" | install -Dm644 /dev/stdin "$R/usr/share/dbus-1/services/${f##*/}"
+  done
   printf '#!/bin/sh\nexec /usr/lib/golden-gate/hyprglass-sync.sh "$@"\n' > "$BIN/gg-hyprglass-sync"
   printf '#!/bin/sh\nexec /usr/lib/golden-gate/apply-preferences.sh "$@"\n' > "$BIN/gg-apply-preferences"
   printf '#!/bin/sh\nexec python3 /usr/lib/golden-gate/tile.py "$@"\n' > "$BIN/gg-tile"
@@ -123,7 +126,7 @@ install_extras() {
   for unit in "$REPO"/distro/systemd/user/citronos-*; do
     install -Dm644 "$unit" "$R/usr/lib/systemd/user/${unit##*/}"
   done
-  chmod 755 "$BIN/gg-diagnostics" "$BIN/gg-settings" "$BIN/gg-web" "$BIN/gg-install" "$BIN/gg-software" "$BIN/gg-files" "$BIN/gg-archive" "$BIN/gg-lcode" "$BIN/gg-airdrop" "$BIN/gg-pref" "$BIN/gg-settingsd" "$BIN/gg-hyprglass-sync" "$BIN/gg-apply-preferences" "$BIN/gg-tile" "$BIN/gg-icon-resolver" "$BIN/gg-idle" "$BIN/gg-mac-open" "$BIN/gg-session"
+  chmod 755 "$BIN/gg-diagnostics" "$BIN/gg-settings" "$BIN/gg-web" "$BIN/gg-install" "$BIN/gg-software" "$BIN/gg-files" "$BIN/gg-archive" "$BIN/gg-lcode" "$BIN/gg-airdrop" "$BIN/gg-pref" "$BIN/gg-settingsd" "$BIN/gg-notifyd" "$BIN/gg-hyprglass-sync" "$BIN/gg-apply-preferences" "$BIN/gg-tile" "$BIN/gg-icon-resolver" "$BIN/gg-idle" "$BIN/gg-mac-open" "$BIN/gg-session"
   mkdir -p "$R/usr/share/wayland-sessions"
   cat > "$R/usr/share/wayland-sessions/golden-gate.desktop" <<'EOF'
 [Desktop Entry]
@@ -404,15 +407,17 @@ RUNTIME="$DATA/golden-gate/runtime"
 mkdir -p "$RUNTIME"
 cp "$REPO/apps/setup/pref-helper.py" "$RUNTIME/pref-helper.py"
 cp "$REPO/services/settingsd/settingsd.py" "$RUNTIME/settingsd.py"
+cp "$REPO/services/notifyd/notifyd.py" "$RUNTIME/notifyd.py"
 cp "$REPO/compositor/hyprland/hyprglass-sync.sh" "$RUNTIME/hyprglass-sync.sh"
 cp "$REPO/compositor/hyprland/apply-preferences.sh" "$RUNTIME/apply-preferences.sh"
 cp "$REPO/compositor/hyprland/tile.py" "$RUNTIME/tile.py"
 cp "$REPO/icons/icon-resolver.py" "$RUNTIME/icon-resolver.py"
 cp "$REPO/compositor/hyprland/idle.py" "$RUNTIME/idle.py"
-chmod 755 "$RUNTIME/pref-helper.py" "$RUNTIME/settingsd.py" "$RUNTIME/hyprglass-sync.sh" "$RUNTIME/apply-preferences.sh" "$RUNTIME/tile.py" "$RUNTIME/icon-resolver.py" "$RUNTIME/idle.py"
+chmod 755 "$RUNTIME/pref-helper.py" "$RUNTIME/settingsd.py" "$RUNTIME/notifyd.py" "$RUNTIME/hyprglass-sync.sh" "$RUNTIME/apply-preferences.sh" "$RUNTIME/tile.py" "$RUNTIME/icon-resolver.py" "$RUNTIME/idle.py"
 if [[ $MODE == system ]]; then
   printf '#!/bin/sh\nexec python3 /usr/share/golden-gate/runtime/pref-helper.py "$@"\n' > "$BIN/gg-pref"
   printf '#!/bin/sh\nexec python3 /usr/share/golden-gate/runtime/settingsd.py "$@"\n' > "$BIN/gg-settingsd"
+  printf '#!/bin/sh\nexec python3 /usr/share/golden-gate/runtime/notifyd.py "$@"\n' > "$BIN/gg-notifyd"
   printf '#!/bin/sh\nexec /usr/share/golden-gate/runtime/hyprglass-sync.sh "$@"\n' > "$BIN/gg-hyprglass-sync"
   printf '#!/bin/sh\nexec /usr/share/golden-gate/runtime/apply-preferences.sh "$@"\n' > "$BIN/gg-apply-preferences"
   printf '#!/bin/sh\nexec python3 /usr/share/golden-gate/runtime/tile.py "$@"\n' > "$BIN/gg-tile"
@@ -421,13 +426,14 @@ if [[ $MODE == system ]]; then
 else
   printf '#!/bin/sh\nexec python3 "%s/pref-helper.py" "$@"\n' "$RUNTIME" > "$BIN/gg-pref"
   printf '#!/bin/sh\nexec python3 "%s/settingsd.py" "$@"\n' "$RUNTIME" > "$BIN/gg-settingsd"
+  printf '#!/bin/sh\nexec python3 "%s/notifyd.py" "$@"\n' "$RUNTIME" > "$BIN/gg-notifyd"
   printf '#!/bin/sh\nexec "%s/hyprglass-sync.sh" "$@"\n' "$RUNTIME" > "$BIN/gg-hyprglass-sync"
   printf '#!/bin/sh\nexec "%s/apply-preferences.sh" "$@"\n' "$RUNTIME" > "$BIN/gg-apply-preferences"
   printf '#!/bin/sh\nexec python3 "%s/tile.py" "$@"\n' "$RUNTIME" > "$BIN/gg-tile"
   printf '#!/bin/sh\nexec python3 "%s/icon-resolver.py" "$@"\n' "$RUNTIME" > "$BIN/gg-icon-resolver"
   printf '#!/bin/sh\nexec python3 "%s/idle.py" "$@"\n' "$RUNTIME" > "$BIN/gg-idle"
 fi
-chmod +x "$BIN/gg-settings" "$BIN/gg-software" "$BIN/gg-mac-open" "$BIN/gg-files" "$BIN/gg-archive" "$BIN/gg-lcode" "$BIN/gg-airdrop" "$BIN/gg-pref" "$BIN/gg-settingsd" "$BIN/gg-hyprglass-sync" "$BIN/gg-apply-preferences" "$BIN/gg-tile" "$BIN/gg-icon-resolver" "$BIN/gg-idle"
+chmod +x "$BIN/gg-settings" "$BIN/gg-software" "$BIN/gg-mac-open" "$BIN/gg-files" "$BIN/gg-archive" "$BIN/gg-lcode" "$BIN/gg-airdrop" "$BIN/gg-pref" "$BIN/gg-settingsd" "$BIN/gg-notifyd" "$BIN/gg-hyprglass-sync" "$BIN/gg-apply-preferences" "$BIN/gg-tile" "$BIN/gg-icon-resolver" "$BIN/gg-idle"
 # The session's services: gg-session-start (hyprland.conf) and their units.
 install -m755 "$REPO/compositor/hyprland/session-start.sh" "$BIN/gg-session-start"
 install -m755 "$REPO/compositor/hyprland/lock.sh" "$BIN/gg-lock"
@@ -435,11 +441,13 @@ if [[ $MODE == system ]]; then UNITS="$ROOT/usr/lib/systemd/user"; else UNITS="$
 for unit in "$REPO"/distro/systemd/user/citronos-*; do
   install -Dm644 "$unit" "$UNITS/${unit##*/}"
 done
-# Preferences on the session bus (citronos-settingsd), started on first use.
+# The session's services on the bus (citronos-settingsd, citronos-notifyd), started on first use.
 if [[ $MODE == system ]]; then DBUS_SERVICES="$ROOT/usr/share/dbus-1/services"; BIN_RUN=/usr/local/bin
 else DBUS_SERVICES="$DATA/dbus-1/services"; BIN_RUN="$BIN"; fi
 mkdir -p "$DBUS_SERVICES"
-sed "s#@BIN@#$BIN_RUN#" "$REPO/distro/dbus/org.citronos.Settings1.service" > "$DBUS_SERVICES/org.citronos.Settings1.service"
+for f in "$REPO"/distro/dbus/*.service; do
+  sed "s#@BIN@#$BIN_RUN#" "$f" > "$DBUS_SERVICES/${f##*/}"
+done
 if [[ $MODE == user ]] && command -v systemctl >/dev/null 2>&1; then
   systemctl --user daemon-reload >/dev/null 2>&1 || :
 fi

@@ -1,0 +1,17 @@
+# CitronOS notifications and app badges (services/notifyd): the session's
+# org.freedesktop.Notifications, with a history that outlives the shell, and
+# com.canonical.Unity.LauncherEntry badges. Started with the session so no
+# notification sent at login is missed; D-Bus activation starts it otherwise.
+[Unit]
+Description=CitronOS notifications
+PartOf=citronos-session.target
+
+[Service]
+Type=dbus
+BusName=org.citronos.Notifications1
+ExecStart=/usr/bin/env gg-notifyd
+Restart=on-failure
+RestartSec=1
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=citronos-notifyd

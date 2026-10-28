@@ -38,7 +38,8 @@ class PrivateBus:
     """A session bus of our own, with citronos-settingsd activatable on it
     and a notify-send that writes down what it was asked to show."""
 
-    def __init__(self):
+    def __init__(self, services=None):
+        services = services or {SETTINGS[0]: SERVICE}
         self.tmp = tempfile.TemporaryDirectory()
         self.root = Path(self.tmp.name)
         self.sock = Path(tempfile.mkdtemp(prefix="ggbus.", dir="/tmp"))   # short: a socket path has a limit
@@ -48,14 +49,16 @@ class PrivateBus:
         notify = self.root / "bin/notify-send"
         notify.write_text(f"#!/bin/sh\nprintf '%s\\n' \"$*\" >> {self.root}/notified\n")
         notify.chmod(0o755)
-        (self.root / "services/org.citronos.Settings1.service").write_text(
-            f"[D-BUS Service]\nName={SETTINGS[0]}\nExec={sys.executable} {SERVICE}\n")
+        for name, script in services.items():
+            (self.root / f"services/{name}.service").write_text(
+                f"[D-BUS Service]\nName={name}\nExec={sys.executable} {script}\n")
         (self.root / "bus.conf").write_text(
             f"<busconfig><type>session</type><listen>unix:dir={self.sock}</listen>"
             f"<servicedir>{self.root}/services</servicedir><policy context='default'>"
             "<allow send_destination='*' eavesdrop='true'/><allow eavesdrop='true'/><allow own='*'/>"
             "</policy></busconfig>")
-        self.env = {**os.environ, "XDG_CONFIG_HOME": str(self.config),
+        self.env = {**os.environ, "XDG_CONFIG_HOME": str(self.config), "XDG_STATE_HOME": str(self.root / "state"),
+                    "XDG_CACHE_HOME": str(self.root / "cache"),
                     "PATH": f"{self.root}/bin:{os.environ['PATH']}"}
         out = subprocess.run(["dbus-daemon", f"--config-file={self.root}/bus.conf", "--print-address=1",
                               "--print-pid=1", "--fork"], env=self.env, capture_output=True, text=True, check=True)
@@ -493,7 +496,7 @@ class Packaging(unittest.TestCase):
         self.assertIn("SystemdService=citronos-settingsd.service", activation)
         install = (ROOT / "scripts/install.sh").read_text()
         self.assertIn("services/settingsd/settingsd.py", install)
-        self.assertIn("dbus-1/services/org.citronos.Settings1.service", install)
+        self.assertIn('"$REPO"/distro/dbus/*.service', install)
         self.assertIn('"$BIN/gg-settingsd"', install)
         build = (ROOT / "distro/archiso/build.sh").read_text()
         self.assertIn('["/usr/local/bin/gg-settingsd"]="0:0:755"', build)
