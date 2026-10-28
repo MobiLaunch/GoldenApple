@@ -13,7 +13,7 @@ tools/preview/gallery.sh /tmp/gallery          # every surface and app, light an
 
 `--do target.function[:arg…]` calls an `IpcHandler`, as `qs ipc call` would.
 `--crop x,y,w,h` keeps part of the screen.
-`--idle-frames SECONDS` counts the frames drawn over that long left alone,
+`--idle-frames SECONDS` counts the frames drawn in each second of that long left alone,
 with the clocks running (they're stopped at 9:41 otherwise), instead of
 taking a screenshot: anything that keeps the shell drawing at rest shows up
 (`tests/idle-frames.py`).

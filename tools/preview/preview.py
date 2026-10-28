@@ -580,7 +580,7 @@ def main() -> int:
                     help="fail when a required loaded QML objectName is absent (catches empty Loader panes)")
     ap.add_argument("--expect-menu", default="",
                     help="assert that the menu bar actually shows this menu after IPC steps")
-    ap.add_argument("--idle-frames", type=float, default=0, metavar="SECONDS",
+    ap.add_argument("--idle-frames", type=int, default=0, metavar="SECONDS",
                     help="instead of a screenshot, count the frames drawn over SECONDS left alone (clocks running)")
     ap.add_argument("-v", "--verbose", action="store_true")
     a = ap.parse_args()
@@ -684,13 +684,20 @@ def main() -> int:
 
     def finish():
         if a.idle_frames:
-            frames = [0]
+            frames, seconds = [0], []
             window.frameSwapped.connect(lambda: frames.__setitem__(0, frames[0] + 1))
 
-            def counted():
-                print(f"idle frames: {frames[0]} in {a.idle_frames:g} s")
+            def second():
+                seconds.append(frames[0])
+                frames[0] = 0
+                if len(seconds) < a.idle_frames:
+                    return
+                timer.stop()
+                print(f"idle frames: {sum(seconds)} in {len(seconds)} s (each second: {' '.join(map(str, seconds))})")
                 app.quit()
-            QTimer.singleShot(int(a.idle_frames * 1000), counted)
+            timer = QTimer()
+            timer.timeout.connect(second)
+            timer.start(1000)
             return
         if a.expect_menu:
             # Inspect the *live* QML model, not pixels from a translucent

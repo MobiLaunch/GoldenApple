@@ -8,14 +8,15 @@ a warning, not a failure, because CI machines vary.
 
 ## CI (4 cores, AMD EPYC 7763; headless Sway, software rendering)
 
-Recorded 2026-10-28, Session run 34 (`e00ad14`).
+Recorded 2026-10-28, Session run 37 (`820d7e2`), after the Clock widget's fix below. Run 34
+(`e00ad14`), before it, in brackets.
 
 | | Shell | Helpers (its D-Bus bridges) | Services (settingsd, notifyd) |
 |---|---|---|---|
-| Starting to "desktop ready" | 752 ms median, 773 ms p90 (5 starts) | | |
-| Resident memory, a minute and more in | 673 MB | 87 MB | 54 MB |
-| CPU, 60 s idle, a window behind the Dock, glass windows on | 15.9 % of a core | 0.45 % | 0.32 % |
-| The same, glass windows off | 15.4 % | 0.58 % | 0.30 % |
+| Starting to "desktop ready" | 751 ms median, 762 ms p90 (5 starts) [752, 773] | | |
+| Resident memory, a minute and more in | 663 MB [673] | 87 MB | 54 MB |
+| CPU, 60 s idle, a window behind the Dock, glass windows on | 1.6 % of a core [15.9] | 0.43 % | 0.30 % |
+| The same, glass windows off | 1.6 % [15.4] | 0.40 % | 0.28 % |
 
 ## What it says
 
@@ -31,8 +32,8 @@ Recorded 2026-10-28, Session run 34 (`e00ad14`).
   6 s at rest. Now the minute and second hands step, as a quartz watch's do, and only the
   hour hand springs, once a minute: 7 frames in 6 s, the second hand's step.
   `tests/idle-frames.py` keeps it there. The clock face also keeps its own seconds, so the
-  shared feed every other widget reads goes by the minute. The next Session run gives the
-  new idle number.
+  shared feed every other widget reads goes by the minute. Run 37: **1.6 % of a core** at
+  rest, each of the render and rasterizing threads at about 0.3 %.
 - **673 MB resident** is a lot for a shell. Some of it is software rendering's surfaces kept
   in memory. How much is the shell's own (Launchpad's grid, Tablet Home, every screen's
   surfaces built at start, CS2-025) needs the laptop's number, with a GPU, beside this one.
@@ -56,7 +57,14 @@ The delay is now 200 ms (`citronos-lock.service`), with systemd backing off to e
 for a lock screen that keeps failing, so it can't spin. The compositor keeps the session
 locked throughout. In run 36 (`9316376`) the process was up after 0.41-0.47 s, its
 configuration loaded by 0.66-0.75 s, and the lock held again by 1.9-2.6 s: 5 of 5 within
-the 3 s goal, with about 0.4 s to spare.
+the 3 s goal, with about 0.4 s to spare. Run 37, on another runner, took 2.8-3.1 s with the
+process up and loaded just as soon: the time went between its configuration loading and the
+compositor taking its lock. Quickshell's crash handler forks a reporter, which writes a dump
+of the crashed process and keeps its compositor connection, and so its lock, open until
+it's done; the new lock screen's lock is refused meanwhile, and asked for again every
+300 ms. `gg-lock` now turns the crash handler off for the lock screen
+(`QS_DISABLE_CRASH_HANDLER=1`), which also keeps a password being typed out of any dump. The
+harness checks that the five killed lock screens leave no dump.
 
 ## The laptop run (manual)
 

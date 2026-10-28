@@ -187,6 +187,11 @@ class Wiring(unittest.TestCase):
         self.assertEqual(c["Unit"]["PartOf"], "citronos-session.target")
         self.assertIn("citronos-lock.service", (ROOT / "distro/systemd/user/citronos-session.target").read_text())
 
+    def test_no_crash_handler(self):
+        """A crashed lock screen leaves no dump (a password being typed is in
+        its memory), and nothing holds its lock open after it."""
+        self.assertIn("export QS_DISABLE_CRASH_HANDLER=1\n", (ROOT / "compositor/hyprland/lock.sh").read_text())
+
     def test_hyprland_keeps_the_session_locked_for_it(self):
         self.assertIn("allow_session_lock_restore = true", (ROOT / "compositor/hyprland/hyprland.conf").read_text())
 

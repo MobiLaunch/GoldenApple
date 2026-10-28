@@ -11,6 +11,12 @@ marker="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/citronos-locked"
 # message): from the file, watched, with no D-Bus bridge to start beside it
 # each time it starts (apps/lib/services/Preferences.qml).
 export GG_PREFS_READONLY=1
+# No crash handler: Quickshell's forks a reporter that writes a dump of the
+# process (whatever password was being typed included) and holds its
+# compositor connection, and so its lock, open until it's done, so the next
+# lock screen couldn't lock until then. A crashed lock screen leaves no report;
+# it comes straight back.
+export QS_DISABLE_CRASH_HANDLER=1
 
 if [ "${1:-}" = serve ]; then exec qs -p "$lock"; fi
 

@@ -233,6 +233,7 @@ for _ in $(seq 25); do [[ $(lock_state) == true ]] && break; sleep 0.2; done
 sleep 1
 shot dark-lock; shots+=(dark-lock)
 restored=0 times=()
+touch "$OUT/.lock-kills-start"
 for round in 1 2 3 4 5; do
   old=$(lock_pid)
   [[ -n $old ]] || { echo "  kill $round: no lock screen to kill"; break; }
@@ -275,6 +276,12 @@ if [[ $restored != 5 ]]; then
   echo "::endgroup::"
 fi
 shot dark-lock-restored; shots+=(dark-lock-restored)
+# gg-lock turns Quickshell's crash handler off for the lock screen: a crashed
+# one leaves no dump of its memory (a password being typed), and no reporter
+# holds its lock open after it.
+lock_dumps=$(find "$CRASHES" -mindepth 1 -maxdepth 1 -newer "$OUT/.lock-kills-start" 2>/dev/null | wc -l)
+say "the killed lock screens left no crash dump ($lock_dumps)"
+[[ $lock_dumps == 0 ]] || fail "the killed lock screens left $lock_dumps crash dumps"
 
 # Signing in, typed on the lock screen with a virtual keyboard: a wrong
 # password keeps it locked; the account's own unlocks it and clears the marker.
