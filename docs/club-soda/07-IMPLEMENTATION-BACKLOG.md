@@ -402,7 +402,7 @@ same fields, more briefly, and should be expanded when their milestone starts.
 | T-2.11 | Accessible annotations in the shell | CS2-013 | `shell/Dock.qml`, `Spotlight.qml`, `Notifications.qml`, `DesktopWidgets.qml`, `CitronPodsPopup.qml`, `apps/maps.qml`, `apps/calculator.qml` | `Accessible.role`, `name`, `onPressAction` | The design lint's accessibility rule passes for `shell/` |
 
 **As built (M2 so far):**
-- **T-2.6, `citronos-notifyd` + LauncherEntry · in progress: the service.**
+- **T-2.6, `citronos-notifyd` + LauncherEntry · done.**
   `services/notifyd/notifyd.py` owns `org.freedesktop.Notifications` (spec 1.2: actions,
   body, static icons, persistence) and serves the shell as `org.citronos.Notifications1`
   (`List`, `Dismiss`, `DismissApp`, `Invoke`, `Badges`; `Added`, `Removed`,
@@ -419,7 +419,25 @@ same fields, more briefly, and should be expanded when their milestone starts.
   before the shell) and activatable under both names. `tests/notifyd.py` (13, in CI): a
   real app on a private bus sending, replacing, closing and hearing its actions; history
   across a killed service; Settings' allow and Focus; images; the limit; LauncherEntry
-  badges coming and going. Next: the shell as its client, and Mail's badge through it.
+  badges coming and going.
+
+  **The shell as its client.** `shell/Notifications.qml` reaches notifyd through the bridge
+  (`DBusObject`): banners, Notification Center and the Dock's badges come from its records,
+  wrapped to look like Quickshell's notifications, so the cards, actions, dismissing and
+  grouping are unchanged. Focus's decision (`quiet`) is notifyd's, made as each arrives; the
+  app's banner and sound choices stay the shell's. Only if the bridge can't reach notifyd at
+  all (`DBusObject.unreachable`, not while it's restarting) does the shell become the server
+  itself, as before; otherwise there'd be two. The Dock shows an app's own count when it
+  keeps one (LauncherEntry) and its progress as a bar across the icon's foot. CitronOS's own
+  apps, whose helpers come and go, use `SetBadge(app, count)`, kept in the database until
+  changed: Mail's helper sends its unread count that way (with `gdbus`) and still writes
+  `mail-badges.json` for a shell without notifyd. That is CS2-024's check: kill the shell and
+  the history is intact; an Electron app's badge shows. `tests/notifyd.py` (20) adds the
+  production `Notifications.qml` against the real service: banners and Notification Center,
+  an action reaching the app, Focus keeping one out of the banners, the history across a
+  shell restart, badges and progress for the Dock, Mail's badge across a service restart, and
+  the shell standing in when there's no bus. The existing notification suites still run the
+  stand-in path in the preview.
 - **T-2.5, `citronos-settingsd` · done.** `citronos.settings` with
   `settings-schema.json`: every `desktop.json` key with a type (bool, number with a range,
   string with its choices, list, object, map) and a default. `gg-pref`, which every writer

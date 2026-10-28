@@ -242,6 +242,25 @@ class Service(unittest.TestCase):
         self.assertEqual(badges, {})
 
 
+    @unittest.skipUnless(shutil.which("gdbus"), "needs gdbus (glib2)")
+    def test_mail_keeps_its_badge_while_closed(self):
+        """Mail's helper runs and exits: its badge (SetBadge) stays, even across
+        the service restarting, until Mail changes it."""
+        def save(uids):
+            subprocess.run([sys.executable, "-c", "import sys; sys.path.insert(0, sys.argv[1]); import helper; "
+                            "helper.save_badge('me@example.com', sys.argv[2:])", str(ROOT / "apps/mail"), *uids],
+                           env=self.bus.env, check=True, timeout=30)
+        save(["1", "2", "3"])
+        badges = json.loads(self.shell.expect(lambda m: m.get("signal") == "BadgesChanged")["args"][0])
+        self.assertEqual(badges, {"org.goldengate.Mail": {"count": 3}})
+        self.assertEqual(json.loads((self.bus.root / "state/golden-gate/mail-badges.json").read_text())["unread"], 3,
+                         "and the file a shell without notifyd reads")
+        self.restart_service()
+        self.assertEqual(json.loads(self.client().call("Badges")["result"][0]), badges)
+        save([])
+        self.assertEqual(json.loads(self.shell.expect(lambda m: m.get("signal") == "BadgesChanged")["args"][0]), {})
+
+
 class History(unittest.TestCase):
     def test_the_oldest_go_past_the_limit(self):
         sys.path.insert(0, str(SERVICE.parent))
@@ -257,6 +276,141 @@ class History(unittest.TestCase):
             self.assertEqual(gone, [1, 2, 3, 4, 5])
             self.assertEqual(len(store.all()), notifyd.HISTORY)
             self.assertEqual((Path(tmp) / "notifications.db").stat().st_mode & 0o777, 0o600)
+
+
+@unittest.skipUnless(harness.HAVE_BUS and harness.HAVE_QT, "needs dbus-daemon, dbus-next and PySide6")
+class ShellClient(unittest.TestCase):
+    """The production shell/Notifications.qml as notifyd's client, with the
+    real bridge: banners, Notification Center's list, actions, Focus, the
+    history across a shell restart, and badges for the Dock."""
+
+    def setUp(self):
+        self.bus = harness.PrivateBus({FDO: SERVICE, OURS[0]: SERVICE})
+        self.addCleanup(self.bus.close)
+        self.app = App(self.bus.env)
+        self.addCleanup(self.app.close)
+        self.engine = None
+
+    def load(self):
+        from PySide6.QtCore import QObject, QUrl
+        from PySide6.QtQml import QQmlApplicationEngine
+        from PySide6.QtTest import QTest
+        if self.engine:
+            self.unload()
+        self.stand = harness.Stand(self.bus.env)
+        self.spawner = harness.Spawner(self.bus.env)
+        self.engine = QQmlApplicationEngine()
+        self.interceptor = harness.preview.SingletonDirs()
+        self.engine.addUrlInterceptor(self.interceptor)
+        self.engine.addImportPath(str(ROOT / "tools/preview/qml"))
+        self.engine.rootContext().setContextProperty("__preview", self.stand)
+        self.engine.rootContext().setContextProperty("__spawner", self.spawner)
+        # The production file, in the preview's desktop (as notification-banners.py has it).
+        self.engine.setInitialProperties({"targetUrl": QUrl.fromLocalFile(str(ROOT / "shell/Notifications.qml"))})
+        self.engine.load(QUrl.fromLocalFile(str(ROOT / "tools/preview/Desktop.qml")))
+        self.assertTrue(self.engine.rootObjects())
+        self.root = self.engine.rootObjects()[0]
+        QTest.qWait(30)
+        self.n = None
+        stack, seen = [self.root], set()
+        while stack and self.n is None:
+            o = stack.pop()
+            if id(o) in seen:
+                continue
+            seen.add(id(o))
+            if o.objectName() == "notifications":
+                self.n = o
+            stack.extend(o.children())
+        self.assertIsNotNone(self.n, "shell/Notifications.qml didn't load")
+
+    def unload(self):
+        for p in self.spawner.live:
+            p.kill()
+        self.root.deleteLater()
+        self.engine.deleteLater()
+        harness.APP.processEvents()
+        self.engine = None
+
+    def tearDown(self):
+        if self.engine:
+            self.unload()
+
+    def js(self, expression):
+        from PySide6.QtQml import QQmlEngine, QQmlExpression
+        e = QQmlExpression(QQmlEngine.contextForObject(self.n), self.n, expression)
+        v = e.evaluate()[0]
+        self.assertFalse(e.hasError(), e.error().toString())
+        return v.toVariant() if hasattr(v, "toVariant") else v
+
+    def wait(self, expression, timeout=10):
+        from PySide6.QtTest import QTest
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            if self.js(expression):
+                return
+            QTest.qWait(20)
+        self.fail(f"timed out waiting for {expression}")
+
+    def test_banners_and_notification_center_come_from_notifyd(self):
+        self.load()
+        self.wait("viaService")
+        self.assertTrue(self.js("fallback.item === null"), "the shell isn't a second server")
+        nid = self.app.notify(app="Calendar", summary="Design review", body="Today at 10:30",
+                              hints={"desktop-entry": ["s", "org.goldengate.Calendar"]})
+        self.wait("banners.length === 1 && list.length === 1")
+        self.assertEqual(self.js("banners[0].summary"), "Design review")
+        self.assertEqual(self.js(f"timeLabel(list[0])"), "now")
+        self.js("list[0].dismiss()")
+        self.wait("list.length === 0 && banners.length === 0")
+        self.assertEqual(self.app.expect(lambda m: m.get("signal") == "NotificationClosed")["args"], [nid, 2])
+
+    def test_opening_one_runs_its_action(self):
+        self.load()
+        self.wait("viaService")
+        nid = self.app.notify(actions=["default", "Show", "later", "Later"])
+        self.wait("list.length === 1")
+        self.assertEqual(self.js("list[0].actions.map((a) => a.text)"), ["Show", "Later"])
+        self.js("open(list[0])")
+        self.wait("list.length === 0")              # (Qt's event loop sends the call to the bridge)
+        self.assertEqual(self.app.expect(lambda m: m.get("signal") == "ActionInvoked")["args"], [nid, "default"])
+
+    def test_focus_keeps_it_out_of_the_banners(self):
+        self.bus.gg_pref("focus", json.dumps({"session": {"on": True, "until": 0}}))
+        self.load()
+        self.wait("viaService")
+        self.app.notify(summary="Quietly")
+        self.wait("list.length === 1")
+        from PySide6.QtTest import QTest
+        QTest.qWait(150)
+        self.assertEqual(self.js("banners.length"), 0, "kept in Notification Center, no banner")
+
+    def test_the_history_outlives_the_shell(self):
+        self.load()
+        self.wait("viaService")
+        self.app.notify(summary="One")
+        self.app.notify(summary="Two")
+        self.wait("list.length === 2")
+        self.unload()                                  # the shell quits (or crashes)
+        self.load()
+        self.wait("viaService && list.length === 2")
+        self.assertEqual(self.js("list.map((n) => n.summary)"), ["Two", "One"])
+        self.assertEqual(self.js("banners.length"), 0, "old ones don't come back as banners")
+
+    def test_apps_badges_and_progress_reach_the_dock(self):
+        self.load()
+        self.wait("viaService")
+        self.app.do("launcher", uri="application://discord.desktop",
+                    props={"count": ["x", 3], "count-visible": ["b", True],
+                           "progress": ["d", 0.4], "progress-visible": ["b", True]})
+        self.wait('countFor("discord", "") === 3 && progressFor("com.discordapp.discord", "discord") === 0.4')
+        self.app.close()
+        self.wait('countFor("discord", "") === 0 && progressFor("discord", "") === -1')
+
+    def test_without_notifyd_the_shell_is_the_server(self):
+        self.bus.env["DBUS_SESSION_BUS_ADDRESS"] = "unix:path=/nonexistent/bus"
+        self.load()
+        self.wait("fallback.item !== null", timeout=15)
+        self.assertFalse(self.js("viaService"))
 
 
 @unittest.skipUnless(shutil.which("node"), "needs node")

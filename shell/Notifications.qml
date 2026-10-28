@@ -5,6 +5,10 @@
 // it (the app's default action, else the app). Focus (Do Not Disturb) keeps
 // notifications but suppresses banners. Notification Center opens from the
 // clock in the menu bar.
+// citronos-notifyd receives and keeps them (a history that outlives the
+// shell), applies each app's choice and Focus as they arrive, and collects
+// apps' own badges (LauncherEntry); the shell shows them. If it can't be
+// reached, the shell is the notification server itself, as before.
 //   qs ipc call notifications toggleCenter | clear | toggleDnd
 import Quickshell
 import Quickshell.Io
@@ -13,6 +17,7 @@ import Quickshell.Hyprland
 import Quickshell.Services.Notifications
 import QtQuick
 import QtQuick.Layouts
+import "ui" as Shared
 import "ui/theme"
 import "components"
 import "ui/FocusPolicy.js" as FocusPolicy
@@ -21,7 +26,10 @@ Scope {
     id: root
     objectName: "notifications"
     readonly property bool dnd: Prefs.focusDnd
-    readonly property var list: server.trackedNotifications.values
+    readonly property bool viaService: notifyd.ready
+    property var records: []            // from citronos-notifyd, newest first
+    property var launcherBadges: ({})   // app → { count, progress, urgent }, as apps set them (LauncherEntry)
+    readonly property var list: viaService ? records : (fallback.item ? fallback.item.trackedNotifications.values : [])
     property var banners: []            // notifications showing as banners, newest first
     property var received: ({})         // notification id → time received (ms)
     // TrackedNotifications.values does not reliably emit a QML list-change
@@ -59,14 +67,36 @@ Scope {
         const app = String(n.appName || "").toLowerCase()
         return owners[desktopId] || owners[app] || ""
     }
+    function aliasesOf(appId, startupClass) {
+        const name = String(appId || "").toLowerCase()
+        return [name, name.split(".").pop(), String(startupClass || "").toLowerCase(),
+                name.replace(/\.desktop$/, "")].filter(Boolean)
+    }
+    // What an app says of itself (LauncherEntry): its badge, its progress.
+    function launcherFor(appId, startupClass) {
+        const aliases = aliasesOf(appId, startupClass)
+        for (const app in launcherBadges) {
+            const k = app.toLowerCase()
+            if (aliases.includes(k) || aliases.includes(k.split(".").pop())) return launcherBadges[app]
+        }
+        return null
+    }
+    // 0–1 while an app shows progress on its icon, else -1.
+    function progressFor(appId, startupClass) {
+        const p = launcherFor(appId, startupClass)?.progress
+        return typeof p === "number" ? p : -1
+    }
     function countFor(appId, startupClass) {
         // Pull in a notifyable QML property. Updating badgeEpoch below forces
         // the Dock's binding to recompute even when the backing list mutates
         // in-place instead of notifying its owner.
         const revision = badgeEpoch
         const name = String(appId || "").toLowerCase()
-        const aliases = [name, name.split(".").pop(), String(startupClass || "").toLowerCase(),
-                         name.replace(/\.desktop$/, "")].filter(Boolean)
+        const aliases = aliasesOf(appId, startupClass)
+        // An app that keeps its own count (most Electron, Qt and GTK apps do)
+        // is shown as it says.
+        const own = launcherFor(appId, startupClass)?.count
+        if (typeof own === "number" && Prefs.notifyApp(name).badges) return own
         const active = list.filter((n) => {
             if (!Prefs.notifyApp(keyOf(n)).badges) return false
             const raw = [n.desktopEntry, n.appName, ownerOf(n), keyOf(n)]
@@ -155,7 +185,7 @@ Scope {
         n.dismiss()
         centerOpen = false
     }
-    function dropBanner(n) { banners = banners.filter((b) => b !== n) }
+    function dropBanner(n) { banners = banners.filter((b) => b !== n && b.id !== n.id) }
     // The banners as a model, so each one keeps its card while others come and
     // go: a new one slides in, a leaving one slides out, the rest move along.
     ListModel { id: bannerModel }
@@ -174,29 +204,85 @@ Scope {
 
     Timer { interval: 30000; running: true; repeat: true; onTriggered: root.now = Date.now() }
 
-    NotificationServer {
-        id: server
-        keepOnReload: true
-        actionsSupported: true
-        imageSupported: true
-        bodyMarkupSupported: false
-        onNotification: (n) => {
-            const choice = Prefs.notifyApp(root.keyOf(n))
-            root.remember(n)
-            if (!choice.allow) return          // untracked, so it's dropped
-            n.tracked = true
-            const r = Object.assign({}, root.received); r[n.id] = Date.now(); root.received = r
-            root.now = Date.now()
-            n.closed.connect(() => {
-                root.dropBanner(n)
-                // The server may remove the tracked item after emitting
-                // closed. Re-evaluate after that event-loop turn as well.
+    // citronos-notifyd, through the bridge.
+    Shared.DBusObject {
+        id: notifyd
+        service: "org.citronos.Notifications1"
+        path: "/org/citronos/Notifications1"
+        signalNames: ["Added", "Removed", "BadgesChanged"]
+        onReadyChanged: if (ready) {
+            call("List", [], (ok, result) => {
+                if (!ok) return
+                const all = JSON.parse(result[0]).map((r) => root.wrap(r))
+                const r = Object.assign({}, root.received)
+                for (const n of all) r[n.id] = n.received
+                root.received = r
+                root.records = all
                 root.badgeEpoch++
-                Qt.callLater(() => root.badgeEpoch++)
             })
-            root.badgeEpoch++
-            if (root.allowedDuringFocus(n) && !root.centerOpen && choice.banners) root.banners = [n].concat(root.banners.filter((b) => b !== n)).slice(0, 4)
-            if (root.allowedDuringFocus(n) && Prefs.notifySounds && choice.sound && !n.transient && !(n.hints?.["suppress-sound"] ?? false)) root.chime()
+            call("Badges", [], (ok, result) => { if (ok) root.launcherBadges = JSON.parse(result[0]) })
+        }
+        onSignalled: (name, args) => {
+            if (name === "Added") root.arrived(root.wrap(JSON.parse(args[0])))
+            else if (name === "Removed") root.gone(args[0])
+            else if (name === "BadgesChanged") { root.launcherBadges = JSON.parse(args[0]); root.badgeEpoch++ }
+        }
+    }
+    // A notification from notifyd, as the rest of the shell expects one.
+    function wrap(r) {
+        return Object.assign({}, r, {
+            actions: (r.actions ?? []).map((a) => ({ identifier: a.identifier, text: a.text,
+                                                    invoke: () => notifyd.call("Invoke", [r.id, a.identifier]) })),
+            dismiss: () => notifyd.call("Dismiss", [r.id]),
+            tracked: true
+        })
+    }
+    function arrived(n) {
+        const r = Object.assign({}, received); r[n.id] = n.received; received = r
+        now = Date.now()
+        records = [n].concat(records.filter((x) => x.id !== n.id))
+        badgeEpoch++
+        // notifyd applied the app's choice and Focus ("quiet") as it arrived.
+        const choice = Prefs.notifyApp(keyOf(n))
+        if (!n.quiet && !centerOpen && choice.banners)
+            banners = [n].concat(banners.filter((b) => b.id !== n.id)).slice(0, 4)
+        else banners = banners.filter((b) => b.id !== n.id)
+        if (!n.quiet && Prefs.notifySounds && choice.sound && !n.transient && !(n.hints?.["suppress-sound"] ?? false)) chime()
+    }
+    function gone(id) {
+        records = records.filter((x) => x.id !== id)
+        banners = banners.filter((b) => b.id !== id)
+        badgeEpoch++
+    }
+
+    // Without notifyd, the shell is the server (its notifications then last
+    // only as long as the shell).
+    LazyLoader {
+        id: fallback
+        active: notifyd.unreachable && !notifyd.ready
+        NotificationServer {
+            keepOnReload: true
+            actionsSupported: true
+            imageSupported: true
+            bodyMarkupSupported: false
+            onNotification: (n) => {
+                const choice = Prefs.notifyApp(root.keyOf(n))
+                root.remember(n)
+                if (!choice.allow) return          // untracked, so it's dropped
+                n.tracked = true
+                const r = Object.assign({}, root.received); r[n.id] = Date.now(); root.received = r
+                root.now = Date.now()
+                n.closed.connect(() => {
+                    root.dropBanner(n)
+                    // The server may remove the tracked item after emitting
+                    // closed. Re-evaluate after that event-loop turn as well.
+                    root.badgeEpoch++
+                    Qt.callLater(() => root.badgeEpoch++)
+                })
+                root.badgeEpoch++
+                if (root.allowedDuringFocus(n) && !root.centerOpen && choice.banners) root.banners = [n].concat(root.banners.filter((b) => b !== n)).slice(0, 4)
+                if (root.allowedDuringFocus(n) && Prefs.notifySounds && choice.sound && !n.transient && !(n.hints?.["suppress-sound"] ?? false)) root.chime()
+            }
         }
     }
 

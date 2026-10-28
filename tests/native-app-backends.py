@@ -8,6 +8,7 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
+import re
 import subprocess
 import sys
 import tempfile
@@ -172,7 +173,7 @@ esac
 # Secrets must live in the keyring, never in JSON config.
 mail = (ROOT / "apps/mail/helper.py").read_text(encoding="utf-8")
 keyring = (ROOT / "apps/lib/python/citronos/secrets.py").read_text(encoding="utf-8")
-assert "from citronos import secrets" in mail and "secrets.store(" in mail and "secrets.lookup(" in mail, \
+assert re.search(r"^from citronos import (.*, )?secrets\b", mail, re.M) and "secrets.store(" in mail and "secrets.lookup(" in mail, \
     "Mail no longer uses the system keyring"
 assert '["secret-tool", *args]' in keyring, "citronos.secrets no longer reaches the keyring"
 assert '"password": password' not in mail

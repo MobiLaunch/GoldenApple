@@ -10,6 +10,9 @@
 //   settingsd.call("Get", ["desktop", "dock.size"], (ok, result, error) => …)
 // A call made while it isn't ready, or cut off because the bridge stopped,
 // fails at once with error "unavailable", so a caller can do it another way.
+// `unreachable` is set once the bridge itself has stopped without reaching
+// the object (no bus, no service), not while a service is merely restarting:
+// the moment for a caller to stand in for it.
 import Quickshell
 import Quickshell.Io
 import QtQuick
@@ -25,6 +28,7 @@ Item {
     readonly property bool ready: live
     property bool live: false
     property string error: ""             // why it isn't ready, when it said
+    property bool unreachable: false
     signal signalled(string name, var args)
 
     property int nextId: 1
@@ -49,6 +53,7 @@ Item {
             if (!msg.ready) fail("unavailable")
             error = msg.error ?? ""
             live = msg.ready
+            if (live) unreachable = false
             return
         }
         const done = waiting[msg.id]
@@ -71,6 +76,7 @@ Item {
         stdout: SplitParser { onRead: (line) => object.take(line) }
         onExited: {
             object.live = false
+            object.unreachable = true
             object.fail("unavailable")
             if (object.active) retry.restart()
         }

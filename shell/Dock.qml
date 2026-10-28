@@ -571,6 +571,26 @@ PanelWindow {
                 font { family: Theme.fontUi; pixelSize: Math.round(parent.size * 0.62); weight: Font.DemiBold }
             }
         }
+        // An app's progress on its icon (LauncherEntry: a download, an
+        // export), as a bar across the icon's foot.
+        readonly property real progress: dock.notifications ? dock.notifications.progressFor(modelData.id ?? "", modelData.startupClass ?? "") : -1
+        Rectangle {
+            objectName: "dockProgress"
+            visible: tile.progress >= 0
+            z: 999
+            width: icon.width * 0.74
+            height: Math.max(4, Math.round(dock.baseSize * 0.09))
+            x: icon.x + (icon.width - width) / 2
+            y: icon.y + icon.height * 0.94 - height
+            radius: height / 2
+            color: Theme.vibrant.fill
+            Rectangle {
+                width: parent.width * Math.max(0, Math.min(1, tile.progress))
+                height: parent.height
+                radius: parent.radius
+                color: Theme.accent
+            }
+        }
         property bool tooltipReady: false
         Timer {
             id: tooltipDwell

@@ -20,13 +20,26 @@ from email.message import EmailMessage
 from html.parser import HTMLParser
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "lib/python"))
-from citronos import secrets  # noqa: E402
+from citronos import proc, secrets  # noqa: E402
 
 CONFIG = pathlib.Path(os.environ.get("XDG_CONFIG_HOME", pathlib.Path.home() / ".config")) / "golden-gate/mail.json"
 DRAFT = pathlib.Path(os.environ.get("XDG_STATE_HOME", pathlib.Path.home() / ".local/state")) / "golden-gate/mail-draft.json"
 MAIL_META = CONFIG.with_name("mail-categories.json")
 MAIL_BADGE = pathlib.Path(os.environ.get("XDG_STATE_HOME", pathlib.Path.home() / ".local/state")) / "golden-gate/mail-badges.json"
 CATEGORIES = ("primary", "transactions", "updates", "promotions")
+
+
+def save_badge(account: str, uids: list[str]) -> None:
+    """Mail's Dock badge: its unread count, given to citronos-notifyd (which
+    keeps it while Mail is closed) and saved in mail-badges.json for a shell
+    without it. Badges are optional: neither failing ever fails a fetch."""
+    try:
+        atomic_json(MAIL_BADGE, {"account": account, "unread": len(uids), "uids": uids})
+    except OSError:
+        pass
+    proc.run(["gdbus", "call", "--session", "--dest", "org.citronos.Notifications1",
+              "--object-path", "/org/citronos/Notifications1",
+              "--method", "org.citronos.Notifications1.SetBadge", "org.goldengate.Mail", str(len(uids))], timeout=3)
 
 
 def draft_fields(data: object) -> dict[str, str]:
@@ -528,13 +541,7 @@ def cmd_list() -> int:
             # Persist a local badge count for the Dock even when Mail closes.
             # The value is refreshed only after a successful inbox fetch.
             unread_uids = [str(m["uid"]) for m in result if m["unread"]]
-            try:
-                atomic_json(MAIL_BADGE, {"account": account, "unread": len(unread_uids),
-                                         "uids": unread_uids})
-            except OSError:
-                # Badges are optional; never fail a successful IMAP inbox
-                # because this session's local state directory is unavailable.
-                pass
+            save_badge(account, unread_uids)
             return emit(True, messages=result, account=account)
         finally:
             try:
@@ -569,8 +576,7 @@ def cmd_read(uid: str) -> int:
                         pending = [str(i) for i in data.get("uids", [])]
                         if uid in pending:
                             pending.remove(uid)
-                            atomic_json(MAIL_BADGE, {"account": data["account"],
-                                                     "unread": len(pending), "uids": pending})
+                            save_badge(data["account"], pending)
                 except (OSError, ValueError, TypeError):
                     pass
             return emit(

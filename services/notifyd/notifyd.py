@@ -14,6 +14,8 @@ The shell shows them, as banners and in Notification Center, as a client:
       Invoke(id, action)            the app hears ActionInvoked; it's done
                                     with unless it's resident
       Badges() → {app: badge}
+      SetBadge(app, count)          CitronOS's own apps (Mail): kept until
+                                    changed, whether or not the app is running
       Added(notification)           new, or replacing one with the same id
       Removed(id, reason)
       BadgesChanged(badges)
@@ -102,6 +104,16 @@ class Store:
         self.db.execute("PRAGMA journal_mode=WAL")
         self.db.execute("CREATE TABLE IF NOT EXISTS notifications (id INTEGER PRIMARY KEY, received INTEGER, record TEXT)")
         self.db.execute("CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value INTEGER)")
+        self.db.execute("CREATE TABLE IF NOT EXISTS badges (app TEXT PRIMARY KEY, count INTEGER)")
+
+    def badges(self) -> dict[str, int]:
+        return dict(self.db.execute("SELECT app, count FROM badges").fetchall())
+
+    def set_badge(self, app: str, count: int) -> None:
+        if count > 0:
+            self.db.execute("INSERT OR REPLACE INTO badges (app, count) VALUES (?, ?)", (app, count))
+        else:
+            self.db.execute("DELETE FROM badges WHERE app = ?", (app,))
 
     def all(self) -> list[dict]:
         rows = self.db.execute("SELECT record FROM notifications ORDER BY received DESC, id DESC").fetchall()
@@ -144,6 +156,7 @@ class Notifyd:
         self.next_id = max([self.store.last_id(), *self.live]) + 1 if self.live or self.store.last_id() else 1
         self.badges: dict[str, dict] = {}                        # app key → LauncherEntry properties
         self.badge_owner: dict[str, str] = {}                    # app key → the sender that set it
+        self.kept_badges = self.store.badges()                   # app → count, set with SetBadge
         self.fdo = Freedesktop(self)
         self.ours = Citron(self)
         self.notifiers_file = self.state / "notifiers.json"
@@ -285,8 +298,20 @@ class Notifyd:
         if gone:
             self.ours.BadgesChanged(json.dumps(self.visible_badges()))
 
+    def set_badge(self, app: str, count: int) -> None:
+        app = app.removesuffix(".desktop")
+        if not app:
+            return
+        count = max(0, min(count, 99999))
+        self.store.set_badge(app, count)
+        if count:
+            self.kept_badges[app] = count
+        else:
+            self.kept_badges.pop(app, None)
+        self.ours.BadgesChanged(json.dumps(self.visible_badges()))
+
     def visible_badges(self) -> dict:
-        out = {}
+        out = {app: {"count": n} for app, n in self.kept_badges.items() if n > 0}
         for app, b in self.badges.items():
             shown = {}
             if b.get("count-visible") and b.get("count", 0) > 0:
@@ -296,7 +321,7 @@ class Notifyd:
             if b.get("urgent"):
                 shown["urgent"] = True
             if shown:
-                out[app] = shown
+                out[app] = {**out.get(app, {}), **shown}
         return out
 
 
@@ -360,6 +385,10 @@ class Citron(ServiceInterface):
     @method()
     def Badges(self) -> "s":  # noqa: F821
         return json.dumps(self.d.visible_badges())
+
+    @method()
+    def SetBadge(self, app: "s", count: "i"):  # noqa: F821
+        self.d.set_badge(app, count)
 
     @signal()
     def Added(self, record) -> "s":  # noqa: F821
