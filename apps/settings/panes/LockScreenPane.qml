@@ -20,9 +20,8 @@ Pane {
         return i >= 0 ? i : list.findIndex((t) => t[0] === fallback)
     }
     function set(k, v) {
-        sys.setPref(["lockScreen", k], v)
-        // gg-pref writes desktop.json first; then hypridle gets its new timers.
-        Quickshell.execDetached(["sh", "-c", "sleep 0.3; gg-idle"])
+        // Once desktop.json has it, hypridle gets its new timers.
+        sys.setPrefThen(["lockScreen", k], v, (ok) => { if (ok) Quickshell.execDetached(["gg-idle"]) })
     }
     property bool editingMessage: false
 

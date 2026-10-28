@@ -6,12 +6,14 @@
 import Quickshell
 import Quickshell.Io
 import QtQuick
+import "../lib/services" as Services
 
 Item {
     id: sys
     readonly property string config: Quickshell.env("XDG_CONFIG_HOME") || Quickshell.env("HOME") + "/.config"
     readonly property string gg: config + "/golden-gate"
-    property var prefs: ({})         // desktop.json
+    property alias prefs: desktop.data   // desktop.json, through citronos-settingsd
+    Services.Preferences { id: desktop; domain: "desktop" }
     property var privacy: ({})       // privacy.json
     property var input: ({})         // input.json (keyboard, trackpad)
     property var windows: ({})       // windows.json (compositor window controls)
@@ -83,7 +85,7 @@ Item {
     function writeJson(file, obj) { writeFile(gg + "/" + file, JSON.stringify(obj, null, 1) + "\n", file) }
     function failed(what, why) {
         writeError = "Your change couldn't be saved (" + what + ": " + why + "). The previous setting was kept."
-        for (const f of [desktopFile, privacyFile, inputFile, windowsFile]) f.reload()
+        for (const f of [privacyFile, inputFile, windowsFile]) f.reload()
     }
     function setIn(obj, path, value) {
         const copy = JSON.parse(JSON.stringify(obj ?? {}))
@@ -103,18 +105,25 @@ Item {
         }
     }
 
-    // desktop.json has one authoritative writer: gg-pref performs an atomic
-    // nested-key update, so Settings, shell IPC and Control Center cannot stomp
-    // one another by rewriting a stale copy of the whole file.
-    function setPref(path, value) {
-        prefs = setIn(prefs, path, value)
+    // desktop.json changes one key at a time (citronos-settingsd, else
+    // gg-pref), checked and under one lock, so Settings, the shell and Control
+    // Center never stomp on one another by rewriting a stale copy of the
+    // whole file. Shown at once; put back, and said, if it can't be saved.
+    // setPrefThen's done(ok) runs once it's saved or refused.
+    function setPref(path, value) { setPrefThen(path, value, null) }
+    function setPrefThen(path, value, done) {
         const key = path.join(".")
-        run(["gg-pref", key, JSON.stringify(value)], (out, code) => { if (code !== 0) sys.failed("desktop.json", key) })
+        desktop.write(key, value, (ok, why) => {
+            if (!ok) sys.failed("desktop.json", why || key)
+            if (done) done(ok)
+        })
         if (path[0] === "glass" || path[0] === "glassWindows" || path[0] === "glassSolidity" || path[0] === "reduceTransparency") {
             glassDirty = true
             glassSync.restart()
         }
     }
+    // Shown once it's saved (Focus: on screen only when it really is on).
+    function savePref(key, value, done) { desktop.save(key, value, done) }
     // privacy.json, input.json (with hypr's input.conf) and accessibility.json
     // (with accessibility.conf) have one writer too, set-prefs.py: it changes
     // only the keys asked for in the latest saved record, under the record's
@@ -258,7 +267,6 @@ Item {
         onFileChanged: reload()
         onLoaded: { try { sys[key] = JSON.parse(text()) } catch (e) {} }
     }
-    JsonFile { id: desktopFile; path: sys.gg + "/desktop.json"; key: "prefs" }
     JsonFile { id: privacyFile; path: sys.gg + "/privacy.json"; key: "privacy" }
     JsonFile { id: inputFile; path: sys.gg + "/input.json"; key: "input" }
     JsonFile { id: windowsFile; path: sys.gg + "/windows.json"; key: "windows" }

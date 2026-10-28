@@ -46,10 +46,9 @@ Pane {
     function save(key, value) {
         if (saving) return
         saving = true
-        sys.run(["gg-pref", "focus." + key, JSON.stringify(value)], (out, code, error) => {
+        sys.savePref("focus." + key, value, (ok, why) => {
             saving = false
-            if (code !== 0) { sys.failed("Focus", error?.trim() || "the change couldn't be saved"); return }
-            sys.prefs = sys.setIn(sys.prefs, ["focus"].concat(key.split(".")), value)
+            if (!ok) sys.failed("Focus", why || "the change couldn't be saved")
         })
     }
     function setSchedule(key, value) { save("schedule." + key, value) }

@@ -402,7 +402,7 @@ same fields, more briefly, and should be expanded when their milestone starts.
 | T-2.11 | Accessible annotations in the shell | CS2-013 | `shell/Dock.qml`, `Spotlight.qml`, `Notifications.qml`, `DesktopWidgets.qml`, `CitronPodsPopup.qml`, `apps/maps.qml`, `apps/calculator.qml` | `Accessible.role`, `name`, `onPressAction` | The design lint's accessibility rule passes for `shell/` |
 
 **As built (M2 so far):**
-- **T-2.5, `citronos-settingsd` · in progress: the typed store.** `citronos.settings` with
+- **T-2.5, `citronos-settingsd` · done.** `citronos.settings` with
   `settings-schema.json`: every `desktop.json` key with a type (bool, number with a range,
   string with its choices, list, object, map) and a default. `gg-pref`, which every writer
   already goes through, now uses it: a value that doesn't fit is refused with the reason;
@@ -428,8 +428,27 @@ same fields, more briefly, and should be expanded when their milestone starts.
   needed. `tests/settingsd.py` (12, in CI) runs both on a private bus: activation, two
   clients hearing each other, refusals, outside edits, a damaged file put back and said,
   30 simultaneous writers through the service and gg-pref with nothing lost, a killed
-  service coming back, and the timing. Next: `Prefs.qml` and `Sys.qml` onto it, with
-  gg-pref as the fallback.
+  service coming back, and the timing.
+
+  **The clients.** `apps/lib/DBusObject.qml` runs the bridge for one object (`ready`,
+  `call(method, args, done)`, `signalled`), and `apps/lib/services/Preferences.qml` is one
+  domain for any client: `data`, kept current by `Changed` key by key; `write()` (shown at
+  once, put back with the reason if refused) and `save()` (shown once saved, for Focus).
+  Without the service (before it answers, or if it can't start) it reads and watches the file
+  and writes with gg-pref, same schema, same lock; a change cut off by the service stopping
+  is made again with gg-pref. Changes not yet answered stay on screen whatever is read
+  meanwhile, so neither an earlier change's signal nor the first `GetAll` flicks them back.
+  The shell's `Prefs.qml` and Settings' `Sys.qml` (with Focus and Lock Screen) use it, so
+  they no longer each start a gg-pref per change or re-read the whole file on every write.
+  Lock Screen now applies the idle timers when the change is saved, rather than 0.3 s
+  after it. `tests/settingsd.py` (16) adds the QML clients with the real bridge and service:
+  the shell and Settings hearing each other and outside edits, no gg-pref while the service
+  is there, a refusal put back with its reason, 20 quick changes without a flicker, and
+  gg-pref saving it with no bus. The preview's `Process` can run the bridge for real when a
+  test asks (`__spawner`); everywhere else it is a fixture, so the other suites exercise
+  the gg-pref path. Left for later: `privacy`, `input`, `accessibility` and `windows`
+  still have their own writer (`set-prefs.py`); they become domains of the same service
+  when they get schemas.
 - **T-2.4, the `citronos` Python package · done.** `apps/lib/python/citronos/` (installed
   with the shared UI, `/usr/share/golden-gate/ui/python`): `files` (atomic write that also
   syncs the folder and never leaves its temporary file; new files 0600, replaced ones keep

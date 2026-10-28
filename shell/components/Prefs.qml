@@ -1,6 +1,7 @@
 pragma Singleton
 // Desktop preferences set in Settings, from ~/.config/golden-gate/desktop.json
-// (watched, so changes apply at once):
+// through citronos-settingsd (ui/services/Preferences.qml), so changes apply
+// at once:
 //   { "wallpaper": "/path.png",
 //     "dock": { "size": 54, "indicators": true, "animateLaunch": true, "pinned": ["org.goldengate.Files", …] },
 //     "widgets": [{ "id": "clock-1", "kind": "clock", "size": "small", "col": 1, "row": 0 }, …],
@@ -9,12 +10,14 @@ import Quickshell
 import Quickshell.Io
 import QtQuick
 import "../ui" as Shared
+import "../ui/services" as Services
 import "../ui/FocusPolicy.js" as FocusPolicy
 
 Singleton {
     id: prefs
-    readonly property string file: (Quickshell.env("XDG_CONFIG_HOME") || Quickshell.env("HOME") + "/.config") + "/golden-gate/desktop.json"
-    property var data: ({})
+    readonly property string file: store.file
+    property alias data: store.data
+    Services.Preferences { id: store; domain: "desktop" }
 
     readonly property string wallpaper: data.wallpaper || Quickshell.env("GG_WALLPAPER") || "/usr/share/backgrounds/golden-gate/club-soda.jpg"
     // Shell glass bends live captures of the windows under it (DesktopBackdrop);
@@ -94,82 +97,33 @@ Singleton {
     readonly property string focusSummary: focusStatus.summary
     property bool focusBusy: false
     property string focusError: ""
-    Component {
-        id: focusWriter
-        Process {
-            stderr: StdioCollector { id: focusErr }
-            onExited: (code) => {
-                prefs.focusBusy = false
-                if (code !== 0) prefs.focusError = "Focus couldn't be saved: " + (focusErr.text.trim() || "try again")
-                else { prefs.focusError = ""; desktopFile.reload() }
-                destroy()
-            }
-        }
-    }
+    // Shown once it's saved: a Focus that looks on but isn't would let
+    // notifications through.
     function setFocus(minutes) {
         if (focusBusy) return
         focusBusy = true; focusError = ""
         const session = minutes < 0 ? focusStatus.stop() : focusStatus.start(minutes)
-        const p = focusWriter.createObject(prefs, {command:["gg-pref", "focus.session", JSON.stringify(session)]})
-        p.running = true
+        store.save("focus.session", session, (ok, why) => {
+            prefs.focusBusy = false
+            prefs.focusError = ok ? "" : "Focus couldn't be saved: " + (why || "try again")
+        })
     }
-    // Every change the shell makes to a preference: shown at once, saved by
-    // gg-pref (which refuses to touch a damaged desktop.json), and if the save
-    // fails, put back as it was with a notification saying why: a change that
-    // looks made but was never saved is lost at the next login.
+    // Every change the shell makes to a preference: shown at once, saved (by
+    // citronos-settingsd, else gg-pref; both refuse to touch a damaged
+    // desktop.json they can't put back), and if the save fails, put back as
+    // it was with a notification saying why: a change that looks made but was
+    // never saved is lost at the next login.
     //   Prefs.write("dock.pinned", ids, "Dock")
     property string saveError: ""
     function write(key, value, what) {
-        const before = data
-        data = setIn(data, key.split("."), value)
-        const p = prefWriter.createObject(prefs, { command: ["gg-pref", key, JSON.stringify(value)],
-                                                   before: before, key: key, wrote: JSON.stringify(value), what: what || "setting" })
-        p.running = true
-    }
-    function setIn(obj, path, value) {
-        const out = Object.assign({}, obj ?? {})
-        out[path[0]] = path.length === 1 ? value : setIn(typeof out[path[0]] === "object" && out[path[0]] !== null ? out[path[0]] : {}, path.slice(1), value)
-        return out
-    }
-    Component {
-        id: prefWriter
-        Process {
-            id: w
-            property var before
-            property string key
-            property string wrote
-            property string what
-            stderr: StdioCollector { id: writeErr }
-            onExited: (code) => {
-                if (code !== 0) {
-                    // Only undo it if nothing changed it again meanwhile.
-                    if (JSON.stringify(prefs.valueAt(prefs.data, w.key)) === w.wrote)
-                        prefs.data = prefs.setIn(prefs.data, w.key.split("."), prefs.valueAt(w.before, w.key))
-                    const why = writeErr.text.trim() || "it couldn't be saved"
-                    prefs.saveError = why
-                    Quickshell.execDetached(["notify-send", "-a", "CitronOS", "-i", "dialog-warning",
-                                             "Your " + w.what + " change wasn't saved", why])
-                }
-                w.destroy()
-            }
-        }
-    }
-    function valueAt(obj, key) {
-        let node = obj
-        for (const part of key.split(".")) node = (node && typeof node === "object") ? node[part] : undefined
-        return node
+        store.write(key, value, (ok, why) => {
+            if (ok) return
+            prefs.saveError = why
+            Quickshell.execDetached(["notify-send", "-a", "CitronOS", "-i", "dialog-warning",
+                                     "Your " + (what || "setting") + " change wasn't saved", why])
+        })
     }
     readonly property bool nightShift: data.display?.nightShift ?? false
     readonly property int displayWarmth: data.display?.warmth ?? 4500
     readonly property real savedBrightness: data.display?.brightness ?? -1
-
-    FileView {
-        id: desktopFile
-        path: prefs.file
-        printErrors: false
-        watchChanges: true
-        onFileChanged: reload()
-        onLoaded: { try { prefs.data = JSON.parse(text()) } catch (e) { prefs.data = ({}) } }
-        onLoadFailed: prefs.data = ({})
-    }
 }

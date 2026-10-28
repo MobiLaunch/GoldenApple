@@ -188,6 +188,8 @@ qmlRegisterType(ScriptModel, "Quickshell", 1, 0, "ScriptModel")
 # (pattern over the command line, stdout, exit code). First match wins;
 # "hang" never exits, like `gsettings monitor`.
 FIXTURES: list[tuple[str, str, object]] = [
+    # No session bus in a preview: Preferences reads the file and writes with gg-pref.
+    (r"dbus-bridge\.py", '{"ready": false, "error": "no session bus in the preview"}\n', 1),
     # Touch ID: a laptop's reader with one finger enrolled; Touch ID off for sudo.
     (r"fprintd-list", "found 1 devices\nDevice at /net/reactivated/Fprint/Device/0\n"
      "Using device /net/reactivated/Fprint/Device/0\n"

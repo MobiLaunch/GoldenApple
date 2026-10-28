@@ -266,6 +266,201 @@ class Service(unittest.TestCase):
         self.assertLess(bridge_median, pref_median)
 
 
+try:
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    from PySide6.QtCore import QObject, QProcess, QProcessEnvironment, QUrl, Signal, Slot
+    from PySide6.QtGui import QGuiApplication
+    from PySide6.QtQml import QQmlComponent, QQmlEngine
+    from PySide6.QtTest import QTest
+    sys.path.insert(0, str(ROOT / "tools/preview"))
+    import preview
+    HAVE_QT = True
+except ImportError:
+    HAVE_QT = False
+
+if HAVE_QT:
+    class LiveProcess(QObject):
+        """dbus-bridge.py, run for real for the preview's Process."""
+        line = Signal(str)
+        finished = Signal(int)
+
+        def __init__(self, command, env):
+            super().__init__()
+            self.p = QProcess()
+            e = QProcessEnvironment()
+            for k, v in env.items():
+                e.insert(k, v)
+            self.p.setProcessEnvironment(e)
+            self.p.setProcessChannelMode(QProcess.ProcessChannelMode.ForwardedErrorChannel)
+            self.p.readyReadStandardOutput.connect(self._read)
+            self.p.finished.connect(lambda code, _status: self.finished.emit(code))
+            command = [sys.executable if c == "python3" else str(c) for c in command]
+            self.p.start(command[0], command[1:])
+
+        def _read(self):
+            while self.p.canReadLine():
+                self.line.emit(bytes(self.p.readLine()).decode().rstrip("\n"))
+
+        @Slot(str)
+        def write(self, data):
+            self.p.write(data.encode())
+
+        @Slot()
+        def kill(self):
+            if self.p.state() != QProcess.ProcessState.NotRunning:
+                self.p.closeWriteChannel()
+                if not self.p.waitForFinished(3000):
+                    self.p.kill()
+                    self.p.waitForFinished(1000)
+
+    class Spawner(QObject):
+        def __init__(self, env):
+            super().__init__()
+            self.env = env
+            self.live = []
+
+        @Slot("QVariant", result=QObject)
+        def spawn(self, command):
+            command = command.toVariant() if hasattr(command, "toVariant") else command
+            p = LiveProcess(command, self.env)
+            self.live.append(p)
+            return p
+
+    class Stand(preview.Preview):
+        """The preview's system, with gg-pref run for real (the fallback)."""
+        def __init__(self, env):
+            super().__init__({k: env[k] for k in ("XDG_CONFIG_HOME",)} | {"HOME": env.get("HOME", "/tmp")},
+                             str(ROOT / "shell"), "'default'")
+            self.full_env = env
+            self.ran = []
+
+        @Slot("QVariant", result="QVariantMap")
+        def run(self, cmd):
+            cmd = cmd.toVariant() if hasattr(cmd, "toVariant") else cmd
+            self.ran.append(cmd)
+            if cmd and cmd[0] == "gg-pref":
+                env = {k: v for k, v in self.full_env.items() if k != "DBUS_SESSION_BUS_ADDRESS"}
+                r = subprocess.run([sys.executable, str(PREF), *cmd[1:]], env=env, capture_output=True, text=True)
+                return {"stdout": r.stdout, "stderr": r.stderr, "code": r.returncode}
+            return {"stdout": "", "stderr": "", "code": 0}
+
+    APP = QGuiApplication.instance() or QGuiApplication([])
+
+CLIENTS = """
+import QtQuick
+import "../apps/lib/services" as Services
+Item {
+    property alias shell: shell
+    property alias settings: settings
+    property var answers: []
+    Services.Preferences { id: shell; domain: "desktop" }
+    Services.Preferences { id: settings; domain: "desktop" }
+    function change(which, key, json) {
+        (which === "shell" ? shell : settings).write(key, JSON.parse(json), (ok, why) => { answers = answers.concat([[ok, why]]) })
+    }
+}
+"""
+
+
+@unittest.skipUnless(HAVE_BUS and HAVE_QT, "needs dbus-daemon, dbus-next and PySide6")
+class QmlClients(unittest.TestCase):
+    """Preferences.qml (what Prefs.qml and Settings' Sys.qml use) with the
+    real bridge and service: the shell and Settings as two clients."""
+
+    def load(self, env):
+        self.stand = Stand(env)
+        self.spawner = Spawner(env)
+        self.engine = QQmlEngine()
+        self.engine.addImportPath(str(ROOT / "tools/preview/qml"))
+        self.engine.rootContext().setContextProperty("__preview", self.stand)
+        self.engine.rootContext().setContextProperty("__spawner", self.spawner)
+        comp = QQmlComponent(self.engine)
+        comp.setData(CLIENTS.encode(), QUrl.fromLocalFile(str(ROOT / "tests/settingsd-clients.qml")))
+        self.comp = comp
+        self.root = comp.create()
+        self.assertIsNotNone(self.root, comp.errorString())
+        QQmlEngine.setObjectOwnership(self.root, QQmlEngine.ObjectOwnership.CppOwnership)
+        self.addCleanup(self.unload)
+
+    def unload(self):
+        for p in self.spawner.live:
+            p.kill()
+        self.root.deleteLater()
+        self.engine.deleteLater()
+        APP.processEvents()
+
+    def js(self, expression):
+        from PySide6.QtQml import QQmlExpression
+        e = QQmlExpression(self.engine.rootContext(), self.root, expression)
+        v = e.evaluate()[0]
+        self.assertFalse(e.hasError(), e.error().toString())
+        return v.toVariant() if hasattr(v, "toVariant") else v
+
+    def wait(self, expression, timeout=10):
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            if self.js(expression):
+                return
+            QTest.qWait(20)
+        self.fail(f"timed out waiting for {expression}")
+
+    def setUp(self):
+        self.bus = PrivateBus()
+        self.addCleanup(self.bus.close)
+
+    def test_the_shell_and_settings_hear_each_other(self):
+        self.bus.gg_pref("wallpaper", '"/home/me/beach.jpg"')
+        self.load(self.bus.env)
+        QTest.qWait(30)
+        self.assertEqual(self.js("shell.data.wallpaper"), "/home/me/beach.jpg")
+        self.assertFalse(self.js("shell.viaService"), "read from the file, before the service answers")
+        self.wait("shell.viaService && settings.viaService")
+        self.js('change("settings", "dock.pinned", \'["org.goldengate.Files"]\')')
+        self.wait("shell.data.dock && shell.data.dock.pinned && shell.data.dock.pinned.length === 1")
+        self.wait("answers.length === 1")
+        self.assertEqual(self.js("answers"), [[True, ""]])
+        self.assertEqual(json.loads(self.bus.file.read_text())["dock"]["pinned"], ["org.goldengate.Files"])
+        self.assertFalse([c for c in self.stand.ran if c and c[0] == "gg-pref"], "no gg-pref while the service is there")
+        # Changed elsewhere (gg-pref from a script): both hear it.
+        self.bus.gg_pref("menuBar.items.wifi", "false")
+        self.wait("shell.data.menuBar && shell.data.menuBar.items.wifi === false && settings.data.menuBar.items.wifi === false")
+
+    def test_a_refused_change_is_put_back_with_the_reason(self):
+        self.bus.gg_pref("dock.size", "60")
+        self.load(self.bus.env)
+        self.wait("shell.viaService")
+        self.js('change("shell", "dock.size", \'"huge"\')')
+        self.assertEqual(self.js("shell.data.dock.size"), "huge", "shown at once")
+        self.wait("answers.length === 1")
+        self.assertEqual(self.js("answers"), [[False, "dock.size should be a number."]])
+        self.assertEqual(self.js("shell.data.dock.size"), 60, "and put back")
+
+    def test_quick_changes_dont_flicker(self):
+        # Straight after it connects, too: GetAll's answer (taken before these
+        # changes) mustn't wipe them from the screen.
+        self.load(self.bus.env)
+        self.wait("shell.viaService")
+        seen = []
+        for size in range(40, 60):
+            self.js(f'change("shell", "dock.size", "{size}")')
+        while len(self.js("answers")) < 20:
+            seen.append(self.js("shell.data.dock.size"))
+            QTest.qWait(2)
+        self.assertEqual(set(seen), {59}, "an earlier change's signal never flicks it back")
+        self.assertEqual(self.js("shell.data.dock.size"), 59)
+
+    def test_without_the_service_gg_pref_saves_it(self):
+        env = {**self.bus.env, "DBUS_SESSION_BUS_ADDRESS": "unix:path=/nonexistent/bus"}
+        self.load(env)
+        QTest.qWait(1500)                         # the bridge tries, and says it can't
+        self.assertFalse(self.js("shell.viaService"))
+        self.js('change("shell", "dock.size", "64")')
+        self.wait("answers.length === 1")
+        self.assertEqual(self.js("answers"), [[True, ""]])
+        self.assertEqual(json.loads(self.bus.file.read_text())["dock"]["size"], 64)
+        self.assertTrue([c for c in self.stand.ran if c and c[0] == "gg-pref"])
+
+
 class BridgeAlone(unittest.TestCase):
     def test_without_a_bus_it_says_so(self):
         env = {**os.environ, "DBUS_SESSION_BUS_ADDRESS": "unix:path=/nonexistent/bus"}

@@ -120,6 +120,13 @@ Rectangle {
         }
         function failed(what, why) { writeError = what + ": " + why }
         function run(args, done) { command = args; if (!hang) done("", fail ? 1 : 0, "disk full") }
+        // As Sys.savePref: shown once saved (desktop.data takes it then).
+        function savePref(key, value, done) {
+            command = ["Set", key, JSON.stringify(value)]
+            if (hang) return
+            if (!fail) prefs = setIn(prefs, key.split("."), value)
+            done(!fail, fail ? "disk full" : "")
+        }
     }
     Panes.FocusPane { anchors.fill: parent; sys: fake; nav: ({overlay:root}) }
 }'''
