@@ -8,7 +8,8 @@
 # 2. Headless Sway (Hyprland needs a GPU render node, which CI hasn't got; the
 #    ISO's boot test runs Hyprland itself in QEMU). Hyprland-only parts of the
 #    shell (window lists, workspaces, the glass's window captures) show empty.
-# 3. N cold starts (20 by default) of `qs -c golden-gate`. A start fails if the shell died,
+# 3. N cold starts (20 by default) of `qs -c golden-gate`; then the
+#    performance baseline (tests/session/perf.py, T-0.3). A start fails if the shell died,
 #    left a crash report (~/.cache/quickshell/crashes), printed "pure virtual"
 #    (the theme-icon crash, CS2-004), or a QML error in CitronOS's own files.
 # 4. Every surface opened through `qs ipc`, in light and in dark, screenshotted
@@ -177,6 +178,15 @@ for i in $(seq "$STARTS"); do
   if check "start-$i" "$SHELL_PID" "$log"; then say "cold start $i/$STARTS: ok"; else crashed=$((crashed + 1)); fail "cold start $i/$STARTS crashed"; fi
   stop "$SHELL_PID"; pkill -u "$(id -u)" -x qs 2>/dev/null || true; sleep 1
 done
+
+# ---------------------------------------------------------------- 3b. performance
+# T-0.3's baseline: time to the desktop, memory, idle CPU with glass windows on
+# and off (OUTDIR/perf.json, perf.md and the job summary). PERF=0 skips it.
+if [[ ${PERF:-1} == 1 ]]; then
+  say "performance baseline (tests/session/perf.py)"
+  python3 "$REPO/tests/session/perf.py" "$OUT" || fail "the performance baseline couldn't be measured"
+  pkill -u "$(id -u)" -x qs 2>/dev/null || true; sleep 1
+fi
 
 # ---------------------------------------------------------------- 4. surfaces
 SURFACES=(desktop:: controlcenter:controlcenter:toggle spotlight:spotlight:toggle launchpad:launchpad:toggle

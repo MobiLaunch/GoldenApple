@@ -11,8 +11,12 @@ import "components"
 ShellRoot {
     id: root
     // The shell's own output is in the journal (citronos-shell.service); the
-    // ISO boot test, over the serial console, hears this.
-    Component.onCompleted: Quickshell.execDetached(["logger", "-t", "gg-shell", "desktop ready"])
+    // ISO boot test, over the serial console, hears this, and the performance
+    // baseline (tests/session/perf.py) times it in the shell's log.
+    Component.onCompleted: {
+        console.info("CitronOS: desktop ready")
+        Quickshell.execDetached(["logger", "-t", "gg-shell", "desktop ready"])
+    }
     // One AppLaunch per screen; Spotlight picks the one on its own screen.
     property var launchers: []
     // Launchpad (F4, or the Dock's Applications), on the focused screen.
