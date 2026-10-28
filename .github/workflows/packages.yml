@@ -21,6 +21,8 @@ on:
       - Makefile
       - scripts/stage.sh
       - packaging/**
+      - distro/archive-date
+      - distro/pin-archive.sh
       - .github/workflows/packages.yml
   workflow_dispatch:
 

@@ -13,8 +13,9 @@ say() { printf '\033[1;33m›\033[0m %s\n' "$*"; }
 fail() { echo "::error::$*"; FAILED=$((FAILED + 1)); }
 FAILED=0
 
+sh /repo/distro/pin-archive.sh   # the packages as of distro/archive-date
 for try in 1 2 3; do   # mirrors drop connections now and then
-  pacman -Syu --noconfirm --needed base-devel git nodejs librsvg >/dev/null && break
+  pacman -Syuu --noconfirm --needed base-devel git nodejs librsvg >/dev/null && break
   [[ $try == 3 ]] && exit 1
   sleep $((try * 20))
 done

@@ -68,9 +68,13 @@ and the new one was up only after 2.2 s, then locked 0.25 s later.
 
 So the lock screen dumps nothing: `gg-lock` sets `QS_DISABLE_CRASH_HANDLER=1` and
 `ulimit -c 0`, and its unit `LimitCORE=0`. That also keeps a password being typed out of any
-dump. In the session harness in Docker here: the process up after 0.39-0.42 s, its
-configuration loaded by 0.56-0.65 s, and the lock held again by **0.67-0.77 s**, 5 of 5,
-leaving no dump (the harness checks).
+dump. On the ISO (`8bc4ec8`'s boot test, systemd-coredump honouring the limit) the lock was
+held again **0.75-1.06 s** after each of five kills. In the session harness in Docker here:
+0.67-0.77 s. On GitHub's runners the harness still saw 2.7-3.1 s (run 40): their kernel
+pipes core dumps to the host's apport, and for a pipe no core limit applies, so the dead
+process lingers about 2 s while it's read, which nothing in the container can change. The
+harness now reports when the old process is gone and counts its 3 s from then; the boot
+test times the whole of it on a real system.
 
 ## The laptop run (manual)
 

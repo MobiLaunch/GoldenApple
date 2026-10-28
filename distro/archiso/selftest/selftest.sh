@@ -6,6 +6,7 @@
 # log, where the journal is forwarded. Every line starts "gg-selftest:".
 #
 #   - the session's units are running;
+#   - pacman.conf holds Hyprland at the version CitronOS is made for;
 #   - AirDrop's service listens on nothing with receiving off (a new account's
 #     default), and the firewall keeps AirDrop and AirPlay out of "public";
 #   - the lock screen killed while locked: a new one holds the lock within 3 s,
@@ -32,6 +33,14 @@ for unit in citronos-shell citronos-lock citronos-airdrop citronos-icon-resolver
   else bad "$unit is $(systemctl --user is-active "$unit.service")"; systemctl --user status --no-pager -n 8 "$unit.service" | sed 's/^/gg-selftest:   /'
   fi
 done
+
+# ---------------------------------------------------------------- Hyprland held
+# pacman.conf holds Hyprland (pacman-config.sh, by the pacman hook when the
+# image was built), so a pacman -Syu on an installed system can't take 0.57,
+# which no longer reads hyprland.conf; the installer copies this pacman.conf.
+held=$(pacman-conf IgnorePkg 2>/dev/null | tr '\n' ' ')
+[[ " $held " == *" hyprland "* ]] && ok "pacman holds Hyprland ($(pacman -Q hyprland))" \
+  || bad "pacman.conf doesn't hold Hyprland (IgnorePkg: '${held:-none}')"
 
 # ---------------------------------------------------------------- AirDrop and the firewall
 if ss -Hlntup | grep -q ':53317\b'; then bad "something listens on AirDrop's port with receiving off: $(ss -Hlntup | grep ':53317\b')"

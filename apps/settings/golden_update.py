@@ -737,6 +737,46 @@ def update_hyprglass(tree: Path, emit: Emit | None = None) -> None:
     off.unlink(missing_ok=True)
 
 
+HYPRLAND_ARCHIVE = "https://archive.archlinux.org/packages/h/hyprland/"
+
+
+def hold_hyprland(tree: Path, emit: Emit | None = None) -> None:
+    """The Hyprland CitronOS's desktop is made for (HYPRGLASS_HYPRLAND in
+    build.sh, what its glass is built for too), held there: pacman.conf's
+    IgnorePkg (pacman-config.sh), and that version installed if another is,
+    from pacman's cache or else the Arch Linux Archive (pacman checks its
+    signature either way). Hyprland 0.57 no longer reads hyprland.conf: a
+    system that took it from the mirrors before the hold has no desktop
+    until this puts 0.56.2 back."""
+    emit = emit or (lambda *a, **k: None)
+    script = tree / "apps/setup/pacman-config.sh"
+    if script.is_file():
+        _run(["sh", str(script), "" if ROOT == Path("/") else str(ROOT)])
+    text = (tree / "distro/archiso/build.sh").read_text() if (tree / "distro/archiso/build.sh").is_file() else ""
+    want = re.search(r'^HYPRGLASS_HYPRLAND="?([0-9][^"\s]*)"?', text, re.M)
+    installed = hyprland_release()
+    if not want or not installed or installed == want.group(1):
+        return
+    want = want.group(1)
+    cached = sorted(path("/var/cache/pacman/pkg").glob(f"hyprland-{want}-*-x86_64.pkg.tar.zst"),
+                    key=lambda p: int(re.search(r"-(\d+)-x86_64", p.name).group(1)))
+    if cached:
+        package = str(cached[-1])
+    else:
+        with urllib.request.urlopen(HYPRLAND_ARCHIVE, timeout=30) as r:
+            names = re.findall(rf'hyprland-{re.escape(want)}-(\d+)-x86_64\.pkg\.tar\.zst"', r.read().decode(errors="replace"))
+        if not names:
+            raise OSError(f"Hyprland {want} isn't in the Arch Linux Archive")
+        package = f"{HYPRLAND_ARCHIVE}hyprland-{want}-{max(map(int, names))}-x86_64.pkg.tar.zst"
+    pacman = ["pacman"] if ROOT == Path("/") else ["pacman", "--sysroot", str(ROOT)]
+    emit("progress", progress=0.97, message=f"Installing Hyprland {want}…", remaining=-1)
+    proc = _run([*pacman, "-U", "--noconfirm", "--noprogressbar", package], timeout=900)
+    if proc.returncode != 0:
+        raise OSError(_pacman_reason(proc))
+    emit("notice", message=f"Hyprland {installed} came from the package mirrors, but CitronOS's desktop is made "
+                           f"for Hyprland {want}, so that's installed again and kept until CitronOS supports a newer one.")
+
+
 def hyprland_release() -> str:
     """The installed Hyprland's version ("" if it can't be told)."""
     if not shutil.which("pacman"):
@@ -1042,6 +1082,7 @@ def install_tree(tree: Path, version: dict, emit: Emit, work: Path) -> bool:
             rel = f.relative_to(overlay).as_posix()
             if not f.is_dir() and not rel.startswith(LIVE_ONLY):
                 rollback.keep(path("/" + rel))
+        rollback.keep(path("/etc/pacman.conf"))          # hold_hyprland's IgnorePkg
         for plugin in ("hyprglass.so", "hyprglass.so.hyprland", "hyprbars.so", "hyprbars.so.hyprland"):
             rollback.keep(path("/usr/lib/golden-gate/" + plugin))
         for image in sorted(path("/boot").glob("initramfs-*.img")) if path("/boot").is_dir() else []:
@@ -1060,6 +1101,12 @@ def install_tree(tree: Path, version: dict, emit: Emit, work: Path) -> bool:
         _journal("installing", step, version)
         apply_overlay(tree)
 
+        try:
+            hold_hyprland(tree, emit)
+        except (OSError, urllib.error.URLError, subprocess.SubprocessError) as exc:
+            emit("notice", message=f"Hyprland {hyprland_release()} is installed, and the version CitronOS's desktop "
+                                   f"is made for couldn't be put back ({str(exc)[:120]}). The desktop won't start "
+                                   "with it after you log out: run Software Update again before then.")
         try:
             update_hyprglass(tree, emit)
         except (OSError, GitHubError, urllib.error.URLError) as exc:

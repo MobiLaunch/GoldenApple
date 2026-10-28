@@ -8,12 +8,20 @@
 #   - no [golden-gate-local]: the image build's own package folder. It only
 #     exists on the computer that built the ISO; left in, every
 #     "pacman -Sy" fails to synchronize it, and so every install fails.
+#   - IgnorePkg = hyprland: Hyprland comes with CitronOS, at the version its
+#     desktop is made for (Software Update installs that one), not with
+#     every "pacman -Syu". Hyprland 0.57 no longer reads hyprland.conf, so
+#     taking it from the mirrors left CitronOS without a desktop.
 #   pacman-config.sh [ROOT]
 set -eu
 conf="${1:-}/etc/pacman.conf"
 [ -f "$conf" ] || exit 0
 tmp="$conf.citronos.$$"
-awk '
+hold=1
+grep -Eq '^[[:space:]]*IgnorePkg[[:space:]]*=.*(^|[[:space:]=])hyprland([[:space:]]|$)' "$conf" && hold=0
+awk -v hold="$hold" '
+  # Hold Hyprland, right under [options].
+  /^\[options\][[:space:]]*$/ { print; if (hold) { print "# CitronOS installs the Hyprland its desktop is made for (Software Update)."; print "IgnorePkg = hyprland" }; next }
   # Drop the build-only repository: its header and the lines under it.
   /^\[golden-gate-local\]/ { skip = 1; next }
   /^\[/ { skip = 0 }

@@ -15,6 +15,8 @@ on:
       - distro/systemd/**
       - scripts/install.sh
       - tests/session/**
+      - distro/archive-date
+      - distro/pin-archive.sh
       - .github/workflows/session.yml
   workflow_dispatch:
     inputs:
@@ -42,8 +44,9 @@ jobs:
         run: |
           docker run --rm -v "$PWD:/repo" -v "$GITHUB_STEP_SUMMARY:/summary.md" -e STARTS \
             -e GITHUB_STEP_SUMMARY=/summary.md -w /repo archlinux:latest bash -euo pipefail -c '
+            sh distro/pin-archive.sh   # the packages as of distro/archive-date
             for try in 1 2 3; do   # mirrors drop connections now and then
-              pacman -Syu --noconfirm --needed quickshell hyprland sway grim qt6-declarative qt6-wayland qt6-svg \
+              pacman -Syuu --noconfirm --needed quickshell hyprland sway grim qt6-declarative qt6-wayland qt6-svg \
                 qt6-shadertools qt6-5compat qt6-multimedia qt6-imageformats dbus dconf glib2 gsettings-desktop-schemas \
                 python python-pillow mesa inter-font ttf-jetbrains-mono adwaita-icon-theme hicolor-icon-theme \
                 libnotify python-dbus-next upower pipewire wireplumber util-linux procps-ng iproute2 openssl librsvg imagemagick jq gtk3 wtype >/dev/null && break

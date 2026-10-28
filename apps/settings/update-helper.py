@@ -50,7 +50,7 @@ def pacman_updates() -> tuple[list[str], bool]:
     if tool and shutil.which("fakeroot"):
         proc = run([tool], timeout=120)
         if proc.returncode in (0, 2):        # 2: nothing to update
-            return [l.strip() for l in proc.stdout.splitlines() if l.strip()], True
+            return not_held([l.strip() for l in proc.stdout.splitlines() if l.strip()]), True
     if not shutil.which("pacman"):
         return [], False
     with tempfile.TemporaryDirectory(prefix="gg-update-") as db:
@@ -63,7 +63,7 @@ def pacman_updates() -> tuple[list[str], bool]:
                 shutil.copy2(os.path.join(known, name), sync)
         proc = run(["pacman", "-Qu", "--dbpath", db])
         lines = [l.strip() for l in proc.stdout.splitlines() if l.strip()]
-        return lines, False
+        return not_held(lines), False
 
 
 def flatpak_updates(scope: str) -> list[str]:
@@ -146,8 +146,20 @@ SIGNATURE = re.compile(r"signature|unknown trust|pgp|gpgme|keyring|corrupted pac
                        r"invalid key|key .* (?:disabled|expired)|marginal trust", re.I)
 
 
+# Packages that come with CitronOS, at the version it's made for (Software
+# Update installs that one), never from the mirrors' newest: Hyprland 0.57 no
+# longer reads hyprland.conf. pacman.conf holds it too (pacman-config.sh).
+HELD = ("hyprland",)
+
+
 def system_upgrade() -> tuple[int, str]:
-    return stream(["pacman", "-Syu", "--noconfirm", "--noprogressbar"], 0.03, 0.8, "System")
+    return stream(["pacman", "-Syu", "--noconfirm", "--noprogressbar", *(f"--ignore={p}" for p in HELD)],
+                  0.03, 0.8, "System")
+
+
+def not_held(lines: list[str]) -> list[str]:
+    """Updates as listed (`name old -> new`), without the held ones."""
+    return [l for l in lines if l.split()[0] not in HELD and not l.endswith("[ignored]")]
 
 
 def repair_keyring(initial: bool) -> None:

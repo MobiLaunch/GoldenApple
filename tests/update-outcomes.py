@@ -11,7 +11,11 @@ and golden_update.py, with every command mocked):
   version back (runtime, shell, system files, glass plugin; new files
   removed), journals where it stopped and says so;
 - a glass plugin that couldn't be updated is a notice that says whether
-  the one in place was made for the Hyprland installed now."""
+  the one in place was made for the Hyprland installed now;
+- Hyprland stays at the version CitronOS's desktop is made for: held in
+  pacman.conf and by the upgrade itself, left out of the update count, and
+  put back (from pacman's cache or the Arch Linux Archive) on a system that
+  took 0.57, which no longer reads hyprland.conf, from the mirrors."""
 from __future__ import annotations
 
 import importlib.util
@@ -277,6 +281,84 @@ class GlassPlugin(unittest.TestCase):
         self.assertEqual(plugin.read_bytes(), self.bytes)
         self.assertEqual(plugin.with_name("hyprglass.so.hyprland").read_text().strip(), "0.56.2",
                          "the pin's Hyprland, not just whatever is installed")
+
+
+class HyprlandHeld(unittest.TestCase):
+    """Hyprland 0.57 reached the mirrors on 2026-10-28 and no longer reads
+    hyprland.conf: CitronOS keeps the one its desktop is made for."""
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self.tmp.name) / "root"
+        (self.root / "etc").mkdir(parents=True)
+        (self.root / "etc/pacman.conf").write_text("[options]\nHoldPkg = pacman glibc\n#IgnorePkg   =\n\n[core]\n"
+                                                   "Include = /etc/pacman.d/mirrorlist\n")
+        self.tree = Path(self.tmp.name) / "tree"
+        (self.tree / "distro/archiso").mkdir(parents=True)
+        (self.tree / "apps/setup").mkdir(parents=True)
+        (self.tree / "apps/setup/pacman-config.sh").write_text((ROOT / "apps/setup/pacman-config.sh").read_text())
+        (self.tree / "distro/archiso/build.sh").write_text('HYPRGLASS_VERSION="v0.8.1"\nHYPRGLASS_HYPRLAND="0.56.2"\n')
+        self.cache = self.root / "var/cache/pacman/pkg"
+        self.cache.mkdir(parents=True)
+        self.events, self.calls = [], []
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def hold(self, installed, listing=b"", pacman_ok=True):
+        def run(cmd, **kw):
+            self.calls.append(cmd)
+            if cmd[0] == "pacman":
+                return subprocess.CompletedProcess(cmd, 0 if pacman_ok else 1, "", "" if pacman_ok else "error: invalid or corrupted package (PGP signature)")
+            return subprocess.run(cmd, text=True, capture_output=True, **kw)
+
+        class R:
+            def __enter__(s): return s
+            def __exit__(s, *a): pass
+            def read(s): return listing
+
+        with patch.object(gu, "ROOT", self.root), patch.object(gu, "path", lambda p: self.root / p.lstrip("/")), \
+                patch.object(gu, "_run", run), patch.object(gu, "hyprland_release", return_value=installed), \
+                patch.object(gu.urllib.request, "urlopen", lambda *a, **k: R()):
+            gu.hold_hyprland(self.tree, lambda e, **k: self.events.append({"event": e, **k}))
+        return [c for c in self.calls if c[0] == "pacman"]
+
+    def test_held_in_pacman_conf_once(self):
+        self.hold("0.56.2")
+        self.hold("0.56.2")
+        conf = (self.root / "etc/pacman.conf").read_text()
+        self.assertEqual(conf.count("\nIgnorePkg = hyprland\n"), 1, conf)
+        self.assertTrue(conf.startswith("[options]\n# CitronOS installs the Hyprland"), conf)
+
+    def test_the_right_one_is_left_alone(self):
+        self.assertEqual(self.hold("0.56.2"), [])
+        self.assertEqual(self.events, [])
+
+    def test_0_57_is_put_back_from_the_cache(self):
+        for rel in (3, 4):
+            (self.cache / f"hyprland-0.56.2-{rel}-x86_64.pkg.tar.zst").write_bytes(b"")
+        (self.cache / "hyprland-0.57.0-1-x86_64.pkg.tar.zst").write_bytes(b"")
+        calls = self.hold("0.57.0")
+        self.assertEqual(calls[-1][-1], str(self.cache / "hyprland-0.56.2-4-x86_64.pkg.tar.zst"))
+        self.assertIn("-U", calls[-1])
+        self.assertIn("Hyprland 0.57.0 came from the package mirrors", self.events[-1]["message"])
+
+    def test_or_from_the_arch_linux_archive(self):
+        listing = (b'<a href="hyprland-0.56.2-2-x86_64.pkg.tar.zst">x</a> <a href="hyprland-0.56.2-4-x86_64.pkg.tar.zst">'
+                   b'x</a> <a href="hyprland-0.57.0-1-x86_64.pkg.tar.zst">x</a>')
+        calls = self.hold("0.57.0", listing=listing)
+        self.assertEqual(calls[-1][-1], gu.HYPRLAND_ARCHIVE + "hyprland-0.56.2-4-x86_64.pkg.tar.zst")
+
+    def test_a_refused_package_is_an_error(self):
+        (self.cache / "hyprland-0.56.2-4-x86_64.pkg.tar.zst").write_bytes(b"")
+        with self.assertRaises(OSError) as e:
+            self.hold("0.57.0", pacman_ok=False)
+        self.assertIn("PGP signature", str(e.exception))
+
+    def test_the_upgrade_and_its_count_leave_it_out(self):
+        with patch.object(helper, "stream", lambda cmd, *a: (0, " ".join(cmd))):
+            self.assertIn("--ignore=hyprland", helper.system_upgrade()[1])
+        self.assertEqual(helper.not_held(["hyprland 0.56.2-4 -> 0.57.0-1", "mesa 1-1 -> 2-1",
+                                          "foo 1-1 -> 2-1 [ignored]"]), ["mesa 1-1 -> 2-1"])
 
 
 if __name__ == "__main__":

@@ -402,6 +402,22 @@ same fields, more briefly, and should be expanded when their milestone starts.
 | T-2.11 | Accessible annotations in the shell | CS2-013 | `shell/Dock.qml`, `Spotlight.qml`, `Notifications.qml`, `DesktopWidgets.qml`, `CitronPodsPopup.qml`, `apps/maps.qml`, `apps/calculator.qml` | `Accessible.role`, `name`, `onPressAction` | The design lint's accessibility rule passes for `shell/` |
 
 **As built (M2 so far):**
+- **T-2.2 and T-2.3, a pinned archive and Hyprland held · begun, forced by Hyprland 0.57.**
+  Hyprland 0.57 reached Arch's mirrors on 2026-10-28 and no longer reads `hyprland.conf`
+  (configuration is Lua only, with no converter). Taken by any `pacman -Syu`, it left
+  CitronOS without a desktop, and CI's Session and ISO builds broke the same day. So:
+  CI and the ISO build install from the Arch Linux Archive as of `distro/archive-date`
+  (2026-10-27, `distro/pin-archive.sh`; moving it is a change of its own), the core of
+  T-2.2. Installed systems hold Hyprland: `pacman-config.sh` puts `IgnorePkg = hyprland`
+  in `pacman.conf` (the image gets it from the pacman hook, and the boot test's self-test
+  checks it), Software Update's upgrade passes `--ignore=hyprland` and leaves it out of
+  the update count, and `golden_update.hold_hyprland` installs the version CitronOS is made
+  for (`HYPRGLASS_HYPRLAND`, 0.56.2) from pacman's cache or the archive on a system that
+  already took 0.57 (`tests/update-outcomes.py`). 0.57 links the same library versions as
+  0.56.2, so holding Hyprland alone is safe for now. Before CitronOS can move to 0.57:
+  `hyprland.conf` and everything Settings writes into `~/.config/hypr/golden-gate` (input,
+  displays, accessibility, windows, motion, the machine file) ported to Lua, and a
+  HyprGlass built for it; that is T-2.3's lock-step, and the hold lifts when both are ready.
 - **T-2.1, PKGBUILDs and a signed repository · in progress (part 1 of 3).** `make install
   DESTDIR=` (`scripts/stage.sh`, one part per package) lays CitronOS out as packaged:
   `citronos-runtime` (the apps and shared UI in `/usr/share/golden-gate`, helpers in

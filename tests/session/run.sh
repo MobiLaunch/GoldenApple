@@ -241,11 +241,17 @@ for round in 1 2 3 4 5; do
   t0=$(ms)
   kill -SEGV "$old" 2>/dev/null || true
   sleep 0.2   # gone, or relaunching, before asking
-  back=false spawned="" loaded=""
-  while (( $(ms) - t0 < 3000 )); do
-    # Where the time goes: the new process appearing, its configuration
-    # loading, and the lock confirmed (asking takes a moment itself, so
-    # it's known only to be back between asking and the answer).
+  back=false gone="" spawned="" loaded=""
+  # The 3 s count from when the old one is gone. Until then the kernel is
+  # still taking its core dump, which on GitHub's runners goes to the
+  # host's apport through a pipe, where no limit applies (about 2 s for
+  # 600 MB); on CitronOS, systemd-coredump honours the unit's LimitCORE=0
+  # and the boot test times the whole of it, from the kill.
+  while (( $(ms) - t0 < ${gone:-7000} + 3000 )); do
+    # Where the time goes: the old process gone, the new one appearing, its
+    # configuration loading, and the lock confirmed (asking takes a moment
+    # itself, so it's known only to be back between asking and the answer).
+    [[ -z $gone ]] && ! kill -0 "$old" 2>/dev/null && gone=$(( $(ms) - t0 ))
     [[ -z $spawned && -n $(lock_pid) && $(lock_pid) != "$old" ]] && spawned=$(( $(ms) - t0 ))
     [[ -z $loaded && $(grep -c "Configuration Loaded" "$OUT/lock.log" 2>/dev/null || true) -gt ${loaded_before:-0} ]] && loaded=$(( $(ms) - t0 ))
     asked=$(( $(ms) - t0 ))
@@ -253,11 +259,11 @@ for round in 1 2 3 4 5; do
     sleep 0.1
   done
   took=$(( $(ms) - t0 ))
-  if $back; then
-    restored=$((restored + 1)); times+=("$took")
-    echo "  kill $round (pid $old): locked again by ${asked}-${took} ms (process up after ${spawned:-?} ms, configuration loaded after ${loaded:-?} ms)"
+  if $back && (( took - ${gone:-0} <= 3000 )); then
+    restored=$((restored + 1)); times+=("$(( took - ${gone:-0} ))")
+    echo "  kill $round (pid $old): locked again by ${asked}-${took} ms (the old one gone after ${gone:-?} ms, the new one up after ${spawned:-?} ms, configuration loaded after ${loaded:-?} ms)"
   else
-    echo "  kill $round (pid $old): no lock screen holding the lock within 3 s"
+    echo "  kill $round (pid $old): no lock screen holding the lock within 3 s of the old one going (gone after ${gone:-?} ms)"
     ps -u "$(id -u)" -o pid=,ppid=,etimes=,stat=,args= | grep -E "qs|quickshell|gg-lock" | grep -v grep | sed "s/^/    /" || true
   fi
   # Give each new lock screen a moment, as a person would take to notice.
@@ -330,7 +336,7 @@ if [[ -n ${GG_TEST_PASSWORD:-} && $(lock_state) == true ]]; then
 else
   fail "no lock screen holding the lock to sign in on"
 fi
-say "lock screen killed while locked: back within 3 s, $restored of 5 (${times[*]:-} ms)"
+say "lock screen killed while locked: back within 3 s of the old one going, $restored of 5 (${times[*]:-} ms)"
 [[ $restored == 5 ]] || fail "the lock screen came back within 3 s only $restored of 5 times"
 kill "$LOCK_LOOP" 2>/dev/null || true
 stop "$SHELL_PID"
