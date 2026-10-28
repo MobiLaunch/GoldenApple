@@ -20,7 +20,7 @@ Page {
             { id: "meson", key: "mesonPath", placeholder: "/usr/bin/meson" },
             { id: "goldengate", key: "qsPath", placeholder: "/usr/bin/qs" },
         ]
-        delegate: FormRow {
+        delegate: PreferenceRow {
             id: loc
             required property var modelData
             readonly property var info: page.app.toolchains[modelData.id] || ({ name: modelData.id, path: "", version: "", hint: "" })
@@ -35,7 +35,7 @@ Page {
         }
     }
     FormGap {}
-    FormRow {
+    PreferenceRow {
         label: "Settings File"
         detail: "LCode's settings live in ~/.config/golden-gate/lcode.json; your themes and key bindings too."
         Button { text: "Show in Files"; onClicked: page.app.revealSettingsFile() }

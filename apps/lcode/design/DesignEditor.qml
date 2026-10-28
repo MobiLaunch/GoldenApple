@@ -491,7 +491,7 @@ Item {
         ghost: ghost
         onChosen: (entry) => designer.add(entry)
     }
-    Popover {
+    DesignPopover {
         id: inlineEdit
         property string key: ""
         property string nodeId: ""

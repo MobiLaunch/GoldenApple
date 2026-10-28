@@ -58,7 +58,7 @@ Page {
     }
     FormGap {}
     SidebarSection { text: "Source Control"; leftPadding: 0; topSpacing: 0 }
-    FormRow {
+    PreferenceRow {
         label: "Author Name"
         SettingField {
             enabled: page.gitInstalled
@@ -67,7 +67,7 @@ Page {
             onCommitted: (v) => page.save("name", v)
         }
     }
-    FormRow {
+    PreferenceRow {
         label: "Author Email"
         SettingField {
             enabled: page.gitInstalled
@@ -76,7 +76,7 @@ Page {
             onCommitted: (v) => page.save("email", v)
         }
     }
-    FormRow {
+    PreferenceRow {
         label: "Default Branch"
         detail: page.saved || "Used for every repository on this computer (git config --global), and the “Created by” line of new files."
         SettingField {

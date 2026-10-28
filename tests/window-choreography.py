@@ -52,7 +52,7 @@ require("apps/lcode/Sheet.qml", [
     "import \"../lib\" as Shared",
     "Shared.ModalSheet { }",
 ])
-require("apps/lcode/design/Popover.qml", [
+require("apps/lcode/design/DesignPopover.qml", [
     "visible: shown || panel.opacity > 0.001",
     "panel.transformOrigin = above ? Item.Bottom : Item.Top",
     "if (origin && origin.visible && origin.enabled) origin.forceActiveFocus()",
@@ -110,7 +110,7 @@ require("apps/files/QuickLook.qml", [
 require("apps/lib/ModalSheet.qml", [
     "enabled: sheet.shown",
 ])
-require("apps/lcode/design/Popover.qml", [
+require("apps/lcode/design/DesignPopover.qml", [
     "enabled: pop.shown",
 ])
 

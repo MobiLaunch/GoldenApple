@@ -12,8 +12,16 @@ standard = {
     "SidebarRow.qml", "SidebarSection.qml", "AccountRow.qml", "EmptyState.qml",
     "Slider.qml", "Spring.qml", "SpringValue.qml", "Switch.qml", "Symbol.qml",
     "ModalSheet.qml",
+    # T-2.9: one of each, with its accessibility, keyboard and Reduce Motion
+    # (tests/shared-components.py drives each).
+    "Alert.qml", "Badge.qml", "ConfirmSheet.qml", "FormSection.qml", "InlineBanner.qml", "ListRow.qml",
+    "NavigationSplitView.qml", "SearchField.qml", "Spinner.qml", "Toast.qml", "Tooltip.qml",
+    "Popover.qml", "FormRow.qml",
     "TextField.qml", "TextArea.qml", "ToolbarButton.qml", "ToolbarPill.qml", "TrafficLights.qml",
 }
+# An app's own file named like one of these would be shadowed by it wherever
+# the app imports lib/ unqualified (LCode's were renamed DesignPopover and
+# PreferenceRow for that reason), so none may be.
 errors = []
 for name in sorted(standard):
     if not (lib / name).is_file():

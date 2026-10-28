@@ -330,24 +330,16 @@ ShellRoot {
         }
 
         // A preference that couldn't be saved: said, not assumed.
-        Glass {
+        InlineBanner {
             objectName: "settingsWriteError"
             parent: win.overlay
-            visible: !!sys.writeError
+            floating: true
+            kind: "error"
+            text: sys.writeError
             anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: 18 }
             width: Math.min(560, parent.width - 40)
-            height: writeErrorText.implicitHeight + 24
-            radius: Theme.radius.panel
             z: 50
-            Text {
-                id: writeErrorText
-                anchors { left: parent.left; right: dismissWriteError.left; margins: 14; verticalCenter: parent.verticalCenter }
-                text: sys.writeError
-                wrapMode: Text.WordWrap
-                color: Theme.destructive
-                font { family: Theme.fontUi; pixelSize: Theme.font.callout.pixelSize }
-            }
-            Button { id: dismissWriteError; text: "OK"; anchors { right: parent.right; rightMargin: 12; verticalCenter: parent.verticalCenter } onClicked: sys.writeError = "" }
+            onDismissed: sys.writeError = ""
         }
 
         // Search suggestions, under the field.

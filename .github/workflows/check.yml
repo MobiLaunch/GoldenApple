@@ -261,6 +261,8 @@ jobs:
         run: python tests/settings-wiring.py
       - name: Guard the shared app component store
         run: python tests/shared-ui.py
+      - name: "Shared components: accessible names, keyboard and Reduce Motion for each (T-2.9)"
+        run: python tests/shared-components.py
       - name: Micro-interaction and Reduce Motion shell contracts
         run: python tests/micro-interactions.py
       - name: Synchronized window panels and modal sheet choreography

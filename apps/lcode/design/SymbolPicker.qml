@@ -3,7 +3,7 @@ import QtQuick
 import "../../lib"
 import "../../lib/theme"
 
-Popover {
+DesignPopover {
     id: picker
     property var names: []                     // from the helper (lib/assets/symbols)
     property string value: ""

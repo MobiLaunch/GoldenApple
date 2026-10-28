@@ -8,7 +8,7 @@ import "../lib/kit/kit.js" as K
 import "completion.js" as Completion
 import "design"
 
-Popover {
+DesignPopover {
     id: lib
     property var app
     property var backend

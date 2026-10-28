@@ -6,7 +6,7 @@ import "../../lib/theme"
 Page {
     id: page
 
-    FormRow {
+    PreferenceRow {
         label: "Appearance"
         detail: "System follows CitronOS's Light or Dark setting. Each appearance has its own editor theme (Themes)."
         Segmented {
@@ -17,7 +17,7 @@ Page {
         }
     }
     FormGap {}
-    FormRow {
+    PreferenceRow {
         label: "At Launch"
         labelHeight: 20
         Column {
@@ -37,7 +37,7 @@ Page {
         }
     }
     FormGap {}
-    FormRow {
+    PreferenceRow {
         label: "Organization Name"
         detail: "The copyright line in the header comment of new files."
         SettingField {
@@ -46,7 +46,7 @@ Page {
             onCommitted: (v) => page.app.saveSettings({ organizationName: v })
         }
     }
-    FormRow {
+    PreferenceRow {
         label: "Organization Identifier"
         detail: "Reverse-DNS, like com.example: new apps are identified as " + (page.app.settings.organizationIdentifier || "com.example") + ".MyApp."
         SettingField {
@@ -55,7 +55,7 @@ Page {
             onCommitted: (v) => page.app.saveSettings({ organizationIdentifier: v })
         }
     }
-    FormRow {
+    PreferenceRow {
         label: "New Projects Folder"
         detail: "Where New Project starts looking. Leave it empty for ~/Developer."
         SettingField {

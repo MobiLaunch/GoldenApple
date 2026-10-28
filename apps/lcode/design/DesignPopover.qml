@@ -1,6 +1,6 @@
 // A glass panel over the window, pointing at what opened it; a click outside
 // or Escape closes it. Put it on the window's overlay:
-//   Popover { id: pop; parent: overlay; panelWidth: 260; …content… }
+//   DesignPopover { id: pop; parent: overlay; panelWidth: 260; …content… }
 //   pop.openAt(item, x, y)
 import QtQuick
 import QtQuick.Window

@@ -6,7 +6,7 @@ import "../../lib"
 import "../../lib/theme"
 import "../../lib/kit/kit.js" as K
 
-Popover {
+DesignPopover {
     id: picker
     property var doc: null
     property string value: ""

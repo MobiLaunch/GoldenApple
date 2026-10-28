@@ -66,7 +66,7 @@ Item {
             color: Theme.label
             font { family: Theme.fontUi; pixelSize: Theme.font.title3.pixelSize; weight: Font.Bold }
         }
-        FormRow {
+        PreferenceRow {
             labelWidth: 120
             label: "Debug Area"
             PopUpButton {
@@ -76,7 +76,7 @@ Item {
                 onPicked: (i) => page.set("debug", ["", "show", "hide"][i])
             }
         }
-        FormRow {
+        PreferenceRow {
             labelWidth: 120
             label: "Navigator"
             PopUpButton {
@@ -86,7 +86,7 @@ Item {
                 onPicked: (i) => page.set("navigator", ["", "project", "issues", "reports"][i])
             }
         }
-        FormRow {
+        PreferenceRow {
             labelWidth: 120
             label: "Also"
             labelHeight: 20

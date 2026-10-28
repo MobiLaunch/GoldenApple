@@ -34,7 +34,7 @@ Page {
             highlightCurrentLine: page.app.settings.highlightCurrentLine !== false
         }
     }
-    FormRow {
+    PreferenceRow {
         label: "Font"
         Row {
             spacing: 8
@@ -53,7 +53,7 @@ Page {
             }
         }
     }
-    FormRow {
+    PreferenceRow {
         label: "Show"
         labelHeight: 20
         Column {
@@ -64,7 +64,7 @@ Page {
         }
     }
     FormGap {}
-    FormRow {
+    PreferenceRow {
         label: "Indent Using"
         Segmented {
             width: 180
@@ -73,7 +73,7 @@ Page {
             onPicked: (i) => page.set("insertSpaces", i === 0)
         }
     }
-    FormRow {
+    PreferenceRow {
         label: "Tab Width"
         detail: "Python, Rust and Swift style guides use 4; CitronOS's QML uses 4 too."
         PopUpButton {
@@ -84,7 +84,7 @@ Page {
         }
     }
     FormGap {}
-    FormRow {
+    PreferenceRow {
         label: "While Typing"
         labelHeight: 20
         Column {
@@ -104,7 +104,7 @@ Page {
             }
         }
     }
-    FormRow {
+    PreferenceRow {
         label: "When Saving"
         labelHeight: 20
         Column {

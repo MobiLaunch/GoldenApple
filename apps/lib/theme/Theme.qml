@@ -79,6 +79,8 @@ QtObject {
     readonly property color shadow: dark ? "#66000000" : "#2e000000"
     readonly property color unemphasizedSelection: dark ? "#26ffffff" : "#14000000"
     readonly property color selectedText: dark ? "#ffffff" : "#ffffff"
+    readonly property color groupedCard: dark ? "#2b2b30" : "#f2f3f6"
+    readonly property color groupedCardBorder: dark ? "#38ffffff" : "#ffffff"
     readonly property QtObject glassClear: QtObject {
         readonly property real blur: 24
         readonly property color tint: dark ? "#571c1c20" : "#5cffffff"

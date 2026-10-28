@@ -402,6 +402,19 @@ same fields, more briefly, and should be expanded when their milestone starts.
 | T-2.11 | Accessible annotations in the shell | CS2-013 | `shell/Dock.qml`, `Spotlight.qml`, `Notifications.qml`, `DesktopWidgets.qml`, `CitronPodsPopup.qml`, `apps/maps.qml`, `apps/calculator.qml` | `Accessible.role`, `name`, `onPressAction` | The design lint's accessibility rule passes for `shell/` |
 
 **As built (M2 so far):**
+- **T-2.9, new shared components · done.** `apps/lib/` gains `Alert`, `ConfirmSheet`,
+  `Popover`, `SearchField`, `ListRow`, `FormRow`, `FormSection`, `InlineBanner`, `Toast`,
+  `Spinner`, `Badge`, `Tooltip` and `NavigationSplitView` (`AppIcon` was already there). Each
+  carries its accessible role and name, works from the keyboard and has a Reduce Motion
+  behaviour, using the T-2.7 tokens (two new colour roles, `groupedCard` and
+  `groupedCardBorder`). `tests/shared-components.py` (16, in CI) drives each in a scene of
+  its own with real key and pointer events, and `tests/shared-ui.py` now guards the new
+  names. Settings' "couldn't be saved" strip is now an `InlineBanner` (it also shows again
+  for the next error after one is dismissed). LCode's own `Popover` and `FormRow` were
+  renamed (`DesignPopover`, `PreferenceRow`): an unqualified `import "../../lib"` takes
+  precedence over a component's own folder, so the new shared ones would have replaced
+  them silently. Moving the apps' hand-made search fields, rows, popovers and
+  confirmations onto these is per-app migration work, like T-2.10's.
 - **T-2.6, `citronos-notifyd` + LauncherEntry · done.**
   `services/notifyd/notifyd.py` owns `org.freedesktop.Notifications` (spec 1.2: actions,
   body, static icons, persistence) and serves the shell as `org.citronos.Notifications1`

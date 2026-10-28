@@ -3,7 +3,7 @@ import QtQuick
 import "../../lib"
 import "../../lib/theme"
 
-Popover {
+DesignPopover {
     id: picker
     property var backend: null
     property string root: ""                   // the project folder

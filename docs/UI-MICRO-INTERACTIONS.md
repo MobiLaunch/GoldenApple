@@ -163,6 +163,33 @@ sheet animate together; the sheet remains mounted for its short exit fade,
 but it stops intercepting input on dismissal. A remembered focus origin is
 restored on close. Escape and click-away respect dismissibility.
 
+**Alerts and confirmations** (`Alert`, `ConfirmSheet`) are built on it. Buttons
+run right to left: the default (Return), Cancel (Escape), then the rest. A
+destructive choice is red and never the default, so with one Return means
+Cancel; clicking away is Cancel too.
+
+**The other shared components** (T-2.9), each with its accessible role and
+name, its keyboard use and its Reduce Motion behaviour, checked one by one by
+`tests/shared-components.py`:
+- `SearchField`: ⌘F focuses it, results follow the typing once it pauses,
+  Return searches and remembers, Escape clears and then lets go, ↓ in an empty
+  field offers recent searches; read out as a search field.
+- `Popover`: an arrow at what opened it, below or above as there's room;
+  click-away and Escape close it, focus returns to its anchor, Tab stays
+  inside while it's open. Grows from the arrow; fades with Reduce Motion.
+- `ListRow`, `FormRow`, `FormSection`: the grouped-form look outside
+  Settings (`Theme.groupedCard`); a row that does something is a Tab stop
+  acting on Space or Return; a form's control is named by its row.
+- `InlineBanner` (in place, e.g. Settings' "couldn't be saved") and `Toast`
+  (brief, at the window's foot, queued, never taking focus): read out as
+  alerts.
+- `Spinner` (twelve spokes; breathes instead of turning with Reduce Motion),
+  `Badge` (pops on a spring, bumps on a new count; appears at once with
+  Reduce Motion), `Tooltip` (after a rest or on keyboard focus; describes its
+  parent to screen readers).
+- `NavigationSplitView`: a list beside its detail; ⌃⌘S hides and shows the
+  list; too narrow, it hides itself and slides over the detail when shown.
+
 **LCode's console** docks from the editor's bottom seam. The editor height
 and the console's visible edge follow the same 205 ms eased boundary;
 physical dragging bypasses animation so the divider stays under the pointer.

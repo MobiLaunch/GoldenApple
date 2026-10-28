@@ -30,7 +30,7 @@ Page {
         app.saveSettings(values)
     }
 
-    FormRow {
+    PreferenceRow {
         label: "Start With"
         detail: "The device the Simulator boots when you open it."
         PopUpButton {
@@ -88,11 +88,11 @@ Page {
     }
     FormGap {}
     SidebarSection { text: "Add a Device"; leftPadding: 0; topSpacing: 0 }
-    FormRow {
+    PreferenceRow {
         label: "Name"
         TextField { id: nameField; width: 260; height: 28; placeholder: "My Phone" }
     }
-    FormRow {
+    PreferenceRow {
         label: "Screen Size"
         detail: "In points, portrait. A 6.1-inch phone is about 393 × 852; an 11-inch tablet about 820 × 1180."
         Row {
@@ -102,15 +102,15 @@ Page {
             TextField { id: heightField; width: 80; height: 28; text: "852"; input.validator: IntValidator { bottom: 1; top: 4096 } }
         }
     }
-    FormRow {
+    PreferenceRow {
         label: "Kind"
         Segmented { width: 180; options: ["Phone", "Tablet"]; current: page.newKind; onPicked: (i) => page.newKind = i }
     }
-    FormRow {
+    PreferenceRow {
         label: "Hardware"
         Segmented { width: 330; options: ["Dynamic Island", "Home Button", "No Cutout"]; current: page.newStyle; onPicked: (i) => page.newStyle = i }
     }
-    FormRow {
+    PreferenceRow {
         label: ""
         detail: page.error
         Button { text: "Add Device"; prominent: true; onClicked: page.addDevice() }

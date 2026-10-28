@@ -6,7 +6,7 @@ import "../../lib"
 import "../../lib/theme"
 import "../../lib/kit/catalog.js" as Catalog
 
-Popover {
+DesignPopover {
     id: lib
     property var ghost: null
     property string query: ""
