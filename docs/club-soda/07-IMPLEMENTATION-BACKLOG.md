@@ -402,6 +402,16 @@ same fields, more briefly, and should be expanded when their milestone starts.
 | T-2.11 | Accessible annotations in the shell | CS2-013 | `shell/Dock.qml`, `Spotlight.qml`, `Notifications.qml`, `DesktopWidgets.qml`, `CitronPodsPopup.qml`, `apps/maps.qml`, `apps/calculator.qml` | `Accessible.role`, `name`, `onPressAction` | The design lint's accessibility rule passes for `shell/` |
 
 **As built (M2 so far):**
+- **T-0.3, performance baseline · CI done; the laptop run is manual.**
+  `tests/session/perf.py`, in every Session run: time to "desktop ready", resident memory,
+  idle CPU with a window behind the Dock (glass windows on and off), the shell's idle
+  frames per second, for the shell, its bridges and the services. CI's baseline is in
+  `perf-baseline.json` and `perf-baseline.md`: 752 ms to ready, 673 MB, about 16 % of a core
+  idle whether glass windows are on or off (so not the window captures; the frame count
+  tells whether it keeps drawing), the services 54 MB and 0.3 %. A run more than 25 % worse
+  warns. On the way: the lock screen no longer starts a D-Bus bridge (it reads its
+  preferences from the file, `GG_PREFS_READONLY`), and the Session harness installs
+  `python-dbus-next` as the ISO does, so it runs settingsd and notifyd for real.
 - **T-2.9, new shared components · done.** `apps/lib/` gains `Alert`, `ConfirmSheet`,
   `Popover`, `SearchField`, `ListRow`, `FormRow`, `FormSection`, `InlineBanner`, `Toast`,
   `Spinner`, `Badge`, `Tooltip` and `NavigationSplitView` (`AppIcon` was already there). Each

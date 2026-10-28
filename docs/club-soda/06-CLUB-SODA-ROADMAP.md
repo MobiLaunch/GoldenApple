@@ -30,7 +30,9 @@ into M1.
 - [x] Test baseline recorded: 125 pass, 10 environmental, 0 real failures.
 - [x] T-0.2: a real-session harness runs in CI and captures every shell surface.
 - [ ] T-0.3: a performance baseline is recorded (start-up time, idle CPU and RSS, glass
-  on and off) on at least a VM and one Intel laptop.
+  on and off) on at least a VM and one Intel laptop. CI's is recorded
+  ([perf-baseline.md](perf-baseline.md)) and tracked in every Session run; the laptop run
+  is manual.
 
 ## M1: Trust and stability · about 3 weeks · **done**
 

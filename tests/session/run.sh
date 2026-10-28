@@ -236,18 +236,25 @@ restored=0 times=()
 for round in 1 2 3 4 5; do
   old=$(lock_pid)
   [[ -n $old ]] || { echo "  kill $round: no lock screen to kill"; break; }
+  loaded_before=$(grep -c "Configuration Loaded" "$OUT/lock.log" 2>/dev/null || true)
   t0=$(ms)
   kill -SEGV "$old" 2>/dev/null || true
   sleep 0.2   # gone, or relaunching, before asking
-  back=false
+  back=false spawned="" loaded=""
   while (( $(ms) - t0 < 3000 )); do
+    # Where the time goes: the new process appearing, its configuration
+    # loading, and the lock confirmed (asking takes a moment itself, so
+    # it's known only to be back between asking and the answer).
+    [[ -z $spawned && -n $(lock_pid) && $(lock_pid) != "$old" ]] && spawned=$(( $(ms) - t0 ))
+    [[ -z $loaded && $(grep -c "Configuration Loaded" "$OUT/lock.log" 2>/dev/null || true) -gt ${loaded_before:-0} ]] && loaded=$(( $(ms) - t0 ))
+    asked=$(( $(ms) - t0 ))
     [[ $(lock_state) == true ]] && { back=true; break; }
     sleep 0.1
   done
   took=$(( $(ms) - t0 ))
   if $back; then
     restored=$((restored + 1)); times+=("$took")
-    echo "  kill $round (pid $old): locked again after ${took} ms"
+    echo "  kill $round (pid $old): locked again by ${asked}-${took} ms (process up after ${spawned:-?} ms, configuration loaded after ${loaded:-?} ms)"
   else
     echo "  kill $round (pid $old): no lock screen holding the lock within 3 s"
     ps -u "$(id -u)" -o pid=,ppid=,etimes=,stat=,args= | grep -E "qs|quickshell|gg-lock" | grep -v grep | sed "s/^/    /" || true

@@ -13,6 +13,9 @@ Measured:
   cpu     % of one core over `--idle` seconds with nothing happening and a
           window behind the Dock, first with glass windows on (the default),
           then off; helpers and services alongside
+  frames  the shell's frames rendered per second over those same seconds
+          (Qt's qt.scenegraph.time.renderloop log): an idle shell that keeps
+          drawing shows here, whatever its CPU
 
 Spotlight's keypress-to-frame needs a compositor's frame timing and a real
 GPU: it's measured on the laptop (perf-baseline.md says how), not here.
@@ -118,10 +121,21 @@ def cpu(groups: dict[str, list[int]], seconds: float) -> dict[str, float]:
     return out
 
 
-def start(log: Path) -> tuple[subprocess.Popen, float]:
+def frames(log: Path) -> int:
+    try:
+        return log.read_text(errors="replace").count("Frame rendered")
+    except OSError:
+        return 0
+
+
+def start(log: Path, count_frames: bool = False) -> tuple[subprocess.Popen, float]:
     """The shell, and ms until it said it was ready."""
+    env = dict(os.environ)
+    if count_frames:
+        rules = env.get("QT_LOGGING_RULES", "")
+        env["QT_LOGGING_RULES"] = (rules + ";" if rules else "") + "qt.scenegraph.time.renderloop=true"
     started = time.monotonic()
-    shell = subprocess.Popen(["qs", "-c", "golden-gate"], stdout=open(log, "w"), stderr=subprocess.STDOUT)
+    shell = subprocess.Popen(["qs", "-c", "golden-gate"], stdout=open(log, "w"), stderr=subprocess.STDOUT, env=env)
     while time.monotonic() - started < 60:
         if READY in log.read_text(errors="replace"):
             return shell, round((time.monotonic() - started) * 1000)
@@ -167,15 +181,22 @@ def main() -> int:
     window_qml.write_text(WINDOW)
     window = subprocess.Popen(["qs", "-p", str(window_qml)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     pref("glassWindows", "true")
-    shell, _ = start(out / "perf-idle.log")
+    idle_log = out / "perf-idle.log"
+    shell, _ = start(idle_log, count_frames=True)
     time.sleep(20)                                   # past its opening animations
     groups = lambda: {"shell": [shell.pid], "helpers": descendants(shell.pid), "services": services()}
-    on = cpu(groups(), args.idle)
+
+    def measure():
+        f0 = frames(idle_log)
+        used = cpu(groups(), args.idle)
+        used["fps"] = round((frames(idle_log) - f0) / args.idle, 2)
+        return used
+    on = measure()
     g = groups()
     rss = {"shell": rss_mb(g["shell"]), "helpers": rss_mb(g["helpers"]), "services": rss_mb(g["services"])}
     pref("glassWindows", "false")
     time.sleep(5)
-    off = cpu(groups(), args.idle)
+    off = measure()
     pref("glassWindows", "true")
     stop(shell)
     stop(window)
@@ -194,11 +215,11 @@ def main() -> int:
     warnings = compare(result)
     md = ["## Performance (T-0.3)", "",
           f"Headless Sway (software rendering), {result['machine']['cores']} cores, {result['machine']['cpu']}.", "",
-          "| | shell | helpers | services |", "|---|---|---|---|",
-          f"| Ready (ms), median of {len(ready)} · p90 | {result['readyMs']['median']:.0f} · {result['readyMs']['p90']:.0f} | | |",
-          f"| RSS (MB) | {rss['shell']} | {rss['helpers']} | {rss['services']} |",
-          f"| Idle CPU %, glass windows on | {on['shell']} | {on['helpers']} | {on['services']} |",
-          f"| Idle CPU %, glass windows off | {off['shell']} | {off['helpers']} | {off['services']} |", ""]
+          "| | shell | helpers | services | shell frames/s |", "|---|---|---|---|---|",
+          f"| Ready (ms), median of {len(ready)} · p90 | {result['readyMs']['median']:.0f} · {result['readyMs']['p90']:.0f} | | | |",
+          f"| RSS (MB) | {rss['shell']} | {rss['helpers']} | {rss['services']} | |",
+          f"| Idle CPU %, glass windows on | {on['shell']} | {on['helpers']} | {on['services']} | {on['fps']} |",
+          f"| Idle CPU %, glass windows off | {off['shell']} | {off['helpers']} | {off['services']} | {off['fps']} |", ""]
     md += [f"- ⚠ {w}" for w in warnings] + ([""] if warnings else [])
     (out / "perf.md").write_text("\n".join(md) + "\n")
     if os.environ.get("GITHUB_STEP_SUMMARY"):

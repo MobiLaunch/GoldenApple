@@ -1,0 +1,15 @@
+{
+  "_doc": "T-0.3's performance baseline. tests/session/perf.py compares each CI run's numbers with \"ci\" and warns on any more than 25 % worse (docs/club-soda/perf-baseline.md).",
+  "ci": {
+    "recorded": "2026-10-28, Session run 34 (e00ad14)",
+    "machine": {"cpu": "AMD EPYC 7763 64-Core Processor", "cores": 4, "compositor": "headless Sway, pixman (software) rendering"},
+    "readyMs": {"median": 752, "p90": 773},
+    "rssMb": {"shell": 673.2, "helpers": 86.9, "services": 53.9},
+    "idleCpuPercent": {
+      "glassWindowsOn": {"shell": 15.93, "helpers": 0.45, "services": 0.32},
+      "glassWindowsOff": {"shell": 15.38, "helpers": 0.58, "services": 0.3},
+      "seconds": 60
+    }
+  },
+  "laptop": null
+}
