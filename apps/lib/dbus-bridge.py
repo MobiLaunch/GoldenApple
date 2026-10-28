@@ -17,8 +17,9 @@ long as it lives and talks to it over stdin and stdout:
                                           when it's back (it's started again)
 
 Arguments are typed from the object's own introspection, so only the method's
-name and JSON values cross. A signal is written before the reply to the call
-that caused it. The bridge exits when stdin closes (its QML item went away) or
+name and JSON values cross. Replies and signals are written in the order they
+arrive, so a signal is written before the reply to the call that caused it,
+and a reply never comes after a signal that was sent later. The bridge exits when stdin closes (its QML item went away) or
 its parent dies; if the object can't be reached at the start it says why
 ({"ready": false, "error": …}) and exits 1.
 """
@@ -67,6 +68,7 @@ class Bridge:
         self.methods: dict[str, str] = {}
         self.ready = False
         self.revive: asyncio.Task | None = None
+        self.waiting: dict[int, object] = {}     # serial of a call → its request id
 
     async def reach(self) -> None:
         """Introspects the object, which starts its service if it's activatable."""
@@ -85,7 +87,23 @@ class Bridge:
         await self.bus.call(Message(destination=DBUS[0], path=DBUS[1], interface=DBUS[2],
                                     member="AddMatch", signature="s", body=[rule]))
 
+    def answer(self, rid, msg: Message) -> None:
+        if msg.message_type == MessageType.ERROR:
+            # The service's own words; never a traceback (dbus-next appends one).
+            message = msg.body[0] if msg.body and isinstance(msg.body[0], str) else msg.error_name
+            say({"id": rid, "ok": False, "error": msg.error_name, "message": message.split("\n", 1)[0]})
+        else:
+            say({"id": rid, "ok": True, "result": plain(msg.body)})
+
     def incoming(self, msg: Message):
+        # A reply is written the moment it arrives, like a signal: waiting for
+        # the call's coroutine to resume could put it after a later signal
+        # (an old GetAll answer over a newer Changed).
+        if msg.message_type in (MessageType.METHOD_RETURN, MessageType.ERROR):
+            rid = self.waiting.pop(msg.reply_serial, None)
+            if rid is not None:
+                self.answer(rid, msg)
+            return None
         if msg.message_type != MessageType.SIGNAL:
             return None
         a = self.args
@@ -122,20 +140,17 @@ class Bridge:
             say({"id": rid, "ok": False, "error": "org.freedesktop.DBus.Error.UnknownMethod",
                  "message": f"{self.args.interface} has no {name}"})
             return
+        msg = None
         try:
-            reply = await self.bus.call(Message(destination=self.args.dest, path=self.args.path,
-                                                interface=self.args.interface, member=name,
-                                                signature=sig, body=list(request.get("args") or [])))
+            msg = Message(destination=self.args.dest, path=self.args.path, interface=self.args.interface,
+                          member=name, signature=sig, body=list(request.get("args") or []),
+                          serial=self.bus.next_serial())
+            self.waiting[msg.serial] = rid
+            await self.bus.call(msg)                 # its reply is written by incoming()
         except Exception as exc:  # noqa: BLE001 - wrong arguments, a lost bus
-            say({"id": rid, "ok": False, "error": "org.citronos.Bridge.Error.Failed", "message": str(exc)})
-            return
-        if reply.message_type == MessageType.ERROR:
-            # The service's own words; never a traceback (dbus-next appends one).
-            message = reply.body[0] if reply.body and isinstance(reply.body[0], str) else reply.error_name
-            message = message.split("\n", 1)[0]
-            say({"id": rid, "ok": False, "error": reply.error_name, "message": message})
-        else:
-            say({"id": rid, "ok": True, "result": plain(reply.body)})
+            # Never sent, or no reply will come: say so, unless it already did.
+            if msg is None or self.waiting.pop(msg.serial, None) is not None:
+                say({"id": rid, "ok": False, "error": "org.citronos.Bridge.Error.Failed", "message": str(exc)})
 
     async def run(self) -> int:
         a = self.args
