@@ -211,10 +211,10 @@ echo "::group::The shell's log while its surfaces were opened (last 60 lines)"
 tail -n 60 "$OUT/surfaces.log"
 echo "::endgroup::"
 
-# The lock screen in a process of its own, restarted a second after it stops
-# as citronos-lock.service is (Restart=always, RestartSec=1). `|| true`: under
+# The lock screen in a process of its own, restarted 200 ms after it stops
+# as citronos-lock.service is (Restart=always, RestartSec=200ms). `|| true`: under
 # set -e the loop would end at the first crash.
-( while :; do gg-lock serve >>"$OUT/lock.log" 2>&1 || true; sleep 1; done ) &
+( while :; do gg-lock serve >>"$OUT/lock.log" 2>&1 || true; sleep 0.2; done ) &
 LOCK_LOOP=$!
 LOCK_QML="$XDG_CONFIG_HOME/quickshell/golden-gate/lock-shell.qml"
 # "true" once the compositor has confirmed a lock screen's lock, "false" while

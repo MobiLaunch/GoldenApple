@@ -23,9 +23,9 @@ Recorded 2026-10-28, Session run 34 (`e00ad14`).
   window captures (CS2-007) aren't what costs here. Under Sway they don't run at all: the
   shell finds windows to capture through Hyprland. Either the shell keeps drawing while
   nothing happens, or each of its occasional frames is very expensive in software rendering.
-  From the next run the table has the shell's **frames per second** while idle (Qt's
-  `qt.scenegraph.time.renderloop` log), which tells the two apart. An idle shell should draw
-  no frames.
+  Counting frames from Qt's render-loop log read 0 (Quickshell doesn't pass Qt's debug lines
+  on), so the table now shows the shell's **busiest threads** while idle instead: the render
+  thread busy means it keeps drawing; the main thread busy means timers and bindings.
 - **673 MB resident** is a lot for a shell. Some of it is software rendering's surfaces kept
   in memory. How much is the shell's own (Launchpad's grid, Tablet Home, every screen's
   surfaces built at start, CS2-025) needs the laptop's number, with a GPU, beside this one.
@@ -35,6 +35,19 @@ Recorded 2026-10-28, Session run 34 (`e00ad14`).
 
 T-3.3 (the glass lens opt-in, capture on damage) and T-3.4 (lazy Launchpad and Tablet Home)
 are measured against these numbers.
+
+## The lock screen coming back
+
+The harness kills the lock screen five times while locked. In run 35, each restart broke
+down as follows:
+
+- the new process was up after about 1.2–1.3 s, of which 1 s was the unit's restart delay;
+- its configuration had loaded by about 1.5 s;
+- it held the lock again by 2.9–3.2 s.
+
+The delay is now 200 ms (`citronos-lock.service`), with systemd backing off to every 5 s
+for a lock screen that keeps failing, so it can't spin. The compositor keeps the session
+locked throughout.
 
 ## The laptop run (manual)
 

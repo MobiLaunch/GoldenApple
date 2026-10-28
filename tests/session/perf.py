@@ -13,9 +13,10 @@ Measured:
   cpu     % of one core over `--idle` seconds with nothing happening and a
           window behind the Dock, first with glass windows on (the default),
           then off; helpers and services alongside
-  frames  the shell's frames rendered per second over those same seconds
-          (Qt's qt.scenegraph.time.renderloop log): an idle shell that keeps
-          drawing shows here, whatever its CPU
+  threads the shell's busiest threads over those same seconds (% of a core
+          each): QSGRenderThread drawing, the main thread running timers and
+          bindings, or something else. (Counting frames from Qt's render-loop
+          log read 0 under Quickshell, which doesn't pass Qt's debug lines on.)
 
 Spotlight's keypress-to-frame needs a compositor's frame timing and a real
 GPU: it's measured on the laptop (perf-baseline.md says how), not here.
@@ -121,21 +122,24 @@ def cpu(groups: dict[str, list[int]], seconds: float) -> dict[str, float]:
     return out
 
 
-def frames(log: Path) -> int:
-    try:
-        return log.read_text(errors="replace").count("Frame rendered")
-    except OSError:
-        return 0
+def thread_ticks(pid: int) -> dict[str, int]:
+    """CPU ticks so far of each of a process's threads, by name (threads of
+    the same name added up)."""
+    out: dict[str, int] = {}
+    for t in Path(f"/proc/{pid}/task").glob("*"):
+        try:
+            name = (t / "comm").read_text().strip()
+            fields = (t / "stat").read_text().rsplit(")", 1)[1].split()
+            out[name] = out.get(name, 0) + int(fields[11]) + int(fields[12])
+        except (OSError, IndexError, ValueError):
+            continue
+    return out
 
 
-def start(log: Path, count_frames: bool = False) -> tuple[subprocess.Popen, float]:
+def start(log: Path) -> tuple[subprocess.Popen, float]:
     """The shell, and ms until it said it was ready."""
-    env = dict(os.environ)
-    if count_frames:
-        rules = env.get("QT_LOGGING_RULES", "")
-        env["QT_LOGGING_RULES"] = (rules + ";" if rules else "") + "qt.scenegraph.time.renderloop=true"
     started = time.monotonic()
-    shell = subprocess.Popen(["qs", "-c", "golden-gate"], stdout=open(log, "w"), stderr=subprocess.STDOUT, env=env)
+    shell = subprocess.Popen(["qs", "-c", "golden-gate"], stdout=open(log, "w"), stderr=subprocess.STDOUT)
     while time.monotonic() - started < 60:
         if READY in log.read_text(errors="replace"):
             return shell, round((time.monotonic() - started) * 1000)
@@ -181,15 +185,16 @@ def main() -> int:
     window_qml.write_text(WINDOW)
     window = subprocess.Popen(["qs", "-p", str(window_qml)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     pref("glassWindows", "true")
-    idle_log = out / "perf-idle.log"
-    shell, _ = start(idle_log, count_frames=True)
+    shell, _ = start(out / "perf-idle.log")
     time.sleep(20)                                   # past its opening animations
     groups = lambda: {"shell": [shell.pid], "helpers": descendants(shell.pid), "services": services()}
 
     def measure():
-        f0 = frames(idle_log)
+        t0 = thread_ticks(shell.pid)
         used = cpu(groups(), args.idle)
-        used["fps"] = round((frames(idle_log) - f0) / args.idle, 2)
+        t1 = thread_ticks(shell.pid)
+        busy = {name: round(100 * (t1[name] - t0.get(name, 0)) / TICK / args.idle, 2) for name in t1}
+        used["threads"] = dict(sorted(((n, v) for n, v in busy.items() if v >= 0.1), key=lambda kv: -kv[1])[:5])
         return used
     on = measure()
     g = groups()
@@ -215,11 +220,11 @@ def main() -> int:
     warnings = compare(result)
     md = ["## Performance (T-0.3)", "",
           f"Headless Sway (software rendering), {result['machine']['cores']} cores, {result['machine']['cpu']}.", "",
-          "| | shell | helpers | services | shell frames/s |", "|---|---|---|---|---|",
+          "| | shell | helpers | services | the shell's busiest threads (% of a core) |", "|---|---|---|---|---|",
           f"| Ready (ms), median of {len(ready)} · p90 | {result['readyMs']['median']:.0f} · {result['readyMs']['p90']:.0f} | | | |",
           f"| RSS (MB) | {rss['shell']} | {rss['helpers']} | {rss['services']} | |",
-          f"| Idle CPU %, glass windows on | {on['shell']} | {on['helpers']} | {on['services']} | {on['fps']} |",
-          f"| Idle CPU %, glass windows off | {off['shell']} | {off['helpers']} | {off['services']} | {off['fps']} |", ""]
+          f"| Idle CPU %, glass windows on | {on['shell']} | {on['helpers']} | {on['services']} | {threads(on)} |",
+          f"| Idle CPU %, glass windows off | {off['shell']} | {off['helpers']} | {off['services']} | {threads(off)} |", ""]
     md += [f"- ⚠ {w}" for w in warnings] + ([""] if warnings else [])
     (out / "perf.md").write_text("\n".join(md) + "\n")
     if os.environ.get("GITHUB_STEP_SUMMARY"):
@@ -229,6 +234,10 @@ def main() -> int:
     for w in warnings:
         print(f"::warning::{w}")
     return 0
+
+
+def threads(used: dict) -> str:
+    return ", ".join(f"{name} {v}" for name, v in used.get("threads", {}).items()) or "none over 0.1"
 
 
 def cpu_model() -> str:

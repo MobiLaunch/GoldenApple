@@ -181,6 +181,8 @@ class Wiring(unittest.TestCase):
         c.read(ROOT / "distro/systemd/user/citronos-lock.service")
         self.assertEqual(c["Service"]["ExecStart"], "/usr/bin/env gg-lock serve")
         self.assertEqual(c["Service"]["Restart"], "always")
+        self.assertEqual((c["Service"]["RestartSec"], c["Service"]["RestartMaxDelaySec"]), ("200ms", "5s"),
+                         "back within a moment, and a lock screen that keeps failing backs off")
         self.assertEqual(c["Unit"]["StartLimitIntervalSec"], "0", "no start limit: it must come back while locked")
         self.assertEqual(c["Unit"]["PartOf"], "citronos-session.target")
         self.assertIn("citronos-lock.service", (ROOT / "distro/systemd/user/citronos-session.target").read_text())
