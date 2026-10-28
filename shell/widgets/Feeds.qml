@@ -20,7 +20,7 @@ Scope {
 
     // ------------------------------------------------------------------ time
     readonly property date now: clock.date
-    SystemClock { id: clock; precision: SystemClock.Seconds }
+    SystemClock { id: clock; precision: SystemClock.Minutes }   // the clock face keeps its own seconds
 
     // ----------------------------------------------------------------- media
     readonly property var player: Mpris.players.values.find((p) => p.isPlaying) ?? (Mpris.players.values.length ? Mpris.players.values[0] : null)

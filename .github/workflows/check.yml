@@ -459,6 +459,10 @@ jobs:
         run: sudo apt-get install -y librsvg2-bin libpulse0 && python tests/qml-load.py
         env:
           QT_QPA_PLATFORM: offscreen
+      - name: "The shell at rest draws about once a second, not continuously"
+        run: python tests/idle-frames.py
+        env:
+          QT_QPA_PLATFORM: offscreen
       - name: "Disks: read, named, the running system never changed, changes through udisks"
         run: python tests/disks.py
       - name: "Files shows the disks: Locations, Computer, the path bar, hidden files"

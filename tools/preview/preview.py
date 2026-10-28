@@ -580,8 +580,12 @@ def main() -> int:
                     help="fail when a required loaded QML objectName is absent (catches empty Loader panes)")
     ap.add_argument("--expect-menu", default="",
                     help="assert that the menu bar actually shows this menu after IPC steps")
+    ap.add_argument("--idle-frames", type=float, default=0, metavar="SECONDS",
+                    help="instead of a screenshot, count the frames drawn over SECONDS left alone (clocks running)")
     ap.add_argument("-v", "--verbose", action="store_true")
     a = ap.parse_args()
+    if a.idle_frames:
+        a.env.append("GG_PREVIEW_LIVE_CLOCK=1")
 
     w, h = (int(v) for v in a.size.split("x"))
     wallpaper = HERE / "cache/tide.png"
@@ -679,6 +683,15 @@ def main() -> int:
         return max(matches, key=rank) if matches else None
 
     def finish():
+        if a.idle_frames:
+            frames = [0]
+            window.frameSwapped.connect(lambda: frames.__setitem__(0, frames[0] + 1))
+
+            def counted():
+                print(f"idle frames: {frames[0]} in {a.idle_frames:g} s")
+                app.quit()
+            QTimer.singleShot(int(a.idle_frames * 1000), counted)
+            return
         if a.expect_menu:
             # Inspect the *live* QML model, not pixels from a translucent
             # software-rendered popup. Preview screenshots may vary when the

@@ -206,7 +206,10 @@ async def serve(folder: Path | None = None) -> int:
         return 0
     files = {store.file.name: domain for domain, store in service.stores.items()}
     watch(folder, lambda name: name in files and service.refresh(files[name]))
-    await bus.wait_for_disconnect()
+    try:
+        await bus.wait_for_disconnect()
+    except (EOFError, OSError):         # the session's bus went away: the session ended
+        pass
     return 0
 
 

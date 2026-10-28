@@ -427,7 +427,10 @@ async def serve() -> int:
                  f"type='signal',sender='{DBUS[0]}',interface='{DBUS[2]}',member='NameOwnerChanged'"):
         await bus.call(Message(destination=DBUS[0], path=DBUS[1], interface=DBUS[2], member="AddMatch",
                                signature="s", body=[rule]))
-    await bus.wait_for_disconnect()
+    try:
+        await bus.wait_for_disconnect()
+    except (EOFError, OSError):         # the session's bus went away: the session ended
+        pass
     return 0
 
 

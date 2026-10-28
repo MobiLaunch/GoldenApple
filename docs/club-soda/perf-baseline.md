@@ -19,13 +19,20 @@ Recorded 2026-10-28, Session run 34 (`e00ad14`).
 
 ## What it says
 
-- **The idle shell costs about 16 % of a core here, glass windows on or off.** So the live
-  window captures (CS2-007) aren't what costs here. Under Sway they don't run at all: the
-  shell finds windows to capture through Hyprland. Either the shell keeps drawing while
-  nothing happens, or each of its occasional frames is very expensive in software rendering.
-  Counting frames from Qt's render-loop log read 0 (Quickshell doesn't pass Qt's debug lines
-  on), so the table now shows the shell's **busiest threads** while idle instead: the render
-  thread busy means it keeps drawing; the main thread busy means timers and bindings.
+- **The idle shell cost about 16 % of a core here, glass windows on or off: the Clock
+  widget.** So the live window captures (CS2-007) weren't what cost: under Sway they don't
+  run at all, since the shell finds windows to capture through Hyprland. Run 36 (`9316376`)
+  broke the shell's idle CPU down by thread: the render thread at 3.7 % and each of
+  llvmpipe's four rasterizing threads at 3.5-3.7 %, the main thread under that. The shell
+  kept drawing. A new account's desktop has the Clock widget, and its hands sprang to each
+  new place (a 140 ms spring): the second hand every second, and the minute hand too, since
+  it creeps each second. That drew the whole widget layer, glass and all, about nine times
+  a second. The preview harness, its clocks let run (`--idle-frames`), counted 54 frames in
+  6 s at rest. Now the minute and second hands step, as a quartz watch's do, and only the
+  hour hand springs, once a minute: 7 frames in 6 s, the second hand's step.
+  `tests/idle-frames.py` keeps it there. The clock face also keeps its own seconds, so the
+  shared feed every other widget reads goes by the minute. The next Session run gives the
+  new idle number.
 - **673 MB resident** is a lot for a shell. Some of it is software rendering's surfaces kept
   in memory. How much is the shell's own (Launchpad's grid, Tablet Home, every screen's
   surfaces built at start, CS2-025) needs the laptop's number, with a GPU, beside this one.
@@ -47,7 +54,9 @@ down as follows:
 
 The delay is now 200 ms (`citronos-lock.service`), with systemd backing off to every 5 s
 for a lock screen that keeps failing, so it can't spin. The compositor keeps the session
-locked throughout.
+locked throughout. In run 36 (`9316376`) the process was up after 0.41-0.47 s, its
+configuration loaded by 0.66-0.75 s, and the lock held again by 1.9-2.6 s: 5 of 5 within
+the 3 s goal, with about 0.4 s to spare.
 
 ## The laptop run (manual)
 

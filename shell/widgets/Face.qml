@@ -136,6 +136,11 @@ Item {
         property real angle
         property real length
         property real thickness: 3
+        // The hour hand springs to its place once a minute; the minute and
+        // second hands, which move every second, step as a quartz watch's do.
+        // Springing, they drew the whole widget layer, glass and all, nine
+        // times a second at rest (16 % of a core in software rendering).
+        property bool springs: true
         x: cx - thickness / 2
         y: cy - length
         width: thickness; height: length + 6; radius: thickness / 2
@@ -143,7 +148,7 @@ Item {
         transform: Rotation {
             origin.x: hand.thickness / 2; origin.y: hand.length
             angle: hand.angle
-            Behavior on angle { RotationAnimation { duration: Theme.reduceMotion ? 0 : 140; direction: RotationAnimation.Clockwise; easing.type: Easing.OutBack } }
+            Behavior on angle { enabled: hand.springs; RotationAnimation { duration: Theme.reduceMotion ? 0 : 140; direction: RotationAnimation.Clockwise; easing.type: Easing.OutBack } }
         }
     }
 
@@ -153,9 +158,11 @@ Item {
         Item {
             id: dial
             readonly property real d: Math.min(width, height) - 16
-            readonly property int h: face.now.getHours() % 12
-            readonly property int m: face.now.getMinutes()
-            readonly property int s: face.now.getSeconds()
+            // Only the clock needs seconds; the other widgets go by the minute.
+            SystemClock { id: ticking; precision: SystemClock.Seconds }
+            readonly property int h: ticking.date.getHours() % 12
+            readonly property int m: ticking.date.getMinutes()
+            readonly property int s: ticking.date.getSeconds()
             Rectangle {
                 id: disc
                 anchors.centerIn: parent
@@ -193,8 +200,8 @@ Item {
                 font { pixelSize: Theme.font.footnote.pixelSize; weight: Font.DemiBold }
             }
             Hand { cx: dial.width / 2; cy: dial.height / 2; angle: (dial.h + dial.m / 60) * 30; length: dial.d * 0.24; thickness: 4; color: Theme.label }
-            Hand { cx: dial.width / 2; cy: dial.height / 2; angle: (dial.m + dial.s / 60) * 6; length: dial.d * 0.36; thickness: 3; color: Theme.label }
-            Hand { cx: dial.width / 2; cy: dial.height / 2; angle: dial.s * 6; length: dial.d * 0.40; thickness: 1.2; color: "#ff9500" }
+            Hand { cx: dial.width / 2; cy: dial.height / 2; angle: (dial.m + dial.s / 60) * 6; length: dial.d * 0.36; thickness: 3; color: Theme.label; springs: false }   // it creeps each second
+            Hand { cx: dial.width / 2; cy: dial.height / 2; angle: dial.s * 6; length: dial.d * 0.40; thickness: 1.2; color: "#ff9500"; springs: false }
             Rectangle { anchors.centerIn: parent; width: 7; height: 7; radius: 3.5; color: "#ff9500" }
             Rectangle { anchors.centerIn: parent; width: 3; height: 3; radius: 1.5; color: Theme.dark ? "#1c1c1e" : "white" }
         }
