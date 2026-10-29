@@ -41,7 +41,9 @@ done
 # as packaged, and the account runs the system's shell, with no copy of its own.
 packages=$(pacman -Qq | grep '^citronos' | tr '\n' ' ')
 if [[ -z $packages ]]; then bad "no citronos packages are installed"
-elif changed=$(sudo -n pacman -Qkk $packages 2>&1 | grep -vE '^[a-z0-9-]+: [0-9]+ total files, 0 altered files$'); [[ -n $changed ]]; then
+# Only what it says of these packages: the live image has no sync databases,
+# and pacman warns about that too.
+elif changed=$(sudo -n pacman -Qkk $packages 2>&1 | grep -E '(warning|error): citronos|^citronos[a-z-]*: [0-9]+ total files, [1-9][0-9]* altered'); [[ -n $changed ]]; then
   bad "pacman -Qkk finds packaged files changed: $(echo "$changed" | head -n 3 | tr '\n' ' ')"
 else ok "pacman -Qkk: every file of $packages as packaged"
 fi
