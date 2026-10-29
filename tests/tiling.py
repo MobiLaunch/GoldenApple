@@ -126,7 +126,8 @@ check(all(f'layout: "{l}"' in zoom for l in ["left", "right", "top", "bottom", "
 check("ZoomMenu {" in (ROOT / "apps/lib/AppWindow.qml").read_text(), "AppWindow opens ZoomMenu from the green button")
 install = (ROOT / "scripts/install.sh").read_text()
 check(install.count('> "$BIN/gg-tile"') >= 3, "install.sh writes gg-tile in every mode")
-check('["/usr/local/bin/gg-tile"]="0:0:755"' in (ROOT / "distro/archiso/build.sh").read_text(), "the ISO keeps gg-tile executable")
+check(re.search(r"\ngg-tile +python3 +\$LIB/tile.py\n", (ROOT / "scripts/stage.sh").read_text()) is not None,
+      "the ISO's packages have gg-tile (citronos-runtime's /usr/bin/gg-tile, 755)")
 for name in ["left", "right", "top", "bottom", "top-left", "top-right", "bottom-left", "bottom-right", "fill", "center"]:
     check((ROOT / f"apps/lib/assets/symbols/tile-{name}.svg").exists(), f"symbol tile-{name}")
 

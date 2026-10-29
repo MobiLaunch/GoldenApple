@@ -59,6 +59,16 @@ gg-icon-resolver        python3     $LIB/icon-resolver.py
 gg-idle                 python3     $LIB/idle.py
 "
 
+# A builder's own system symbols (local-assets/symbols, never committed: they
+# are theirs to use, not CitronOS's to give out), over the shipped ones.
+local_symbols() { # local_symbols DEST-DIR
+  local svg
+  for svg in "$REPO"/local-assets/symbols/*.svg; do
+    [[ -e $svg ]] && install -Dm644 "$svg" "$1/${svg##*/}"
+  done
+  return 0
+}
+
 wrappers() {
   local name how target
   while read -r name how target; do
@@ -76,6 +86,7 @@ runtime() {
   cp -a "$REPO/apps" "$D$APPS"
   rm -rf "$D$APPS/lib" "$D$APPS/desktop"
   ln -s ../ui "$D$APPS/lib"
+  local_symbols "$D$SHARE/ui/assets/symbols"
   find "$D$SHARE" -name __pycache__ -type d -prune -exec rm -rf {} +
 
   # Helpers, beside each other and root-owned.
@@ -116,8 +127,8 @@ runtime() {
   # Administration with your password, Touch ID's PAM service and its polkit action.
   install -d -m750 "$D/etc/sudoers.d"     # as the filesystem package has it
   printf '%%wheel ALL=(ALL:ALL) ALL\n' | install -m440 /dev/stdin "$D/etc/sudoers.d/20-golden-wheel"
-  install -Dm644 "$REPO/distro/archiso/overlay/etc/pam.d/gg-touchid" "$D/etc/pam.d/gg-touchid"
-  install -Dm644 "$REPO/distro/archiso/overlay/usr/share/polkit-1/actions/org.goldengate.touchid.policy" \
+  install -Dm644 "$REPO/distro/pam/gg-touchid" "$D/etc/pam.d/gg-touchid"
+  install -Dm644 "$REPO/distro/polkit/org.goldengate.touchid.policy" \
     "$D/usr/share/polkit-1/actions/org.goldengate.touchid.policy"
   install -Dm644 "$REPO/third_party/hyprglass/LICENSE" "$D/usr/share/licenses/citronos-runtime/hyprglass/LICENSE"
 
@@ -172,6 +183,7 @@ shell() {
   # One shared UI, so the shell and every control resolve one Theme singleton.
   rm -rf "$S/ui"
   ln -s "$SHARE/ui" "$S/ui"
+  local_symbols "$S/assets/symbols"
 }
 
 hyprland_config() {
@@ -228,6 +240,7 @@ theme() {
   install -d "$T/components"
   cp -a "$REPO"/themes/sddm/golden-gate/. "$T/"
   cp -a "$REPO/apps/lib" "$T/ui"
+  local_symbols "$T/assets/symbols"
   find "$T" -name __pycache__ -type d -prune -exec rm -rf {} +
   for shared in Glass.qml TextField.qml Symbol.qml Spring.qml SpringValue.qml LockSurface.qml SystemClockProxy.qml; do
     install -m644 "$REPO/shell/components/$shared" "$T/components/$shared"

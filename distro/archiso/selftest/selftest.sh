@@ -6,6 +6,8 @@
 # log, where the journal is forwarded. Every line starts "gg-selftest:".
 #
 #   - the session's units are running;
+#   - CitronOS is its packages, each file as packaged (pacman -Qkk), and the
+#     account runs the system's shell;
 #   - pacman.conf holds Hyprland at the version CitronOS is made for;
 #   - AirDrop's service listens on nothing with receiving off (a new account's
 #     default), and the firewall keeps AirDrop and AirPlay out of "public";
@@ -33,6 +35,18 @@ for unit in citronos-shell citronos-lock citronos-airdrop citronos-icon-resolver
   else bad "$unit is $(systemctl --user is-active "$unit.service")"; systemctl --user status --no-pager -n 8 "$unit.service" | sed 's/^/gg-selftest:   /'
   fi
 done
+
+# ---------------------------------------------------------------- the packages
+# The image is an install of CitronOS's packages (T-2.1): every file of theirs
+# as packaged, and the account runs the system's shell, with no copy of its own.
+packages=$(pacman -Qq | grep '^citronos' | tr '\n' ' ')
+if [[ -z $packages ]]; then bad "no citronos packages are installed"
+elif changed=$(sudo -n pacman -Qkk $packages 2>&1 | grep -vE '^[a-z0-9-]+: [0-9]+ total files, 0 altered files$'); [[ -n $changed ]]; then
+  bad "pacman -Qkk finds packaged files changed: $(echo "$changed" | head -n 3 | tr '\n' ' ')"
+else ok "pacman -Qkk: every file of $packages as packaged"
+fi
+[[ ! -e ${XDG_CONFIG_HOME:-$HOME/.config}/quickshell ]] && ok "the shell is the system's (no ~/.config/quickshell)" \
+  || bad "this account has a shell of its own in ~/.config/quickshell"
 
 # ---------------------------------------------------------------- Hyprland held
 # pacman.conf holds Hyprland (pacman-config.sh, by the pacman hook when the
@@ -63,7 +77,9 @@ else
 fi
 
 # ---------------------------------------------------------------- the lock screen
+# Where gg-lock finds it: the account's own copy, else the system's (/etc/xdg).
 lock_qml="${XDG_CONFIG_HOME:-$HOME/.config}/quickshell/golden-gate/lock-shell.qml"
+[[ -e $lock_qml ]] || lock_qml=/etc/xdg/quickshell/golden-gate/lock-shell.qml
 lock_state() { timeout 2 qs -p "$lock_qml" ipc call lock isLocked 2>/dev/null | tr -d '[:space:]'; }
 gg-lock
 for _ in $(seq 25); do [[ $(lock_state) == true ]] && break; sleep 0.2; done

@@ -82,7 +82,7 @@ class Units(unittest.TestCase):
         self.assertEqual(install.count('session-start.sh" "$BIN/gg-session-start"'), 2, "extras and the main install")
         self.assertIn('"$R/usr/lib/systemd/user/${unit##*/}"', install)
         self.assertIn('UNITS="$ROOT/usr/lib/systemd/user"; else UNITS="$CONF/systemd/user"', install)
-        self.assertIn('["/usr/local/bin/gg-session-start"]="0:0:755"', (ROOT / "distro/archiso/build.sh").read_text())
+        self.assertIn('session-start.sh" "$D/usr/bin/gg-session-start"', (ROOT / "scripts/stage.sh").read_text())
 
 
 def stubs(tmp: Path, systemd: bool):

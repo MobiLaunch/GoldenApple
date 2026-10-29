@@ -58,39 +58,11 @@ file_permissions+=(
   ["/usr/local/bin/gg-session"]="0:0:755"
   ["/usr/local/bin/gnome-control-center"]="0:0:755"
   ["/usr/local/bin/gnome-calculator"]="0:0:755"
-  ["/usr/local/bin/gg-diagnostics"]="0:0:755"
-  ["/usr/local/bin/gg-settings"]="0:0:755"
-  ["/usr/local/bin/gg-web"]="0:0:755"
-  ["/usr/local/bin/gg-install"]="0:0:755"
-  ["/usr/local/bin/gg-software"]="0:0:755"
-  ["/usr/local/bin/gg-files"]="0:0:755"
-  ["/usr/local/bin/gg-intelligence"]="0:0:755"
-  ["/usr/local/bin/gg-disk-utility"]="0:0:755"
-  ["/usr/local/bin/gg-pref"]="0:0:755"
-  ["/usr/local/bin/gg-settingsd"]="0:0:755"
-  ["/usr/local/bin/gg-notifyd"]="0:0:755"
-  ["/usr/local/bin/gg-hyprglass-sync"]="0:0:755"
-  ["/usr/local/bin/gg-apply-preferences"]="0:0:755"
-  ["/usr/local/bin/gg-tile"]="0:0:755"
-  ["/usr/local/bin/gg-idle"]="0:0:755"
-  ["/usr/local/bin/gg-mac-open"]="0:0:755"
-  ["/usr/local/bin/gg-lcode"]="0:0:755"
-  ["/usr/local/bin/gg-airdrop"]="0:0:755"
-  ["/usr/local/bin/gg-session-start"]="0:0:755"
-  ["/usr/local/bin/gg-lock"]="0:0:755"
-  ["/etc/NetworkManager/dispatcher.d/50-citronos-zone"]="0:0:755"
   ["/usr/local/bin/gg-update-disk"]="0:0:755"
-  ["/usr/lib/golden-gate/account-helper.py"]="0:0:755"
-  ["/usr/lib/golden-gate/pref-helper.py"]="0:0:755"
-  ["/usr/lib/golden-gate/settingsd.py"]="0:0:755"
-  ["/usr/lib/golden-gate/notifyd.py"]="0:0:755"
-  ["/usr/lib/golden-gate/hyprglass-sync.sh"]="0:0:755"
-  ["/usr/lib/golden-gate/apply-preferences.sh"]="0:0:755"
-  ["/usr/lib/golden-gate/tile.py"]="0:0:755"
-  ["/usr/lib/golden-gate/idle.py"]="0:0:755"
+  ["/etc/NetworkManager/dispatcher.d/50-citronos-zone"]="0:0:755"
   ["/usr/lib/golden-gate/hyprglass.so"]="0:0:755"
   ["/usr/lib/golden-gate/hyprbars.so"]="0:0:755"
-  ["/etc/sudoers.d/20-golden-wheel"]="0:0:440"
+  ["/etc/sudoers.d"]="0:0:750"
   ["/etc/sudoers.d/10-golden-live"]="0:0:440"
   ["/home/golden"]="1000:1000:750"
 )
@@ -171,6 +143,37 @@ build_aur() {
   done
 }
 
+# CitronOS's own packages, built from this checkout as an unprivileged user,
+# into distro/localrepo/ (the previous build's are replaced).
+build_citronos() {
+  say "building CitronOS's packages"
+  id gg-builder &>/dev/null || useradd -m gg-builder
+  local src f built=0
+  src="$(mktemp -d)"
+  git config --global --add safe.directory "$REPO"
+  git -C "$REPO" ls-files -z | (cd "$REPO" && tar --null -T - -cf -) | tar -xf - -C "$src"
+  [[ -d "$REPO/local-assets" ]] && cp -a "$REPO/local-assets" "$src/"
+  chown -R gg-builder: "$src"
+  mkdir -p "$REPO/distro/localrepo"
+  rm -f "$REPO"/distro/localrepo/citronos-*.pkg.tar.zst
+  (
+    cd "$src/packaging/citronos"
+    sudo -u gg-builder env HOME=/home/gg-builder CITRONOS_PKGVER="$(citronos_pkgver)" makepkg -d --noconfirm
+  )
+  for f in "$src"/packaging/citronos/citronos-*.pkg.tar.zst; do
+    [[ -e $f ]] || continue
+    cp "$f" "$REPO/distro/localrepo/"
+    built=$((built + 1))
+  done
+  ((built == 5)) || { echo "makepkg made $built of CitronOS's 5 packages"; exit 1; }
+}
+# Release.qml's version and this checkout's commit (the copy has no .git).
+citronos_pkgver() {
+  local version
+  version=$(sed -n 's/.*property string version: "\(.*\)".*/\1/p' "$REPO/apps/lib/theme/Release.qml")
+  printf '%s.r%s.g%s' "$version" "$(git -C "$REPO" rev-list --count HEAD)" "$(git -C "$REPO" rev-parse --short=7 HEAD)"
+}
+
 # ---------------------------------------------------------------- packages
 cat "$HERE/packages.x86_64" >> "$PROFILE/packages.x86_64"
 missing=()
@@ -180,17 +183,22 @@ while read -r pkg; do
 done < "$HERE/packages.extra"
 if ((${#missing[@]})); then
   if [[ ${GG_BUILD_AUR:-0} == 1 ]]; then build_aur "${missing[@]}"; fi
-  if compgen -G "$REPO/distro/localrepo/*.pkg.tar.zst" >/dev/null; then
-    say "local repo for: ${missing[*]}"
-    repo-add -q "$REPO/distro/localrepo/golden-gate-local.db.tar.gz" "$REPO"/distro/localrepo/*.pkg.tar.zst
-    printf '\n[golden-gate-local]\nSigLevel = Optional TrustAll\nServer = file://%s\n' "$REPO/distro/localrepo" >> "$PROFILE/pacman.conf"
-    printf '%s\n' "${missing[@]}" >> "$PROFILE/packages.x86_64"
-  else
+  for pkg in "${missing[@]}"; do
+    compgen -G "$REPO/distro/localrepo/$pkg-[0-9]*.pkg.tar.zst" >/dev/null && continue
     echo "Not in the sync repos: ${missing[*]}"
     echo "Build them (e.g. from the AUR with makepkg) into distro/localrepo/ and re-run."
     exit 1
-  fi
+  done
+  printf '%s\n' "${missing[@]}" >> "$PROFILE/packages.x86_64"
 fi
+
+# CitronOS itself, as its packages (T-2.1, packaging/citronos): the image is
+# an install of them, as any system's is, and pacman -Qkk citronos-* is clean.
+build_citronos
+echo citronos >> "$PROFILE/packages.x86_64"
+say "local repo: ${missing[*]:-} citronos"
+repo-add -q "$REPO/distro/localrepo/golden-gate-local.db.tar.gz" "$REPO"/distro/localrepo/*.pkg.tar.zst
+printf '\n[golden-gate-local]\nSigLevel = Optional TrustAll\nServer = file://%s\n' "$REPO/distro/localrepo" >> "$PROFILE/pacman.conf"
 
 # ---------------------------------------------------------------- HyprGlass
 # Pin the prebuilt plugin to the Hyprland ABI shipped by this image. The release
@@ -256,8 +264,17 @@ ln -sf /usr/lib/systemd/user/gnome-keyring-daemon.socket "$AIR/etc/systemd/user/
 ln -sf /etc/systemd/system/gg-live-home.service "$WANTS/gg-live-home.service"
 
 # ---------------------------------------------------------------- desktop
-say "installing the CitronOS desktop into the image"
-bash "$REPO/scripts/install.sh" --system "$AIR"
+# The desktop is the citronos packages, installed by mkarchiso with the rest.
+# pacman reads its hooks before a transaction, so the hooks citronos-runtime
+# ships (/usr/share/libalpm/hooks) wouldn't run while the image is made, and
+# pacman.conf would go without its Hyprland hold: the same hooks go in
+# /etc/pacman.d/hooks first, where they're read from the start.
+say "CitronOS's pacman hooks, for the image's own install"
+hooks="$(mktemp -d)"
+bash "$REPO/scripts/stage.sh" runtime "$hooks" >/dev/null
+install -d "$AIR/etc/pacman.d/hooks"
+install -m644 "$hooks"/usr/share/libalpm/hooks/citronos-*.hook "$AIR/etc/pacman.d/hooks/"
+rm -rf "$hooks"
 
 # Which CitronOS this is, for Software Update (the repository and branch on
 # GitHub it checks for newer commits), and its own source, so the live ISO can
@@ -298,19 +315,7 @@ if [[ -d "$LOCAL_FONTS" ]] && find "$LOCAL_FONTS" -maxdepth 1 -type f \( -iname 
   done < <(find "$LOCAL_FONTS" -maxdepth 1 -type f \( -iname '*.otf' -o -iname '*.ttf' -o -iname '*.ttc' \) -print0)
 fi
 
-LOCAL_SYMBOLS="$REPO/local-assets/symbols"
-if [[ -d "$LOCAL_SYMBOLS" ]] && find "$LOCAL_SYMBOLS" -maxdepth 1 -type f -iname '*.svg' -print -quit | grep -q .; then
-  say "overlaying locally supplied system symbols"
-  mkdir -p "$AIR/usr/share/golden-gate/ui/assets/symbols" \
-           "$AIR/usr/share/sddm/themes/golden-gate/assets/symbols" \
-           "$AIR/etc/skel/.config/quickshell/golden-gate/assets/symbols"
-  while IFS= read -r -d '' symbol; do
-    name="$(basename "$symbol")"
-    install -m644 "$symbol" "$AIR/usr/share/golden-gate/ui/assets/symbols/$name"
-    install -m644 "$symbol" "$AIR/usr/share/sddm/themes/golden-gate/assets/symbols/$name"
-    install -m644 "$symbol" "$AIR/etc/skel/.config/quickshell/golden-gate/assets/symbols/$name"
-  done < <(find "$LOCAL_SYMBOLS" -maxdepth 1 -type f -iname '*.svg' -print0)
-fi
+# Locally supplied system symbols go into the packages (scripts/stage.sh).
 
 mkdir -p "$AIR/home/golden"
 cp -a "$AIR/etc/skel/." "$AIR/home/golden/"
@@ -340,8 +345,8 @@ awk '
   inblock { block = block $0 "\n"; if (/^\}/) { if (block !~ /lock-session/) printf "%s", block; inblock = 0 } next }
   /before_sleep_cmd/ { next }
   { print }
-' "$AIR/home/golden/.config/hypr/hypridle.conf" > "$WORK/hypridle.conf"
-mv "$WORK/hypridle.conf" "$AIR/home/golden/.config/hypr/hypridle.conf"
+' "$REPO/compositor/hyprland/hypridle.conf" > "$WORK/hypridle.conf"
+install -Dm644 "$WORK/hypridle.conf" "$AIR/home/golden/.config/hypr/hypridle.conf"
 
 # ---------------------------------------------------------------- boot screen
 # Plymouth draws the web preview's boot screen (themes/plymouth): it goes into the
@@ -369,11 +374,7 @@ if ! grep -qx 'gsettings-desktop-schemas' "$PROFILE/packages.x86_64"; then
   echo "generated profile is missing gsettings-desktop-schemas"
   exit 1
 fi
-if [[ ! -f "$AIR/usr/share/glib-2.0/schemas/90_golden-gate.gschema.override" ]]; then
-  echo "CitronOS GSettings override was not staged into the image"
-  exit 1
-fi
-if grep -q 'org.gnome.nautilus' "$AIR/usr/share/glib-2.0/schemas/90_golden-gate.gschema.override"; then
+if grep -q 'org.gnome.nautilus' "$REPO/themes/gsettings/90_golden-gate.gschema.override"; then
   echo "GSettings override still references Nautilus, which is not part of the image"
   exit 1
 fi

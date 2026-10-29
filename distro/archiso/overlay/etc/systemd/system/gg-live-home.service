@@ -1,9 +1,14 @@
 [Unit]
-Description=Give the live user ownership of /home/golden
+Description=Give the live user /etc/skel's files and ownership of /home/golden
 Before=getty@tty1.service systemd-user-sessions.service
 
 [Service]
 Type=oneshot
+# The home was made when the image was, before the packages were installed:
+# what they put in /etc/skel (hyprland.conf's one line, GTK's and the
+# terminal's look) is added here, never over what's there. mkarchiso drops
+# file ownership, so the live user is given the home too.
+ExecStart=/usr/bin/cp -an /etc/skel/. /home/golden/
 ExecStart=/usr/bin/chown -R golden:golden /home/golden
 
 [Install]

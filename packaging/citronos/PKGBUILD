@@ -15,22 +15,42 @@ pkgdesc="CitronOS desktop"
 arch=(any)
 url="https://github.com/mobilaunch/goldenapple"
 license=(custom)
-makedepends=(git nodejs librsvg)
+makedepends=(nodejs librsvg)
+options=(!strip !debug)                # scripts and QML: nothing to strip
 source=()
 
 # The repository this PKGBUILD is in.
 _repo() { realpath "$startdir/../.."; }
 
+# Its version: Release.qml's, then the commit, from git or (an unpacked
+# release or branch snapshot, which Software Update builds) version.json's.
 pkgver() {
-  local version
+  # Given by whoever copied the tree out of its checkout (the ISO build).
+  [[ -n ${CITRONOS_PKGVER:-} ]] && { printf '%s' "$CITRONOS_PKGVER"; return; }
+  local version count commit
   version=$(sed -n 's/.*property string version: "\(.*\)".*/\1/p' "$(_repo)/apps/lib/theme/Release.qml")
-  printf '%s.r%s.g%s' "$version" "$(git -C "$(_repo)" rev-list --count HEAD)" "$(git -C "$(_repo)" rev-parse --short=7 HEAD)"
+  if git -C "$(_repo)" rev-parse HEAD >/dev/null 2>&1; then
+    count=$(git -C "$(_repo)" rev-list --count HEAD); commit=$(git -C "$(_repo)" rev-parse --short=7 HEAD)
+  else
+    commit=$(sed -n 's/.*"commit": *"\([0-9a-f]\{7\}\).*/\1/p' "$(_repo)/version.json" 2>/dev/null | head -n 1)
+    count=0
+  fi
+  printf '%s.r%s.g%s' "$version" "$count" "${commit:-unknown}"
 }
 
 build() {
-  # A copy, so building never changes the checkout.
+  # A copy, so building never changes the checkout: what git tracks (or, in
+  # a plain tree, everything but this build's own folders), and a builder's
+  # local-assets (fonts and symbols that are theirs to use, never committed).
   rm -rf "$srcdir/citronos"
-  git -C "$(_repo)" ls-files -z | (cd "$(_repo)" && tar --null -T - -cf -) | (mkdir -p "$srcdir/citronos" && tar -xf - -C "$srcdir/citronos")
+  mkdir -p "$srcdir/citronos"
+  if git -C "$(_repo)" rev-parse HEAD >/dev/null 2>&1; then
+    git -C "$(_repo)" ls-files -z | (cd "$(_repo)" && tar --null -T - -cf -) | tar -xf - -C "$srcdir/citronos"
+  else
+    (cd "$(_repo)" && tar --exclude=./packaging/citronos/src --exclude=./packaging/citronos/pkg \
+       --exclude='*.pkg.tar.*' -cf - .) | tar -xf - -C "$srcdir/citronos"
+  fi
+  [[ -d "$(_repo)/local-assets" ]] && cp -a "$(_repo)/local-assets" "$srcdir/citronos/"
   make -C "$srcdir/citronos" build
 }
 

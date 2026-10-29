@@ -511,9 +511,9 @@ class Packaging(unittest.TestCase):
         self.assertIn("services/settingsd/settingsd.py", install)
         self.assertIn('"$REPO"/distro/dbus/*.service', install)
         self.assertIn('"$BIN/gg-settingsd"', install)
-        build = (ROOT / "distro/archiso/build.sh").read_text()
-        self.assertIn('["/usr/local/bin/gg-settingsd"]="0:0:755"', build)
-        self.assertIn('["/usr/lib/golden-gate/settingsd.py"]="0:0:755"', build)
+        stage = (ROOT / "scripts/stage.sh").read_text()        # what the ISO installs, as packages
+        self.assertRegex(stage, r"\ngg-settingsd +python3 +\$LIB/settingsd.py\n")
+        self.assertIn("services/settingsd/settingsd.py", stage)
 
     def test_changes(self):
         sys.path.insert(0, str(SERVICE.parent))

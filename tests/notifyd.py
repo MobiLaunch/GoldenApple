@@ -488,7 +488,7 @@ class Packaging(unittest.TestCase):
         install = (ROOT / "scripts/install.sh").read_text()
         self.assertIn("services/notifyd/notifyd.py", install)
         self.assertIn('"$BIN/gg-notifyd"', install)
-        self.assertIn('["/usr/local/bin/gg-notifyd"]="0:0:755"', (ROOT / "distro/archiso/build.sh").read_text())
+        self.assertRegex((ROOT / "scripts/stage.sh").read_text(), r"\ngg-notifyd +python3 +\$LIB/notifyd.py\n")
 
 
 if __name__ == "__main__":

@@ -230,7 +230,8 @@ class Wiring(unittest.TestCase):
     def test_installed(self):
         install = (ROOT / "scripts/install.sh").read_text()
         self.assertEqual(install.count('lock.sh" "$BIN/gg-lock"'), 2)
-        self.assertIn('["/usr/local/bin/gg-lock"]="0:0:755"', (ROOT / "distro/archiso/build.sh").read_text())
+        # The ISO installs the packages: gg-lock is citronos-runtime's /usr/bin/gg-lock (755).
+        self.assertIn('lock.sh" "$D/usr/bin/gg-lock"', (ROOT / "scripts/stage.sh").read_text())
 
 
 if __name__ == "__main__":

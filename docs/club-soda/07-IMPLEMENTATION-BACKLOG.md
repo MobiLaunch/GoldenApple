@@ -432,10 +432,14 @@ same fields, more briefly, and should be expanded when their milestone starts.
   lock screen as Quickshell finds the shell; `gg-session` makes the per-account Hyprland
   files a packaged config sources. `tests/packaging.py` (in Check) stages each part: no file
   in two packages, nothing in `/usr/local` or a home folder, and every command, service,
-  unit and desktop entry runs something installed. Next: the ISO and Software Update
-  install these packages instead of `install.sh --system`, moving existing accounts off
-  their copies of the shell (part 2); signing them and the `[citronos]` repository, with
-  `citronos-keyring` (part 3).
+  unit and desktop entry runs something installed. Part 2 has begun: the ISO is an
+  install of the packages (`build.sh` builds them into its local repository, and no
+  longer runs `install.sh --system`); its live user runs the shell from `/etc/xdg` with
+  the one-line `hyprland.conf`, and the boot test's self-test checks `pacman -Qkk
+  citronos-*` and that there's no `~/.config/quickshell`. Still to do in part 2: Software
+  Update builds and installs the packages from the release or snapshot it verified, and
+  moves existing accounts off their copies of the shell and onto the stub. Part 3:
+  signing them and the `[citronos]` repository, with `citronos-keyring`.
 - **T-0.3, performance baseline · CI done; the laptop run is manual.**
   `tests/session/perf.py`, in every Session run: time to "desktop ready", resident memory,
   idle CPU with a window behind the Dock (glass windows on and off) and the shell's busiest

@@ -214,9 +214,12 @@ Item {
                 // Refresh it after each saved change so a Hyprland reload
                 // keeps the user's choices without ever sourcing a missing
                 // windows.conf from the main configuration.
+                // The account's own machine-conf.sh, or the system's (an
+                // account made on a packaged system has none of its own).
                 const setup = sys.config + "/hypr/golden-gate/machine-conf.sh"
                 const generated = sys.config + "/hypr/golden-gate/machine.conf"
-                run(["sh", setup, generated], (out, code) => {
+                run(["sh", "-c", '[ -e "$1" ] || set -- /usr/share/golden-gate/hypr/machine-conf.sh "$2"; exec sh "$1" "$2"',
+                     "sh", setup, generated], (out, code) => {
                     if (code !== 0) sys.notApplied("machine.conf", out || "Could not update session defaults.")
                 })
                 applyLive(["hyprctl", "keyword", windowKeywords[key],

@@ -52,7 +52,7 @@ class LockScreen(unittest.TestCase):
     def test_installed_everywhere(self):
         install = (ROOT / "scripts/install.sh").read_text()
         self.assertEqual(install.count('> "$BIN/gg-idle"'), 3, "gg-idle for every install mode")
-        self.assertIn("/usr/local/bin/gg-idle", (ROOT / "distro/archiso/build.sh").read_text())
+        self.assertRegex((ROOT / "scripts/stage.sh").read_text(), r"\ngg-idle +python3 +\$LIB/idle.py\n")
 
 
 class Panes(unittest.TestCase):

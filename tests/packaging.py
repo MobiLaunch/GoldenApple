@@ -129,6 +129,19 @@ class References(unittest.TestCase):
                     self.assertNotIn(str(TMP), p.read_text(errors="replace"), f"{part}: {p}")
                     self.assertNotIn(str(ROOT), p.read_text(errors="replace"), f"{part}: {p}")
 
+    def test_commands_and_helpers_run(self):
+        """The packages carry the modes (the ISO's file_permissions list no
+        longer does): every command, and every helper something runs directly."""
+        for b in (STAGED["runtime"] / "usr/bin").iterdir():
+            self.assertEqual(b.stat().st_mode & 0o777, 0o755, b.name)
+        lib = STAGED["runtime"] / "usr/lib/golden-gate"
+        for f in lib.iterdir():
+            if f.name not in ("account_rules.py", "save-preferences.py"):     # modules, imported
+                self.assertEqual(f.stat().st_mode & 0o777, 0o755, f.name)
+        hypr = STAGED["hyprland-config"] / "usr/share/golden-gate/hypr"
+        for script in ("machine-conf.sh", "report-config-errors.sh"):
+            self.assertEqual((hypr / script).stat().st_mode & 0o777, 0o755, script)
+
     def test_sudoers_as_sudo_needs_it(self):
         d = STAGED["runtime"] / "etc/sudoers.d"
         self.assertEqual(d.stat().st_mode & 0o777, 0o750)

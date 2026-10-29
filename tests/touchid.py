@@ -71,7 +71,7 @@ with tempfile.TemporaryDirectory() as t:
     check(p.returncode != 0 and "password" in p.stderr, f"a file without a password check isn't touched ({p.stderr.strip()})")
 
 # The lock screen's own PAM service: a finger only, never a password.
-service = (ROOT / "distro/archiso/overlay/etc/pam.d/gg-touchid").read_text()
+service = (ROOT / "distro/pam/gg-touchid").read_text()
 auth = [l for l in service.splitlines() if l.split() and l.split()[0] == "auth"]
 check(len(auth) == 1 and "pam_fprintd.so" in auth[0], f"gg-touchid asks only for a finger: {auth}")
 lock = (ROOT / "shell/LockScreen.qml").read_text()
@@ -81,7 +81,7 @@ check("touch.abort()" in lock, "…and stops listening once unlocked")
 
 # Packaging: fprintd, the PAM service and the helper's polkit action.
 check(re.search(r"^fprintd$", (ROOT / "distro/archiso/packages.x86_64").read_text(), re.M) is not None, "fprintd is installed")
-policy = (ROOT / "distro/archiso/overlay/usr/share/polkit-1/actions/org.goldengate.touchid.policy").read_text()
+policy = (ROOT / "distro/polkit/org.goldengate.touchid.policy").read_text()
 check("/usr/share/golden-gate/apps/settings/touchid-helper.py" in policy, "the polkit action names the helper")
 check(os.access(HELPER, os.X_OK), "the helper is executable (pkexec runs it)")
 install = (ROOT / "scripts/install.sh").read_text()
