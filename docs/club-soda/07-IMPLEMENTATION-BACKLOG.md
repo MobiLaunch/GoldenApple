@@ -418,6 +418,25 @@ same fields, more briefly, and should be expanded when their milestone starts.
   `hyprland.conf` and everything Settings writes into `~/.config/hypr/golden-gate` (input,
   displays, accessibility, windows, motion, the machine file) ported to Lua, and a
   HyprGlass built for it; that is T-2.3's lock-step, and the hold lifts when both are ready.
+  T-2.3 has begun with the configuration, kept as one for both versions rather than
+  ported: `compositor/hyprland/hyprlang.lua` reads hyprlang (sections and `a:b:c` keys,
+  `$variables`, `source`, `env`, `exec`/`exec-once`, `monitor`, `bezier`, `animation`,
+  `gesture`, `windowrule`/`layerrule`, the `bind` family) and makes it with `hl.*`, each
+  value taking its option's type from `hl.get_config`, and `hyprland.lua` reads the
+  account's own `hyprland.conf` through it. So CitronOS's settings, what Settings writes,
+  machine-conf.sh's and an account's own lines all reach 0.57 unchanged.
+  `packaging/hyprland-lua-check.sh` (the Hyprland next workflow, on push and weekly)
+  checks it on Arch's current Hyprland with `Hyprland --verify-config`, strictly, for a
+  desktop, a virtual machine without a GPU and an account with its own lines: today 0.57.0
+  takes all of it (198 lines, all 52 binds), and refuses a dispatcher the reader doesn't
+  know or an option it doesn't have. `hyprland.lua` waits in
+  `/usr/share/golden-gate/hypr`, where no Hyprland looks: 0.56 also prefers a
+  `hyprland.lua` it finds (even in `/etc/xdg`) over `hyprland.conf`, and in Lua mode
+  `hyprctl dispatch` takes only Lua and `keyword` is gone. Still to do before the hold
+  lifts: the shell's 31 `Hyprland.dispatch` calls, the scripts' `hyprctl dispatch` and
+  Settings' `hyprctl keyword` through the reader's `citronos.dispatch`/`citronos.keyword`
+  (`hyprctl eval`), hyprbars and HyprGlass built for 0.57, then `hyprland.lua` into
+  `/etc/xdg/hypr` and the hold lifted.
   T-2.2 also pins the AUR: each package the image builds from it (uxplay,
   gnome-network-displays, python-pathvalidate, piper-tts) is built at a commit of its AUR
   repository (`distro/archiso/aur-pins`), and `build.sh` stops at one that isn't pinned.

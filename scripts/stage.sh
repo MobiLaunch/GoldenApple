@@ -194,6 +194,12 @@ hyprland_config() {
       -e "s#~/.config/hypr/golden-gate/report-config-errors.sh#$HYPR/report-config-errors.sh#" \
       "$REPO/compositor/hyprland/hyprland.conf" | install -Dm644 /dev/stdin "$D$HYPR/hyprland.conf"
   install -Dm644 "$REPO/design/dist/hyprland-motion.conf" "$D$HYPR/motion.conf"
+  # Hyprland 0.57 and later read only Lua: hyprland.lua reads the same
+  # hyprland.conf through CitronOS's reader. Where no Hyprland looks, until
+  # the hold lifts (T-2.3): 0.56 also takes a hyprland.lua it finds before
+  # hyprland.conf, and then hyprctl's dispatch and keyword only take Lua.
+  install -Dm644 "$REPO/compositor/hyprland/hyprlang.lua" "$D$HYPR/hyprlang.lua"
+  sed "s#__GG_HYPR__#$HYPR#g" "$REPO/compositor/hyprland/hyprland.lua" | install -Dm644 /dev/stdin "$D$HYPR/hyprland.lua"
   install -Dm755 "$REPO/compositor/hyprland/report-config-errors.sh" "$D$HYPR/report-config-errors.sh"
   install -Dm755 "$REPO/compositor/hyprland/machine-conf.sh" "$D$HYPR/machine-conf.sh"
   # A new account's own files: the stub that sources the desktop's settings,

@@ -91,6 +91,24 @@ class Layout(unittest.TestCase):
         self.assertLessEqual(per_user - {"machine"}, made, "gg-session makes each per-account file hyprland.conf sources")
 
 
+    def test_hyprland_057_reads_the_same_config(self):
+        """Hyprland 0.57 and later read only Lua: hyprland.lua reads the
+        account's hyprland.conf through hyprlang.lua (packaging/hyprland-lua-
+        check.sh runs it on Arch's current Hyprland). Where no Hyprland looks
+        until the hold lifts: 0.56 would take a hyprland.lua it finds."""
+        for root in STAGED.values():
+            self.assertFalse((root / "etc/xdg/hypr/hyprland.lua").exists(), "Hyprland 0.56 would read it")
+        lua = (STAGED["hyprland-config"] / "usr/share/golden-gate/hypr/hyprland.lua").read_text()
+        self.assertNotIn("__GG_", lua)
+        self.assertIn('dofile("/usr/share/golden-gate/hypr/hyprlang.lua")', lua)
+        self.assertIn('"/hypr/hyprland.conf"', lua, "the account's own hyprland.conf")
+        self.assertIn('"/usr/share/golden-gate/hypr/hyprland.conf"', lua, "else CitronOS's")
+        self.assertTrue(installed("/usr/share/golden-gate/hypr/hyprlang.lua"))
+        workflow = (ROOT / ".github/workflows/hyprland-next.yml").read_text()
+        self.assertIn("packaging/hyprland-lua-check.sh", workflow)
+        self.assertIn("schedule:", workflow, "Arch's Hyprland moves without CitronOS changing")
+
+
 class References(unittest.TestCase):
     def test_commands(self):
         bins = sorted((STAGED["runtime"] / "usr/bin").iterdir())
