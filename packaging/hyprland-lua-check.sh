@@ -168,13 +168,20 @@ if compgen -G "/dev/dri/renderD*" >/dev/null; then
 set -u
 export XDG_RUNTIME_DIR=$(mktemp -d)
 LIBSEAT_BACKEND=seatd Hyprland -c /usr/share/golden-gate/hypr/hyprland.lua >"$HOME/hyprland.log" 2>&1 &
-for _ in $(seq 100); do hyprctl version >/dev/null 2>&1 && break; sleep 0.2; done
+# Up when its socket answers: hyprctl finds it by its instance signature.
+for _ in $(seq 150); do
+  sock=$(ls "$XDG_RUNTIME_DIR"/hypr/*/.socket.sock 2>/dev/null | head -n 1)
+  if [[ -n $sock ]]; then
+    export HYPRLAND_INSTANCE_SIGNATURE=$(basename "$(dirname "$sock")")
+    hyprctl version >/dev/null 2>&1 && break
+  fi
+  sleep 0.2
+done
 if ! hyprctl version >/dev/null 2>&1; then
   echo "started=no"
   exit 0
 fi
 echo "started=yes"
-export HYPRLAND_INSTANCE_SIGNATURE=$(ls "$XDG_RUNTIME_DIR/hypr" | head -n 1)
 ws() { hyprctl activeworkspace -j | python3 -c 'import json, sys; print(json.load(sys.stdin)["id"])'; }
 opt() { hyprctl getoption "$1" -j | python3 -c 'import json, sys; d = json.load(sys.stdin); print(d.get("str", d.get("int", d.get("custom"))))'; }
 echo "mode=$(gg-hyprctl mode)"
