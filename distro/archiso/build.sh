@@ -317,7 +317,7 @@ fi
 
 # Locally supplied system symbols go into the packages (scripts/stage.sh).
 
-mkdir -p "$AIR/home/golden"
+mkdir -p "$AIR/home/golden" "$AIR/etc/skel"   # the packages fill /etc/skel later (gg-live-home)
 cp -a "$AIR/etc/skel/." "$AIR/home/golden/"
 cat > "$AIR/home/golden/.bash_profile" <<'EOF'
 [[ -f ~/.bashrc ]] && . ~/.bashrc
