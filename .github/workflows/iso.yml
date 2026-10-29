@@ -39,7 +39,7 @@ jobs:
       - name: Build in an Arch Linux container
         run: |
           docker run --rm --privileged -v "$PWD:/repo" -w /repo -e GG_BUILD_AUR=1 archlinux:latest bash -euo pipefail -c '
-            # The packages as of CitronOS's pinned date (distro/archive-date),
+            # The packages as of the pinned date (distro/archive-date),
             # for the build tools and the image alike (mkarchiso uses this
             # mirrorlist); -uu takes the container to those versions.
             sh distro/pin-archive.sh
