@@ -75,8 +75,14 @@ class WifiJoin(cc_tests.harness.Harness):
                 self.eval(cc, "detail = 'wifi'")
             self.eval(cc, call)
         self.eval(cc, "setBrightness(0.5)")
-        QTest.qWait(80)
-        commands = self.requested()
+        # Brightness goes out on a 40 ms timer (drags are coalesced). Wait for
+        # it rather than a fixed 80 ms: on a loaded runner, the dark-mode
+        # restyle above can hold the event loop past that (CI, twice).
+        for _ in range(100):
+            QTest.qWait(20)
+            commands = self.requested()
+            if any(c[:3] == ["brightnessctl", "-q", "set"] for c in commands):
+                break
         self.assertIn(["gg-settings", "wifi"], commands)
         self.assertIn(["qs", "-c", "golden-gate", "ipc", "call", "missioncontrol", "toggle"], commands)
         self.assertTrue(any(c[:3] == ["brightnessctl", "-q", "set"] for c in commands), commands)
