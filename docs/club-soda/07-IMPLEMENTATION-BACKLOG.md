@@ -418,7 +418,7 @@ same fields, more briefly, and should be expanded when their milestone starts.
   `hyprland.conf` and everything Settings writes into `~/.config/hypr/golden-gate` (input,
   displays, accessibility, windows, motion, the machine file) ported to Lua, and a
   HyprGlass built for it; that is T-2.3's lock-step, and the hold lifts when both are ready.
-- **T-2.1, PKGBUILDs and a signed repository · in progress (part 1 of 3).** `make install
+- **T-2.1, PKGBUILDs and a signed repository · in progress (parts 1 and 2 of 3).** `make install
   DESTDIR=` (`scripts/stage.sh`, one part per package) lays CitronOS out as packaged:
   `citronos-runtime` (the apps and shared UI in `/usr/share/golden-gate`, helpers in
   `/usr/lib/golden-gate`, the `gg-*` commands in `/usr/bin`, units, D-Bus services, PAM,
@@ -436,10 +436,26 @@ same fields, more briefly, and should be expanded when their milestone starts.
   install of the packages (`build.sh` builds them into its local repository, and no
   longer runs `install.sh --system`); its live user runs the shell from `/etc/xdg` with
   the one-line `hyprland.conf`, and the boot test's self-test checks `pacman -Qkk
-  citronos-*` and that there's no `~/.config/quickshell`. Still to do in part 2: Software
-  Update builds and installs the packages from the release or snapshot it verified, and
-  moves existing accounts off their copies of the shell and onto the stub. Part 3:
-  signing them and the `[citronos]` repository, with `citronos-keyring`.
+  citronos-*` and that there's no `~/.config/quickshell`. Software Update now installs the
+  packages too (`golden_update.py`): it builds them from the release or snapshot it
+  verified (makepkg as an account of its own, `citronos-build`, in a copy of the tree only
+  it can change, at a version pacman orders by
+  date, as the ISO's are) and installs them with `pacman -U`. Before that it keeps every
+  file of the old and new packages and pacman's own records of them, so a failure puts
+  back files and records alike. The first time, on a system `install.sh` made, its files
+  in the packages' way go aside and its leftovers go (`/usr/local/bin`'s `gg-*`,
+  `/etc/skel`'s shell, `/usr/share/golden-gate/runtime`, copies of the packaged hooks,
+  which would stand in for them for good). Each account's copy of the shell becomes a
+  link to the system's, which `gg-session` removes at the next login, and an unedited
+  `hyprland.conf` becomes the stub; copies of what is now the system's go unless edited
+  or still used. A version from before the packages is refused over them. The image's
+  hook copies remove themselves at the end of its install, and the self-test checks.
+  `tests/update-packages.py` (in Check) covers the layouts, and the Packages workflow's
+  second job (`packaging/migrate-check.sh`) runs it all with the real makepkg and pacman
+  on an `install.sh` system: the move, an upgrade, and a failure after pacman, with
+  `pacman -Qkk` and `-Dk` clean after each. Part 3: signing them and the `[citronos]`
+  repository, with `citronos-keyring`, after which updates can install built packages
+  instead of building them.
 - **T-0.3, performance baseline · CI done; the laptop run is manual.**
   `tests/session/perf.py`, in every Session run: time to "desktop ready", resident memory,
   idle CPU with a window behind the Dock (glass windows on and off) and the shell's busiest

@@ -1,7 +1,8 @@
 """CitronOS updates from GitHub, for Software Update.
 
 CitronOS itself (the shell, the apps, the themes) comes from its GitHub
-repository rather than from Arch packages. Updates come from one of three
+repository rather than from Arch's repositories: Software Update builds its
+packages from what it downloads. Updates come from one of three
 channels (/etc/golden-gate/update.json "channel"):
 
   stable  (the default) the newest GitHub release that isn't a pre-release
@@ -17,12 +18,17 @@ password, can switch to dev (update-source-helper.py). Then:
   1. download the signed release bundle, or on dev that exact commit's
      snapshot (GitHub's tarball of the commit)
   2. install any packages the new package list adds (official repos only)
-  3. run its scripts/install.sh --system / , with the previous runtime kept
-     aside and put back if the install fails
-  4. bring every account's own copies up to date: the shell (always: it is
-     CitronOS's, not the user's) and the Hyprland, GTK, Ghostty and font
-     files, but only those the user hasn't changed; an edited file is left
-     alone and the new one is written next to it as NAME.golden-gate-new
+  3. build CitronOS's own packages from it (packaging/citronos, makepkg as
+     its own account) and install them with pacman -U, with everything they change
+     kept aside (files and pacman's own records of them) and put back if the
+     install fails; the first time, over a system scripts/install.sh made,
+     its files go aside for the packages' and its leftovers are removed.
+     (A version from before the packages runs its scripts/install.sh --system.)
+  4. bring every account's own copies up to date: the Hyprland, GTK, Ghostty
+     and font files, but only those the user hasn't changed; an edited file is
+     left alone and the new one is written next to it as NAME.golden-gate-new.
+     An account's copy of the shell goes (the system's, /etc/xdg, is the one),
+     and so do the copies of files that are now the system's, unless edited
   5. the installed-system parts of the ISO overlay (polkit, user services),
      the HyprGlass plugin the build pins, and the services the build enables
   6. record the new version in /usr/share/golden-gate/version.json
@@ -53,6 +59,7 @@ Without GitHub, from a USB stick:
 from __future__ import annotations
 
 import filecmp
+import gzip
 import hashlib
 import json
 import os
@@ -92,6 +99,50 @@ MANAGED = [
     "gtk-4.0/gtk.css", "gtk-3.0/gtk.css", "fontconfig/conf.d/60-golden-gate.conf",
     "ghostty/config",
 ]
+# What scripts/install.sh gave every account that is now the system's (the
+# packages'): removed from an account that has it as it came, unless the
+# account's hyprland.conf still uses it.
+RETIRED = [
+    "hypr/golden-gate/motion.conf", "hypr/golden-gate/report-config-errors.sh",
+    "hypr/golden-gate/machine-conf.sh", "fontconfig/conf.d/60-golden-gate.conf",
+    "systemd/user/citronpods-daemon.service", "systemd/user/citronpods-engine-bootstrap.service",
+    "systemd/user/citronpods-engine-bootstrap.path",
+]
+SYSTEM_SHELL = "/etc/xdg/quickshell/golden-gate"
+
+# CitronOS's packages (packaging/citronos/PKGBUILD), and where the ones built
+# for an update are kept: inside the system they're for, where pacman
+# --sysroot reads them.
+PACKAGES = ("citronos-runtime", "citronos-shell", "citronos-hyprland-config", "citronos-theme", "citronos")
+PACKAGE_RE = re.compile(r"^(citronos(?:-[a-z-]+)?)-([^-/]+)-([^-/]+)-any\.pkg\.tar\.\w+$")
+PACKAGE_CACHE = "/var/cache/golden-gate/packages"
+# Who builds them: makepkg won't build as root, and an account of its own,
+# rather than nobody, so no other service can change the verified sources
+# while they're built.
+BUILD_USER = "citronos-build"
+# Kept whole by the rollback, each a few hundred files or more that are all
+# CitronOS's; the packages' other files are kept one by one.
+PACKAGED_TREES = ["usr/share/golden-gate/ui", "usr/share/golden-gate/apps", "usr/share/golden-gate/hypr",
+                  "etc/xdg/quickshell/golden-gate", "usr/share/icons/GoldenGate", "usr/share/sddm/themes/golden-gate"]
+# What scripts/install.sh --system wrote that no package has (tests/packaging.py
+# checks the list against it), plus /usr/local/bin's gg-* commands that are in
+# /usr/bin now: removed once the packages are installed, unless one owns it.
+INSTALL_SH_LEFTOVERS = (
+    "etc/skel/.config/quickshell",                    # the shell: /etc/xdg's
+    "etc/skel/.config/hypr/golden-gate",              # made per account by gg-session
+    "etc/skel/.config/mimeapps.list",                 # /etc/xdg/mimeapps.list
+    "etc/skel/.config/fontconfig/conf.d/60-golden-gate.conf",
+    "etc/skel/.config/systemd/user/citronpods-daemon.service",
+    "etc/skel/.config/systemd/user/citronpods-engine-bootstrap.service",
+    "etc/skel/.config/systemd/user/citronpods-engine-bootstrap.path",
+    "etc/systemd/user/default.target.wants/citronpods-engine-bootstrap.service",
+    "etc/systemd/user/default.target.wants/citronpods-engine-bootstrap.path",
+    "usr/share/golden-gate/runtime",                  # helpers: /usr/lib/golden-gate
+    "usr/share/licenses/golden-gate",
+    # Copies of the packaged hooks, which would stand in for them for good.
+    "etc/pacman.d/hooks/citronos-release.hook",
+    "etc/pacman.d/hooks/citronos-pacman.hook",
+)
 # Live-session-only parts of the ISO overlay that an installed system must not get.
 LIVE_ONLY = (
     "etc/sudoers.d/10-golden-live",
@@ -561,7 +612,12 @@ def _package_list(tree: Path, name: str) -> list[str]:
 def _pacman_reason(proc: subprocess.CompletedProcess) -> str:
     lines = [l for l in (proc.stdout + proc.stderr).strip().splitlines() if l.strip()]
     errors = [l for l in lines if l.lower().startswith("error")]
-    return ((errors or lines or ["pacman exited with status %d" % proc.returncode])[-1])[:200]
+    reason = (errors or lines or ["pacman exited with status %d" % proc.returncode])[-1]
+    # Which ones, when pacman only says it "could not satisfy dependencies".
+    unmet = [m.group(1) for l in lines for m in [re.search(r"unable to satisfy dependency '([^']+)'", l)] if m]
+    if unmet:
+        reason += ": " + ", ".join(dict.fromkeys(unmet))
+    return reason[:200]
 
 
 def install_packages(tree: Path, emit: Emit) -> dict[str, str]:
@@ -598,10 +654,256 @@ def install_packages(tree: Path, emit: Emit) -> dict[str, str]:
     return left
 
 
+def _pacman() -> list[str]:
+    return ["pacman"] if ROOT == Path("/") else ["pacman", "--sysroot", str(ROOT)]
+
+
+def _paths(proc: subprocess.CompletedProcess, dirs: bool = False) -> list[str]:
+    """pacman -Ql's paths, inside the system ("usr/share/…"); directories
+    (they end in /) only when asked for, still ending in /."""
+    out = []
+    for line in proc.stdout.splitlines():
+        line = line.strip().lstrip("/")
+        if line and (dirs or not line.endswith("/")):
+            out.append(line)
+    return out
+
+
+def packaged(tree: Path) -> bool:
+    """Is this version of CitronOS installed as its packages (T-2.1)?"""
+    return (tree / "packaging/citronos/PKGBUILD").is_file() and bool(shutil.which("pacman")) \
+        and path("/var/lib/pacman/local").is_dir()
+
+
+def _packages_installed() -> bool:
+    return any(path("/var/lib/pacman/local").glob("citronos-runtime-*"))
+
+
+def package_version(tree: Path, version: dict) -> str:
+    """The packages' version: Release.qml's, then when and which commit, as
+    the ISO's are (citronos_pkgver in distro/archiso/build.sh), so that pacman
+    orders them as they came."""
+    try:
+        m = re.search(r'property string version: "([^"]+)"', (tree / "apps/lib/theme/Release.qml").read_text())
+    except OSError:
+        m = None
+    release = re.sub(r"[^A-Za-z0-9.]", ".", m.group(1)) if m else "0"
+    try:
+        when = datetime.fromisoformat(str(version.get("date") or "").replace("Z", "+00:00"))
+        when = (when if when.tzinfo else when.replace(tzinfo=timezone.utc)).astimezone(timezone.utc)
+    except ValueError:
+        when = datetime.now(timezone.utc)
+    commit = str(version.get("commit") or "")
+    commit = commit[:7] if re.fullmatch(r"[0-9a-f]{7,40}", commit) else "unknown"
+    return f"{release}.r{when:%Y%m%d%H%M%S}.g{commit}"
+
+
+def _build_copy(top: Path):
+    """What the build's copy of the tree leaves out: what git doesn't track
+    there (the PKGBUILD's own build folders and earlier builds included)."""
+    def ignore(d, names):
+        rel = os.path.relpath(d, top)
+        out = {n for n in names if n == "__pycache__" or ".pkg.tar." in n}
+        if rel == ".":
+            out |= {".git", "node_modules", "out"} & set(names)
+        elif rel == "distro":
+            out |= {"work", "localrepo"} & set(names)
+        elif rel == os.path.join("packaging", "citronos"):
+            out |= {"src", "pkg"} & set(names)
+        return out
+    return ignore
+
+
+def _builder() -> pwd.struct_passwd:
+    """BUILD_USER, made the first time it's needed (on the computer that
+    builds: with --root, the live ISO's)."""
+    try:
+        return pwd.getpwnam(BUILD_USER)
+    except KeyError:
+        _run(["useradd", "--system", "--no-create-home", "--home-dir", "/", "--shell", "/usr/bin/nologin",
+              "--comment", "Builds CitronOS's packages for Software Update", BUILD_USER])
+    try:
+        return pwd.getpwnam(BUILD_USER)
+    except KeyError:
+        raise UpdateFailed(f"The account that builds CitronOS ({BUILD_USER}) couldn't be made. Nothing was changed.")
+
+
+def build_packages(tree: Path, version: dict, work: Path, emit: Emit) -> list[Path]:
+    """CitronOS's packages, built from the tree (packaging/citronos): by
+    makepkg as BUILD_USER, in a copy of the tree only it can change. They're
+    kept in PACKAGE_CACHE, for pacman."""
+    missing = [t for t in ("makepkg", "make", "fakeroot", "node", "rsvg-convert") if not shutil.which(t)]
+    if missing:
+        raise UpdateFailed("Building CitronOS needs " + ", ".join(missing) + ", which isn't installed. Nothing was changed.")
+    emit("progress", progress=0.9, message="Building CitronOS…", remaining=-1)
+    build = work / "build"
+    shutil.rmtree(build, ignore_errors=True)
+    shutil.copytree(tree, build, symlinks=True, ignore=_build_copy(tree))
+    here = build / "packaging/citronos"
+    env = {"PATH": "/usr/bin:/bin", "HOME": str(build), "LANG": "C.UTF-8",
+           "CITRONOS_PKGVER": package_version(tree, version)}
+    who = {}
+    if os.geteuid() == 0:
+        builder = _builder()
+        os.chmod(work, 0o711)                   # the builder passes through to its copy
+        _chown_tree(build, builder.pw_uid, builder.pw_gid)
+        os.chmod(build, 0o700)
+        who = {"user": builder.pw_uid, "group": builder.pw_gid, "extra_groups": []}
+    proc = _run(["makepkg", "-d", "--noconfirm", "--nocolor"], cwd=str(here), env=env, timeout=3600, **who)
+    built = sorted(p for p in here.glob("*.pkg.tar.*") if PACKAGE_RE.match(p.name))
+    names = {PACKAGE_RE.match(p.name).group(1) for p in built}
+    if proc.returncode != 0 or names != set(PACKAGES):
+        lines = [l for l in (proc.stdout + proc.stderr).strip().splitlines() if l.strip()]
+        errors = [l for l in lines if "ERROR" in l or "error" in l.lower()]
+        why = ((errors or lines or [f"makepkg made {len(names)} of {len(PACKAGES)} packages"])[-1]).strip()[:200]
+        raise UpdateFailed(f"CitronOS's packages couldn't be built ({why}). Nothing was changed.")
+    cache = path(PACKAGE_CACHE)
+    shutil.rmtree(cache, ignore_errors=True)
+    cache.mkdir(parents=True)
+    out = []
+    for p in built:
+        shutil.copy2(p, cache / p.name)
+        out.append(cache / p.name)
+    return out
+
+
+def package_plan(built: list[Path]) -> dict:
+    """What installing the built packages changes: the files of the
+    CitronOS packages installed now ("old") and of the new ones ("new"),
+    pacman's records of both ("db"), and the files in the way: ones that
+    aren't any package's (scripts/install.sh's, the first time) where a new
+    package has a file. Nothing is changed yet."""
+    pacman = _pacman()
+    inside = ["/" + _rel(p) for p in built]       # pacman --sysroot reads them inside the root
+    have = [n for n in _run([*pacman, "-Qq"]).stdout.split() if n in PACKAGES]
+    old = set(_paths(_run([*pacman, "-Qlq", *have]))) if have else set()
+    new: set[str] = set()
+    for p in inside:
+        q = _run([*pacman, "-Qlpq", p])
+        if q.returncode != 0:
+            raise UpdateFailed("A package built from this version can't be read (" + _pacman_reason(q) + "). Nothing was changed.")
+        new |= set(_paths(q))
+    local = path("/var/lib/pacman/local")
+    db = sorted(_rel(d) for d in local.glob("citronos*") if d.is_dir())
+    for p in built:
+        m = PACKAGE_RE.match(p.name)
+        db.append(_rel(local / f"{m.group(1)}-{m.group(2)}-{m.group(3)}"))
+    candidates = [f for f in sorted(new - old) if os.path.lexists(path("/" + f))]
+    in_the_way = []
+    if candidates:
+        owned = _owned()
+        in_the_way = [f for f in candidates if f not in owned and f + "/" not in owned]
+    return {"packages": inside, "installed": have, "old": old, "new": new, "db": db, "in_the_way": in_the_way}
+
+
+def keep_for_packages(rollback: "Rollback", plan: dict) -> None:
+    """Keep everything installing the packages changes (each tree whole)."""
+    for t in PACKAGED_TREES:
+        rollback.keep(path("/" + t))
+    for f in sorted(plan["old"] | plan["new"]):
+        rollback.keep(path("/" + f))
+        if f.startswith("etc/"):
+            rollback.keep(path("/" + f + ".pacnew"))   # a backup file the user changed
+    for d in plan["db"]:
+        rollback.keep(path("/" + d))
+    rollback.keep(path("/usr/lib/os-release"))
+
+
+def install_built(plan: dict) -> None:
+    """pacman -U the built packages, the files in their way set aside first
+    (kept by the rollback), and the system named for the new version."""
+    for f in plan["in_the_way"]:
+        p = path("/" + f)
+        shutil.rmtree(p) if p.is_dir() and not p.is_symlink() else p.unlink()
+    proc = _run([*_pacman(), "-U", "--noconfirm", "--noprogressbar", *plan["packages"]], timeout=1800)
+    if proc.returncode != 0:
+        raise UpdateFailed("CitronOS's packages didn't install: " + _pacman_reason(proc))
+    # The packaged hook does this when pacman upgrades os-release; the version
+    # in it is the packages', which hooks read before they were installed.
+    named = path("/usr/share/golden-gate/os-release")
+    if named.is_file() and path("/usr/lib").is_dir():
+        shutil.copyfile(named, path("/usr/lib/os-release"))
+        os.chmod(path("/usr/lib/os-release"), 0o644)
+
+
+def _mtree_dirs(mtree: Path) -> dict[str, int]:
+    """The folders a package's mtree (pacman's record of it) has, with
+    their modes, inside the system."""
+    out, defaults = {}, {}
+    with gzip.open(mtree, "rt", errors="replace") as f:
+        for line in f:
+            words = line.split()
+            if not words or words[0].startswith("#"):
+                continue
+            keys = dict(w.split("=", 1) for w in words[1:] if "=" in w)
+            if words[0] == "/set":
+                defaults.update(keys)
+                continue
+            keys = {**defaults, **keys}
+            if keys.get("type") == "dir" and "mode" in keys and words[0].startswith("./"):
+                name = re.sub(r"\\([0-7]{3})", lambda m: chr(int(m.group(1), 8)), words[0][2:])
+                out[name] = int(keys["mode"], 8)
+    return out
+
+
+def match_folder_modes(rollback: "Rollback") -> None:
+    """pacman leaves a folder that's already there as it is: one install.sh
+    made with another mode (/etc/sudoers.d, 755 where the package has 750)
+    stays so, and pacman -Qkk says so. Each CitronOS package's folders get
+    the mode it has (the old one kept)."""
+    for record in sorted(path("/var/lib/pacman/local").glob("citronos*/mtree")):
+        try:
+            folders = _mtree_dirs(record)
+        except (OSError, EOFError, ValueError):
+            continue
+        for rel, mode in folders.items():
+            p = path("/" + rel)
+            if p.is_dir() and not p.is_symlink() and stat.S_IMODE(p.stat().st_mode) != mode:
+                rollback.keep_mode(p)
+                os.chmod(p, mode)
+
+
+def install_sh_leftovers(tree: Path, plan: dict) -> list[str]:
+    """What scripts/install.sh left that the packages don't need, and that
+    no package or the overlay has: INSTALL_SH_LEFTOVERS, and the gg-*
+    commands in /usr/local/bin that the packages have in /usr/bin."""
+    commands = ["usr/local/" + f[len("usr/"):] for f in plan["new"] if re.match(r"^usr/bin/gg-[\w.-]+$", f)]
+    there = [rel for rel in [*INSTALL_SH_LEFTOVERS, *sorted(commands)]
+             if os.path.lexists(path("/" + rel)) and not (tree / "distro/archiso/overlay" / rel).exists()]
+    if not there:
+        return []
+    owned = _owned()
+    return [rel for rel in there if rel not in owned and rel + "/" not in owned]
+
+
+def _owned() -> set[str]:
+    """Every path a package has, inside the system; folders end in /."""
+    return set(_paths(_run([*_pacman(), "-Qlq"]), dirs=True))
+
+
+def remove_leftovers(leftovers: list[str]) -> None:
+    """Remove them (kept by the rollback), and the folders that leaves
+    empty, up to one a package has."""
+    if not leftovers:
+        return
+    owned = _owned()
+    for rel in leftovers:
+        p = path("/" + rel)
+        if p.is_dir() and not p.is_symlink():
+            shutil.rmtree(p)
+        elif os.path.lexists(p):
+            p.unlink()
+        for parent in Path(rel).parents:
+            d = path("/" + str(parent))
+            if str(parent) + "/" in owned or len(parent.parts) < 2 or not d.is_dir() or any(d.iterdir()):
+                break
+            d.rmdir()
+
+
 def _snapshot_skel(into: Path) -> Path:
     keep = into / "old-skel"
     skel = path("/etc/skel/.config")
-    for rel in MANAGED + [f"ghostty/themes/{p.name}" for p in (skel / "ghostty/themes").glob("*")]:
+    for rel in MANAGED + RETIRED + [f"ghostty/themes/{p.name}" for p in (skel / "ghostty/themes").glob("*")]:
         f = skel / rel
         if f.is_file():
             (keep / rel).parent.mkdir(parents=True, exist_ok=True)
@@ -627,7 +929,11 @@ def _accounts():
         if not (1000 <= entry.pw_uid < 60000) or entry.pw_shell.endswith(("nologin", "false")):
             continue
         home = path(entry.pw_dir) if ROOT != Path("/") else Path(entry.pw_dir)
-        if (home / ".config/quickshell/golden-gate").is_dir():
+        # A CitronOS account: one with its own copy of the shell (before the
+        # packages), its settings, or the hyprland.conf every account gets.
+        conf = home / ".config"
+        if os.path.lexists(conf / "quickshell/golden-gate") or (conf / "golden-gate").is_dir() \
+                or (conf / "hypr/hyprland.conf").is_file():
             yield entry, home
 
 
@@ -642,7 +948,7 @@ def _chown_tree(p: Path, uid: int, gid: int):
                 pass
 
 
-def refresh_accounts(old_skel: Path) -> list[str]:
+def refresh_accounts(old_skel: Path, packaged: bool = False) -> list[str]:
     """Bring each account's copies up to date. Returns files left alone."""
     skel = path("/etc/skel/.config")
     kept = []
@@ -651,7 +957,17 @@ def refresh_accounts(old_skel: Path) -> list[str]:
         conf = home / ".config"
         shell = conf / "quickshell/golden-gate"
         fresh = skel / "quickshell/golden-gate"
-        if fresh.is_dir():
+        if packaged:
+            # The system's shell is the one. The account's copy goes, and a
+            # link to the system's stands in until the next login (gg-session
+            # removes it), so the shell running now reloads into the new one
+            # rather than losing its files.
+            if path(SYSTEM_SHELL).is_dir() and shell.is_dir() and not shell.is_symlink():
+                shutil.rmtree(shell)
+                shell.symlink_to(SYSTEM_SHELL)
+                if os.geteuid() == 0:
+                    os.lchown(shell, entry.pw_uid, entry.pw_gid)
+        elif fresh.is_dir():
             tmp = shell.with_name("golden-gate.updating")
             shutil.rmtree(tmp, ignore_errors=True)
             shutil.copytree(fresh, tmp, symlinks=True)
@@ -674,6 +990,15 @@ def refresh_accounts(old_skel: Path) -> list[str]:
                 kept.append(f"~{entry.pw_name}/.config/{rel}")
             if os.geteuid() == 0:
                 os.lchown(target, entry.pw_uid, entry.pw_gid)
+        if packaged:
+            hypr = conf / "hypr/hyprland.conf"
+            uses = hypr.read_text(errors="replace") if hypr.is_file() else ""
+            for rel in RETIRED:
+                mine, old = conf / rel, old_skel / rel
+                if (skel / rel).exists() or Path(rel).name in uses:
+                    continue
+                if mine.is_file() and not mine.is_symlink() and old.is_file() and filecmp.cmp(mine, old, shallow=False):
+                    mine.unlink()
     return kept
 
 
@@ -928,7 +1253,7 @@ class Rollback:
     def keep(self, p: Path) -> None:
         """Keep p (a file, link or whole tree) as it is now."""
         rel = _rel(p)
-        if rel in self.seen or any(rel.startswith(s + "/") for s in self.seen):
+        if rel in self.seen or any(str(parent) in self.seen for parent in Path(rel).parents):
             return
         self.seen.add(rel)
         saved = self.where / "saved" / rel
@@ -951,11 +1276,18 @@ class Rollback:
                     owners[os.path.relpath(n, p)] = [s2.st_uid, s2.st_gid]
         self._note({"path": rel, "kind": kind, "uid": st.st_uid, "gid": st.st_gid, "owners": owners})
 
+    def keep_mode(self, p: Path) -> None:
+        """Keep a folder's mode (only: what's in it is kept, or not, apart)."""
+        self._note({"path": _rel(p), "kind": "mode", "mode": stat.S_IMODE(os.lstat(p).st_mode)})
+
     def undo(self) -> list[str]:
         problems = []
         for e in reversed(self.entries):
             dest = path("/" + e["path"])
             try:
+                if e["kind"] == "mode":
+                    os.chmod(dest, e["mode"])
+                    continue
                 if os.path.islink(dest) or dest.is_file():
                     dest.unlink()
                 elif dest.is_dir():
@@ -1022,13 +1354,16 @@ def install_tree(tree: Path, version: dict, emit: Emit, work: Path) -> bool:
     """Install CitronOS from an unpacked tree, as one transaction:
 
     1. the packages it needs (none missing, or nothing is changed);
-    2. install.sh runs into an empty staging folder, and the result is
-       checked: nothing on the system has changed yet;
-    3. everything about to change is kept (Rollback): the staged trees and
-       files, each account's CitronOS shell and managed settings, system
-       files, plugins and boot images;
-    4. then it's put in place, accounts refreshed, system files, plugins,
-       services and the boot image.
+    2. CitronOS's own packages are built from it (a version from before
+       them: its install.sh runs into an empty staging folder instead), and
+       what installing them changes is worked out: nothing on the system has
+       changed yet;
+    3. everything about to change is kept (Rollback): the packages' files,
+       old and new, and pacman's records of them (or the staged trees and
+       files), install.sh's leftovers, each account's CitronOS shell and
+       managed settings, system files, plugins and boot images;
+    4. then it's put in place (pacman -U), leftovers removed, accounts
+       refreshed, system files, plugins, services and the boot image.
 
     A failure at any step after 3 puts every kept path back, as it was, and
     says which step failed. Two things aren't undone, and the message says
@@ -1045,38 +1380,55 @@ def install_tree(tree: Path, version: dict, emit: Emit, work: Path) -> bool:
 
         step = "preparing the new version"
         _journal("installing", step, version)
-        emit("progress", progress=0.92, message="Installing CitronOS…", remaining=-1)
-        stage = work / "stage"
-        shutil.rmtree(stage, ignore_errors=True)
-        stage.mkdir(parents=True)
-        proc = _run(["bash", str(tree / "scripts/install.sh"), "--system", str(stage)],
-                    env={**os.environ, "GG_SKIP_BUILD": "1"}, timeout=1800, cwd=str(tree))
-        if proc.returncode != 0:
-            tail = (proc.stdout + proc.stderr).strip().splitlines()[-1:] or ["unknown error"]
-            raise UpdateFailed(tail[0][:200] + " Nothing was changed.")
-        trees, files = _staged_changes(stage)
-        missing = [t for t in ("usr/share/golden-gate/apps", "usr/share/golden-gate/ui",
-                               "etc/skel/.config/quickshell/golden-gate/shell.qml") if not os.path.lexists(stage / t)]
-        if missing:
-            raise UpdateFailed("The new version is incomplete (" + ", ".join(missing) + "). Nothing was changed.")
+        as_packages = packaged(tree)
+        if as_packages:
+            built = build_packages(tree, version, work, emit)
+            emit("progress", progress=0.92, message="Installing CitronOS…", remaining=-1)
+            plan = package_plan(built)
+            leftovers = install_sh_leftovers(tree, plan)
+            themes = [f[len("etc/skel/.config/"):] for f in plan["new"] if f.startswith("etc/skel/.config/ghostty/themes/")]
+        else:
+            if _packages_installed():
+                raise UpdateFailed("This version of CitronOS is older than its packages, which are installed here, "
+                                   "so it can't be installed over them. Nothing was changed.")
+            emit("progress", progress=0.92, message="Installing CitronOS…", remaining=-1)
+            stage = work / "stage"
+            shutil.rmtree(stage, ignore_errors=True)
+            stage.mkdir(parents=True)
+            proc = _run(["bash", str(tree / "scripts/install.sh"), "--system", str(stage)],
+                        env={**os.environ, "GG_SKIP_BUILD": "1"}, timeout=1800, cwd=str(tree))
+            if proc.returncode != 0:
+                tail = (proc.stdout + proc.stderr).strip().splitlines()[-1:] or ["unknown error"]
+                raise UpdateFailed(tail[0][:200] + " Nothing was changed.")
+            trees, files = _staged_changes(stage)
+            missing = [t for t in ("usr/share/golden-gate/apps", "usr/share/golden-gate/ui",
+                                   "etc/skel/.config/quickshell/golden-gate/shell.qml") if not os.path.lexists(stage / t)]
+            if missing:
+                raise UpdateFailed("The new version is incomplete (" + ", ".join(missing) + "). Nothing was changed.")
+            themes = [f"ghostty/themes/{p.name}" for p in (stage / "etc/skel/.config/ghostty/themes").glob("*")]
 
         step = "keeping a copy of the current version"
         _journal("installing", step, version)
         old_skel = _snapshot_skel(work)
         rollback = Rollback(path(ROLLBACK))
-        for t in trees:
-            rollback.keep(path("/" + t))
-        for f in files:
-            rollback.keep(path("/" + f))
+        if as_packages:
+            keep_for_packages(rollback, plan)
+            for rel in leftovers:
+                rollback.keep(path("/" + rel))
+        else:
+            for t in trees:
+                rollback.keep(path("/" + t))
+            for f in files:
+                rollback.keep(path("/" + f))
         rollback.keep(runtime / "version.json")
-        skel = path("/etc/skel/.config")
-        themes = [f"ghostty/themes/{p.name}" for p in (stage / "etc/skel/.config/ghostty/themes").glob("*")]
         for entry, home in _accounts():
             conf = home / ".config"
             rollback.keep(conf / "quickshell/golden-gate")
             for rel in MANAGED + themes:
                 rollback.keep(conf / rel)
                 rollback.keep(conf / (rel + ".golden-gate-new"))
+            for rel in RETIRED:
+                rollback.keep(conf / rel)
         overlay = tree / "distro/archiso/overlay"
         for f in sorted(overlay.rglob("*")):
             rel = f.relative_to(overlay).as_posix()
@@ -1090,12 +1442,17 @@ def install_tree(tree: Path, version: dict, emit: Emit, work: Path) -> bool:
 
         step = "installing CitronOS's files"
         _journal("installing", step, version)
-        _activate(stage, trees, files)
+        if as_packages:
+            install_built(plan)
+            match_folder_modes(rollback)
+            remove_leftovers(leftovers)
+        else:
+            _activate(stage, trees, files)
 
         step = "updating your settings"
         _journal("installing", step, version)
         emit("progress", progress=0.96, message="Updating your settings…", remaining=-1)
-        kept = refresh_accounts(old_skel)
+        kept = refresh_accounts(old_skel, as_packages)
 
         step = "installing system files"
         _journal("installing", step, version)

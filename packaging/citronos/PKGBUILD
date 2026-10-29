@@ -22,20 +22,19 @@ source=()
 # The repository this PKGBUILD is in.
 _repo() { realpath "$startdir/../.."; }
 
-# Its version: Release.qml's, then the commit, from git or (an unpacked
-# release or branch snapshot, which Software Update builds) version.json's.
+# Its version: Release.qml's, then when and which commit (UTC), so pacman
+# orders builds by date.
 pkgver() {
-  # Given by whoever copied the tree out of its checkout (the ISO build).
+  # Given by whoever copied the tree out of its checkout: the ISO build, and
+  # Software Update, whose download isn't a checkout.
   [[ -n ${CITRONOS_PKGVER:-} ]] && { printf '%s' "$CITRONOS_PKGVER"; return; }
-  local version count commit
+  local version when=0 commit=unknown
   version=$(sed -n 's/.*property string version: "\(.*\)".*/\1/p' "$(_repo)/apps/lib/theme/Release.qml")
   if git -C "$(_repo)" rev-parse HEAD >/dev/null 2>&1; then
-    count=$(git -C "$(_repo)" rev-list --count HEAD); commit=$(git -C "$(_repo)" rev-parse --short=7 HEAD)
-  else
-    commit=$(sed -n 's/.*"commit": *"\([0-9a-f]\{7\}\).*/\1/p' "$(_repo)/version.json" 2>/dev/null | head -n 1)
-    count=0
+    when=$(TZ=UTC git -C "$(_repo)" log -1 --format=%cd --date=format-local:%Y%m%d%H%M%S)
+    commit=$(git -C "$(_repo)" rev-parse --short=7 HEAD)
   fi
-  printf '%s.r%s.g%s' "$version" "$count" "${commit:-unknown}"
+  printf '%s.r%s.g%s' "$version" "$when" "$commit"
 }
 
 build() {

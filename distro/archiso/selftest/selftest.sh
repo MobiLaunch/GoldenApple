@@ -6,8 +6,8 @@
 # log, where the journal is forwarded. Every line starts "gg-selftest:".
 #
 #   - the session's units are running;
-#   - CitronOS is its packages, each file as packaged (pacman -Qkk), and the
-#     account runs the system's shell;
+#   - CitronOS is its packages, each file as packaged (pacman -Qkk), their
+#     hooks the packaged ones, and the account runs the system's shell;
 #   - pacman.conf holds Hyprland at the version CitronOS is made for;
 #   - AirDrop's service listens on nothing with receiving off (a new account's
 #     default), and the firewall keeps AirDrop and AirPlay out of "public";
@@ -49,6 +49,11 @@ else ok "pacman -Qkk: every file of $packages as packaged"
 fi
 [[ ! -e ${XDG_CONFIG_HOME:-$HOME/.config}/quickshell ]] && ok "the shell is the system's (no ~/.config/quickshell)" \
   || bad "this account has a shell of its own in ~/.config/quickshell"
+# The image build's copies of the packaged hooks went at the end of its
+# install; left, they'd stand in for later packages' hooks.
+copies=$(ls /etc/pacman.d/hooks/ 2>/dev/null | grep -E '^(citronos-.*|zzzz98-citronos-image-hooks)\.hook$' | tr '\n' ' ')
+[[ -z $copies ]] && ok "pacman runs CitronOS's hooks from its packages" \
+  || bad "the image's copies of CitronOS's hooks are still in /etc/pacman.d/hooks: $copies"
 
 # ---------------------------------------------------------------- Hyprland held
 # pacman.conf holds Hyprland (pacman-config.sh, by the pacman hook when the

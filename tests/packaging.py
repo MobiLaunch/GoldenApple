@@ -148,6 +148,63 @@ class References(unittest.TestCase):
         self.assertEqual((d / "20-golden-wheel").stat().st_mode & 0o777, 0o440)
 
 
+def golden_update():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("golden_update", ROOT / "apps/settings/golden_update.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+class SoftwareUpdate(unittest.TestCase):
+    """What Software Update (golden_update.py) knows of the packages."""
+
+    def test_install_sh_leaves_nothing_unknown(self):
+        """Every file scripts/install.sh --system writes is a package's, the
+        image overlay's, or a leftover Software Update removes once the
+        packages are in (INSTALL_SH_LEFTOVERS, /usr/local/bin's gg-*)."""
+        gu = golden_update()
+        copy, out = TMP / "repo-copy", TMP / "install-sh"
+        copy.mkdir()
+        # A copy: install.sh rebuilds the icons where it runs.
+        listing = subprocess.run(["git", "-C", str(ROOT), "ls-files", "-z"], capture_output=True, check=True).stdout
+        subprocess.run(["tar", "--null", "-T", "-", "-cf", str(TMP / "repo.tar")], input=listing, cwd=ROOT, check=True)
+        subprocess.run(["tar", "-xf", str(TMP / "repo.tar"), "-C", str(copy)], check=True)
+        subprocess.run(["bash", str(copy / "scripts/install.sh"), "--system", str(out)], capture_output=True, check=True,
+                       timeout=600, env={"PATH": "/usr/bin:/bin", "HOME": str(TMP), "GG_SKIP_BUILD": "1"})
+        packaged = set().union(*(files(r) for r in STAGED.values()))
+        overlay = files(ROOT / "distro/archiso/overlay")
+        unknown = []
+        for f in sorted(files(out)):
+            rel = f.lstrip("/")
+            if f in packaged or f in overlay or "__pycache__" in f:
+                continue
+            if any(rel == l or rel.startswith(l + "/") for l in gu.INSTALL_SH_LEFTOVERS):
+                continue
+            if rel.startswith("usr/local/bin/gg-") and "/usr/bin/" + rel[len("usr/local/bin/"):] in packaged:
+                continue
+            unknown.append(f)
+        self.assertEqual(unknown, [], "install.sh writes these, which no package has and Software Update would leave")
+
+    def test_the_rollback_keeps_whole_trees_that_are_citronos(self):
+        gu = golden_update()
+        packaged = set().union(*(files(r) for r in STAGED.values()))
+        for t in gu.PACKAGED_TREES:
+            self.assertTrue(any(f.startswith("/" + t + "/") for f in packaged), f"{t} isn't packaged")
+        rest = [f for f in packaged if not any(f.startswith("/" + t + "/") for t in gu.PACKAGED_TREES)]
+        self.assertLess(len(rest), 400, "the rest is kept file by file")
+        self.assertEqual({p for p in gu.PACKAGES}, {"citronos-" + p for p in PARTS} | {"citronos"})
+
+    def test_hooks_run_when_their_own_source_changes(self):
+        hooks = STAGED["runtime"] / "usr/share/libalpm/hooks"
+        release = (hooks / "citronos-release.hook").read_text()
+        self.assertIn("Target = usr/lib/os-release\n", release)
+        self.assertIn("Target = usr/share/golden-gate/os-release\n", release, "a new version names the system")
+        conf = (hooks / "citronos-pacman.hook").read_text()
+        self.assertIn("Target = etc/pacman.conf\n", conf)
+        self.assertIn("Target = usr/lib/golden-gate/pacman-config.sh\n", conf)
+
+
 class Packages(unittest.TestCase):
     def test_one_package_per_part(self):
         pkgbuild = (ROOT / "packaging/citronos/PKGBUILD").read_text()

@@ -163,7 +163,10 @@ build_citronos() {
 citronos_pkgver() {
   local version
   version=$(sed -n 's/.*property string version: "\(.*\)".*/\1/p' "$REPO/apps/lib/theme/Release.qml")
-  printf '%s.r%s.g%s' "$version" "$(git -C "$REPO" rev-list --count HEAD)" "$(git -C "$REPO" rev-parse --short=7 HEAD)"
+  # When and which commit (UTC), as Software Update's builds are (package_version
+  # in apps/settings/golden_update.py), so pacman orders them all by date.
+  printf '%s.r%s.g%s' "$version" "$(TZ=UTC git -C "$REPO" log -1 --format=%cd --date=format-local:%Y%m%d%H%M%S)" \
+    "$(git -C "$REPO" rev-parse --short=7 HEAD)"
 }
 
 # ---------------------------------------------------------------- packages
@@ -267,6 +270,20 @@ bash "$REPO/scripts/stage.sh" runtime "$hooks" >/dev/null
 install -d "$AIR/etc/pacman.d/hooks"
 install -m644 "$hooks"/usr/share/libalpm/hooks/citronos-*.hook "$AIR/etc/pacman.d/hooks/"
 rm -rf "$hooks"
+# Then the copies go, at the end of that transaction (after them, by name):
+# left there, they'd stand in for the packaged hooks on every system made
+# from the image, whatever later versions of the packages ship.
+cat > "$AIR/etc/pacman.d/hooks/zzzz98-citronos-image-hooks.hook" <<'HOOK'
+[Trigger]
+Type = Package
+Operation = Install
+Target = citronos-runtime
+
+[Action]
+Description = Leaving CitronOS's hooks to its packages...
+When = PostTransaction
+Exec = /bin/sh -c "rm -f /etc/pacman.d/hooks/citronos-*.hook /etc/pacman.d/hooks/zzzz98-citronos-image-hooks.hook"
+HOOK
 
 # Which CitronOS this is, for Software Update (the repository and branch on
 # GitHub it checks for newer commits), and its own source, so the live ISO can

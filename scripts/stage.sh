@@ -135,9 +135,10 @@ runtime() {
   # What the system calls itself, put back whenever pacman installs or
   # upgrades the files it replaces; pacman.conf ready for installing software.
   identity
-  hook citronos-release usr/lib/os-release "Naming the system CitronOS..." \
+  # (Each also when its own source changes: a new version's os-release.)
+  hook citronos-release "usr/lib/os-release ${SHARE#/}/os-release" "Naming the system CitronOS..." \
     "/usr/bin/install -m644 $SHARE/os-release /usr/lib/os-release"
-  hook citronos-pacman etc/pacman.conf "Setting up the package repositories for CitronOS..." \
+  hook citronos-pacman "etc/pacman.conf ${LIB#/}/pacman-config.sh" "Setting up the package repositories for CitronOS..." \
     "/bin/sh $LIB/pacman-config.sh"
 }
 
@@ -160,14 +161,15 @@ LOGO=archlinux-logo
 EOF
 }
 
-hook() { # hook NAME TARGET DESCRIPTION EXEC
+hook() { # hook NAME "TARGET…" DESCRIPTION EXEC
+  local t targets=""
+  for t in $2; do targets+="Target = $t"$'\n'; done
   install -Dm644 /dev/stdin "$D/usr/share/libalpm/hooks/$1.hook" <<EOF
 [Trigger]
 Type = Path
 Operation = Install
 Operation = Upgrade
-Target = $2
-
+${targets}
 [Action]
 Description = $3
 When = PostTransaction

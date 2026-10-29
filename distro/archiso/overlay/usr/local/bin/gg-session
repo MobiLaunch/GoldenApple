@@ -15,6 +15,16 @@ export XDG_DATA_DIRS="$HOME/.local/share/flatpak/exports/share:/var/lib/flatpak/
 command -v xdg-user-dirs-update >/dev/null 2>&1 && xdg-user-dirs-update >/dev/null 2>&1 || true
 mkdir -p "$HOME/.local/state" "$HOME/.cache" "$HOME/.config"
 
+# The shell is the system's (/etc/xdg/quickshell/golden-gate). An account
+# Software Update moved off its own copy has a link to it there, which stood
+# in while that session's shell ran; from this login the system's is found
+# directly.
+shell_link="${XDG_CONFIG_HOME:-$HOME/.config}/quickshell/golden-gate"
+if [ -L "$shell_link" ] && [ "$(readlink "$shell_link")" = /etc/xdg/quickshell/golden-gate ]; then
+  rm -f "$shell_link"
+  rmdir "${shell_link%/*}" 2>/dev/null || true   # unless another config is there
+fi
+
 # VirtualBox (VMSVGA) and VMware use the vmwgfx driver. With 3D acceleration on,
 # its GL path leaves Hyprland and the shell black with only a hardware cursor
 # showing, so render in software (Mesa llvmpipe) there. GG_RENDERER=hardware opts out.
