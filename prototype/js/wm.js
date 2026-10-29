@@ -125,9 +125,13 @@ async function minimize(w) {
   bus.emit("windows");                        // the Dock makes room for the window's tile
   await new Promise(requestAnimationFrame);
   w.el.classList.add("animating");
-  await w.el.animate(genieFrames(w), { duration: 560, easing: "cubic-bezier(.5,0,.3,1)", fill: "forwards" }).finished;
+  // Restored before it reached the Dock (restore cancels this): it stays.
+  const genie = w._genie = w.el.animate(genieFrames(w), { duration: 560, easing: "cubic-bezier(.5,0,.3,1)", fill: "forwards" });
+  try { await genie.finished; } catch { return; }
+  w._genie = null;
+  if (!w.minimized) return;
   w.el.style.visibility = "hidden";
-  w.el.getAnimations().forEach((a) => a.cancel());
+  genie.cancel();
   w.el.style.transformOrigin = "";
   w.el.classList.remove("animating");
   bus.emit("minimized", w);
@@ -136,6 +140,8 @@ async function minimize(w) {
 }
 async function restore(w) {
   if (!w.minimized) return focus(w);
+  // Still pouring into the Dock: it comes back from where it is.
+  w._genie?.cancel(); w._genie = null;
   // Measured while the tile still exists; offsets mirror so they stay ascending.
   const frames = genieFrames(w).reverse().map((f) => (f.offset == null ? f : { ...f, offset: 1 - f.offset }));
   w.minimized = false;
@@ -144,7 +150,7 @@ async function restore(w) {
   w.el.classList.add("animating");
   const a = w.el.animate(frames, { duration: 520, easing: "cubic-bezier(.2,.7,.3,1)" });
   bus.emit("windows");
-  await a.finished;
+  try { await a.finished; } catch { return; }      // minimised again meanwhile
   w.el.style.transformOrigin = "";
   w.el.classList.remove("animating");
 }

@@ -105,6 +105,14 @@ await scenario("files: folder, rename, quick look, trash", "?quiet&open=files", 
     .catch(() => { throw new Error("not trashed"); });
   for (const view of ["List", "Columns", "Gallery", "Icons"]) { await p.click(`.toolbar .tb[data-tip="${view}"], .toolbar .tb[title="${view}"]`); await wait(p, 300); }
 });
+// Restored while it's still pouring into the Dock (a slow runner's 900 ms did
+// that): the minimise must neither hide it afterwards nor cancel the restore.
+await scenario("windows: restore while minimising", "?quiet&open=notes", async (p) => {
+  await p.click(".notes .lights .min"); await wait(p, 150);
+  await p.click(".dock-item.mini"); await wait(p, 1200);
+  const shown = await p.$eval(".win.notes", (e) => getComputedStyle(e).visibility !== "hidden" && e.getAnimations().length === 0);
+  if (!shown) throw new Error("the window stayed hidden, or still animating, after being restored mid-minimise");
+});
 await scenario("windows: minimise, restore, mission control, tiling", "?quiet&open=files,notes", async (p) => {
   await p.click(".notes .lights .min"); await wait(p, 900);
   await p.click(".dock-item.mini"); await wait(p, 800);
