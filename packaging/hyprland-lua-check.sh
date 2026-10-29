@@ -158,11 +158,16 @@ if compgen -G "/dev/dri/renderD*" >/dev/null; then
   install -Dm755 /repo/compositor/hyprland/hyprctl.py /usr/lib/golden-gate/hyprctl.py
   printf '#!/bin/sh\nexec python3 /usr/lib/golden-gate/hyprctl.py "$@"\n' > /usr/bin/gg-hyprctl
   chmod 755 /usr/bin/gg-hyprctl
-  pacman -S --noconfirm --needed mesa >/dev/null
+  # A seat for Hyprland to open the GPU through (no logind in a container),
+  # without a VT to bind to.
+  pacman -S --noconfirm --needed mesa seatd >/dev/null
+  SEATD_VTBOUND=0 seatd -g video >/tmp/seatd.log 2>&1 &
+  for _ in $(seq 50); do [[ -S /run/seatd.sock ]] && break; sleep 0.1; done
+  usermod -aG video desktop
   cat > /home/desktop/live.sh <<'EOF'
 set -u
 export XDG_RUNTIME_DIR=$(mktemp -d)
-HYPRLAND_HEADLESS_ONLY=1 Hyprland -c /usr/share/golden-gate/hypr/hyprland.lua >"$HOME/hyprland.log" 2>&1 &
+LIBSEAT_BACKEND=seatd Hyprland -c /usr/share/golden-gate/hypr/hyprland.lua >"$HOME/hyprland.log" 2>&1 &
 for _ in $(seq 100); do hyprctl version >/dev/null 2>&1 && break; sleep 0.2; done
 if ! hyprctl version >/dev/null 2>&1; then
   echo "started=no"
@@ -198,7 +203,10 @@ EOF
     fail "live: Hyprland didn't start with CitronOS's settings on $(ls /dev/dri | tr '\n' ' ')"
   fi
   if [[ $FAILED -gt 0 ]]; then
-    grep -vE "^\[LOG\]|DEBUG" /home/desktop/hyprland.log | tail -n 25 | sed 's/^/    /'
+    # The GPU's side of it (aquamarine, the seat), then the end of the log.
+    grep -iE "aquamarine|seat|drm|gbm|egl|CRIT|ERR" /home/desktop/hyprland.log | tail -n 30 | sed 's/^/    /'
+    sed 's/^/    seatd: /' /tmp/seatd.log | tail -n 5
+    grep -vE "^\[LOG\]|DEBUG" /home/desktop/hyprland.log | tail -n 8 | sed 's/^/    /'
   fi
 elif [[ ${GG_HYPRLAND_LIVE:-} == required ]]; then
   fail "live: no GPU render node (/dev/dri/renderD*), so no Hyprland to run"
