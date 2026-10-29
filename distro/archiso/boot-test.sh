@@ -118,6 +118,9 @@ wait "$qemu" 2>/dev/null || true
 # ---------------------------------------------------------------- report
 say "session log"
 grep -aE 'gg-session|golden-gate|hyprland-log|hyprland-config|quickshell|Hyprland|Failed|failed|segfault|core dump' "$OUT/serial.log" | tail -n 150 || true
+# What stops a process from outside shows here too: the kernel's out-of-memory
+# killer, systemd-oomd, a signal.
+grep -aE 'Out of memory|oom-kill|oom_reaper|Killed process|systemd-oomd|code=killed|code=dumped' "$OUT/serial.log" | tail -n 20 || true
 if [[ -f $OUT/screen.png ]]; then
   # A small copy in the job log, so the screen can be checked from the log alone.
   convert "$OUT/screen.png" -resize 960x -quality 70 "$OUT/screen-small.jpg"
@@ -133,6 +136,9 @@ restarted='gg-shell.*Quickshell exited|citronos-shell.service: (Main process exi
 if boot_log | grep -aqE "$restarted"; then
   say "Quickshell restarted during the boot-test settle window:"
   boot_log | grep -aE "$restarted" | tail -n 20
+  # The shell's last words before that, and what the kernel said at the time.
+  say "the shell before it stopped:"
+  boot_log | grep -aE 'citronos-shell\[|kernel:|Out of memory|Killed process' | tail -n 40
   result=shell-restarted
 fi
 
