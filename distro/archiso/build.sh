@@ -67,17 +67,9 @@ file_permissions+=(
   ["/home/golden"]="1000:1000:750"
 )
 EOF
-# mkarchiso copies airootfs without file modes, so every program under
-# /usr/share/golden-gate lost its executable bit, and pkexec couldn't run
-# Software Update's helper (saving a token or installing updates failed).
-# Give back the bit to each file that has it here.
-{
-  echo 'file_permissions+=('
-  (cd "$REPO" && find apps -type f -perm -u+x | sort) | while read -r f; do
-    printf '  ["/usr/share/golden-gate/%s"]="0:0:755"\n' "$f"
-  done
-  echo ')'
-} >> "$PROFILE/profiledef.sh"
+# The apps' executable bits come with citronos-runtime (pacman keeps file
+# modes); mkarchiso's file_permissions are only for what airootfs itself has,
+# and it refuses an entry for a file that isn't there.
 
 # BlueFerry (Messages' iPhone connection: iMessage and SMS over Bluetooth) is
 # built from its tagged source with its own Arch packaging; only the backend
