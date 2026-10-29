@@ -1,0 +1,11 @@
+# The AUR packages the image builds (packages.extra entries Arch's repositories
+# don't have as of distro/archive-date), each at a commit of its AUR repository:
+# the PKGBUILD and its checksums as they were when pinned, so every build of a
+# CitronOS commit builds the same thing (T-2.2). build.sh refuses an AUR
+# package that isn't here. Moving a pin is a change of its own, like the date.
+#
+# package               AUR commit                                version it builds
+uxplay                  f387a2cdc0e6f98507f4059f55ed440baf0ac771  1.73.7-1
+gnome-network-displays  2c8aa6e37923f262eb4f51c250a7ba18f68e089f  0.99.0-1
+python-pathvalidate     9662a27cfaa6e8eb221245eb7b24a45b966f95fe  3.3.1-1
+piper-tts               e190a7c5ad371b2c3668eaaaffc4551fc4ee93b5  1.8.0-1

@@ -467,6 +467,8 @@ jobs:
           QT_QPA_PLATFORM: offscreen
       - name: "Packages: each part staged once, the shell in /etc/xdg, every command's file there"
         run: python tests/packaging.py
+      - name: "Reproducible ISO: AUR builds pinned by commit; the build manifest is the same for the same inputs"
+        run: python tests/build-manifest.py
       - name: "Disks: read, named, the running system never changed, changes through udisks"
         run: python tests/disks.py
       - name: "Files shows the disks: Locations, Computer, the path bar, hidden files"

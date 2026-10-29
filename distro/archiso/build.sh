@@ -2,9 +2,10 @@
 # Build the CitronOS live ISO.
 #
 # Requirements: an Arch Linux host (or the archlinux container, see
-# .github/workflows/iso.yml), root, and: pacman -S archiso librsvg nodejs
+# .github/workflows/iso.yml), root, and: pacman -S archiso librsvg nodejs python
 #
 #   sudo distro/archiso/build.sh            → out/citronos-sprite-YYYY.MM.DD-x86_64.iso
+#                                             and out/build-manifest.json (manifest.py)
 #   sudo GG_BUILD_AUR=1 distro/archiso/build.sh
 #                                           also builds packages.extra entries that
 #                                           exist only in the AUR (CI does this)
@@ -21,8 +22,8 @@ PROFILE="$WORK/profile"
 say() { printf '\033[1;33m›\033[0m %s\n' "$*"; }
 
 [[ $EUID -eq 0 ]] || { echo "build.sh must run as root (mkarchiso needs it)"; exit 1; }
-for tool in mkarchiso rsvg-convert curl sha256sum; do
-  command -v "$tool" >/dev/null || { echo "missing $tool: pacman -S archiso librsvg curl coreutils"; exit 1; }
+for tool in mkarchiso rsvg-convert curl sha256sum python3; do
+  command -v "$tool" >/dev/null || { echo "missing $tool: pacman -S archiso librsvg curl coreutils python"; exit 1; }
 done
 
 say "profile: releng + golden-gate"
@@ -105,7 +106,7 @@ build_aur() {
   pacman -S --needed --noconfirm base-devel git sudo >/dev/null
   id gg-builder &>/dev/null || useradd -m gg-builder
   echo 'gg-builder ALL=(ALL) NOPASSWD: /usr/bin/pacman' > /etc/sudoers.d/gg-builder
-  local src pkg f built
+  local src pkg f built pin
   src="$(mktemp -d)"
   chown gg-builder: "$src"
   mkdir -p "$REPO/distro/localrepo"
@@ -114,9 +115,13 @@ build_aur() {
     # The repository may itself live under /root. Always enter the builder-owned
     # temp tree before dropping privileges so git/makepkg never inherit an
     # inaccessible current working directory.
+    # At its pinned commit (aur-pins), so every build builds the same thing.
+    pin=$(awk -v p="$pkg" '$1 == p { print $2 }' "$HERE/aur-pins")
+    [[ $pin =~ ^[0-9a-f]{40}$ ]] || { echo "$pkg isn't pinned: add its AUR commit to distro/archiso/aur-pins"; exit 1; }
     (
       cd "$src"
       sudo -u gg-builder env HOME=/home/gg-builder git clone -q "https://aur.archlinux.org/$pkg.git" "$pkg"
+      sudo -u gg-builder env HOME=/home/gg-builder git -C "$pkg" -c advice.detachedHead=false checkout -q "$pin"
     )
     # The AUR hands out an empty repository for names it doesn't know.
     [[ -f $src/$pkg/PKGBUILD ]] || { echo "$pkg is not in the AUR either"; exit 1; }
@@ -442,4 +447,10 @@ PY
     exit 1
   fi
 fi
+# What the image is made of (T-2.2): the pinned inputs and every package in
+# it with its version. Two builds of one commit give the same manifest.
+say "build manifest"
+pacman -Q --dbpath "$root/var/lib/pacman" > "$WORK/image-packages.txt"
+python3 "$HERE/manifest.py" --repo "$REPO" --commit "$(git -C "$REPO" rev-parse HEAD)" \
+  --packages "$WORK/image-packages.txt" > "$OUT/build-manifest.json"
 say "done: $(ls -1 "$OUT"/*.iso | tail -1)"

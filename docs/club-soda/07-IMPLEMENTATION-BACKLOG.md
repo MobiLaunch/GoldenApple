@@ -402,7 +402,7 @@ same fields, more briefly, and should be expanded when their milestone starts.
 | T-2.11 | Accessible annotations in the shell | CS2-013 | `shell/Dock.qml`, `Spotlight.qml`, `Notifications.qml`, `DesktopWidgets.qml`, `CitronPodsPopup.qml`, `apps/maps.qml`, `apps/calculator.qml` | `Accessible.role`, `name`, `onPressAction` | The design lint's accessibility rule passes for `shell/` |
 
 **As built (M2 so far):**
-- **T-2.2 and T-2.3, a pinned archive and Hyprland held · begun, forced by Hyprland 0.57.**
+- **T-2.2 and T-2.3, a pinned archive, pinned AUR builds and Hyprland held · begun, forced by Hyprland 0.57.**
   Hyprland 0.57 reached Arch's mirrors on 2026-10-28 and no longer reads `hyprland.conf`
   (configuration is Lua only, with no converter). Taken by any `pacman -Syu`, it left
   CitronOS without a desktop, and CI's Session and ISO builds broke the same day. So:
@@ -418,6 +418,17 @@ same fields, more briefly, and should be expanded when their milestone starts.
   `hyprland.conf` and everything Settings writes into `~/.config/hypr/golden-gate` (input,
   displays, accessibility, windows, motion, the machine file) ported to Lua, and a
   HyprGlass built for it; that is T-2.3's lock-step, and the hold lifts when both are ready.
+  T-2.2 also pins the AUR: each package the image builds from it (uxplay,
+  gnome-network-displays, python-pathvalidate, piper-tts) is built at a commit of its AUR
+  repository (`distro/archiso/aur-pins`), and `build.sh` stops at one that isn't pinned.
+  Every build now writes `build-manifest.json` (`distro/archiso/manifest.py`, kept 90 days
+  as the Build ISO run's `build-manifest` artifact): the archive date, the AUR commits,
+  BlueFerry's tag, the HyprGlass plugin's version and checksum, and every package in the
+  image with its version, with nothing that depends on when or where it was built, so two
+  builds of one commit give the same file (`tests/build-manifest.py`), and two manifests'
+  difference is what changed in the image. The ISO now also builds when the packages'
+  sources change (`packaging/`, `scripts/stage.sh`). Still to do for T-2.2: comparing two
+  real builds' manifests in CI, and the signed local repository (with T-2.1 part 3).
 - **T-2.1, PKGBUILDs and a signed repository · in progress (parts 1 and 2 of 3).** `make install
   DESTDIR=` (`scripts/stage.sh`, one part per package) lays CitronOS out as packaged:
   `citronos-runtime` (the apps and shared UI in `/usr/share/golden-gate`, helpers in
