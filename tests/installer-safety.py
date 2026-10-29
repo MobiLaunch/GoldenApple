@@ -4,6 +4,7 @@ from pathlib import Path
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -119,36 +120,45 @@ assert "weston" in packages and "sddm" in packages, "the Wayland greeter needs w
 print("installer: SDDM's login screen runs on Wayland")
 
 
-# mkarchiso copies the image's files without their modes: Software Update's
-# helper (run directly by pkexec) and the other programs must get their
-# executable bit back through file_permissions, or saving a token and
-# installing updates fail with "command not found".
+# The image is an install of CitronOS's packages, and pacman keeps file modes:
+# Software Update's helper (run directly by pkexec) and every other program
+# must be executable in citronos-runtime as in the repository, or saving a
+# token and installing updates fail with "command not found".
 build_sh = (root / "distro" / "archiso" / "build.sh").read_text(encoding="utf-8")
-assert "find apps -type f -perm -u+x" in build_sh and '["/usr/share/golden-gate/%s"]="0:0:755"' in build_sh, \
-    "build.sh must restore the executable bit on CitronOS's programs"
 assert os.access(root / "apps" / "settings" / "update-helper.py", os.X_OK), "update-helper.py must be executable"
-# And every program install.sh puts in the image (the hand-kept list once
-# missed gg-icon-resolver, gg-archive and others): install into a scratch root,
-# run build.sh's own block on it, and read back the permissions it gives.
-block = re.search(r"\{\n  echo 'file_permissions\+=\('\n  \(cd \"\$AIR\".*?\n\} >> \"\$PROFILE/profiledef.sh\"\n", build_sh, re.S)
-assert block, "build.sh must give back the executable bit to what install.sh installed"
+assert "build_citronos" in build_sh and "scripts/install.sh\" --system" not in build_sh, \
+    "the image installs the packages, not install.sh --system"
 with tempfile.TemporaryDirectory() as t:
-    air, profile, shim = Path(t) / "airootfs", Path(t) / "profile", Path(t) / "bin"
+    staged = Path(t) / "runtime"
+    subprocess.run(["bash", str(root / "scripts" / "stage.sh"), "runtime", str(staged)], check=True, capture_output=True)
+    apps = staged / "usr/share/golden-gate/apps"
+    assert os.access(apps / "settings" / "update-helper.py", os.X_OK), "the packaged update-helper.py isn't executable"
+    lost = [str(p.relative_to(root)) for p in (root / "apps").rglob("*")
+            if p.is_file() and os.access(p, os.X_OK) and "/lib/" not in str(p) and "__pycache__" not in str(p)
+            and not os.access(apps / p.relative_to(root / "apps"), os.X_OK)]
+    assert not lost, f"not executable in the package: {lost[:5]}"
+# What airootfs itself has (the overlay's programs, gg-update-disk): mkarchiso
+# copies it without modes, so build.sh's block gives the bit back. Run on the
+# overlay, it must list each of the overlay's programs.
+block = re.search(r"\{\n  echo 'file_permissions\+=\('\n  \(cd \"\$AIR\".*?\n\} >> \"\$PROFILE/profiledef.sh\"\n", build_sh, re.S)
+assert block, "build.sh must give back the executable bit to airootfs's own programs"
+with tempfile.TemporaryDirectory() as t:
+    air, profile = Path(t) / "airootfs", Path(t) / "profile"
     profile.mkdir()
-    # A node that does nothing: install.sh would otherwise rebuild the icons
-    # into this checkout (icons/build.mjs writes its output into the tree).
-    shim.mkdir()
-    (shim / "node").write_text("#!/bin/sh\nexit 0\n")
-    (shim / "node").chmod(0o755)
-    subprocess.run(["bash", str(root / "scripts" / "install.sh"), "--system", str(air)], check=True,
-                   capture_output=True, env={**os.environ, "GG_SKIP_BUILD": "1",
-                                             "PATH": f"{shim}:{os.environ['PATH']}"})
+    shutil.copytree(root / "distro" / "archiso" / "overlay", air, symlinks=True)
+    # What build.sh itself writes there before the block: the self-test,
+    # gg-update-disk and the source bundle.
+    for rel, mode in (("usr/lib/golden-gate/selftest.sh", 0o755), ("usr/local/bin/gg-update-disk", 0o755),
+                      ("usr/share/golden-gate/source.tar.gz", 0o644)):
+        (air / rel).parent.mkdir(parents=True, exist_ok=True)
+        (air / rel).write_text("")
+        (air / rel).chmod(mode)
     subprocess.run(["bash", "-euo", "pipefail", "-c", block.group(0)], check=True,
                    env={**os.environ, "AIR": str(air), "PROFILE": str(profile)})
     listed = dict(re.findall(r'\["(/[^"]+)"\]="0:0:(\d+)"', (profile / "profiledef.sh").read_text()))
-    programs = [p for d in ("usr/local/bin", "usr/lib/golden-gate", "usr/share/golden-gate")
-                for p in (air / d).rglob("*") if p.is_file() and os.access(p, os.X_OK)]
-    assert programs and air / "usr/local/bin/gg-icon-resolver" in programs, programs[:5]
+    programs = [p for p in (air / "usr/local/bin").rglob("*") if p.is_file() and os.access(p, os.X_OK)]
+    programs += [air / "usr/lib/golden-gate/selftest.sh"]
+    assert air / "usr/local/bin/gg-session" in programs and air / "usr/local/bin/gg-update-disk" in programs, programs[:5]
     missing = [str(p.relative_to(air)) for p in programs if listed.get("/" + str(p.relative_to(air))) != "755"]
     assert not missing, f"not executable on the image: {missing}"
 print("installer: CitronOS's programs stay executable on the image")
