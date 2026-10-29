@@ -159,6 +159,26 @@ else
 fi
 echo "$bars" | tail -n 30 | sed 's/^/  /'
 
+# ---------------------------------------------------------------- glass
+# HyprGlass has no release for a Hyprland newer than the one CitronOS holds:
+# its main follows Hyprland's development and is never released. Built here
+# to see whether it's ready (a warning when it isn't: that's HyprGlass's to
+# do), and, when it is, the live part loads it as the desktop does and
+# CitronOS's glass settings must all be taken.
+say "glass: HyprGlass main for this Hyprland"
+if glass=$(set -e; rm -rf /tmp/hyprglass
+           git clone -q --depth 1 https://github.com/hyprnux/hyprglass.git /tmp/hyprglass
+           make -C /tmp/hyprglass -s -j"$(nproc)" 2>&1 | tail -n 20
+           install -Dm755 /tmp/hyprglass/hyprglass.so /usr/lib/golden-gate/hyprglass.so
+           pacman -Q hyprland | awk '{print $2}' | cut -d- -f1 > /usr/lib/golden-gate/hyprglass.so.hyprland
+           git -C /tmp/hyprglass log -1 --format='HyprGlass main %h (%cs): %s'); then
+  say "glass: $(echo "$glass" | tail -n 1)"
+else
+  echo "::warning::glass: HyprGlass main doesn't build for $(pacman -Q hyprland)"
+  echo "$glass" | tail -n 20 | sed 's/^/  /'
+  rm -f /usr/lib/golden-gate/hyprglass.so
+fi
+
 # ---------------------------------------------------------------- live
 # With a GPU render node (the workflow loads vkms and vgem when it can: vkms
 # alone gives display nodes only, and Hyprland needs a render node), a real headless
@@ -169,7 +189,14 @@ if compgen -G "/dev/dri/renderD*" >/dev/null; then
   say "live: a headless Hyprland with CitronOS's settings"
   chmod a+rw /dev/dri/* 2>/dev/null || true
   install -Dm755 /repo/compositor/hyprland/hyprctl.py /usr/lib/golden-gate/hyprctl.py
-  printf '#!/bin/sh\nexec python3 /usr/lib/golden-gate/hyprctl.py "$@"\n' > /usr/bin/gg-hyprctl
+  # gg-hyprctl, noting what Hyprland refuses (gg-hyprglass-sync doesn't say).
+  cat > /usr/bin/gg-hyprctl <<'EOF'
+#!/bin/sh
+python3 /usr/lib/golden-gate/hyprctl.py "$@" && exit 0
+rc=$?
+printf '%s\n' "$*" >> /tmp/gg-hyprctl-refused
+exit $rc
+EOF
   chmod 755 /usr/bin/gg-hyprctl
   # What the configuration runs on every load (exec): it loads the title
   # bars and sets their look and buttons.
@@ -225,6 +252,18 @@ if [[ -r /usr/lib/golden-gate/hyprbars.so ]]; then
   hyprctl reload >/dev/null; sleep 1
   bars reloaded
 fi
+# The glass, as gg-hyprglass-sync set it up (once the reload's run is done).
+if [[ -r /usr/lib/golden-gate/hyprglass.so ]]; then
+  for _ in $(seq 75); do
+    hyprctl plugin list 2>/dev/null | grep -qi hyprglass && [[ $(opt plugin:hyprglass:layers:enabled) == 1 ]] && break
+    sleep 0.2
+  done
+  hyprctl plugin list 2>/dev/null | grep -qi hyprglass && echo "glass=loaded,$(opt plugin:hyprglass:default_theme),$(opt plugin:hyprglass:layers:enabled)"
+fi
+# Every setting the desktop sent that Hyprland refused (none, to pass).
+sleep 1
+grep '^keyword' /tmp/gg-hyprctl-refused 2>/dev/null | sed 's/^/refused: /'
+echo "refused=$(cat /tmp/gg-hyprctl-refused 2>/dev/null | grep -c '^keyword' || true)"
 hyprctl dispatch 'hl.dsp.exit()' >/dev/null 2>&1 || true
 EOF
   chown desktop: /home/desktop/live.sh
@@ -244,6 +283,10 @@ EOF
       want "button=0" "a title bar button through the reader (hl.plugin.hyprbars.add_button)"
       want "reloaded=loaded,28,left" "the title bars' look survives a reload"
     fi
+    if [[ -r /usr/lib/golden-gate/hyprglass.so ]]; then
+      want "glass=loaded,light,1" "gg-hyprglass-sync loads HyprGlass and sets the glass"
+    fi
+    want "refused=0" "Hyprland takes every setting gg-hyprglass-sync sends"
   else
     # Hyprland didn't come up on this GPU: say why.
     fail "live: Hyprland didn't start with CitronOS's settings on $(ls /dev/dri | tr '\n' ' ')"
