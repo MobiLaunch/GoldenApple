@@ -7,7 +7,8 @@
 - build-manifest.json (distro/archiso/manifest.py) holds the inputs build.sh
   pins and every package with its version, and nothing that depends on when
   or where it was built: the same inputs give the same file, byte for byte;
-- the Build ISO workflow keeps the manifest, and builds when the packages'
+- the Build ISO workflow keeps the manifest, fails a rebuild of a commit
+  whose manifest differs from the earlier build's, and builds when the packages'
   sources change (the image is an install of them)."""
 from __future__ import annotations
 
@@ -104,6 +105,16 @@ class Workflow(unittest.TestCase):
         self.assertRegex(iso, r"pacman -Syuu [^\n]*\bpython\b", "the build has Python for manifest.py")
         self.assertIn('manifest.py" --repo "$REPO"', BUILD)
         self.assertIn('> "$OUT/build-manifest.json"', BUILD)
+
+    def test_a_rebuild_must_make_the_same_manifest(self):
+        iso = (ROOT / ".github/workflows/iso.yml").read_text()
+        step = iso[iso.index("name: The same commit makes the same image"):iso.index("boot-test:")]
+        self.assertIn('-c "$GITHUB_SHA" -s success', step, "the last successful build of this commit")
+        self.assertIn("-n build-manifest", step)
+        self.assertIn("diff -u earlier/build-manifest.json out/build-manifest.json", step)
+        self.assertIn("exit 1", step, "a different manifest fails the build")
+        job = iso[iso.index("  iso:"):iso.index("steps:", iso.index("  iso:"))]
+        self.assertIn("actions: read", job, "it reads the earlier run's artifact")
 
     def test_packaging_changes_build_the_iso(self):
         iso = (ROOT / ".github/workflows/iso.yml").read_text()

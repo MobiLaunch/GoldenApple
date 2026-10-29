@@ -28,6 +28,9 @@ jobs:
   iso:
     runs-on: ubuntu-latest
     timeout-minutes: 150
+    permissions:
+      contents: read
+      actions: read            # an earlier build's manifest, to compare with
     steps:
       - uses: actions/checkout@v4
 
@@ -72,6 +75,30 @@ jobs:
           name: build-manifest
           path: out/build-manifest.json
           retention-days: 90
+
+      # Reproducible (T-2.2): a commit built before must make the same image.
+      # The last successful build of this commit, if there is one, gave a
+      # manifest; this one must be the same file.
+      - name: The same commit makes the same image
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          before=$(gh run list -R "$GITHUB_REPOSITORY" -w iso.yml -c "$GITHUB_SHA" -s success \
+                     --json databaseId -q '[.[] | select(.databaseId != ${{ github.run_id }})][0].databaseId // empty')
+          if [ -z "$before" ]; then
+            echo "The first build of $GITHUB_SHA: nothing to compare with."
+            exit 0
+          fi
+          if ! gh run download "$before" -R "$GITHUB_REPOSITORY" -n build-manifest -D earlier; then
+            echo "Run $before's manifest has expired or it had none: nothing to compare with."
+            exit 0
+          fi
+          if diff -u earlier/build-manifest.json out/build-manifest.json; then
+            echo "The same manifest as run $before."
+          else
+            echo "::error::This build of $GITHUB_SHA differs from run $before's (above): the image isn't reproducible."
+            exit 1
+          fi
 
   boot-test:
     needs: iso

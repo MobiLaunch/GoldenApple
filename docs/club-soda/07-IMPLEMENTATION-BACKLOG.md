@@ -426,9 +426,10 @@ same fields, more briefly, and should be expanded when their milestone starts.
   BlueFerry's tag, the HyprGlass plugin's version and checksum, and every package in the
   image with its version, with nothing that depends on when or where it was built, so two
   builds of one commit give the same file (`tests/build-manifest.py`), and two manifests'
-  difference is what changed in the image. The ISO now also builds when the packages'
-  sources change (`packaging/`, `scripts/stage.sh`). Still to do for T-2.2: comparing two
-  real builds' manifests in CI, and the signed local repository (with T-2.1 part 3).
+  difference is what changed in the image. A rebuild of a commit (Build ISO run by hand)
+  compares its manifest with the last successful build's of that commit and fails if they
+  differ. The ISO now also builds when the packages' sources change (`packaging/`,
+  `scripts/stage.sh`). Still to do for T-2.2: the signed local repository (with T-2.1 part 3).
 - **T-2.1, PKGBUILDs and a signed repository · in progress (parts 1 and 2 of 3).** `make install
   DESTDIR=` (`scripts/stage.sh`, one part per package) lays CitronOS out as packaged:
   `citronos-runtime` (the apps and shared UI in `/usr/share/golden-gate`, helpers in
