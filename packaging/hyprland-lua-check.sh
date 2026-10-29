@@ -188,7 +188,7 @@ echo "mode=$(gg-hyprctl mode)"
 gg-hyprctl dispatch workspace 3 >/dev/null; echo "dispatch=$(ws)"
 hyprctl dispatch 'citronos.dsp([[workspace 4]])' >/dev/null; echo "shell=$(ws)"
 gg-hyprctl keyword input:kb_layout de >/dev/null; echo "keyword=$(opt input:kb_layout)"
-gg-hyprctl --batch 'keyword general:gaps_out 30 ; dispatch workspace 5' >/dev/null; echo "batch=$(ws),$(opt general:gaps_out)"
+gg-hyprctl --batch 'keyword general:border_size 3 ; dispatch workspace 5' >/dev/null; echo "batch=$(ws),$(opt general:border_size)"
 gg-hyprctl dispatch exec touch "$HOME/exec-ran" >/dev/null; sleep 1; [ -e "$HOME/exec-ran" ] && echo "exec=ran"
 gg-hyprctl dispatch nosuchdispatcher x >/dev/null; echo "unknown=$?"
 hyprctl dispatch 'hl.dsp.exit()' >/dev/null 2>&1 || true
@@ -202,7 +202,7 @@ EOF
     want "dispatch=3" "gg-hyprctl dispatch workspace 3"
     want "shell=4" "the shell's citronos.dsp form"
     want "keyword=de" "gg-hyprctl keyword input:kb_layout de"
-    want "batch=5,30" "gg-hyprctl --batch keyword and dispatch"
+    want "batch=5,3" "gg-hyprctl --batch keyword and dispatch"
     want "exec=ran" "gg-hyprctl dispatch exec"
     want "unknown=1" "an unknown dispatcher fails"
   else
