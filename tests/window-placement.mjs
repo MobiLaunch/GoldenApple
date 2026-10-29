@@ -87,7 +87,7 @@ test("Dock exits are deadline-driven and activating parked windows raises them",
     assert.match(dock, /onTriggered: \{\s+dock\.expireRecent\(\)\s+\/\/[^\n]*\n\s+\/\/[^\n]*\n\s+Qt\.callLater\(dock\.scheduleRecentExpiry\)/);
     assert.match(dock, /id: recentExpiry\s+objectName: "dockRecentExpiry"\s+repeat: false/);
     assert.doesNotMatch(dock, /interval:\s*25; repeat: true/);
-    assert.match(dock, /Hyprland\.dispatch\(`focuswindow address:\$\{address\}`\)/);
+    assert.match(dock, /Hypr\.dispatch\(`focuswindow address:\$\{address\}`\)/);
     assert.match(dock, /id: activatePulse/);
     assert.match(dock, /if \(Prefs\.reduceMotion\) \{ activatePulse\.stop\(\); icon\.activationLift = 0 \}/);
 });

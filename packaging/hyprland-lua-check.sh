@@ -163,6 +163,11 @@ set -u
 export XDG_RUNTIME_DIR=$(mktemp -d)
 HYPRLAND_HEADLESS_ONLY=1 Hyprland -c /usr/share/golden-gate/hypr/hyprland.lua >"$HOME/hyprland.log" 2>&1 &
 for _ in $(seq 100); do hyprctl version >/dev/null 2>&1 && break; sleep 0.2; done
+if ! hyprctl version >/dev/null 2>&1; then
+  echo "started=no"
+  exit 0
+fi
+echo "started=yes"
 export HYPRLAND_INSTANCE_SIGNATURE=$(ls "$XDG_RUNTIME_DIR/hypr" | head -n 1)
 ws() { hyprctl activeworkspace -j | python3 -c 'import json, sys; print(json.load(sys.stdin)["id"])'; }
 opt() { hyprctl getoption "$1" -j | python3 -c 'import json, sys; d = json.load(sys.stdin); print(d.get("str", d.get("int", d.get("custom"))))'; }
@@ -173,19 +178,27 @@ gg-hyprctl keyword input:kb_layout de >/dev/null; echo "keyword=$(opt input:kb_l
 gg-hyprctl --batch 'keyword general:gaps_out 30 ; dispatch workspace 5' >/dev/null; echo "batch=$(ws),$(opt general:gaps_out)"
 gg-hyprctl dispatch exec touch "$HOME/exec-ran" >/dev/null; sleep 1; [ -e "$HOME/exec-ran" ] && echo "exec=ran"
 gg-hyprctl dispatch nosuchdispatcher x >/dev/null; echo "unknown=$?"
-hyprctl dispatch 'hl.dsp.exit()' >/dev/null 2>&1
+hyprctl dispatch 'hl.dsp.exit()' >/dev/null 2>&1 || true
 EOF
   chown desktop: /home/desktop/live.sh
-  live=$(su desktop -c 'bash ~/live.sh' 2>&1)
+  live=$(su desktop -c 'bash ~/live.sh' 2>&1) || true
   echo "$live" | sed 's/^/  /'
-  want() { echo "$live" | grep -qx "$1" && say "live: $2" || { fail "live: $2 (wanted $1)"; tail -n 20 /home/desktop/hyprland.log | sed 's/^/    /'; }; }
-  want "mode=lua" "gg-hyprctl sees Lua mode"
-  want "dispatch=3" "gg-hyprctl dispatch workspace 3"
-  want "shell=4" "the shell's citronos.dsp form"
-  want "keyword=de" "gg-hyprctl keyword input:kb_layout de"
-  want "batch=5,30" "gg-hyprctl --batch keyword and dispatch"
-  want "exec=ran" "gg-hyprctl dispatch exec"
-  want "unknown=1" "an unknown dispatcher fails"
+  want() { echo "$live" | grep -qx "$1" && say "live: $2" || fail "live: $2 (wanted $1)"; }
+  if echo "$live" | grep -qx "started=yes"; then
+    want "mode=lua" "gg-hyprctl sees Lua mode"
+    want "dispatch=3" "gg-hyprctl dispatch workspace 3"
+    want "shell=4" "the shell's citronos.dsp form"
+    want "keyword=de" "gg-hyprctl keyword input:kb_layout de"
+    want "batch=5,30" "gg-hyprctl --batch keyword and dispatch"
+    want "exec=ran" "gg-hyprctl dispatch exec"
+    want "unknown=1" "an unknown dispatcher fails"
+  else
+    # Hyprland didn't come up on this GPU: say why.
+    fail "live: Hyprland didn't start with CitronOS's settings on $(ls /dev/dri | tr '\n' ' ')"
+  fi
+  if [[ $FAILED -gt 0 ]]; then
+    grep -vE "^\[LOG\]|DEBUG" /home/desktop/hyprland.log | tail -n 25 | sed 's/^/    /'
+  fi
 elif [[ ${GG_HYPRLAND_LIVE:-} == required ]]; then
   fail "live: no GPU render node (/dev/dri), so no Hyprland to run"
 else

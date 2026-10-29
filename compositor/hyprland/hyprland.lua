@@ -6,9 +6,10 @@
 -- For now it's in /usr/share/golden-gate/hypr, where no Hyprland looks
 -- (packaging/hyprland-lua-check.sh passes it with -c). When the hold on 0.56
 -- lifts (T-2.3) it goes to /etc/xdg/hypr/hyprland.lua, which Hyprland finds;
--- not before: 0.56 also takes a hyprland.lua it finds over hyprland.conf, and
--- then hyprctl's dispatch and keyword take only Lua, which the shell and
--- Settings don't send yet.
+-- not before: 0.56 also takes a hyprland.lua it finds over hyprland.conf,
+-- and the title bars' and glass plugins aren't built for 0.57 yet. (What the
+-- shell and Settings send while the desktop is up already works on both:
+-- apps/lib/hypr/Hypr.qml and gg-hyprctl.)
 local hyprlang = dofile("__GG_HYPR__/hyprlang.lua")
 
 -- For hyprctl while the desktop is up: hyprctl eval 'citronos.keyword(…)'.
