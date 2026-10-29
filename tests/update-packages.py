@@ -387,7 +387,9 @@ class SessionLink(unittest.TestCase):
     def session_prelude(self, home: Path):
         script = (ROOT / "distro/archiso/overlay/usr/local/bin/gg-session").read_text()
         block = script[script.index("shell_link="):script.index("fi\n", script.index("shell_link=")) + 3]
-        subprocess.run(["sh", "-c", block], env={"HOME": str(home), "PATH": "/usr/bin:/bin"}, check=True)
+        prelude = home.parent / (home.name + "-prelude.sh")
+        prelude.write_text(block)
+        subprocess.run(["sh", str(prelude)], env={"HOME": str(home), "PATH": "/usr/bin:/bin"}, check=True)
 
     def test_the_link_goes(self):
         with tempfile.TemporaryDirectory() as tmp:
