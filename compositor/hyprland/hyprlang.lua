@@ -7,7 +7,8 @@
 --
 -- What it reads is the hyprlang CitronOS writes: sections and a:b:c keys,
 -- $variables, source, env, exec and exec-once, monitor, bezier, animation,
--- gesture, windowrule and layerrule (0.53+ syntax), and the bind family. A
+-- gesture, windowrule and layerrule (0.53+ syntax), the bind family, and the
+-- title bars' buttons (hyprbars-button). A
 -- line it can't make is listed in M.problems (and logged), never fatal: the
 -- desktop still starts. GG_HYPRLANG_STRICT=1 (the tests) makes it fatal.
 --
@@ -258,6 +259,19 @@ local function on_start(fn)
   hl.on("hyprland.start", fn)
 end
 
+-- A plugin's keywords (its options are hl.config's): the title bars' buttons,
+-- "bg, size, icon, action, fg" (gg-hyprglass-sync), which hyprbars for 0.57
+-- adds with hl.plugin.hyprbars.add_button.
+local PLUGIN_KEYWORDS = {
+  ["plugin.hyprbars.hyprbars-button"] = function(value)
+    local bars = hl.plugin and hl.plugin.hyprbars
+    if not bars then error("hyprbars isn't loaded", 0) end
+    local f = fields(value)
+    bars.add_button({ bg_color = f[1], size = number(f[2] or ""), icon = f[3] or "",
+                      action = f[4] or "", fg_color = f[5] })
+  end,
+}
+
 -- One line of hyprlang (already without its comment and with $variables
 -- replaced), inside the sections `path` names.
 function M.line(text, where, path)
@@ -310,6 +324,8 @@ function M.line(text, where, path)
       return M.load(value, where)
     end
   end
+  local keyword = PLUGIN_KEYWORDS[((prefix .. key):gsub(":", ".")):lower()]
+  if keyword then return keyword(value) end
   M.set(prefix .. key, value, where)
 end
 

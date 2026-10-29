@@ -442,8 +442,16 @@ same fields, more briefly, and should be expanded when their milestone starts.
   as binds (19 more, all accepted), and `tests/hyprctl-compat.py` (in Check) keeps
   anything from going around them and data in its Lua string. The Hyprland next workflow
   also runs a real headless 0.57 on CitronOS's settings and sends it those commands, when
-  the runner can give it a virtual GPU (vkms). Still to do before the hold lifts:
-  hyprbars and HyprGlass built for 0.57 (their settings in Lua), then `hyprland.lua` into
+  the runner can give it a virtual GPU (vkms). The title bars are ready for 0.57 too:
+  CitronOS's hyprbars changes (`distro/hyprbars/patch.py`) apply to both generations of the
+  plugin (0.57's reads the window's backend and metadata, and takes its buttons from Lua),
+  `build-hyprbars.sh` builds hyprland-plugins' main for a Hyprland newer than every release
+  it pins (as hyprpm does; 0.57 has no pin yet), and the reader makes the buttons
+  gg-hyprglass-sync sends with `hl.plugin.hyprbars.add_button`. The Hyprland next check
+  builds it for Arch's Hyprland (it builds for 0.57.0), and its live part loads it the way
+  the desktop does and reads its look back, before and after a reload. Still to do before
+  the hold lifts: HyprGlass for 0.57 (it has no 0.57 release yet: its main follows
+  Hyprland's development and is never released), then `hyprland.lua` into
   `/etc/xdg/hypr` and the hold lifted.
   T-2.2 also pins the AUR: each package the image builds from it (uxplay,
   gnome-network-displays, python-pathvalidate, piper-tts) is built at a commit of its AUR

@@ -6,7 +6,8 @@ name: Hyprland next
 # (packaging/hyprland-lua-check.sh): hyprland.lua reads the account's
 # hyprland.conf through compositor/hyprland/hyprlang.lua, and
 # Hyprland --verify-config must find nothing wrong, for a desktop, a virtual
-# machine and an account with its own lines. Weekly as well, since Arch's
+# machine and an account with its own lines; the title bars (hyprbars, with
+# CitronOS's changes) must build for it and load. Weekly as well, since Arch's
 # Hyprland changes without CitronOS changing.
 on:
   push:
@@ -16,6 +17,8 @@ on:
       - apps/settings/set-prefs.py
       - scripts/stage.sh
       - packaging/hyprland-lua-check.sh
+      - scripts/build-hyprbars.sh
+      - distro/hyprbars/**
       - apps/lib/hypr/**
       - .github/workflows/hyprland-next.yml
   schedule:

@@ -2,7 +2,7 @@
 """Title bars with traffic lights for apps that leave theirs to the compositor.
 
 The hyprbars patcher (distro/hyprbars/patch.py) is run on a copy of the plugin
-source's shape: it must swap hyprbars' "every window" test for CitronOS's
+source's shape, for Hyprland 0.56 and for 0.57 and later: it must swap hyprbars' "every window" test for CitronOS's
 (xdg-decoration clients and X11 windows only, never CitronOS's own), keep
 one of each button, leave a patched file alone, and refuse when upstream moved
 its anchors. Then gg-hyprglass-sync runs against a stand-in hyprctl: it loads
@@ -43,6 +43,29 @@ Hyprlang::CParseResult onNewButton(const char* K, const char* V) {
 }
 """
 
+# …and of hyprbars for Hyprland 0.57 and later (hyprland-plugins main): Lua
+# buttons, and the window's backend and metadata.
+MAIN_CPP_057 = """#define WLR_USE_UNSTABLE
+#include <hyprland/src/Compositor.hpp>
+#include <hyprland/src/desktop/view/window/Window.hpp>
+#include <hyprland/src/state/MonitorState.hpp>
+
+static void onNewWindow(PHLWINDOW window) {
+    if (true) {
+        if (std::ranges::any_of(window->presentation().decorations(), [](const auto& d) { return d->getDisplayName() == "Hyprbar"; }))
+            return;
+    }
+}
+
+int newLuaButton(lua_State* L) {
+    SHyprButton button;
+    button.cmd = lua_tostring(L, -1);
+
+    g_pGlobalState->buttons.push_back(std::move(button));
+    return 0;
+}
+"""
+
 
 class Patcher(unittest.TestCase):
     def patch(self, text: str) -> tuple[int, str]:
@@ -66,16 +89,49 @@ class Patcher(unittest.TestCase):
         # One of each button.
         self.assertLess(out.index("keep one of each"), out.index("buttons.push_back"))
 
-    def test_patching_twice_changes_nothing(self):
-        _, once = self.patch(MAIN_CPP)
-        code, twice = self.patch(once)
+    def test_bars_only_for_server_side_windows_on_057(self):
+        code, out = self.patch(MAIN_CPP_057)
         self.assertEqual(code, 0)
-        self.assertEqual(once, twice)
+        self.assertIn("if (ggWantsBar(window)) {", out)
+        self.assertNotIn("if (true) {", out)
+        self.assertIn('cls.starts_with("org.goldengate.")', out)
+        # The window's own fields are 0.56's: 0.57 has its backend and metadata.
+        self.assertNotIn("m_X11DoesntWantBorders", out)
+        self.assertIn("window->metadata().appID()", out)
+        self.assertIn("BACKEND.traits().suggestsNoBorder", out)
+        self.assertIn("XDG->m_surface.lock() == SURFACE", out)
+        self.assertIn("#include <hyprland/src/desktop/view/window/WindowBackend.hpp>", out)
+        self.assertLess(out.index("XDGDecoration.hpp"), out.index("ggWantsBar"))
+        self.assertLess(out.index("static bool ggWantsBar"), out.index("static void onNewWindow"))
+        # One of each button, from Lua (gg-hyprglass-sync sets them again).
+        self.assertLess(out.index("keep one of each"), out.index("buttons.push_back(std::move(button))"))
+        self.assertIn("b.cmd == button.cmd", out)
+
+    def test_patching_twice_changes_nothing(self):
+        for source in (MAIN_CPP, MAIN_CPP_057):
+            _, once = self.patch(source)
+            code, twice = self.patch(once)
+            self.assertEqual(code, 0)
+            self.assertEqual(once, twice)
 
     def test_refuses_when_upstream_moved(self):
+        for source, test in ((MAIN_CPP, "if (!window->m_X11DoesntWantBorders) {"), (MAIN_CPP_057, "if (true) {")):
+            code, out = self.patch(source.replace(test, "if (window->wantsBar()) {"))
+            self.assertNotEqual(code, 0)
+            self.assertNotIn("ggWantsBar", out)
+        # Each generation's anchors, not one of each.
         code, out = self.patch(MAIN_CPP.replace("if (!window->m_X11DoesntWantBorders) {", "if (true) {"))
         self.assertNotEqual(code, 0)
         self.assertNotIn("ggWantsBar", out)
+
+    def test_the_reader_makes_hyprbars_buttons(self):
+        # 0.57 has no hyprbars-button keyword: CitronOS's reader makes the
+        # buttons gg-hyprglass-sync sends with hl.plugin.hyprbars.add_button
+        # (packaging/hyprland-lua-check.sh does it on a real Hyprland).
+        reader = (ROOT / "compositor/hyprland/hyprlang.lua").read_text()
+        self.assertIn('["plugin.hyprbars.hyprbars-button"]', reader)
+        self.assertIn("bars.add_button({ bg_color = f[1], size = number(f[2] or \"\"), icon = f[3] or \"\",", reader)
+        self.assertIn('action = f[4] or "", fg_color = f[5] })', reader)
 
 
 class Sync(unittest.TestCase):

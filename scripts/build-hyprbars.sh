@@ -8,7 +8,8 @@
 #
 # Needs git, make, g++ and pkg-config, and Hyprland's headers (the Arch
 # hyprland package ships them). The plugin source is the hyprland-plugins
-# commit that hyprpm pins for this Hyprland release. Exits non-zero, leaving
+# commit that hyprpm pins for this Hyprland release (main, for a release
+# newer than every one pinned). Exits non-zero, leaving
 # OUT untouched, when anything is missing or doesn't build.
 set -euo pipefail
 
@@ -32,8 +33,21 @@ cd "$work/src"
 git remote add origin https://github.com/hyprwm/hyprland-plugins.git
 git fetch -q --depth 1 origin main
 # hyprpm.toml: ["<hyprland commit>", "<plugins commit>"], # <release>
-PIN=$(git show FETCH_HEAD:hyprpm.toml | grep -E "#[[:space:]]*${VERSION//./\\.}[[:space:]]*$" | grep -oE '[0-9a-f]{40}' | tail -n 1 || true)
-[ -n "$PIN" ] || { echo "build-hyprbars: no hyprland-plugins commit is pinned for Hyprland $VERSION" >&2; exit 3; }
+PINS=$(git show FETCH_HEAD:hyprpm.toml)
+PIN=$(echo "$PINS" | grep -E "#[[:space:]]*${VERSION//./\\.}[[:space:]]*$" | grep -oE '[0-9a-f]{40}' | tail -n 1 || true)
+if [ -z "$PIN" ]; then
+  # A Hyprland newer than every release pinned (Arch's, for the Hyprland next
+  # check) gets main, as hyprpm does: main follows Hyprland until its release
+  # is pinned. An older one without a pin is one the plugins don't support.
+  NEWEST=$(echo "$PINS" | grep -oE '#[[:space:]]*[0-9]+\.[0-9]+\.[0-9]+[[:space:]]*$' | grep -oE '[0-9.]+' | sort -V | tail -n 1 || true)
+  if [ -n "$NEWEST" ] && [ "$VERSION" != "$NEWEST" ] && [ "$(printf '%s\n%s\n' "$NEWEST" "$VERSION" | sort -V | tail -n 1)" = "$VERSION" ]; then
+    PIN=$(git rev-parse FETCH_HEAD)
+    echo "build-hyprbars: no hyprland-plugins commit is pinned for Hyprland $VERSION yet (newest: $NEWEST); using main" >&2
+  else
+    echo "build-hyprbars: no hyprland-plugins commit is pinned for Hyprland $VERSION" >&2
+    exit 3
+  fi
+fi
 git fetch -q --depth 1 origin "$PIN"
 git checkout -q FETCH_HEAD
 

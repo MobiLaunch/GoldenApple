@@ -9,7 +9,12 @@ than building bars for every window.
    Hyprland answers "server side" and draws nothing. X11 windows keep
    hyprbars' own rule (a bar unless they ask for no border).
 2. One of each button: the session sets its buttons again after every config
-   reload (gg-hyprglass-sync), which would otherwise add them again.
+   reload and appearance change (gg-hyprglass-sync), which would otherwise
+   add them again.
+
+Two generations of hyprbars: the one for Hyprland 0.56 (hyprland.conf, the
+hyprbars-button keyword, the window's fields) and the one for 0.57 and later
+(Lua, hl.plugin.hyprbars.add_button, the window's backend and metadata).
 
     patch.py path/to/hyprland-plugins/hyprbars/main.cpp
 """
@@ -31,7 +36,10 @@ struct SGGDecorationsAccess {
 template struct SGGDecorationsAccess<&CXDGDecorationProtocol::m_decorations>;
 GGDecorationMap& ggDecorations(CXDGDecorationProtocol& protocol);
 
-static bool ggWantsBar(PHLWINDOW window) {
+'''
+
+# Hyprland 0.56: the window's own fields.
+WANTS_BAR_056 = '''static bool ggWantsBar(PHLWINDOW window) {
     // CitronOS's own windows draw their traffic lights themselves.
     for (const auto& cls : {window->m_initialClass, window->m_class}) {
         if (cls.starts_with("org.goldengate.") || cls.starts_with("org.quickshell"))
@@ -54,11 +62,58 @@ static bool ggWantsBar(PHLWINDOW window) {
 
 '''
 
-DEDUPE = '''    // CitronOS sets its buttons again after every config reload: keep one of each.
+# Hyprland 0.57 and later: the window's backend and metadata. Its xdg surface
+# is the backend's own, so a decoration is matched by the wl_surface instead.
+WANTS_BAR_057 = '''static bool ggWantsBar(PHLWINDOW window) {
+    // CitronOS's own windows draw their traffic lights themselves.
+    for (const auto& cls : {window->metadata().initialAppID(), window->metadata().appID()}) {
+        if (cls.starts_with("org.goldengate.") || cls.starts_with("org.quickshell"))
+            return false;
+    }
+    const auto& BACKEND = window->backend();
+    if (BACKEND.isX11())
+        return !BACKEND.traits().suggestsNoBorder;
+    const auto SURFACE = BACKEND.surface();
+    if (!SURFACE || !PROTO::xdgDecoration)
+        return false;
+    for (const auto& [resource, decoration] : ggDecorations(*PROTO::xdgDecoration)) {
+        if (!decoration)
+            continue;
+        const auto TOPLEVEL = CXDGToplevelResource::fromResource(resource);
+        const auto XDG      = TOPLEVEL ? TOPLEVEL->m_owner.lock() : nullptr;
+        if (XDG && XDG->m_surface.lock() == SURFACE)
+            return true;
+    }
+    return false;
+}
+
+'''
+
+DEDUPE_056 = '''    // CitronOS sets its buttons again after every config reload: keep one of each.
     if (std::ranges::any_of(g_pGlobalState->buttons, [&](const auto& b) { return b.cmd == vars[3] && b.icon == vars[2] && b.size == size; }))
         return result;
 
 '''
+
+DEDUPE_057 = '''    // CitronOS sets its buttons again whenever the appearance changes: keep one of each.
+    if (std::ranges::any_of(g_pGlobalState->buttons, [&](const auto& b) { return b.cmd == button.cmd && b.icon == button.icon && b.size == button.size; }))
+        return 0;
+
+'''
+
+INCLUDES_056 = "#include <hyprland/src/protocols/XDGShell.hpp>\n#include <hyprland/src/protocols/XDGDecoration.hpp>\n"
+INCLUDES_057 = INCLUDES_056 + ("#include <hyprland/src/desktop/view/window/WindowBackend.hpp>\n"
+                               "#include <hyprland/src/desktop/view/window/WindowMetadata.hpp>\n")
+
+# (onNewWindow's test for every window, where a button is added, what goes in)
+GENERATIONS = {
+    "0.56": (r"if \(!window->m_X11DoesntWantBorders\) \{",
+             r"g_pGlobalState->buttons\.push_back\(SHyprButton\{",
+             WANTS_BAR_056, DEDUPE_056, INCLUDES_056),
+    "0.57": (r"if \(true\) \{",
+             r"g_pGlobalState->buttons\.push_back\(std::move\(button\)\);",
+             WANTS_BAR_057, DEDUPE_057, INCLUDES_057),
+}
 
 
 def main(path: str) -> int:
@@ -66,19 +121,37 @@ def main(path: str) -> int:
     if "ggWantsBar" in src:
         return 0                                        # already patched
     includes = list(re.finditer(r"^#include <hyprland/src/[^>]+>\n", src, re.M))
-    new_window = re.search(r"^static void onNewWindow\(PHLWINDOW window\) \{\n(\s*)if \(!window->m_X11DoesntWantBorders\) \{", src, re.M)
-    push = re.search(r"^(\s*)g_pGlobalState->buttons\.push_back\(SHyprButton\{", src, re.M)
-    missing = [name for name, m in (("includes", includes), ("onNewWindow", new_window), ("buttons.push_back", push)) if not m]
-    if missing:
+    for test, add, wants_bar, dedupe, extra in GENERATIONS.values():
+        new_window = re.search(r"^static void onNewWindow\(PHLWINDOW window\) \{\n(\s*)" + test, src, re.M)
+        push = re.search(r"^([ \t]*)" + add, src, re.M)
+        if new_window and push:
+            break
+    else:
+        # Name what's missing from the generation that comes closest.
+        missing = []
+        for test, add, *_ in GENERATIONS.values():
+            gone = [name for name, m in (
+                ("includes", includes),
+                ("onNewWindow", re.search(r"^static void onNewWindow\(PHLWINDOW window\) \{\n(\s*)" + test, src, re.M)),
+                ("buttons.push_back", re.search(r"^([ \t]*)" + add, src, re.M))) if not m]
+            if not missing or len(gone) < len(missing):
+                missing = gone
         print("hyprbars changed upstream; anchors missing: " + ", ".join(missing), file=sys.stderr)
         return 1
+    if not includes:
+        print("hyprbars changed upstream; anchors missing: includes", file=sys.stderr)
+        return 1
     # Back to front, so earlier offsets stay valid.
-    src = src[:push.start()] + DEDUPE + src[push.start():]
+    if push.start() > new_window.start():
+        src = src[:push.start()] + dedupe + src[push.start():]
     head = src[:new_window.start()]
-    rest = src[new_window.start():].replace("if (!window->m_X11DoesntWantBorders) {", "if (ggWantsBar(window)) {", 1)
-    src = head + ACCESS.lstrip("\n") + rest
+    rest = src[new_window.start():]
+    rest = re.sub(test, "if (ggWantsBar(window)) {", rest, count=1)
+    if push.start() < new_window.start():
+        head = head[:push.start()] + dedupe + head[push.start():]
+    src = head + ACCESS.lstrip("\n") + wants_bar + rest
     end = includes[-1].end()
-    src = src[:end] + "#include <hyprland/src/protocols/XDGShell.hpp>\n#include <hyprland/src/protocols/XDGDecoration.hpp>\n" + src[end:]
+    src = src[:end] + extra + src[end:]
     open(path, "w", encoding="utf-8").write(src)
     return 0
 

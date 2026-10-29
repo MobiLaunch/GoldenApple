@@ -146,6 +146,19 @@ account wrongkey none
 echo "general:no_such_option = 3" >> /home/wrongkey/.config/hypr/hyprland.conf
 refused wrongkey "an option Hyprland doesn't have"
 
+# ---------------------------------------------------------------- title bars
+# hyprbars with CitronOS's changes (distro/hyprbars/patch.py), built for this
+# Hyprland the way the image builds it: the patch must still apply, and the
+# plugin compile. The live part below loads it.
+say "title bars: hyprbars for this Hyprland"
+pacman -S --noconfirm --needed base-devel git pkgconf >/dev/null
+if bars=$(bash /repo/scripts/build-hyprbars.sh /usr/lib/golden-gate/hyprbars.so 2>&1); then
+  say "title bars: hyprbars built"
+else
+  fail "title bars: hyprbars doesn't build for this Hyprland"
+fi
+echo "$bars" | tail -n 30 | sed 's/^/  /'
+
 # ---------------------------------------------------------------- live
 # With a GPU render node (the workflow loads vkms and vgem when it can: vkms
 # alone gives display nodes only, and Hyprland needs a render node), a real headless
@@ -158,6 +171,11 @@ if compgen -G "/dev/dri/renderD*" >/dev/null; then
   install -Dm755 /repo/compositor/hyprland/hyprctl.py /usr/lib/golden-gate/hyprctl.py
   printf '#!/bin/sh\nexec python3 /usr/lib/golden-gate/hyprctl.py "$@"\n' > /usr/bin/gg-hyprctl
   chmod 755 /usr/bin/gg-hyprctl
+  # What the configuration runs on every load (exec): it loads the title
+  # bars and sets their look and buttons.
+  install -Dm755 /repo/compositor/hyprland/hyprglass-sync.sh /usr/lib/golden-gate/hyprglass-sync.sh
+  printf '#!/bin/sh\nexec /usr/lib/golden-gate/hyprglass-sync.sh "$@"\n' > /usr/bin/gg-hyprglass-sync
+  chmod 755 /usr/bin/gg-hyprglass-sync
   # A seat for Hyprland to open the GPU through (no logind in a container),
   # without a VT to bind to.
   pacman -S --noconfirm --needed mesa seatd >/dev/null
@@ -191,6 +209,22 @@ gg-hyprctl keyword input:kb_layout de >/dev/null; echo "keyword=$(opt input:kb_l
 gg-hyprctl --batch 'keyword general:border_size 3 ; dispatch workspace 5' >/dev/null; echo "batch=$(ws),$(opt general:border_size)"
 gg-hyprctl dispatch exec touch "$HOME/exec-ran" >/dev/null; sleep 1; [ -e "$HOME/exec-ran" ] && echo "exec=ran"
 gg-hyprctl dispatch nosuchdispatcher x >/dev/null; echo "unknown=$?"
+# The title bars, as gg-hyprglass-sync set them up at the start (exec), and
+# again after a reload, which resets what the plugin was told.
+bars() {
+  for _ in $(seq 75); do
+    hyprctl plugin list 2>/dev/null | grep -qi hyprbars && [[ $(opt plugin:hyprbars:bar_height) == 28 ]] && break
+    sleep 0.2
+  done
+  hyprctl plugin list 2>/dev/null | grep -qi hyprbars && echo "$1=loaded,$(opt plugin:hyprbars:bar_height),$(opt plugin:hyprbars:bar_buttons_alignment)"
+}
+if [[ -r /usr/lib/golden-gate/hyprbars.so ]]; then
+  bars bars
+  gg-hyprctl keyword plugin:hyprbars:hyprbars-button "rgb(ff5f57), 13, ×, gg-hyprctl dispatch killactive, rgb(8c1a10)" >/dev/null
+  echo "button=$?"
+  hyprctl reload >/dev/null; sleep 1
+  bars reloaded
+fi
 hyprctl dispatch 'hl.dsp.exit()' >/dev/null 2>&1 || true
 EOF
   chown desktop: /home/desktop/live.sh
@@ -205,6 +239,11 @@ EOF
     want "batch=5,3" "gg-hyprctl --batch keyword and dispatch"
     want "exec=ran" "gg-hyprctl dispatch exec"
     want "unknown=1" "an unknown dispatcher fails"
+    if [[ -r /usr/lib/golden-gate/hyprbars.so ]]; then
+      want "bars=loaded,28,left" "gg-hyprglass-sync loads the title bars and sets their look"
+      want "button=0" "a title bar button through the reader (hl.plugin.hyprbars.add_button)"
+      want "reloaded=loaded,28,left" "the title bars' look survives a reload"
+    fi
   else
     # Hyprland didn't come up on this GPU: say why.
     fail "live: Hyprland didn't start with CitronOS's settings on $(ls /dev/dri | tr '\n' ' ')"
