@@ -28,7 +28,7 @@ Pane {
                     pane.sys.setPref(["reduceMotion"], on)
                     pane.sys.setRecord("accessibility", "reduceMotion", on, (ok) => {
                         if (!ok) return
-                        pane.sys.applyLive(["hyprctl", "keyword", "animations:enabled", on ? "0" : "1"], "accessibility.conf")
+                        pane.sys.applyLive(["gg-hyprctl", "keyword", "animations:enabled", on ? "0" : "1"], "accessibility.conf")
                         pane.sys.applyLive(["gsettings", "set", "org.gnome.desktop.interface", "enable-animations", on ? "false" : "true"], "GTK")
                     })
                 }

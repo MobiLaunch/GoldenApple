@@ -36,7 +36,7 @@ class LockScreen(unittest.TestCase):
     def test_timers_follow_the_pane(self):
         got = listeners(idle({"displayOff": 1200, "requireAfter": 60, "dim": True}))
         self.assertIn((600, "brightnessctl -s set 20%"), got)
-        self.assertIn((1200, "hyprctl dispatch dpms off"), got)
+        self.assertIn((1200, "gg-hyprctl dispatch dpms off"), got)
         self.assertIn((1260, "loginctl lock-session"), got)
 
     def test_never(self):
@@ -44,7 +44,7 @@ class LockScreen(unittest.TestCase):
         self.assertEqual(listeners(conf), [], "the display never turns off, so nothing locks by idling")
         self.assertIn("before_sleep_cmd = loginctl lock-session", conf, "sleep still locks")
         got = listeners(idle({"displayOff": 300, "requireAfter": -1, "dim": False}))
-        self.assertEqual(got, [(300, "hyprctl dispatch dpms off")])
+        self.assertEqual(got, [(300, "gg-hyprctl dispatch dpms off")])
 
     def test_bad_values_fall_back(self):
         self.assertEqual(idle({"displayOff": "soon", "dim": "yes"}), idle())

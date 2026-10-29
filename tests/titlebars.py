@@ -88,6 +88,9 @@ class Sync(unittest.TestCase):
             hyprctl.write_text('#!/bin/sh\nprintf "%s\\n" "$*" >> "$HYPRCTL_LOG"\n'
                                '[ "$1 $2" = "plugin list" ] && exit 0\nexit 0\n')
             hyprctl.chmod(0o755)
+            # gg-hyprctl as it is with Hyprland 0.56 (tests/hyprctl-compat.py has the Lua side).
+            (d / "bin/gg-hyprctl").write_text('#!/bin/sh\nexec hyprctl "$@"\n')
+            (d / "bin/gg-hyprctl").chmod(0o755)
             for tool in ("logger", "systemd-detect-virt", "gsettings"):
                 (d / "bin" / tool).write_text("#!/bin/sh\nexit 0\n")
                 (d / "bin" / tool).chmod(0o755)

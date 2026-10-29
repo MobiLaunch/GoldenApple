@@ -90,6 +90,23 @@ local function workspace(arg)
   return tonumber(arg) or arg
 end
 
+-- "2,address:0x5f…" → the workspace, and the window it's for (nil: the
+-- focused one).
+local function target(arg)
+  local ws, win = trim(arg):match("^([^,]*),(.*)$")
+  if ws then return workspace(ws), trim(win) end
+  return workspace(arg), nil
+end
+
+-- "exact 640 480,address:0x5f…" → x, y, whether relative, the window.
+local function pixels(arg)
+  local spec, win = trim(arg):match("^([^,]*),(.*)$")
+  spec = spec or trim(arg)
+  local exact = spec:match("^exact%s+") ~= nil
+  local x, y = spec:gsub("^exact%s+", ""):match("^(%-?[%d.]+)%s+(%-?[%d.]+)$")
+  return tonumber(x), tonumber(y), not exact, win and trim(win) or nil
+end
+
 local function split_once(s)
   local name, rest = s:match("^%s*(%S+)%s*(.-)%s*$")
   return name or "", rest or ""
@@ -99,13 +116,30 @@ local DISPATCHERS = {
   exec = function(a) return hl.dsp.exec_cmd(a) end,
   global = function(a) return hl.dsp.global(a) end,
   workspace = function(a) return hl.dsp.focus({ workspace = workspace(a) }) end,
-  movetoworkspace = function(a) return hl.dsp.window.move({ workspace = workspace(a) }) end,
-  movetoworkspacesilent = function(a) return hl.dsp.window.move({ workspace = workspace(a), follow = false }) end,
+  movetoworkspace = function(a)
+    local ws, win = target(a)
+    return hl.dsp.window.move({ workspace = ws, window = win })
+  end,
+  movetoworkspacesilent = function(a)
+    local ws, win = target(a)
+    return hl.dsp.window.move({ workspace = ws, window = win, follow = false })
+  end,
   togglespecialworkspace = function(a) return hl.dsp.workspace.toggle_special(trim(a)) end,
   focuswindow = function(a) return hl.dsp.focus({ window = trim(a) }) end,
   focusmonitor = function(a) return hl.dsp.focus({ monitor = trim(a) }) end,
   fullscreen = function(a)
     return hl.dsp.window.fullscreen({ mode = trim(a) == "1" and "maximized" or "fullscreen" })
+  end,
+  setfloating = function(a) return hl.dsp.window.float({ action = "on", window = trim(a) ~= "" and trim(a) or nil }) end,
+  settiled = function(a) return hl.dsp.window.float({ action = "off", window = trim(a) ~= "" and trim(a) or nil }) end,
+  togglefloating = function(a) return hl.dsp.window.float({ action = "toggle", window = trim(a) ~= "" and trim(a) or nil }) end,
+  movewindowpixel = function(a)
+    local x, y, relative, win = pixels(a)
+    return hl.dsp.window.move({ x = x, y = y, relative = relative, window = win })
+  end,
+  resizewindowpixel = function(a)
+    local x, y, relative, win = pixels(a)
+    return hl.dsp.window.resize({ x = x, y = y, relative = relative, window = win })
   end,
   killactive = function() return hl.dsp.window.close() end,
   movewindow = function() return hl.dsp.window.drag() end,
@@ -122,12 +156,19 @@ function M.dispatcher(name, arg)
   return make(arg or "")
 end
 
--- hyprctl dispatch's old form: "workspace 2", "exec kitty".
-function M.dispatch(line)
+-- hyprctl dispatch's old form, "workspace 2" or "exec kitty", as a
+-- dispatcher: what Quickshell's Hyprland.dispatch sends in Lua mode, where
+-- Hyprland runs `hl.dispatch(<what it was sent>)` (apps/lib/hypr/Hypr.qml).
+function M.dsp(line)
   local name, arg = split_once(line)
   local d, why = M.dispatcher(name, arg)
   if not d then error(why, 2) end
-  return hl.dispatch(d)
+  return d
+end
+
+-- …and dispatched (gg-hyprctl dispatch).
+function M.dispatch(line)
+  return hl.dispatch(M.dsp(line))
 end
 
 -- hyprctl keyword's: an option ("input:kb_layout", "de") or a keyword line

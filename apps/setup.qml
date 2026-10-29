@@ -119,7 +119,7 @@ ShellRoot {
             function run(cmd) { Quickshell.execDetached(cmd) }
             function setKeyboard(kb) {
                 const l = Regions.layout(kb)
-                run(["hyprctl", "--batch", "keyword input:kb_layout " + l.layout + " ; keyword input:kb_variant " + l.variant])
+                run(["gg-hyprctl", "--batch", "keyword input:kb_layout " + l.layout + " ; keyword input:kb_variant " + l.variant])
             }
             function setLook(v) {
                 look = v

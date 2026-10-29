@@ -11,6 +11,7 @@ import QtQuick.Layouts
 import "ui" as Shared
 import "ui/theme"
 import "components"
+import "ui/hypr"
 
 PanelWindow {
     id: dialog
@@ -35,7 +36,7 @@ PanelWindow {
         action = ""
         if (what === "shutdown") Quickshell.execDetached(["systemctl", "poweroff"])
         else if (what === "restart") Quickshell.execDetached(["systemctl", "reboot"])
-        else if (what === "logout") Hyprland.dispatch("exit")
+        else if (what === "logout") Hypr.dispatch("exit")
     }
 
     IpcHandler {

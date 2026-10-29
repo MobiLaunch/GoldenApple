@@ -7,6 +7,7 @@ import Quickshell.Hyprland
 import QtQuick
 import "ui/theme"
 import "components"
+import "ui/hypr"
 
 ShellRoot {
     id: root
@@ -271,7 +272,7 @@ ShellRoot {
         function onRawEvent(event) {
             if (event.name !== "minimized") return
             const [addr, on] = event.data.split(",")
-            if (on === "1") Hyprland.dispatch("movetoworkspacesilent special:minimized,address:" + (addr.startsWith("0x") ? addr : "0x" + addr))
+            if (on === "1") Hypr.dispatch("movetoworkspacesilent special:minimized,address:" + (addr.startsWith("0x") ? addr : "0x" + addr))
         }
     }
 }

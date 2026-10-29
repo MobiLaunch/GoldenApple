@@ -22,6 +22,7 @@ import QtQuick
 import QtQuick.Shapes
 import "theme"
 import "WindowGeometry.js" as WindowGeometry
+import "hypr"
 
 FloatingWindow {
     id: win
@@ -314,7 +315,7 @@ FloatingWindow {
             }
             TapHandler {
                 acceptedButtons: Qt.LeftButton
-                onDoubleTapped: Hyprland.dispatch("fullscreen 1")
+                onDoubleTapped: Hypr.dispatch("fullscreen 1")
             }
             DragHandler {
                 target: null

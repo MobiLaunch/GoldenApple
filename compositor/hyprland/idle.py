@@ -44,7 +44,7 @@ def conf(s: dict) -> str:
         "general {",
         "    lock_cmd = gg-lock",
         "    before_sleep_cmd = loginctl lock-session",
-        "    after_sleep_cmd = hyprctl dispatch dpms on",
+        "    after_sleep_cmd = gg-hyprctl dispatch dpms on",
         "}",
     ]
 
@@ -55,7 +55,7 @@ def conf(s: dict) -> str:
     if off:
         if s["dim"] and off >= 20:
             listener(off // 2, "brightnessctl -s set 20%", "brightnessctl -r")
-        listener(off, "hyprctl dispatch dpms off", "hyprctl dispatch dpms on")
+        listener(off, "gg-hyprctl dispatch dpms off", "gg-hyprctl dispatch dpms on")
         if require >= 0:
             listener(off + require, "loginctl lock-session")
     return "\n".join(lines) + "\n"

@@ -8,6 +8,7 @@ import Quickshell.Hyprland
 import QtQuick
 import QtQuick.Shapes
 import "theme"
+import "hypr"
 
 Row {
     id: lights
@@ -47,8 +48,8 @@ Row {
                     if (lights.closeAction) lights.closeAction()
                     else Qt.quit()
                 } else if (modelData.kind === "minimize")
-                    Hyprland.dispatch("movetoworkspacesilent special:minimized")
-                else Hyprland.dispatch("fullscreen 1")
+                    Hypr.dispatch("movetoworkspacesilent special:minimized")
+                else Hypr.dispatch("fullscreen 1")
             }
             Timer { id: keyRelease; interval: 90; onTriggered: light.keyboardPressed = false }
             FocusRing { visible: light.activeFocus && light.enabled_ }

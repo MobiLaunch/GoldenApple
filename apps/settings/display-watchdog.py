@@ -30,7 +30,7 @@ def apply(rules: list[str]) -> bool:
     if not rules:
         return True
     try:
-        p = subprocess.run(["hyprctl", "--batch", " ; ".join("keyword monitor " + r for r in rules)],
+        p = subprocess.run(["gg-hyprctl", "--batch", " ; ".join("keyword monitor " + r for r in rules)],
                            capture_output=True, text=True, timeout=20)
     except (OSError, subprocess.SubprocessError):
         return False

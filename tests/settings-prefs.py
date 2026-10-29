@@ -207,7 +207,7 @@ class Stand(preview.Preview):
             p = subprocess.run([sys.executable, *[str(c) for c in cmd[1:]]], env={**os.environ, **self.home_env},
                                capture_output=True, text=True)
             return {"stdout": p.stdout, "stderr": p.stderr, "code": p.returncode}
-        if cmd[:2] == ["hyprctl", "keyword"] and self.refusing:
+        if cmd[:2] == ["gg-hyprctl", "keyword"] and self.refusing:
             return {"stdout": "invalid field: input:repeat_rate", "stderr": "", "code": 0}
         return {"stdout": "ok", "stderr": "", "code": 0}
 
@@ -254,7 +254,7 @@ class SettingsSys(unittest.TestCase):
         self.assertIn("kb_layout = ch", text)
         self.assertIn("kb_variant = fr", text, "the repeat rate doesn't change the keyboard")
         self.assertIn("repeat_rate = 40", text)
-        self.assertTrue(any(l.startswith("hyprctl keyword input:repeat_rate 40") for l in self.stand.ran))
+        self.assertTrue(any(l.startswith("gg-hyprctl keyword input:repeat_rate 40") for l in self.stand.ran))
 
     def test_two_windows_keep_both_changes(self):
         a = self.load()
@@ -273,7 +273,7 @@ class SettingsSys(unittest.TestCase):
         self.load(failing=("set-prefs.py",))
         self.call("setInput", "repeatRate", 40)
         self.assertIn("couldn't be saved", self.value("writeError"))
-        self.assertFalse(any(l.startswith("hyprctl keyword") for l in self.stand.ran), "nothing applied that isn't saved")
+        self.assertFalse(any(l.startswith("gg-hyprctl keyword") for l in self.stand.ran), "nothing applied that isn't saved")
 
     def test_saved_but_not_applied(self):
         self.load(refusing=True)

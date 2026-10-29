@@ -12,6 +12,7 @@ import QtQuick.Layouts
 import "ui/theme"
 import "ui" as Shared
 import "components"
+import "ui/hypr"
 
 PanelWindow {
     id: sw
@@ -75,7 +76,7 @@ PanelWindow {
         const parked = Hyprland.toplevels.values.find((h) => h.wayland === t
             && (h.workspace?.name === "special:hidden" || h.workspace?.name === "special:minimized"));
         const address = parked ? (parked.address ? "0x" + parked.address.replace(/^0x/, "") : parked.lastIpcObject?.address) : "";
-        if (address) Hyprland.dispatch("movetoworkspace " + (Hyprland.focusedWorkspace?.id ?? 1) + ",address:" + address);
+        if (address) Hypr.dispatch("movetoworkspace " + (Hyprland.focusedWorkspace?.id ?? 1) + ",address:" + address);
         t.activate();
     }
 

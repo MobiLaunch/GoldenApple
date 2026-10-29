@@ -42,6 +42,7 @@ install_extras() {
   install -Dm755 "$REPO/compositor/hyprland/hyprglass-sync.sh" "$R/usr/lib/golden-gate/hyprglass-sync.sh"
   install -Dm755 "$REPO/compositor/hyprland/apply-preferences.sh" "$R/usr/lib/golden-gate/apply-preferences.sh"
   install -Dm755 "$REPO/compositor/hyprland/tile.py" "$R/usr/lib/golden-gate/tile.py"
+  install -Dm755 "$REPO/compositor/hyprland/hyprctl.py" "$R/usr/lib/golden-gate/hyprctl.py"
   install -Dm755 "$REPO/icons/icon-resolver.py" "$R/usr/lib/golden-gate/icon-resolver.py"
   install -Dm755 "$REPO/compositor/hyprland/idle.py" "$R/usr/lib/golden-gate/idle.py"
   # Standard password-authenticated administration for accounts created in Hello.
@@ -116,6 +117,7 @@ install_extras() {
   printf '#!/bin/sh\nexec /usr/lib/golden-gate/hyprglass-sync.sh "$@"\n' > "$BIN/gg-hyprglass-sync"
   printf '#!/bin/sh\nexec /usr/lib/golden-gate/apply-preferences.sh "$@"\n' > "$BIN/gg-apply-preferences"
   printf '#!/bin/sh\nexec python3 /usr/lib/golden-gate/tile.py "$@"\n' > "$BIN/gg-tile"
+  printf '#!/bin/sh\nexec python3 /usr/lib/golden-gate/hyprctl.py "$@"\n' > "$BIN/gg-hyprctl"
   printf '#!/bin/sh\nexec python3 /usr/lib/golden-gate/icon-resolver.py "$@"\n' > "$BIN/gg-icon-resolver"
   printf '#!/bin/sh\nexec python3 /usr/lib/golden-gate/idle.py "$@"\n' > "$BIN/gg-idle"
   cp "$REPO/distro/archiso/overlay/usr/local/bin/gg-session" "$BIN/gg-session"
@@ -126,7 +128,7 @@ install_extras() {
   for unit in "$REPO"/distro/systemd/user/citronos-*; do
     install -Dm644 "$unit" "$R/usr/lib/systemd/user/${unit##*/}"
   done
-  chmod 755 "$BIN/gg-diagnostics" "$BIN/gg-settings" "$BIN/gg-web" "$BIN/gg-install" "$BIN/gg-software" "$BIN/gg-files" "$BIN/gg-archive" "$BIN/gg-lcode" "$BIN/gg-airdrop" "$BIN/gg-pref" "$BIN/gg-settingsd" "$BIN/gg-notifyd" "$BIN/gg-hyprglass-sync" "$BIN/gg-apply-preferences" "$BIN/gg-tile" "$BIN/gg-icon-resolver" "$BIN/gg-idle" "$BIN/gg-mac-open" "$BIN/gg-session"
+  chmod 755 "$BIN/gg-diagnostics" "$BIN/gg-settings" "$BIN/gg-web" "$BIN/gg-install" "$BIN/gg-software" "$BIN/gg-files" "$BIN/gg-archive" "$BIN/gg-lcode" "$BIN/gg-airdrop" "$BIN/gg-pref" "$BIN/gg-settingsd" "$BIN/gg-notifyd" "$BIN/gg-hyprglass-sync" "$BIN/gg-apply-preferences" "$BIN/gg-tile" "$BIN/gg-hyprctl" "$BIN/gg-icon-resolver" "$BIN/gg-idle" "$BIN/gg-mac-open" "$BIN/gg-session"
   mkdir -p "$R/usr/share/wayland-sessions"
   cat > "$R/usr/share/wayland-sessions/golden-gate.desktop" <<'EOF'
 [Desktop Entry]
@@ -411,9 +413,10 @@ cp "$REPO/services/notifyd/notifyd.py" "$RUNTIME/notifyd.py"
 cp "$REPO/compositor/hyprland/hyprglass-sync.sh" "$RUNTIME/hyprglass-sync.sh"
 cp "$REPO/compositor/hyprland/apply-preferences.sh" "$RUNTIME/apply-preferences.sh"
 cp "$REPO/compositor/hyprland/tile.py" "$RUNTIME/tile.py"
+cp "$REPO/compositor/hyprland/hyprctl.py" "$RUNTIME/hyprctl.py"
 cp "$REPO/icons/icon-resolver.py" "$RUNTIME/icon-resolver.py"
 cp "$REPO/compositor/hyprland/idle.py" "$RUNTIME/idle.py"
-chmod 755 "$RUNTIME/pref-helper.py" "$RUNTIME/settingsd.py" "$RUNTIME/notifyd.py" "$RUNTIME/hyprglass-sync.sh" "$RUNTIME/apply-preferences.sh" "$RUNTIME/tile.py" "$RUNTIME/icon-resolver.py" "$RUNTIME/idle.py"
+chmod 755 "$RUNTIME/pref-helper.py" "$RUNTIME/settingsd.py" "$RUNTIME/notifyd.py" "$RUNTIME/hyprglass-sync.sh" "$RUNTIME/apply-preferences.sh" "$RUNTIME/tile.py" "$RUNTIME/hyprctl.py" "$RUNTIME/icon-resolver.py" "$RUNTIME/idle.py"
 if [[ $MODE == system ]]; then
   printf '#!/bin/sh\nexec python3 /usr/share/golden-gate/runtime/pref-helper.py "$@"\n' > "$BIN/gg-pref"
   printf '#!/bin/sh\nexec python3 /usr/share/golden-gate/runtime/settingsd.py "$@"\n' > "$BIN/gg-settingsd"
@@ -421,6 +424,7 @@ if [[ $MODE == system ]]; then
   printf '#!/bin/sh\nexec /usr/share/golden-gate/runtime/hyprglass-sync.sh "$@"\n' > "$BIN/gg-hyprglass-sync"
   printf '#!/bin/sh\nexec /usr/share/golden-gate/runtime/apply-preferences.sh "$@"\n' > "$BIN/gg-apply-preferences"
   printf '#!/bin/sh\nexec python3 /usr/share/golden-gate/runtime/tile.py "$@"\n' > "$BIN/gg-tile"
+  printf '#!/bin/sh\nexec python3 /usr/share/golden-gate/runtime/hyprctl.py "$@"\n' > "$BIN/gg-hyprctl"
   printf '#!/bin/sh\nexec python3 /usr/share/golden-gate/runtime/icon-resolver.py "$@"\n' > "$BIN/gg-icon-resolver"
   printf '#!/bin/sh\nexec python3 /usr/share/golden-gate/runtime/idle.py "$@"\n' > "$BIN/gg-idle"
 else
@@ -430,10 +434,11 @@ else
   printf '#!/bin/sh\nexec "%s/hyprglass-sync.sh" "$@"\n' "$RUNTIME" > "$BIN/gg-hyprglass-sync"
   printf '#!/bin/sh\nexec "%s/apply-preferences.sh" "$@"\n' "$RUNTIME" > "$BIN/gg-apply-preferences"
   printf '#!/bin/sh\nexec python3 "%s/tile.py" "$@"\n' "$RUNTIME" > "$BIN/gg-tile"
+  printf '#!/bin/sh\nexec python3 "%s/hyprctl.py" "$@"\n' "$RUNTIME" > "$BIN/gg-hyprctl"
   printf '#!/bin/sh\nexec python3 "%s/icon-resolver.py" "$@"\n' "$RUNTIME" > "$BIN/gg-icon-resolver"
   printf '#!/bin/sh\nexec python3 "%s/idle.py" "$@"\n' "$RUNTIME" > "$BIN/gg-idle"
 fi
-chmod +x "$BIN/gg-settings" "$BIN/gg-software" "$BIN/gg-mac-open" "$BIN/gg-files" "$BIN/gg-archive" "$BIN/gg-lcode" "$BIN/gg-airdrop" "$BIN/gg-pref" "$BIN/gg-settingsd" "$BIN/gg-notifyd" "$BIN/gg-hyprglass-sync" "$BIN/gg-apply-preferences" "$BIN/gg-tile" "$BIN/gg-icon-resolver" "$BIN/gg-idle"
+chmod +x "$BIN/gg-settings" "$BIN/gg-software" "$BIN/gg-mac-open" "$BIN/gg-files" "$BIN/gg-archive" "$BIN/gg-lcode" "$BIN/gg-airdrop" "$BIN/gg-pref" "$BIN/gg-settingsd" "$BIN/gg-notifyd" "$BIN/gg-hyprglass-sync" "$BIN/gg-apply-preferences" "$BIN/gg-tile" "$BIN/gg-hyprctl" "$BIN/gg-icon-resolver" "$BIN/gg-idle"
 # The session's services: gg-session-start (hyprland.conf) and their units.
 install -m755 "$REPO/compositor/hyprland/session-start.sh" "$BIN/gg-session-start"
 install -m755 "$REPO/compositor/hyprland/lock.sh" "$BIN/gg-lock"

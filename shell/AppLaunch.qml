@@ -23,6 +23,7 @@ import "ui/theme"
 import "ui" as Shared
 import "ui/WindowGeometry.js" as WindowGeometry
 import "components"
+import "ui/hypr"
 
 PanelWindow {
     id: launcher
@@ -75,7 +76,7 @@ PanelWindow {
         // Ensure a launch initiated from a secondary-screen Dock/Spotlight opens
         // on that screen's active workspace instead of the previously focused one.
         const monitor = Hyprland.monitorFor(launcher.screen)
-        if (monitor?.name) Hyprland.dispatch(`focusmonitor ${monitor.name}`)
+        if (monitor?.name) Hypr.dispatch(`focusmonitor ${monitor.name}`)
         e.execute()
     }
     function aim(r) { gx.target = r.x; gy.target = r.y; gw.target = r.width; gh.target = r.height }

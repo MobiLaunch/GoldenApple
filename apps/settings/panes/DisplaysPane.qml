@@ -61,7 +61,7 @@ Pane {
     property int countdown: 0
     property string scaleError: ""
     function apply(rules, done) {
-        sys.run(["hyprctl", "--batch", rules.map((r) => "keyword monitor " + r).join(" ; ")], (out, code) => done(code === 0 && !/error|invalid/i.test(out)))
+        sys.run(["gg-hyprctl", "--batch", rules.map((r) => "keyword monitor " + r).join(" ; ")], (out, code) => done(code === 0 && !/error|invalid/i.test(out)))
     }
     function setScale(m, s) {
         if (pending.length || !fits(m, s)) return

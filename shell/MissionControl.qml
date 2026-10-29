@@ -19,6 +19,7 @@ import "ui/theme"
 import "ui" as Shared
 import "components"
 import "missioncontrol/layout.js" as Layout
+import "ui/hypr"
 
 PanelWindow {
     id: mc
@@ -91,16 +92,16 @@ PanelWindow {
 
     function focus(i) {
         const w = windows[i]
-        if (w) dismiss(() => Hyprland.dispatch("focuswindow address:" + w.address))
+        if (w) dismiss(() => Hypr.dispatch("focuswindow address:" + w.address))
     }
     function goTo(id) {
         if (id === workspaceId) dismiss()
-        else dismiss(() => Hyprland.dispatch("workspace " + id))
+        else dismiss(() => Hypr.dispatch("workspace " + id))
     }
     function moveTo(i, id) {
         const w = windows[i]
         if (!w || id === workspaceId) return
-        Hyprland.dispatch("movetoworkspacesilent " + id + ",address:" + w.address)
+        Hypr.dispatch("movetoworkspacesilent " + id + ",address:" + w.address)
         Hyprland.refreshToplevels()
     }
 
@@ -236,7 +237,7 @@ PanelWindow {
             border { width: 0.5; color: "#59ffffff" }
             Text { anchors.centerIn: parent; text: "+"; color: "#ffffff"; font { family: Theme.fontUi; pixelSize: Theme.fs(24); weight: Font.Light } }
             HoverHandler { id: plusHover }
-            TapHandler { onTapped: mc.dismiss(() => Hyprland.dispatch("workspace emptym")) }
+            TapHandler { onTapped: mc.dismiss(() => Hypr.dispatch("workspace emptym")) }
             Accessible.role: Accessible.Button
             Accessible.name: "Add Desktop"
         }

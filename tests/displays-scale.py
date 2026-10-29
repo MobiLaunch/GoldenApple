@@ -73,7 +73,7 @@ class Hypr(preview.Preview):
         self.ran.append(line)
         if cmd[:3] == ["hyprctl", "monitors", "-j"]:
             return {"stdout": json.dumps(self.mons), "stderr": "", "code": 0}
-        if cmd[:2] == ["hyprctl", "--batch"]:
+        if cmd[:2] == ["gg-hyprctl", "--batch"]:
             for r in cmd[2].split(" ; "):
                 name, mode, pos, scale = [x.strip() for x in r[len("keyword monitor "):].split(",")]
                 m = next(m for m in self.mons if m["name"] == name)
@@ -125,7 +125,7 @@ class Displays(unittest.TestCase):
         self.scale("eDP-1", 2)
         self.assertEqual((self.mon("eDP-1")["x"], self.mon("eDP-1")["scale"]), (0, 2.0))
         self.assertEqual(self.mon("DP-1")["x"], 1280, "the display to the right follows the new edge")
-        batch = next(l for l in self.hypr.ran if l.startswith("hyprctl --batch"))
+        batch = next(l for l in self.hypr.ran if l.startswith("gg-hyprctl --batch"))
         self.assertIn("eDP-1, 2560x1600@59.999, 0x0, 2", batch, "the exact mode, and its place")
         self.assertTrue(self.eval("pending.length > 0"), "asks to keep it")
         self.assertFalse(any("write-file.py" in l for l in self.hypr.ran), "nothing saved yet")
@@ -184,6 +184,9 @@ class Watchdog(unittest.TestCase):
         (self.tmp / "bin").mkdir()
         (self.tmp / "bin/hyprctl").write_text('#!/bin/sh\necho "$*" >> "$CALLS"\necho ok\n')
         (self.tmp / "bin/hyprctl").chmod(0o755)
+        # gg-hyprctl as it is with Hyprland 0.56 (tests/hyprctl-compat.py has the Lua side).
+        (self.tmp / "bin/gg-hyprctl").write_text('#!/bin/sh\nexec hyprctl "$@"\n')
+        (self.tmp / "bin/gg-hyprctl").chmod(0o755)
         self.env = {**os.environ, "PATH": f"{self.tmp/'bin'}:{os.environ['PATH']}", "CALLS": str(self.tmp / "calls"),
                     "XDG_RUNTIME_DIR": str(self.tmp)}
 

@@ -105,12 +105,92 @@ EOF
 chown mine: /home/mine/.config/hypr/hyprland.conf
 verify mine "an account with its own lines" "$((system + 1))"
 
+# Every dispatch CitronOS sends while the desktop is up (the shell, gg-tile,
+# Settings, gg-idle, the title bars), bound to keys: 0.57 refuses a dispatcher
+# it can't make when the bind is made, so this checks each Lua form the
+# reader gives (citronos.dsp, which Hypr.qml and gg-hyprctl use).
+account dispatches none
+n=0
+while IFS= read -r line; do
+  [[ -z $line ]] && continue
+  n=$((n + 1))
+  name=${line%% *}; arg=""; [[ $line == *" "* ]] && arg=${line#* }
+  echo "bind = SUPER CTRL ALT SHIFT, F$n, $name, $arg" >> /home/dispatches/.config/hypr/hyprland.conf
+done <<'EOF'
+exec gg-settings about
+exit
+workspace 3
+workspace emptym
+movetoworkspace 2,address:0x5f1a2b3c
+movetoworkspacesilent special:hidden,address:0x5f1a2b3c
+movetoworkspacesilent special:hidden,class:^(org\.goldengate\.Files)$
+movetoworkspacesilent special:minimized
+focuswindow address:0x5f1a2b3c
+focuswindow class:org.goldengate.Settings
+focusmonitor HEADLESS-1
+fullscreen 0
+fullscreen 1
+killactive
+dpms off
+dpms on
+setfloating address:0x5f1a2b3c
+resizewindowpixel exact 720 450,address:0x5f1a2b3c
+movewindowpixel exact 0 30,address:0x5f1a2b3c
+EOF
+verify dispatches "every dispatch CitronOS sends" "$((system + n))"
+
 account wrongdsp none
 echo "bind = SUPER, Y, nosuchdispatcher, x" >> /home/wrongdsp/.config/hypr/hyprland.conf
 refused wrongdsp "a dispatcher the reader doesn't know"
 account wrongkey none
 echo "general:no_such_option = 3" >> /home/wrongkey/.config/hypr/hyprland.conf
 refused wrongkey "an option Hyprland doesn't have"
+
+# ---------------------------------------------------------------- live
+# With a GPU render node (the workflow loads vkms when it can), a real headless
+# Hyprland runs CitronOS's settings, and what the shell, Settings and scripts
+# send it while the desktop is up must do what it did: gg-hyprctl's dispatch,
+# keyword and --batch, and the shell's own form (Hypr.qml: citronos.dsp).
+if compgen -G "/dev/dri/renderD*" >/dev/null || compgen -G "/dev/dri/card*" >/dev/null; then
+  say "live: a headless Hyprland with CitronOS's settings"
+  chmod a+rw /dev/dri/* 2>/dev/null || true
+  install -Dm755 /repo/compositor/hyprland/hyprctl.py /usr/lib/golden-gate/hyprctl.py
+  printf '#!/bin/sh\nexec python3 /usr/lib/golden-gate/hyprctl.py "$@"\n' > /usr/bin/gg-hyprctl
+  chmod 755 /usr/bin/gg-hyprctl
+  pacman -S --noconfirm --needed mesa >/dev/null
+  cat > /home/desktop/live.sh <<'EOF'
+set -u
+export XDG_RUNTIME_DIR=$(mktemp -d)
+HYPRLAND_HEADLESS_ONLY=1 Hyprland -c /usr/share/golden-gate/hypr/hyprland.lua >"$HOME/hyprland.log" 2>&1 &
+for _ in $(seq 100); do hyprctl version >/dev/null 2>&1 && break; sleep 0.2; done
+export HYPRLAND_INSTANCE_SIGNATURE=$(ls "$XDG_RUNTIME_DIR/hypr" | head -n 1)
+ws() { hyprctl activeworkspace -j | python3 -c 'import json, sys; print(json.load(sys.stdin)["id"])'; }
+opt() { hyprctl getoption "$1" -j | python3 -c 'import json, sys; d = json.load(sys.stdin); print(d.get("str", d.get("int", d.get("custom"))))'; }
+echo "mode=$(gg-hyprctl mode)"
+gg-hyprctl dispatch workspace 3 >/dev/null; echo "dispatch=$(ws)"
+hyprctl dispatch 'citronos.dsp([[workspace 4]])' >/dev/null; echo "shell=$(ws)"
+gg-hyprctl keyword input:kb_layout de >/dev/null; echo "keyword=$(opt input:kb_layout)"
+gg-hyprctl --batch 'keyword general:gaps_out 30 ; dispatch workspace 5' >/dev/null; echo "batch=$(ws),$(opt general:gaps_out)"
+gg-hyprctl dispatch exec touch "$HOME/exec-ran" >/dev/null; sleep 1; [ -e "$HOME/exec-ran" ] && echo "exec=ran"
+gg-hyprctl dispatch nosuchdispatcher x >/dev/null; echo "unknown=$?"
+hyprctl dispatch 'hl.dsp.exit()' >/dev/null 2>&1
+EOF
+  chown desktop: /home/desktop/live.sh
+  live=$(su desktop -c 'bash ~/live.sh' 2>&1)
+  echo "$live" | sed 's/^/  /'
+  want() { echo "$live" | grep -qx "$1" && say "live: $2" || { fail "live: $2 (wanted $1)"; tail -n 20 /home/desktop/hyprland.log | sed 's/^/    /'; }; }
+  want "mode=lua" "gg-hyprctl sees Lua mode"
+  want "dispatch=3" "gg-hyprctl dispatch workspace 3"
+  want "shell=4" "the shell's citronos.dsp form"
+  want "keyword=de" "gg-hyprctl keyword input:kb_layout de"
+  want "batch=5,30" "gg-hyprctl --batch keyword and dispatch"
+  want "exec=ran" "gg-hyprctl dispatch exec"
+  want "unknown=1" "an unknown dispatcher fails"
+elif [[ ${GG_HYPRLAND_LIVE:-} == required ]]; then
+  fail "live: no GPU render node (/dev/dri), so no Hyprland to run"
+else
+  say "live: skipped, no GPU render node here (/dev/dri); the Hyprland next workflow loads vkms"
+fi
 
 if (( FAILED )); then echo "$FAILED problem(s)"; exit 1; fi
 say "Hyprland $(pacman -Q hyprland | cut -d' ' -f2) runs CitronOS's settings"

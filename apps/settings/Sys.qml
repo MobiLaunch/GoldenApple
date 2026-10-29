@@ -191,7 +191,7 @@ Item {
     function setInput(key, value) {
         setRecord("input", key, value, (ok) => {
             const kw = inputKeywords[key]
-            if (ok && kw) applyLive(["hyprctl", "keyword", kw, String(typeof value === "number" && key !== "sensitivity" ? Math.round(value) : value)], "input.conf")
+            if (ok && kw) applyLive(["gg-hyprctl", "keyword", kw, String(typeof value === "number" && key !== "sensitivity" ? Math.round(value) : value)], "input.conf")
         })
     }
 
@@ -222,7 +222,7 @@ Item {
                      "sh", setup, generated], (out, code) => {
                     if (code !== 0) sys.notApplied("machine.conf", out || "Could not update session defaults.")
                 })
-                applyLive(["hyprctl", "keyword", windowKeywords[key],
+                applyLive(["gg-hyprctl", "keyword", windowKeywords[key],
                     typeof value === "boolean" ? String(value).toLowerCase() : String(value)], "windows.conf")
             }
         })

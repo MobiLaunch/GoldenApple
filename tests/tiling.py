@@ -51,6 +51,9 @@ with tempfile.TemporaryDirectory() as tmp:
     fake = tmp / "bin/hyprctl"
     fake.write_text(FAKE)
     fake.chmod(0o755)
+    # gg-hyprctl as it is with Hyprland 0.56 (tests/hyprctl-compat.py has the Lua side).
+    (tmp / "bin/gg-hyprctl").write_text('#!/bin/sh\nexec hyprctl "$@"\n')
+    (tmp / "bin/gg-hyprctl").chmod(0o755)
     state_path, log = tmp / "state.json", tmp / "log"
     env = {**os.environ, "PATH": f"{tmp / 'bin'}:{os.environ['PATH']}", "FAKE_STATE": str(state_path),
            "FAKE_LOG": str(log), "XDG_RUNTIME_DIR": str(tmp)}

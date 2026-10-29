@@ -11,6 +11,7 @@ import QtQuick.Effects
 import "ui/theme"
 import "ui" as Shared
 import "components"
+import "ui/hypr"
 
 PanelWindow {
     id: dock
@@ -419,12 +420,12 @@ PanelWindow {
         const ws = monitor?.activeWorkspace?.id ?? Hyprland.focusedWorkspace?.id ?? 1
         const rawAddress = t.address ?? t.lastIpcObject?.address ?? ""
         const address = rawAddress ? "0x" + String(rawAddress).replace(/^0x/, "") : ""
-        if (monitor?.name) Hyprland.dispatch(`focusmonitor ${monitor.name}`)
+        if (monitor?.name) Hypr.dispatch(`focusmonitor ${monitor.name}`)
         if (address) {
-            Hyprland.dispatch(`movetoworkspace ${ws},address:${address}`)
+            Hypr.dispatch(`movetoworkspace ${ws},address:${address}`)
             // Moving a parked window back does not necessarily raise it over
             // other floating windows. A Dock click means "bring to front".
-            Hyprland.dispatch(`focuswindow address:${address}`)
+            Hypr.dispatch(`focuswindow address:${address}`)
         }
     }
     // One app in the Dock: icon, running dot, badge, tooltip, launch bounce.

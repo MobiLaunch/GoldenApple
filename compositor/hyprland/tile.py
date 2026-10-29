@@ -32,8 +32,10 @@ LAYOUTS = {
 
 def hyprctl(*args: str) -> str:
     # A compositor that doesn't answer shouldn't hang the key that tiles.
+    # Dispatches go through gg-hyprctl, which speaks Lua to Hyprland 0.57.
+    program = "gg-hyprctl" if args[:1] == ("--batch",) else "hyprctl"
     try:
-        return subprocess.run(["hyprctl", *args], capture_output=True, text=True, timeout=3).stdout
+        return subprocess.run([program, *args], capture_output=True, text=True, timeout=3).stdout
     except subprocess.TimeoutExpired:
         return ""
 

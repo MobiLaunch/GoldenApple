@@ -16,6 +16,7 @@ on:
       - apps/settings/set-prefs.py
       - scripts/stage.sh
       - packaging/hyprland-lua-check.sh
+      - apps/lib/hypr/**
       - .github/workflows/hyprland-next.yml
   schedule:
     - cron: "17 5 * * 1"      # Mondays
@@ -34,5 +35,15 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+      # A virtual GPU (vkms), so a real Hyprland can run headless and take
+      # what the desktop sends it while up. Without one that part is skipped,
+      # and the step says so.
+      - name: A virtual GPU for a headless Hyprland
+        run: |
+          sudo modprobe vkms || echo "::warning::vkms isn't available on this runner: the live part will be skipped"
+          ls -l /dev/dri 2>/dev/null || true
       - name: CitronOS's settings on Arch's current Hyprland
-        run: docker run --rm -v "$PWD:/repo" -w /repo archlinux:latest packaging/hyprland-lua-check.sh
+        run: |
+          devices=()
+          [ -d /dev/dri ] && devices=(--device /dev/dri)
+          docker run --rm "${devices[@]}" -v "$PWD:/repo" -w /repo archlinux:latest packaging/hyprland-lua-check.sh

@@ -67,6 +67,8 @@ def run(theme: str, prefs: dict, flag: bool = False, built_for: str | None = "0.
         log = tmp / "calls"
         (tmp / "bin/hyprctl").write_text('#!/bin/sh\necho "$*" >> "$CALLS"\n'
                                           'case "$1 $2" in "plugin list") echo "hyprglass hyprbars";; esac\nexit 0\n')
+        # gg-hyprctl as it is with Hyprland 0.56 (tests/hyprctl-compat.py has the Lua side).
+        (tmp / "bin/gg-hyprctl").write_text('#!/bin/sh\nexec hyprctl "$@"\n')
         (tmp / "bin/systemd-detect-virt").write_text("#!/bin/sh\necho none\n")
         (tmp / "bin/logger").write_text("#!/bin/sh\nexit 0\n")
         (tmp / "bin/pacman").write_text(f"#!/bin/sh\necho 'hyprland {running}-1'\n")

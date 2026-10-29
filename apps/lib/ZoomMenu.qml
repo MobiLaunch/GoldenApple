@@ -114,7 +114,7 @@ Item {
             MenuRow { text: "Center"; command: "gg-tile center" }
             MenuRow { text: "Return to Previous Size"; command: "gg-tile restore" }
             Rectangle { width: parent.width; height: 1; color: Theme.separator }
-            MenuRow { text: "Enter Full Screen"; command: "hyprctl dispatch fullscreen 0" }
+            MenuRow { text: "Enter Full Screen"; command: "gg-hyprctl dispatch fullscreen 0" }
         }
         HoverHandler { onHoveredChanged: if (!hovered) hint.text = "Move & Resize" }
     }

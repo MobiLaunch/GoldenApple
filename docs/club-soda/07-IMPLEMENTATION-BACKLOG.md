@@ -432,10 +432,18 @@ same fields, more briefly, and should be expanded when their milestone starts.
   know or an option it doesn't have. `hyprland.lua` waits in
   `/usr/share/golden-gate/hypr`, where no Hyprland looks: 0.56 also prefers a
   `hyprland.lua` it finds (even in `/etc/xdg`) over `hyprland.conf`, and in Lua mode
-  `hyprctl dispatch` takes only Lua and `keyword` is gone. Still to do before the hold
-  lifts: the shell's 31 `Hyprland.dispatch` calls, the scripts' `hyprctl dispatch` and
-  Settings' `hyprctl keyword` through the reader's `citronos.dispatch`/`citronos.keyword`
-  (`hyprctl eval`), hyprbars and HyprGlass built for 0.57, then `hyprland.lua` into
+  `hyprctl dispatch` takes only Lua and `keyword` is gone. What the desktop sends
+  Hyprland while it's up now works on both: the shell's and the apps' 31 dispatches go
+  through `Hypr.dispatch` (`apps/lib/hypr/Hypr.qml`, which sends `citronos.dsp(…)` in Lua
+  mode), and the scripts' and Settings' `hyprctl dispatch`, `keyword` and `--batch` through
+  `gg-hyprctl` (`compositor/hyprland/hyprctl.py`, which asks Hyprland once a session which
+  it is and hands them to the reader with `hyprctl eval`); with `hyprland.conf` both pass
+  them on as they were. Every dispatcher CitronOS sends has a Lua form, which 0.57 checks
+  as binds (19 more, all accepted), and `tests/hyprctl-compat.py` (in Check) keeps
+  anything from going around them and data in its Lua string. The Hyprland next workflow
+  also runs a real headless 0.57 on CitronOS's settings and sends it those commands, when
+  the runner can give it a virtual GPU (vkms). Still to do before the hold lifts:
+  hyprbars and HyprGlass built for 0.57 (their settings in Lua), then `hyprland.lua` into
   `/etc/xdg/hypr` and the hold lifted.
   T-2.2 also pins the AUR: each package the image builds from it (uxplay,
   gnome-network-displays, python-pathvalidate, piper-tts) is built at a commit of its AUR

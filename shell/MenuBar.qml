@@ -16,6 +16,7 @@ import QtQuick.Effects
 import "ui/theme"
 import "components"
 import "ui" as Shared
+import "ui/hypr"
 
 PanelWindow {
     id: bar
@@ -573,18 +574,18 @@ PanelWindow {
         anchor.rect.x: logo.x + 8
         anchor.rect.y: bar.height + 5
         items: [
-            { label: "About This Computer", action: () => Hyprland.dispatch("exec gg-settings about") },
+            { label: "About This Computer", action: () => Hypr.dispatch("exec gg-settings about") },
             "-",
-            { label: "System Settings…", shortcut: "⌘,", action: () => Hyprland.dispatch("exec gg-settings") },
-            { label: "Software…", action: () => Hyprland.dispatch("exec gg-software") },
+            { label: "System Settings…", shortcut: "⌘,", action: () => Hypr.dispatch("exec gg-settings") },
+            { label: "Software…", action: () => Hypr.dispatch("exec gg-software") },
             "-",
-            { label: "Force Quit…", shortcut: "⌥⌘⎋", action: () => Hyprland.dispatch("exec hyprctl kill") },
+            { label: "Force Quit…", shortcut: "⌥⌘⎋", action: () => Hypr.dispatch("exec hyprctl kill") },
             "-",
-            { label: "Sleep", action: () => Hyprland.dispatch("exec systemctl suspend") },
+            { label: "Sleep", action: () => Hypr.dispatch("exec systemctl suspend") },
             { label: "Restart…", action: () => bar.session?.ask("restart") },
             { label: "Shut Down…", action: () => bar.session?.ask("shutdown") },
             "-",
-            { label: "Lock Screen", shortcut: "⌃⌘Q", action: () => Hyprland.dispatch("exec loginctl lock-session") },
+            { label: "Lock Screen", shortcut: "⌃⌘Q", action: () => Hypr.dispatch("exec loginctl lock-session") },
             { label: "Log Out…", shortcut: "⇧⌘Q", action: () => bar.session?.ask("logout") }
         ]
     }
@@ -604,15 +605,15 @@ PanelWindow {
         anchor.rect.x: appItem.x + 8
         anchor.rect.y: bar.height + 5
         items: bar.active ? [
-            { label: "Hide " + bar.appName, shortcut: "⌘H", action: () => Hyprland.dispatch("movetoworkspacesilent special:hidden,class:^(" + String(bar.active.appId).replace(/[.^$*+?()[\]{}|\\]/g, "\\$&") + ")$") },
+            { label: "Hide " + bar.appName, shortcut: "⌘H", action: () => Hypr.dispatch("movetoworkspacesilent special:hidden,class:^(" + String(bar.active.appId).replace(/[.^$*+?()[\]{}|\\]/g, "\\$&") + ")$") },
             { label: "Hide Others", shortcut: "⌥⌘H", action: () => bar.hideOthers(String(bar.active.appId)) },
             { label: "Show All", enabled: bar.hiddenWindows().length > 0, action: () => bar.showAll() },
             "-",
             { label: "Quit " + bar.appName, shortcut: "⌘Q", action: () => bar.appWindows.forEach((w) => w.close()) }
         ] : [
-            { label: "About Files", action: () => Hyprland.dispatch("exec gg-settings about") },
+            { label: "About Files", action: () => Hypr.dispatch("exec gg-settings about") },
             "-",
-            { label: "Settings…", shortcut: "⌘,", action: () => Hyprland.dispatch("exec gg-settings dock") },
+            { label: "Settings…", shortcut: "⌘,", action: () => Hypr.dispatch("exec gg-settings dock") },
             "-",
             { label: "Empty Trash…", action: () => bar.emptyTrash() },
             "-",
@@ -671,27 +672,27 @@ PanelWindow {
         const ws = Hyprland.focusedWorkspace?.id
         for (const t of Hyprland.toplevels.values) {
             if (t.workspace?.id !== ws || windowClass(t) === keep || !windowAddress(t)) continue
-            Hyprland.dispatch("movetoworkspacesilent special:hidden,address:" + windowAddress(t))
+            Hypr.dispatch("movetoworkspacesilent special:hidden,address:" + windowAddress(t))
         }
     }
     function showAll(minimizedToo) {
         const ws = Hyprland.focusedWorkspace?.id ?? 1
         for (const t of hiddenWindows().concat(minimizedToo ? minimizedWindows() : []))
-            if (windowAddress(t)) Hyprland.dispatch("movetoworkspacesilent " + ws + ",address:" + windowAddress(t))
+            if (windowAddress(t)) Hypr.dispatch("movetoworkspacesilent " + ws + ",address:" + windowAddress(t))
     }
     function bringToFront(appId) {
         const ws = Hyprland.focusedWorkspace?.id ?? 1
         for (const t of Hyprland.toplevels.values)
             if (windowClass(t) === appId && windowAddress(t) && t.workspace?.id !== ws)
-                Hyprland.dispatch("movetoworkspacesilent " + ws + ",address:" + windowAddress(t))
-        if (tileTarget) Hyprland.dispatch("focuswindow address:" + tileTarget)
+                Hypr.dispatch("movetoworkspacesilent " + ws + ",address:" + windowAddress(t))
+        if (tileTarget) Hypr.dispatch("focuswindow address:" + tileTarget)
     }
     function tile(layout) { Quickshell.execDetached(["gg-tile", layout].concat(tileTarget ? [tileTarget] : [])) }
-    function minimize() { Hyprland.dispatch("movetoworkspacesilent special:minimized" + (tileTarget ? ",address:" + tileTarget : "")) }
+    function minimize() { Hypr.dispatch("movetoworkspacesilent special:minimized" + (tileTarget ? ",address:" + tileTarget : "")) }
     // Full screen and Zoom act on the focused window: focus it first.
     function fullscreen(mode) {
-        if (tileTarget) Hyprland.dispatch("focuswindow address:" + tileTarget)
-        Hyprland.dispatch("fullscreen " + mode)
+        if (tileTarget) Hypr.dispatch("focuswindow address:" + tileTarget)
+        Hypr.dispatch("fullscreen " + mode)
     }
     MenuPopup {
         id: windowMenu
@@ -790,7 +791,7 @@ PanelWindow {
         if (title === "Help") return [
             { label: "Search", action: () => bar.spotlight.toggle() },
             "-",
-            { label: "Keyboard Shortcuts", action: () => Hyprland.dispatch("exec gg-settings keyboard") },
+            { label: "Keyboard Shortcuts", action: () => Hypr.dispatch("exec gg-settings keyboard") },
             { label: "Ask Citron…", action: () => Quickshell.execDetached(["qs", "-c", "golden-gate", "ipc", "call", "citron", "ask"]) }
         ]
         return []

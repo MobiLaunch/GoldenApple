@@ -55,6 +55,7 @@ gg-notifyd              python3     $LIB/notifyd.py
 gg-hyprglass-sync       -           $LIB/hyprglass-sync.sh
 gg-apply-preferences    -           $LIB/apply-preferences.sh
 gg-tile                 python3     $LIB/tile.py
+gg-hyprctl              python3     $LIB/hyprctl.py
 gg-icon-resolver        python3     $LIB/icon-resolver.py
 gg-idle                 python3     $LIB/idle.py
 "
@@ -93,7 +94,8 @@ runtime() {
   local f
   for f in apps/setup/account-helper.py apps/setup/pref-helper.py services/settingsd/settingsd.py \
            services/notifyd/notifyd.py compositor/hyprland/hyprglass-sync.sh \
-           compositor/hyprland/apply-preferences.sh compositor/hyprland/tile.py icons/icon-resolver.py \
+           compositor/hyprland/apply-preferences.sh compositor/hyprland/tile.py compositor/hyprland/hyprctl.py \
+           icons/icon-resolver.py \
            compositor/hyprland/idle.py apps/setup/pacman-config.sh; do
     install -Dm755 "$REPO/$f" "$D$LIB/${f##*/}"
   done
