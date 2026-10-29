@@ -35,12 +35,14 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-      # A virtual GPU (vkms), so a real Hyprland can run headless and take
-      # what the desktop sends it while up. Without one that part is skipped,
-      # and the step says so.
+      # A virtual GPU, so a real Hyprland can run headless and take what the
+      # desktop sends it while up: vkms for the outputs, vgem for the render
+      # node Hyprland needs (vkms has none). Without one that part is skipped,
+      # and the check says so.
       - name: A virtual GPU for a headless Hyprland
         run: |
-          sudo modprobe vkms || echo "::warning::vkms isn't available on this runner: the live part will be skipped"
+          sudo modprobe vkms || echo "::warning::vkms isn't available on this runner"
+          sudo modprobe vgem || echo "::warning::vgem isn't available on this runner: no render node, so the live part will be skipped"
           ls -l /dev/dri 2>/dev/null || true
       - name: CitronOS's settings on Arch's current Hyprland
         run: |

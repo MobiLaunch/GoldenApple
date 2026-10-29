@@ -147,11 +147,12 @@ echo "general:no_such_option = 3" >> /home/wrongkey/.config/hypr/hyprland.conf
 refused wrongkey "an option Hyprland doesn't have"
 
 # ---------------------------------------------------------------- live
-# With a GPU render node (the workflow loads vkms when it can), a real headless
+# With a GPU render node (the workflow loads vkms and vgem when it can: vkms
+# alone gives display nodes only, and Hyprland needs a render node), a real headless
 # Hyprland runs CitronOS's settings, and what the shell, Settings and scripts
 # send it while the desktop is up must do what it did: gg-hyprctl's dispatch,
 # keyword and --batch, and the shell's own form (Hypr.qml: citronos.dsp).
-if compgen -G "/dev/dri/renderD*" >/dev/null || compgen -G "/dev/dri/card*" >/dev/null; then
+if compgen -G "/dev/dri/renderD*" >/dev/null; then
   say "live: a headless Hyprland with CitronOS's settings"
   chmod a+rw /dev/dri/* 2>/dev/null || true
   install -Dm755 /repo/compositor/hyprland/hyprctl.py /usr/lib/golden-gate/hyprctl.py
@@ -200,9 +201,9 @@ EOF
     grep -vE "^\[LOG\]|DEBUG" /home/desktop/hyprland.log | tail -n 25 | sed 's/^/    /'
   fi
 elif [[ ${GG_HYPRLAND_LIVE:-} == required ]]; then
-  fail "live: no GPU render node (/dev/dri), so no Hyprland to run"
+  fail "live: no GPU render node (/dev/dri/renderD*), so no Hyprland to run"
 else
-  say "live: skipped, no GPU render node here (/dev/dri); the Hyprland next workflow loads vkms"
+  echo "::warning::live: skipped, no GPU render node here ($(ls /dev/dri 2>/dev/null | tr '\n' ' ')); Hyprland needs one"
 fi
 
 if (( FAILED )); then echo "$FAILED problem(s)"; exit 1; fi
