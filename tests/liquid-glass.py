@@ -203,6 +203,22 @@ check("live: false" in backdrop and "interval: 33" in backdrop and "captureFrame
 menu = (ROOT / "shell/components/MenuPopup.qml").read_text()
 check("includeWindows: false" in menu, "menus capture no windows")
 
+# Hyprland 0.57 (Lua): HyprGlass 1.0 and later take the glass's layers one
+# namespace at a time, hl.plugin.hyprglass.layer(namespace, { mask_threshold }),
+# instead of the two lists gg-hyprglass-sync sends; CitronOS's reader makes
+# those calls (packaging/hyprland-lua-check.sh does it on a real Hyprland), and
+# an older HyprGlass keeps the options.
+reader = (ROOT / "compositor/hyprland/hyprlang.lua").read_text()
+for key in ("plugin.hyprglass.layers.namespaces", "plugin.hyprglass.layers.namespace_mask_thresholds"):
+    check(f'["{key}"] = glass_layers(' in reader, f"the reader makes {key} with hyprglass.layer()")
+check("glass.layer(namespace, { mask_threshold = number(threshold) })" in reader,
+      "a namespace's mask threshold goes to its layer() call")
+check("if not (glass and glass.layer) then return M.set(key, value, where) end" in reader,
+      "an older HyprGlass still gets the options")
+sync = (ROOT / "compositor/hyprland/hyprglass-sync.sh").read_text()
+check("kw plugin:hyprglass:layers:namespaces " in sync and "kw plugin:hyprglass:layers:namespace_mask_thresholds " in sync,
+      "gg-hyprglass-sync sends the layer lists the reader takes")
+
 if failures:
     for f in failures:
         print("FAIL", f)

@@ -228,7 +228,12 @@ if ! hyprctl version >/dev/null 2>&1; then
 fi
 echo "started=yes"
 ws() { hyprctl activeworkspace -j | python3 -c 'import json, sys; print(json.load(sys.stdin)["id"])'; }
-opt() { hyprctl getoption "$1" -j | python3 -c 'import json, sys; d = json.load(sys.stdin); print(d.get("str", d.get("int", d.get("custom"))))'; }
+# An option's value, whichever key getoption gives it under (a switch: 1 or 0).
+opt() { hyprctl getoption "$1" -j | python3 -c '
+import json, sys
+d = json.load(sys.stdin)
+v = next((d[k] for k in ("str", "int", "bool", "float", "custom", "value") if k in d), None)
+print(json.dumps(d) if v is None else int(v) if isinstance(v, bool) else v)'; }
 echo "mode=$(gg-hyprctl mode)"
 gg-hyprctl dispatch workspace 3 >/dev/null; echo "dispatch=$(ws)"
 hyprctl dispatch 'citronos.dsp([[workspace 4]])' >/dev/null; echo "shell=$(ws)"

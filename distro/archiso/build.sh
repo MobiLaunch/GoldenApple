@@ -125,9 +125,16 @@ build_aur() {
     )
     # The AUR hands out an empty repository for names it doesn't know.
     [[ -f $src/$pkg/PKGBUILD ]] || { echo "$pkg is not in the AUR either"; exit 1; }
+    # piper-tts's check() runs upstream's tests with ctest --parallel $(nproc),
+    # and its MainUtilsTest cases all make and remove the same model.onnx in
+    # one directory, so one test's clean-up can delete another's file
+    # ("Model file doesn't exist"). nproc honours OMP_NUM_THREADS: 1 runs them
+    # one at a time (nproc is only in its check()), and every test still runs.
+    local serial=()
+    [[ $pkg == piper-tts ]] && serial=(OMP_NUM_THREADS=1)
     (
       cd "$src/$pkg"
-      sudo -u gg-builder env HOME=/home/gg-builder makepkg --syncdeps --noconfirm --needed
+      sudo -u gg-builder env HOME=/home/gg-builder "${serial[@]}" makepkg --syncdeps --noconfirm --needed
     )
     built=0
     for f in "$src/$pkg"/*.pkg.tar.zst; do
