@@ -141,9 +141,10 @@ if boot_log | grep -aqE "$restarted"; then
   # The shell's last words before that, and what the kernel said at the time.
   say "the shell before it stopped:"
   boot_log | grep -aE 'citronos-shell\[|kernel:|Out of memory|Killed process' | tail -n 40
-  # Who sent SIGKILL, and to what ("comm-pid … signal_generate: sig=9 … comm=… pid=…").
+  # Who sent SIGKILL, and to what ("comm-pid … signal_generate: sig=9 … comm=… pid=…"),
+  # leaving out systemd's own sandbox helpers ("comm=(sd-mkuserns)" and the like).
   say "SIGKILLs sent:"
-  boot_log | grep -a 'gg-sigkill\[' | grep -a 'signal_generate' | tail -n 20 || true
+  boot_log | grep -a 'gg-sigkill\[' | grep -a 'signal_generate' | grep -av 'comm=(' | tail -n 20 || true
   result=shell-restarted
 fi
 
