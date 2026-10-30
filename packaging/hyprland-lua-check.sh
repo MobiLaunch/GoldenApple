@@ -260,10 +260,16 @@ if [[ -r /usr/lib/golden-gate/hyprglass.so ]]; then
   done
   hyprctl plugin list 2>/dev/null | grep -qi hyprglass && echo "glass=loaded,$(opt plugin:hyprglass:default_theme),$(opt plugin:hyprglass:layers:enabled)"
 fi
-# Every setting the desktop sent that Hyprland refused (none, to pass).
+# What Hyprland refused while it started: loading a plugin reloads the
+# configuration, and what gg-hyprglass-sync sends meanwhile can be refused;
+# the reload runs it again (exec), so that's only shown. Once settled, a run
+# of gg-hyprglass-sync must have everything taken.
 sleep 1
-grep '^keyword' /tmp/gg-hyprctl-refused 2>/dev/null | sed 's/^/refused: /'
-echo "refused=$(cat /tmp/gg-hyprctl-refused 2>/dev/null | grep -c '^keyword' || true)"
+grep '^keyword' /tmp/gg-hyprctl-refused 2>/dev/null | sed 's/^/while starting, refused: /'
+: > /tmp/gg-hyprctl-refused
+gg-hyprglass-sync >/dev/null 2>&1
+grep '^keyword' /tmp/gg-hyprctl-refused | sed 's/^/refused: /'
+echo "refused=$(grep -c '^keyword' /tmp/gg-hyprctl-refused || true)"
 hyprctl dispatch 'hl.dsp.exit()' >/dev/null 2>&1 || true
 EOF
   chown desktop: /home/desktop/live.sh
@@ -286,7 +292,7 @@ EOF
     if [[ -r /usr/lib/golden-gate/hyprglass.so ]]; then
       want "glass=loaded,light,1" "gg-hyprglass-sync loads HyprGlass and sets the glass"
     fi
-    want "refused=0" "Hyprland takes every setting gg-hyprglass-sync sends"
+    want "refused=0" "Hyprland takes every setting gg-hyprglass-sync sends, once started"
   else
     # Hyprland didn't come up on this GPU: say why.
     fail "live: Hyprland didn't start with CitronOS's settings on $(ls /dev/dri | tr '\n' ' ')"
