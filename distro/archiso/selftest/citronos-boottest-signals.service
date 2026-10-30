@@ -1,8 +1,10 @@
 # Who stops a process with SIGKILL, for the boot test only (gg.boottest on the
 # kernel command line; it does nothing otherwise). The kernel's signal_generate
-# tracepoint, kept to SIGKILL, names the sender and the process it was for;
-# each line goes to the journal, which the boot test reads on the serial
-# console (distro/archiso/boot-test.sh).
+# tracepoint, kept to SIGKILL and SIGXCPU (a CPU-time limit's warning), names
+# the sender and the process it was for; with the kernel's own account of why
+# (a resource limit's "Watchdog Timeout", with print_fatal_signals=1, or the
+# out-of-memory killer), each line goes to the journal, which the boot test
+# reads on the serial console (distro/archiso/boot-test.sh).
 [Unit]
 Description=CitronOS boot test: who sends SIGKILL
 ConditionKernelCommandLine=gg.boottest
@@ -13,9 +15,9 @@ Requires=sys-kernel-tracing.mount
 
 [Service]
 Type=simple
-ExecStartPre=/bin/sh -c 'echo "sig == 9" > /sys/kernel/tracing/events/signal/signal_generate/filter'
+ExecStartPre=/bin/sh -c 'echo "sig == 9 || sig == 24" > /sys/kernel/tracing/events/signal/signal_generate/filter'
 ExecStartPre=/bin/sh -c 'echo 1 > /sys/kernel/tracing/events/signal/signal_generate/enable'
-ExecStart=/bin/cat /sys/kernel/tracing/trace_pipe
+ExecStart=/bin/sh -c 'dmesg -w | grep --line-buffered -E "Watchdog Timeout|Out of memory|oom-kill|invoked oom-killer" & exec cat /sys/kernel/tracing/trace_pipe'
 StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=gg-sigkill

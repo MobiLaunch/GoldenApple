@@ -44,8 +44,10 @@ cmdline="$(grep -rhoE 'archisobasedir=[^ ]+ archisosearchuuid=[^ ]+' "$work/sysl
 [[ -s $work/vmlinuz && -s $work/initramfs.img ]] || { echo "no kernel/initramfs under /arch/boot/x86_64 in $ISO"; exit 1; }
 [[ -n $cmdline ]] || { echo "could not find the archiso kernel parameters in $ISO"; exit 1; }
 cmdline+=" console=tty0 console=ttyS0,115200 systemd.journald.forward_to_console=1 gg.nosetup"   # the desktop, not Setup Assistant
-# Who sends SIGKILL, on the serial console (citronos-boottest-signals.service).
-cmdline+=" gg.boottest"
+# Who sends SIGKILL, on the serial console (citronos-boottest-signals.service),
+# and the kernel saying when a resource limit (CPU time, a realtime thread's
+# run time) is what stops a process.
+cmdline+=" gg.boottest print_fatal_signals=1"
 # The std run also shows the boot screen (Plymouth) and captures it as boot-screen.png.
 [[ $VARIANT == std ]] && cmdline+=" splash vt.global_cursor_default=0"
 SELFTEST="${SELFTEST:-$([[ $VARIANT == std ]] && echo 1 || echo 0)}"
@@ -141,10 +143,12 @@ if boot_log | grep -aqE "$restarted"; then
   # The shell's last words before that, and what the kernel said at the time.
   say "the shell before it stopped:"
   boot_log | grep -aE 'citronos-shell\[|kernel:|Out of memory|Killed process' | tail -n 40
-  # Who sent SIGKILL, and to what ("comm-pid … signal_generate: sig=9 … comm=… pid=…"),
-  # leaving out systemd's own sandbox helpers ("comm=(sd-mkuserns)" and the like).
-  say "SIGKILLs sent:"
-  boot_log | grep -a 'gg-sigkill\[' | grep -a 'signal_generate' | grep -av 'comm=(' | tail -n 20 || true
+  # Who sent SIGKILL (and SIGXCPU), and to what ("comm-pid … signal_generate:
+  # sig=9 … comm=… pid=…"), with the kernel's reason when it has one (a resource
+  # limit's "Watchdog Timeout", the out-of-memory killer), leaving out systemd's
+  # own sandbox helpers ("comm=(sd-mkuserns)" and the like).
+  say "SIGKILLs and SIGXCPUs sent, and why:"
+  boot_log | grep -a 'gg-sigkill\[' | grep -av 'comm=(' | tail -n 20 || true
   result=shell-restarted
 fi
 
