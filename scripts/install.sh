@@ -45,6 +45,9 @@ install_extras() {
   install -Dm755 "$REPO/compositor/hyprland/hyprctl.py" "$R/usr/lib/golden-gate/hyprctl.py"
   install -Dm755 "$REPO/icons/icon-resolver.py" "$R/usr/lib/golden-gate/icon-resolver.py"
   install -Dm755 "$REPO/compositor/hyprland/idle.py" "$R/usr/lib/golden-gate/idle.py"
+  # No realtime scheduling in Quickshell's PipeWire clients (the file says why).
+  install -Dm644 "$REPO/distro/pipewire/50-citronos-quickshell.conf" \
+    "$R/usr/share/pipewire/client.conf.d/50-citronos-quickshell.conf"
   # Standard password-authenticated administration for accounts created in Hello.
   install -d -m755 "$R/etc/sudoers.d"
   if [[ ! -e "$R/etc/sudoers.d/20-golden-wheel" ]]; then

@@ -108,6 +108,22 @@ class Layout(unittest.TestCase):
         self.assertIn("packaging/hyprland-lua-check.sh", workflow)
         self.assertIn("schedule:", workflow, "Arch's Hyprland moves without CitronOS changing")
 
+    def test_quickshell_has_no_realtime_pipewire(self):
+        """PipeWire's module-rt stays out of Quickshell (the shell, the lock
+        screen, the apps): without RTKit it can leave RLIMIT_RTTIME at 0, and
+        the kernel then kills the shell for a single realtime tick (the boot
+        test caught it). The rule matches Quickshell's process only, so other
+        PipeWire clients keep realtime audio."""
+        path = "/usr/share/pipewire/client.conf.d/50-citronos-quickshell.conf"
+        self.assertTrue((STAGED["runtime"] / path.lstrip("/")).is_file())
+        conf = (ROOT / "distro/pipewire/50-citronos-quickshell.conf").read_text()
+        rules = re.sub(r"#.*", "", conf)
+        self.assertIn("context.properties.rules", rules)
+        self.assertIn('application.process.binary = "qs"', rules)
+        self.assertIn("module.rt = false", rules)
+        self.assertNotIn("context.properties =", rules, "only Quickshell, not every PipeWire client")
+        self.assertIn(path.split("/usr/share/")[1], (ROOT / "scripts/install.sh").read_text())
+
 
 class References(unittest.TestCase):
     def test_commands(self):

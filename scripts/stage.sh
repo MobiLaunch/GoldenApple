@@ -101,6 +101,9 @@ runtime() {
   done
   install -Dm644 "$REPO/apps/setup/account_rules.py" "$D$LIB/account_rules.py"
   install -Dm644 "$REPO/apps/setup/save-preferences.py" "$D$LIB/save-preferences.py"
+  # No realtime scheduling in Quickshell's PipeWire clients (the file says why).
+  install -Dm644 "$REPO/distro/pipewire/50-citronos-quickshell.conf" \
+    "$D/usr/share/pipewire/client.conf.d/50-citronos-quickshell.conf"
 
   wrappers
   install -Dm755 "$REPO/distro/archiso/overlay/usr/local/bin/gg-session" "$D/usr/bin/gg-session"
