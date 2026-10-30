@@ -449,10 +449,15 @@ same fields, more briefly, and should be expanded when their milestone starts.
   it pins (as hyprpm does; 0.57 has no pin yet), and the reader makes the buttons
   gg-hyprglass-sync sends with `hl.plugin.hyprbars.add_button`. The Hyprland next check
   builds it for Arch's Hyprland (it builds for 0.57.0), and its live part loads it the way
-  the desktop does and reads its look back, before and after a reload. Still to do before
-  the hold lifts: HyprGlass for 0.57 (it has no 0.57 release yet: its main follows
-  Hyprland's development and is never released), then `hyprland.lua` into
-  `/etc/xdg/hypr` and the hold lifted.
+  the desktop does and reads its look back, before and after a reload. HyprGlass has no
+  0.57 release yet (its main follows Hyprland's development and is never released), but
+  its main is ready: the check builds it for Arch's Hyprland (main 7c574b4 builds for
+  0.57.0), loads it through gg-hyprglass-sync and reads the glass back, and every setting
+  gg-hyprglass-sync sends (title bars, glass, borders) is taken once Hyprland has settled
+  (its gg-hyprctl notes each refusal; while a plugin load reloads the configuration a few
+  are refused, and the reload sends them again). Still to do before the hold lifts: a
+  HyprGlass release for 0.57 to pin (or a pinned build of its main), then `hyprland.lua`
+  into `/etc/xdg/hypr` and the hold lifted.
   T-2.2 also pins the AUR: each package the image builds from it (uxplay,
   gnome-network-displays, python-pathvalidate, piper-tts) is built at a commit of its AUR
   repository (`distro/archiso/aur-pins`), and `build.sh` stops at one that isn't pinned.
