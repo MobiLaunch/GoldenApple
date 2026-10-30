@@ -305,6 +305,10 @@ install -Dm755 "$REPO/distro/archiso/selftest/selftest.sh" "$AIR/usr/lib/golden-
 install -Dm644 "$REPO/distro/archiso/selftest/citronos-selftest.service" "$AIR/usr/lib/systemd/user/citronos-selftest.service"
 mkdir -p "$AIR/etc/systemd/user/citronos-session.target.wants"
 ln -sf /usr/lib/systemd/user/citronos-selftest.service "$AIR/etc/systemd/user/citronos-session.target.wants/citronos-selftest.service"
+# …and, with gg.boottest, who sends SIGKILL (the sender and the process).
+install -Dm644 "$REPO/distro/archiso/selftest/citronos-boottest-signals.service" "$AIR/usr/lib/systemd/system/citronos-boottest-signals.service"
+mkdir -p "$AIR/etc/systemd/system/sysinit.target.wants"
+ln -sf /usr/lib/systemd/system/citronos-boottest-signals.service "$AIR/etc/systemd/system/sysinit.target.wants/citronos-boottest-signals.service"
 
 # The same for every program install.sh put in the image: mkarchiso makes each
 # file 644 unless file_permissions names it, and the list above, kept by hand,
