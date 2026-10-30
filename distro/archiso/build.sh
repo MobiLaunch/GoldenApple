@@ -306,6 +306,7 @@ install -Dm644 "$REPO/distro/archiso/selftest/citronos-selftest.service" "$AIR/u
 mkdir -p "$AIR/etc/systemd/user/citronos-session.target.wants"
 ln -sf /usr/lib/systemd/user/citronos-selftest.service "$AIR/etc/systemd/user/citronos-session.target.wants/citronos-selftest.service"
 # …and, with gg.boottest, who sends SIGKILL (the sender and the process).
+install -Dm755 "$REPO/distro/archiso/selftest/boottest-watch.sh" "$AIR/usr/lib/golden-gate/boottest-watch.sh"
 install -Dm644 "$REPO/distro/archiso/selftest/citronos-boottest-signals.service" "$AIR/usr/lib/systemd/system/citronos-boottest-signals.service"
 mkdir -p "$AIR/etc/systemd/system/sysinit.target.wants"
 ln -sf /usr/lib/systemd/system/citronos-boottest-signals.service "$AIR/etc/systemd/system/sysinit.target.wants/citronos-boottest-signals.service"

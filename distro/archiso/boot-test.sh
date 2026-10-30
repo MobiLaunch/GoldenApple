@@ -122,6 +122,10 @@ wait "$qemu" 2>/dev/null || true
 # ---------------------------------------------------------------- report
 say "session log"
 grep -aE 'gg-session|golden-gate|hyprland-log|hyprland-config|quickshell|Hyprland|Failed|failed|segfault|core dump' "$OUT/serial.log" | tail -n 150 || true
+# Whether the shell runs any thread on a realtime scheduling class, and its
+# realtime run-time limit (boottest-watch.sh): past that limit the kernel
+# SIGKILLs it.
+grep -a 'gg-sigkill\[.*qs\[' "$OUT/serial.log" | sed 's/\x1b\[[0-9;]*m//g' | tail -n 4 || true
 # What stops a process from outside shows here too: the kernel's out-of-memory
 # killer, systemd-oomd, a signal.
 grep -aE 'Out of memory|oom-kill|oom_reaper|Killed process|systemd-oomd|code=killed|code=dumped' "$OUT/serial.log" | tail -n 20 || true
@@ -148,7 +152,7 @@ if boot_log | grep -aqE "$restarted"; then
   # limit's "Watchdog Timeout", the out-of-memory killer), leaving out systemd's
   # own sandbox helpers ("comm=(sd-mkuserns)" and the like).
   say "SIGKILLs and SIGXCPUs sent, and why:"
-  boot_log | grep -a 'gg-sigkill\[' | grep -av 'comm=(' | tail -n 20 || true
+  boot_log | grep -a 'gg-sigkill\[' | grep -aE 'signal_generate|Watchdog|Out of memory|oom' | grep -av 'comm=(' | tail -n 20 || true
   result=shell-restarted
 fi
 

@@ -15,9 +15,7 @@ Requires=sys-kernel-tracing.mount
 
 [Service]
 Type=simple
-ExecStartPre=/bin/sh -c 'echo "sig == 9 || sig == 24" > /sys/kernel/tracing/events/signal/signal_generate/filter'
-ExecStartPre=/bin/sh -c 'echo 1 > /sys/kernel/tracing/events/signal/signal_generate/enable'
-ExecStart=/bin/sh -c 'dmesg -w | grep --line-buffered -E "Watchdog Timeout|Out of memory|oom-kill|invoked oom-killer" & exec cat /sys/kernel/tracing/trace_pipe'
+ExecStart=/usr/lib/golden-gate/boottest-watch.sh
 StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=gg-sigkill
