@@ -127,7 +127,12 @@ grep -aE 'gg-session|golden-gate|hyprland-log|hyprland-config|quickshell|Hyprlan
 # SIGKILLs it.
 grep -a 'gg-sigkill\[.*qs\[' "$OUT/serial.log" | sed 's/\x1b\[[0-9;]*m//g' | tail -n 4 || true
 # …and who set a realtime run-time limit, with the library that did it.
-grep -aE 'gg-sigkill\[.*(sys_prlimit64|sys_setrlimit|=>|user stack)' "$OUT/serial.log" | sed 's/\x1b\[[0-9;]*m//g' | head -n 60 || true
+# (The shell's calls and module-rt's, each with its own stack: the stacks of
+# other traced events, and systemd's own calls at every service start, aren't.)
+sed 's/\x1b\[[0-9;]*m//g' "$OUT/serial.log" | awk '
+  /gg-sigkill\[/ && /sys_(prlimit64|setrlimit)\(/ && / (qs|quickshell|module-rt)-[0-9]+ / { keep = 1; print; next }
+  /gg-sigkill\[/ && /=>|<user stack trace>/ { if (keep) print; next }
+  /gg-sigkill\[/ { keep = 0 }' | head -n 80 || true
 # What stops a process from outside shows here too: the kernel's out-of-memory
 # killer, systemd-oomd, a signal.
 grep -aE 'Out of memory|oom-kill|oom_reaper|Killed process|systemd-oomd|code=killed|code=dumped' "$OUT/serial.log" | tail -n 20 || true

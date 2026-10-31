@@ -119,6 +119,9 @@ class Layout(unittest.TestCase):
         conf = (ROOT / "distro/pipewire/50-citronos-quickshell.conf").read_text()
         rules = re.sub(r"#.*", "", conf)
         self.assertIn("context.properties.rules", rules)
+        # PipeWire names the process after /proc/self/exe: quickshell, which
+        # qs links to (a boot trace caught module-rt still loading on "qs" alone).
+        self.assertIn('application.process.binary = "quickshell"', rules)
         self.assertIn('application.process.binary = "qs"', rules)
         self.assertIn("module.rt = false", rules)
         self.assertNotIn("context.properties =", rules, "only Quickshell, not every PipeWire client")
