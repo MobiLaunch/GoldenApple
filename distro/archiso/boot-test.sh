@@ -126,6 +126,8 @@ grep -aE 'gg-session|golden-gate|hyprland-log|hyprland-config|quickshell|Hyprlan
 # realtime run-time limit (boottest-watch.sh): past that limit the kernel
 # SIGKILLs it.
 grep -a 'gg-sigkill\[.*qs\[' "$OUT/serial.log" | sed 's/\x1b\[[0-9;]*m//g' | tail -n 4 || true
+# …and who set a realtime run-time limit, with the library that did it.
+grep -aE 'gg-sigkill\[.*(sys_prlimit64|sys_setrlimit|=>|user stack)' "$OUT/serial.log" | sed 's/\x1b\[[0-9;]*m//g' | head -n 60 || true
 # What stops a process from outside shows here too: the kernel's out-of-memory
 # killer, systemd-oomd, a signal.
 grep -aE 'Out of memory|oom-kill|oom_reaper|Killed process|systemd-oomd|code=killed|code=dumped' "$OUT/serial.log" | tail -n 20 || true
