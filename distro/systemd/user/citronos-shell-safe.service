@@ -1,0 +1,20 @@
+# Safe mode: the shell without desktop widgets, Citron and live window
+# captures in the glass (GG_SAFE=1), after the full shell stopped five times
+# in a minute. It says so in a notification. Logging out and in again starts
+# the full shell.
+[Unit]
+Description=CitronOS shell (safe mode)
+PartOf=citronos-session.target
+Conflicts=citronos-shell.service
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Service]
+Type=exec
+Environment=GG_SAFE=1
+ExecStart=/usr/bin/env qs -c golden-gate
+Restart=on-failure
+RestartSec=2
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=citronos-shell-safe

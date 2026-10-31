@@ -1,0 +1,40 @@
+name: Darling PIP framework
+
+on:
+  push:
+    paths:
+      - 'third_party/darling/**'
+      - 'tools/darling/build-pip-tests.sh'
+      - 'tests/darling/pip.m'
+      - '.github/workflows/darling-pip.yml'
+  pull_request:
+    paths:
+      - 'third_party/darling/**'
+      - 'tools/darling/build-pip-tests.sh'
+      - 'tests/darling/pip.m'
+      - '.github/workflows/darling-pip.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: darling-pip-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  native-pip:
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile actual PIP framework and run native behavior tests
+        run: bash tools/darling/build-pip-tests.sh "$RUNNER_TEMP/pip-tests"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Darling-PIP-native-evidence
+          path: |
+            ${{ runner.temp }}/pip-tests/native-results.json
+            ${{ runner.temp }}/pip-tests/source.lock.json
+            ${{ runner.temp }}/pip-tests/PIPLab.zip

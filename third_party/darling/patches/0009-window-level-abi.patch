@@ -1,0 +1,55 @@
+diff --git a/CoreGraphics/include/CoreGraphics/CGWindowLevel.h b/CoreGraphics/include/CoreGraphics/CGWindowLevel.h
+--- a/CoreGraphics/include/CoreGraphics/CGWindowLevel.h
++++ b/CoreGraphics/include/CoreGraphics/CGWindowLevel.h
+@@ -3,20 +3,17 @@
+ 
+ #import <CoreFoundation/CoreFoundation.h>
+ 
+-// TODO: Fix CGWindowLevel
+-// CGWindowLevel actually isn't a ENUM, but is just a typedef.
+-// https://developer.apple.com/documentation/coregraphics/cgwindowlevel?language=objc
+-
+-typedef CF_ENUM(int32_t, CGWindowLevel)
+-{
+-    kCGNormalWindowLevel,
+-    kCGFloatingWindowLevel,
+-    kCGTornOffMenuWindowLevel,
+-    kCGMainMenuWindowLevel,
+-    kCGStatusWindowLevel,
+-    kCGModalPanelWindowLevel,
+-    kCGPopUpMenuWindowLevel,
+-    kCGScreenSaverWindowLevel,
++// Values must match native macOS binaries, which embed AppKit levels.
++typedef int32_t CGWindowLevel;
++enum {
++    kCGNormalWindowLevel = 0,
++    kCGFloatingWindowLevel = 3,
++    kCGTornOffMenuWindowLevel = 3,
++    kCGMainMenuWindowLevel = 24,
++    kCGStatusWindowLevel = 25,
++    kCGModalPanelWindowLevel = 8,
++    kCGPopUpMenuWindowLevel = 101,
++    kCGScreenSaverWindowLevel = 1000,
+ };
+ 
+ typedef CF_ENUM(int32_t, CGWindowLevelKey)
+diff --git a/CoreGraphics/CGWindowLevel.m b/CoreGraphics/CGWindowLevel.m
+--- a/CoreGraphics/CGWindowLevel.m
++++ b/CoreGraphics/CGWindowLevel.m
+@@ -2,5 +2,15 @@
+ 
+ CGWindowLevel CGWindowLevelForKey(CGWindowLevelKey key)
+ {
+-    return kCGNormalWindowLevel;
++    switch (key) {
++    case kCGNormalWindowLevelKey: return kCGNormalWindowLevel;
++    case kCGFloatingWindowLevelKey: return kCGFloatingWindowLevel;
++    case kCGTornOffMenuWindowLevelKey: return kCGTornOffMenuWindowLevel;
++    case kCGMainMenuWindowLevelKey: return kCGMainMenuWindowLevel;
++    case kCGStatusWindowLevelKey: return kCGStatusWindowLevel;
++    case kCGModalPanelWindowLevelKey: return kCGModalPanelWindowLevel;
++    case kCGPopUpMenuWindowLevelKey: return kCGPopUpMenuWindowLevel;
++    case kCGScreenSaverWindowLevelKey: return kCGScreenSaverWindowLevel;
++    default: return kCGNormalWindowLevel;
++    }
+ }

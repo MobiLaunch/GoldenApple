@@ -1,0 +1,6 @@
+# D-Bus activation for citronos-settingsd. install.sh fills in @BIN@; with
+# systemd the bus starts the user unit instead of running Exec itself.
+[D-BUS Service]
+Name=org.citronos.Settings1
+Exec=@BIN@/gg-settingsd
+SystemdService=citronos-settingsd.service

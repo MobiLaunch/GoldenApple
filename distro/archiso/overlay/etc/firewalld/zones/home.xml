@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<zone>
+  <short>Home</short>
+  <description>CitronOS: private networks (wired, or Wi-Fi with a password). Devices on them can send to AirDrop while receiving is on, and mirror to the AirPlay Receiver while it's on.</description>
+  <service name="dhcpv6-client"/>
+  <service name="mdns"/>
+  <service name="samba-client"/>
+  <service name="citronos-airdrop"/>
+  <service name="citronos-airplay"/>
+  <forward/>
+</zone>

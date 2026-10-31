@@ -1,0 +1,54 @@
+name: Hyprland next
+
+# CitronOS holds Hyprland at the version it's made for (T-2.2/T-2.3), while
+# Arch moves on: 0.57 reads only Lua. This checks CitronOS's settings against
+# Arch's current Hyprland, not the archive CitronOS is pinned to
+# (packaging/hyprland-lua-check.sh): hyprland.lua reads the account's
+# hyprland.conf through compositor/hyprland/hyprlang.lua, and
+# Hyprland --verify-config must find nothing wrong, for a desktop, a virtual
+# machine and an account with its own lines; the title bars (hyprbars, with
+# CitronOS's changes) must build for it and load. Weekly as well, since Arch's
+# Hyprland changes without CitronOS changing.
+on:
+  push:
+    paths:
+      - compositor/hyprland/**
+      - design/dist/hyprland-motion.conf
+      - apps/settings/set-prefs.py
+      - scripts/stage.sh
+      - packaging/hyprland-lua-check.sh
+      - scripts/build-hyprbars.sh
+      - distro/hyprbars/**
+      - apps/lib/hypr/**
+      - .github/workflows/hyprland-next.yml
+  schedule:
+    - cron: "17 5 * * 1"      # Mondays
+  workflow_dispatch:
+
+concurrency:
+  group: hyprland-next-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  lua-config:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      # A virtual GPU, so a real Hyprland can run headless and take what the
+      # desktop sends it while up: vkms for the outputs, vgem for the render
+      # node Hyprland needs (vkms has none). Without one that part is skipped,
+      # and the check says so.
+      - name: A virtual GPU for a headless Hyprland
+        run: |
+          sudo modprobe vkms || echo "::warning::vkms isn't available on this runner"
+          sudo modprobe vgem || echo "::warning::vgem isn't available on this runner: no render node, so the live part will be skipped"
+          ls -l /dev/dri 2>/dev/null || true
+      - name: CitronOS's settings on Arch's current Hyprland
+        run: |
+          devices=()
+          [ -d /dev/dri ] && devices=(--device /dev/dri)
+          docker run --rm "${devices[@]}" -v "$PWD:/repo" -w /repo archlinux:latest packaging/hyprland-lua-check.sh

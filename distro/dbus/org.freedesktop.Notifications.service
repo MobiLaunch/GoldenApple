@@ -1,0 +1,6 @@
+# D-Bus activation for citronos-notifyd. install.sh fills in @BIN@; with
+# systemd the bus starts the user unit instead of running Exec itself.
+[D-BUS Service]
+Name=org.freedesktop.Notifications
+Exec=@BIN@/gg-notifyd
+SystemdService=citronos-notifyd.service

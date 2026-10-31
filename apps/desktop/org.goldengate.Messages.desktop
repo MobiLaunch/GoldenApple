@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Messages
+Comment=iMessage and text messages through your iPhone
+Icon=internet-chat
+Exec=sh @APPS@/messages/open.sh
+StartupWMClass=org.goldengate.Messages
+Categories=Network;Chat;InstantMessaging;
+Keywords=messages;imessage;sms;text;chat;iphone;
+StartupNotify=false

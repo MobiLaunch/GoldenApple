@@ -1,0 +1,629 @@
+{
+ "_doc": "Citron's voice files, fetched on first use and checked against these SHA-256s: a Whisper model for speech-to-text (whisper-cpp) and a Piper voice per language for speaking. Regenerate with care: a wrong hash means the download is refused.",
+ "speech": {
+  "fast": {
+   "name": "Fast",
+   "file": "ggml-base-q5_1.bin",
+   "url": "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base-q5_1.bin",
+   "size": 59707625,
+   "sha256": "422f1ae452ade6f30a004d7e5c6a43195e4433bc370bf23fac9cc591f01a8898"
+  },
+  "accurate": {
+   "name": "Accurate",
+   "file": "ggml-small-q5_1.bin",
+   "url": "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small-q5_1.bin",
+   "size": 190085487,
+   "sha256": "ae85e4a935d7a567bd102fe55afc16bb595bdb618e11b2fc7591bc08120411bb"
+  }
+ },
+ "languages": {
+  "en-US": {
+   "name": "English (US)",
+   "whisper": "en",
+   "voices": [
+    {
+     "id": "en_US-amy-medium",
+     "name": "Amy",
+     "rate": 22050,
+     "files": [
+      {
+       "path": "en/en_US/amy/medium/en_US-amy-medium.onnx",
+       "size": 63201294,
+       "sha256": "b3a6e47b57b8c7fbe6a0ce2518161a50f59a9cdd8a50835c02cb02bdd6206c18"
+      },
+      {
+       "path": "en/en_US/amy/medium/en_US-amy-medium.onnx.json",
+       "size": 4882,
+       "sha256": "95a23eb4d42909d38df73bb9ac7f45f597dbfcde2d1bf9526fdeaf5466977d77"
+      }
+     ]
+    },
+    {
+     "id": "en_US-joe-medium",
+     "name": "Joe",
+     "rate": 22050,
+     "files": [
+      {
+       "path": "en/en_US/joe/medium/en_US-joe-medium.onnx",
+       "size": 63201294,
+       "sha256": "58afce0321b8d9c46d7cdf9c16500cc55a793b4220212dba6b70fb788b3baf06"
+      },
+      {
+       "path": "en/en_US/joe/medium/en_US-joe-medium.onnx.json",
+       "size": 4794,
+       "sha256": "3d6d5410b3795cb1950595247ef8f06190719e6fdbfa3a2356d8ec368e1aad33"
+      }
+     ]
+    }
+   ]
+  },
+  "en-GB": {
+   "name": "English (UK)",
+   "whisper": "en",
+   "voices": [
+    {
+     "id": "en_GB-alba-medium",
+     "name": "Alba",
+     "rate": 22050,
+     "files": [
+      {
+       "path": "en/en_GB/alba/medium/en_GB-alba-medium.onnx",
+       "size": 63201294,
+       "sha256": "401369c4a81d09fdd86c32c5c864440811dbdcc66466cde2d64f7133a66ad03b"
+      },
+      {
+       "path": "en/en_GB/alba/medium/en_GB-alba-medium.onnx.json",
+       "size": 4888,
+       "sha256": "aa965a2f02ecced632c2694e1fc72bbff6d65f265fab567ca945918c73dd89f4"
+      }
+     ]
+    },
+    {
+     "id": "en_GB-alan-medium",
+     "name": "Alan",
+     "rate": 22050,
+     "files": [
+      {
+       "path": "en/en_GB/alan/medium/en_GB-alan-medium.onnx",
+       "size": 63201294,
+       "sha256": "0a309668932205e762801f1efc2736cd4b0120329622adf62be09e56339d3330"
+      },
+      {
+       "path": "en/en_GB/alan/medium/en_GB-alan-medium.onnx.json",
+       "size": 4888,
+       "sha256": "c0f0d124e5895c00e7c03b35dcc8287f319a6998a365b182deb5c8e752ee8c1e"
+      }
+     ]
+    }
+   ]
+  },
+  "es-ES": {
+   "name": "Spanish (Spain)",
+   "whisper": "es",
+   "voices": [
+    {
+     "id": "es_ES-davefx-medium",
+     "name": "Davefx",
+     "rate": 22050,
+     "files": [
+      {
+       "path": "es/es_ES/davefx/medium/es_ES-davefx-medium.onnx",
+       "size": 63201294,
+       "sha256": "6658b03b1a6c316ee4c265a9896abc1393353c2d9e1bca7d66c2c442e222a917"
+      },
+      {
+       "path": "es/es_ES/davefx/medium/es_ES-davefx-medium.onnx.json",
+       "size": 4817,
+       "sha256": "0e0dda87c732f6f38771ff274a6380d9252f327dca77aa2963d5fbdf9ec54842"
+      }
+     ]
+    }
+   ]
+  },
+  "es-US": {
+   "name": "Spanish (Latin America)",
+   "whisper": "es",
+   "voices": [
+    {
+     "id": "es_MX-ald-medium",
+     "name": "Ald",
+     "rate": 22050,
+     "files": [
+      {
+       "path": "es/es_MX/ald/medium/es_MX-ald-medium.onnx",
+       "size": 63201294,
+       "sha256": "019b3803293c93e34a206dd2e53a3889209a514e786fd7144f7b70196c579b63"
+      },
+      {
+       "path": "es/es_MX/ald/medium/es_MX-ald-medium.onnx.json",
+       "size": 4878,
+       "sha256": "5a71498158e04afc8099bfd019c7e87c68eb9d042505a2b1a87e5c1ac2b1a61d"
+      }
+     ]
+    }
+   ]
+  },
+  "fr-FR": {
+   "name": "French",
+   "whisper": "fr",
+   "voices": [
+    {
+     "id": "fr_FR-siwis-medium",
+     "name": "Siwis",
+     "rate": 22050,
+     "files": [
+      {
+       "path": "fr/fr_FR/siwis/medium/fr_FR-siwis-medium.onnx",
+       "size": 63201294,
+       "sha256": "641d1ab097da2b81128c076810edb052b385decc8be3381814802a64a73baf99"
+      },
+      {
+       "path": "fr/fr_FR/siwis/medium/fr_FR-siwis-medium.onnx.json",
+       "size": 4875,
+       "sha256": "39479916c2db192b5ac9764daddd0c744d83e023ad890c6976c0633ae4df8959"
+      }
+     ]
+    },
+    {
+     "id": "fr_FR-tom-medium",
+     "name": "Tom",
+     "rate": 44100,
+     "files": [
+      {
+       "path": "fr/fr_FR/tom/medium/fr_FR-tom-medium.onnx",
+       "size": 63511038,
+       "sha256": "bf65074ccdeeeeaa832e75edb1c0a513c01c9a972bdf085ff8a6e71ea234fd41"
+      },
+      {
+       "path": "fr/fr_FR/tom/medium/fr_FR-tom-medium.onnx.json",
+       "size": 4959,
+       "sha256": "2f7f885ad5a0aad802e3cc24e4f57239febdcb142b4876de5d238094674361cc"
+      }
+     ]
+    }
+   ]
+  },
+  "de-DE": {
+   "name": "German",
+   "whisper": "de",
+   "voices": [
+    {
+     "id": "de_DE-thorsten-medium",
+     "name": "Thorsten",
+     "rate": 22050,
+     "files": [
+      {
+       "path": "de/de_DE/thorsten/medium/de_DE-thorsten-medium.onnx",
+       "size": 63201294,
+       "sha256": "7e64762d8e5118bb578f2eea6207e1a35a8e0c30595010b666f983fc87bb7819"
+      },
+      {
+       "path": "de/de_DE/thorsten/medium/de_DE-thorsten-medium.onnx.json",
+       "size": 4819,
+       "sha256": "974adee790533adb273a1ac88f49027d2a1b8f0f2cf4905954a4791e79264e85"
+      }
+     ]
+    }
+   ]
+  },
+  "it-IT": {
+   "name": "Italian",
+   "whisper": "it",
+   "voices": [
+    {
+     "id": "it_IT-paola-medium",
+     "name": "Paola",
+     "rate": 22050,
+     "files": [
+      {
+       "path": "it/it_IT/paola/medium/it_IT-paola-medium.onnx",
+       "size": 63511038,
+       "sha256": "6fc918b5a0ea6137382833dddfa567bffbe6a5060c02043c87192ee59c04210c"
+      },
+      {
+       "path": "it/it_IT/paola/medium/it_IT-paola-medium.onnx.json",
+       "size": 7099,
+       "sha256": "aea19c0a7fce29fbc359b93f10e7902854401e4c95ae2ea328ae516b15d296cf"
+      }
+     ]
+    }
+   ]
+  },
+  "pt-BR": {
+   "name": "Portuguese (Brazil)",
+   "whisper": "pt",
+   "voices": [
+    {
+     "id": "pt_BR-faber-medium",
+     "name": "Faber",
+     "rate": 22050,
+     "files": [
+      {
+       "path": "pt/pt_BR/faber/medium/pt_BR-faber-medium.onnx",
+       "size": 63201294,
+       "sha256": "858555e3a064209c57088fe6bd70c4c3dc54d03eaa00c45d5ecaf43a33f95aa7"
+      },
+      {
+       "path": "pt/pt_BR/faber/medium/pt_BR-faber-medium.onnx.json",
+       "size": 4855,
+       "sha256": "7e694de195ae3fc36dd732c445eb04fb49b649854893cb5506b978f0d50a1d6f"
+      }
+     ]
+    }
+   ]
+  },
+  "pt-PT": {
+   "name": "Portuguese (Portugal)",
+   "whisper": "pt",
+   "voices": [
+    {
+     "id": "pt_PT-tugão-medium",
+     "name": "Tugão",
+     "rate": 22050,
+     "files": [
+      {
+       "path": "pt/pt_PT/tugão/medium/pt_PT-tugão-medium.onnx",
+       "size": 63201294,
+       "sha256": "223a7aaca69a155c61897e8ada7c3b13bc306e16c72dbb9c2fed733e2b0927d4"
+      },
+      {
+       "path": "pt/pt_PT/tugão/medium/pt_PT-tugão-medium.onnx.json",
+       "size": 5026,
+       "sha256": "fe0918dfc0f1a89264a6eea4afe8e95d8e9fed3cc6c81b5c2f87fcb2b50c7320"
+      }
+     ]
+    }
+   ]
+  },
+  "nl-NL": {
+   "name": "Dutch",
+   "whisper": "nl",
+   "voices": [
+    {
+     "id": "nl_NL-ronnie-medium",
+     "name": "Ronnie",
+     "rate": 22050,
+     "files": [
+      {
+       "path": "nl/nl_NL/ronnie/medium/nl_NL-ronnie-medium.onnx",
+       "size": 62950044,
+       "sha256": "ac9aba346d2088ed1ddea646a843ef97dc8e1514cc75e969c90a0c843bb5cbf5"
+      },
+      {
+       "path": "nl/nl_NL/ronnie/medium/nl_NL-ronnie-medium.onnx.json",
+       "size": 5040,
+       "sha256": "4329a4deb198d119b7f7364173e388afb8efec9eca10e849f9394aa1a92bb7bc"
+      }
+     ]
+    }
+   ]
+  },
+  "pl-PL": {
+   "name": "Polish",
+   "whisper": "pl",
+   "voices": [
+    {
+     "id": "pl_PL-gosia-medium",
+     "name": "Gosia",
+     "rate": 22050,
+     "files": [
+      {
+       "path": "pl/pl_PL/gosia/medium/pl_PL-gosia-medium.onnx",
+       "size": 63201294,
+       "sha256": "38f66464240ed74f186e6b7dc13c6e3b22e023426299f25c2b3cc9dfa9373fbc"
+      },
+      {
+       "path": "pl/pl_PL/gosia/medium/pl_PL-gosia-medium.onnx.json",
+       "size": 4814,
+       "sha256": "1aefb31a9d53ffe44a8163ff73ec833acb7a6253848f6bb0403d8a66f9c7510d"
+      }
+     ]
+    },
+    {
+     "id": "pl_PL-darkman-medium",
+     "name": "Darkman",
+     "rate": 22050,
+     "files": [
+      {
+       "path": "pl/pl_PL/darkman/medium/pl_PL-darkman-medium.onnx",
+       "size": 63201294,
+       "sha256": "db505438a5364e8e2e0242c4324130a873ed660dfbe8d9689cef428ffb1b645f"
+      },
+      {
+       "path": "pl/pl_PL/darkman/medium/pl_PL-darkman-medium.onnx.json",
+       "size": 4816,
+       "sha256": "70f999f11fa8ad13d3ef779041ee93c9f38be5abdbacdfad42449712fe91c81b"
+      }
+     ]
+    }
+   ]
+  },
+  "ru-RU": {
+   "name": "Russian",
+   "whisper": "ru",
+   "voices": [
+    {
+     "id": "ru_RU-irina-medium",
+     "name": "Irina",
+     "rate": 22050,
+     "files": [
+      {
+       "path": "ru/ru_RU/irina/medium/ru_RU-irina-medium.onnx",
+       "size": 63201294,
+       "sha256": "8ff38212d23da300bbe3705c645e6e5b9475f0bfde01558eb17813e22acaaaaa"
+      },
+      {
+       "path": "ru/ru_RU/irina/medium/ru_RU-irina-medium.onnx.json",
+       "size": 4765,
+       "sha256": "c2ec28bb38e2b59e93b959b3e40348c1afebbd272f30fed5d41205d08e98a9d7"
+      }
+     ]
+    },
+    {
+     "id": "ru_RU-dmitri-medium",
+     "name": "Dmitri",
+     "rate": 22050,
+     "files": [
+      {
+       "path": "ru/ru_RU/dmitri/medium/ru_RU-dmitri-medium.onnx",
+       "size": 63201294,
+       "sha256": "f073356ebc4bd0f80c5af58df2953a5988bd5bdab1eb38635ce960b071fbefcb"
+      },
+      {
+       "path": "ru/ru_RU/dmitri/medium/ru_RU-dmitri-medium.onnx.json",
+       "size": 4824,
+       "sha256": "667ef3117bc642c2892dff7690d8bdc8ca4228aeaa783b2dc1416df632855e0d"
+      }
+     ]
+    }
+   ]
+  },
+  "uk-UA": {
+   "name": "Ukrainian",
+   "whisper": "uk",
+   "voices": [
+    {
+     "id": "uk_UA-ukrainian_tts-medium",
+     "name": "Ukrainian Tts",
+     "rate": 22050,
+     "files": [
+      {
+       "path": "uk/uk_UA/ukrainian_tts/medium/uk_UA-ukrainian_tts-medium.onnx",
+       "size": 76735663,
+       "sha256": "7920419ac5f6fd8b6450520f24b52ed5a319cb53dd018fbcd71c9e079cbac84f"
+      },
+      {
+       "path": "uk/uk_UA/ukrainian_tts/medium/uk_UA-ukrainian_tts-medium.onnx.json",
+       "size": 2002,
+       "sha256": "4e96e72917ca9b94edc77d6ccfee03a73f450ba2fc1ca93c2e562bc014e5aa55"
+      }
+     ]
+    }
+   ]
+  },
+  "tr-TR": {
+   "name": "Turkish",
+   "whisper": "tr",
+   "voices": [
+    {
+     "id": "tr_TR-dfki-medium",
+     "name": "Dfki",
+     "rate": 22050,
+     "files": [
+      {
+       "path": "tr/tr_TR/dfki/medium/tr_TR-dfki-medium.onnx",
+       "size": 63201294,
+       "sha256": "2844717f524ab965d3fe86e60562cbb601d3e456836efcc2196cc3a14112a8fb"
+      },
+      {
+       "path": "tr/tr_TR/dfki/medium/tr_TR-dfki-medium.onnx.json",
+       "size": 4960,
+       "sha256": "13ebd7810f1b61b5027583cf3131a0a233b6ea81c38f2200ebc4ff41c3cca039"
+      }
+     ]
+    }
+   ]
+  },
+  "ar": {
+   "name": "Arabic",
+   "whisper": "ar",
+   "voices": [
+    {
+     "id": "ar_JO-kareem-medium",
+     "name": "Kareem",
+     "rate": 22050,
+     "files": [
+      {
+       "path": "ar/ar_JO/kareem/medium/ar_JO-kareem-medium.onnx",
+       "size": 63201294,
+       "sha256": "9e95cab07b679da603bba17c4dec7ab3111320571964ee95c0379603c086491e"
+      },
+      {
+       "path": "ar/ar_JO/kareem/medium/ar_JO-kareem-medium.onnx.json",
+       "size": 5024,
+       "sha256": "ea6d9b9d9076dbdb6bf5c98c6a141ef154959d2359709b37855727964e7d6c4d"
+      }
+     ]
+    }
+   ]
+  },
+  "hi-IN": {
+   "name": "Hindi",
+   "whisper": "hi",
+   "voices": [
+    {
+     "id": "hi_IN-priyamvada-medium",
+     "name": "Priyamvada",
+     "rate": 22050,
+     "files": [
+      {
+       "path": "hi/hi_IN/priyamvada/medium/hi_IN-priyamvada-medium.onnx",
+       "size": 63516050,
+       "sha256": "aa63bcf2cd493b55a450f280e23cf77f03afc9af7015e6e5acd43b652f166c88"
+      },
+      {
+       "path": "hi/hi_IN/priyamvada/medium/hi_IN-priyamvada-medium.onnx.json",
+       "size": 4973,
+       "sha256": "5efc0ccf7529f3528996d46e0fac1f969f681d44a8e55bfa6236ff8841b5d52d"
+      }
+     ]
+    },
+    {
+     "id": "hi_IN-rohan-medium",
+     "name": "Rohan",
+     "rate": 22050,
+     "files": [
+      {
+       "path": "hi/hi_IN/rohan/medium/hi_IN-rohan-medium.onnx",
+       "size": 62950044,
+       "sha256": "b65dc80fb34d9dcd1cf684cb297966a34983bbc93bb1696fe207f32b0b33a091"
+      },
+      {
+       "path": "hi/hi_IN/rohan/medium/hi_IN-rohan-medium.onnx.json",
+       "size": 5041,
+       "sha256": "07b9ae19bd0bac7fbbc99f7ee69c91245eb5470e926632c31fc0c50ba653c817"
+      }
+     ]
+    }
+   ]
+  },
+  "id-ID": {
+   "name": "Indonesian",
+   "whisper": "id",
+   "voices": [
+    {
+     "id": "id_ID-news_tts-medium",
+     "name": "News Tts",
+     "rate": 22050,
+     "files": [
+      {
+       "path": "id/id_ID/news_tts/medium/id_ID-news_tts-medium.onnx",
+       "size": 62950044,
+       "sha256": "ed8f02aa593f7af6b19acbdb8142e0da0dd72f46194eb33d38e0eb10a52597e8"
+      },
+      {
+       "path": "id/id_ID/news_tts/medium/id_ID-news_tts-medium.onnx.json",
+       "size": 5050,
+       "sha256": "1ef677072668a5e172e0759b1d3871f129009d1167f093325a17607f7add5ad7"
+      }
+     ]
+    }
+   ]
+  },
+  "vi-VN": {
+   "name": "Vietnamese",
+   "whisper": "vi",
+   "voices": [
+    {
+     "id": "vi_VN-vais1000-medium",
+     "name": "Vais1000",
+     "rate": 22050,
+     "files": [
+      {
+       "path": "vi/vi_VN/vais1000/medium/vi_VN-vais1000-medium.onnx",
+       "size": 63201294,
+       "sha256": "ec7c89e2c85f4d1edc24b6120c18aaf1bda614f06b511567eb9c7c0de15e2dab"
+      },
+      {
+       "path": "vi/vi_VN/vais1000/medium/vi_VN-vais1000-medium.onnx.json",
+       "size": 4860,
+       "sha256": "fafb9da1354ed4b77c31af228ed41fb41cd825c14cffa105454b25e6ae751ee0"
+      }
+     ]
+    }
+   ]
+  },
+  "ja-JP": {
+   "name": "Japanese",
+   "whisper": "ja",
+   "voices": [
+    {
+     "id": "ja_JP-hi_fi_captain-medium",
+     "name": "Hi Fi Captain",
+     "rate": 22050,
+     "files": [
+      {
+       "path": "ja/ja_JP/hi_fi_captain/medium/ja_JP-hi_fi_captain-medium.onnx",
+       "size": 76753841,
+       "sha256": "5eafa1610fc7a0ff2e7fde9cbe0972d876266e23d8db331727eb2466f19460eb"
+      },
+      {
+       "path": "ja/ja_JP/hi_fi_captain/medium/ja_JP-hi_fi_captain-medium.onnx.json",
+       "size": 5301,
+       "sha256": "fe9aeda38318607ba114926d1d7ee7d56295f9af3774a99a42b36f4354cabf27"
+      }
+     ]
+    }
+   ]
+  },
+  "ko-KR": {
+   "name": "Korean",
+   "whisper": "ko",
+   "voices": [
+    {
+     "id": "ko_KR-kss-medium",
+     "name": "Kss",
+     "rate": 22050,
+     "files": [
+      {
+       "path": "ko/ko_KR/kss/medium/ko_KR-kss-medium.onnx",
+       "size": 63221984,
+       "sha256": "624fd774e26895f24bebae1bd9a3379e3394baeade4b584924f83e414096e2c9"
+      },
+      {
+       "path": "ko/ko_KR/kss/medium/ko_KR-kss-medium.onnx.json",
+       "size": 5232,
+       "sha256": "153b5619d0580f824a59108d83ca19434de410eb8e4fe80325b58684fdc8a1df"
+      }
+     ]
+    }
+   ]
+  },
+  "zh-CN": {
+   "name": "Chinese (Mandarin)",
+   "whisper": "zh",
+   "voices": [
+    {
+     "id": "zh_CN-huayan-medium",
+     "name": "Huayan",
+     "rate": 22050,
+     "files": [
+      {
+       "path": "zh/zh_CN/huayan/medium/zh_CN-huayan-medium.onnx",
+       "size": 63201294,
+       "sha256": "9929917bf8cabb26fd528ea44d3a6699c11e87317a14765312420be230be0f3d"
+      },
+      {
+       "path": "zh/zh_CN/huayan/medium/zh_CN-huayan-medium.onnx.json",
+       "size": 4822,
+       "sha256": "d521dc45504a8ccc99e325822b35946dd701840bfb07e3dbb31a40929ed6a82b"
+      }
+     ]
+    }
+   ]
+  },
+  "sv-SE": {
+   "name": "Swedish",
+   "whisper": "sv",
+   "voices": [
+    {
+     "id": "sv_SE-alma-medium",
+     "name": "Alma",
+     "rate": 22050,
+     "files": [
+      {
+       "path": "sv/sv_SE/alma/medium/sv_SE-alma-medium.onnx",
+       "size": 63434611,
+       "sha256": "f75455eb6afeb1db9e2905d5bd7e4115afcd3710e0d399b6a40981766d32fedc"
+      },
+      {
+       "path": "sv/sv_SE/alma/medium/sv_SE-alma-medium.onnx.json",
+       "size": 6059,
+       "sha256": "6924380892f769afa92fc6b28ff91d558690d7fb4e3ef8cbf821cefadc8f38fe"
+      }
+     ]
+    }
+   ]
+  }
+ }
+}

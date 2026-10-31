@@ -1,0 +1,74 @@
+{
+  "schema": 2,
+  "repository": "https://github.com/darlinghq/darling.git",
+  "darling_commit": "60ba801decee7a00782f74f6be4c8ffb013f79ff",
+  "cocotron_commit": "c8d38d16a9f613d300157bebbab2b9501bc0c274",
+  "patches": [
+    {
+      "path": "patches/0001-view-controller-loading.patch",
+      "sha256": "0a298be5b49af58543b16d4a33a589ba123291da4934b6e6215b4531603a3c53",
+      "repository": "cocotron"
+    },
+    {
+      "path": "patches/0002-intrinsic-metric.patch",
+      "sha256": "1b5d8ac9bbcc924b0d60045ed8f22d0b0c2b8048387e496bc045544d1b867ec4",
+      "repository": "cocotron"
+    },
+    {
+      "path": "patches/0003-pip-framework.patch",
+      "repository": "darling",
+      "sha256": "d8271f4857068ee64789404e2fe0ef2130423bc1c29cfe9511d4f1601cda164c"
+    },
+    {
+      "path": "patches/0004-optional-swift-runtime.patch",
+      "repository": "darling",
+      "sha256": "260f9b9fe3e85daa45c99ed3047533e058ce2a083def209600b6ffb17b1e4028"
+    },
+    {
+      "path": "patches/0005-objc-build-mode.patch",
+      "repository": "objc4",
+      "sha256": "bb6e70eeedcbd11f015fef0141e2c257fd931301979e98c07fef240328ed25f1"
+    },
+    {
+      "path": "patches/0006-fsevents-linux-uapi.patch",
+      "repository": "darling",
+      "sha256": "31a95e6108ff8618a84cb283fe6832ce96c6b3ebb48f1b47084778132c8d2ce0"
+    },
+    {
+      "path": "patches/0007-dyld-static-unwind-tables.patch",
+      "repository": "darling",
+      "sha256": "69d258c5f1b85e483316aa6307b311ad8ae47fd23d4a7f64d53293f30fd42913"
+    },
+    {
+      "path": "patches/0008-sincos-recursion.patch",
+      "repository": "darling",
+      "sha256": "7aa8a92643533a858751545eff7a6c76eafb0bd34b2db1e750c2240486013505"
+    },
+    {
+      "path": "patches/0009-window-level-abi.patch",
+      "repository": "cocotron",
+      "sha256": "ef49e1e2d60cffadc412393bb22b589070fdb02ec67aa16cae6f3aca99c3daef"
+    },
+    {
+      "path": "patches/0010-core-uti-fallback.patch",
+      "repository": "darling",
+      "sha256": "05b018124bbc277e9f21ba88e6f63ea18f3ccdcad542fac2ed047d703455ba71"
+    },
+    {
+      "path": "patches/0011-uti-document-types.patch",
+      "repository": "cocotron",
+      "sha256": "bb5eb28c95f07eaf1b73918eb60b9eb29b1471a7035e701fd912fab0a23447e5"
+    },
+    {
+      "path": "patches/0012-plain-text-documents.patch",
+      "repository": "cocotron",
+      "sha256": "9ce70773bc8b61a6c21d0a03a5ef9262cba5c20ef6511239eb46a38befd6d501"
+    },
+    {
+      "path": "patches/0013-paragraph-tab-stops.patch",
+      "repository": "cocotron",
+      "sha256": "22fb6d6661828d50e61196420ac8f9e413db948e5a106bcfa8e9ce345d0d1c56"
+    }
+  ],
+  "objc4_commit": "1a12df76d12bfc9fdfffadb290f7742763568765"
+}

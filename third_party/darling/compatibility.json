@@ -1,0 +1,204 @@
+{
+  "schema": 1,
+  "milestones": [
+    {
+      "id": "M1",
+      "name": "AppKit baseline",
+      "status": "validated",
+      "requires": [],
+      "goal": "An unchanged Intel Cocoa app opens, accepts input, resizes and saves under Darling.",
+      "checks": [
+        {
+          "id": "controller-source",
+          "status": "passed",
+          "evidence": [
+            "https://github.com/MobiLaunch/GoldenApple/actions/runs/38159189870/job/114528421547"
+          ]
+        },
+        {
+          "id": "native-fixture-build",
+          "status": "passed",
+          "evidence": [
+            "https://github.com/MobiLaunch/GoldenApple/actions/runs/38159189870/job/114528421670"
+          ]
+        },
+        {
+          "id": "darling-gui-workflow",
+          "status": "passed",
+          "evidence": [
+            "https://github.com/MobiLaunch/GoldenApple/actions/runs/38159189870/job/114528698136"
+          ]
+        }
+      ],
+      "files": [
+        "tests/darling/controller.m",
+        "tools/darling/fixtures/ControllerLab.m",
+        "tools/darling/test-gui.py"
+      ]
+    },
+    {
+      "id": "M2",
+      "name": "Basic PIP framework",
+      "status": "validated",
+      "requires": [
+        "M1"
+      ],
+      "goal": "A PIP-linked Intel fixture loads the implemented framework and completes presentation, playback-state and restoration checks under Darling.",
+      "checks": [
+        {
+          "id": "native-pip-behavior",
+          "status": "passed",
+          "evidence": [
+            "https://github.com/MobiLaunch/GoldenApple/actions/runs/38099631559/job/114352693782"
+          ]
+        },
+        {
+          "id": "intel-pip-fixture-build",
+          "status": "passed",
+          "evidence": [
+            "https://github.com/MobiLaunch/GoldenApple/actions/runs/38159189870/job/114528421670"
+          ]
+        },
+        {
+          "id": "darling-pip-behavior",
+          "status": "passed",
+          "evidence": [
+            "https://github.com/MobiLaunch/GoldenApple/actions/runs/38159189870/job/114528698136"
+          ]
+        }
+      ],
+      "files": [
+        "third_party/darling/patches/0003-pip-framework.patch",
+        "tests/darling/pip.m",
+        "tools/darling/build-pip-tests.sh"
+      ]
+    },
+    {
+      "id": "M3",
+      "name": "TextEdit document workflow",
+      "status": "validated",
+      "requires": [
+        "M1"
+      ],
+      "goal": "Open an existing document, edit, save, close and reopen without data loss.",
+      "checks": [
+        {
+          "id": "intel-textedit-build",
+          "status": "passed",
+          "evidence": [
+            "https://github.com/MobiLaunch/GoldenApple/actions/runs/38654144129/job/116159778625"
+          ]
+        },
+        {
+          "id": "darling-document-workflow",
+          "status": "passed",
+          "evidence": [
+            "https://github.com/MobiLaunch/GoldenApple/actions/runs/38862450758/job/116848051630"
+          ]
+        }
+      ],
+      "files": [
+        "docs/DARLING-GUI-M1.md",
+        "docs/DARLING-ROADMAP.md",
+        "tools/darling/build-textedit.sh",
+        "tools/darling/test-textedit.py",
+        "tests/darling-textedit-harness.py",
+        "third_party/darling/patches/0010-core-uti-fallback.patch",
+        "third_party/darling/patches/0011-uti-document-types.patch",
+        "tests/darling-core-utis.py",
+        "tests/darling/core-utis.c",
+        "tests/darling/document-types.m",
+        "third_party/darling/patches/0012-plain-text-documents.patch",
+        "tests/darling/plain-text.m",
+        "third_party/darling/patches/0013-paragraph-tab-stops.patch",
+        "tests/darling/paragraph-style.m"
+      ]
+    },
+    {
+      "id": "M4",
+      "name": "IINA playback workflow",
+      "status": "blocked",
+      "requires": [
+        "M2"
+      ],
+      "goal": "The unchanged IINA app loads, opens media, plays audio/video, enters and exits PIP, and closes cleanly.",
+      "checks": [
+        {
+          "id": "darling-media-workflow",
+          "status": "pending",
+          "evidence": []
+        }
+      ],
+      "files": [
+        "docs/DARLING-ROADMAP.md"
+      ]
+    },
+    {
+      "id": "M5",
+      "name": "Golden Gate runtime packaging",
+      "status": "in-progress",
+      "requires": [
+        "M1",
+        "M2"
+      ],
+      "goal": "A validated Arch package installs and updates through Settings with provenance, rollback and no conflict with darling-bin.",
+      "checks": [
+        {
+          "id": "arch-source-recipe",
+          "status": "passed",
+          "evidence": [
+            "https://github.com/MobiLaunch/GoldenApple/actions/runs/38105408413/job/114369764248"
+          ]
+        },
+        {
+          "id": "arch-install-upgrade-rollback",
+          "status": "pending",
+          "evidence": []
+        }
+      ],
+      "files": [
+        "apps/software/darling-setup.sh",
+        "tools/darling/build.py",
+        "tools/darling/runtime.py",
+        "tools/darling/package-arch.py",
+        "tools/darling/arch/PKGBUILD.in",
+        ".github/workflows/darling-arch.yml"
+      ]
+    }
+  ],
+  "targets": [
+    {
+      "id": "controllerlab",
+      "name": "ControllerLab",
+      "status": "supported",
+      "milestone": "M1",
+      "blockers": []
+    },
+    {
+      "id": "piplab",
+      "name": "PIPLab",
+      "status": "supported",
+      "milestone": "M2",
+      "blockers": []
+    },
+    {
+      "id": "textedit",
+      "name": "TextEdit",
+      "status": "supported",
+      "milestone": "M3",
+      "blockers": []
+    },
+    {
+      "id": "iina",
+      "name": "IINA 1.5.0",
+      "status": "blocked",
+      "milestone": "M4",
+      "blockers": [
+        "Installed Darling cannot load Apple's private PIP.framework.",
+        "The new PIP implementation has not been built into an installed Golden Gate runtime.",
+        "The Objective-C baseline excludes upstream's prebuilt Swift assets; their LFS endpoint timed out in the full-runtime attempt.",
+        "Remaining Swift, AppKit and media requirements need actual runtime tracing; resolving PIP alone does not establish compatibility."
+      ]
+    }
+  ]
+}

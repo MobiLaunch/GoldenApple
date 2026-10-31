@@ -1,0 +1,51 @@
+{
+ "_doc": "CitronOS's typed preferences (T-2.5): each domain is a file in ~/.config/golden-gate; each key has a type and a default. Types: bool, int, number (min/max), string (enum), list (items), object (keys: declared children; values: the type of any other child, a map), any. nullable: null is allowed (it means the default set). citronos.settings refuses writes that don't fit; tests/settings-store.py checks every writer's keys are here.",
+ "desktop": {
+  "type": "object",
+  "keys": {
+   "wallpaper": {"type": "string", "default": ""},
+   "glass": {"type": "string", "enum": ["clear", "tinted"], "default": "clear"},
+   "glassSolidity": {"type": "number", "min": 0, "max": 1, "default": 0},
+   "glassWindows": {"type": "bool", "default": true},
+   "reduceMotion": {"type": "bool", "default": false},
+   "reduceTransparency": {"type": "bool", "default": false},
+   "textScale": {"type": "number", "min": 0.5, "max": 2, "default": 1},
+   "scrollBars": {"type": "string", "enum": ["automatic", "always"], "default": "automatic"},
+   "widgets": {"type": "list", "items": {"type": "object", "values": {"type": "any"}}, "nullable": true, "default": null},
+   "dock": {"type": "object", "keys": {
+     "size": {"type": "number", "min": 16, "max": 160, "default": 54},
+     "indicators": {"type": "bool", "default": true},
+     "showRecents": {"type": "bool", "default": true},
+     "animateLaunch": {"type": "bool", "default": true},
+     "pinned": {"type": "list", "items": {"type": "string"}, "nullable": true, "default": null}}},
+   "display": {"type": "object", "keys": {
+     "brightness": {"type": "number", "min": -1, "max": 100, "default": -1},
+     "nightShift": {"type": "bool", "default": false},
+     "warmth": {"type": "number", "min": 1000, "max": 10000, "default": 4500}}},
+   "sound": {"type": "object", "keys": {
+     "alert": {"type": "string", "default": "Crystal"},
+     "charging": {"type": "bool", "default": true}}},
+   "menuBar": {"type": "object", "keys": {
+     "background": {"type": "bool", "default": true},
+     "showDay": {"type": "bool", "default": true},
+     "showDate": {"type": "bool", "default": true},
+     "clock24": {"type": "bool", "default": false},
+     "seconds": {"type": "bool", "default": false},
+     "items": {"type": "object", "values": {"type": "bool"}}}},
+   "notifications": {"type": "object", "keys": {
+     "previews": {"type": "string", "enum": ["always", "never"], "default": "always"},
+     "sounds": {"type": "bool", "default": true},
+     "apps": {"type": "object", "values": {"type": "object", "values": {"type": "any"}}}}},
+   "lockScreen": {"type": "object", "keys": {"message": {"type": "string", "default": ""}}, "values": {"type": "any"}},
+   "touchId": {"type": "object", "keys": {"unlock": {"type": "bool", "default": true}}},
+   "tablet": {"type": "object", "keys": {
+     "enabled": {"type": "bool", "default": false},
+     "widgets": {"type": "list", "items": {"type": "object", "values": {"type": "any"}}, "nullable": true, "default": null}}},
+   "spotlight": {"type": "object", "values": {"type": "bool"}},
+   "settings": {"type": "object", "keys": {"sidebarShown": {"type": "bool", "default": true}}, "values": {"type": "any"}},
+   "focus": {"type": "object", "values": {"type": "any"}},
+   "screenshot": {"type": "object", "values": {"type": "any"}},
+   "controlCenter": {"type": "object", "values": {"type": "any"}}
+  }
+ }
+}

@@ -1,0 +1,65 @@
+name: Packages
+
+# CitronOS's own packages (T-2.1, packaging/citronos/PKGBUILD), built with
+# makepkg in a clean Arch container and installed there (packaging/check.sh):
+# pacman -Qkk must be clean, and a new account must get the system's shell
+# (/etc/xdg/quickshell/golden-gate) with no copy of its own. The packages are
+# the job's artifact. A second job has Software Update move a system
+# scripts/install.sh made onto them. Signing them and the [citronos]
+# repository come next.
+on:
+  push:
+    paths:
+      - shell/**
+      - apps/**
+      - services/**
+      - compositor/hyprland/**
+      - distro/systemd/**
+      - distro/dbus/**
+      - distro/archiso/overlay/**
+      - themes/**
+      - icons/**
+      - design/**
+      - Makefile
+      - scripts/stage.sh
+      - scripts/install.sh
+      - packaging/**
+      - distro/archive-date
+      - distro/pin-archive.sh
+      - .github/workflows/packages.yml
+  workflow_dispatch:
+
+concurrency:
+  group: packages-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  packages:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the packages and install them on a clean Arch system
+        run: docker run --rm -v "$PWD:/repo" -w /repo archlinux:latest packaging/check.sh /repo/out/packages
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: packages
+          path: out/packages
+          retention-days: 14
+          if-no-files-found: warn
+
+  # Software Update onto the packages (packaging/migrate-check.sh): a system
+  # scripts/install.sh made, updated with the real makepkg and pacman, then
+  # upgraded, then an update that fails after pacman, which must put back the
+  # files and pacman's records alike.
+  software-update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Software Update moves an install.sh system onto the packages
+        run: docker run --rm -v "$PWD:/repo" -w /repo archlinux:latest packaging/migrate-check.sh

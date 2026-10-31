@@ -1,0 +1,14 @@
+diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
+--- a/src/CMakeLists.txt
++++ b/src/CMakeLists.txt
+@@ -184,6 +184,10 @@
+ add_subdirectory(external/libclosure)
+ add_subdirectory(external/keymgr)
+ add_subdirectory(external/libunwind)
++# dyld links this archive with chained fixups. Modern Clang can turn register
++# name switches into relative pointer tables that ld64's chained writer cannot
++# encode. Keep that lowering disabled only for the static C++ unwind objects.
++target_compile_options(unwind_static PRIVATE "$<$<COMPILE_LANGUAGE:CXX>:-fno-jump-tables>")
+ add_subdirectory(external/libmalloc)
+ add_subdirectory(external/coretls)
+ add_subdirectory(libsystem_coreservices)

@@ -1,0 +1,10 @@
+# The CitronOS desktop's own services, started by gg-session-start once
+# Hyprland is up and stopped by gg-session when it exits. Bound to
+# graphical-session.target, so services that are part of the graphical
+# session (the AirPlay Receiver) come and go with it.
+[Unit]
+Description=CitronOS desktop session
+BindsTo=graphical-session.target
+Wants=graphical-session-pre.target
+After=graphical-session-pre.target
+Wants=citronos-notifyd.service citronos-shell.service citronos-lock.service citronos-airdrop.service citronos-icon-resolver.service

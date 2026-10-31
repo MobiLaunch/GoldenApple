@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<service>
+  <short>CitronOS AirDrop</short>
+  <description>Receiving files with AirDrop (the LocalSend protocol): HTTPS, and the discovery port. AirDrop listens on them only while receiving is turned on.</description>
+  <port protocol="tcp" port="53317"/>
+  <port protocol="udp" port="53317"/>
+</service>

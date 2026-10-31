@@ -1,0 +1,4 @@
+# Findings tests/security-lint.py allows for now, one per line as
+# "path: what" (python3 tests/security-lint.py --list shows them all).
+# This list may only shrink: a new finding fails, and so does an entry
+# that no longer matches anything. Empty since T-1.1, T-1.2 and T-1.7.

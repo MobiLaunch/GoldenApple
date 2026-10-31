@@ -1,0 +1,13 @@
+# Finds icons for newly installed apps (icons/icon-resolver.py).
+[Unit]
+Description=CitronOS app icon resolver
+PartOf=citronos-session.target
+
+[Service]
+Type=exec
+ExecStart=/usr/bin/env gg-icon-resolver watch
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=citronos-icon-resolver

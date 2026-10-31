@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Notes
+Comment=Write notes, lists and checklists
+Icon=org.gnome.Notes
+Exec=sh -c "qs -p @APPS@/notes.qml ipc call app reopen >/dev/null 2>&1 || exec qs -n -p @APPS@/notes.qml"
+StartupWMClass=org.goldengate.Notes
+Categories=Office;Utility;
+Keywords=note;memo;checklist;todo;markdown;
+StartupNotify=false

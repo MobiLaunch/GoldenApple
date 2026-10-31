@@ -1,0 +1,26 @@
+# The shell: menu bar, Dock, Control Center, notifications, Spotlight and the
+# lock screen. Restarted a second after it stops; if it stops five times in a
+# minute, safe mode takes over (citronos-shell-safe.service).
+#   journalctl --user -u citronos-shell     its output
+[Unit]
+Description=CitronOS shell
+PartOf=citronos-session.target
+After=graphical-session-pre.target
+StartLimitIntervalSec=60
+# Four restarts in a minute; the fifth stop is the one that gives up (systemd
+# refuses a start once there have been more than this many).
+StartLimitBurst=4
+OnFailure=citronos-shell-safe.service
+
+[Service]
+Type=exec
+ExecStart=/usr/bin/env qs -c golden-gate
+Restart=always
+RestartSec=1
+# Restart without passing through "failed": otherwise every crash fires
+# OnFailure=, and one crash meant safe mode (the boot test's self-test found
+# it). Now only giving up, five starts in a minute, does.
+RestartMode=direct
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=citronos-shell

@@ -1,0 +1,8 @@
+[Plymouth Theme]
+Name=CitronOS
+Description=The lemon mark over a progress hairline on black.
+ModuleName=script
+
+[script]
+ImageDir=/usr/share/plymouth/themes/golden-gate
+ScriptFile=/usr/share/plymouth/themes/golden-gate/golden-gate.script

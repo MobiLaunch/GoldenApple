@@ -1,0 +1,12 @@
+node_modules/
+out/
+*.iso
+distro/work/
+
+
+__pycache__/
+*.pyc
+
+# Locally supplied proprietary typography/symbol overrides; never commit these.
+local-assets/fonts/
+local-assets/symbols/

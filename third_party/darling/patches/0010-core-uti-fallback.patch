@@ -1,0 +1,351 @@
+diff --git a/src/frameworks/CoreServices/src/LaunchServices/CMakeLists.txt b/src/frameworks/CoreServices/src/LaunchServices/CMakeLists.txt
+index bb7f350..7c1ea59 100644
+--- a/src/frameworks/CoreServices/src/LaunchServices/CMakeLists.txt
++++ b/src/frameworks/CoreServices/src/LaunchServices/CMakeLists.txt
+@@ -23,6 +23,7 @@ add_framework(LaunchServices
+ 		LSInfo.m
+ 		LSOpen.m
+ 		UTType.m
++		UTCoreTypesTable.c
+ 
+ 	DEPENDENCIES
+ 		CoreFoundation
+diff --git a/src/frameworks/CoreServices/src/LaunchServices/UTCoreTypesTable.c b/src/frameworks/CoreServices/src/LaunchServices/UTCoreTypesTable.c
+new file mode 100644
+index 0000000..ab0749f
+--- /dev/null
++++ b/src/frameworks/CoreServices/src/LaunchServices/UTCoreTypesTable.c
+@@ -0,0 +1,127 @@
++/*
++This file is part of Darling.
++
++Darling is free software: you can redistribute it and/or modify
++it under the terms of the GNU General Public License as published by
++the Free Software Foundation, either version 3 of the License, or
++(at your option) any later version.
++
++Darling is distributed in the hope that it will be useful,
++but WITHOUT ANY WARRANTY; without even the implied warranty of
++MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++GNU General Public License for more details.
++
++You should have received a copy of the GNU General Public License
++along with Darling.  If not, see <http://www.gnu.org/licenses/>.
++*/
++
++// macOS declares its core types in CoreTypes.bundle. Darling ships no such
++// bundle, so launchservicesd never records them and document-based apps
++// cannot resolve "public.plain-text" or ask whether it is "public.text".
++// This table answers for those types when the database has no record.
++
++#include "UTCoreTypesTable.h"
++#include <stddef.h>
++#include <strings.h>
++
++#define LIST(...) ((const char* const[]) { __VA_ARGS__, NULL })
++#define NONE ((const char* const[]) { NULL })
++
++struct core_type
++{
++	const char* identifier;
++	const char* const* conforms_to;
++	const char* const* extensions;
++};
++
++static const struct core_type core_types[] = {
++	{ "public.item", NONE, NONE },
++	{ "public.content", NONE, NONE },
++	{ "public.composite-content", LIST("public.content"), NONE },
++	{ "public.data", LIST("public.item"), NONE },
++	{ "public.directory", LIST("public.item"), NONE },
++	{ "public.folder", LIST("public.directory"), NONE },
++	{ "com.apple.package", LIST("public.directory"), NONE },
++	{ "public.text", LIST("public.data", "public.content"), NONE },
++	{ "public.plain-text", LIST("public.text"), LIST("txt", "text") },
++	{ "public.utf8-plain-text", LIST("public.plain-text"), NONE },
++	{ "public.utf16-plain-text", LIST("public.plain-text"), NONE },
++	{ "com.apple.traditional-mac-plain-text", LIST("public.text"), NONE },
++	{ "public.rtf", LIST("public.text"), LIST("rtf") },
++	{ "com.apple.rtfd", LIST("com.apple.package", "public.composite-content"), LIST("rtfd") },
++	{ "com.apple.flat-rtfd", LIST("public.data", "public.composite-content"), NONE },
++	{ "public.html", LIST("public.text"), LIST("html", "htm") },
++	{ "public.xml", LIST("public.text"), LIST("xml") },
++	{ "com.apple.webarchive", LIST("public.data", "public.composite-content"), LIST("webarchive") },
++	{ "public.source-code", LIST("public.plain-text"), NONE },
++	{ "public.zip-archive", LIST("public.data"), LIST("zip") },
++	{ "org.oasis-open.opendocument.text", LIST("public.zip-archive", "public.composite-content"), LIST("odt") },
++	{ "org.openxmlformats.wordprocessingml.document", LIST("public.zip-archive", "public.composite-content"), LIST("docx") },
++	{ "com.microsoft.word.doc", LIST("public.data", "public.composite-content"), LIST("doc") },
++	{ "com.microsoft.word.wordml", LIST("public.xml"), NONE },
++	{ "com.adobe.pdf", LIST("public.data", "public.composite-content"), LIST("pdf") },
++	{ "public.image", LIST("public.data", "public.content"), NONE },
++	{ "public.png", LIST("public.image"), LIST("png") },
++	{ "public.jpeg", LIST("public.image"), LIST("jpg", "jpeg") },
++	{ "public.tiff", LIST("public.image"), LIST("tif", "tiff") },
++};
++
++static const struct core_type* find_type(const char* identifier)
++{
++	if (identifier == NULL)
++		return NULL;
++	for (size_t i = 0; i < sizeof(core_types) / sizeof(core_types[0]); i++)
++	{
++		if (strcasecmp(core_types[i].identifier, identifier) == 0)
++			return &core_types[i];
++	}
++	return NULL;
++}
++
++const char* _UTCoreTypeForExtension(const char* extension)
++{
++	if (extension == NULL)
++		return NULL;
++	for (size_t i = 0; i < sizeof(core_types) / sizeof(core_types[0]); i++)
++	{
++		for (const char* const* ext = core_types[i].extensions; *ext != NULL; ext++)
++		{
++			if (strcasecmp(*ext, extension) == 0)
++				return core_types[i].identifier;
++		}
++	}
++	return NULL;
++}
++
++const char* const* _UTCoreTypeExtensions(const char* identifier)
++{
++	const struct core_type* type = find_type(identifier);
++	return (type != NULL && type->extensions[0] != NULL) ? type->extensions : NULL;
++}
++
++int _UTCoreTypeIsDeclared(const char* identifier)
++{
++	return find_type(identifier) != NULL;
++}
++
++static int conforms(const char* identifier, const char* parent, int depth)
++{
++	if (strcasecmp(identifier, parent) == 0)
++		return 1;
++	const struct core_type* type = find_type(identifier);
++	if (type == NULL || depth > 16)
++		return 0;
++	for (const char* const* next = type->conforms_to; *next != NULL; next++)
++	{
++		if (conforms(*next, parent, depth + 1))
++			return 1;
++	}
++	return 0;
++}
++
++int _UTCoreTypeConformsTo(const char* identifier, const char* parent)
++{
++	if (identifier == NULL || parent == NULL)
++		return 0;
++	return conforms(identifier, parent, 0);
++}
+diff --git a/src/frameworks/CoreServices/src/LaunchServices/UTCoreTypesTable.h b/src/frameworks/CoreServices/src/LaunchServices/UTCoreTypesTable.h
+new file mode 100644
+index 0000000..fd2bcbe
+--- /dev/null
++++ b/src/frameworks/CoreServices/src/LaunchServices/UTCoreTypesTable.h
+@@ -0,0 +1,20 @@
++#ifndef _UTCORETYPESTABLE_H
++#define _UTCORETYPESTABLE_H
++
++#ifdef __cplusplus
++extern "C" {
++#endif
++
++// Core system types normally declared by CoreTypes.bundle. Comparisons
++// ignore case, like UTTypeEqual; conformance is reflexive and transitive.
++const char* _UTCoreTypeForExtension(const char* extension);
++// NULL-terminated, preferred first; NULL when the type has no extension.
++const char* const* _UTCoreTypeExtensions(const char* identifier);
++int _UTCoreTypeIsDeclared(const char* identifier);
++int _UTCoreTypeConformsTo(const char* identifier, const char* parent);
++
++#ifdef __cplusplus
++}
++#endif
++
++#endif
+diff --git a/src/frameworks/CoreServices/src/LaunchServices/UTType.m b/src/frameworks/CoreServices/src/LaunchServices/UTType.m
+index f01166d..0f7d43d 100644
+--- a/src/frameworks/CoreServices/src/LaunchServices/UTType.m
++++ b/src/frameworks/CoreServices/src/LaunchServices/UTType.m
+@@ -23,9 +23,47 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
+ #import <Foundation/NSArray.h>
+ #import <Foundation/NSNumber.h>
+ #import <fmdb/FMDatabaseQueue.h>
++#include "UTCoreTypesTable.h"
+ 
+ extern FMDatabaseQueue* getDatabaseQueue(void);
+ extern NSString* escape(NSString* str);
++CFArrayRef UTTypeCopyParentIdentifiers(CFStringRef inUTI);
++
++// Core type identifiers and extensions are short ASCII strings; anything
++// that does not fit is not a core type.
++static const char* coreString(CFStringRef str, char* buffer, size_t size)
++{
++	if (str == NULL || !CFStringGetCString(str, buffer, size, kCFStringEncodingUTF8))
++		return NULL;
++	return buffer;
++}
++
++static CFArrayRef coreArray(const char* const* values)
++{
++	CFMutableArrayRef array = CFArrayCreateMutable(NULL, 0, &kCFTypeArrayCallBacks);
++	for (; *values != NULL; values++)
++	{
++		CFStringRef value = CFStringCreateWithCString(NULL, *values, kCFStringEncodingUTF8);
++		CFArrayAppendValue(array, value);
++		CFRelease(value);
++	}
++	return array;
++}
++
++// The core type for an extension when launchservicesd has no declaration.
++static CFArrayRef coreIdentifiersForTag(CFStringRef inTagClass, CFStringRef inTag, CFStringRef inConformingToUTI)
++{
++	char tag[256], parent[256];
++	if (inTagClass == NULL || !CFEqual(inTagClass, kUTTagClassFilenameExtension))
++		return NULL;
++	const char* identifier = _UTCoreTypeForExtension(coreString(inTag, tag, sizeof(tag)));
++	if (identifier == NULL)
++		return NULL;
++	if (inConformingToUTI != NULL &&
++		!_UTCoreTypeConformsTo(identifier, coreString(inConformingToUTI, parent, sizeof(parent))))
++		return NULL;
++	return coreArray((const char* const[]) { identifier, NULL });
++}
+ 
+ _Nullable CFStringRef
+ UTTypeCreatePreferredIdentifierForTag(
+@@ -71,9 +109,9 @@ UTTypeCreateAllIdentifiersForTag(
+ {
+ 	FMDatabaseQueue* dq = getDatabaseQueue();
+ 	if (!dq)
+-		return NULL;
++		return coreIdentifiersForTag(inTagClass, inTag, inConformingToUTI);
+ 
+-	__block CFArrayRef retval;
++	__block CFArrayRef retval = NULL;
+ 	[dq inDatabase:^(FMDatabase* db) {
+ 		NSString* query = @"select type_identifier from uti inner join uti_tag UT on UT.uti=uti.id "
+ 			@"where UT.tag = ? and UT.value = ?";
+@@ -91,6 +129,8 @@ UTTypeCreateAllIdentifiersForTag(
+ 		[rs close];
+ 	}];
+ 
++	if (retval == NULL)
++		retval = coreIdentifiersForTag(inTagClass, inTag, inConformingToUTI);
+ 	return retval;
+ }
+ 
+@@ -109,6 +149,15 @@ UTTypeCopyPreferredTagWithClass(
+ 	return str;
+ }
+ 
++static CFArrayRef coreTagsWithClass(CFStringRef inUTI, CFStringRef inTagClass)
++{
++	char type[256];
++	if (inTagClass == NULL || !CFEqual(inTagClass, kUTTagClassFilenameExtension))
++		return NULL;
++	const char* const* extensions = _UTCoreTypeExtensions(coreString(inUTI, type, sizeof(type)));
++	return (extensions != NULL) ? coreArray(extensions) : NULL;
++}
++
+ _Nullable CFArrayRef
+ UTTypeCopyAllTagsWithClass(
+   CFStringRef inUTI,
+@@ -116,9 +165,9 @@ UTTypeCopyAllTagsWithClass(
+ {
+ 	FMDatabaseQueue* dq = getDatabaseQueue();
+ 	if (!dq)
+-		return NULL;
++		return coreTagsWithClass(inUTI, inTagClass);
+ 
+-	__block CFArrayRef retval;
++	__block CFArrayRef retval = NULL;
+ 	[dq inDatabase:^(FMDatabase* db) {
+ 		FMResultSet* rs = [db executeQuery:@"select UT.value from uti inner join uti_tag UT on UT.uti=uti.id where UT.tag = ? and type_identifier = ?",
+ 			inTagClass, inUTI];
+@@ -128,6 +177,8 @@ UTTypeCopyAllTagsWithClass(
+ 		[rs close];
+ 	}];
+ 
++	if (retval == NULL)
++		retval = coreTagsWithClass(inUTI, inTagClass);
+ 	return retval;
+ }
+ 
+@@ -139,25 +190,39 @@ UTTypeEqual(
+ 	return CFStringCompare(inUTI1, inUTI2, kCFCompareCaseInsensitive) == kCFCompareEqualTo;
+ }
+ 
++// Like macOS, a type conforms to itself and to every ancestor. The database
++// records only each declared type's direct parents, so follow them up to
++// core types, which the built-in table resolves.
++static Boolean conformsTo(CFStringRef inUTI, CFStringRef inConformsToUTI, int depth)
++{
++	char type[256], parent[256];
++	if (UTTypeEqual(inUTI, inConformsToUTI))
++		return TRUE;
++	if (_UTCoreTypeConformsTo(coreString(inUTI, type, sizeof(type)),
++			coreString(inConformsToUTI, parent, sizeof(parent))))
++		return TRUE;
++	if (depth > 16)
++		return FALSE;
++
++	CFArrayRef parents = UTTypeCopyParentIdentifiers(inUTI);
++	if (parents == NULL)
++		return FALSE;
++
++	Boolean retval = FALSE;
++	for (CFIndex i = 0; i < CFArrayGetCount(parents) && !retval; i++)
++		retval = conformsTo((CFStringRef) CFArrayGetValueAtIndex(parents, i), inConformsToUTI, depth + 1);
++	CFRelease(parents);
++	return retval;
++}
++
+ Boolean
+ UTTypeConformsTo(
+   CFStringRef inUTI,
+   CFStringRef inConformsToUTI)
+ {
+-	FMDatabaseQueue* dq = getDatabaseQueue();
+-	if (!dq)
++	if (inUTI == NULL || inConformsToUTI == NULL)
+ 		return FALSE;
+-
+-	__block Boolean retval;
+-	[dq inDatabase:^(FMDatabase* db) {
+-		FMResultSet* rs = [db executeQuery:@"select UC.conforms_to from uti inner join uti_conforms UC on UC.uti=uti.id where type_identifier=? and UC.conforms_to=?",
+-			inUTI, inConformsToUTI];
+-
+-		retval = [rs next];
+-		[rs close];
+-	}];
+-
+-	return retval;
++	return conformsTo(inUTI, inConformsToUTI, 0);
+ }
+ 
+ _Nullable CFStringRef
+@@ -183,6 +248,7 @@ UTTypeCopyDescription(CFStringRef inUTI)
+ Boolean
+ UTTypeIsDeclared(CFStringRef inUTI)
+ {
++	char type[256];
+ 	CFStringRef str = UTTypeCopyDescription(inUTI);
+ 	if (str != NULL)
+ 	{
+@@ -190,7 +256,7 @@ UTTypeIsDeclared(CFStringRef inUTI)
+ 		return TRUE;
+ 	}
+ 	else
+-		return FALSE;
++		return _UTCoreTypeIsDeclared(coreString(inUTI, type, sizeof(type)));
+ }
+ 
+ Boolean

@@ -1,0 +1,51 @@
+diff --git a/AppKit/NSMutableParagraphStyle.m b/AppKit/NSMutableParagraphStyle.m
+index 48e092a..b1fc50d 100644
+--- a/AppKit/NSMutableParagraphStyle.m
++++ b/AppKit/NSMutableParagraphStyle.m
+@@ -33,6 +33,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
+     return shared;
+ }
+ 
++// NSParagraphStyle's -copy returns self, which is wrong for a mutable style.
++- copy {
++    return [self copyWithZone: NULL];
++}
++
+ - copyWithZone: (NSZone *) zone {
+     return [[NSParagraphStyle alloc] initWithParagraphStyle: self];
+ }
+diff --git a/AppKit/NSParagraphStyle.m b/AppKit/NSParagraphStyle.m
+index 09d92da..d313721 100644
+--- a/AppKit/NSParagraphStyle.m
++++ b/AppKit/NSParagraphStyle.m
+@@ -25,6 +25,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
+ 
+ @implementation NSParagraphStyle
+ 
++// NSMutableParagraphStyle edits _tabStops in place, so every initializer
++// stores a private mutable array, never a decoded or copied immutable one.
++static NSMutableArray *ownedTabStops(NSArray *tabStops) {
++    return (tabStops != nil) ? [tabStops mutableCopy] : [NSMutableArray new];
++}
++
+ + (NSParagraphStyle *) defaultParagraphStyle {
+     static NSParagraphStyle *shared = nil;
+ 
+@@ -99,7 +105,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
+         _lineHeightMultiple = [coder decodeFloatForKey: @"LineHeightMultiple"];
+         _lineSpacing = [coder decodeFloatForKey: @"LineSpacing"];
+         _defaultTabInterval = [coder decodeFloatForKey: @"DefaultTabInterval"];
+-        _tabStops = [[coder decodeObjectForKey: @"Tabs"] retain];
++        _tabStops = ownedTabStops([coder decodeObjectForKey: @"Tabs"]);
+         _hyphenationFactor = [coder decodeFloatForKey: @"HyphenationFactor"];
+         _tighteningFactorForTruncation =
+                 [coder decodeFloatForKey: @"TighteningFactor"];
+@@ -134,7 +140,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
+     _lineHeightMultiple = other->_lineHeightMultiple;
+     _lineSpacing = other->_lineSpacing;
+     _defaultTabInterval = other->_defaultTabInterval;
+-    _tabStops = [other->_tabStops copy];
++    _tabStops = ownedTabStops(other->_tabStops);
+     _hyphenationFactor = other->_hyphenationFactor;
+     _tighteningFactorForTruncation = other->_tighteningFactorForTruncation;
+     return self;
