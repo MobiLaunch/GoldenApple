@@ -455,9 +455,14 @@ same fields, more briefly, and should be expanded when their milestone starts.
   0.57.0), loads it through gg-hyprglass-sync and reads the glass back, and every setting
   gg-hyprglass-sync sends (title bars, glass, borders) is taken once Hyprland has settled
   (its gg-hyprctl notes each refusal; while a plugin load reloads the configuration a few
-  are refused, and the reload sends them again). Still to do before the hold lifts: a
-  HyprGlass release for 0.57 to pin (or a pinned build of its main), then `hyprland.lua`
-  into `/etc/xdg/hypr` and the hold lifted.
+  are refused, and the reload sends them again). HyprGlass then released 1.0 and 1.1 for
+  0.57 (2026-10-30; its main pins 0.57.0 to v1.1.0), with a Lua-native configuration: a
+  layer's namespace and mask threshold go to `hl.plugin.hyprglass.layer()`, which the
+  reader now makes from the lists gg-hyprglass-sync sends (an older HyprGlass still gets
+  the options), and the check passes on it. Still to do before the hold lifts, with the
+  owner's go-ahead since it changes what installed machines run: pin HyprGlass v1.1.0 for
+  the 0.57 image (as v0.8.1 is pinned for 0.56.2), then `hyprland.lua` into
+  `/etc/xdg/hypr` and the hold lifted.
   T-2.2 also pins the AUR: each package the image builds from it (uxplay,
   gnome-network-displays, python-pathvalidate, piper-tts) is built at a commit of its AUR
   repository (`distro/archiso/aur-pins`), and `build.sh` stops at one that isn't pinned.
